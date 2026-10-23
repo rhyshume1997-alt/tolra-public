@@ -1,0 +1,306 @@
+@import "tailwindcss";
+@source "../app/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../components/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../pages/**/*.{js,ts,jsx,tsx,mdx}";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Shell breakpoint: the fixed sidebar and dense tables need more than 1024px, so "desk:" starts at 1025px. Up to and
+ * including 1024px the navigation is a drawer and records show as cards or compact lists (UI PR 2).
+ */
+@theme {
+  --breakpoint-desk: 1025px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --font-display: "Anton", "Archivo", Impact, sans-serif;
+  /* Company brand (set per organisation by components/theme-colour.tsx; product defaults below). */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-canvas: var(--canvas);
+  --color-line: var(--line);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Brand tokens: the product's neutral navy until a company's own colours are applied. */
+  --brand: #1e3472;
+  --brand-hover: color-mix(in srgb, var(--brand) 86%, black);
+  --brand-accent: #2e52b8;
+  --brand-ink: #ffffff;
+  --brand-soft: color-mix(in srgb, var(--brand-accent) 9%, white);
+  /* Neutral base */
+  --ink: #0e1726;
+  --canvas: #f5f6f8;
+  --surface: #ffffff;
+  --line: #e3e6ec;
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-ink);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: #5b6576;
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: var(--line);
+  --input: #d5dae2;
+  --ring: var(--brand-accent);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: var(--brand);
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #2e52b8;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 12%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 12%);
+  --sidebar-ring: #2e52b8;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Headings: tight, confident; no heavy black weights. */
+  h1, h2, h3 {
+    letter-spacing: -0.015em;
+  }
+  h1 {
+    font-weight: 600;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--brand-accent) 22%, transparent);
+  }
+}
+
+@layer components {
+  /* Small uppercase mono label: eyebrows, table headers, field captions, buttons. */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  /* A field's caption on a stacked card (Customer, Description...): bold, in its own small box, so the eye finds the title before the
+     value (Rhys, 15 Oct). Used by job cards and, through td[data-label]::before, every stacked table row. */
+  .field-caption {
+    display: block;
+    width: fit-content;
+    margin-bottom: 0.25rem;
+    padding: 0.0625rem 0.375rem;
+    border: 1px solid color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+    border-radius: 0.375rem;
+    background: var(--muted);
+    color: var(--foreground);
+    font-weight: 700;
+  }
+  /* Lighter caption for label-over-value pairs that are not boxed cards (detail dialogs, stat tiles, schedule panel): same mono
+     uppercase size as .label-mono, bold and full-strength colour so it stands out from the value below (Rhys, 15 Oct). No box. */
+  .field-label {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--foreground);
+    margin-bottom: 0.125rem;
+  }
+  /* Main content headings (page title block). */
+  main h1.page-title,
+  .page-title {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+}
+
+/* Unlayered on purpose (beats utility classes): the app uses borders, not shadows, to separate surfaces. */
+[data-slot="card"] {
+  box-shadow: none;
+}
+
+/*
+ * List page views (lib/view-mode, components/view-switcher) for pages whose records are one responsive table:
+ * wrap it in [data-view]. "table" is the table as built; "list" is compact rows with [data-secondary] columns
+ * hidden; "cards" lays the same rows out as a grid of cards. Phones already stack rows (block md:table-row).
+ * Dense tables need more than 1024px (the "desk" breakpoint): from 768px to 1024px "table" is shown as cards
+ * ([data-tablet-cards] does the same for tables that have no view switcher). Unlayered on purpose: beats the
+ * md:table-* utilities on the rows and cells.
+ */
+@media (min-width: 768px) {
+  [data-view="list"] [data-secondary] { display: none; }
+  [data-view="list"] { font-size: 0.8125rem; }
+  [data-view="list"] td, [data-view="list"] th { padding-top: 0.25rem; padding-bottom: 0.25rem; white-space: nowrap; max-width: 16rem; overflow: hidden; text-overflow: ellipsis; }
+  [data-view="list"] tbody tr:nth-child(even) { background-color: color-mix(in srgb, currentColor 4%, transparent); }
+  /* The actions cell is never truncated: every button stays reachable in List view. */
+  [data-view="list"] td:last-child, [data-view="list"] th:last-child { max-width: none; overflow: visible; }
+  /* Actions wrap onto a second line rather than running off the edge (no sideways scrolling in any view). */
+  [data-view] td:last-child { white-space: normal; min-width: 13rem; }
+  /* List keeps every ticked column (068fed0) on one line, so there the actions floor and one-line headers pushed the table past its
+     card and clipped the last buttons sideways: in List the buttons stack instead (taller rows) and header labels wrap at spaces. */
+  [data-view="list"] td:last-child { min-width: 0; }
+  [data-view="list"] th:not(:last-child) { white-space: normal; }
+  /* ...and text cells wrap at spaces too, so a row with every column ticked fits its card at any width and no action button is cut off. */
+  [data-view="list"] td { white-space: normal; }
+  /* Table shows every column at full size; long text wraps so the table fits the screen. */
+  [data-view="table"] td, [data-view="table"] th { white-space: normal; }
+  [data-view] td:last-child > * { margin-bottom: 0.25rem; }
+  [data-view="list"] td button, [data-view="list"] td a[data-slot="button"] { height: 1.75rem; padding-left: 0.5rem; padding-right: 0.5rem; font-size: 0.75rem; }
+  [data-view="cards"] thead { display: none; }
+  [data-view="cards"] tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.75rem; padding: 0.75rem; }
+  [data-view="cards"] tbody tr { display: block; border: 1px solid var(--color-slate-200, #e2e8f0); border-radius: 0.75rem; padding: 0.75rem; min-width: 0; }
+  [data-view="cards"] tbody td { display: block; padding: 0.125rem 0; border: 0; white-space: normal; }
+  [data-view="cards"] tbody td:last-child { padding-top: 0.5rem; }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  [data-view="table"] thead, [data-tablet-cards] thead { display: none; }
+  [data-view="table"] tbody, [data-tablet-cards] tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.75rem; padding: 0.75rem; }
+  [data-view="table"] tbody tr, [data-tablet-cards] tbody tr { display: block; border: 1px solid var(--color-slate-200, #e2e8f0); border-radius: 0.75rem; padding: 0.75rem; min-width: 0; }
+  [data-view="table"] tbody td, [data-tablet-cards] tbody td { display: block; padding: 0.125rem 0; border: 0; white-space: normal; }
+  [data-view="table"] tbody td:last-child, [data-tablet-cards] tbody td:last-child { padding-top: 0.5rem; }
+  /* Same gap rule as the cards view: the "nothing here" row spans the grid. */
+  [data-view="table"] tbody tr > td[colspan], [data-tablet-cards] tbody tr > td[colspan] { text-align: center; }
+}
+
+/*
+ * Field captions. A record that is stacked (a phone row, a card, a tablet card) has lost its table header, so each cell
+ * that carries data-label names itself. Long values (a 120-character company name, a long e-mail) wrap instead of
+ * running past the card; action cells wrap their buttons.
+ */
+td[data-label]::before {
+  content: attr(data-label);
+  display: none;
+  width: fit-content;
+  margin-bottom: 0.25rem;
+  padding: 0.0625rem 0.375rem;
+  border: 1px solid color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+  border-radius: 0.375rem;
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: normal;
+  color: var(--foreground);
+}
+@media (max-width: 767px) {
+  td[data-label]::before { display: block; }
+  td[data-label], td[data-actions], [data-view] td:last-child { white-space: normal; overflow-wrap: anywhere; }
+  td[data-label] { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+}
+@media (min-width: 768px) {
+  [data-view="cards"] td[data-label]::before { display: block; }
+  [data-view="cards"] td[data-label], [data-view="cards"] td[data-actions] { overflow-wrap: anywhere; }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  [data-view="table"] td[data-label]::before, [data-tablet-cards] td[data-label]::before { display: block; }
+  [data-view="table"] td[data-label], [data-tablet-cards] td[data-label], [data-tablet-cards] td[data-actions] { overflow-wrap: anywhere; }
+}

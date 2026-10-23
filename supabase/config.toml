@@ -1,0 +1,78 @@
+# LOCAL DISPOSABLE TEST STACK ONLY (audit batch B1).
+#
+# `supabase start` (see scripts/test-backend.sh) runs Postgres, Auth, REST and Storage in Docker on 127.0.0.1 and
+# applies supabase/migrations/*.sql in order to an empty database. Nothing here refers to a hosted project:
+# never `supabase link` this directory or run `supabase db push` from it.
+project_id = "tolra-local-test"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+# Synthetic tenants are created per test run (tests/support/fixtures.ts), never seeded into the image.
+enabled = false
+
+[realtime]
+# Unused by the app; its container also needs IPv6, which some CI sandboxes lack.
+enabled = false
+ip_version = "IPv4"
+
+[studio]
+enabled = false
+
+[inbucket]
+# Captures any auth e-mail locally instead of sending it.
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3001"
+additional_redirect_urls = ["http://localhost:3001", "http://localhost:3001/auth/set-password", "http://127.0.0.1:3001/auth/set-password"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# Users are created by admins (service role), as in production.
+enable_signup = false
+enable_anonymous_sign_ins = false
+minimum_password_length = 12
+
+[auth.rate_limit]
+# Many synthetic sign-ins come from one address during a run; the app's own limiter is tested separately.
+sign_in_sign_ups = 1000
+token_refresh = 1000
+token_verifications = 1000
+email_sent = 100
+
+[auth.mfa.totp]
+# Authenticator-app (TOTP) second step for admins (docs/MFA.md). Hosted: Authentication > Multi-factor in the dashboard.
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+# Keeps the e-mail/password provider on (false would disable e-mail sign-in); [auth] enable_signup above still
+# refuses self sign-up.
+enable_signup = true
+enable_confirmations = false
+double_confirm_changes = true
+secure_password_change = false
+max_frequency = "1s"
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

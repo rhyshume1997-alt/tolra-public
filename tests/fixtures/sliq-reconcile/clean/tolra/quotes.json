@@ -1,0 +1,38 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000038",
+    "quote_ref": "Q2001",
+    "customer": "Alpha Fabrications Ltd",
+    "total_value": "240.00",
+    "status": "sent",
+    "valid_until": "2026-05-01"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000039",
+    "quote_ref": "Q2002",
+    "customer": "Beta Engineering Limited",
+    "total_value": "480.00",
+    "status": "accepted",
+    "valid_until": "2026-05-02"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000040",
+    "quote_ref": "Q2003",
+    "customer": "Alpha Fabrications Ltd",
+    "total_value": "60.00",
+    "status": "draft",
+    "valid_until": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000041",
+    "quote_ref": "Q2004",
+    "customer": "Gamma Supplies",
+    "total_value": "120.00",
+    "status": "rejected",
+    "valid_until": "2026-05-06"
+  }
+]

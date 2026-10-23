@@ -1,0 +1,32 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000052",
+    "po_ref": "PO-0001",
+    "supplier": "Steel Supplies Ltd",
+    "total_value": "250.00",
+    "status": "sent",
+    "order_date": "2026-03-01",
+    "expected_delivery": "2026-03-15"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000053",
+    "po_ref": "PO-0002",
+    "supplier": "Tooling Co",
+    "total_value": "80.00",
+    "status": "draft",
+    "order_date": "2026-03-02",
+    "expected_delivery": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000054",
+    "po_ref": "PO-0003",
+    "supplier": "Steel Supplies Ltd",
+    "total_value": "40.00",
+    "status": "cancelled",
+    "order_date": "2026-03-03",
+    "expected_delivery": "2026-03-10"
+  }
+]

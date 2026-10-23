@@ -1,0 +1,16 @@
+[
+  {
+    "job_id": "00000000-0000-4000-8000-000000000044",
+    "quantity_made": 60,
+    "quantity_accepted": 50,
+    "quantity_rejected": 6,
+    "quantity_reworked": 4
+  },
+  {
+    "job_id": "00000000-0000-4000-8000-000000000045",
+    "quantity_made": 10,
+    "quantity_accepted": 10,
+    "quantity_rejected": 0,
+    "quantity_reworked": 0
+  }
+]

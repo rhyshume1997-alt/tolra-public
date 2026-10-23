@@ -1,0 +1,28 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000042",
+    "so_number": "SO-0001",
+    "customer": "Beta Engineering Limited",
+    "status": "in_production",
+    "total_value": "480.00",
+    "order_date": "2026-02-03",
+    "delivery_date": "2026-04-30",
+    "quote_ref": "Q2002",
+    "customer_po": "PO-C2-77",
+    "converted_to_job_id": "00000000-0000-4000-8000-000000000044"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000043",
+    "so_number": "SO-0002",
+    "customer": "Alpha Fabrications Ltd",
+    "status": "closed",
+    "total_value": "300.00",
+    "order_date": "2026-02-04",
+    "delivery_date": "2026-03-15",
+    "quote_ref": null,
+    "customer_po": null,
+    "converted_to_job_id": "00000000-0000-4000-8000-000000000045"
+  }
+]

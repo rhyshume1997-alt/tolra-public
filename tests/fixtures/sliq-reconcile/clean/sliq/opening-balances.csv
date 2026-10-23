@@ -1,0 +1,5 @@
+Account,Type,Document,Date,Amount
+C002,Customer,S0999,01/03/2026,960.00
+C003,Customer,,01/03/2026,150.00
+SUP2,Supplier,SB-100,01/03/2026,240.00
+SUP1,Supplier,,01/03/2026,500.00

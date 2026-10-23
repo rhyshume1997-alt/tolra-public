@@ -1,0 +1,123 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000016",
+    "invoice_id": "00000000-0000-4000-8000-000000000006",
+    "position": 0,
+    "description": "Opening item",
+    "quantity": "1",
+    "unit_price": "800.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000017",
+    "invoice_id": "00000000-0000-4000-8000-000000000007",
+    "position": 0,
+    "description": "Bracket",
+    "quantity": "10",
+    "unit_price": "10.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000018",
+    "invoice_id": "00000000-0000-4000-8000-000000000008",
+    "position": 0,
+    "description": "Frame",
+    "quantity": "5",
+    "unit_price": "100.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000019",
+    "invoice_id": "00000000-0000-4000-8000-000000000009",
+    "position": 0,
+    "description": "Plate",
+    "quantity": "1",
+    "unit_price": "250.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000020",
+    "invoice_id": "00000000-0000-4000-8000-000000000010",
+    "position": 0,
+    "description": "Item A",
+    "quantity": "1",
+    "unit_price": "50.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000021",
+    "invoice_id": "00000000-0000-4000-8000-000000000010",
+    "position": 1,
+    "description": "Item B",
+    "quantity": "1",
+    "unit_price": "50.00",
+    "vat_pct": 5,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000022",
+    "invoice_id": "00000000-0000-4000-8000-000000000011",
+    "position": 0,
+    "description": "Gasket",
+    "quantity": "8",
+    "unit_price": "10.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000023",
+    "invoice_id": "00000000-0000-4000-8000-000000000012",
+    "position": 0,
+    "description": "Thing",
+    "quantity": "1",
+    "unit_price": "100.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000024",
+    "invoice_id": "00000000-0000-4000-8000-000000000013",
+    "position": 0,
+    "description": "Export part",
+    "quantity": "1",
+    "unit_price": "40.00",
+    "vat_pct": 20,
+    "vat_exempt": true
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000025",
+    "invoice_id": "00000000-0000-4000-8000-000000000014",
+    "position": 0,
+    "description": "Cancelled thing",
+    "quantity": "1",
+    "unit_price": "50.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000026",
+    "invoice_id": "00000000-0000-4000-8000-000000000015",
+    "position": 0,
+    "description": "Draft thing",
+    "quantity": "1",
+    "unit_price": "10.00",
+    "vat_pct": 20,
+    "vat_exempt": false
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000044",
+    "job_no": "J-0001",
+    "customer": "Beta Engineering Limited",
+    "stage": "machining",
+    "status": "on_track",
+    "quantity_required": 100,
+    "value": "480.00",
+    "converted_from_sales_order_id": "00000000-0000-4000-8000-000000000042",
+    "finished_at": null,
+    "due_date": "2026-04-30"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000045",
+    "job_no": "J-0002",
+    "customer": "Alpha Fabrications Ltd",
+    "stage": "inspection",
+    "status": "on_track",
+    "quantity_required": 10,
+    "value": "300.00",
+    "converted_from_sales_order_id": "00000000-0000-4000-8000-000000000043",
+    "finished_at": "2026-03-14T16:00:00+00:00",
+    "due_date": "2026-03-15"
+  }
+]

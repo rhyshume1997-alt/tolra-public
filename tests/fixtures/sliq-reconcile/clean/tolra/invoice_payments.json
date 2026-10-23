@@ -1,0 +1,80 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000027",
+    "invoice_id": "00000000-0000-4000-8000-000000000007",
+    "amount": "120.00",
+    "paid_on": "2026-03-05",
+    "method": "BACS",
+    "reference": null,
+    "source": "legacy",
+    "reverses_payment_id": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000028",
+    "invoice_id": "00000000-0000-4000-8000-000000000008",
+    "amount": "100.00",
+    "paid_on": "2026-03-10",
+    "method": "BACS",
+    "reference": null,
+    "source": "legacy",
+    "reverses_payment_id": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000029",
+    "invoice_id": "00000000-0000-4000-8000-000000000008",
+    "amount": "100.00",
+    "paid_on": "2026-03-20",
+    "method": "BACS",
+    "reference": null,
+    "source": "legacy",
+    "reverses_payment_id": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000030",
+    "invoice_id": "00000000-0000-4000-8000-000000000010",
+    "amount": "112.50",
+    "paid_on": "2026-03-12",
+    "method": "BACS",
+    "reference": null,
+    "source": "legacy",
+    "reverses_payment_id": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000031",
+    "invoice_id": "00000000-0000-4000-8000-000000000011",
+    "amount": "96.00",
+    "paid_on": "2026-03-06",
+    "method": "BACS",
+    "reference": null,
+    "source": "legacy",
+    "reverses_payment_id": null
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000032",
+    "invoice_id": "00000000-0000-4000-8000-000000000011",
+    "amount": "-96.00",
+    "paid_on": "2026-03-08",
+    "method": "BACS",
+    "reference": null,
+    "source": "recorded",
+    "reverses_payment_id": "00000000-0000-4000-8000-000000000031",
+    "void_reason": "Bounced"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000033",
+    "invoice_id": "00000000-0000-4000-8000-000000000012",
+    "amount": "150.00",
+    "paid_on": "2026-03-15",
+    "method": "BACS",
+    "reference": null,
+    "source": "legacy",
+    "reverses_payment_id": null
+  }
+]

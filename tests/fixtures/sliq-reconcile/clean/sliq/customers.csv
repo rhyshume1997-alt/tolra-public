@@ -1,0 +1,4 @@
+Account,Name,Contact,Address 1,Address 2,Town,Postcode,Email,Phone,VAT No
+C001,Alpha Fabrications Ltd,Ann Alpha,1 Mill Lane,,Leeds,LS1 1AA,ann@alpha.example.test,01110 000001,GB000000001
+C002,Beta Engineering Limited,,2 Dock Road,Unit 4,Hull,HU1 1BB,,,
+C003,Gamma Supplies,Gus Gamma,3 High Street,,York,YO1 1CC,gus@gamma.example.test,,

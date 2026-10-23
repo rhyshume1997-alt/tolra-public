@@ -1,0 +1,280 @@
+{
+  "id": "synthetic",
+  "label": "Synthetic fixtures for the reconciliation (made-up headers; the importer files plus the reconciliation extras)",
+  "status": "confirmed",
+  "dateFormat": "DD/MM/YYYY",
+  "encoding": "utf-8",
+  "files": {
+    "customers": {
+      "file": "customers.csv",
+      "columns": {
+        "key": "Account",
+        "name": "Name",
+        "contact": "Contact",
+        "address": [
+          "Address 1",
+          "Address 2",
+          "Town"
+        ],
+        "postcode": "Postcode",
+        "email": "Email",
+        "phone": "Phone",
+        "vatNumber": "VAT No"
+      }
+    },
+    "suppliers": {
+      "file": "suppliers.csv",
+      "columns": {
+        "key": "Account",
+        "name": "Name",
+        "contact": "Contact",
+        "address": "Address",
+        "email": "Email",
+        "phone": "Phone",
+        "notes": "Notes"
+      }
+    },
+    "products": {
+      "file": "products.csv",
+      "columns": {
+        "code": "Code",
+        "description": "Description",
+        "unitPrice": "Price",
+        "stock": "Stock",
+        "vatRate": "VAT %"
+      }
+    },
+    "invoices": {
+      "file": "invoices.csv",
+      "columns": {
+        "number": "Invoice No",
+        "docType": "Type",
+        "date": "Date",
+        "dueDate": "Due",
+        "customer": "Account",
+        "net": "Net",
+        "vat": "VAT",
+        "gross": "Gross",
+        "status": "Status",
+        "amountPaid": "Paid",
+        "relatedInvoice": "Against",
+        "notes": "Notes",
+        "vatCode": "VAT Code",
+        "discount": "Discount"
+      }
+    },
+    "quotes": {
+      "file": "quotes.csv",
+      "columns": {
+        "number": "Quote No",
+        "date": "Date",
+        "customer": "Account",
+        "net": "Net",
+        "vat": "VAT",
+        "gross": "Gross",
+        "status": "Status",
+        "validUntil": "Valid Until",
+        "notes": "Notes"
+      }
+    },
+    "invoiceLines": {
+      "file": "invoice-lines.csv",
+      "columns": {
+        "documentNumber": "Invoice No",
+        "description": "Description",
+        "quantity": "Qty",
+        "unitPrice": "Unit Price",
+        "net": "Line Net",
+        "vatRate": "VAT %",
+        "vatAmount": "Line VAT",
+        "vatCode": "VAT Code",
+        "discount": "Discount"
+      }
+    },
+    "payments": {
+      "file": "payments.csv",
+      "columns": {
+        "invoiceNumber": "Invoice No",
+        "date": "Received",
+        "amount": "Amount",
+        "method": "Method",
+        "reference": "Reference"
+      }
+    },
+    "creditNotes": {
+      "file": "credit-notes.csv",
+      "columns": {
+        "number": "Credit No",
+        "date": "Date",
+        "customer": "Account",
+        "net": "Net",
+        "vat": "VAT",
+        "gross": "Gross",
+        "relatedInvoice": "Against",
+        "reason": "Reason",
+        "notes": "Notes"
+      }
+    },
+    "allocations": {
+      "file": "allocations.csv",
+      "columns": {
+        "creditNoteNumber": "Credit No",
+        "invoiceNumber": "Invoice No",
+        "amount": "Amount",
+        "date": "Date"
+      }
+    },
+    "purchaseOrders": {
+      "file": "purchase-orders.csv",
+      "columns": {
+        "number": "PO No",
+        "supplier": "Supplier",
+        "orderDate": "Order Date",
+        "deliveryDate": "Delivery Date",
+        "total": "Total",
+        "status": "Status"
+      }
+    }
+  },
+  "statusWords": {
+    "invoice": {
+      "Draft": "draft",
+      "Issued": "sent",
+      "Sent": "sent",
+      "Paid": "sent",
+      "Unpaid": "sent",
+      "Cancelled": "void"
+    },
+    "quote": {
+      "Draft": "draft",
+      "Sent": "sent",
+      "Accepted": "accepted",
+      "Declined": "rejected"
+    },
+    "po": {
+      "Open": "sent",
+      "Draft": "draft",
+      "Cancelled": "cancelled"
+    }
+  },
+  "docTypeWords": {
+    "Invoice": "invoice",
+    "Credit Note": "credit_note"
+  },
+  "paymentMethodWords": {
+    "BACS": "BACS",
+    "Cheque": "cheque",
+    "Card": "card",
+    "Cash": "cash",
+    "Other": "other"
+  },
+  "reverseChargeCodes": [
+    "RC",
+    "T20RC"
+  ],
+  "reconcile": {
+    "purchaseOrderTotalBasis": "net",
+    "files": {
+      "openingBalances": {
+        "file": "opening-balances.csv",
+        "columns": {
+          "party": "Account",
+          "partyType": "Type",
+          "document": "Document",
+          "date": "Date",
+          "amount": "Amount"
+        }
+      },
+      "supplierBills": {
+        "file": "supplier-bills.csv",
+        "columns": {
+          "number": "Bill No",
+          "supplier": "Supplier",
+          "date": "Date",
+          "net": "Net",
+          "vat": "VAT",
+          "gross": "Gross",
+          "outstanding": "Outstanding"
+        }
+      },
+      "refunds": {
+        "file": "refunds.csv",
+        "columns": {
+          "invoiceNumber": "Invoice No",
+          "date": "Date",
+          "amount": "Amount",
+          "method": "Method",
+          "reference": "Reference"
+        }
+      },
+      "salesOrders": {
+        "file": "sales-orders.csv",
+        "columns": {
+          "number": "Order No",
+          "customer": "Account",
+          "orderDate": "Order Date",
+          "deliveryDate": "Delivery Date",
+          "total": "Total",
+          "status": "Status",
+          "quoteNumber": "Quote No",
+          "customerPo": "Customer PO"
+        }
+      },
+      "jobs": {
+        "file": "jobs.csv",
+        "columns": {
+          "number": "Job No",
+          "customer": "Account",
+          "salesOrder": "Order No",
+          "stage": "Stage",
+          "status": "Status",
+          "qtyOrdered": "Qty Ordered",
+          "qtyMade": "Qty Made",
+          "qtyAccepted": "Qty Accepted",
+          "qtyRejected": "Qty Rejected",
+          "qtyReworked": "Qty Reworked",
+          "qtyDespatched": "Qty Despatched",
+          "qtyRemaining": "Qty Remaining",
+          "value": "Value",
+          "dueDate": "Due"
+        }
+      },
+      "deliveries": {
+        "file": "deliveries.csv",
+        "columns": {
+          "number": "DN No",
+          "date": "Date",
+          "jobNumber": "Job No",
+          "salesOrderNumber": "Order No",
+          "invoiceNumber": "Invoice No",
+          "quantity": "Qty"
+        }
+      }
+    },
+    "words": {
+      "partyType": {
+        "Customer": "customer",
+        "Supplier": "supplier"
+      },
+      "salesOrderStatus": {
+        "Open": "open",
+        "Confirmed": "confirmed",
+        "In Production": "in_production",
+        "Despatched": "despatched",
+        "Closed": "closed"
+      },
+      "jobStage": {
+        "Material Ordered": "material",
+        "Setup": "setup",
+        "Machining": "machining",
+        "Inspection": "inspection",
+        "Rework": "rework"
+      },
+      "jobStatus": {
+        "In Progress": "open",
+        "Finished": "finished",
+        "Cancelled": "cancelled"
+      }
+    }
+  }
+}

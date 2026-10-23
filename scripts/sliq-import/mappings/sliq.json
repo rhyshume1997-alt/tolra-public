@@ -1,0 +1,50 @@
+{
+  "id": "sliq",
+  "label": "SliQ desktop export (PROVISIONAL: likely headers, not confirmed against the real files)",
+  "status": "provisional",
+  "confirmed": false,
+  "files": {
+    "customers": {
+      "file": "customers.csv",
+      "columns": { "name": "Company Name", "contact": "Contact Name", "email": "Email Address", "phone": "Phone Number", "address": "Address", "notes": "Notes" }
+    },
+    "suppliers": {
+      "file": "suppliers.csv",
+      "columns": { "name": "Company Name", "contact": "Contact Name", "email": "Email Address", "phone": "Phone Number", "address": "Address", "notes": "Notes" }
+    },
+    "products": {
+      "file": "products.csv",
+      "columns": { "code": "Item Code", "description": "Description", "unitPrice": "Unit Price", "stock": "Stock" }
+    },
+    "invoices": {
+      "file": "invoices.csv",
+      "columns": { "number": "Number", "customer": "Customer", "date": "Invoice Date", "dueDate": "Due Date", "net": "Net", "vat": "VAT", "gross": "Gross", "status": "Status", "discount": "Discount" }
+    },
+    "quotes": {
+      "file": "quotes.csv",
+      "columns": { "number": "Number", "customer": "Customer", "date": { "anyOf": ["Date", "Quote Date"] }, "gross": "Gross", "status": "Status", "discount": "Discount" }
+    },
+    "payments": {
+      "file": "payments.csv",
+      "columns": { "invoiceNumber": "Invoice Number", "date": "Date", "amount": "Amount", "method": "Method", "reference": "Reference" }
+    },
+    "purchaseOrders": {
+      "file": "purchase-orders.csv",
+      "columns": { "number": "Number", "supplier": "Supplier", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total" }
+    },
+    "invoiceLines": {
+      "file": ["invoice-lines.csv", "document-lines.csv"],
+      "columns": { "documentNumber": "Document Number", "description": "Description", "quantity": "Quantity", "unitPrice": "Unit Price", "vatRate": "VAT Rate", "discount": "Discount" }
+    },
+    "creditNotes": { "file": "credit-notes.csv", "columns": {} },
+    "allocations": { "file": "allocations.csv", "columns": {} }
+  },
+  "statusWords": {
+    "invoice": { "Draft": "draft", "Unpaid": "sent", "Paid": "sent", "Part Paid": "sent", "Partially Paid": "sent", "Sent": "sent", "Overdue": "sent", "Void": "void", "Cancelled": "void" },
+    "quote": { "Draft": "draft", "Sent": "sent", "Accepted": "accepted", "Rejected": "rejected", "Declined": "rejected" },
+    "po": {}
+  },
+  "docTypeWords": { "Invoice": "invoice", "Credit Note": "credit_note" },
+  "paymentMethodWords": { "BACS": "BACS", "Cheque": "cheque", "Card": "card", "Cash": "cash", "Other": "other" },
+  "reverseChargeCodes": []
+}

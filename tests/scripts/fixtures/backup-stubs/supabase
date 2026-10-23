@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stub supabase CLI: `db dump` writes a roles file, or prints the CLI's dry-run dump script.
+if [[ "$*" == *--dry-run* ]]; then
+  printf 'banner\n#!/usr/bin/env bash\nset -euo pipefail\n# %s\npg_dump \\\n  --schema public\n' "$*"
+else
+  out=""; while (($#)); do [[ "$1" == -f ]] && out="$2"; shift; done
+  echo "CREATE ROLE anon;" > "$out"
+fi

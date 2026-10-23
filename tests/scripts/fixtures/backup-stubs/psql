@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Stub psql for tests/scripts/backup-run.test.sh: an empty database (no stored files).
+args="$*"
+case "$args" in
+  *"show server_version_num"*) echo 170000 ;;
+  *storage.objects*) : ;;                                  # manifest / identity queries: no stored files
+  *"-c"*|*"-f"*) printf 'public.jobs\t0\n' ;;              # snapshot queries: counts, fingerprints, snapshot.tsv
+  *) echo "00000003-00000001-1"; cat > /dev/null ;;        # the snapshot-holding session
+esac

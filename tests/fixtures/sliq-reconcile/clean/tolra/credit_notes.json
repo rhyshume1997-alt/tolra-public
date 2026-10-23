@@ -1,0 +1,26 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000034",
+    "invoice_id": "00000000-0000-4000-8000-000000000008",
+    "credit_ref": "CN-001",
+    "status": "issued",
+    "customer": "Beta Engineering Limited",
+    "subtotal": "50.00",
+    "vat": "10.00",
+    "total": "60.00",
+    "allocated_amount": "60.00"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "id": "00000000-0000-4000-8000-000000000035",
+    "invoice_id": "00000000-0000-4000-8000-000000000009",
+    "credit_ref": "CN-002",
+    "status": "issued",
+    "customer": "Alpha Fabrications Ltd",
+    "subtotal": "20.00",
+    "vat": "4.00",
+    "total": "24.00",
+    "allocated_amount": "0.00"
+  }
+]

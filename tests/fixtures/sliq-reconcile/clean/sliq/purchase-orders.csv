@@ -1,0 +1,4 @@
+PO No,Supplier,Order Date,Delivery Date,Total,Status
+PO-0001,SUP1,01/03/2026,15/03/2026,250.00,Open
+PO-0002,SUP2,02/03/2026,,80.00,Draft
+PO-0003,SUP1,03/03/2026,10/03/2026,40.00,Cancelled

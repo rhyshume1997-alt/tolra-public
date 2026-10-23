@@ -1,0 +1,9 @@
+{
+  "format": "sliq-credit-note-resolutions/1",
+  "resolutions": [
+    { "number": "CN-001", "decision": "record-outside-tolra", "allocation": { "invoice": "S1003", "amount": "24.00" }, "note": "Reviewed by a person: record against S1003 by hand after the import." },
+    { "number": "CN-002", "decision": "not-needed", "allocation": null, "note": "Allocation in the source points at an invoice that is not in the export; reviewed, nothing to carry over." },
+    { "number": "CN-003", "decision": "not-needed", "allocation": null },
+    { "number": "S1015", "decision": "excluded", "allocation": null, "note": "Negative invoice in the invoice file; left out on purpose." }
+  ]
+}

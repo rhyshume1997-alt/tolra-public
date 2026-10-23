@@ -1,0 +1,16 @@
+[
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "party_type": "customer",
+    "party_ref": "C003",
+    "document_ref": null,
+    "amount": "150.00"
+  },
+  {
+    "organization_id": "11111111-2222-4333-8444-555555555555",
+    "party_type": "supplier",
+    "party_ref": "SUP1",
+    "document_ref": null,
+    "amount": "500.00"
+  }
+]

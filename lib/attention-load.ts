@@ -1,0 +1,65 @@
+/**
+ * Reads the rows behind the dashboard's "Needs attention" list (rules: lib/attention-items). It uses the signed-in person's own
+ * client, so row level security scopes every read to their company and role; nothing here widens access. Each read fails on its
+ * own: a failed read gives null for that input, which shows "couldn't load" for those sections only, never a blank dashboard.
+ * Only the tables the role's rules need are read (workshop and viewer never touch quotes, invoices, purchase orders).
+ */
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { type AttentionInput, type AttentionRole, buildAttention, rulesForRole } from "@/lib/attention-items";
+import { toDateInput } from "@/lib/dates";
+import { fetchAll } from "@/lib/fetch-all";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Page = (from: number, to: number) => PromiseLike<{ data: any; error: unknown }>;
+
+/** All rows of one read, or null when it failed or was cut short (a partial list must not pass as complete). */
+async function rowsOf(page: Page): Promise<Record<string, unknown>[] | null> {
+  try {
+    const { rows, truncated } = await fetchAll(page);
+    return truncated ? null : rows;
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
+  const wanted = new Set(rulesForRole(role).map((rule) => rule.id));
+  const need = (...ids: Array<ReturnType<typeof rulesForRole>[number]["id"]>) => ids.some((id) => wanted.has(id));
+  // invoices.status is nullable and a missing status is a draft (lib/receivables invoiceStatus): .neq("status","paid") alone would drop
+  // those rows in SQL (NULL <> 'paid' is not true), so a null-status draft never reached the dashboard.
+  const none = Promise.resolve([] as Record<string, unknown>[] | null);
+
+  const [quotes, rfqs, quoted, purchaseOrders, lateJobs, finishedJobs, invoices, deliveryNotes] = await Promise.all([
+    need("quotes-expired", "quotes-no-decision")
+      ? rowsOf((from, to) => db.from("quotes").select("id, quote_ref, customer, status, valid_until, sent_at").in("status", ["draft", "sent"]).order("id").range(from, to))
+      : none,
+    need("rfqs-clarification")
+      ? rowsOf((from, to) => db.from("rfqs").select("id, customer, description, status, created_at").eq("status", "clarification").order("id").range(from, to))
+      : none,
+    need("rfqs-clarification")
+      ? rowsOf((from, to) => db.from("quotes").select("id, rfq_id").not("rfq_id", "is", null).order("id").range(from, to))
+      : none,
+    need("pos-late")
+      ? rowsOf((from, to) => db.from("purchase_orders").select("id, po_ref, po_number, supplier, status, expected_delivery, received_at").not("expected_delivery", "is", null).not("status", "in", "(draft,received,cancelled)").is("received_at", null).order("id").range(from, to))
+      : none,
+    need("jobs-late")
+      ? rowsOf((from, to) => db.from("jobs").select("id, job_no, customer, date_required, due_date, finished_at").is("finished_at", null).order("id").range(from, to))
+      : none,
+    need("jobs-inspection")
+      ? rowsOf((from, to) => db.from("jobs").select("id, job_no, customer, finished_at, inspected_at, stage").not("finished_at", "is", null).is("inspected_at", null).order("id").range(from, to))
+      : none,
+    need("invoices-overdue", "invoices-draft")
+      ? rowsOf((from, to) => db.from("invoices").select("id, invoice_ref, customer, total, status, amount_paid, credited_amount, refunded_amount, due_date, payment_unverified, created_at").or("status.is.null,status.neq.paid").order("id").range(from, to))
+      : none,
+    need("delivery-awaiting", "delivery-uninvoiced")
+      ? rowsOf((from, to) => db.from("delivery_notes").select("id, dn_number, customer, status, invoice_id, delivery_date, created_at, updated_at").in("status", wanted.has("delivery-uninvoiced") ? ["awaiting", "despatched", "delivered", "signed"] : ["awaiting"]).order("id").range(from, to))
+      : none,
+  ]);
+  const input: AttentionInput = {
+    quotes, rfqs, purchaseOrders, lateJobs, finishedJobs, invoices, deliveryNotes,
+    quotedRfqIds: quoted ? quoted.map((row) => String(row.rfq_id)) : null,
+  };
+  return buildAttention(input, role, toDateInput(new Date()));
+}

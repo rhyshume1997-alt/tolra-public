@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stub docker: one local Postgres image; "running" the dump script emits a fake schema or data dump.
+case "$1" in
+  images) echo "supabase/postgres:17.0" ;;
+  run) if [[ "$*" == *" --version" ]]; then echo "pg_dump (PostgreSQL) 17.0"
+       else s="$(cat)"; if [[ "$s" == *--data-only* ]]; then echo 'COPY public.jobs (id) FROM stdin;'; echo '\.'
+       else echo 'CREATE TABLE IF NOT EXISTS "public"."jobs" (id int);'; fi; fi ;;
+esac
