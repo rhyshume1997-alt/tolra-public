@@ -296,7 +296,8 @@ test("booking over a paused machine: confirm; re-paused in between, asked again 
   await page.getByRole("button", { name: "New booking" }).click();
   const dialog = page.getByRole("dialog", { name: "Book job onto machine" });
   await dialog.getByLabel("Job").selectOption(ids[J.book]);
-  await dialog.getByLabel("Machine").selectOption({ label: millName });
+  // By role and a name that starts with "Machine": the Job <label> wraps its options' text, so a bare getByLabel("Machine") can match it too.
+  await dialog.getByRole("combobox", { name: /^Machine/ }).selectOption({ label: millName });
   await dialog.getByLabel(/Estimated hours/).fill("2");
   const warning = dialog.getByTestId("book-paused-warning");
   await expect(warning).toContainText(`${millName} was paused on`);
@@ -371,17 +372,24 @@ test.describe("Add machine with nothing to add", () => {
     const beta = w.tenants.beta.id;
     betaMillName = `JB Only ${w.runId}`;
     betaJobNo = `J-JBONLY-${w.runId}`;
-    retired = ((await admin.from("machines").select("id").eq("organization_id", beta).eq("active", true)).data ?? []).map((m) => m.id as string);
-    if (retired.length) await admin.from("machines").update({ active: false }).in("id", retired);
-    betaMill = (await admin.from("machines").insert({ organization_id: beta, name: betaMillName, active: true }).select("id").single()).data!.id as string;
-    betaJob = (await admin.from("jobs").insert({ organization_id: beta, job_no: betaJobNo, customer: "Only Co", description: "Only one" }).select("id").single()).data!.id as string;
+    // Every setup step is checked, so a failed insert fails here with its own message (and afterAll then has only what was made).
+    const active = await admin.from("machines").select("id").eq("organization_id", beta).eq("active", true);
+    expect(active.error, "read beta's active machines").toBeNull();
+    retired = (active.data ?? []).map((m) => m.id as string);
+    if (retired.length) expect((await admin.from("machines").update({ active: false }).in("id", retired)).error, "retire beta's machines").toBeNull();
+    const mill = await admin.from("machines").insert({ organization_id: beta, name: betaMillName, active: true }).select("id").single();
+    expect(mill.error, "insert the beta mill").toBeNull();
+    betaMill = mill.data!.id as string;
+    const job = await admin.from("jobs").insert({ organization_id: beta, job_no: betaJobNo, customer: "Only Co", description: "Only one" }).select("id").single();
+    expect(job.error, "insert the beta job").toBeNull();
+    betaJob = job.data!.id as string;
     const workshop = await signedInClient(w.tenants.beta.users.workshop);
     expect((await workshop.rpc("start_machine_run", { p_job: betaJob, p_machines: [betaMill], p_client_op_id: null, p_started_at: null, p_override: false, p_reason: null })).error).toBeNull();
   });
 
   test.afterAll(async () => {
     const office = await signedInClient(w.tenants.beta.users.office);
-    await office.rpc("pause_machine_run", { p_job: betaJob, p_machines: null, p_client_op_id: null, p_ended_at: null });
+    expect((await office.rpc("pause_machine_run", { p_job: betaJob, p_machines: null, p_client_op_id: null, p_ended_at: null })).error, "pause the beta run").toBeNull();
     // Put beta back as it was, checking each step, so a leak fails here and not in a later beta spec (layout's "example machines",
     // walkthrough's booking dialog: CI run 40133694045). The runs go first: machine_runs.machine_id is ON DELETE RESTRICT (044), and
     // the job's other rows (job_machines, paused-ack ops, labour) cascade with the job.
@@ -442,17 +450,29 @@ test.describe("Add machine with nothing to add", () => {
     const password = generatePassword(16);
     const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "nosched beta" } });
     if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
-    const added = await admin.rpc("add_member", { p_org: w.tenants.beta.id, p_email: email, p_role: "office" });
-    if (added.error || added.data !== "member") throw new Error(`add_member ${email}: ${added.error?.message ?? added.data}`);
-    const hide = await admin.from("organization_members").update({ hidden_sections: ["schedule"] }).eq("organization_id", w.tenants.beta.id).eq("user_id", created.data.user.id);
-    expect(hide.error).toBeNull();
-    await signIn(page, { id: created.data.user.id, email, password, role: "office" });
-    await page.goto("/jobs");
-    const r = page.locator(`tr[data-job-id="${betaJob}"]`);
-    await r.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
-    const picker = page.getByTestId("picker-empty");
-    await expect(picker).toContainText(reason());
-    await expect(picker.getByTestId("picker-add-machine-link")).toHaveCount(0);
-    await expect(picker.getByRole("link")).toHaveCount(0);
+    const userId = created.data.user.id;
+    // The user exists only for this test: everything after it runs in try, and finally removes exactly this user (its beta membership
+    // goes with it: organization_members.user_id is ON DELETE CASCADE, 007), so no extra beta member is left for later specs.
+    try {
+      const added = await admin.rpc("add_member", { p_org: w.tenants.beta.id, p_email: email, p_role: "office" });
+      if (added.error || added.data !== "member") throw new Error(`add_member ${email}: ${added.error?.message ?? added.data}`);
+      const hide = await admin.from("organization_members").update({ hidden_sections: ["schedule"] }).eq("organization_id", w.tenants.beta.id).eq("user_id", userId);
+      expect(hide.error).toBeNull();
+      await signIn(page, { id: userId, email, password, role: "office" });
+      await page.goto("/jobs");
+      const r = page.locator(`tr[data-job-id="${betaJob}"]`);
+      await r.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+      const picker = page.getByTestId("picker-empty");
+      await expect(picker).toContainText(reason());
+      await expect(picker.getByTestId("picker-add-machine-link")).toHaveCount(0);
+      await expect(picker.getByRole("link")).toHaveCount(0);
+    } finally {
+      await page.close();
+      const removed = await admin.auth.admin.deleteUser(userId);
+      expect(removed.error, `delete the test user ${email}`).toBeNull();
+      const member = await admin.from("organization_members").select("user_id").eq("user_id", userId);
+      expect(member.error).toBeNull();
+      expect(member.data, "no beta membership left for the test user").toEqual([]);
+    }
   });
 });
