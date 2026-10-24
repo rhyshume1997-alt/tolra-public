@@ -138,6 +138,31 @@ async function savedToServer(page: Page, action: () => Promise<void>) {
   expect(response.ok(), `organization_settings save answered ${response.status()}`).toBe(true);
 }
 
+/**
+ * After a reload the Job Board draws the table at once with every column (app/(dashboard)/jobs/page.tsx reads the hidden set from
+ * lib/org-settings.ts, which is empty until fetchSettings answers); only the Columns button waits for `loaded`
+ * (components/column-toggle.tsx `disabled={!loaded}`). So a one-shot read of the headers the instant the table appears sees the
+ * defaults, not the saved set (targeted runs 40107098185 and 40108447573, test 18, with the save already answered 2xx). Waits for the
+ * loaded signal and then retries the header read until it matches, within the expect timeout.
+ */
+async function expectHeadersAfterLoad(page: Page, expected: string[], message: string) {
+  await expect(page.locator("table:visible").first()).toBeVisible();
+  await expect(SEL.columnsButton(page), "the saved columns have loaded").toBeEnabled();
+  await expect.poll(() => headerTexts(page), { message }).toEqual(expected);
+}
+
+/**
+ * What the database holds for this company's Job Board (organization_settings.hidden_columns.jobs), read with the service role, so
+ * persistence is proven, not inferred from the screen. Logged for the run's output and asserted (keys from lib/job-board-files.ts).
+ */
+async function expectDbHiddenJobs(expected: string[], at: string) {
+  const { data, error } = await adminClient().from("organization_settings").select("hidden_columns").eq("organization_id", org).maybeSingle();
+  expect(error, `${at}: organization_settings read`).toBeNull();
+  const hidden = ((data?.hidden_columns as Record<string, unknown> | null)?.jobs ?? []) as string[];
+  console.log(`[columns-count] ${at}: hidden_columns.jobs = ${JSON.stringify(hidden)}`);
+  expect([...hidden].sort(), `${at}: hidden_columns.jobs in the database`).toEqual([...expected].sort());
+}
+
 /** The picker list as shown, in order. */
 async function pickerLabels(page: Page): Promise<string[]> {
   const menu = await openMenu(page);
@@ -302,9 +327,10 @@ test.describe("Job Board columns count", () => {
       await savedToServer(page, () => tick(page, "Started", false));
       await savedToServer(page, () => tick(page, "Finished", false));
       await closeMenu(page);
+      await expectDbHiddenJobs(["started", "finished"], "after the two unticks were saved");
       await page.reload();
-      await expect(page.locator("table:visible").first()).toBeVisible();
-      expect(await headerTexts(page), "after a reload the unticked columns stay gone").toEqual(without(ALL, ["Started", "Finished"]));
+      await expectHeadersAfterLoad(page, without(ALL, ["Started", "Finished"]), "after a reload the unticked columns stay gone");
+      await expectDbHiddenJobs(["started", "finished"], "after the reload");
       const menu = await openMenu(page);
       await expect(SEL.item(menu, "Started")).toHaveAttribute("aria-checked", "false");
       await expect(SEL.item(menu, "Finished")).toHaveAttribute("aria-checked", "false");
@@ -319,9 +345,10 @@ test.describe("Job Board columns count", () => {
       // Something is hidden here, so resetColumns clicks Reset to default: one save, on the server before the reload.
       await savedToServer(page, () => resetColumns(page));
       expect(await headerTexts(page), "Reset to default").toEqual(ALL);
+      await expectDbHiddenJobs([], "after Reset to default was saved");
       await page.reload();
-      await expect(page.locator("table:visible").first()).toBeVisible();
-      expect(await headerTexts(page), "Reset to default survives a reload").toEqual(ALL);
+      await expectHeadersAfterLoad(page, ALL, "Reset to default survives a reload");
+      await expectDbHiddenJobs([], "after the second reload");
     } finally {
       await resetColumns(page);
     }
