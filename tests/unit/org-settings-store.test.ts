@@ -133,7 +133,7 @@ describe("save: per-table merge onto the row as it is now", () => {
 });
 
 describe("reset one screen and defaults", () => {
-  it("Show all on one screen removes only that screen's entry; hidden_nav and other screens are untouched", async () => {
+  it("Reset to default on one screen removes only that screen's entry; hidden_nav and other screens are untouched", async () => {
     h.db.row = { hidden_nav: ["rfq"], hidden_columns: { customers: ["phone", "email"], suppliers: ["notes"], jobs: ["machine"] } };
     await loadOrgSettings(true);
     const result = await resetColumns("customers");
