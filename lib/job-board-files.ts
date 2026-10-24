@@ -79,14 +79,38 @@ export function boardDescription(description: string | null | undefined, specifi
 }
 
 /**
- * The Job Board's wide Table view: the column headings between the selection box and Actions (those two are always there), with
- * their widths. There is ONE work column, Description (boardDescription already carries the quote lines); the raw auto-written
- * specification is not a column of its own, so it does not repeat the job's work. Nothing reads a saved column preference here,
- * so a stored "specification" entry is never looked at.
+ * The Job Board's column list (Astra's ruling, Rhys relay 23 Oct): the same fields in the same order in Cards, List and Table.
+ * Table and List render their headings from this order; Cards stack labelled fields in it. Status has no column of its own: its
+ * badges and progress words sit in the Due cell (List and Table) and beside the Job No (Cards). Actions is always last.
  */
-export const JOB_TABLE_COLUMNS: ReadonlyArray<{ label: string; width: string }> = [
-  { label: "Job No", width: "w-28" }, { label: "Customer", width: "w-44" }, { label: "Description", width: "w-64" },
-  { label: "Drawings", width: "w-56" }, { label: "Stage", width: "w-28" }, { label: "Machine", width: "w-56" },
-  { label: "Operator", width: "w-44" }, { label: "Due", width: "w-28" }, { label: "Started", width: "w-36" },
-  { label: "Finished", width: "w-36" }, { label: "Status", width: "w-44" },
+export type JobColumn = {
+  /** The Columns picker's key (organization_settings.hidden_columns.jobs lists the unticked ones). */
+  key: string;
+  label: string;
+  /** Table view width; List view width (List rows are compact). */
+  width: string;
+  listWidth: string;
+  /** Always shown: not untickable in the picker. Due is locked because List and Table show the job's status badges in its cell. */
+  locked?: boolean;
+};
+export const JOB_TABLE_COLUMNS: ReadonlyArray<JobColumn> = [
+  { key: "ref", label: "Job No", width: "w-28", listWidth: "w-32", locked: true },
+  { key: "customer", label: "Customer", width: "w-44", listWidth: "w-40" },
+  { key: "description", label: "Description", width: "w-64", listWidth: "w-56" },
+  { key: "specification", label: "Specification", width: "w-56", listWidth: "w-48" },
+  { key: "drawings", label: "Drawings", width: "w-56", listWidth: "w-48" },
+  { key: "attachments", label: "Attachments", width: "w-48", listWidth: "w-44" },
+  { key: "stage", label: "Stage", width: "w-28", listWidth: "w-24" },
+  { key: "machine", label: "Machine", width: "w-56", listWidth: "w-36" },
+  { key: "operator", label: "Operator", width: "w-44", listWidth: "w-24" },
+  { key: "due", label: "Due", width: "w-44", listWidth: "w-44", locked: true },
+  { key: "started", label: "Started", width: "w-36", listWidth: "w-32" },
+  { key: "finished", label: "Finished", width: "w-36", listWidth: "w-32" },
+  { key: "inspection", label: "Inspection", width: "w-44", listWidth: "w-44" },
+  { key: "actions", label: "Actions", width: "w-96", listWidth: "w-40", locked: true },
 ];
+
+/** The columns a Table / List shows: the shared order, filtered by the picker (Job No and Actions always). */
+export function shownJobColumns(isVisible: (key: string) => boolean): JobColumn[] {
+  return JOB_TABLE_COLUMNS.filter((column) => column.locked || isVisible(column.key));
+}

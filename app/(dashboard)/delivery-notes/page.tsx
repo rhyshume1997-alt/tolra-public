@@ -13,6 +13,8 @@ import { FilterBar } from "@/components/filter-bar";
 import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { phaseOf, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { ColumnToggle } from "@/components/column-toggle";
+import { ViewSwitcher } from "@/components/view-switcher";
+import { useViewMode } from "@/lib/view-mode";
 import { RoleGate } from "@/components/role-gate";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -105,6 +107,8 @@ function parseItemLine(line: string) {
 
 export default function DeliveryNotesPage() {
   const { isVisible } = useColumnVisibility("delivery-notes");
+  // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]). Table is the page as it was.
+  const [view, setView] = useViewMode("delivery-notes", "table");
   const { profile: company } = useCompanyProfile();
   const { activeRole, hiddenSections } = useUser();
   // E-mail history belongs to admin and office; workshop staff keep despatch and signature work.
@@ -568,7 +572,7 @@ export default function DeliveryNotesPage() {
         </div>
         {listFilter ? <ListFilterNotice label={DN_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-2"><PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} />
-        <FilterBar activeValues={[...filters]} options={[{ label: "All", value: "all" }, { label: "Awaiting", value: "awaiting" }, { label: "Despatched", value: "despatched" }, { label: "Delivered", value: "delivered" }, { label: "Signed", value: "signed" }]} onChange={setFilters} /><ColumnToggle tableKey="delivery-notes" /></div>
+        <FilterBar activeValues={[...filters]} options={[{ label: "All", value: "all" }, { label: "Awaiting", value: "awaiting" }, { label: "Despatched", value: "despatched" }, { label: "Delivered", value: "delivered" }, { label: "Signed", value: "signed" }]} onChange={setFilters} /><ColumnToggle tableKey="delivery-notes" /><ViewSwitcher value={view} onChange={setView} /></div>
         {loadError ? (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             <span>{loadError}</span>
@@ -583,7 +587,7 @@ export default function DeliveryNotesPage() {
             action={notes.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setNewOpen(true)}><Plus className="size-4" /> New delivery note</Button>}
           />
         ) : (
-          <Card><CardContent className="p-0"><Table data-tablet-cards>
+          <Card><CardContent className="p-0"><Table data-view={view}>
             <TableHeader className="hidden md:table-header-group"><TableRow>
               <TableHead><SelectBox aria-label={`Select all ${visible.length} filtered delivery notes`} checked={selectedIds.length === visible.length && visible.length > 0} onChange={(event) => setSelectedIds(event.target.checked ? visible.map((note) => note.id) : [])} /></TableHead>
               {isVisible("ref") ? <TableHead>DN Ref</TableHead> : null}{isVisible("customer") ? <TableHead>Customer</TableHead> : null}{isVisible("job") ? <TableHead>Job Ref</TableHead> : null}{isVisible("date") ? <TableHead>Delivery Date</TableHead> : null}{isVisible("status") ? <TableHead>Status</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}<TableHead>Actions</TableHead>

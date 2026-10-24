@@ -994,32 +994,33 @@ export default function QuotesPage() {
         {view !== "cards" ? (
           <Card className="hidden md:block">
             <CardContent className="p-0">
-              <Table className="table-fixed" aria-label="Quotes">
+              <Table className="table-fixed max-desk:min-w-[60rem] max-desk:[&_td]:px-2 max-desk:[&_th]:px-2" aria-label="Quotes">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-9"><SelectBox aria-label={`Select all ${visible.length} filtered quotes`} checked={visible.length > 0 && visible.every((quote) => selectedRefs.includes(quote.ref))} onChange={(event) => setSelectedRefs(event.target.checked ? visible.map((quote) => quote.ref) : [])} /></TableHead>
-                    {isVisible("ref") ? <TableHead className="w-32">Quote</TableHead> : null}
-                    {view === "table" && isVisible("date") ? <TableHead className="w-28">Date</TableHead> : null}
+                    {isVisible("ref") ? <TableHead className="w-32 max-desk:w-28">Quote</TableHead> : null}
+                    {isVisible("date") ? <TableHead className="w-28 max-desk:w-24">Date</TableHead> : null}
                     {isVisible("customer") ? <TableHead>Customer</TableHead> : null}
-                    {view === "table" && isVisible("description") ? <TableHead>Description</TableHead> : null}
+                    {isVisible("description") ? <TableHead>Description</TableHead> : null}
                     {isVisible("status") ? <TableHead className="w-32">Status</TableHead> : null}
-                    {isVisible("value") ? <TableHead className="w-32 text-right">Value</TableHead> : null}
-                    {isVisible("valid") ? <TableHead className="w-28 max-desk:hidden">Valid until</TableHead> : null}
+                    {isVisible("value") ? <TableHead className="w-32 text-right max-desk:w-[5.5rem]">Value</TableHead> : null}
+                    {isVisible("valid") ? <TableHead className="w-28">Valid until</TableHead> : null}
+                    {/* Below desktop width (Valid until hidden) Quote, Date and Value narrow so Customer and Description keep room for their headings at 820 (cell padding px-2 there too). */}
                     {/* w-32: the three size-8 icon buttons and their gaps exactly (px-3 each side); a wider column starves Customer and Description at 1280. */}
-                    <TableHead className="w-32 text-right">Actions</TableHead>
+                    <TableHead className="w-32 text-right max-desk:w-[7.5rem]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {visible.map((quote) => (
                     <TableRow key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "bg-brand-accent/5" : undefined}>
                       <TableCell><SelectBox aria-label={`Select ${quote.ref}`} checked={selectedRefs.includes(quote.ref)} onChange={() => setSelectedRefs((current) => current.includes(quote.ref) ? current.filter((ref) => ref !== quote.ref) : [...current, quote.ref])} /></TableCell>
-                      {isVisible("ref") ? <TableCell className="font-mono font-bold">{quote.ref}</TableCell> : null}
-                      {view === "table" && isVisible("date") ? <TableCell>{quote.date ? fmtDate(quote.date) : ""}</TableCell> : null}
+                      {isVisible("ref") ? <TableCell className="font-mono font-bold whitespace-normal [overflow-wrap:anywhere]">{quote.ref}</TableCell> : null}
+                      {isVisible("date") ? <TableCell>{quote.date ? fmtDate(quote.date) : ""}</TableCell> : null}
                       {isVisible("customer") ? <TableCell><span className="block truncate" title={quote.customer}>{quote.customer}</span></TableCell> : null}
-                      {view === "table" && isVisible("description") ? <TableCell className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{quote.description}</span></TableCell> : null}
+                      {isVisible("description") ? <TableCell className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{quote.description}</span></TableCell> : null}
                       {isVisible("status") ? <TableCell><StatusBadge status={quoteStatusKey(quote.status)} label={quote.status} className="capitalize" unmapped={{ className: statusStyle(quote.status).badge }} /></TableCell> : null}
                       {isVisible("value") ? <TableCell className="text-right font-semibold tabular-nums">{currency(quote.value)}</TableCell> : null}
-                      {isVisible("valid") ? <TableCell className="max-desk:hidden">{quote.validUntil ? fmtDate(quote.validUntil) : "\u2014"}</TableCell> : null}
+                      {isVisible("valid") ? <TableCell>{quote.validUntil ? fmtDate(quote.validUntil) : "\u2014"}</TableCell> : null}
                       <TableCell>
                         <div className="flex flex-wrap justify-end gap-1">
                           <Button size="icon" variant="outline" className="size-8" title={`View ${quote.ref}`} aria-label={`View ${quote.ref}`} onClick={() => setViewingQuote(quote)}><Eye className="size-4" aria-hidden /></Button>
@@ -1041,10 +1042,19 @@ export default function QuotesPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {group.items.map((quote) => (
             <Card key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "border-brand-accent/60 ring-1 ring-brand-accent/40" : undefined}>
-              <CardHeader><div className="flex items-center justify-between"><CardTitle className="font-bold">{quote.ref}</CardTitle><StatusBadge status={quoteStatusKey(quote.status)} label={quote.status} className="capitalize" unmapped={{ className: statusStyle(quote.status).badge }} /></div></CardHeader>
+              <CardHeader><CardTitle className="font-bold break-words">{quote.ref}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 text-sm text-slate-600 pointer-coarse:min-h-11"><input type="checkbox" className="pointer-coarse:size-6" checked={selectedRefs.includes(quote.ref)} onChange={() => setSelectedRefs((current) => current.includes(quote.ref) ? current.filter((ref) => ref !== quote.ref) : [...current, quote.ref])} /> Select for export</label>
-                <div className="min-w-0 break-words"><p className="font-semibold text-slate-950">{quote.customer}</p><p className="text-2xl font-bold text-brand">{currency(quote.value)}</p><p className="text-sm text-slate-500">{quote.validUntil ? `Valid until ${fmtDate(quote.validUntil)}` : "No expiry date"}</p>{quote.rawStatus === "draft" && quote.validUntil && quote.validUntil < toDateInput(new Date()) ? <p className="text-sm font-medium text-red-700">Date has passed: edit before sending</p> : null}</div>
+                {/* Labelled fields in the Quotes column order (Quote above; Actions below): Date, Customer, Description, Status, Value, Valid until. */}
+                <dl className="min-w-0 space-y-2 break-words text-sm">
+                  {isVisible("date") ? <div><dt className="label-mono field-caption">Date</dt><dd>{quote.date ? fmtDate(quote.date) : "\u2014"}</dd></div> : null}
+                  {isVisible("customer") ? <div><dt className="label-mono field-caption">Customer</dt><dd className="font-semibold text-slate-950">{quote.customer}</dd></div> : null}
+                  {isVisible("description") ? <div><dt className="label-mono field-caption">Description</dt><dd data-testid="quote-card-description" className="text-slate-600 dark:text-slate-300">{quote.description || "\u2014"}</dd></div> : null}
+                  {isVisible("status") ? <div><dt className="label-mono field-caption">Status</dt><dd><StatusBadge status={quoteStatusKey(quote.status)} label={quote.status} className="capitalize" unmapped={{ className: statusStyle(quote.status).badge }} /></dd></div> : null}
+                  {isVisible("value") ? <div><dt className="label-mono field-caption">Value</dt><dd className="text-2xl font-bold text-brand">{currency(quote.value)}</dd></div> : null}
+                  {isVisible("valid") ? <div><dt className="label-mono field-caption">Valid until</dt><dd>{quote.validUntil ? fmtDate(quote.validUntil) : "No expiry date"}</dd></div> : null}
+                </dl>
+                {quote.rawStatus === "draft" && quote.validUntil && quote.validUntil < toDateInput(new Date()) ? <p className="text-sm font-medium text-red-700">Date has passed: edit before sending</p> : null}
                 <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setViewingQuote(quote)}>View</Button>{quote.rawStatus === "superseded" ? null : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => void askToSend(quote)}><Send className="size-4" /> {quote.rawStatus === "draft" ? "Send" : "Resend"}</Button>}<Button variant="outline" onClick={() => void downloadQuotePdf(quote)}><Download className="size-4" /> PDF</Button>{archive.canManage ? <ArchiveButton id={quote.id} phase={phaseFor(quote)} manual={quote.id ? archive.manual.get(quote.id) : undefined} onSet={archive.setState} size="default" /> : null}</div>
               </CardContent>
             </Card>

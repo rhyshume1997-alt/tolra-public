@@ -488,15 +488,15 @@ export default function PurchaseOrdersPage() {
           <Card><CardContent className="p-0"><Table data-view={view}>
             <TableHeader className="hidden md:table-header-group"><TableRow>
               <TableHead><SelectBox aria-label={`Select all ${visible.length} filtered purchase orders`} checked={selectedIds.length === visible.length && visible.length > 0} onChange={(event) => setSelectedIds(event.target.checked ? visible.map((po) => po.id) : [])} /></TableHead>
-              {isVisible("ref") ? <TableHead>PO Ref</TableHead> : null}{isVisible("supplier") ? <TableHead>Supplier</TableHead> : null}{isVisible("date") ? <TableHead data-secondary>Order Date</TableHead> : null}{isVisible("delivery") ? <TableHead data-secondary>Expected Delivery</TableHead> : null}{isVisible("value") ? <TableHead>{PO_TOTAL_LABEL}</TableHead> : null}{isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead>
+              {isVisible("ref") ? <TableHead>PO Ref</TableHead> : null}{isVisible("supplier") ? <TableHead>Supplier</TableHead> : null}{isVisible("date") ? <TableHead>Order Date</TableHead> : null}{isVisible("delivery") ? <TableHead>Expected Delivery</TableHead> : null}{isVisible("value") ? <TableHead>{PO_TOTAL_LABEL}</TableHead> : null}{isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead>
             </TableRow></TableHeader>
             <TableBody>{visible.map((po) => (
               <TableRow key={po.id} className={po.status === "received" ? "block bg-green-50 md:table-row" : "block md:table-row"}>
                 <TableCell className="block md:table-cell"><SelectBox aria-label={`Select ${po.ref}`} checked={selectedIds.includes(po.id)} onChange={() => toggleSelected(po.id)} /></TableCell>
                 {isVisible("ref") ? <TableCell data-label="PO Ref" className="block font-mono font-semibold md:table-cell">{po.ref}</TableCell> : null}
                 {isVisible("supplier") ? <TableCell data-label="Supplier" className="block md:table-cell">{po.supplier}</TableCell> : null}
-                {isVisible("date") ? <TableCell data-label="Order Date" data-secondary className="block md:table-cell">{fmtDate(po.date)}</TableCell> : null}
-                {isVisible("delivery") ? <TableCell data-label="Expected Delivery" data-secondary className="block md:table-cell">{fmtDate(po.delivery)}</TableCell> : null}
+                {isVisible("date") ? <TableCell data-label="Order Date" className="block md:table-cell">{fmtDate(po.date)}</TableCell> : null}
+                {isVisible("delivery") ? <TableCell data-label="Expected Delivery" className="block md:table-cell">{fmtDate(po.delivery)}</TableCell> : null}
                 {isVisible("value") ? <TableCell data-label={PO_TOTAL_LABEL} className="block md:table-cell">{currency(purchaseOrderTotalIncVat(po, vat))}</TableCell> : null}
                 {isVisible("status") ? <TableCell data-label="Status" className="block md:table-cell"><StatusBadge status={purchaseOrderStatusKey(po.status)} label={po.status} className="capitalize" /></TableCell> : null}
                 <TableCell data-actions className="block md:table-cell"><div className="flex flex-wrap items-center gap-2">

@@ -21,9 +21,10 @@ test("Job Board: compact rows fit 1280px, details expand, view choice is remembe
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await expect(row.getByRole("button", { name: `Start ${jobNo}`, exact: true })).toBeVisible(); // Play (049)
   for (const name of ["Finish", "Inspected", "Worksheet", "Print", "Send"]) await expect(row.getByRole(name === "Print" ? "link" : "button", { name, exact: true })).toBeVisible();
-  // The phone cards (md:hidden) are always in the DOM and carry the Specification, so count only what is on screen: the List view shows it only once expanded.
+  // The phone cards (md:hidden) are always in the DOM and carry the Specification, so count only what is on screen. Columns parity: the List
+  // has its own Specification column, so it is on screen without expanding; expanding adds the progress line, not a second copy.
   const shownSpec = page.getByText("Spec 316 polish").filter({ visible: true });
-  await expect(shownSpec).toHaveCount(0);
+  await expect(shownSpec).toHaveCount(1);
   await row.getByRole("button", { name: `Show details for ${jobNo}` }).click();
   await expect(shownSpec).toHaveCount(1);
   await expect(shownSpec).toBeVisible();
