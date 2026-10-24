@@ -125,6 +125,19 @@ async function resetColumns(page: Page) {
   await closeMenu(page);
 }
 
+/**
+ * Runs `action` (one picker change) and waits for its save to reach the server. A change shows at once but is saved after it, in a
+ * queue (lib/org-settings.ts enqueue -> persistChange: read the row, then upsert it), and the page load reads the server row first,
+ * so a reload before the upsert answers drops the change (CI run 40107098185, test 18). Waits for the upsert's own response and
+ * checks it succeeded (a refused save would be undone on screen); no sleep.
+ */
+async function savedToServer(page: Page, action: () => Promise<void>) {
+  const upsert = page.waitForResponse((response) => response.url().includes("/rest/v1/organization_settings") && response.request().method() === "POST");
+  await action();
+  const response = await upsert;
+  expect(response.ok(), `organization_settings save answered ${response.status()}`).toBe(true);
+}
+
 /** The picker list as shown, in order. */
 async function pickerLabels(page: Page): Promise<string[]> {
   const menu = await openMenu(page);
@@ -285,8 +298,9 @@ test.describe("Job Board columns count", () => {
     await openView(page, 1280, "Table");
     try {
       await resetColumns(page);
-      await tick(page, "Started", false);
-      await tick(page, "Finished", false);
+      // Each untick is saved before the next (the queue runs one at a time), and both are on the server before the reload.
+      await savedToServer(page, () => tick(page, "Started", false));
+      await savedToServer(page, () => tick(page, "Finished", false));
       await closeMenu(page);
       await page.reload();
       await expect(page.locator("table:visible").first()).toBeVisible();
@@ -302,7 +316,8 @@ test.describe("Job Board columns count", () => {
       expect(CARD_FIELDS(await cardLabels(page)).filter((label) => ALL.includes(label)), "Cards labels without Started and Finished").toEqual(CARD_FIELDS(without(ALL, ["Started", "Finished"])));
       await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Table", exact: true }).click();
       await expect(page.locator("table:visible").first()).toBeVisible();
-      await resetColumns(page);
+      // Something is hidden here, so resetColumns clicks Reset to default: one save, on the server before the reload.
+      await savedToServer(page, () => resetColumns(page));
       expect(await headerTexts(page), "Reset to default").toEqual(ALL);
       await page.reload();
       await expect(page.locator("table:visible").first()).toBeVisible();
