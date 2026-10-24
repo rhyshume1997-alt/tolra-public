@@ -88,8 +88,13 @@ test("workshop: Mill and Lathe ticked, Play, amber Pause frees both, Resume; all
   await expect(r.getByTestId("job-in-use")).toContainText(latheName);
   expect((await runsOf(J.multi)).filter((x) => !x.ended_at).map((x) => x.machine_id).sort()).toEqual([mill, lathe].sort());
 
-  // Another job planned only on the mill: nothing free, so Play says "Pick a machine" and opens the picker.
+  // The Start is finished only once its refresh is back (Starting... gone, the board's pickers enabled again): until then Play on another
+  // job says "Wait for the last change to finish." and opens nothing, by design (jobs/page.tsx play()).
   const busy = row(page, J.busy);
+  await expect(pauseControl(r, J.multi)).not.toHaveAttribute("aria-busy", "true");
+  await expect(busy.getByRole("button", { name: `Choose where ${J.busy} runs: Pick a machine` })).toBeEnabled();
+
+  // Another job planned only on the mill: nothing free, so Play says "Pick a machine" and opens the picker.
   await expect(playControl(busy, J.busy)).toContainText("Pick a machine");
   await expect(playControl(busy, J.busy)).toHaveAttribute("aria-disabled", "true");
   await playControl(busy, J.busy).click({ force: true });
