@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { dayHeading } from "@/components/time/day-sheet";
 import { HoursTabs } from "@/components/time/hours-tabs";
+import { ColumnToggle } from "@/components/column-toggle";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +21,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { NeedsDatabaseUpdate } from "@/components/time/needs-update";
 import { SyncRejectionsNotice } from "@/components/time/sync-rejections-notice";
+import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { newClientOpId } from "@/lib/machine-runs";
 import { DAY_FLAG_KEYS, DAY_FLAG_LABEL, type WeekDayFlags, flagTotalsSnapshot, flagsShort, saveDayFlags, shortDay } from "@/lib/time-day-flags";
@@ -48,6 +50,8 @@ export function WeekReview() {
   const seesEveryone = hasAnyRole(["admin", "office"]);
   const week = weekStartOf(VALID.test(params.get("week") ?? "") ? (params.get("week") as string) : localDateOf(new Date()));
   const only = seesEveryone ? params.get("user") : null;
+  /** Display only (Columns picker, key "hours"): which columns show. Person, Paid and the actions cell are always shown; no figure is computed from this. */
+  const { isVisible } = useColumnVisibility("hours");
   const [people, setPeople] = useState<PersonWeek[] | null>(null);
   const [settings, setSettings] = useState<TimeSettings | null>(null);
   const [jobs, setJobs] = useState<Record<string, JobInfo>>({});
@@ -82,6 +86,8 @@ export function WeekReview() {
   const sorted = useMemo(() => (people ?? []).slice().sort((a, b) => (names[a.userId] ?? "").localeCompare(names[b.userId] ?? "")), [people, names]);
   const isFuture = week > localDateOf(new Date());
   const showFlags = Boolean(people?.some((p) => p.dayFlags));
+  /** Person + Paid + the actions cell are always there; the rest follow the picker. */
+  const shownColumns = 3 + ["days", "clocked", "breaks", "jobs", "check", "approval"].filter(isVisible).length + (showFlags && isVisible("ticks") ? 1 : 0);
   const anySuggested = Boolean(people?.some((p) => p.dayFlags?.anySuggested));
 
   /** The week as shown (what is on screen, no new queries), CSV or Excel: one row per person per day. */
@@ -124,6 +130,7 @@ export function WeekReview() {
         <span className="text-sm font-medium">Week of {dayHeading(week)}</span>
         <Button variant="outline" size="sm" onClick={() => go(addDays(week, 7))} aria-label="Next week"><ChevronRight className="size-4" /></Button>
         <div className="ml-auto flex gap-2">
+          <ColumnToggle tableKey="hours" />
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("csv")}>Export CSV</Button>
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("xlsx")}>Export Excel</Button>
           <Button asChild variant="outline" size="sm"><Link href={`/time/week/print?week=${week}${only ? `&user=${only}` : !seesEveryone && me ? `&user=${me}` : ""}`}><Printer className="size-4" /> Print</Link></Button>
@@ -137,10 +144,16 @@ export function WeekReview() {
           <table className="w-full text-sm" data-testid="week-table">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <th className="px-3 py-2">Person</th><th className="px-2 text-right">Days</th><th className="px-2 text-right">Clocked</th><th className="px-2 text-right">Breaks</th>
-                <th className="px-2 text-right">Paid</th><th className="px-2 text-right">On jobs</th>
-                {showFlags ? <th className="px-2">Day ticks</th> : null}
-                <th className="px-2">Check</th><th className="px-2">Approval</th><th />
+                <th className="px-3 py-2">Person</th>
+                {isVisible("days") ? <th className="px-2 text-right">Days</th> : null}
+                {isVisible("clocked") ? <th className="px-2 text-right">Clocked</th> : null}
+                {isVisible("breaks") ? <th className="px-2 text-right">Breaks</th> : null}
+                <th className="px-2 text-right">Paid</th>
+                {isVisible("jobs") ? <th className="px-2 text-right">On jobs</th> : null}
+                {showFlags && isVisible("ticks") ? <th className="px-2">Day ticks</th> : null}
+                {isVisible("check") ? <th className="px-2">Check</th> : null}
+                {isVisible("approval") ? <th className="px-2">Approval</th> : null}
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -149,25 +162,25 @@ export function WeekReview() {
                 return (
                   <tr key={p.userId} className="border-b align-top" data-testid={`week-row-${p.userId}`}>
                     <td className="px-3 py-2"><Link className="font-medium hover:underline" href={`/time?date=${week}${p.userId !== me ? `&user=${p.userId}` : ""}`}>{names[p.userId] ?? UNKNOWN}</Link></td>
-                    <td className="px-2 py-2 text-right">{p.week.daysWorked}</td>
-                    <td className="px-2 py-2 text-right font-mono">{hm(p.week.attendance)}</td>
-                    <td className="px-2 py-2 text-right font-mono">{hmSigned(-p.week.breakDeduction)}</td>
-                    <td className="px-2 py-2 text-right font-mono">{hm(p.week.paid)}</td>
-                    <td className="px-2 py-2 text-right font-mono">{hm(p.week.labour)}</td>
-                    {showFlags ? <td className="px-2 py-2 text-xs" data-testid="week-day-flags">{p.dayFlags ? <DayFlagsCell flags={p.dayFlags} /> : null}
-                      {p.dayFlags?.anySuggested && seesEveryone ? <Button size="sm" variant="outline" className="mt-1" onClick={() => void saveSuggested(p)} data-testid="save-suggested-ticks">Save suggested ticks</Button> : null}
+                    {isVisible("days") ? <td className="px-2 py-2 text-right">{p.week.daysWorked}</td> : null}
+                    {isVisible("clocked") ? <td className="px-2 py-2 text-right font-mono">{hm(p.week.attendance)}</td> : null}
+                    {isVisible("breaks") ? <td className="px-2 py-2 text-right font-mono">{hmSigned(-p.week.breakDeduction)}</td> : null}
+                    <td className="px-2 py-2 text-right font-mono" data-testid="week-paid">{hm(p.week.paid)}</td>
+                    {isVisible("jobs") ? <td className="px-2 py-2 text-right font-mono">{hm(p.week.labour)}</td> : null}
+                    {showFlags && isVisible("ticks") ? <td className="px-2 py-2 text-xs" data-testid="week-day-flags">{p.dayFlags ? <DayFlagsCell flags={p.dayFlags} /> : null}
                     </td> : null}
-                    <td className="px-2 py-2 text-xs text-amber-800">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td>
-                    <td className="px-2 py-2 text-xs" data-testid="week-state">
+                    {isVisible("check") ? <td className="px-2 py-2 text-xs text-amber-800">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
+                    {isVisible("approval") ? <td className="px-2 py-2 text-xs" data-testid="week-state">
                       <span className={state === "approved" ? "text-emerald-700" : state === "changed_since_approval" ? "text-amber-700" : "text-slate-500"}>{WEEK_STATE_TEXT[state]}</span>
                       {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {new Date(p.status.approved_at).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" })}</div> : null}
-                    </td>
+                    </td> : null}
                     <td className="px-2 py-2 text-right">
+                      {showFlags && p.dayFlags?.anySuggested && seesEveryone ? <Button size="sm" variant="outline" className="mr-1" onClick={() => void saveSuggested(p)} data-testid="save-suggested-ticks">Save suggested ticks</Button> : null}
                       {canApprove && p.status && state !== "approved" && !isFuture ? <Button size="sm" onClick={() => setApproving(p)} data-testid="approve-week"><CheckCircle2 className="size-4" /> Approve</Button> : null}
                     </td>
                   </tr>
                 );
-              }) : <tr><td colSpan={showFlags ? 10 : 9} className="px-3 py-4 text-slate-500">Nobody has recorded time this week.</td></tr>}
+              }) : <tr><td colSpan={shownColumns} className="px-3 py-4 text-slate-500">Nobody has recorded time this week.</td></tr>}
             </tbody>
           </table>
         </div>

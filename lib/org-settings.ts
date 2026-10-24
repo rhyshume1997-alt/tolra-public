@@ -48,6 +48,8 @@ export const COLUMN_TABLES: TableDef[] = [
   { key: "delivery-notes", label: "Delivery Notes", columns: [{ key: "ref", label: "DN Ref", locked: true }, { key: "customer", label: "Customer" }, { key: "job", label: "Job Ref" }, { key: "date", label: "Delivery Date" }, { key: "status", label: "Status" }, { key: "email", label: "Email" }] },
   { key: "customers", label: "Customers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "address", label: "Address" }] },
   { key: "suppliers", label: "Suppliers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "notes", label: "Notes" }, { key: "status", label: "Status" }] },
+  /** Weekly hours, both tabs, in rendered order. The person / day and Paid (the daily and week total) are always shown, so they are not listed; "Not on a job" shows on Today only, "Days", "Day ticks", "Check" and "Approval" on This week only. Clocked (the context beside Person), Check and Approval (the warnings and the approval) are locked on. */
+  { key: "hours", label: "Weekly hours", columns: [{ key: "days", label: "Days worked" }, { key: "clocked", label: "Clocked", locked: true }, { key: "breaks", label: "Breaks" }, { key: "jobs", label: "On jobs" }, { key: "unallocated", label: "Not on a job" }, { key: "ticks", label: "Day ticks" }, { key: "check", label: "Check", locked: true }, { key: "approval", label: "Approval", locked: true }] },
 ];
 
 export type OrgSettings = {
