@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { JOB_TABLE_COLUMNS } from "@/lib/job-board-files";
 import { supabase } from "@/lib/supabase";
+import { RFQ_CARD_FIELDS, RFQ_DISPLAY_KEY } from "@/lib/rfq-display";
 import { getCurrentOrganizationId, getCurrentUserAndOrganization } from "@/lib/supabase-business";
 
 export type NavToggle = { key: string; href: string; label: string; section: string };
@@ -48,6 +49,8 @@ export const COLUMN_TABLES: TableDef[] = [
   { key: "delivery-notes", label: "Delivery Notes", columns: [{ key: "ref", label: "DN Ref", locked: true }, { key: "customer", label: "Customer" }, { key: "job", label: "Job Ref" }, { key: "date", label: "Delivery Date" }, { key: "status", label: "Status" }, { key: "email", label: "Email" }] },
   { key: "customers", label: "Customers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "address", label: "Address" }] },
   { key: "suppliers", label: "Suppliers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "notes", label: "Notes" }, { key: "status", label: "Status" }] },
+  /** The RFQ screen is a card list: its fields come from lib/rfq-display.ts (the one definition). */
+  { key: RFQ_DISPLAY_KEY, label: "RFQ", columns: RFQ_CARD_FIELDS.map(({ key, label, locked }) => ({ key, label, ...(locked ? { locked } : {}) })) },
 ];
 
 export type OrgSettings = {
