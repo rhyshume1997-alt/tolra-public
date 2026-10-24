@@ -12,6 +12,8 @@ import { mapCreditNote, mapInvoice } from "@/lib/integrations/xero/mapper";
 
 export const XERO_API_BASE = "https://api.xero.com/api.xro/2.0";
 const TIMEOUT_MS = 20_000;
+/** Xero's account types in its REVENUE class: the only ones sales and credit notes may be posted to. */
+export const XERO_REVENUE_ACCOUNT_TYPES: readonly string[] = ["REVENUE", "SALES", "OTHERINCOME"];
 
 type XeroDocJson = {
   InvoiceID?: string; InvoiceNumber?: string; CreditNoteID?: string; CreditNoteNumber?: string; Status?: string; Type?: string;
@@ -86,13 +88,19 @@ export function createXeroClient(opts: { accessToken: string; tenantId: string; 
     id: "xero",
 
     async listAccounts() {
-      const json = (await call("GET", "/Accounts?where=" + encodeURIComponent('Status=="ACTIVE"'))) as { Accounts?: Array<{ Code?: string; Name?: string; Type?: string }> };
-      return (json.Accounts ?? []).filter((a) => a.Code).map((a) => ({ code: a.Code!, name: a.Name ?? "", type: a.Type ?? "" }));
+      const json = (await call("GET", "/Accounts?where=" + encodeURIComponent('Status=="ACTIVE"'))) as {
+        Accounts?: Array<{ Code?: string; Name?: string; Type?: string; Class?: string; Status?: string }>;
+      };
+      return (json.Accounts ?? []).filter((a) => a.Code && (a.Status ?? "ACTIVE") === "ACTIVE").map((a) => ({
+        code: a.Code!, name: a.Name ?? "", type: a.Type ?? "", revenue: a.Class === "REVENUE" || XERO_REVENUE_ACCOUNT_TYPES.includes(a.Type ?? ""),
+      }));
     },
 
     async listTaxRates() {
-      const json = (await call("GET", "/TaxRates")) as { TaxRates?: Array<{ TaxType?: string; Name?: string; EffectiveRate?: number; Status?: string }> };
-      return (json.TaxRates ?? []).filter((t) => t.TaxType && t.Status !== "DELETED").map((t) => ({ code: t.TaxType!, name: t.Name ?? "", rate: Number(t.EffectiveRate ?? 0) }));
+      const json = (await call("GET", "/TaxRates")) as { TaxRates?: Array<{ TaxType?: string; Name?: string; EffectiveRate?: number; Status?: string; CanApplyToRevenue?: boolean }> };
+      return (json.TaxRates ?? []).filter((t) => t.TaxType && t.Status !== "DELETED").map((t) => ({
+        code: t.TaxType!, name: t.Name ?? "", rate: Number(t.EffectiveRate ?? 0), revenue: t.CanApplyToRevenue === true, active: t.Status === "ACTIVE",
+      }));
     },
 
     async findContacts(name: string): Promise<ContactCandidate[]> {
