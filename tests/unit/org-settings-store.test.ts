@@ -287,7 +287,7 @@ describe("reset: generation guard and the per-user-and-company key", () => {
 describe("locked columns", () => {
   it("every table's reference column is locked", () => {
     const locked = Object.fromEntries(COLUMN_TABLES.map((table) => [table.key, table.columns.filter((column) => column.locked).map((column) => column.label)]));
-    expect(locked).toEqual({ jobs: ["Job No", "Due", "Actions"], quotes: ["Quote"], "sales-orders": ["SO Ref"], "purchase-orders": ["PO Ref"], invoices: ["Invoice"], "delivery-notes": ["DN Ref"], customers: ["Name"], suppliers: ["Name"] });
+    expect(locked).toEqual({ jobs: ["Job No", "Due", "Actions"], quotes: ["Quote"], "sales-orders": ["SO Ref"], "purchase-orders": ["PO Ref"], invoices: ["Invoice"], "delivery-notes": ["DN Ref"], customers: ["Name"], suppliers: ["Name"], schedule: ["Machine name", "Day headers (time axis)", "Jobs on machines table", "Machines list"] });
   });
 
   it("cleanColumns strips locked keys from a crafted row and keeps unknown tables and keys", () => {
