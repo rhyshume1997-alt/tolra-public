@@ -39,6 +39,43 @@ describe("columns parity: one column list per page, in every view", () => {
     });
   }
 
+  describe("delivery-notes: Columns picker entry", () => {
+    const source = read("delivery-notes");
+    const start = source.indexOf("<Table data-view={view}");
+    const headEnd = source.indexOf("</TableHeader>", start);
+    const bodyEnd = source.indexOf("</TableBody>", headEnd);
+    const rowStart = source.indexOf("<TableRow key={note.id}", headEnd);
+    const picker = pickerKeys("delivery-notes");
+
+    it("lists DN Ref, Customer, Job Ref, Delivery Date, Status, Email in the order the views render them", () => {
+      expect(COLUMN_TABLES.find((def) => def.key === "delivery-notes")!.columns.map((column) => column.label)).toEqual(["DN Ref", "Customer", "Job Ref", "Delivery Date", "Status", "Email"]);
+      expect(picker).toEqual(["ref", "customer", "job", "date", "status", "email"]);
+    });
+
+    it("Selection and Actions are not in the picker, so they cannot be switched off, and are always rendered", () => {
+      expect(picker).not.toContain("actions");
+      expect(picker).not.toContain("select");
+      expect(source.slice(start, headEnd)).toContain("<TableHead>Actions</TableHead>");
+      expect(source.slice(start, headEnd)).toContain("Select all");
+      expect(source.slice(rowStart, bodyEnd)).toContain("data-actions");
+      expect(source.slice(rowStart, bodyEnd)).toContain("Select ${note.ref}");
+    });
+
+    it("for every hidden subset, the header cells and the body cells are the same keys in the same order", () => {
+      const head = keysIn(source.slice(start, headEnd));
+      const cells = keysIn(source.slice(rowStart, bodyEnd));
+      expect(head.length).toBe(picker.length);
+      expect(cells.length).toBe(picker.length);
+      for (let mask = 0; mask < 1 << picker.length; mask++) {
+        const hidden = new Set(picker.filter((_, i) => mask & (1 << i)));
+        const shownHead = head.filter((key) => !hidden.has(key));
+        const shownCells = cells.filter((key) => !hidden.has(key));
+        expect(shownHead).toEqual(picker.filter((key) => !hidden.has(key)));
+        expect(shownCells).toEqual(shownHead);
+      }
+    });
+  });
+
   it("quotes: the table (List and Table) walks the picker's list in order and the Cards show Date and Description", () => {
     const source = read("quotes");
     const start = source.indexOf('aria-label="Quotes"');
