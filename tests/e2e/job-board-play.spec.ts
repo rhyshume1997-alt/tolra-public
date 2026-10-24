@@ -15,7 +15,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { VIEWPORTS, deviceContext } from "../support/ui-pr1-screenshots";
-import { adminClient, signedInClient, withDb } from "../support/fixtures";
+import { adminClient, EMAIL_DOMAIN, signedInClient, withDb } from "../support/fixtures";
+import { generatePassword } from "@/lib/password";
 import { confirmPause, pauseControl, pickMachines, playControl, playJob, signIn, world } from "./helpers";
 
 const w = world();
@@ -338,4 +339,96 @@ test("phone (390 px, coarse pointer): the bottom-sheet picker, Play on the bench
   await expect(playControl(card, J.phone)).toHaveAccessibleName(`Resume ${J.phone}`);
   expect((await runsOf(J.phone)).map((x) => [x.machine_id, x.end_reason])).toEqual([[null, "paused"]]);
   await context.close();
+});
+
+// Bug 5: "Add machine" on a job that runs on the company's only machine explains itself. The other tests' machines belong to alpha, so this
+// uses beta, whose other machines are retired for the length of the block (the suite runs one worker, so nothing else reads them now).
+test.describe("Add machine with nothing to add", () => {
+  let betaMill = "";
+  let betaMillName = "";
+  let betaJob = "";
+  let betaJobNo = "";
+  let retired: string[] = [];
+
+  test.beforeAll(async () => {
+    const admin = adminClient();
+    const beta = w.tenants.beta.id;
+    betaMillName = `JB Only ${w.runId}`;
+    betaJobNo = `J-JBONLY-${w.runId}`;
+    retired = ((await admin.from("machines").select("id").eq("organization_id", beta).eq("active", true)).data ?? []).map((m) => m.id as string);
+    if (retired.length) await admin.from("machines").update({ active: false }).in("id", retired);
+    betaMill = (await admin.from("machines").insert({ organization_id: beta, name: betaMillName, active: true }).select("id").single()).data!.id as string;
+    betaJob = (await admin.from("jobs").insert({ organization_id: beta, job_no: betaJobNo, customer: "Only Co", description: "Only machine" }).select("id").single()).data!.id as string;
+    const workshop = await signedInClient(w.tenants.beta.users.workshop);
+    expect((await workshop.rpc("start_machine_run", { p_job: betaJob, p_machines: [betaMill], p_client_op_id: null, p_started_at: null, p_override: false, p_reason: null })).error).toBeNull();
+  });
+
+  test.afterAll(async () => {
+    const office = await signedInClient(w.tenants.beta.users.office);
+    await office.rpc("pause_machine_run", { p_job: betaJob, p_machines: null, p_client_op_id: null, p_ended_at: null });
+    const admin = adminClient();
+    await admin.from("machines").update({ active: false }).eq("id", betaMill);
+    if (retired.length) await admin.from("machines").update({ active: true }).in("id", retired);
+  });
+
+  const reason = () => `${betaMillName} is the only machine, and this job is already on it.`;
+
+  test("office, desk List view: the reason and a link to the Machines card on the Machine Schedule", async ({ page }) => {
+    await signIn(page, w.tenants.beta.users.office);
+    await page.goto("/jobs");
+    const r = page.locator(`tr[data-job-id="${betaJob}"]`);
+    await r.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+    const picker = page.getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker.getByTestId("picker-add-machine-link")).toHaveAttribute("href", "/schedule#machines");
+    await picker.getByTestId("picker-add-machine-link").click();
+    await expect(page).toHaveURL(/\/schedule#machines$/);
+    await expect(page.locator("#machines")).toContainText("Machines");
+    await expect(page.locator("#machines").getByRole("button", { name: "Add machine" })).toBeVisible();
+  });
+
+  test("workshop, Cards view: the reason, no link, asked to go to an admin or office", async ({ page }) => {
+    await signIn(page, w.tenants.beta.users.workshop);
+    await page.goto("/jobs");
+    await page.getByRole("button", { name: "Cards", exact: true }).click();
+    const card = page.locator(`[data-testid="job-card"][data-job-no="${betaJobNo}"]:visible`);
+    await card.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+    const picker = page.getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker).toContainText("Ask an admin or office to add a machine.");
+    await expect(picker.getByRole("link")).toHaveCount(0);
+  });
+
+  test("phone sheet (390 px): the reason and the link for the office", async ({ browser }) => {
+    const context = await deviceContext(browser, VIEWPORTS[0], String(test.info().project.use.baseURL));
+    const page = await context.newPage();
+    await signIn(page, w.tenants.beta.users.office);
+    await page.goto("/jobs");
+    const card = page.locator(`[data-testid="job-card"][data-job-no="${betaJobNo}"]:visible`);
+    await card.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).tap();
+    const picker = page.getByRole("dialog").getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker.getByTestId("picker-add-machine-link")).toBeVisible();
+    await context.close();
+  });
+
+  test("office with the Machine Schedule page hidden: the reason, no link to a page they cannot open", async ({ page }) => {
+    const admin = adminClient();
+    const email = `nosched.beta.${w.runId}@${EMAIL_DOMAIN}`;
+    const password = generatePassword(16);
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "nosched beta" } });
+    if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
+    const added = await admin.rpc("add_member", { p_org: w.tenants.beta.id, p_email: email, p_role: "office" });
+    if (added.error || added.data !== "member") throw new Error(`add_member ${email}: ${added.error?.message ?? added.data}`);
+    const hide = await admin.from("organization_members").update({ hidden_sections: ["schedule"] }).eq("organization_id", w.tenants.beta.id).eq("user_id", created.data.user.id);
+    expect(hide.error).toBeNull();
+    await signIn(page, { id: created.data.user.id, email, password, role: "office" });
+    await page.goto("/jobs");
+    const r = page.locator(`tr[data-job-id="${betaJob}"]`);
+    await r.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+    const picker = page.getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker.getByTestId("picker-add-machine-link")).toHaveCount(0);
+    await expect(picker.getByRole("link")).toHaveCount(0);
+  });
 });

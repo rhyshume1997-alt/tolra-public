@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { linkedQuotes, matchesStatusFilter, rfqFigures, rfqStage, rfqStageLabel, showsStatusBadge } from "@/lib/rfq-stage";
+import { linkedQuotes, matchesStatusFilter, rfqFigures, rfqSpec, rfqStage, rfqStageLabel, shouldMarkClarification, showsStatusBadge } from "@/lib/rfq-stage";
 
 describe("RFQ stage and the intake status", () => {
   it("the stage comes from the linked quote, not from rfqs.status", () => {
@@ -65,5 +65,27 @@ describe("linkedQuotes keeps the quote id for deep links", () => {
       { id: "q2", rfq_id: "r1", quote_ref: "QUO-2", status: "sent", created_at: "2026-01-02" },
     ]);
     expect(map.get("r1")).toEqual({ id: "q2", ref: "QUO-2", status: "sent" });
+  });
+});
+
+describe("rfqSpec: the quantity and material shown in the RFQ View dialog", () => {
+  it("returns what was stored, and nothing for 0, blank or missing", () => {
+    expect(rfqSpec(50, "Titanium Grade 5")).toEqual({ quantity: 50, material: "Titanium Grade 5" });
+    expect(rfqSpec("12", "  Mild Steel ")).toEqual({ quantity: 12, material: "Mild Steel" });
+    expect(rfqSpec(0, "")).toEqual({ quantity: null, material: "" });
+    expect(rfqSpec(null, null)).toEqual({ quantity: null, material: "" });
+    expect(rfqSpec(undefined, undefined)).toEqual({ quantity: null, material: "" });
+  });
+});
+
+describe("shouldMarkClarification", () => {
+  it("moves only outstanding RFQs that are not already in clarification; a quoted, won or lost RFQ is never moved back", () => {
+    expect(shouldMarkClarification({ status: "new" }, undefined)).toBe(true);
+    expect(shouldMarkClarification({ status: "ready" }, undefined)).toBe(true);
+    expect(shouldMarkClarification({ status: "clarification" }, undefined)).toBe(false);
+    expect(shouldMarkClarification({ status: "quoted" }, undefined)).toBe(false);
+    expect(shouldMarkClarification({ status: "new" }, { ref: "QUO-1", status: "draft" })).toBe(false);
+    expect(shouldMarkClarification({ status: "ready" }, { ref: "QUO-1", status: "accepted" })).toBe(false);
+    expect(shouldMarkClarification({ status: "new" }, { ref: "QUO-1", status: "rejected" })).toBe(false);
   });
 });

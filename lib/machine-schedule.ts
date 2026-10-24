@@ -122,6 +122,63 @@ export function normaliseStart(from: Date, machine: MachineLike, everyDay = fals
 }
 
 /**
+ * Where a booking can start once the one before it ends at `clashEnd`: the next whole minute at or after it (the booking form's start box
+ * holds minutes, and an end with seconds in it, such as a not-started booking counted from now, would otherwise leave the new start a
+ * few seconds inside the clash), then the first working moment on the machine (the same rule as the card's next free slot).
+ */
+export function startAfterBooking(clashEnd: Date, machine: MachineLike, everyDay = false): Date {
+  const minute = 60_000;
+  return normaliseStart(new Date(Math.ceil(clashEnd.getTime() / minute) * minute), machine, everyDay);
+}
+
+/** How many times nextClearStart moves on before it gives up. */
+export const CLEAR_START_MAX_STEPS = 50;
+
+/**
+ * The first start, at or after `start`, where a booking clashes with nothing: while `overlapsAt(start)` finds clashes, move to just after
+ * the latest of them ends (startAfterBooking), because a booking chained right behind the first clash would otherwise bring the clash back.
+ * Null when `maxSteps` moves still find a clash (the caller says no free slot was found).
+ */
+export function nextClearStart(
+  start: Date,
+  machine: MachineLike,
+  overlapsAt: (start: Date) => { finish: Date }[],
+  opts: { everyDay?: boolean; maxSteps?: number } = {},
+): Date | null {
+  let cursor = start;
+  for (let i = 0; i < (opts.maxSteps ?? CLEAR_START_MAX_STEPS); i++) {
+    const clashes = overlapsAt(cursor);
+    if (!clashes.length) return cursor;
+    cursor = startAfterBooking(new Date(Math.max(...clashes.map((clash) => clash.finish.getTime()))), machine, opts.everyDay);
+  }
+  return null;
+}
+
+/**
+ * Split by day, Start after current booking: how many days to move the whole split (same gaps between its dates, same times) so it clashes
+ * with nothing. Each step begins the day after the latest clash ends, or that day when the clash ends by the first day's start time. The
+ * split's days and times are exactly what the person entered, so a clash's end is only rounded to the minute (hoursPerDay 0), never moved to
+ * the machine's working window: a window start of 08:00 would otherwise look later than a 06:00 first-day start and skip a free day.
+ * A shifted plan that fails validation (a time that doesn't exist on a clock-change day) stops with its message: it is not "no clash".
+ */
+export type SplitClearShift = { ok: true; shift: number } | { ok: false; reason: "none" } | { ok: false; reason: "invalid"; message: string };
+
+export function splitClearShift(rows: DayPlanRow[], first: string, firstStart: string, estimatedHours: number, machine: Machine, scheduled: ScheduledBooking[]): SplitClearShift {
+  const shiftFor = (at: Date) => daysBetweenDates(first, localDateString(timeOf(at) > firstStart ? new Date(at.getFullYear(), at.getMonth(), at.getDate() + 1) : at));
+  let invalid = "";
+  const clashesAt = (at: Date) => {
+    const shift = shiftFor(at);
+    const plan = validateDayPlan(rows.map((r) => (r.date ? { ...r, date: addDaysToDate(r.date, shift) } : r)), estimatedHours);
+    if (!plan.ok) { invalid = plan.message; return []; } // [] ends the search; the flag below says it did not find a clear slot
+    const segments = planSegments(plan.plan);
+    return segments.length ? findOverlaps(machine, scheduled, segments[0].start, segments[segments.length - 1].end, undefined, segments) : [];
+  };
+  const clear = nextClearStart(localMoment(first, firstStart) ?? new Date(`${first}T00:00`), { ...machine, hoursPerDay: 0 }, clashesAt, { everyDay: true });
+  if (invalid) return { ok: false, reason: "invalid", message: invalid };
+  return clear ? { ok: true, shift: shiftFor(clear) } : { ok: false, reason: "none" };
+}
+
+/**
  * End time after consuming `hours` of work from `start`, counting only the machine's working hours
  * (08:00 to 08:00 + hoursPerDay on its working days). Example: 20h on an 8h Mon-Fri machine from Fri 08:00 ends Tue 12:00.
  */

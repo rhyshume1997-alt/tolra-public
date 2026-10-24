@@ -50,3 +50,22 @@ test("RFQ: Quote opens the builder for it, the quote is linked, and the RFQ move
   await page.getByRole("button", { name: /^Won \(/ }).click();
   await expect(card()).toContainText("Won");
 });
+
+test("RFQ: logging a clarification e-mail as sent moves the RFQ to Awaiting Clarification and keeps the history row", async ({ page }) => {
+  const admin = adminClient();
+  const org = w.tenants.alpha.id;
+  const customer = `RFQ Clarify ${w.runId}`;
+  const { data: rfq } = await admin.from("rfqs").insert({ organization_id: org, customer, email: `clarify.${w.runId}@example.test`, description: `Shafts ${w.runId}`, status: "new" }).select("id").single();
+  await signIn(page, w.tenants.alpha.users.admin);
+  await page.goto("/rfq");
+  const card = () => page.locator('[data-slot="card"]', { hasText: customer });
+  await card().getByRole("button", { name: "View" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Clarify" }).click();
+  const dialog = page.getByRole("dialog", { name: "Clarification Email" });
+  await dialog.getByRole("button", { name: "Open in email app" }).click();
+  await dialog.getByRole("button", { name: /sent it/ }).click();
+  await expect(card().getByRole("button", { name: "Clarify" })).toBeVisible();
+  expect((await admin.from("rfqs").select("status").eq("id", rfq!.id).single()).data!.status).toBe("clarification");
+  const { data: history } = await admin.from("email_history").select("status").eq("related_to_id", rfq!.id);
+  expect(history).toHaveLength(1);
+});

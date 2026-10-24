@@ -26,6 +26,7 @@ import { CustomerSelect } from "@/components/customer-select";
 import { SoMachinesDialog } from "@/components/so-machines-dialog";
 import { type OrderPlanRow, describeMachines, sumMachineHours, totalHours } from "@/lib/so-machines";
 import { ukDateTime } from "@/lib/auto-booking";
+import { quoteAcceptBlock } from "@/lib/quote-status";
 import { canDespatch, editBlockedReason, isConverted, ordersToConvert, ordersToDespatch } from "@/lib/sales-order-convert";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -260,6 +261,8 @@ export default function SalesOrdersPage() {
           totalValue: form.value.trim() === "" ? Number.NaN : Number(form.value),
         });
         if (quote) {
+          const zeroQuote = quoteAcceptBlock(quote.total);
+          if (zeroQuote) throw new ValidationError(zeroQuote);
           // From an accepted quote: the one path that makes a quote's order (accept_quote, migration 058). The database works out the
           // same value and VAT shown here, keeps one order per quote (an order it already has is returned), and makes its job when the
           // company's setting is automatic.

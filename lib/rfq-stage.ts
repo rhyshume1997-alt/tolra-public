@@ -14,6 +14,11 @@ export function rfqStage(rfq: { status: string }, quote: LinkedQuote | undefined
   return rfq.status === "quoted" ? "quoted" : "outstanding";
 }
 
+/** Logging a clarification e-mail moves an RFQ to 'clarification' only while it is still outstanding (no quote, not 'quoted') and not already there; a quoted, won or lost RFQ is never moved back. */
+export function shouldMarkClarification(rfq: { status: string }, quote: LinkedQuote | undefined): boolean {
+  return rfqStage(rfq, quote) === "outstanding" && rfq.status !== "clarification";
+}
+
 /** The stage's label, saying whether the quote has gone yet ("Quoted, draft" while it is still being prepared). */
 export function rfqStageLabel(stage: RfqStage, quote: LinkedQuote | undefined): string {
   if (stage === "outstanding") return "Outstanding";
@@ -62,4 +67,10 @@ export function rfqFigures(rfqs: Array<{ id: string; status: string }>, linked: 
     if (stage === "outstanding" && (rfq.status === "new" || rfq.status === "clarification" || rfq.status === "ready")) out[rfq.status] += 1;
   }
   return out;
+}
+
+/** The stored quantity and material for the RFQ's View dialog: only what was filled in (0 / blank means none was given). */
+export function rfqSpec(quantity: unknown, material: unknown): { quantity: number | null; material: string } {
+  const qty = Number(quantity);
+  return { quantity: Number.isFinite(qty) && qty > 0 ? qty : null, material: typeof material === "string" ? material.trim() : "" };
 }

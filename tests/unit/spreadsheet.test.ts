@@ -2,7 +2,7 @@ import { strFromU8, unzipSync } from "fflate";
 import readExcelFile from "read-excel-file/node";
 import { describe, expect, it } from "vitest";
 
-import { exportScopeTitle, toCsv, toXlsx, type SheetColumn } from "@/lib/spreadsheet";
+import { exportScopeRows, exportScopeTitle, toCsv, toXlsx, type SheetColumn } from "@/lib/spreadsheet";
 
 type Row = { name: string; qty?: number; price?: number | string | null; day?: string };
 const columns: SheetColumn<Row>[] = [
@@ -82,5 +82,13 @@ describe("exportScopeTitle", () => {
     expect(exportScopeTitle("invoice", 3, 40)).toBe("Exports the 3 invoices selected");
     expect(exportScopeTitle("invoice", 1, 40)).toBe("Exports the 1 invoice selected");
     expect(exportScopeTitle("job", 0, 12)).toBe("Exports all 12 jobs in the current filter (nothing is selected)");
+  });
+});
+
+describe("exportScopeRows", () => {
+  it("exports the selected rows, else every row the current filters show (the same for CSV, Excel, Word and PDF)", () => {
+    expect(exportScopeRows(["b"], ["a", "b", "c"])).toEqual(["b"]);
+    expect(exportScopeRows([], ["a", "b", "c"])).toEqual(["a", "b", "c"]);
+    expect(exportScopeRows([], [])).toEqual([]);
   });
 });

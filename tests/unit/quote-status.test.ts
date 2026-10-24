@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canRecordDecision, DEFAULT_QUOTE_VALIDITY_DAYS, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteFigures, quoteSendBlock, quoteValidityDays, statusCounts, uploadSummary, sentSince, storedQuoteStatus } from "@/lib/quote-status";
+import { canRecordDecision, DEFAULT_QUOTE_VALIDITY_DAYS, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteSendBlock, quoteValidityDays, statusCounts, uploadSummary, sentSince, storedQuoteStatus } from "@/lib/quote-status";
 
 describe("quote lifecycle (audit D1)", () => {
   const today = "2026-10-09";
@@ -98,6 +98,22 @@ describe("a £0.00 quote cannot be sent", () => {
 
   it("lets a priced quote through (even one penny)", () => {
     for (const total of [0.01, 1, "882.50", 1200]) expect(quoteSendBlock("QUO-0007", total)).toBeNull();
+  });
+});
+
+describe("quoteAcceptBlock", () => {
+  it("refuses a total of zero, negative or unreadable", () => {
+    for (const total of [0, "0.00", -5, null, undefined, "abc"]) expect(quoteAcceptBlock(total)).toBe("A quote for £0.00 can't be accepted. Add a price or decline it.");
+  });
+  it("refuses a quote with no lines", () => {
+    expect(quoteAcceptBlock(100, 0)).toBe("A quote with no lines can't be accepted. Add a line or decline it.");
+  });
+  it("refuses ticked lines that sum to zero", () => {
+    expect(quoteAcceptBlock(100, 2, 0)).toBe("The ticked lines come to £0.00, so they can't be accepted. Tick a priced line or decline the quote.");
+  });
+  it("lets a normal quote through", () => {
+    expect(quoteAcceptBlock(882.5)).toBeNull();
+    expect(quoteAcceptBlock("0.01", 3, 0.01)).toBeNull();
   });
 });
 

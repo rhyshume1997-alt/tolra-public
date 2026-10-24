@@ -13,12 +13,14 @@
  * dialog and Cancel only read; Save with nothing changed sends nothing.
  */
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { addMachineReason } from "@/lib/add-machine-reason";
 import { friendlyError } from "@/lib/friendly-error";
 import { type SavedJobMachine, autoBookedLines, databaseAutoBooks, notBookedYet } from "@/lib/auto-booking";
 import { type JobMachineEntry, keepsBooking, loadJobMachinesForDialog, machinesSaveReady, planMachinesSave } from "@/lib/job-machine-plan";
@@ -112,6 +114,7 @@ export function JobMachinesDialog({ job, role, onClose, onSaved }: { job: JobMac
   const badRow = rows.some((row) => !row.machineId || row.hours === "" || !(Number(row.hours) >= 0 && Number(row.hours) <= MAX_MACHINE_HOURS) || (row.book && Number.isNaN(new Date(startOf(row)).getTime())));
   const usedMachines = new Set(rows.map((row) => row.machineId));
   const ready = machinesSaveReady({ jobId, loadedFor, loading, loadError });
+  const addBlocked = addMachineReason({ ready, loading, loadFailed: Boolean(loadError), machineCount: machines.length, rowCount: rows.length, max: MAX_MACHINES, role });
   const blocked = !ready || saving || badRow || (clashes.length > 0 && !(isAdmin && override && reason.trim().length >= 3));
 
   const setRow = (key: number, patch: Partial<Row>) => setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
@@ -226,7 +229,14 @@ export function JobMachinesDialog({ job, role, onClose, onSaved }: { job: JobMac
                 </div>
               );
             })}
-            <Button type="button" variant="outline" className={touch} disabled={!ready || rows.length >= MAX_MACHINES || rows.length >= machines.length} onClick={addRow}><Plus className="size-4" /> Add machine</Button>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="button" variant="outline" className={touch} disabled={Boolean(addBlocked)} onClick={addRow}><Plus className="size-4" /> Add machine</Button>
+              {addBlocked ? (
+                <p data-testid="add-machine-reason" className="text-xs text-slate-600 dark:text-slate-300">
+                  {addBlocked.reason}{addBlocked.link ? <> <Link href="/schedule#machines" className="font-semibold text-brand underline">Add a machine on the Machine Schedule</Link></> : null}
+                </p>
+              ) : null}
+            </div>
           </fieldset>
 
           {clashes.length ? (

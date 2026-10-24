@@ -64,6 +64,37 @@ test("Export CSV on invoices downloads the import columns and the stored figures
   });
 });
 
+test("Export Word on quotes with nothing selected exports the quotes the filter shows, like CSV", async ({ page }) => {
+  const ref = `QUO-EXPW-${w.runId}`;
+  const { error } = await adminClient().from("quotes").insert({ organization_id: w.tenants.alpha.id, quote_ref: ref, customer: "Export Word Ltd", status: "draft", total_value: 0 });
+  expect(error).toBeNull();
+  await signIn(page, w.tenants.alpha.users.admin);
+  await page.goto("/quotes");
+  await expect(page.getByText(ref).first()).toBeVisible();
+  const word = await exportItem(page, "Word");
+  await expect(word).toHaveAttribute("title", /^Exports all \d+ quotes? in the current filter/);
+  const [download] = await Promise.all([page.waitForEvent("download"), word.click()]);
+  expect(download.suggestedFilename()).toMatch(/\.doc$/);
+  expect(readFileSync(await download.path(), "utf8")).toContain(ref);
+  await expect(page.getByText("Select at least one record")).toHaveCount(0);
+});
+
+test("Export Word on invoices with nothing selected exports the invoices the filter shows", async ({ page }) => {
+  const ref = `INV-EXPW-${w.runId}`;
+  await withDb(async (db) => {
+    await db.query(
+      `insert into public.invoices (organization_id, invoice_ref, customer, subtotal, vat, total, status, amount_paid, invoice_date, due_date, vat_enabled)
+       values ($1, $2, 'Export Word Ltd', 100, 20, 120, 'issued', 0, '2026-10-01', '2099-12-31', true)`, [w.tenants.alpha.id, ref]);
+  });
+  await signIn(page, w.tenants.alpha.users.admin);
+  await page.goto("/invoices");
+  await expect(page.getByRole("row").filter({ hasText: ref })).toBeVisible();
+  const word = await exportItem(page, "Word");
+  await expect(word).toHaveAttribute("title", /^Exports all \d+ invoices? in the current filter/);
+  const [download] = await Promise.all([page.waitForEvent("download"), word.click()]);
+  expect(readFileSync(await download.path(), "utf8")).toContain(ref);
+});
+
 test("Export CSV on purchase orders, sales orders, customers and suppliers", async ({ page }) => {
   const org = w.tenants.alpha.id;
   const tag = w.runId;

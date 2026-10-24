@@ -34,7 +34,7 @@ import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
 import { useUser } from "@/lib/use-user";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
-import { type LinkedQuote, type RfqStage, linkedQuotes, matchesStatusFilter, rfqFigures, rfqStage, rfqStageLabel, showsStatusBadge } from "@/lib/rfq-stage";
+import { type LinkedQuote, type RfqStage, linkedQuotes, matchesStatusFilter, rfqFigures, rfqSpec, rfqStage, rfqStageLabel, shouldMarkClarification, showsStatusBadge } from "@/lib/rfq-stage";
 
 type RfqRow = {
   id: string;
@@ -43,6 +43,8 @@ type RfqRow = {
   phone: string;
   description: string;
   value: number;
+  quantity?: number;
+  material?: string;
   status: "new" | "clarification" | "ready" | "quoted";
   received: string;
   notes?: string;
@@ -162,6 +164,8 @@ export default function RfqPage() {
         phone: String(rfq.phone || ""),
         description: String(rfq.description || ""),
         value: Number(rfq.estimated_value ?? 0),
+        quantity: Number(rfq.quantity ?? 0),
+        material: String(rfq.material || ""),
         status: String(rfq.status || "new") as RfqRow["status"],
         received: fmtDate(String(rfq.created_at)),
         notes: rfq.notes ? String(rfq.notes) : "",
@@ -289,8 +293,19 @@ export default function RfqPage() {
           sent_at: nowIso(),
         });
         if (error) throw error;
-        toast.success("Logged as sent manually");
         setClarifying(null);
+        let moved = false;
+        // Second request (not one transaction; an RPC would need SQL): move an outstanding RFQ to Awaiting Clarification (never a quoted one back: the update only matches a New or Ready RFQ, so a quote made meanwhile isn't undone). The history row stays if this fails.
+        if (shouldMarkClarification(rfq, linked.get(rfq.id))) {
+          const { data: updated, error: statusError } = await supabase.from("rfqs").update({ status: "clarification" }).eq("id", rfq.id).in("status", ["new", "ready"]).select("id");
+          if (statusError || !updated?.length) {
+            toast.error("The email was recorded in email history, but the RFQ status didn't change to Clarification. Change it on the RFQ yourself or try again.");
+            return;
+          }
+          setRfqs((current) => current.map((row) => (row.id === rfq.id ? { ...row, status: "clarification" } : row)));
+          moved = true;
+        }
+        toast.success(moved ? "Logged as sent manually. The RFQ is now awaiting clarification." : "Logged as sent manually");
       } catch (err) {
         toast.error(friendlyError(err, "Couldn't log the email. Try again."));
       }
@@ -315,7 +330,7 @@ export default function RfqPage() {
               <Input name="customer" placeholder="Customer" required />
               <div className="grid gap-3 md:grid-cols-2"><Input name="email" type="email" inputMode="email" autoComplete="email" placeholder="Email" /><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Phone" /></div>
               <Textarea name="description" placeholder="Description" required />
-              <div className="grid gap-3 md:grid-cols-3"><Input name="quantity" type="number" inputMode="numeric" min="0" step="1" placeholder="Quantity" /><select name="material" className="h-9 rounded-lg border px-3 text-sm"><option>Titanium Grade 5</option><option>Aluminium 6082</option><option>Stainless Steel 304</option><option>Stainless Steel 316</option><option>Mild Steel</option><option>Brass C360</option><option>Other</option></select><Input name="value" type="number" inputMode="decimal" min="0" step="0.01" placeholder="Value" /></div>
+              <div className="grid gap-3 md:grid-cols-3"><Input name="quantity" type="number" inputMode="numeric" min="0" step="1" placeholder="Quantity" /><select name="material" className="h-9 rounded-lg border px-3 text-sm"><option value="">Choose material</option><option>Titanium Grade 5</option><option>Aluminium 6082</option><option>Stainless Steel 304</option><option>Stainless Steel 316</option><option>Mild Steel</option><option>Brass C360</option><option>Other</option></select><Input name="value" type="number" inputMode="decimal" min="0" step="0.01" placeholder="Value" /></div>
               <select name="status" className="h-9 rounded-lg border px-3 text-sm"><option value="new">New</option><option value="clarification">Clarification</option><option value="ready">Ready</option></select>
               <Textarea name="notes" placeholder="Notes" />
               <Button disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save RFQ"}</Button>
@@ -348,7 +363,8 @@ export default function RfqPage() {
         <div className="grid gap-4">
           {!visible.length && !error ? <EmptyList title={rfqs.length ? "No RFQs match this filter" : "No RFQs yet"} hint={rfqs.length ? "Try a different filter." : rfqEmptyHint()} hintTestId={rfqs.length ? undefined : "empty-hint"} /> : null}
           {visible.map((rfq) => {
-            const meta = statusMeta[rfq.status];
+            // Once a quote exists the intake status (New, Ready...) no longer applies: show the Quoted icon, not the old status.
+            const meta = statusMeta[showsStatusBadge(stageOf(rfq)) ? rfq.status : "quoted"];
             const Icon = meta.icon;
             return (
               <Card key={rfq.id} className="shadow-sm">
@@ -360,7 +376,7 @@ export default function RfqPage() {
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => setViewing(rfq)}>View</Button>
                     {profile?.role === "admin" && inboundByRfq.has(rfq.id) ? <><Button variant="outline" onClick={() => openMail(rfq, "reply")}>Reply</Button><Button variant="outline" onClick={() => openMail(rfq, "forward")}>Forward</Button></> : null}
-                    {rfq.status === "clarification" ? <Button className="bg-amber-500 text-white hover:bg-amber-600" onClick={() => openClarify(rfq)}>Clarify</Button> : linked.get(rfq.id) ? <Button asChild variant="outline"><Link href={linked.get(rfq.id)!.id ? `/quotes?quote=${encodeURIComponent(linked.get(rfq.id)!.id!)}` : "/quotes"}>Open {linked.get(rfq.id)!.ref}</Link></Button> : <Button asChild className="bg-brand text-brand-ink hover:bg-brand-hover"><Link href={`/quotes?rfq=${encodeURIComponent(rfq.id)}`}>Quote</Link></Button>}
+                    {rfq.status === "clarification" && stageOf(rfq) === "outstanding" ? <Button className="bg-amber-500 text-white hover:bg-amber-600" onClick={() => openClarify(rfq)}>Clarify</Button> : linked.get(rfq.id) ? <Button asChild variant="outline"><Link href={linked.get(rfq.id)!.id ? `/quotes?quote=${encodeURIComponent(linked.get(rfq.id)!.id!)}` : "/quotes"}>Open {linked.get(rfq.id)!.ref}</Link></Button> : <Button asChild className="bg-brand text-brand-ink hover:bg-brand-hover"><Link href={`/quotes?rfq=${encodeURIComponent(rfq.id)}`}>Quote</Link></Button>}
                   </div>
                 </CardContent>
               </Card>
@@ -370,7 +386,7 @@ export default function RfqPage() {
       )}
 
       <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
-        <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Full RFQ information</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p><p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Full RFQ information</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p>{rfqSpec(viewing.quantity, viewing.material).quantity ? <p><strong>Quantity:</strong> {rfqSpec(viewing.quantity, viewing.material).quantity}</p> : null}{rfqSpec(viewing.quantity, viewing.material).material ? <p className="break-words"><strong>Material:</strong> {rfqSpec(viewing.quantity, viewing.material).material}</p> : null}<p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
       </Dialog>
       <Dialog open={Boolean(mailing)} onOpenChange={(open) => !open && setMailing(null)}>
         <DialogContent>
