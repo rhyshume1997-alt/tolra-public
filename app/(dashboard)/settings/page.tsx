@@ -20,7 +20,7 @@ import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
 import { useUser } from "@/lib/use-user";
 import { hexOr, isHexColour, PRODUCT_BRANDING, textOn } from "@/lib/branding";
-import { COLUMN_TABLES, NAV_TOGGLES, saveOrgSettings, useOrgSettings } from "@/lib/org-settings";
+import { COLUMN_TABLES, NAV_TOGGLES, resetColumns, setColumnHidden, setNavHidden, type SaveResult, useOrgSettings } from "@/lib/org-settings";
 import { PRODUCT } from "@/lib/product";
 import { WEEKDAY_OPTIONS } from "@/lib/machine-schedule";
 import { BREAK_MINUTES, LUNCH_MINUTES, MIN_DAY_HOURS, formatHoursMinutes, paidDay, paidWeek } from "@/lib/working-hours";
@@ -29,9 +29,9 @@ import { SiteNetworkCard } from "@/components/time/site-network-card";
 
 const navSections = Array.from(new Set(NAV_TOGGLES.map((item) => item.section)));
 
-function Switch({ checked, onChange, label }: { checked: boolean; onChange: (checked: boolean) => void; label: string }) {
+function Switch({ checked, onChange, label, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${checked ? "bg-brand" : "bg-slate-300"}`}>
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${checked ? "bg-brand" : "bg-slate-300"}`}>
       <span className={`inline-block size-5 rounded-full bg-white shadow transition ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
     </button>
   );
@@ -594,25 +594,27 @@ export default function SettingsPage() {
   const settings = useOrgSettings();
   const [saving, setSaving] = useState(false);
 
-  async function persist(patch: Parameters<typeof saveOrgSettings>[0], what: string, metadata: Record<string, unknown>) {
+  async function persist(save: Promise<SaveResult>, what: string, oldData: Record<string, unknown>, newData: Record<string, unknown>, metadata: Record<string, unknown>) {
     setSaving(true);
-    const oldData = { hiddenNav: settings.hiddenNav, hiddenColumns: settings.hiddenColumns };
-    const result = await saveOrgSettings(patch);
+    const result = await save;
     setSaving(false);
+    if (result.dropped) return;
+    if (result.denied) return void toast.error(result.message ?? `You can't change ${what.toLowerCase()}.`);
     if (result.localOnly) toast.message(`${what} saved in this browser only (Supabase unavailable).`);
     else toast.success(`${what} saved`);
-    void auditEvent({ action: "organization_settings.update", entityTable: "organization_settings", oldData, newData: patch, metadata });
+    void auditEvent({ action: "organization_settings.update", entityTable: "organization_settings", oldData, newData, metadata });
   }
 
   function toggleNav(key: string, label: string, visible: boolean) {
+    const oldData = { hiddenNav: settings.hiddenNav };
     const next = visible ? settings.hiddenNav.filter((item) => item !== key) : Array.from(new Set([...settings.hiddenNav, key]));
-    void persist({ hiddenNav: next }, "Menu settings", { item: label, visible });
+    void persist(setNavHidden(key, !visible), "Menu settings", oldData, { hiddenNav: next }, { item: label, visible });
   }
 
   function toggleColumn(tableKey: string, columnKey: string, visible: boolean) {
     const current = settings.hiddenColumns[tableKey] ?? [];
     const next = visible ? current.filter((item) => item !== columnKey) : Array.from(new Set([...current, columnKey]));
-    void persist({ hiddenColumns: { ...settings.hiddenColumns, [tableKey]: next } }, "Column settings", { table: tableKey, column: columnKey, visible });
+    void persist(setColumnHidden(tableKey, columnKey, !visible), "Column settings", { hiddenColumns: { [tableKey]: current } }, { hiddenColumns: { [tableKey]: next } }, { table: tableKey, column: columnKey, visible });
   }
 
   return (
@@ -652,17 +654,17 @@ export default function SettingsPage() {
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><Columns3 className="size-5 text-brand-accent" /> Table Columns</CardTitle></CardHeader>
           <CardContent className="space-y-5">
-            <p className="text-sm text-slate-500">Choose which columns show in each list. Selection and Actions columns are always shown. Admin and office users can also change these from the Columns button on each page.</p>
+            <p className="text-sm text-slate-500">Choose which columns show in each list. Changes apply to everyone in this company. Selection and Actions columns, and each list&apos;s reference column, are always shown. Admin and office users can also change these from the Columns button on each page.</p>
             {COLUMN_TABLES.map((table) => (
               <div key={table.key}>
-                <p className="pb-2 text-sm font-semibold text-slate-900">{table.label}</p>
+                <div className="flex items-center justify-between gap-3 pb-2"><p className="text-sm font-semibold text-slate-900">{table.label}</p><Button type="button" variant="outline" size="sm" disabled={!(settings.hiddenColumns[table.key] ?? []).length} onClick={() => void persist(resetColumns(table.key), "Column settings", { hiddenColumns: { [table.key]: settings.hiddenColumns[table.key] ?? [] } }, { hiddenColumns: { [table.key]: [] } }, { table: table.key, reset: true })}>Show all</Button></div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {table.columns.map((column) => {
-                    const visible = !(settings.hiddenColumns[table.key] ?? []).includes(column.key);
+                    const visible = Boolean(column.locked) || !(settings.hiddenColumns[table.key] ?? []).includes(column.key);
                     return (
                       <label key={column.key} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                         <span className="text-sm text-slate-800">{column.label}</span>
-                        <Switch checked={visible} label={`Show ${column.label} in ${table.label}`} onChange={(checked) => toggleColumn(table.key, column.key, checked)} />
+                        <Switch checked={visible} disabled={column.locked} label={column.locked ? `${column.label} is always shown in ${table.label}` : `Show ${column.label} in ${table.label}`} onChange={(checked) => { if (!column.locked) toggleColumn(table.key, column.key, checked); }} />
                       </label>
                     );
                   })}

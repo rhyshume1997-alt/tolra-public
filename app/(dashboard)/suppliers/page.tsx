@@ -133,7 +133,7 @@ export default function SuppliersPage() {
         {loading ? <Skeleton className="h-72" /> : (
           <Card><CardContent className="p-0">
             <Table data-view={view}>
-              <TableHeader className="hidden md:table-header-group"><TableRow>{isVisible("name") ? <TableHead>Name</TableHead> : null}{isVisible("contact") ? <TableHead>Contact</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}{isVisible("phone") ? <TableHead>Phone</TableHead> : null}{isVisible("notes") ? <TableHead>Notes</TableHead> : null}{statusAvailable ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead></TableRow></TableHeader>
+              <TableHeader className="hidden md:table-header-group"><TableRow>{isVisible("name") ? <TableHead>Name</TableHead> : null}{isVisible("contact") ? <TableHead>Contact</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}{isVisible("phone") ? <TableHead>Phone</TableHead> : null}{isVisible("notes") ? <TableHead>Notes</TableHead> : null}{statusAvailable && isVisible("status") ? <TableHead>Status</TableHead> : null}<TableHead>Actions</TableHead></TableRow></TableHeader>
               <TableBody>
                 {suppliers.map((supplier) => (
                   <TableRow key={supplier.id || supplier.name} className="block md:table-row">
@@ -142,7 +142,7 @@ export default function SuppliersPage() {
                     {isVisible("email") ? <TableCell data-label="Email" className="block md:table-cell">{supplier.email || "-"}</TableCell> : null}
                     {isVisible("phone") ? <TableCell data-label="Phone" className="block md:table-cell">{supplier.phone || "-"}</TableCell> : null}
                     {isVisible("notes") ? <TableCell data-label="Notes" className="block max-w-xs truncate md:table-cell">{supplier.notes || "-"}</TableCell> : null}
-                    {statusAvailable ? <TableCell data-label="Status" className="block md:table-cell">{supplier.supplierStatus ? <StatusBadge data-testid="supplier-status" status={SUPPLIER_STATUS_BADGE[supplier.supplierStatus]} label={SUPPLIER_STATUS_LABELS[supplier.supplierStatus]} /> : "-"}</TableCell> : null}
+                    {statusAvailable && isVisible("status") ? <TableCell data-label="Status" className="block md:table-cell">{supplier.supplierStatus ? <StatusBadge data-testid="supplier-status" status={SUPPLIER_STATUS_BADGE[supplier.supplierStatus]} label={SUPPLIER_STATUS_LABELS[supplier.supplierStatus]} /> : "-"}</TableCell> : null}
                     <TableCell data-actions className="block md:table-cell"><div className="flex flex-wrap items-center gap-2">
                       <Button variant="outline" size="sm" onClick={() => setEditing(supplier)} disabled={!supplier.id}><Pencil className="size-3.5" /> Edit</Button>
                       <Button variant="outline" size="sm" onClick={() => void remove(supplier)} disabled={!supplier.id || saving}><Trash2 className="size-3.5" /> Delete</Button>

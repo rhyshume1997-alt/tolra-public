@@ -9,6 +9,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { toast } from "sonner";
 import { CalendarDays, CheckCheck, ChevronRight, ClipboardList, Cog, FastForward, Loader2, Mail, PauseCircle, Play, Plus, Printer, RotateCcw, ShieldCheck, Truck, Unlock, Wrench } from "lucide-react";
 
+import { BOARD_KPI_LABEL, BOARD_TABLE_HEADINGS, BoardFilterRow, BoardHeading } from "@/components/board-heading";
+import { ColumnToggle } from "@/components/column-toggle";
 import { FilterBar } from "@/components/filter-bar";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
@@ -75,7 +77,8 @@ import { runClock, runTimerText } from "@/lib/machine-schedule";
 import { useUser } from "@/lib/use-user";
 import type { JobRecord } from "@/types";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
-import { type BoardFiles, JOB_TABLE_COLUMNS, boardDescription, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
+import { type BoardFiles, boardDescription, shownJobColumns, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
+import { useColumnVisibility } from "@/lib/org-settings";
 
 const JOB_FILTER_LABELS: Record<string, string> = { overdue: "Jobs past their required date", "awaiting-inspection": "Jobs waiting for inspection" };
 
@@ -490,6 +493,11 @@ export default function JobsPage() {
   };
   // Job Board view: one line per job by default (fits the screen), full table or cards on request (lib/view-mode).
   const [view, setView] = useViewMode("jobs", "list");
+  // The Columns picker (admin and office): which of the shared columns Table, List and Cards show. Job No, Due and Actions always.
+  const { isVisible: columnOn } = useColumnVisibility("jobs");
+  const jobColumns = useMemo(() => shownJobColumns(columnOn), [columnOn]);
+  /** A Cards field shows when its column does (locked columns always). */
+  const fieldOn = (key: string) => jobColumns.some((column) => column.key === key);
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const { saving, run } = useSaving();
   const isViewer = activeRole === "viewer";
@@ -1173,18 +1181,18 @@ export default function JobsPage() {
               </div>
               {/* Captions: a stacked card has no table header to say which value is which. */}
               <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Customer</dt><dd className="flex flex-wrap items-center gap-2 break-words">{job.customer}{job.is_internal ? <InternalBadge /> : null}</dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Description</dt><dd className="break-words text-slate-600">{boardDescription(job.description, job.specification)}</dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Specification</dt><dd className="break-words text-xs text-slate-600">{job.specification || "None recorded"}</dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Drawings</dt><dd className="break-words text-xs text-brand"><FileNames names={jobBoardFiles(job, filesByJob).drawings} empty="None" testId="job-drawings" /></dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Attachments</dt><dd className="break-words text-xs text-slate-600"><FileNames names={jobBoardFiles(job, filesByJob).attachments} empty="None" testId="job-attachments" /></dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Machine</dt><dd className="break-words">{machineCell(job, sheet)}</dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Operator</dt><dd className="break-words">{operatorCell(job)}</dd></div>
-                <div className="min-w-0"><dt className="label-mono field-caption">Stage</dt><dd className="break-words">{stageLabel(job.stage)}</dd></div>
-                <div className="min-w-0"><dt className="label-mono field-caption">Due</dt><dd className="break-words">{showDate(job.due_date) || DUE_LABEL.no_due_date}</dd></div>
-                <div className="min-w-0"><dt className="label-mono field-caption">Started</dt><dd className="break-words text-xs">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</dd></div>
-                <div className="min-w-0"><dt className="label-mono field-caption">Finished</dt><dd className="break-words text-xs">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</dd></div>
-                <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Inspection</dt><dd className="break-words text-xs">{job.finished_at ? inspectionNote(job) : "Not finished"}</dd></div>
+                {fieldOn("customer") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Customer</dt><dd className="flex flex-wrap items-center gap-2 break-words">{job.customer}{job.is_internal ? <InternalBadge /> : null}</dd></div> : null}
+                {fieldOn("description") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Description</dt><dd className="break-words text-slate-600">{boardDescription(job.description, job.specification)}</dd></div> : null}
+                {fieldOn("specification") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Specification</dt><dd className="break-words text-xs text-slate-600">{job.specification || "None recorded"}</dd></div> : null}
+                {fieldOn("drawings") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Drawings</dt><dd className="break-words text-xs text-brand"><FileNames names={jobBoardFiles(job, filesByJob).drawings} empty="None" testId="job-drawings" /></dd></div> : null}
+                {fieldOn("attachments") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Attachments</dt><dd className="break-words text-xs text-slate-600"><FileNames names={jobBoardFiles(job, filesByJob).attachments} empty="None" testId="job-attachments" /></dd></div> : null}
+                {fieldOn("stage") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Stage</dt><dd className="break-words">{stageLabel(job.stage)}</dd></div> : null}
+                {fieldOn("machine") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Machine</dt><dd className="break-words">{machineCell(job, sheet)}</dd></div> : null}
+                {fieldOn("operator") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Operator</dt><dd className="break-words">{operatorCell(job)}</dd></div> : null}
+                {fieldOn("due") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Due</dt><dd className="break-words">{showDate(job.due_date) || DUE_LABEL.no_due_date}</dd></div> : null}
+                {fieldOn("started") ? <div className="min-w-0"><dt className="label-mono field-caption">Started</dt><dd className="break-words text-xs">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</dd></div> : null}
+                {fieldOn("finished") ? <div className="min-w-0"><dt className="label-mono field-caption">Finished</dt><dd className="break-words text-xs">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</dd></div> : null}
+                {fieldOn("inspection") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Inspection</dt><dd className="break-words text-xs">{job.finished_at ? inspectionNote(job) : "Not finished"}</dd></div> : null}
                 {reworkNote(job) ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Rework</dt><dd className="break-words text-xs">{reworkNote(job)}</dd></div> : null}
               </dl>
               {relatedLinks(job)}
@@ -1353,7 +1361,7 @@ export default function JobsPage() {
       ...(live.byJob.get(job.id) ?? []).map((row) => ({ machine_id: row.machine_id, name: row.machine_name })),
     ]);
   }, [groupBy, visible, machinesByJob, live]);
-  const groupHeading = (title: string, count: number) => <span data-testid="machine-group" className="text-sm font-semibold text-ink">{title} <span className="font-normal text-slate-500">({count})</span></span>;
+  const groupHeading = (title: string, count: number) => <BoardHeading data-testid="machine-group">{title} <span className="font-normal text-muted-foreground">({count})</span></BoardHeading>;
 
   // The headline counts. Open = Not started + Running + Waiting for inspection (Complete is not open; an unfinished job is never
   // archived). Complete counts the Complete jobs not archived, as the Complete tab does. The due-date chips count Not started and
@@ -1382,6 +1390,125 @@ export default function JobsPage() {
   const tileCompact = "max-xl:px-4 max-xl:py-3";
   const tileValueCompact = "max-xl:mt-2 max-xl:text-2xl";
 
+  // Table and List cells keyed by the shared column list (lib/job-board-files), so a row renders exactly the headers shown:
+  // a column the picker hides goes from the header and every row together.
+  const tableCellsFor = (job: WorkshopJob): Record<string, React.ReactNode> => ({
+    ref: (
+      <TableCell className="font-mono font-semibold whitespace-normal"><span className="flex flex-wrap items-center gap-1">{job.job_no}{job.is_internal ? <InternalBadge /> : null}</span>{relatedLinks(job)}</TableCell>
+    ),
+    customer: (
+      <TableCell><span className="block truncate" title={job.customer}>{job.customer}</span></TableCell>
+    ),
+    description: (
+      <TableCell className="whitespace-normal"><span data-testid="job-description" className="block break-words">{boardDescription(job.description, job.specification)}</span></TableCell>
+    ),
+    specification: (
+      <TableCell className="whitespace-normal break-words text-xs text-slate-600 dark:text-slate-300">{job.specification || "None recorded"}</TableCell>
+    ),
+    drawings: (
+      <TableCell className="whitespace-normal break-words text-xs text-brand"><FileNames names={jobBoardFiles(job, filesByJob).drawings} empty="None" testId="job-drawings" /></TableCell>
+    ),
+    attachments: (
+      <TableCell className="whitespace-normal break-words text-xs text-slate-600 dark:text-slate-300"><FileNames names={jobBoardFiles(job, filesByJob).attachments} empty="None" testId="job-attachments" /></TableCell>
+    ),
+    stage: (
+      <TableCell className="min-w-0 whitespace-normal break-words">{stageLabel(job.stage)}</TableCell>
+    ),
+    machine: (
+      <TableCell className="whitespace-normal">{machineCell(job)}</TableCell>
+    ),
+    operator: (
+      <TableCell className="whitespace-normal">{operatorCell(job)}</TableCell>
+    ),
+    due: (
+      <TableCell className="min-w-0 whitespace-normal break-words"><span className="block"><CalendarDays className="mr-1 inline size-4" />{showDate(job.due_date) || DUE_LABEL.no_due_date}</span><JobStatusBadges job={job} progress={statusOf(job)} failedUndecided={failedUndecided(job)} paused={isPaused(job)} wrap /></TableCell>
+    ),
+    started: (
+      <TableCell className="min-w-0 whitespace-normal break-words">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</TableCell>
+    ),
+    finished: (
+      <TableCell className="min-w-0 whitespace-normal break-words">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</TableCell>
+    ),
+    inspection: (
+      <TableCell className="min-w-0 whitespace-normal break-words text-xs text-slate-600 dark:text-slate-300">{job.finished_at ? inspectionNote(job) : "Not finished"}
+        {reworkNote(job) ? <span className="mt-1 block">Rework: {reworkNote(job)}</span> : null}</TableCell>
+    ),
+    actions: (
+      <TableCell className="whitespace-normal"><div className="flex flex-wrap items-center gap-2">
+        {playButton(job)}
+        {finishCheck(job, actionContext).shown ? <Button size="sm" variant="finish" className={cn(primaryTouch, saving || !finishCheck(job, actionContext).enabled ? "opacity-50" : "")} aria-disabled={saving || !finishCheck(job, actionContext).enabled || undefined} title={finishCheck(job, actionContext).reason || "Finish"} onClick={() => (!finishCheck(job, actionContext).enabled ? toast.info(`${job.job_no}: ${finishCheck(job, actionContext).reason}`) : askFinish(job.id))}>{job.finished_at ? "Finished" : "Finish"}</Button> : null}
+                {isViewer || !inspectOffered || !job.finished_at || job.inspected_at || (inRework(job) && activeRole !== "admin") ? null : <Button size="sm" variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setInspectJob(job)}><ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" /> Inspected</Button>}
+                {reopenOf(job).allowed ? <Button size="sm" variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setReopenFor(job)}><RotateCcw className="size-4" /> Reopen</Button> : null}
+        {releaseButton(job)}
+        {hasRework(job) ? <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setReworkJob(job)}><Wrench className="size-4" /> Rework</Button> : null}
+        <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setWorksheetJob(job)}><ClipboardList className="size-4" /> Worksheet</Button>
+        {isViewer ? null : <Button size="sm" variant="outline" className={secondaryTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
+        <Button asChild size="sm" variant="outline" className={secondaryTouch}><Link href={`/jobs/${job.id}/print`}><Printer className="size-4" /> Print</Link></Button>
+        {canOfferJobDeliveryNote(activeRole, job) ? <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
+        {canSend ? <Button size="sm" className={cn("bg-brand text-brand-ink", secondaryTouch)} disabled={saving} onClick={() => openSend(job)}><Mail className="size-4" /> Send</Button> : null}
+        {archive.canManage && job.inspected_at ? <ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /> : null}
+      </div></TableCell>
+    ),
+  });
+  const listCellsFor = (job: WorkshopJob): Record<string, React.ReactNode> => ({
+    ref: (
+      <TableCell className="font-mono font-semibold whitespace-normal"><span data-testid="job-no-cell" className="flex min-w-0 flex-wrap items-center gap-x-1"><span className="min-w-0 [overflow-wrap:anywhere]" title={job.job_no}>{job.job_no}</span>{job.is_internal ? <InternalBadge /> : null}</span>{relatedLinks(job)}</TableCell>
+    ),
+    customer: (
+      <TableCell><span className="block truncate" title={job.customer}>{job.customer}</span></TableCell>
+    ),
+    description: (
+      <TableCell className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{boardDescription(job.description, job.specification)}</span></TableCell>
+    ),
+    specification: (
+      <TableCell className="whitespace-normal break-words text-xs text-slate-600 dark:text-slate-300">{job.specification || "None recorded"}</TableCell>
+    ),
+    drawings: (
+      <TableCell className="whitespace-normal break-words text-xs text-brand"><FileNames names={jobBoardFiles(job, filesByJob).drawings} empty="None" testId="job-drawings" /></TableCell>
+    ),
+    attachments: (
+      <TableCell className="whitespace-normal break-words text-xs text-slate-600 dark:text-slate-300"><FileNames names={jobBoardFiles(job, filesByJob).attachments} empty="None" testId="job-attachments" /></TableCell>
+    ),
+    stage: (
+      <TableCell className="whitespace-normal"><span className="block min-w-0 truncate break-words">{stageLabel(job.stage)}</span><span data-testid="job-progress" className="block min-w-0 [overflow-wrap:anywhere] text-xs text-slate-500 dark:text-slate-400">{statusOf(job)}</span></TableCell>
+    ),
+    machine: (
+      <TableCell className="whitespace-normal">{machineCell(job)}</TableCell>
+    ),
+    operator: (
+      <TableCell className="whitespace-normal">{operatorCell(job)}</TableCell>
+    ),
+    due: (
+      <TableCell data-testid="due-status-cell" className="whitespace-normal"><span className="flex min-w-0 flex-col items-start gap-0.5">{job.due_date ? <span className="block whitespace-nowrap font-medium">{showDate(job.due_date)}</span> : null}<JobStatusBadges job={job} failedUndecided={failedUndecided(job)} compact paused={isPaused(job)} /></span></TableCell>
+    ),
+    started: (
+      <TableCell className="min-w-0 whitespace-normal break-words">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</TableCell>
+    ),
+    finished: (
+      <TableCell className="min-w-0 whitespace-normal break-words">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</TableCell>
+    ),
+    inspection: (
+      <TableCell className="min-w-0 whitespace-normal break-words text-xs text-slate-600 dark:text-slate-300">{job.finished_at ? inspectionNote(job) : "Not finished"}
+        {reworkNote(job) ? <span className="mt-1 block">Rework: {reworkNote(job)}</span> : null}</TableCell>
+    ),
+    actions: (
+      <TableCell>
+        <div className="flex flex-wrap justify-end gap-1 pointer-coarse:gap-2">
+          {playButton(job)}
+          {finishCheck(job, actionContext).shown ? rowAction({ label: job.finished_at ? "Finished" : "Finish", variant: "finish", primary: true, title: job.finished_at ? `Finished ${fmtDateTime(job.finished_at)}` : finishCheck(job, actionContext).reason || "Finish", icon: <CheckCheck className="size-4" />, disabled: saving || !finishCheck(job, actionContext).enabled, onClick: () => askFinish(job.id) }) : null}
+          {isViewer || (!inspectOffered && !job.inspected_at) ? null : rowAction({ label: "Inspected", title: job.inspected_at ? `Inspected ${fmtDateTime(job.inspected_at)}${job.inspected_by ? ` by ${cleanName(job.inspected_by) ?? UNKNOWN}` : ""}` : inRework(job) ? (activeRole === "admin" ? "In rework: an admin can record a concession" : "In rework: finish the rework first") : job.finished_at ? "Record inspection" : "Finish the job first", icon: <ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" />, disabled: saving || !job.finished_at || Boolean(job.inspected_at) || (inRework(job) && activeRole !== "admin"), onClick: () => setInspectJob(job) })}
+          {reopenOf(job).allowed ? rowAction({ label: "Reopen", title: "Reopen: back to Running, with a reason", icon: <RotateCcw className="size-4" />, disabled: saving, onClick: () => setReopenFor(job) }) : null}
+          {hasRework(job) ? rowAction({ label: "Rework", title: inRework(job) ? "Rework: open the failed inspection's rework" : "Rework history", icon: <Wrench className="size-4" />, onClick: () => setReworkJob(job) }) : null}
+          {rowAction({ label: "Worksheet", title: "Worksheet", icon: <ClipboardList className="size-4" />, onClick: () => setWorksheetJob(job) })}
+          {isViewer ? null : rowAction({ label: "Machines", title: "Machines and hours", icon: <Cog className="size-4" />, onClick: () => setMachineJob(job) })}
+          <Button asChild size="sm" variant="outline" className={cn("w-8 px-0 pointer-coarse:w-auto pointer-coarse:px-3", secondaryTouch)} title="Print"><Link href={`/jobs/${job.id}/print`} aria-label="Print"><Printer className="size-4" /><span aria-hidden className="hidden pointer-coarse:inline">Print</span></Link></Button>
+          {canOfferJobDeliveryNote(activeRole, job) ? rowAction({ label: "Delivery note", title: "Make a delivery note from this job", icon: <Truck className="size-4" />, onClick: () => setDeliveryNoteJob(job) }) : null}
+          {canSend ? rowAction({ label: "Send", title: "Send to workshop", icon: <Mail className="size-4" />, variant: "default", className: "bg-brand text-brand-ink", disabled: saving, onClick: () => openSend(job) }) : null}
+        </div>
+      </TableCell>
+    ),
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1390,6 +1517,7 @@ export default function JobsPage() {
           <p className="mt-2 text-sm text-slate-500">Jobs are the work in the workshop. Follow each one from start to finish.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ColumnToggle tableKey="jobs" />
           <ViewSwitcher value={view} onChange={setView} buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
           {isViewer ? null : <Button className={cn("min-h-11 bg-brand text-brand-ink", secondaryTouch)} onClick={() => setNewJobOpen(true)}><Plus className="size-4" /> New job</Button>}
         </div>
@@ -1401,18 +1529,19 @@ export default function JobsPage() {
 
       {/* Below desktop width (tablets) the tiles are shorter and three to a row, so the list starts higher up the screen. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 xl:gap-4">
-        <StatTile label="Open jobs" value={stat(openCount)} tone="neutral" className={tileCompact} valueClassName={tileValueCompact} sub="Not started + Running + Waiting for inspection. Complete not counted." active={show === "active" && !statusTile} onClick={() => { setStatusTile(null); setShow("active"); }} />
+        <StatTile label="Open jobs" value={stat(openCount)} tone="neutral" className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub="Not started + Running + Waiting for inspection. Complete not counted." active={show === "active" && !statusTile} onClick={() => { setStatusTile(null); setShow("active"); }} />
         {([
           ["not_started", "neutral", "Open: no work started yet"],
           ["running", "info", "Open: started, not finished (rework included)"],
           ["waiting_for_inspection", "warn", "Open: finished, not yet passed"],
           ["complete", "good", "Passed inspection; not archived"],
         ] as const).map(([status, tone, sub]) => (
-          <StatTile key={status} label={JOB_STATUS_LABELS[status]} value={stat(statusCount(status))} tone={tone} className={tileCompact} valueClassName={tileValueCompact} sub={sub} active={statusTile === status} onClick={() => pickStatus(status)} />
+          <StatTile key={status} label={JOB_STATUS_LABELS[status]} value={stat(statusCount(status))} tone={tone} className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub={sub} active={statusTile === status} onClick={() => pickStatus(status)} />
         ))}
         <StatTile
           className={tileCompact}
           valueClassName={tileValueCompact}
+          labelClassName={BOARD_KPI_LABEL}
           label="Average job time"
           value={formatAverageJobTime(avgDays, timeUnit)}
           sub={<span className="flex flex-wrap items-center gap-1">Start to finish.{" "}
@@ -1422,37 +1551,33 @@ export default function JobsPage() {
         />
       </div>
 
-      {/* Show, Type and Group share one line when there is room (two on a tablet) instead of three rows. */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Show</span>
+      {/* Every filter row has the same fixed label column (components/board-heading), so the labels line up at every width. */}
+      <div className="space-y-3">
+      <BoardFilterRow label="Show">
           {([["active", `Open (${openCount})`], ["done", `Complete (${jobs.filter((job) => showOf(job) === "done").length})`], ["archived", `Archived (${jobs.filter((job) => showOf(job) === "archived").length})`], ["all", "All"]] as const).map(([value, text]) => (
             <Button key={value} size="sm" variant={show === value ? "default" : "outline"} aria-pressed={show === value} className={cn(show === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => { setStatusTile(null); setShow(value); }}>{text}</Button>
           ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Job type">
-          <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Type</span>
+      </BoardFilterRow>
+      <BoardFilterRow label="Type" groupLabel="Job type">
           {([["all", "All"], ["customer", "Customer"], ["internal", `Internal (${jobs.filter((job) => job.is_internal).length})`]] as const).map(([value, text]) => (
             <Button key={value} size="sm" variant={jobType === value ? "default" : "outline"} aria-pressed={jobType === value} className={cn(jobType === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => setJobType(value)}>{text}</Button>
           ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Group by">
-          <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Group</span>
+      </BoardFilterRow>
+      <BoardFilterRow label="Group" groupLabel="Group by">
           {([["none", "None"], ["machine", "Machine"]] as const).map(([value, text]) => (
             <Button key={value} size="sm" variant={groupBy === value ? "default" : "outline"} aria-pressed={groupBy === value} className={cn(groupBy === value ? "bg-brand text-brand-ink" : "", secondaryTouch)} onClick={() => setGroupBy(value)}>{text}</Button>
           ))}
-        </div>
-      </div>
+      </BoardFilterRow>
       {listFilter ? <ListFilterNotice label={JOB_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
-      <FilterBar label="Due (Not started and Running jobs)" activeValues={[...statusFilters]} options={[{ label: "All", value: "all" }, ...DUE_CHIPS.map((chip) => ({ label: `${chip.label} (${stat(dueCount(chip.value))})`, value: chip.value }))]} onChange={setStatusFilters} />
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Tag">
-        <span className="label-mono mr-2 min-w-14 text-muted-foreground">Tag</span>
+      <FilterBar variant="board" label="Due" groupLabel="Due (Not started and Running jobs)" note="Not started and Running jobs only" activeValues={[...statusFilters]} options={[{ label: "All", value: "all" }, ...DUE_CHIPS.map((chip) => ({ label: `${chip.label} (${stat(dueCount(chip.value))})`, value: chip.value }))]} onChange={setStatusFilters} />
+      <BoardFilterRow label="Tag">
         <button type="button" aria-pressed={reworkOnly} title="Running jobs put back after a failed inspection (or for replacements)" onClick={toggleRework}
           className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11", reworkOnly ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink")}>
           <span aria-hidden className={cn("size-2 rounded-full", COLOUR_CLASSES.purple.dot)} />{`Rework (${stat(reworkCount)})`}
         </button>
+      </BoardFilterRow>
+      <FilterBar variant="board" label="Stage" activeValues={[...stageFilters]} defaultActive={[]} options={JOB_STAGES.map((stage) => ({ label: STAGE_LABELS[stage], value: stage }))} onChange={setStageFilters} />
       </div>
-      <FilterBar label="Stage" activeValues={[...stageFilters]} defaultActive={[]} options={JOB_STAGES.map((stage) => ({ label: STAGE_LABELS[stage], value: stage }))} onChange={setStageFilters} />
 
       <ListToolbar
         visibleCount={visible.length}
@@ -1487,46 +1612,20 @@ export default function JobsPage() {
       {view === "table" ? (
       <Card className="hidden md:block">
         <CardContent className="p-0">
-          <Table className="table-fixed">
-            <TableHeader>
+          <Table className="table-fixed board-sticky">
+            <TableHeader className={BOARD_TABLE_HEADINGS}>
               <TableRow>
                 <TableHead className="w-10 pointer-coarse:w-14"><SelectBox boxClassName={boxTouch} aria-label={`Select all ${visible.length} filtered jobs`} checked={allFilteredSelected} onChange={(event) => setSelectedIds(event.target.checked ? visible.map((job) => job.id) : selectedIds.filter((id) => !visibleIds.has(id)))} /></TableHead>
-                {JOB_TABLE_COLUMNS.map((column) => <TableHead key={column.label} className={column.width}>{column.label}</TableHead>)}<TableHead className="w-96">Actions</TableHead>
+                {jobColumns.map((column) => <TableHead key={column.key} className={column.width}>{column.label}</TableHead>)}
               </TableRow>
             </TableHeader>
             <TableBody>
               {sections.flatMap((section) => [
-                ...(section.title ? [<TableRow key={`group-${section.key}`} className="bg-slate-100/80 dark:bg-white/5"><TableCell colSpan={JOB_TABLE_COLUMNS.length + 2}>{groupHeading(section.title, section.jobs.length)}</TableCell></TableRow>] : []),
+                ...(section.title ? [<TableRow key={`group-${section.key}`} data-group-row="" className="bg-slate-100/80 dark:bg-white/5"><TableCell colSpan={jobColumns.length + 1}>{groupHeading(section.title, section.jobs.length)}</TableCell></TableRow>] : []),
                 ...section.jobs.map((job) => (
                 <TableRow key={`${section.key}-${job.id}`} data-job-id={job.id} data-highlighted={highlightId === job.id ? "true" : undefined} className={highlight(job)}>
                   <TableCell><SelectBox boxClassName={boxTouch} aria-label={`Select ${job.job_no}`} checked={selectedSet.has(job.id)} onChange={() => toggleSelected(job.id)} /></TableCell>
-                  <TableCell className="font-mono font-semibold whitespace-normal"><span className="flex flex-wrap items-center gap-1">{job.job_no}{job.is_internal ? <InternalBadge /> : null}</span>{relatedLinks(job)}</TableCell>
-                  <TableCell><span className="block truncate" title={job.customer}>{job.customer}</span></TableCell>
-                  <TableCell className="whitespace-normal"><span data-testid="job-description" className="block break-words">{boardDescription(job.description, job.specification)}</span><span className="mt-1 block break-words text-xs text-slate-500 dark:text-slate-400">Specification: {job.specification || "None recorded"}</span></TableCell>
-                  <TableCell className="whitespace-normal text-xs text-brand"><FileNames names={jobBoardFiles(job, filesByJob).drawings} testId="job-drawings" />{jobBoardFiles(job, filesByJob).attachments.length ? <span className="block text-slate-600 dark:text-slate-300">Attachments: <FileNames names={jobBoardFiles(job, filesByJob).attachments} testId="job-attachments" /></span> : null}</TableCell>
-                  <TableCell className="min-w-0 whitespace-normal break-words">{stageLabel(job.stage)}</TableCell>
-                  <TableCell className="whitespace-normal">{machineCell(job)}</TableCell>
-                  <TableCell className="whitespace-normal">{operatorCell(job)}</TableCell>
-                  <TableCell className="min-w-0 whitespace-normal break-words"><CalendarDays className="mr-1 inline size-4" />{showDate(job.due_date) || DUE_LABEL.no_due_date}</TableCell>
-                  <TableCell className="min-w-0 whitespace-normal break-words">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</TableCell>
-                  <TableCell className="min-w-0 whitespace-normal break-words">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</TableCell>
-                  <TableCell className="whitespace-normal"><JobStatusBadges job={job} progress={statusOf(job)} failedUndecided={failedUndecided(job)} paused={isPaused(job)} wrap />
-                    <span className="mt-1 block text-xs font-normal text-slate-600 dark:text-slate-300">Inspection: {job.finished_at ? inspectionNote(job) : "Not finished"}</span>
-                    {reworkNote(job) ? <span className="mt-1 block text-xs font-normal text-slate-600 dark:text-slate-300">Rework: {reworkNote(job)}</span> : null}</TableCell>
-                  <TableCell className="whitespace-normal"><div className="flex flex-wrap items-center gap-2">
-                    {playButton(job)}
-                    {finishCheck(job, actionContext).shown ? <Button size="sm" variant="finish" className={cn(primaryTouch, saving || !finishCheck(job, actionContext).enabled ? "opacity-50" : "")} aria-disabled={saving || !finishCheck(job, actionContext).enabled || undefined} title={finishCheck(job, actionContext).reason || "Finish"} onClick={() => (!finishCheck(job, actionContext).enabled ? toast.info(`${job.job_no}: ${finishCheck(job, actionContext).reason}`) : askFinish(job.id))}>{job.finished_at ? "Finished" : "Finish"}</Button> : null}
-                {isViewer || !inspectOffered || !job.finished_at || job.inspected_at || (inRework(job) && activeRole !== "admin") ? null : <Button size="sm" variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setInspectJob(job)}><ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" /> Inspected</Button>}
-                {reopenOf(job).allowed ? <Button size="sm" variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setReopenFor(job)}><RotateCcw className="size-4" /> Reopen</Button> : null}
-                    {releaseButton(job)}
-                    {hasRework(job) ? <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setReworkJob(job)}><Wrench className="size-4" /> Rework</Button> : null}
-                    <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setWorksheetJob(job)}><ClipboardList className="size-4" /> Worksheet</Button>
-                    {isViewer ? null : <Button size="sm" variant="outline" className={secondaryTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
-                    <Button asChild size="sm" variant="outline" className={secondaryTouch}><Link href={`/jobs/${job.id}/print`}><Printer className="size-4" /> Print</Link></Button>
-                    {canOfferJobDeliveryNote(activeRole, job) ? <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
-                    {canSend ? <Button size="sm" className={cn("bg-brand text-brand-ink", secondaryTouch)} disabled={saving} onClick={() => openSend(job)}><Mail className="size-4" /> Send</Button> : null}
-                    {archive.canManage && job.inspected_at ? <ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /> : null}
-                  </div></TableCell>
+                  {((cells) => jobColumns.map((column) => <Fragment key={column.key}>{cells[column.key]}</Fragment>))(tableCellsFor(job))}
                 </TableRow>
                 )),
               ])}
@@ -1539,72 +1638,37 @@ export default function JobsPage() {
       {view === "list" ? (
         <Card className="hidden md:block">
           <CardContent className="p-0">
-            {/* Compact view: one line per job, fits the screen width (no sideways scroll); details on expand. */}
-            <Table className="table-fixed" aria-label="Jobs">
-              <TableHeader>
+            {/* Compact rows; the same columns as the Table (the card scrolls sideways when they do not fit); progress, release and archive on expand. */}
+            <Table className="table-fixed board-sticky-list" aria-label="Jobs">
+              <TableHeader className={BOARD_TABLE_HEADINGS}>
                 <TableRow>
                   <TableHead className="w-9 pointer-coarse:w-14"><SelectBox boxClassName={boxTouch} aria-label={`Select all ${visible.length} filtered jobs`} checked={allFilteredSelected} onChange={(event) => setSelectedIds(event.target.checked ? visible.map((job) => job.id) : selectedIds.filter((id) => !visibleIds.has(id)))} /></TableHead>
                   <TableHead className="w-8 pointer-coarse:w-14"><span className="sr-only">Details</span></TableHead>
-                  <TableHead className="w-32">Job No</TableHead>
-                  <TableHead>Customer</TableHead>
-                  {/* Drawings (approved, Rhys Wed 21 Oct): the same names as the table and the cards; attachments under them, as the table has it. */}
-                  <TableHead>Drawings</TableHead>
-                  {/* The Machine and Operator columns (049) take the room: the description is in the details below 2xl. */}
-                  <TableHead className="hidden 2xl:table-cell">Description</TableHead>
-                  <TableHead className="w-24">Stage</TableHead>
-                  <TableHead className="w-36">Machine</TableHead>
-                  <TableHead className="w-24">Operator</TableHead>
-                  <TableHead className="w-36">Due / status</TableHead>
-                  <TableHead className={isViewer ? "w-24 pointer-coarse:w-28" : "w-40 pointer-coarse:w-[22rem] max-lg:w-[22rem]"}><span className="sr-only">Actions</span></TableHead>
+                  {/* The same fields in the same order as the Table and the Cards (columns parity), from the one shared list. */}
+                  {jobColumns.map((column) => column.key === "actions"
+                    ? <TableHead key={column.key} className={isViewer ? "w-24 pointer-coarse:w-28" : "w-40 pointer-coarse:w-[22rem] max-lg:w-[22rem]"}><span className="sr-only">Actions</span></TableHead>
+                    : <TableHead key={column.key} className={column.listWidth}>{column.label}</TableHead>)}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sections.flatMap((section) => [
-                  ...(section.title ? [<TableRow key={`group-${section.key}`} className="bg-slate-100/80 dark:bg-white/5"><TableCell colSpan={11}>{groupHeading(section.title, section.jobs.length)}</TableCell></TableRow>] : []),
+                  ...(section.title ? [<TableRow key={`group-${section.key}`} data-group-row="" className="bg-slate-100/80 dark:bg-white/5"><TableCell colSpan={jobColumns.length + 2}>{groupHeading(section.title, section.jobs.length)}</TableCell></TableRow>] : []),
                   ...section.jobs.map((job) => {
                   const open = expandedIds.includes(job.id);
+                  const listCells = listCellsFor(job);
                   return (
                     <Fragment key={`${section.key}-${job.id}`}>
                       <TableRow data-job-id={job.id} data-highlighted={highlightId === job.id ? "true" : undefined} className={highlight(job)}>
                         <TableCell><SelectBox boxClassName={boxTouch} aria-label={`Select ${job.job_no}`} checked={selectedSet.has(job.id)} onChange={() => toggleSelected(job.id)} /></TableCell>
                         <TableCell className="px-0"><Button size="icon-sm" variant="ghost" className={workshop ? "pointer-coarse:size-12" : undefined} aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} details for ${job.job_no}`} onClick={() => setExpandedIds((current) => (open ? current.filter((id) => id !== job.id) : [...current, job.id]))}><ChevronRight className={`size-4 transition-transform ${open ? "rotate-90" : ""}`} /></Button></TableCell>
-                        <TableCell className="font-mono font-semibold whitespace-normal"><span data-testid="job-no-cell" className="flex min-w-0 flex-wrap items-center gap-x-1"><span className="min-w-0 [overflow-wrap:anywhere]" title={job.job_no}>{job.job_no}</span>{job.is_internal ? <InternalBadge /> : null}</span>{relatedLinks(job)}</TableCell>
-                        <TableCell><span className="block truncate" title={job.customer}>{job.customer}</span></TableCell>
-                        <TableCell className="text-xs text-brand"><span className="block truncate" title={jobBoardFiles(job, filesByJob).drawings.join(", ") || "None"}><FileNames names={jobBoardFiles(job, filesByJob).drawings} empty="None" testId="job-drawings" /></span>{jobBoardFiles(job, filesByJob).attachments.length ? <span className="block truncate text-slate-600 dark:text-slate-300" title={jobBoardFiles(job, filesByJob).attachments.join(", ")}>Attachments: <FileNames names={jobBoardFiles(job, filesByJob).attachments} testId="job-attachments" /></span> : null}</TableCell>
-                        <TableCell className="hidden 2xl:table-cell"><span className="block truncate text-slate-600 dark:text-slate-300" title={boardDescription(job.description, job.specification)}>{boardDescription(job.description, job.specification)}</span></TableCell>
-                        <TableCell className="whitespace-normal"><span className="block min-w-0 truncate break-words">{stageLabel(job.stage)}</span><span data-testid="job-progress" className="block min-w-0 [overflow-wrap:anywhere] text-xs text-slate-500 dark:text-slate-400">{statusOf(job)}</span></TableCell>
-                        <TableCell className="whitespace-normal">{machineCell(job)}</TableCell>
-                        <TableCell className="whitespace-normal">{operatorCell(job)}</TableCell>
-                        <TableCell data-testid="due-status-cell" className="whitespace-normal"><span className="flex min-w-0 flex-col items-start gap-0.5">{job.due_date ? <span className="block whitespace-nowrap font-medium">{showDate(job.due_date)}</span> : null}<JobStatusBadges job={job} failedUndecided={failedUndecided(job)} compact paused={isPaused(job)} /></span></TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap justify-end gap-1 pointer-coarse:gap-2">
-                            {playButton(job)}
-                            {finishCheck(job, actionContext).shown ? rowAction({ label: job.finished_at ? "Finished" : "Finish", variant: "finish", primary: true, title: job.finished_at ? `Finished ${fmtDateTime(job.finished_at)}` : finishCheck(job, actionContext).reason || "Finish", icon: <CheckCheck className="size-4" />, disabled: saving || !finishCheck(job, actionContext).enabled, onClick: () => askFinish(job.id) }) : null}
-                            {isViewer || (!inspectOffered && !job.inspected_at) ? null : rowAction({ label: "Inspected", title: job.inspected_at ? `Inspected ${fmtDateTime(job.inspected_at)}${job.inspected_by ? ` by ${cleanName(job.inspected_by) ?? UNKNOWN}` : ""}` : inRework(job) ? (activeRole === "admin" ? "In rework: an admin can record a concession" : "In rework: finish the rework first") : job.finished_at ? "Record inspection" : "Finish the job first", icon: <ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" />, disabled: saving || !job.finished_at || Boolean(job.inspected_at) || (inRework(job) && activeRole !== "admin"), onClick: () => setInspectJob(job) })}
-                            {reopenOf(job).allowed ? rowAction({ label: "Reopen", title: "Reopen: back to Running, with a reason", icon: <RotateCcw className="size-4" />, disabled: saving, onClick: () => setReopenFor(job) }) : null}
-                            {hasRework(job) ? rowAction({ label: "Rework", title: inRework(job) ? "Rework: open the failed inspection's rework" : "Rework history", icon: <Wrench className="size-4" />, onClick: () => setReworkJob(job) }) : null}
-                            {rowAction({ label: "Worksheet", title: "Worksheet", icon: <ClipboardList className="size-4" />, onClick: () => setWorksheetJob(job) })}
-                            {isViewer ? null : rowAction({ label: "Machines", title: "Machines and hours", icon: <Cog className="size-4" />, onClick: () => setMachineJob(job) })}
-                            <Button asChild size="sm" variant="outline" className={cn("w-8 px-0 pointer-coarse:w-auto pointer-coarse:px-3", secondaryTouch)} title="Print"><Link href={`/jobs/${job.id}/print`} aria-label="Print"><Printer className="size-4" /><span aria-hidden className="hidden pointer-coarse:inline">Print</span></Link></Button>
-                            {canOfferJobDeliveryNote(activeRole, job) ? rowAction({ label: "Delivery note", title: "Make a delivery note from this job", icon: <Truck className="size-4" />, onClick: () => setDeliveryNoteJob(job) }) : null}
-                            {canSend ? rowAction({ label: "Send", title: "Send to workshop", icon: <Mail className="size-4" />, variant: "default", className: "bg-brand text-brand-ink", disabled: saving, onClick: () => openSend(job) }) : null}
-                          </div>
-                        </TableCell>
+                        {jobColumns.map((column) => <Fragment key={column.key}>{listCells[column.key]}</Fragment>)}
                       </TableRow>
                       {open ? (
                         <TableRow className="bg-slate-50/70 dark:bg-white/5">
                           <TableCell />
-                          <TableCell colSpan={10} className="whitespace-normal text-xs text-slate-600 dark:text-slate-300">
+                          <TableCell colSpan={jobColumns.length + 1} className="whitespace-normal text-xs text-slate-600 dark:text-slate-300">
                             <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-                              <div className="2xl:hidden"><dt className="field-label inline">Description: </dt><dd className="inline">{boardDescription(job.description, job.specification) || "None"}</dd></div>
-                              <div><dt className="field-label inline">Specification: </dt><dd className="inline">{job.specification || "None recorded"}</dd></div>
-                              <div><dt className="field-label inline">Drawings: </dt><dd className="inline"><FileNames names={jobBoardFiles(job, filesByJob).drawings} empty="None" testId="job-drawings" /></dd></div>
-                              <div><dt className="field-label inline">Attachments: </dt><dd className="inline"><FileNames names={jobBoardFiles(job, filesByJob).attachments} empty="None" testId="job-attachments" /></dd></div>
-                              <div><dt className="field-label inline">Started: </dt><dd className="inline">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</dd></div>
-                              <div><dt className="field-label inline">Finished: </dt><dd className="inline">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</dd></div>
                               <div><dt className="field-label inline">Progress: </dt><dd className="inline">{statusOf(job)}</dd></div>
-                              <div><dt className="field-label inline">Inspection: </dt><dd className="inline">{job.finished_at ? inspectionNote(job) : "Not finished"}</dd></div>
-                              {reworkNote(job) ? <div><dt className="field-label inline">Rework: </dt><dd className="inline">{reworkNote(job)}</dd></div> : null}
                               {releaseOffered(job) ? <div>{releaseButton(job)}</div> : null}
                               {archive.canManage && job.inspected_at ? <div><ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /></div> : null}
                             </dl>

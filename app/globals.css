@@ -220,6 +220,68 @@
   }
 }
 
+/*
+ * Job Board headings: ONE style for every heading on the board (KPI tile labels, filter labels, List / Table column headers,
+ * group-by headings): the same mono uppercase bold caption as .field-label (Rhys, 15 Oct). The box geometry is pinned here too,
+ * so headings line up at every width (tests/e2e/job-board-headings.spec.ts):
+ *  - a KPI label row is always two lines tall, so a one-line label ("Open jobs") and a two-line one ("Waiting for inspection")
+ *    put their numbers on the same line;
+ *  - a filter row is a grid with a fixed label column, so Show / Type / Group / Due / Tag / Stage start and end at the same x;
+ *  - a column header is the same caption, one line, in one header row that scrolls with the body (one scroll container).
+ * Unlayered on purpose: beats the utility classes the shared Table / StatTile parts carry.
+ */
+.board-heading,
+.board-headings th {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--foreground);
+}
+.board-kpi-label {
+  min-height: 2rem;
+  align-items: flex-start;
+}
+.board-kpi-label > span:first-child { margin-top: 0.3125rem; flex-shrink: 0; }
+.board-filter-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+  align-items: start;
+}
+.board-filter-label {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
+  overflow-wrap: anywhere;
+}
+@media (pointer: coarse) {
+  .board-filter-label { min-height: 2.75rem; }
+}
+/* Wide tables scroll sideways inside their own container (header and body together); the select box and Job No (and, in List,
+   the details toggle between them) stay put, so a row's identity is always in view. Offsets follow the fixed widths of the
+   columns before Job No (Table: w-10 / touch w-14; List: w-9 + w-8 / touch w-14 + w-14). */
+.board-sticky tr:not([data-group-row]) > :nth-child(-n + 2),
+.board-sticky-list tr:not([data-group-row]) > :nth-child(-n + 3) {
+  position: sticky;
+  z-index: 1;
+  background-color: var(--surface);
+}
+.board-sticky tr:not([data-group-row]) > :nth-child(1),
+.board-sticky-list tr:not([data-group-row]) > :nth-child(1) { left: 0; }
+.board-sticky tr:not([data-group-row]) > :nth-child(2) { left: 2.5rem; box-shadow: inset -1px 0 0 var(--line); }
+.board-sticky-list tr:not([data-group-row]) > :nth-child(2) { left: 2.25rem; }
+.board-sticky-list tr:not([data-group-row]) > :nth-child(3) { left: 4.25rem; box-shadow: inset -1px 0 0 var(--line); }
+.board-sticky tr[data-highlighted] > *,
+.board-sticky-list tr[data-highlighted] > * { background-color: inherit; }
+@media (pointer: coarse) {
+  .board-sticky tr:not([data-group-row]) > :nth-child(2) { left: 3.5rem; }
+  .board-sticky-list tr:not([data-group-row]) > :nth-child(2) { left: 3.5rem; }
+  .board-sticky-list tr:not([data-group-row]) > :nth-child(3) { left: 7rem; }
+}
+
 /* Unlayered on purpose (beats utility classes): the app uses borders, not shadows, to separate surfaces. */
 [data-slot="card"] {
   box-shadow: none;

@@ -19,7 +19,7 @@ export const DOT: Record<StatTone, string> = {
  * One headline number: mono label, large figure, one line of context. Colour is a small dot, not a tinted card,
  * so a page of stats stays calm and the numbers carry the weight.
  */
-export function StatTile({ label, value, sub, tone = "neutral", href, onClick, active, className, valueClassName }: {
+export function StatTile({ label, value, sub, tone = "neutral", href, onClick, active, className, valueClassName, labelClassName }: {
   label: string;
   value: React.ReactNode;
   sub?: React.ReactNode;
@@ -30,14 +30,16 @@ export function StatTile({ label, value, sub, tone = "neutral", href, onClick, a
   active?: boolean;
   className?: string;
   valueClassName?: string;
+  /** Extra classes for the label row (the Job Board passes BOARD_KPI_LABEL: a fixed two-line label row). */
+  labelClassName?: string;
 }) {
   const body = (
     <div className={cn("group h-full rounded-xl border border-line bg-surface px-5 py-5 text-left transition-colors", (href || onClick) && "hover:border-ink/20", active && "border-brand-accent/50 ring-1 ring-brand-accent/30", className)}>
-      <p className="label-mono field-label flex items-center gap-2">
+      <p data-kpi-label="" className={cn("label-mono field-label flex items-center gap-2", labelClassName)}>
         <span className={cn("size-1.5 rounded-full", DOT[tone])} aria-hidden />
         {label}
       </p>
-      <p className={cn("mt-4 text-[2rem] font-semibold leading-none tracking-tight tabular-nums text-ink", valueClassName)}>{value}</p>
+      <p data-kpi-value="" className={cn("mt-4 text-[2rem] font-semibold leading-none tracking-tight tabular-nums text-ink", valueClassName)}>{value}</p>
       {sub ? <p className="mt-2 text-sm text-muted-foreground">{sub}</p> : null}
     </div>
   );
