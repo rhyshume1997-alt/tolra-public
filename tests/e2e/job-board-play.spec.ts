@@ -97,7 +97,18 @@ test("workshop: Mill and Lathe ticked, Play, amber Pause frees both, Resume; all
   // Another job planned only on the mill: nothing free, so Play says "Pick a machine" and opens the picker.
   await expect(playControl(busy, J.busy)).toContainText("Pick a machine");
   await expect(playControl(busy, J.busy)).toHaveAttribute("aria-disabled", "true");
-  await playControl(busy, J.busy).click({ force: true });
+  // Play is aria-disabled here, so the click needs force, which also skips Playwright's "receives events" check: a force click whose
+  // centre sits under the "J-JBMULTI started" toast (top right, 8 s) lands on the toast and opens nothing. Put that one check back: the
+  // tap must hit Play itself. Then prove play() took the open-the-picker branch (its toast), not the "Wait for the last change" guard.
+  const pickPlay = playControl(busy, J.busy);
+  await pickPlay.scrollIntoViewIfNeeded();
+  await expect.poll(() => pickPlay.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    return hit ? (el.contains(hit) ? "play" : `covered by ${hit.closest("[data-sonner-toast]") ? "a toast" : `${hit.tagName.toLowerCase()} ${(hit.textContent ?? "").trim().slice(0, 60)}`}`) : "off screen";
+  }), { message: `nothing covers ${J.busy}'s Play before the forced tap`, timeout: 20_000 }).toBe("play");
+  await pickPlay.click({ force: true });
+  await expect(page.getByText(`${J.busy}: pick a machine, or No machine (bench), then press Play.`)).toBeVisible();
   const picker = page.locator('[data-testid="machine-picker"]:visible');
   await expect(picker.getByTestId("picker-machine").filter({ hasText: millName }).getByTestId("picker-in-use")).toContainText(`In use: ${J.multi}, Dave Operator`);
   await expect(picker.getByLabel(`Start on ${millName}`)).toBeDisabled();
