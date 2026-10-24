@@ -270,7 +270,9 @@ test.describe("Job Board columns count", () => {
         for (const kept of LOCKED) expect(texts).toContain(kept);
         expect(texts[0]).toBe("Job No");
         expect(texts[texts.length - 1]).toBe("Actions");
-        expect(await expectCountsEqual(page, `${view} subset`)).toBe(expected.length + 1);
+        // Cells before the columns: Table has the select box; List has the select box and the Details chevron (app/(dashboard)/jobs/page.tsx).
+        const leading = view === "List" ? 2 : 1;
+        expect(await expectCountsEqual(page, `${view} subset`), `${view}: ${leading} leading cell(s) + ${expected.length} columns`).toBe(expected.length + leading);
         await expectNoSidewaysPage(page, `${view} subset`);
       } finally {
         await resetColumns(page);
