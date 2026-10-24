@@ -362,6 +362,10 @@ test.describe("Job Board columns count", () => {
       await expectNoSidewaysPage(page, `table@${width} before scrolling`);
       // The table's own scroll container: the nearest ancestor that scrolls sideways.
       const table = page.locator("table:visible").first();
+      // The header row sits below the 900 px fold on this page (KPI tiles and filters above it; CI run 40110723223: every check inside
+      // the container passed and only the viewport check failed, ratio 0). The test is about the sideways scroll, so bring the header
+      // row into the vertical viewport first (down the page, before the container is scrolled sideways), then measure.
+      await table.locator("thead").first().scrollIntoViewIfNeeded();
       const result = await table.evaluate(async (el) => {
         const box = el.closest<HTMLElement>('[data-slot="table-container"]');
         if (!box || !/(auto|scroll)/.test(getComputedStyle(box).overflowX)) return null;
@@ -372,6 +376,7 @@ test.describe("Job Board columns count", () => {
         const last = heads[heads.length - 1];
         const lastRect = last.getBoundingClientRect();
         const bounds = box.getBoundingClientRect();
+        const round = (rect: DOMRect) => ({ left: Math.round(rect.left), top: Math.round(rect.top), right: Math.round(rect.right), bottom: Math.round(rect.bottom) });
         // Select box and Job No stay put while the rest scrolls (sticky, left offsets 0 and the select column's width).
         const all = Array.from(el.querySelectorAll<HTMLElement>("thead th"));
         const sticky = all.slice(0, 2).map((th) => ({ position: getComputedStyle(th).position, left: Math.round(th.getBoundingClientRect().left - bounds.left), width: Math.round(all[0].getBoundingClientRect().width) }));
@@ -385,6 +390,8 @@ test.describe("Job Board columns count", () => {
           lastTop: lastRect.top,
           lastInside: lastRect.left >= bounds.left - 1 && lastRect.right <= bounds.right + 1,
           pageScrolls: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+          // For the viewport check below: where the Actions header and the container are on screen, and the window size.
+          where: { actions: round(lastRect), container: round(bounds), viewport: { width: window.innerWidth, height: window.innerHeight } },
         };
       });
       expect(result, `table@${width}: the table sits in a sideways scroll container`).not.toBeNull();
@@ -399,7 +406,8 @@ test.describe("Job Board columns count", () => {
       expect(Math.abs(result!.sticky[1].left - result!.sticky[0].width), `table@${width}: Job No sits right after the select column`).toBeLessThanOrEqual(1);
       expect(result!.jobNoText).toBe("Job No");
       expect(result!.jobNoInView, `table@${width}: Job No is still in view at the right end`).toBe(true);
-      await expect(page.getByRole("columnheader", { name: "Actions", exact: true })).toBeInViewport();
+      // Really on screen for the user, not only inside the container (the message carries the rects if it is not).
+      await expect(page.getByRole("columnheader", { name: "Actions", exact: true }), `table@${width}: the Actions header on screen; ${JSON.stringify(result!.where)}`).toBeInViewport();
     });
   }
 });
