@@ -9,7 +9,7 @@
  *
  * Widths: tables exist at 1280 and 1523 px. Phones (< 768) always show Cards and from 768 to 1024 px a chosen Table is shown as Cards,
  * so at 390 and 768 the Table case asserts that fallback (and the Cards labels) instead. The view is chosen at 1280 px, then the window
- * is resized. Every test that changes the picker puts it back (Reset to default) in a finally.
+ * is resized. Every test that changes the picker puts it back (Reset to default, clicked only when something is hidden) in a finally.
  */
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
@@ -107,11 +107,21 @@ async function tick(page: Page, label: string, on: boolean) {
   await expect(item).toHaveAttribute("aria-checked", String(on));
 }
 
+/**
+ * Back to the default (everything ticked). Reset to default is disabled while nothing is hidden (components/column-toggle.tsx
+ * `disabled={!hidden.length}`), so it is clicked only when an item is unticked; otherwise the test asserts it is disabled. Either way
+ * every item ends ticked and Reset ends disabled (CI run 40098816693: an unconditional click timed out on the disabled item).
+ */
 async function resetColumns(page: Page) {
   const menu = await openMenu(page);
-  await SEL.reset(menu).click();
-  await expect(SEL.items(menu).first()).toBeVisible();
+  await expect(SEL.items(menu)).toHaveCount(ALL.length);
+  const states = await SEL.items(menu).evaluateAll((items) => items.map((item) => item.getAttribute("aria-checked")));
+  if (states.some((state) => state !== "true")) {
+    await expect(SEL.reset(menu)).toBeEnabled();
+    await SEL.reset(menu).click();
+  }
   for (const label of ALL) await expect(SEL.item(menu, label)).toHaveAttribute("aria-checked", "true");
+  await expect(SEL.reset(menu), "Reset to default is disabled once nothing is hidden").toBeDisabled();
   await closeMenu(page);
 }
 
