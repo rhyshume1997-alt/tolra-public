@@ -374,7 +374,7 @@ test.describe("Add machine with nothing to add", () => {
     retired = ((await admin.from("machines").select("id").eq("organization_id", beta).eq("active", true)).data ?? []).map((m) => m.id as string);
     if (retired.length) await admin.from("machines").update({ active: false }).in("id", retired);
     betaMill = (await admin.from("machines").insert({ organization_id: beta, name: betaMillName, active: true }).select("id").single()).data!.id as string;
-    betaJob = (await admin.from("jobs").insert({ organization_id: beta, job_no: betaJobNo, customer: "Only Co", description: "Only machine" }).select("id").single()).data!.id as string;
+    betaJob = (await admin.from("jobs").insert({ organization_id: beta, job_no: betaJobNo, customer: "Only Co", description: "Only one" }).select("id").single()).data!.id as string;
     const workshop = await signedInClient(w.tenants.beta.users.workshop);
     expect((await workshop.rpc("start_machine_run", { p_job: betaJob, p_machines: [betaMill], p_client_op_id: null, p_started_at: null, p_override: false, p_reason: null })).error).toBeNull();
   });
@@ -382,9 +382,17 @@ test.describe("Add machine with nothing to add", () => {
   test.afterAll(async () => {
     const office = await signedInClient(w.tenants.beta.users.office);
     await office.rpc("pause_machine_run", { p_job: betaJob, p_machines: null, p_client_op_id: null, p_ended_at: null });
+    // Put beta back as it was, checking each step, so a leak fails here and not in a later beta spec (layout's "example machines",
+    // walkthrough's booking dialog: CI run 40133694045). The runs go first: machine_runs.machine_id is ON DELETE RESTRICT (044), and
+    // the job's other rows (job_machines, paused-ack ops, labour) cascade with the job.
     const admin = adminClient();
-    await admin.from("machines").update({ active: false }).eq("id", betaMill);
-    if (retired.length) await admin.from("machines").update({ active: true }).in("id", retired);
+    expect((await admin.from("machine_runs").delete().eq("job_id", betaJob)).error).toBeNull();
+    expect((await admin.from("jobs").delete().eq("id", betaJob).select("id")).data).toHaveLength(1);
+    expect((await admin.from("machines").delete().eq("id", betaMill).select("id")).data).toHaveLength(1);
+    if (retired.length) expect((await admin.from("machines").update({ active: true }).in("id", retired)).error).toBeNull();
+    const left = await admin.from("machines").select("id").eq("organization_id", w.tenants.beta.id).eq("active", true);
+    expect(left.error).toBeNull();
+    expect(left.data!.map((m) => m.id as string).sort()).toEqual([...retired].sort());
   });
 
   const reason = () => `${betaMillName} is the only machine, and this job is already on it.`;
