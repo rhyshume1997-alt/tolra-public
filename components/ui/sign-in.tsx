@@ -18,7 +18,7 @@ type SignInProps = {
   messageType?: "error" | "success";
   loading?: boolean;
   resetLoading?: boolean;
-  /** The organisation's sign-in branding (from /api/branding), or null for the neutral product page. */
+  /** The organisation's sign-in branding (rendered by the server: app/login/page.tsx), or null for the neutral product page. */
   branding?: LoginBranding | null;
 };
 
@@ -43,7 +43,10 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  // A logo that fails to load falls back to the monogram (the company name stays on the page either way).
+  const [logoFailed, setLogoFailed] = useState(false);
   const brand = branding ?? null;
+  const logo = logoFailed ? null : brand?.logo ?? null;
   const name = brand?.name ?? PRODUCT_BRANDING.name;
   const tagline = brand?.tagline || PRODUCT_BRANDING.tagline;
   const primary = brand?.primary ?? PRODUCT_BRANDING.primary;
@@ -51,9 +54,9 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
   const onPrimary = textOn(primary);
   const theme = { "--brand": primary, "--brand-accent": accent, "--brand-text": onPrimary } as React.CSSProperties;
 
-  const logoMark = (size: "lg" | "sm") => brand?.logo ? (
+  const logoMark = (size: "lg" | "sm") => logo ? (
     <div className={size === "lg" ? "rounded-2xl bg-white p-4 shadow-2xl shadow-black/20 ring-1 ring-white/40" : "rounded-xl bg-white p-2 shadow-md ring-1 ring-slate-200"}>
-      <Image src={brand.logo} alt={`${name} logo`} width={size === "lg" ? 160 : 72} height={size === "lg" ? 160 : 72} unoptimized
+      <Image src={logo} alt={`${name} logo`} width={size === "lg" ? 160 : 72} height={size === "lg" ? 160 : 72} unoptimized priority onError={() => setLogoFailed(true)}
         className={size === "lg" ? "h-28 w-auto object-contain" : "h-12 w-auto object-contain"} />
     </div>
   ) : brand ? (
@@ -78,11 +81,11 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
         <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
           <div className="qf-rise flex items-center gap-5">
             {logoMark("lg")}
-            {!brand?.logo ? <p className="text-4xl font-black tracking-tight">{name}</p> : null}
+            {!logo ? <p className="text-4xl font-black tracking-tight">{name}</p> : null}
           </div>
 
           <div className="qf-rise max-w-xl" style={{ animationDelay: "120ms" }}>
-            {brand?.logo ? <p className="text-sm font-semibold uppercase tracking-[0.25em] opacity-70">{name}</p> : null}
+            {logo ? <p className="text-sm font-semibold uppercase tracking-[0.25em] opacity-70">{name}</p> : null}
             <h2 className="mt-3 text-4xl font-bold leading-tight tracking-tight xl:text-5xl">{tagline}</h2>
             <div className="mt-10 grid gap-3">
               {FEATURES.map(({ icon: Icon, title, detail }, index) => (
