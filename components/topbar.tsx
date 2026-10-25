@@ -14,7 +14,7 @@ import { useCanOpen } from "@/lib/use-destinations";
 import { useUser } from "@/lib/use-user";
 import { useIsWide } from "@/lib/view-mode";
 import { isCompanyPending } from "@/lib/brand-pending";
-import { useCompanyProfile } from "@/lib/company";
+import { useShellCompany } from "@/lib/company";
 import { PRODUCT } from "@/lib/product";
 
 const pageTitles: Record<string, string> = {
@@ -55,7 +55,7 @@ export function Topbar() {
   const canOpen = useCanOpen();
   // The bell opens the approval queue: shown only when that page opens for this person in this view.
   const canSeeApprovals = canOpen("/approval");
-  const { profile: company, loading: companyLoading } = useCompanyProfile();
+  const { profile: company, loading: companyLoading } = useShellCompany();
   // A page without its own title shows the company, never the product name in its place; a placeholder bar until the company is known.
   const pending = !pageTitles[pathname] && isCompanyPending(company, companyLoading);
   const title = pageTitles[pathname] ?? company?.name ?? PRODUCT.name;

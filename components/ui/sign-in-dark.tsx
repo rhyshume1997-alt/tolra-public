@@ -36,7 +36,10 @@ export function DarkSignIn({ branding, onSubmit, onResetPassword, error, canRetr
   const [identifier, setIdentifier] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const { name, primary, accent, logo } = branding;
+  // A logo that fails to load is left out (the company name is beside it).
+  const [logoFailed, setLogoFailed] = useState(false);
+  const { name, primary, accent } = branding;
+  const logo = logoFailed ? null : branding.logo;
   const statement = statementLines(branding.tagline || `${name}.`);
   const theme = {
     "--page": primary,
@@ -60,7 +63,7 @@ export function DarkSignIn({ branding, onSubmit, onResetPassword, error, canRetr
           <div className="flex min-w-0 items-center gap-3">
             {logo ? (
               <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white p-1.5">
-                <Image src={logo} alt={`${name} logo`} width={44} height={44} unoptimized className="max-h-full w-auto object-contain" />
+                <Image src={logo} alt={`${name} logo`} width={44} height={44} unoptimized priority onError={() => setLogoFailed(true)} className="max-h-full w-auto object-contain" />
               </div>
             ) : null}
             <span className="truncate text-[0.95rem] font-semibold tracking-tight">{name}</span>

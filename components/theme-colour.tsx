@@ -4,7 +4,7 @@ import { useLayoutEffect } from "react";
 
 import { PRODUCT_BRANDING } from "@/lib/branding";
 import { shellColours } from "@/lib/brand-pending";
-import { useCompanyProfile } from "@/lib/company";
+import { useShellCompany } from "@/lib/company";
 
 const VARS = ["--brand", "--brand-accent", "--brand-ink"] as const;
 
@@ -15,7 +15,7 @@ const VARS = ["--brand", "--brand-accent", "--brand-ink"] as const;
  * never shown first.
  */
 export function ThemeColour() {
-  const { profile, loading } = useCompanyProfile();
+  const { profile, loading } = useShellCompany();
   const { primary, accent, ink } = shellColours(profile, loading);
   useLayoutEffect(() => {
     const root = document.documentElement.style;

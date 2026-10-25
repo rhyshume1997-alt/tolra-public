@@ -6,6 +6,35 @@
 
 import { PRODUCT } from "@/lib/product";
 
+/**
+ * Browser storage key of the last branded sign-in link, from before the brand cookie (app/api/branding/remember). The sign-in page
+ * still reads it on a device with no cookie yet; the app removes it once the cookie has been set.
+ */
+export const LAST_ORG_KEY = "qf.login.org";
+
+/** Tab storage key: the company this tab has already asked the server to remember (rememberBrand). */
+export const REMEMBERED_KEY = "qf.brand.remembered";
+
+/**
+ * Browser only. Asks the server to remember this session's company for the next sign-in page (app/api/branding/remember: the
+ * server decides, from the session, and only for a company with branded sign-in on). Once per company per tab. The browser-only
+ * record from before the cookie is then no longer needed. Any failure is left for the next page load to try again.
+ *
+ * The answer is always read to the end, whatever its status: a response whose body is never read is never finished in the
+ * browser, so the page would stay busy on the network for as long as it is open (CI run 40182770805).
+ */
+export async function rememberBrand(organizationId: string): Promise<void> {
+  try { if (window.sessionStorage.getItem(REMEMBERED_KEY) === organizationId) return; } catch { /* storage blocked: ask again */ }
+  await fetch("/api/branding/remember", { method: "POST" }).then(async (response) => {
+    await response.text();
+    if (!response.ok) return;
+    try {
+      window.sessionStorage.setItem(REMEMBERED_KEY, organizationId);
+      window.localStorage.removeItem(LAST_ORG_KEY);
+    } catch { /* storage blocked */ }
+  }).catch(() => undefined);
+}
+
 export type LoginBranding = {
   slug: string;
   name: string;
@@ -14,7 +43,7 @@ export type LoginBranding = {
   primary: string;
   /** #rrggbb. */
   accent: string;
-  /** data: URL of the organisation's own logo, or null. */
+  /** The organisation's own logo (a cacheable /api/branding/logo URL, or a data: URL from /api/branding), or null. */
   logo: string | null;
   /** Sign-in page look: "light" (default) or "dark" (website style). */
   style: "light" | "dark";
@@ -68,4 +97,26 @@ export function slugFromHost(host: string | null | undefined, rootDomain: string
   const sub = hostname.slice(0, -(root.length + 1));
   if (!sub || sub.includes(".") || sub === "www" || sub === "app") return null;
   return isOrgSlug(sub) ? sub : null;
+}
+
+/**
+ * Short cache-busting version of a logo's object path. Uploads always get a new, timestamped path (Settings > Company details),
+ * so a new logo always gets a new version. Not a secret and not a check: the logo routes authorise on their own.
+ */
+export function logoVersion(path: string) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < path.length; index += 1) {
+    hash ^= path.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * The signed-in company's own logo at a cacheable URL (app/api/company-logo), or undefined when the path is not inside the
+ * organisation's own folder. The route serves it only to a session working in that organisation.
+ */
+export function companyLogoUrl(organizationId: string | null | undefined, path: string | null | undefined) {
+  if (!organizationId || !path || !path.startsWith(`${organizationId}/`) || path.includes("..")) return undefined;
+  return `/api/company-logo?org=${encodeURIComponent(organizationId)}&v=${logoVersion(path)}`;
 }

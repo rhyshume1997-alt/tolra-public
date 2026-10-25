@@ -42,6 +42,7 @@ const SAFE_NEW = new Set(["URL", "Headers"]);
 const PUBLIC_ROUTES: Record<string, string> = {
   "health:GET": "Uptime check: answers only { ok, database } from the auth service's own health endpoint. No data, no service role.",
   "branding:GET": "Sign-in page branding: only an active company that opted in, only public fields; every miss gets the same empty answer.",
+  "branding/logo:GET": "Sign-in page logo: only an active company that opted in, only its own current logo; the bucket stays private and every miss gets the same empty 404.",
   "favicon:GET": "The product icon (a fixed image); no company data, no database.",
   "auth/signin:POST": "Signing in: same-origin, rate limited per IP and per account (fails closed); service role only for the limiter and the username lookup.",
   "auth/reset:POST": "Forgot password: same-origin, rate limited (fails closed), same answer whether or not the account exists.",
