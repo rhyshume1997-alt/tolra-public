@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ALERT_TEST_NETWORK_ERROR, type AlertTestOutcome, describeAlertTest } from "@/lib/alert-test-message";
+import { auditActionLabel, recordTypeLabel } from "@/lib/activity";
 import { fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { supabase } from "@/lib/supabase";
@@ -183,22 +184,20 @@ export default function CompliancePage() {
                     <TableHead>When</TableHead>
                     <TableHead>User</TableHead>
                     <TableHead>Action</TableHead>
-                    <TableHead>Module</TableHead>
-                    <TableHead>Hash</TableHead>
+                    <TableHead>Record</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEntries.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="whitespace-nowrap text-xs">{fmtDateTime(entry.created_at)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-xs" title={entry.hash ? `Integrity code: ${entry.hash}` : undefined}>{fmtDateTime(entry.created_at)}</TableCell>
                       <TableCell className="text-xs">{entry.actor_email || "System"}</TableCell>
-                      <TableCell><Badge variant="outline">{entry.action}</Badge></TableCell>
-                      <TableCell className="text-xs">{entry.entity_table}</TableCell>
-                      <TableCell className="whitespace-normal break-all font-mono text-xs">{entry.hash || "Pending"}</TableCell>
+                      <TableCell><Badge variant="outline">{auditActionLabel(entry.action)}</Badge></TableCell>
+                      <TableCell className="text-xs">{recordTypeLabel(entry.entity_table)}</TableCell>
                     </TableRow>
                   ))}
                   {!filteredEntries.length && !error && !loading ? (
-                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-slate-500">{auditEntries.length ? "No entries match your search." : "No audit entries yet."}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="py-8 text-center text-sm text-slate-500">{auditEntries.length ? "No entries match your search." : "No audit entries yet."}</TableCell></TableRow>
                   ) : null}
                 </TableBody>
               </Table>

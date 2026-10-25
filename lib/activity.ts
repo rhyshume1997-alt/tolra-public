@@ -40,7 +40,7 @@ export const RECORD_TYPES: { table: string; label: string; singular: string }[] 
   { table: "customers", label: "Customers", singular: "Customer" },
   { table: "suppliers", label: "Suppliers", singular: "Supplier" },
   { table: "machines", label: "Machines", singular: "Machine" },
-  { table: "user_profiles", label: "Users", singular: "User" },
+  { table: "user_profiles", label: "Users", singular: "User profile" },
 ];
 
 const CHILD_LABELS: Record<string, string> = {
@@ -70,6 +70,28 @@ const TABLE_LABELS: Record<string, string> = {
   invoice_payments: "Payment",
   credit_notes: "Credit note",
   credit_note_lines: "Credit note line",
+  // Every other audited table, so the Activity and Security pages never fall back to a raw table name ("Rfqs", "Attendance events").
+  rfqs: "RFQ",
+  stock: "Stock item",
+  operator_sessions: "Operator session",
+  time_settings: "Time setting",
+  attendance_events: "Clock action",
+  attendance_event_networks: "Clock action network",
+  time_week_approvals: "Week approval",
+  time_day_flags: "Day flag",
+  time_sync_rejections: "Rejected clock sync",
+  invoice_queue_events: "Invoice queue event",
+  inspector_authorisations: "Inspector authorisation",
+  integration_connections: "Integration connection",
+  integration_mappings: "Integration mapping",
+  integration_contacts: "Integration contact",
+  integration_sends: "Integration send",
+  site_network_settings: "Site network setting",
+  site_networks: "Site network",
+  site_network_members: "Site network member",
+  import_mappings: "Import mapping",
+  import_batches: "Import batch",
+  import_runs: "Import run",
 };
 
 /**
@@ -285,6 +307,11 @@ const ACTION_LABELS: Record<string, string> = {
 /** A table as people name it: "Quote", "Machine run", "Sign-off" (never the raw table name). */
 export function recordTypeLabel(table: string) {
   return RECORD_TYPES.find((type) => type.table === table)?.singular ?? TABLE_LABELS[table] ?? CHILD_LABELS[table] ?? humanise(table);
+}
+
+/** Plain wording for a raw audit action (INSERT / UPDATE / DELETE); named events keep their own words. */
+export function auditActionLabel(action: string) {
+  return ({ INSERT: "Created", UPDATE: "Changed", DELETE: "Removed" } as Record<string, string>)[action] ?? humanise(action.toLowerCase());
 }
 
 export function humanise(key: string) {
