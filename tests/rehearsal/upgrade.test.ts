@@ -976,6 +976,20 @@ async function expect093(db: Client, present: boolean) {
   }
 }
 
+const IS_094 = (file: string) => file.endsWith("_activity_one_row_per_change.sql");
+
+/**
+ * What 094 changes: org_activity's body only (080's plus two read-time filters; compared without whitespace: 094's after a clean run,
+ * 080's after a failed one), with its security and grants as before. No table, row or other function.
+ */
+async function expect094(db: Client, present: boolean) {
+  const q = async (text: string) => (await db.query<{ v: boolean }>(text)).rows[0].v;
+  expect((await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)'::regprocedure")).rows[0]?.v,
+    `094 org_activity is ${present ? "094's" : "080's"}`).toBe(present ? "b4c46509fab9c5746b74bfd3afa30e00" : "ae7e2416ce0a54b0d8ccb721aeb2d245");
+  expect(await q("select p.prosecdef and has_function_privilege('authenticated', p.oid, 'EXECUTE') and not has_function_privilege('anon', p.oid, 'EXECUTE') as v from pg_proc p where p.oid = 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)'::regprocedure"),
+    "094 org_activity security and grants unchanged").toBe(true);
+}
+
 /**
  * What 078 changes, part A (clock-in addresses; torn down and re-applied with the time files): attendance_event_network_ips (RLS on, read
  * only, NOT audited), the purge (admin RPC signed-in only, retention and purge helpers internal), 075's check trigger writing the address
@@ -1475,6 +1489,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_091(last)) await expect091(db, false);
       if (IS_092(last)) await expect092(db, false);
       if (IS_093(last)) await expect093(db, false);
+      if (IS_094(last)) await expect094(db, false);
       // Twice: a failure late in the file (its last section still to come) and one midway.
       for (const where of ["late", "middle"] as const) {
         const plan = injectionPlan(sql(path.join(MIGRATIONS, last)), where);
@@ -1538,6 +1553,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
         if (IS_091(last)) await expect091(db, false);
         if (IS_092(last)) await expect092(db, false);
         if (IS_093(last)) await expect093(db, false);
+        if (IS_094(last)) await expect094(db, false);
         checked.push({ where, chosen });
       }
       // A clean run of the same file then applies normally. When the newest file is 033 or 034 it is the one whose effect on the CRLF bodies is checked here.
@@ -1596,6 +1612,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_091(last)) await expect091(db, true);
       if (IS_092(last)) await expect092(db, true);
       if (IS_093(last)) await expect093(db, true);
+      if (IS_094(last)) await expect094(db, true);
       expect(await structure(db)).not.toEqual(structureBefore);
       await db.query("notify pgrst, 'reload schema'");
       await db.query("notify pgrst, 'reload config'");
@@ -1642,6 +1659,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_091(newest)) await expect091(db, true);
       if (IS_092(newest)) await expect092(db, true);
       if (IS_093(newest)) await expect093(db, true);
+      if (IS_094(newest)) await expect094(db, true);
     });
   });
 
