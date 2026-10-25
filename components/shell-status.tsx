@@ -1,6 +1,6 @@
 "use client";
 
-import { useCompanyProfile } from "@/lib/company";
+import { useShellCompany } from "@/lib/company";
 import { useOfflineStatus } from "@/lib/offline/scope";
 import { connectionState, roleLabel, shellStatusSummary } from "@/lib/shell-status";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ export function ConnectionDot({ tone, className }: { tone: "good" | "warn"; clas
  */
 export function ShellStatusChip({ onOpen, className }: { onOpen: () => void; className?: string }) {
   const { profile, activeRole } = useUser();
-  const { profile: company } = useCompanyProfile();
+  const { profile: company } = useShellCompany();
   const status = useOfflineStatus();
   const connection = connectionState(status);
   const summary = shellStatusSummary({ role: activeRole, company: company?.name, connection });

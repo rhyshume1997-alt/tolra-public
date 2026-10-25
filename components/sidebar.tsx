@@ -39,7 +39,7 @@ import { passwordProblem } from "@/lib/password";
 import { awaitingApproval } from "@/lib/approval-queue";
 import { supabase } from "@/lib/supabase";
 import { isCompanyPending } from "@/lib/brand-pending";
-import { useCompanyProfile } from "@/lib/company";
+import { useShellCompany } from "@/lib/company";
 import { databaseHas084 } from "@/lib/db-features";
 import { friendlyError } from "@/lib/friendly-error";
 import { useUser } from "@/lib/use-user";
@@ -99,7 +99,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { profile, organizations, switchOrganization, activeRole, setActiveRole, signOut, hasAnyRole, hiddenSections } = useUser();
   const orgSettings = useOrgSettings();
   const connection = connectionState(useOfflineStatus());
-  const { profile: company, loading: companyLoading } = useCompanyProfile();
+  const { profile: company, loading: companyLoading } = useShellCompany();
   // Until the company is known the header shows a neutral placeholder, never the product name in the company's place (lib/brand-pending).
   const companyPending = isCompanyPending(company, companyLoading);
   const [approvalCount, setApprovalCount] = useState<number | null>(null);
@@ -202,9 +202,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <div className="flex items-center gap-3">
           {companyPending ? (
             <div data-testid="company-pending" aria-hidden="true" className="size-12 shrink-0 animate-pulse rounded-xl bg-brand-ink/10" />
-          ) : company?.logoSrc && !logoFailed ? (
+          ) : (company?.logoUrl || company?.logoSrc) && !logoFailed ? (
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white p-1.5">
-              <Image src={company.logoSrc} alt={`${company.name} logo`} width={48} height={48} unoptimized className="max-h-full w-auto object-contain" onError={() => setLogoFailed(true)} />
+              {/* The cacheable URL (app/api/company-logo) first: after the first visit it comes from the browser's cache. */}
+              <Image src={(company.logoUrl || company.logoSrc) as string} alt={`${company.name} logo`} width={48} height={48} unoptimized priority className="max-h-full w-auto object-contain" onError={() => setLogoFailed(true)} />
             </div>
           ) : (
             <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-ink/10 text-base font-semibold tracking-tight">{company ? company.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 3).toUpperCase() : PRODUCT.monogram}</div>
