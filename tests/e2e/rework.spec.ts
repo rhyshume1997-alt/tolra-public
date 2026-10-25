@@ -218,3 +218,43 @@ test("a two-line order: one line fails in part, and only that part is held on th
   const items = (await service.from("delivery_note_items").select("description, quantity").eq("delivery_note_id", note.id).order("position")).data!;
   expect(items.map((i) => [i.description, Number(i.quantity)])).toEqual([["Part A", 6], ["Part B", 10]]);
 });
+
+test("hours and material typed but not added are saved when the rework is finished; a half-valid entry stops the finish", async ({ page }) => {
+  const no = `J-RP-${tag()}`;
+  const id = await finishedJob(no, 5);
+  await signIn(page, w.tenants.alpha.users.workshop);
+  await page.goto("/jobs");
+  await page.getByRole("button", { name: /^Waiting for inspection/ }).click();
+  await page.getByRole("row").filter({ hasText: no }).getByRole("button", { name: "Inspected", exact: true }).click();
+  const inspect = page.getByRole("dialog", { name: `Record inspection: ${no}` });
+  await inspect.getByLabel("Fail").check();
+  await inspect.getByLabel("Measured notes (required)").fill("Bore oversize");
+  await inspect.getByLabel("Reason it failed (required)").fill("Bores oversize");
+  await inspect.getByLabel("Whole job").check();
+  await inspect.getByLabel("Rework instructions for the workshop (required)").fill("Re-bore");
+  await inspect.getByLabel("Acceptance criteria (required)").fill(CRITERIA);
+  await inspect.getByRole("button", { name: "Record inspection" }).click();
+  await expect(page.getByText(`${no} failed inspection: put back to Running, tagged Rework`)).toBeVisible();
+
+  await page.getByRole("button", { name: /^Rework \(/ }).click();
+  await page.getByRole("row").filter({ hasText: no }).getByRole("button", { name: "Rework", exact: true }).click();
+  const rework = page.getByRole("dialog", { name: `Rework: ${no}` });
+  await rework.getByRole("button", { name: "Start rework" }).click();
+  await expect(rework).toContainText("Rework under way");
+
+  // Half-valid (hours of 0): Finish is refused with a message, nothing is lost or saved.
+  await rework.getByLabel("Hours worked").fill("0");
+  await rework.getByLabel("Material used").fill("1 off EN8 bar");
+  await rework.getByRole("button", { name: "Finish rework: send for re-inspection" }).click();
+  await expect(rework.getByText(/typed in but not added/)).toBeVisible();
+  await expect(rework.getByLabel("Material used")).toHaveValue("1 off EN8 bar");
+  expect((await reworkOf(id)).status).toBe("in_progress");
+
+  // Valid, never added: Finish books both with the finish.
+  await rework.getByLabel("Hours worked").fill("1.5");
+  await rework.getByRole("button", { name: "Finish rework: send for re-inspection" }).click();
+  await expect(rework).toContainText("Reworked: awaiting re-inspection");
+  expect((await reworkOf(id)).status).toBe("finished");
+  const { data: rows } = await adminClient().from("job_rework_entries").select("kind, hours, description").eq("rework_id", (await adminClient().from("job_rework").select("id").eq("job_id", id).single()).data!.id);
+  expect(rows).toEqual(expect.arrayContaining([expect.objectContaining({ hours: 1.5 }), expect.objectContaining({ description: expect.stringContaining("EN8") })]));
+});
