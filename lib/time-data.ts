@@ -114,6 +114,33 @@ export function pendingForPersonWeek(pending: OutboxEntry[], signedInUserId: str
   });
 }
 
+/** What the sheet says after a clock action or job Start/Stop was put in the outbox (components/time/day-sheet.tsx). */
+export type SendNotice = { tone: "success" | "info" | "error"; message: string };
+export type SendState = {
+  /** The page showed offline when the action was taken: nothing was tried yet. */
+  offline: boolean;
+  /** The sync pass started straight after queueing finished within the wait, and the person and company are still the same. */
+  settled: boolean;
+  pending: Pick<OutboxEntry, "op" | "blocked">[];
+  held: (Pick<OutboxEntry, "op"> & { reason: string })[];
+};
+const opKey = (op: OutboxEntry["op"]) => (op.kind === "clock" || op.kind === "labour" ? op.clientOpId : null);
+/**
+ * "Saved on this device" only while the entry is still on this device. Online, the outbox is sent at once: once the entry has left the
+ * queue (and was not held as refused or in conflict) the server has it, and the sheet says "saved", as a direct send does.
+ */
+export function timeSendNotice(label: string, clientOpId: string, state: SendState): SendNotice {
+  const waiting = `${label}: saved on this device. It will be sent as soon as the connection allows.`;
+  if (state.offline) return { tone: "success", message: `${label}: saved on this device. It will sync when you're back online.` };
+  if (!state.settled) return { tone: "success", message: waiting };
+  const held = state.held.find((e) => opKey(e.op) === clientOpId);
+  if (held) return { tone: "error", message: `${label}: not recorded. ${held.reason}` };
+  const queued = state.pending.find((e) => opKey(e.op) === clientOpId);
+  if (queued?.blocked) return { tone: "info", message: `${label}: saved on this device, not sent yet. ${queued.blocked.reason}` };
+  if (queued) return { tone: "success", message: waiting };
+  return { tone: "success", message: `${label}: saved.` };
+}
+
 /** A short name for this device, kept with each clock action ("iPad", "Android phone", "Windows PC"). */
 export function deviceLabel(userAgent = typeof navigator !== "undefined" ? navigator.userAgent : ""): string | null {
   if (!userAgent) return null;
