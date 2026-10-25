@@ -230,7 +230,6 @@ test("hours and material typed but not added are saved when the rework is finish
   await inspect.getByLabel("Fail").check();
   await inspect.getByLabel("Measured notes (required)").fill("Bore oversize");
   await inspect.getByLabel("Reason it failed (required)").fill("Bores oversize");
-  await inspect.getByLabel("Whole job").check();
   await inspect.getByLabel("Rework instructions for the workshop (required)").fill("Re-bore");
   await inspect.getByLabel("Acceptance criteria (required)").fill(CRITERIA);
   await inspect.getByRole("button", { name: "Record inspection" }).click();
