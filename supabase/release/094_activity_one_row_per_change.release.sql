@@ -23,10 +23,12 @@ BEGIN;
 --   a. A write_audit row with action CREATE / UPDATE / INSERT / DELETE is not listed when its table has the log_row_change trigger
 --      (read from pg_trigger at call time). On any other table (email_history, organization_settings: 058's and 072's UPDATE events)
 --      it is still the only record of the change and is listed as before.
---   b. A database row change (UPDATE) is not listed when the row immediately before it in the company's chain (the row whose hash is
---      its previous_hash, 006's chain: the company's rows are written one transaction at a time under 006's advisory lock) is one of
---      those stamp events (ISSUE, MARK_PAID, RESEND, CONFIRM, REOPEN: written only by actor_stamp) on the same record by the same
---      person. The named event is listed. Anything else (another event, another record, a row in between) is listed as before.
+--   b. A database row change (UPDATE) is not listed when the row its previous_hash points to (006's hash chain; matched by hash, no
+--      timestamp ordering), on the same company, table and record, by the same person, is one of
+--      those stamp events (ISSUE, MARK_PAID, RESEND, CONFIRM, REOPEN: written only by actor_stamp). The named event is listed.
+--      Anything else (another event, another record or person, a row in between) is listed as before. The lookup is served by 000's
+--      audit_log_entity_idx (organization_id, entity_table, entity_id, created_at DESC) with the hash checked on that record's rows;
+--      no new index. It runs only for database UPDATE rows.
 -- Every condition reads only the row and its stored predecessor (never the page's filters), so a row is either always listed or never,
 -- and "Load more" (created_at, id) pages exactly as before. record_activity (a record's own history) is unchanged.
 -- GUARD (section 1): org_activity must be 080's (or already 094's), md5 with every whitespace character removed. Safe to run again.
@@ -41,8 +43,8 @@ DECLARE
   v_md5 TEXT;
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_md5 FROM pg_proc p WHERE p.oid = to_regprocedure('public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)');
-  -- ae7e2416...: 080's body; b4c46509fab9c5746b74bfd3afa30e00...: this file's body (section 2); both with every whitespace character removed.
-  IF v_md5 IS NULL OR v_md5 NOT IN ('ae7e2416ce0a54b0d8ccb721aeb2d245', 'b4c46509fab9c5746b74bfd3afa30e00') THEN
+  -- ae7e2416...: 080's body; 168ae55fc923bf2cbf39aadc153536b4...: this file's body (section 2); both with every whitespace character removed.
+  IF v_md5 IS NULL OR v_md5 NOT IN ('ae7e2416ce0a54b0d8ccb721aeb2d245', '168ae55fc923bf2cbf39aadc153536b4') THEN
     RAISE EXCEPTION '094: public.org_activity is not 080''s (md5 without whitespace %); stop and compare it first', coalesce(v_md5, 'missing');
   END IF;
   IF to_regprocedure('security_audit.log_row_change()') IS NULL OR to_regprocedure('security_audit.activity_label(text,jsonb)') IS NULL THEN
@@ -126,20 +128,15 @@ BEGIN
     -- 094 (a): the app's own create / update / delete note (write_audit) on a table whose row change the database already records
     AND NOT (coalesce(a.metadata ->> 'source', '') = 'write_audit' AND a.action IN ('CREATE', 'UPDATE', 'INSERT', 'DELETE')
              AND a.entity_table = ANY (v_row_audited))
-    -- 094 (b): the row change of an update its own stamp trigger (035 actor_stamp) has just named: the named event is the row
-    -- immediately before it in the company's chain (its hash is this row's previous_hash), on the same record, by the same person
+    -- 094 (b): the row change of an update its own stamp trigger (035 actor_stamp) has just named: the named event is the row the
+    -- hash chain links it to (its hash is this row's previous_hash), on the same record, by the same person
     AND NOT (a.action = 'UPDATE' AND coalesce(a.metadata ->> 'source', '') = 'database_trigger' AND a.previous_hash IS NOT NULL
-             AND EXISTS (SELECT 1
-                         FROM (SELECT p.hash, p.action, p.entity_table, p.entity_id, p.actor_user_id, p.metadata
-                               FROM security_audit.audit_log p
-                               WHERE p.organization_id = a.organization_id AND p.created_at < a.created_at
-                               ORDER BY p.organization_id, p.created_at DESC
-                               LIMIT 1) n
-                         WHERE n.hash = a.previous_hash
-                           AND n.action IN ('ISSUE', 'MARK_PAID', 'RESEND', 'CONFIRM', 'REOPEN')
-                           AND coalesce(n.metadata ->> 'source', '') = 'write_audit'
-                           AND n.entity_table = a.entity_table AND n.entity_id = a.entity_id
-                           AND n.actor_user_id IS NOT DISTINCT FROM a.actor_user_id))
+             AND EXISTS (SELECT 1 FROM security_audit.audit_log p
+                         WHERE p.organization_id = a.organization_id AND p.entity_table = a.entity_table AND p.entity_id = a.entity_id
+                           AND p.hash = a.previous_hash
+                           AND p.action IN ('ISSUE', 'MARK_PAID', 'RESEND', 'CONFIRM', 'REOPEN')
+                           AND coalesce(p.metadata ->> 'source', '') = 'write_audit'
+                           AND p.actor_user_id IS NOT DISTINCT FROM a.actor_user_id))
   ORDER BY a.created_at DESC, a.id DESC
   LIMIT least(greatest(coalesce(p_limit, 100), 1), 500);
 END
@@ -151,7 +148,7 @@ GRANT EXECUTE ON FUNCTION public.org_activity(TIMESTAMPTZ, TIMESTAMPTZ, UUID, TE
 -- 3. Self-check: the body is 094's, definer, STABLE, with 080's search_path; signed-in only.
 DO $$
 BEGIN
-  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> 'b4c46509fab9c5746b74bfd3afa30e00' OR NOT p.prosecdef OR p.provolatile <> 's'
+  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> '168ae55fc923bf2cbf39aadc153536b4' OR NOT p.prosecdef OR p.provolatile <> 's'
              OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public, security_audit']
       FROM pg_proc p WHERE p.oid = to_regprocedure('public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)')) THEN
     RAISE EXCEPTION '094: org_activity is not 094''s after the replace';

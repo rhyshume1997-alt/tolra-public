@@ -985,7 +985,7 @@ const IS_094 = (file: string) => file.endsWith("_activity_one_row_per_change.sql
 async function expect094(db: Client, present: boolean) {
   const q = async (text: string) => (await db.query<{ v: boolean }>(text)).rows[0].v;
   expect((await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)'::regprocedure")).rows[0]?.v,
-    `094 org_activity is ${present ? "094's" : "080's"}`).toBe(present ? "b4c46509fab9c5746b74bfd3afa30e00" : "ae7e2416ce0a54b0d8ccb721aeb2d245");
+    `094 org_activity is ${present ? "094's" : "080's"}`).toBe(present ? "168ae55fc923bf2cbf39aadc153536b4" : "ae7e2416ce0a54b0d8ccb721aeb2d245");
   expect(await q("select p.prosecdef and has_function_privilege('authenticated', p.oid, 'EXECUTE') and not has_function_privilege('anon', p.oid, 'EXECUTE') as v from pg_proc p where p.oid = 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)'::regprocedure"),
     "094 org_activity security and grants unchanged").toBe(true);
 }

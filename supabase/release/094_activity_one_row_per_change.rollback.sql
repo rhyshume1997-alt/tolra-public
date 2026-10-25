@@ -8,8 +8,8 @@ DECLARE
   v_md5 TEXT;
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_md5 FROM pg_proc p WHERE p.oid = to_regprocedure('public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)');
-  -- b4c46509...: 094's body; ae7e2416...: 080's (a second run of this rollback).
-  IF v_md5 IS NULL OR v_md5 NOT IN ('b4c46509fab9c5746b74bfd3afa30e00', 'ae7e2416ce0a54b0d8ccb721aeb2d245') THEN
+  -- 168ae55f...: 094's body; ae7e2416...: 080's (a second run of this rollback).
+  IF v_md5 IS NULL OR v_md5 NOT IN ('168ae55fc923bf2cbf39aadc153536b4', 'ae7e2416ce0a54b0d8ccb721aeb2d245') THEN
     RAISE EXCEPTION '094 rollback: org_activity (md5 %) is neither 094''s nor 080''s; stop and compare', coalesce(v_md5, 'missing');
   END IF;
 END

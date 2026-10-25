@@ -1102,7 +1102,7 @@
  {
   "kind": "function",
   "object": "public.org_activity(p_from timestamp with time zone, p_to timestamp with time zone, p_actor uuid, p_table text, p_before timestamp with time zone, p_before_id uuid, p_limit integer)",
-  "detail": "definer search_path=pg_catalog, public, security_audit 0c4ea66381c7dc642f4f7024471308bd"
+  "detail": "definer search_path=pg_catalog, public, security_audit 5d2f62848a52cdf5f725e9b72f6731cb"
  },
  {
   "kind": "function",
