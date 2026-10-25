@@ -22,8 +22,20 @@
 --      it is still the only record of the change and is listed as before.
 --   b. A database row change (UPDATE) is not listed when the row its previous_hash points to (006's hash chain; matched by hash, no
 --      timestamp ordering), on the same company, table and record, by the same person, is one of
---      those stamp events (ISSUE, MARK_PAID, RESEND, CONFIRM, REOPEN: written only by actor_stamp). The named event is listed.
---      Anything else (another event, another record or person, a row in between) is listed as before. The lookup is served by 000's
+--      those stamp events (ISSUE, MARK_PAID, RESEND, CONFIRM, REOPEN: written only by actor_stamp), AND every field the row change
+--      shows (security_audit.activity_changes) is one that event itself accounts for: a fixed list per event and table, the columns
+--      the event's own path sets in that statement (the RPC or page that makes it, plus actor_stamp's stamps):
+--        ISSUE invoices        status, invoice_ref, issuer_snapshot, customer_snapshot (091 issue_invoice), issued_at (035 actor_stamp)
+--        ISSUE credit_notes    status, credit_ref, issued_at, issuer_snapshot, customer_snapshot (078 issue_credit_note)
+--        MARK_PAID invoices    status, paid_at, amount_paid (034 record_invoice_payment), credited_amount (034 allocate_credit_note,
+--                              apply_customer_credit)
+--        RESEND invoices       sent_date (invoices page, e-mail again)      RESEND quotes   sent_at (quotes page, send again)
+--        CONFIRM sales_orders  status, confirmed_at (035 actor_stamp)
+--        REOPEN jobs           finished_at (081 reopen_job), inspected_at, inspected_by, stage (035 actor_stamp)
+--      (the *_by actor columns are never shown by activity_changes, so they need no entry). The named event is then listed alone. If
+--      the same UPDATE changed any other field (an invoice issued with its notes or due date edited in the same statement), the row
+--      change is listed beside the named event, with all its changes. Anything else (another event, another record or person, a row
+--      in between) is listed as before. The lookup is served by 000's
 --      audit_log_entity_idx (organization_id, entity_table, entity_id, created_at DESC) with the hash checked on that record's rows;
 --      no new index. It runs only for database UPDATE rows.
 -- Every condition reads only the row and its stored predecessor (never the page's filters), so a row is either always listed or never,
@@ -40,8 +52,8 @@ DECLARE
   v_md5 TEXT;
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_md5 FROM pg_proc p WHERE p.oid = to_regprocedure('public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)');
-  -- ae7e2416...: 080's body; 168ae55fc923bf2cbf39aadc153536b4...: this file's body (section 2); both with every whitespace character removed.
-  IF v_md5 IS NULL OR v_md5 NOT IN ('ae7e2416ce0a54b0d8ccb721aeb2d245', '168ae55fc923bf2cbf39aadc153536b4') THEN
+  -- ae7e2416...: 080's body; a29b5655c21474b4b40d54760de5a9c4...: this file's body (section 2); both with every whitespace character removed.
+  IF v_md5 IS NULL OR v_md5 NOT IN ('ae7e2416ce0a54b0d8ccb721aeb2d245', 'a29b5655c21474b4b40d54760de5a9c4') THEN
     RAISE EXCEPTION '094: public.org_activity is not 080''s (md5 without whitespace %); stop and compare it first', coalesce(v_md5, 'missing');
   END IF;
   IF to_regprocedure('security_audit.log_row_change()') IS NULL OR to_regprocedure('security_audit.activity_label(text,jsonb)') IS NULL THEN
@@ -126,14 +138,26 @@ BEGIN
     AND NOT (coalesce(a.metadata ->> 'source', '') = 'write_audit' AND a.action IN ('CREATE', 'UPDATE', 'INSERT', 'DELETE')
              AND a.entity_table = ANY (v_row_audited))
     -- 094 (b): the row change of an update its own stamp trigger (035 actor_stamp) has just named: the named event is the row the
-    -- hash chain links it to (its hash is this row's previous_hash), on the same record, by the same person
+    -- hash chain links it to (its hash is this row's previous_hash), on the same record, by the same person, and the update changed
+    -- nothing the named event doesn't account for
     AND NOT (a.action = 'UPDATE' AND coalesce(a.metadata ->> 'source', '') = 'database_trigger' AND a.previous_hash IS NOT NULL
              AND EXISTS (SELECT 1 FROM security_audit.audit_log p
                          WHERE p.organization_id = a.organization_id AND p.entity_table = a.entity_table AND p.entity_id = a.entity_id
                            AND p.hash = a.previous_hash
                            AND p.action IN ('ISSUE', 'MARK_PAID', 'RESEND', 'CONFIRM', 'REOPEN')
                            AND coalesce(p.metadata ->> 'source', '') = 'write_audit'
-                           AND p.actor_user_id IS NOT DISTINCT FROM a.actor_user_id))
+                           AND p.actor_user_id IS NOT DISTINCT FROM a.actor_user_id
+                           -- and nothing else changed: every field shown is one the named event accounts for (an event and table
+                           -- not listed here gives NULL, so its row change is listed)
+                           AND security_audit.activity_changes(a.old_data, a.new_data) - CASE p.action || ' ' || p.entity_table
+                                 WHEN 'ISSUE invoices'       THEN ARRAY['status', 'invoice_ref', 'issuer_snapshot', 'customer_snapshot', 'issued_at']
+                                 WHEN 'ISSUE credit_notes'   THEN ARRAY['status', 'credit_ref', 'issued_at', 'issuer_snapshot', 'customer_snapshot']
+                                 WHEN 'MARK_PAID invoices'   THEN ARRAY['status', 'paid_at', 'amount_paid', 'credited_amount']
+                                 WHEN 'RESEND invoices'      THEN ARRAY['sent_date']
+                                 WHEN 'RESEND quotes'        THEN ARRAY['sent_at']
+                                 WHEN 'CONFIRM sales_orders' THEN ARRAY['status', 'confirmed_at']
+                                 WHEN 'REOPEN jobs'          THEN ARRAY['finished_at', 'inspected_at', 'inspected_by', 'stage']
+                               END = '{}'::JSONB))
   ORDER BY a.created_at DESC, a.id DESC
   LIMIT least(greatest(coalesce(p_limit, 100), 1), 500);
 END
@@ -145,7 +169,7 @@ GRANT EXECUTE ON FUNCTION public.org_activity(TIMESTAMPTZ, TIMESTAMPTZ, UUID, TE
 -- 3. Self-check: the body is 094's, definer, STABLE, with 080's search_path; signed-in only.
 DO $$
 BEGIN
-  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> '168ae55fc923bf2cbf39aadc153536b4' OR NOT p.prosecdef OR p.provolatile <> 's'
+  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> 'a29b5655c21474b4b40d54760de5a9c4' OR NOT p.prosecdef OR p.provolatile <> 's'
              OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public, security_audit']
       FROM pg_proc p WHERE p.oid = to_regprocedure('public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)')) THEN
     RAISE EXCEPTION '094: org_activity is not 094''s after the replace';
