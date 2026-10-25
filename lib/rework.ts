@@ -179,7 +179,20 @@ export function pendingCostEntry(f: { hours: string; material: string; materialC
 export async function finishWithPendingCost(pending: PendingCost, steps: { book: (entry: Extract<PendingCost, { kind: "entry" }>) => Promise<void>; clear: () => void; finish: () => Promise<void> }) {
   if (pending.kind === "error") throw new Error(pending.message);
   if (pending.kind === "entry") { await steps.book(pending); steps.clear(); }
-  await steps.finish();
+  try {
+    await steps.finish();
+  } catch (err) {
+    if (pending.kind === "entry") throw new FinishAfterCostError(err);
+    throw err;
+  }
+}
+
+/** The typed hours/material were saved, then finishing the rework failed: the dialog reloads the costs and says so. */
+export class FinishAfterCostError extends Error {
+  constructor(readonly finishError: unknown) {
+    super("Costs saved; finishing failed.");
+    this.name = "FinishAfterCostError";
+  }
 }
 
 export async function scrapQuantity(args: { reworkId: string; quantity: number; reason: string }) {
