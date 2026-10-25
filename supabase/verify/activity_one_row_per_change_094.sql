@@ -6,7 +6,7 @@ WITH org AS (
 )
 -- org_activity: 080's body plus the two 094 filters; definer, STABLE, 080's search_path.
 SELECT 'org_activity_is_094' AS check_name,
-       coalesce((SELECT body = '168ae55fc923bf2cbf39aadc153536b4' AND prosecdef AND provolatile = 's'
+       coalesce((SELECT body = 'a29b5655c21474b4b40d54760de5a9c4' AND prosecdef AND provolatile = 's'
                    AND proconfig = ARRAY['search_path=pg_catalog, public, security_audit'] FROM org), FALSE) AS ok
 -- Signed-in only: authenticated may call it; anon and PUBLIC may not (as 080).
 UNION ALL SELECT 'org_activity_signed_in_only',

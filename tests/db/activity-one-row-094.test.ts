@@ -3,7 +3,8 @@
  *
  *   (a) the app's own CREATE / UPDATE / DELETE note (write_audit) on a table the database already records row by row
  *       (security_audit.log_row_change) is not listed; on a table it doesn't (email_history) it is still the only record and is listed;
- *   (b) the row change of an UPDATE its own stamp trigger named (035 actor_stamp: ISSUE, RESEND, ...) is not listed; the named event is;
+ *   (b) the row change of an UPDATE its own stamp trigger named (035 actor_stamp: ISSUE, RESEND, ...) is not listed when it changed only
+ *       the columns that event accounts for; the named event is; if the same UPDATE changed any other field, both are listed;
  *   any other row change is listed once; another company's rows are never listed; "Load more" (created_at, id) pages as before.
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), so it runs on the local stack and on a plain Postgres rebuild
@@ -331,6 +332,118 @@ describe("matching never depends on timestamp order (094)", () => {
     // The rows are all stored: nothing hidden is gone.
     expect((await withDb((db) => db.query("select count(*)::int as n from security_audit.audit_log where id = any($1)",
       [[issueId, rowChangeId, otherA, otherB, laterRowChange, laterIssue, laterChangeId]]))).rows[0].n).toBe(7);
+  });
+});
+
+/**
+ * A stamped update that ALSO changed other fields (Astra's must-fix): the row change is hidden only when every field it shows is one
+ * the named event accounts for (094's fixed list per event and table). Otherwise it is listed beside the named event, with all its changes.
+ */
+describe("a stamped update that also changed other fields (094)", () => {
+  const D = { org: "", admin: person("admin-d") };
+
+  beforeAll(async () => {
+    await withDb(async (db) => {
+      D.org = await makeOrg(db, "d");
+      await member(db, D.org, D.admin, "admin");
+    });
+  });
+
+  it("ISSUE (the forged chain: issue_invoice sets only its own columns and a direct issue is refused): issued with its due date changed lists Issued AND the row change showing due_date; issued alone lists Issued only", async () => {
+    const [mixed, alone] = [randomUUID(), randomUUID()];
+    const [mixedIssue, mixedChange, aloneIssue, aloneChange] = await writeChain(D.org, D.admin.id, [
+      { action: "ISSUE", table: "invoices", entity: mixed, source: "write_audit", at: "2026-10-21 09:00:00+00", meta: { invoice_ref: "INV-MX1" } },
+      { action: "UPDATE", table: "invoices", entity: mixed, source: "database_trigger", at: "2026-10-21 09:00:00.001+00",
+        old: { status: "draft", invoice_ref: null, issued_at: null, due_date: "2026-11-20" },
+        new: { status: "issued", invoice_ref: "INV-MX1", issued_at: "2026-10-21T09:00:00+00:00", due_date: "2026-12-20" } },
+      { action: "ISSUE", table: "invoices", entity: alone, source: "write_audit", at: "2026-10-21 09:10:00+00", meta: { invoice_ref: "INV-MX2" } },
+      { action: "UPDATE", table: "invoices", entity: alone, source: "database_trigger", at: "2026-10-21 09:10:00.001+00",
+        old: { status: "draft", invoice_ref: null, issued_at: null, issuer_snapshot: null, customer_snapshot: null },
+        new: { status: "issued", invoice_ref: "INV-MX2", issued_at: "2026-10-21T09:10:00+00:00", issuer_snapshot: { name: "D" }, customer_snapshot: { name: "Acme" } } },
+    ]);
+    const rows = await activity(D.admin);
+    const listed = new Set(rows.map((r) => r.id));
+    expect(listed.has(mixedIssue) && listed.has(mixedChange)).toBe(true);
+    expect(Object.keys(rows.find((r) => r.id === mixedChange)?.changes ?? {}).sort()).toEqual(["due_date", "invoice_ref", "issued_at", "status"]);
+    expect(listed.has(aloneIssue)).toBe(true);
+    expect(listed.has(aloneChange)).toBe(false);
+  });
+
+  it("every event's own columns alone stay hidden, and one more field lists the row change (ISSUE credit note, MARK_PAID, RESEND, CONFIRM, REOPEN)", async () => {
+    const cases: { action: string; table: string; own: [Record<string, unknown>, Record<string, unknown>]; extra: string }[] = [
+      { action: "ISSUE", table: "credit_notes", extra: "reason",
+        own: [{ status: "draft", credit_ref: null, issued_at: null, issuer_snapshot: null, customer_snapshot: null },
+              { status: "issued", credit_ref: "CRD-0001", issued_at: "2026-10-21T10:00:00+00:00", issuer_snapshot: { name: "D" }, customer_snapshot: { name: "Acme" } }] },
+      { action: "MARK_PAID", table: "invoices", extra: "payment_unverified",
+        own: [{ status: "partial", paid_at: null, amount_paid: 50, credited_amount: 0 }, { status: "paid", paid_at: "2026-10-21T12:00:00+00:00", amount_paid: 100, credited_amount: 20 }] },
+      { action: "RESEND", table: "invoices", extra: "job_id", own: [{ sent_date: "2026-10-20T09:00:00+00:00" }, { sent_date: "2026-10-21T09:00:00+00:00" }] },
+      { action: "RESEND", table: "quotes", extra: "internal_notes", own: [{ sent_at: "2026-10-20T09:00:00+00:00" }, { sent_at: "2026-10-21T09:00:00+00:00" }] },
+      { action: "CONFIRM", table: "sales_orders", extra: "delivery_date",
+        own: [{ status: "open", confirmed_at: null }, { status: "confirmed", confirmed_at: "2026-10-21T10:00:00+00:00" }] },
+      { action: "REOPEN", table: "jobs", extra: "notes",
+        own: [{ finished_at: "2026-10-20T15:00:00+00:00", inspected_at: "2026-10-20T16:00:00+00:00", inspected_by: "QA", stage: "complete" },
+              { finished_at: null, inspected_at: null, inspected_by: null, stage: "machining" }] },
+    ];
+    const chain: ChainRow[] = [];
+    cases.forEach((c, i) => {
+      for (const [k, withExtra] of [[0, false], [1, true]] as const) {
+        const entity = randomUUID();
+        const at = `2026-10-21 1${i}:0${k}:00+00`;
+        chain.push({ action: c.action, table: c.table, entity, source: "write_audit", at });
+        chain.push({ action: "UPDATE", table: c.table, entity, source: "database_trigger", at: `2026-10-21 1${i}:0${k}:00.001+00`,
+          old: { ...c.own[0], ...(withExtra ? { [c.extra]: "before" } : {}) }, new: { ...c.own[1], ...(withExtra ? { [c.extra]: "after" } : {}) } });
+      }
+    });
+    const ids = await writeChain(D.org, D.admin.id, chain);
+    const rows = await activity(D.admin);
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    cases.forEach((c, i) => {
+      const [aloneEvent, aloneChange, mixedEvent, mixedChange] = ids.slice(i * 4, i * 4 + 4);
+      const label = `${c.action} ${c.table}`;
+      expect(byId.has(aloneEvent) && byId.has(mixedEvent), `${label}: the named event is listed`).toBe(true);
+      expect(byId.has(aloneChange), `${label}: its own columns only: row change hidden`).toBe(false);
+      expect(byId.has(mixedChange), `${label}: plus ${c.extra}: row change listed`).toBe(true);
+      expect(Object.keys(byId.get(mixedChange)?.changes ?? {}), `${label}: the row change shows ${c.extra}`).toContain(c.extra);
+    });
+  });
+
+  it("RESEND, the way the app can do it: an invoice e-mailed again with its job linked in the same update lists Resent AND the row change (sent_date, job_id)", async () => {
+    const { invoice, job } = await as(W.officeA, async (db) => {
+      const id = (await db.query<{ id: string }>(
+        "insert into public.invoices (organization_id, customer, status, subtotal, vat, total) values ($1, $2, 'draft', 40, 8, 48) returning id", [W.A, `Acme ${run}`])).rows[0].id;
+      await db.query("insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, vat_pct, vat_exempt) values ($1, $2, 0, 'Pin', 1, 40, 20, false)", [W.A, id]);
+      const jobId = (await db.query<{ id: string }>("insert into public.jobs (organization_id, job_no, customer) values ($1, $2, $3) returning id",
+        [W.A, `J-${run}-mx`, `Acme ${run}`])).rows[0].id;
+      return { invoice: id, job: jobId };
+    });
+    await as(W.officeA, (db) => db.query("select public.issue_invoice($1)", [invoice]));
+    await as(W.officeA, (db) => db.query("update public.invoices set sent_date = now() - interval '1 hour' where id = $1", [invoice]));
+    const { added, storedRows } = await once([
+      () => as(W.officeA, (db) => db.query("update public.invoices set sent_date = now(), job_id = $2 where id = $1", [invoice, job])),
+    ], invoice);
+    expect(added.map((r) => r.action).sort()).toEqual(["RESEND", "UPDATE"]);
+    expect(Object.keys(added.find((r) => r.action === "UPDATE")?.changes ?? {}).sort()).toEqual(["job_id", "sent_date"]);
+    expect(storedRows).toBe(2);
+  });
+
+  it("RESEND of a quote with its internal note edited, and CONFIRM of a sales order with its delivery date changed (one API update each): the named event AND the row change", async () => {
+    const { quote, order } = await as(W.officeA, async (db) => ({
+      quote: (await db.query<{ id: string }>(
+        "insert into public.quotes (organization_id, quote_ref, customer, status, total_value) values ($1, $2, $3, 'draft', 0) returning id", [W.A, `QUO-${run}-mx`, `Acme ${run}`])).rows[0].id,
+      order: (await db.query<{ id: string }>(
+        "insert into public.sales_orders (organization_id, so_number, customer, status) values ($1, $2, $3, 'open') returning id", [W.A, `SO-${run}-mx`, `Acme ${run}`])).rows[0].id,
+    }));
+    await as(W.officeA, (db) => db.query("update public.quotes set status = 'sent', sent_at = now() - interval '1 hour' where id = $1", [quote]));
+    const resent = await once([
+      () => as(W.officeA, (db) => db.query("update public.quotes set sent_at = now(), internal_notes = 'Chased by phone' where id = $1 and status = 'sent'", [quote])),
+    ], quote);
+    expect(resent.added.map((r) => r.action).sort()).toEqual(["RESEND", "UPDATE"]);
+    expect(Object.keys(resent.added.find((r) => r.action === "UPDATE")?.changes ?? {}).sort()).toEqual(["internal_notes", "sent_at"]);
+    const confirmed = await once([
+      () => as(W.officeA, (db) => db.query("update public.sales_orders set status = 'confirmed', delivery_date = current_date + 14 where id = $1", [order])),
+    ], order);
+    expect(confirmed.added.map((r) => r.action).sort()).toEqual(["CONFIRM", "UPDATE"]);
+    expect(Object.keys(confirmed.added.find((r) => r.action === "UPDATE")?.changes ?? {}).sort()).toEqual(["confirmed_at", "delivery_date", "status"]);
   });
 });
 
