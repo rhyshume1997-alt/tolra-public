@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { finishWithPendingCost, pendingCostEntry } from "@/lib/rework";
+import { FinishAfterCostError, finishWithPendingCost, pendingCostEntry } from "@/lib/rework";
 
 const blank = { hours: "", material: "", materialCost: "", note: "" };
 
@@ -32,12 +32,15 @@ describe("finishWithPendingCost (finish books a typed entry once)", () => {
       clear: () => { fields = { ...blank }; },
       finish: async () => { finishCalls += 1; if (finishCalls === 1) throw new Error("Can't reach the server."); },
     };
-    await expect(finishWithPendingCost(pendingCostEntry(fields), steps)).rejects.toThrow("Can't reach the server.");
+    const failed = await finishWithPendingCost(pendingCostEntry(fields), steps).catch((e: unknown) => e);
+    expect(failed).toBeInstanceOf(FinishAfterCostError);
+    expect((failed as FinishAfterCostError).message).toBe("Costs saved; finishing failed.");
+    expect(((failed as FinishAfterCostError).finishError as Error).message).toBe("Can't reach the server.");
     expect(booked).toHaveLength(1);
     expect(fields).toEqual(blank);
     // Retry: the dialog recomputes from the (now empty) fields.
     await finishWithPendingCost(pendingCostEntry(fields), steps);
-    expect(booked).toHaveLength(1);
+    expect(booked).toHaveLength(1); // exactly one cost entry
     expect(finishCalls).toBe(2);
   });
   it("booking fails: nothing is cleared and the finish is not attempted", async () => {
@@ -49,5 +52,9 @@ describe("finishWithPendingCost (finish books a typed entry once)", () => {
     })).rejects.toThrow("Couldn't save.");
     expect(cleared).toBe(false);
     expect(finished).toBe(false);
+  });
+  it("nothing typed and the finish fails: the plain error, no 'Costs saved'", async () => {
+    const failed = await finishWithPendingCost(pendingCostEntry(blank), { book: async () => {}, clear: () => {}, finish: async () => { throw new Error("x"); } }).catch((e: unknown) => e);
+    expect(failed).not.toBeInstanceOf(FinishAfterCostError);
   });
 });
