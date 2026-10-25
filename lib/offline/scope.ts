@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
 import { blockOfflineAccess, offlineAccessBlocked } from "@/lib/offline/access";
 
 import { conflictEntries, discardPending, exportFileName, dismissHeld, enqueue, pendingEntries, rejectedEntries, retryHeld, type HeldEntry, type OutboxEntry, type OutboxOp } from "@/lib/offline/outbox";
-import { describePhotos, emptySummary, loadSnapshot, saveSnapshot, type Scope, scopeKey, setSupportSession, type UnsyncedSummary, unsyncedSummary, userPrefix, wipeAllOffline, wipeScope } from "@/lib/offline/store";
+import { describePhotos, emptySummary, loadSnapshot, saveSnapshot, type Scope, scopeKey, setSupportSession, type UnsyncedSummary, unsyncedIdsForUser, unsyncedSummary, userPrefix, wipeAllOffline, wipeScope } from "@/lib/offline/store";
 
 // ----- current scope (set by the user provider once the profile is known) -------------------------------------
 let currentScope: Scope | null = null;
@@ -196,7 +196,7 @@ export async function confirmUnsyncedDiscard(action: string, sync: () => Promise
   if (!scope && !options.everything) return true;
   const measure = async () => {
     const mine = scope ? await unsyncedSummary(options.everything ? userPrefix(scope.userId) : `${scopeKey(scope)}|`) : emptySummary();
-    const others = options.everything ? (await unsyncedSummary()).changes - mine.changes : 0;
+    const others = 0; // sign-out removes only this person's own work; other people's stays on the device untouched
     return { mine, others };
   };
   let { mine, others } = await measure();
@@ -217,7 +217,7 @@ export async function confirmUnsyncedDiscard(action: string, sync: () => Promise
   const photos = [describePhotos(mine), signatures].filter(Boolean).join(", ");
   const jobs = mine.jobNos.length ? ` Job${mine.jobNos.length === 1 ? "" : "s"}: ${mine.jobNos.join(", ")}.` : "";
   const detail = photos ? `\n\nNot uploaded: ${photos}.${jobs}` : jobs ? `\n\n${jobs.trim()}` : "";
-  const otherPeople = others ? `\n\n${others} unsynced change${others === 1 ? "" : "s"} by other people on this device will also be removed.` : "";
+  const otherPeople = "";
   if (mine.photos.length) {
     const count = mine.photos.length;
     if (ask(`${changes} synced yet.${detail}\n\nExport the ${count === 1 ? "photo" : `${count} photos`} first? OK saves ${count === 1 ? "it" : "them"} to this device as ${count === 1 ? "a file" : "files"}; Cancel goes on without saving.`)) {
@@ -253,16 +253,34 @@ export const saveOfflineIdentity = (userId: string, identity: OfflineIdentity) =
 export const loadOfflineIdentity = (userId: string) => loadSnapshot<OfflineIdentity>(identityScope(userId), "identity");
 
 /** Sign-out, disabled account or session ended: nothing stays on the device. */
-export async function wipeOfflineData() {
+export async function wipeOfflineData(confirmed?: ReadonlySet<string>) {
   const owner = currentScope?.userId;
   currentScope = null;
   clearStatus();
   try {
-    await wipeAllOffline(owner);
+    await wipeAllOffline(owner, confirmed);
   } catch (err) {
     console.error(err);
   }
   setStatus({ offline: false, syncedAt: null, pending: 0, pendingItems: [], pendingPhotos: [], conflicts: [], rejected: [] });
+}
+
+/**
+ * Sign-out: records the signing-out person's unsent change ids BEFORE asking, asks, then checks nothing new arrived (another tab
+ * queued work during the prompt or the sync). Returns the recorded ids for wipeOfflineData to remove (only those, only this
+ * person's), or null when the person cancelled or the queue grew: then nothing is removed and `notify` says why (ask again).
+ */
+export async function confirmSignOut(sync: () => Promise<unknown>, ask?: (message: string) => boolean, notify: (message: string) => void = (m) => window.alert(m), options: DiscardOptions = {}): Promise<Set<string> | null> {
+  const userId = currentScope?.userId;
+  const recorded = userId ? await unsyncedIdsForUser(userId) : new Set<string>();
+  if (!(await confirmUnsyncedDiscard("Signing out", sync, ask, { ...options, everything: true }))) return null;
+  const now = userId ? await unsyncedIdsForUser(userId) : new Set<string>();
+  const added = [...now].filter((id) => !recorded.has(id)).length;
+  if (added) {
+    notify(`${added === 1 ? "1 change was" : `${added} changes were`} saved offline in another tab while you were signing out, so nothing was removed. Check ${added === 1 ? "it" : "them"} (Sync now) and sign out again.`);
+    return null;
+  }
+  return recorded;
 }
 
 /**

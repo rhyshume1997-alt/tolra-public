@@ -7,7 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
 import { resetCompanyProfile } from "@/lib/company";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
-import { confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
+import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
 import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding } from "@/lib/access-recheck";
 import { OfflineIdentityExpiredError, offlineIdentityExpired } from "@/lib/offline/identity-age";
 import { pendingEntries, waitForReplayIdle } from "@/lib/offline/outbox";
@@ -92,7 +92,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
 
   const signOut = useCallback(async () => {
-    if (!(await confirmUnsyncedDiscard("Signing out", syncNow, undefined, { everything: true }))) return;
+    // Ids read before the person is asked; only these (and only this person's) are removed below. Work queued meanwhile aborts it.
+    const confirmedSignOut = await confirmSignOut(syncNow);
+    if (!confirmedSignOut) return;
     sessionEnding.value = true;
     try {
       if (supabase) await supabase.auth.signOut();
@@ -103,7 +105,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     clearAuthCookies();
     forgetLastActive();
     // Nothing from this person stays on the device (lib/offline).
-    await wipeOfflineData();
+    await wipeOfflineData(confirmedSignOut);
     resetCompanyProfile();
     resetOrgSettings();
     writeStoredRole(null);
