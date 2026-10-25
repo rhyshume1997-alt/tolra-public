@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { JOB_TABLE_COLUMNS } from "@/lib/job-board-files";
 import { supabase } from "@/lib/supabase";
-import { getCurrentOrganizationId } from "@/lib/supabase-business";
+import { getCurrentOrganizationId, getCurrentUserAndOrganization } from "@/lib/supabase-business";
 
 export type NavToggle = { key: string; href: string; label: string; section: string };
 
@@ -273,12 +273,13 @@ async function readRow(organizationId: string): Promise<Sets> {
 
 async function fetchSettings() {
   const gen = generation;
-  await resolveUserId();
-  if (gen !== generation) return;
   try {
     if (!supabase) throw new Error("Supabase is not configured.");
-    const organizationId = await getCurrentOrganizationId();
+    // One auth-server check names both the user and the session's company (it was asked twice in a row before: every auth-server
+    // check holds supabase-js's auth lock for a round trip, and every database request waits on that lock).
+    const { userId, organizationId } = await getCurrentUserAndOrganization();
     if (gen !== generation) return;
+    if (!currentUserId) currentUserId = userId;
     rememberOrg(organizationId);
     const row = await readRow(organizationId);
     if (gen !== generation) return;
@@ -286,6 +287,9 @@ async function fetchSettings() {
     writeLocal(base);
     publish({ loaded: true, localOnly: false });
   } catch {
+    if (gen !== generation) return;
+    // Offline: the stored session still names who is signed in on this device.
+    await resolveUserId();
     if (gen !== generation) return;
     // Offline cold reload: the company of the last online load on this device (cleared on sign-out and company switch).
     if (!currentOrgId) currentOrgId = recallOrg();

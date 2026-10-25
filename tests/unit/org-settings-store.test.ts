@@ -26,10 +26,12 @@ const h = vi.hoisted(() => {
     upserts: [] as Array<Record<string, unknown>>,
     /** When set, the next select waits for it (a slow read). */
     selectGate: null as Promise<void> | null,
+    /** Auth-server checks: getUser here, and getCurrentUserAndOrganization in the business mock. */
+    userAsks: 0,
   };
   const fake = {
     auth: {
-      getUser: async () => (db.offline ? { data: { user: null }, error: { message: "Failed to fetch" } } : { data: { user: { id: db.user } }, error: null }),
+      getUser: async () => (db.userAsks += 1, db.offline ? { data: { user: null }, error: { message: "Failed to fetch" } } : { data: { user: { id: db.user } }, error: null }),
       getSession: async () => ({ data: { session: { user: { id: db.user } } } }),
     },
     from: () => ({
@@ -59,7 +61,8 @@ const h = vi.hoisted(() => {
 
 vi.mock("@/lib/supabase", () => ({ supabase: h.fake }));
 vi.mock("@/lib/supabase-business", () => ({
-  getCurrentOrganizationId: async () => { if (h.db.offline) throw new Error("You must be signed in."); return h.db.org; },
+  getCurrentOrganizationId: async () => { h.db.userAsks += 1; if (h.db.offline) throw new Error("You must be signed in."); return h.db.org; },
+  getCurrentUserAndOrganization: async () => { h.db.userAsks += 1; if (h.db.offline) throw new Error("You must be signed in."); return { userId: h.db.user, organizationId: h.db.org }; },
 }));
 
 import {
@@ -73,7 +76,7 @@ const deferred = () => { let release!: () => void; const promise = new Promise<v
 beforeEach(() => {
   resetOrgSettings();
   h.store.clear();
-  Object.assign(h.db, { org: "org-a", user: "user-1", offline: false, row: null, selectError: null, upsertError: null, upsertStatus: 201, upserts: [], selectGate: null });
+  Object.assign(h.db, { org: "org-a", user: "user-1", offline: false, row: null, selectError: null, upsertError: null, upsertStatus: 201, upserts: [], selectGate: null, userAsks: 0 });
 });
 afterEach(() => { resetOrgSettings(); });
 
@@ -306,5 +309,15 @@ describe("locked columns", () => {
     expect(getOrgSettingsSnapshot().hiddenColumns.customers).toEqual([]);
     expect((await setColumnHidden("customers", "name", true)).denied).toBe(true);
     expect(h.db.upserts).toHaveLength(0);
+  });
+});
+
+describe("load: one auth-server check names the user and the company", () => {
+  it("online: the settings load asks the auth server once, files the copy under the user and company, and reads the row", async () => {
+    h.db.row = { hidden_nav: ["quotes"], hidden_columns: {} };
+    await loadOrgSettings(true);
+    expect(h.db.userAsks).toBe(1);
+    expect(getOrgSettingsSnapshot()).toMatchObject({ loaded: true, localOnly: false, hiddenNav: ["quotes"] });
+    expect(h.store.has(keyFor("org-a"))).toBe(true);
   });
 });
