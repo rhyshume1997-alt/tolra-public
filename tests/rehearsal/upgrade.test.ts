@@ -976,6 +976,20 @@ async function expect093(db: Client, present: boolean) {
   }
 }
 
+const IS_094 = (file: string) => file.endsWith("_activity_one_row_per_change.sql");
+
+/**
+ * What 094 changes: org_activity's body only (080's plus two read-time filters; compared without whitespace: 094's after a clean run,
+ * 080's after a failed one), with its security and grants as before. No table, row or other function.
+ */
+async function expect094(db: Client, present: boolean) {
+  const q = async (text: string) => (await db.query<{ v: boolean }>(text)).rows[0].v;
+  expect((await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)'::regprocedure")).rows[0]?.v,
+    `094 org_activity is ${present ? "094's" : "080's"}`).toBe(present ? "b4c46509fab9c5746b74bfd3afa30e00" : "ae7e2416ce0a54b0d8ccb721aeb2d245");
+  expect(await q("select p.prosecdef and has_function_privilege('authenticated', p.oid, 'EXECUTE') and not has_function_privilege('anon', p.oid, 'EXECUTE') as v from pg_proc p where p.oid = 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)'::regprocedure"),
+    "094 org_activity security and grants unchanged").toBe(true);
+}
+
 const IS_095 = (file: string) => file.endsWith("_ai_finance_check_audit_events.sql");
 
 /**
@@ -1494,6 +1508,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_091(last)) await expect091(db, false);
       if (IS_092(last)) await expect092(db, false);
       if (IS_093(last)) await expect093(db, false);
+      if (IS_094(last)) await expect094(db, false);
       if (IS_095(last)) await expect095(db, false);
       // Twice: a failure late in the file (its last section still to come) and one midway.
       for (const where of ["late", "middle"] as const) {
@@ -1558,6 +1573,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
         if (IS_091(last)) await expect091(db, false);
         if (IS_092(last)) await expect092(db, false);
         if (IS_093(last)) await expect093(db, false);
+        if (IS_094(last)) await expect094(db, false);
         if (IS_095(last)) await expect095(db, false);
         checked.push({ where, chosen });
       }
@@ -1617,6 +1633,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_091(last)) await expect091(db, true);
       if (IS_092(last)) await expect092(db, true);
       if (IS_093(last)) await expect093(db, true);
+      if (IS_094(last)) await expect094(db, true);
       if (IS_095(last)) await expect095(db, true);
       expect(await structure(db)).not.toEqual(structureBefore);
       await db.query("notify pgrst, 'reload schema'");
@@ -1664,6 +1681,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_091(newest)) await expect091(db, true);
       if (IS_092(newest)) await expect092(db, true);
       if (IS_093(newest)) await expect093(db, true);
+      if (IS_094(newest)) await expect094(db, true);
       if (IS_095(newest)) await expect095(db, true);
     });
   });

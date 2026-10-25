@@ -956,6 +956,70 @@ describe("prepared release text for protecting the platform owner's login (supab
   });
 });
 
+describe("prepared release text for the Activity page's one row per change (supabase/release, 094)", () => {
+  const root = path.resolve(__dirname, "../..");
+  const read = (file: string) => readFileSync(path.join(root, file), "utf8");
+  const file = () => readdirSync(path.join(root, "supabase/migrations")).find((f) => f.endsWith("_activity_one_row_per_change.sql"))!;
+  const body = (sql: string, fn: string) => {
+    const start = sql.indexOf("AS $$", sql.indexOf(`FUNCTION ${fn}`)) + 5;
+    return sql.slice(start, sql.indexOf("$$;", start));
+  };
+  const md5 = (text: string) => createHash("md5").update(text.replace(/\s/g, "")).digest("hex");
+  const m080 = () => read("supabase/migrations/080_activity_labels_job_work.sql");
+  const ORG = "public.org_activity(";
+  const definition = (sql: string) => {
+    const start = sql.indexOf("CREATE OR REPLACE FUNCTION public.org_activity(");
+    const end = "GRANT EXECUTE ON FUNCTION public.org_activity(TIMESTAMPTZ, TIMESTAMPTZ, UUID, TEXT, TIMESTAMPTZ, UUID, INTEGER) TO authenticated;";
+    return sql.slice(start, sql.indexOf(end, start) + end.length);
+  };
+
+  it("is exactly what release-sql.mjs produces from the migration file", () => {
+    const expected = releaseSql(read(path.join("supabase/migrations", file())), file());
+    expect(read(path.join("supabase/release", file().replace(/\.sql$/, ".release.sql")))).toBe(expected);
+  });
+
+  it("replaces only org_activity: 080's definition plus exactly the variable and the two read-time filters; no table, row or grant change", () => {
+    const sql = read(path.join("supabase/migrations", file()));
+    expect([...sql.matchAll(/CREATE OR REPLACE FUNCTION ([\w.]+)\(/g)].map((m) => m[1])).toEqual(["public.org_activity"]);
+    const added = [
+      "  v_row_audited TEXT[];\n",
+      "  -- 094: the tables whose every row change the database records itself (security_audit.log_row_change).\n  v_row_audited := ARRAY(SELECT DISTINCT c.relname::TEXT FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid\n                         WHERE c.relnamespace = 'public'::regnamespace AND t.tgfoid = 'security_audit.log_row_change()'::regprocedure);\n",
+    ];
+    let def = definition(sql);
+    for (const part of added) {
+      expect(def.split(part)).toHaveLength(2);
+      def = def.replace(part, "");
+    }
+    const filters = def.slice(def.indexOf("    -- 094 (a)"), def.indexOf("  ORDER BY a.created_at DESC, a.id DESC"));
+    expect(filters).toContain("a.entity_table = ANY (v_row_audited)");
+    expect(filters).toContain("n.hash = a.previous_hash");
+    expect(filters).toContain("n.action IN ('ISSUE', 'MARK_PAID', 'RESEND', 'CONFIRM', 'REOPEN')");
+    expect(filters).toContain("n.entity_table = a.entity_table AND n.entity_id = a.entity_id");
+    expect(filters).toContain("n.actor_user_id IS NOT DISTINCT FROM a.actor_user_id");
+    expect(def.replace(filters, "")).toBe(definition(m080()));
+    const outside = sql.replace(/\$\$[\s\S]*?\$\$/g, "$$$$");
+    expect(outside).not.toMatch(/^\s*(ALTER TABLE|CREATE TABLE|CREATE POLICY|DROP POLICY|ALTER POLICY|CREATE TRIGGER|DROP TRIGGER|UPDATE |INSERT INTO|DELETE FROM)/m);
+    expect(sql.replace(/GRANT EXECUTE ON FUNCTION public\.org_activity\([^)]*\) TO authenticated;/g, "")).not.toMatch(/\bGRANT [A-Z, ]+ ON\b/);
+    // The guard accepts 080's and 094's body, the self-check pins 094's (md5 with every whitespace character removed).
+    expect(md5(body(m080(), ORG))).toBe("ae7e2416ce0a54b0d8ccb721aeb2d245");
+    expect(sql.split(md5(body(sql, ORG))).length).toBe(4);
+    expect(sql.split(md5(body(m080(), ORG))).length).toBe(2);
+    const verify = read("supabase/verify/activity_one_row_per_change_094.sql");
+    expect(verify).toContain(`body = '${md5(body(sql, ORG))}'`);
+    expect(read("supabase/verify/release_preflight.sql").split(md5(body(sql, ORG))).length).toBe(4);
+  });
+
+  it("its rollback puts back 080's org_activity exactly (with its grants), guarded by 094's and 080's bodies", () => {
+    const rollback = read("supabase/release/094_activity_one_row_per_change.rollback.sql");
+    expect(rollback.match(/^BEGIN;$/gm)).toHaveLength(1);
+    expect(rollback.trimEnd().endsWith("COMMIT;")).toBe(true);
+    expect(rollback).toContain(definition(m080()));
+    expect([...rollback.matchAll(/CREATE OR REPLACE FUNCTION ([\w.]+)\(/g)].map((m) => m[1])).toEqual(["public.org_activity"]);
+    expect(rollback).toContain(`'${md5(body(read(path.join("supabase/migrations", file())), ORG))}'`);
+    expect(rollback).toContain(`'${md5(body(m080(), ORG))}'`);
+  });
+});
+
 describe("prepared release text for the finance check's audit events (supabase/release, 095)", () => {
   const root = path.resolve(__dirname, "../..");
   const read = (file: string) => readFileSync(path.join(root, file), "utf8");
