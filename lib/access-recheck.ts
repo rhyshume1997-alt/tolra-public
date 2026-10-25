@@ -38,6 +38,25 @@ export function decideAccess(current: Pick<UserProfile, "role" | "secondary_role
   return { kind: "keep" };
 }
 
+/**
+ * How recent a full server confirmation (the sign-in load, or a recheck pass that read the profile and my_session) must be for a
+ * quiet sync pass not to ask the same questions again (page-load lag, step 2). The sync that runs as the app opens ended in a
+ * recheck repeating, a second or so later, the three reads the load had just made (getUser, user_profiles, my_session).
+ */
+export const SYNC_RECHECK_SKIP_MS = 10_000;
+
+/**
+ * Does this sync pass's end ask the server again (lib/use-user.ts)? Always when the pass found the session gone, when a queued change
+ * got an answer (a refusal may mean access changed), or when there is no full confirmation from the last SYNC_RECHECK_SKIP_MS
+ * (none yet, opened offline, or a clock moved back). Only a quiet pass right after a full confirmation is answered by it. Focus,
+ * visibility, "online", other-tab signals and the 10-minute timer are not affected.
+ */
+export function syncPassNeedsRecheck(event: { sessionGone: boolean; quiet: boolean }, fullyConfirmedAt: number | null, now: number = Date.now(), skipMs: number = SYNC_RECHECK_SKIP_MS): boolean {
+  if (event.sessionGone || !event.quiet || fullyConfirmedAt === null) return true;
+  const elapsed = now - fullyConfirmedAt;
+  return !(elapsed >= 0 && elapsed < skipMs);
+}
+
 /** Milliseconds until a saved identity confirmed at `confirmedAt` stops opening the app offline (0 = already expired). */
 export function msUntilOfflineExpiry(confirmedAt: string | null | undefined, now: number = Date.now(), maxAgeMs: number = OFFLINE_IDENTITY_MAX_AGE_MS): number {
   const at = confirmedAt ? Date.parse(confirmedAt) : NaN;
