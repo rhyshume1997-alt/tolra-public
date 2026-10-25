@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { KEY_VERSION, encryptSecret, encryptionKey, decryptSecret } from "@/lib/integrations/crypto";
 import { type EngineDb, type EngineDeps, type RunSummary, runSends } from "@/lib/integrations/engine";
 import { createTokenSource } from "@/lib/integrations/tokens";
-import type { Mappings, ProviderId } from "@/lib/integrations/types";
+import type { AccountingProvider, Mappings, ProviderId } from "@/lib/integrations/types";
 import { createXeroClient } from "@/lib/integrations/xero/client";
 import {
   type XeroConfig, type XeroConnection, XeroAuthError, authorizeUrl, chooseConnection, deleteConnection, exchangeCode, hashState, listConnections,
@@ -70,6 +70,20 @@ function engineDeps(db: EngineDb, ready: { config: XeroConfig; key: Buffer }): E
     }),
     provider: (accessToken, tenantId) => createXeroClient({ accessToken, tenantId }),
   };
+}
+
+/**
+ * The company's Xero, read only, for the mapping page (its accounts and tax rates): null when the company is not connected (or must
+ * connect again). The token stays on the server; only the lists go to the browser.
+ */
+export async function companyProvider(service: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer }): Promise<AccountingProvider | null> {
+  const { data, error } = await service.from("integration_connections").select("status, tenant_id").eq("organization_id", org).eq("provider", "xero").maybeSingle();
+  if (error) throw new DbError(error.message, error.code);
+  const conn = data as { status: string; tenant_id: string | null } | null;
+  if (!conn || conn.status !== "connected" || !conn.tenant_id) return null;
+  const deps = engineDeps(serviceDb(service), ready);
+  const token = await deps.accessToken(org, "xero");
+  return token ? deps.provider(token, conn.tenant_id) : null;
 }
 
 /** Sends what one company has queued (bounded: a few documents per call; the rest go on the next call). */

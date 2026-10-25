@@ -68,8 +68,10 @@ export class ProviderError extends Error {
 /** One accounting system, for one connected organisation (tenant), with a valid access token. */
 export interface AccountingProvider {
   readonly id: ProviderId;
-  listAccounts(): Promise<Array<{ code: string; name: string; type: string }>>;
-  listTaxRates(): Promise<Array<{ code: string; name: string; rate: number }>>;
+  /** Active accounts; revenue: the account can take sales (Xero class REVENUE: types REVENUE, SALES, OTHERINCOME). */
+  listAccounts(): Promise<Array<{ code: string; name: string; type: string; revenue: boolean }>>;
+  /** Tax rates not deleted; revenue: Xero's CanApplyToRevenue; active: Xero's Status ACTIVE (not archived or pending). */
+  listTaxRates(): Promise<Array<{ code: string; name: string; rate: number; revenue: boolean; active: boolean }>>;
   findContacts(name: string): Promise<ContactCandidate[]>;
   createContact(name: string, idempotencyKey: string): Promise<ContactCandidate>;
   pushInvoice(doc: IntegrationDocument, mappings: Mappings, contactId: string, idempotencyKey: string): Promise<ProviderDocument>;

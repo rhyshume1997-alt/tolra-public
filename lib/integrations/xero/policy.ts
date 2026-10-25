@@ -16,6 +16,9 @@ export const ALLOCATE_CREDIT_NOTES = false;
 /** Q9 (who may connect and disconnect). Rhys, Wed 21 Oct: admins only (after the second step of sign-in); the database checks the same. */
 export const CONNECT_ROLES = ["admin"] as const;
 
+/** Rhys, Wed 21 Oct: the mappings (account codes, tax rates) are an admin's too; the database checks the same (integration_set_mapping). */
+export const MAPPING_ROLES = ["admin"] as const;
+
 /**
  * Rhys, Wed 21 Oct: every manual send, retry or resend (Send now; the send log's Retry in PR 2) is an admin's. The automatic send right
  * after an invoice or credit note is issued (or an invoice voided) runs for whoever issued it, but only for that document's first attempt.

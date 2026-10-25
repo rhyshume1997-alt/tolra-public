@@ -142,6 +142,33 @@ export async function databaseHas075(): Promise<boolean> {
   return pending075;
 }
 
+/**
+ * "Does the database have 084?" (Xero + Integrations, G22). A GET of at most one integration_mappings row, which 084 creates in the same
+ * transaction as everything else (connections, the send log, integration_overview, integration_set_mapping, integration_retry_send). Row
+ * rules give the company's admins its rows and everyone else none, so any role may ask. A missing table means "not yet": the Integrations
+ * link and page stay hidden. Any other failure (offline, a timeout) is not an answer: as for 067 and 068 the feature is not hidden for it
+ * (the page's own integration_overview call then says "not yet" only on a missing object) and the next call asks again.
+ */
+let cached084: boolean | null = null;
+let pending084: Promise<boolean> | null = null;
+
+export async function databaseHas084(): Promise<boolean> {
+  if (cached084 !== null) return cached084;
+  if (!supabase) return false;
+  pending084 ??= (async () => {
+    try {
+      const present = featurePresent(await supabase!.from("integration_mappings").select("id").limit(1));
+      if (present !== null) cached084 = present;
+      return present ?? true;
+    } catch {
+      return true;
+    } finally {
+      pending084 = null;
+    }
+  })();
+  return pending084;
+}
+
 /** For tests: forget the cached answers. */
 export function resetDatabaseFeatureCache() {
   cached067 = null;
@@ -152,4 +179,6 @@ export function resetDatabaseFeatureCache() {
   pending073 = null;
   cached075 = null;
   pending075 = null;
+  cached084 = null;
+  pending084 = null;
 }

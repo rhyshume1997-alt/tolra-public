@@ -40,6 +40,7 @@ import { awaitingApproval } from "@/lib/approval-queue";
 import { supabase } from "@/lib/supabase";
 import { isCompanyPending } from "@/lib/brand-pending";
 import { useCompanyProfile } from "@/lib/company";
+import { databaseHas084 } from "@/lib/db-features";
 import { friendlyError } from "@/lib/friendly-error";
 import { useUser } from "@/lib/use-user";
 import type { UserRole } from "@/types";
@@ -106,6 +107,15 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [switching, setSwitching] = useState(false);
   const currentOrg = organizations.find((org) => org.is_current);
   const canChooseView = profile?.role === "admin" || Boolean(profile?.secondary_role);
+  // Admin > Integrations is hidden until the database has 084 (lib/db-features databaseHas084); only an admin's sidebar asks.
+  const isAdmin = hasAnyRole(["admin"]);
+  const [has084, setHas084] = useState(false);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    void databaseHas084().then((value) => { if (active) setHas084(value); });
+    return () => { active = false; };
+  }, [isAdmin]);
 
   useEffect(() => {
     async function loadApprovalCount() {
@@ -226,7 +236,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 overflow-y-auto px-3 pb-4">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
           if (!visibleItems.length) return null;
 
           return (
