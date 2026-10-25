@@ -13,7 +13,7 @@ import { HEIC_MESSAGE, isHeic } from "@/lib/job-photos";
 import { enqueue, pendingEntries, photoBlobKey, readAttachment, rejectedEntries, replayOutbox, retryHeld, type PhotoOp } from "@/lib/offline/outbox";
 import { confirmUnsyncedDiscard, setOfflineScope, wipeOfflineData } from "@/lib/offline/scope";
 import { executePhotoOp, PHOTO_MISMATCH_REASON } from "@/lib/offline/sync";
-import { discardedMessage, memoryBackend, setOfflineBackend, setSupportSession, takeDiscardedNotice, wipeAllOffline, wipeScope } from "@/lib/offline/store";
+import { discardedMessage, memoryBackend, setOfflineBackend, setSupportSession, takeDiscardedNotice, unsyncedIdsForUser, wipeAllOffline, wipeScope } from "@/lib/offline/store";
 
 const alice = { userId: "user-a", orgId: "org-1" };
 const aliceElsewhere = { userId: "user-a", orgId: "org-2" };
@@ -196,37 +196,36 @@ describe("a shared tablet: another person's unsynced work", () => {
     return { mine, theirs };
   }
 
-  it("sign-out describes and exports only the signed-in person's work; other people's is a bare count", async () => {
-    const { mine } = await shared();
+  it("sign-out describes and exports only the signed-in person's work; other people's is not mentioned, counted or removed", async () => {
+    const { mine, theirs } = await shared();
     const ask = vi.fn<(m: string) => boolean>(() => true);
     const exportPhotos = vi.fn<(photos: { blobKey: string }[]) => Promise<number>>(async (photos) => photos.length);
     expect(await confirmUnsyncedDiscard("Signing out", offline, ask, { everything: true, exportPhotos })).toBe(true);
     const said = ask.mock.calls.map((call) => call[0]).join("\n");
-    expect(said).not.toMatch(/B-SECRET|that failed/);
+    expect(said).not.toMatch(/B-SECRET|that failed|other people/);
     expect(ask.mock.calls[0][0]).toMatch(/^1 change made offline hasn't synced yet\.\n\nNot uploaded: 1 photo waiting to upload\. Job: J-1\.\n\nExport the photo first\?/);
-    expect(ask.mock.calls[1][0]).toMatch(/Signing out removes it from this device for good\.[\s\S]*\n\n2 unsynced changes by other people on this device will also be removed\.\n\nPress Cancel/);
+    expect(ask.mock.calls[1][0]).toMatch(/Signing out removes it from this device for good\.[\s\S]*\n\nPress Cancel/);
     expect(exportPhotos.mock.calls[0][0].map((p) => p.blobKey)).toEqual([mine.blobKey]);
-    // The notice after the wipe: the person's own jobs, other people's as a count only.
-    await wipeOfflineData();
-    expect(data.size).toBe(0);
+    // The wipe removes the person's own work only; the other person's queue and bytes stay.
+    await wipeOfflineData(await unsyncedIdsForUser(alice.userId));
+    expect(await pendingEntries(alice)).toEqual([]);
+    expect(await readAttachment(theirs.blobKey)).not.toBeNull();
+    expect(await rejectedEntries({ userId: "user-b", orgId: "org-9" })).toHaveLength(1);
     const notice = takeDiscardedNotice()!;
-    expect(notice).toEqual({ count: 1, photos: 1, jobNos: ["J-1"], others: 2 });
+    expect(notice).toEqual({ count: 1, photos: 1, jobNos: ["J-1"], others: 0 });
     expect(JSON.stringify(notice)).not.toMatch(/B-SECRET/);
-    expect(discardedMessage(notice, "")).toBe("1 offline change that hadn't synced was removed from this device. It was a photo. Job: J-1. Please enter it again. 2 unsynced changes by other people on this device were also removed.");
   });
 
-  it("only other people's work on the device: asked with a count, no export offered, nothing of theirs named", async () => {
+  it("only other people's work on the device: nothing to ask, nothing removed", async () => {
     await shared();
     await replayOutbox(alice, async () => ({ status: "applied" }));
     const ask = vi.fn<(m: string) => boolean>(() => false);
-    const exportPhotos = vi.fn(async () => 0);
-    expect(await confirmUnsyncedDiscard("Signing out", offline, ask, { everything: true, exportPhotos })).toBe(false);
-    expect(ask).toHaveBeenCalledTimes(1);
-    expect(ask.mock.calls[0][0]).toBe('Signing out removes unsynced changes from this device for good.\n\n2 unsynced changes by other people on this device will also be removed.\n\nPress Cancel, reconnect and use "Sync now" to keep them, or OK to remove them.');
-    expect(exportPhotos).not.toHaveBeenCalled();
-    // A wipe with no one signed in (the person unknown) names nobody.
-    await wipeAllOffline();
-    expect(takeDiscardedNotice()).toEqual({ count: 0, photos: 0, jobNos: [], others: 2 });
+    expect(await confirmUnsyncedDiscard("Signing out", offline, ask, { everything: true, exportPhotos: async () => 0 })).toBe(true);
+    expect(ask).not.toHaveBeenCalled();
+    const before = data.size;
+    await wipeOfflineData(await unsyncedIdsForUser(alice.userId));
+    expect([...data.keys()].filter((k) => k.startsWith("u:user-b|")).length).toBeGreaterThan(0);
+    expect(data.size).toBeLessThanOrEqual(before);
   });
 
   it("a company switch never counts or names another person's work", async () => {
