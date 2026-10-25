@@ -31,4 +31,8 @@ describe("timeSendNotice", () => {
     const n = timeSendNotice("Clock out", "k1", { ...base, held: [{ op: clock, reason: "This week is approved." }] });
     expect(n).toEqual({ tone: "error", message: "Clock out: not recorded. This week is approved." });
   });
+  it("refused but the wait ran out (not settled): still not recorded, never 'saved on this device'", () => {
+    const n = timeSendNotice("Clock out", "k1", { ...base, settled: false, held: [{ op: clock, reason: "This week is approved." }] });
+    expect(n).toEqual({ tone: "error", message: "Clock out: not recorded. This week is approved." });
+  });
 });
