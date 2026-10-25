@@ -24,7 +24,7 @@ import { scopeKey } from "@/lib/offline/store";
 import { executeClockOp, executeLabourOp, syncNow } from "@/lib/offline/sync";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
-import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, timeSendNotice } from "@/lib/time-data";
+import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
 import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, dayTotals, hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
 import { useUser } from "@/lib/use-user";
@@ -157,7 +157,7 @@ export function DaySheet() {
       if (await queueOffline(op)) {
         const wasOffline = offline.offline;
         if (wasOffline) showNotice(timeSendNotice(label, op.clientOpId, { offline: true, settled: false, pending: [], held: [] }));
-        const sync = syncNow().then(() => true, () => false);
+        const sync = syncNow().then(syncPassRan, () => false);
         void sync.then(() => load());
         if (!wasOffline) {
           // Say "saved" once the server has it; "saved on this device" only while it is still waiting here.
@@ -165,7 +165,8 @@ export function DaySheet() {
           const scopeAfter = offlineScope();
           const same = Boolean(scopeBefore && scopeAfter && scopeKey(scopeBefore) === scopeKey(scopeAfter));
           const s = currentOfflineStatus();
-          showNotice(timeSendNotice(label, op.clientOpId, { offline: false, settled: settled && same, pending: s.pendingItems, held: [...s.rejected, ...s.conflicts] }));
+          // Held and blocked entries are only read from this same person and company's queue.
+          showNotice(timeSendNotice(label, op.clientOpId, { offline: false, settled: settled && same, pending: same ? s.pendingItems : [], held: same ? [...s.rejected, ...s.conflicts] : [] }));
         }
       } else if (supabase) {
         // This device can't hold it (no offline store): send it now.
