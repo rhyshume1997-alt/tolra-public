@@ -132,9 +132,10 @@ const opKey = (op: OutboxEntry["op"]) => (op.kind === "clock" || op.kind === "la
 export function timeSendNotice(label: string, clientOpId: string, state: SendState): SendNotice {
   const waiting = `${label}: saved on this device. It will be sent as soon as the connection allows.`;
   if (state.offline) return { tone: "success", message: `${label}: saved on this device. It will sync when you're back online.` };
-  if (!state.settled) return { tone: "success", message: waiting };
+  // A refusal is reported even when the wait ran out or the scope changed: it must never read as "saved on this device".
   const held = state.held.find((e) => opKey(e.op) === clientOpId);
   if (held) return { tone: "error", message: `${label}: not recorded. ${held.reason}` };
+  if (!state.settled) return { tone: "success", message: waiting };
   const queued = state.pending.find((e) => opKey(e.op) === clientOpId);
   if (queued?.blocked) return { tone: "info", message: `${label}: saved on this device, not sent yet. ${queued.blocked.reason}` };
   if (queued) return { tone: "success", message: waiting };
