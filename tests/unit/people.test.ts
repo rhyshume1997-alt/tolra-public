@@ -81,6 +81,9 @@ describe("who and when lines", () => {
       [{ created_by: "u-admin", created_at: at }, { created_by: "u-shop", created_at: at }, { created_by: "u-shop", created_at: at, reverses_payment_id: "p1" }],
     );
     expect(lines.map((l) => `${l.label} ${l.name}`)).toEqual(["Created by Ada Admin", "Issued by Ada Admin", "Payment recorded by Ada Admin", "Payment recorded by Sam Shop", "Paid (cleared) by Sam Shop"]);
+    // paid_at is a payment date stored at 12:00 UTC: the clearing line shows the date, never a made-up 12:00 or 13:00.
+    expect(lineText(lines.at(-1)!)).toBe("Paid (cleared) by Sam Shop · 12/10/2026");
+    expect(lineText(whoWhenLines("invoices", { status: "paid", paid_by: "u-shop", paid_at: "2026-07-01T12:00:00+00:00" }, people).at(-1)!)).toBe("Paid (cleared) by Sam Shop · 01/07/2026");
     // An invoice issued before 035 still shows as issued, with no person and no time.
     expect(lineText(whoWhenLines("invoices", { status: "issued" }, people)[1])).toBe("Issued by —");
   });
