@@ -1,3 +1,4 @@
+import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { missingDbObject } from "@/lib/db-features";
 import { DRAWINGS_BUCKET, missingTraceability, validateDrawing } from "@/lib/job-worksheet";
 import { newClientOpId } from "@/lib/machine-runs";
@@ -129,7 +130,9 @@ export async function loadCanInspect(isAdmin: boolean, me?: string | null): Prom
   if (mayRecordInspection(isAdmin, has083, false)) return true;
   let userId = me;
   if (userId === undefined) {
-    const { data, error } = await supabase.auth.getUser();
+    // Who is signed in, confirmed by the auth server within this page load (lib/confirmed-user.ts); the member row read below,
+    // under RLS, is what decides.
+    const { data, error } = await confirmedUser({ maxAgeMs: CONFIRMED_USER_REUSE_MS });
     if (error) throw error; // not known (offline or a failed read), never "not an inspector"
     userId = data.user?.id ?? null;
   }

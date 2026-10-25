@@ -12,7 +12,8 @@ import { readAttachment, rejectedEntries, replayOutbox, requeueHeldRunOps, withR
 import { offlineScope, refreshCounts, reportOffline, suspendOfflineAccess } from "@/lib/offline/scope";
 import { organizationSwitchAffects } from "@/lib/access-recheck";
 import { parseSessionInfo, offlineCopyAllowed } from "@/lib/session-info";
-import { authSessionGone } from "@/lib/session-end";
+import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
+import { authSessionGone, sessionEndedError } from "@/lib/session-end";
 import { isNetworkError, scopeKey } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
 import { reportHeldTimeRejections, reportTimeSyncRejection } from "@/lib/time-sync-rejections";
@@ -466,9 +467,15 @@ export async function executeOutboxOp(op: OutboxOp, orgId: string | null = offli
   }
 }
 
-const syncListeners = new Set<() => void>();
+const syncListeners = new Set<(event: SyncPassEvent) => void>();
+/**
+ * What a sync pass tells its listeners. sessionGone: the pass found the session gone and sent nothing (the access recheck should run
+ * now). quiet: no queued change got an answer from the server in this pass (nothing was sent, or the pass stopped before sending).
+ */
+export type SyncPassEvent = { sessionGone: boolean; quiet: boolean };
+
 /** Runs `listener` after every sync pass (the signed-in person's access is asked again then; lib/use-user.ts). Returns the unsubscribe. */
-export function onSyncComplete(listener: () => void): () => void {
+export function onSyncComplete(listener: (event: SyncPassEvent) => void): () => void {
   syncListeners.add(listener);
   return () => { syncListeners.delete(listener); };
 }
@@ -490,16 +497,24 @@ export async function syncNow() {
     return current !== null && scopeKey(current) === scopeKey(scope);
   };
   {
-    // A cached token is not permission to recover quarantined work. Confirm the same user AND company first.
-    const { data, error } = await supabase.auth.getUser();
+    // A cached token is not permission to recover quarantined work. Confirm the same user AND company first. The user is the auth
+    // server's answer, shared with this page load when it is seconds old and the device's session still names that user
+    // (lib/confirmed-user.ts); my_session below is the database's answer for this request (017's session check refuses an ended one).
+    const { data, error } = await confirmedUser({ maxAgeMs: CONFIRMED_USER_REUSE_MS });
     if (authSessionGone(error)) {
       // The session is gone (timeout, sign-out elsewhere, or a disabled account signed out by the middleware): nothing is sent,
       // and the access recheck runs now (lib/use-user.ts) instead of at the next focus or 10-minute check. It decides; the queue stays.
-      for (const listener of syncListeners) listener();
+      for (const listener of syncListeners) listener({ sessionGone: true, quiet: true });
       return null;
     }
     if (error || data.user?.id !== scope.userId || !stillCurrent()) return null;
     const { data: sessionData, error: sessionError } = await supabase.rpc("my_session");
+    if (sessionEndedError(sessionError)) {
+      // The database says this session has ended (a confirmation shared from seconds ago can predate that): the same as the auth
+      // server saying so above. Nothing is sent and the access recheck runs now.
+      for (const listener of syncListeners) listener({ sessionGone: true, quiet: true });
+      return null;
+    }
     if (sessionError || !stillCurrent()) return null;
     const info = parseSessionInfo(sessionData);
     if (!info) return null;
@@ -525,7 +540,8 @@ export async function syncNow() {
   const client = supabase;
   if (stillCurrent()) await withReplayLock(scope, async () => stillCurrent() ? reportHeldTimeRejections(client, await rejectedEntries(scope).catch(() => [])) : 0).catch(() => 0);
   await refreshCounts();
-  for (const listener of syncListeners) listener();
+  const quiet = result.applied + result.conflicts + result.rejected + result.blocked === 0;
+  for (const listener of syncListeners) listener({ sessionGone: false, quiet });
   return result;
 }
 

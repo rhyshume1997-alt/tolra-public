@@ -88,6 +88,28 @@ it("a session found gone runs the access recheck at once and sends nothing; the 
     expect(recheck).not.toHaveBeenCalled();
   } finally { stop(); }
 });
+it("my_session says the session has ended (28000): nothing is sent and the access recheck runs at once (lag step 1)", async () => {
+  const recheck = vi.fn();
+  const stop = onSyncComplete(recheck);
+  try {
+    client.rpc.mockImplementation(async () => ({ data: null, error: { code: "28000", message: "Your session has ended. Sign in again." } }));
+    await syncNow();
+    expect(client.rpc.mock.calls.map(([name]) => name)).toEqual(["my_session"]);
+    expect(recheck).toHaveBeenCalledOnce();
+    expect(recheck).toHaveBeenCalledWith({ sessionGone: true, quiet: true });
+    expect(await pendingEntries(scope)).toEqual([queued]);
+  } finally { stop(); }
+});
+it("a pass tells its listeners whether any queued change got an answer (lag step 2)", async () => {
+  const recheck = vi.fn();
+  const stop = onSyncComplete(recheck);
+  try {
+    await syncNow();
+    expect(recheck).toHaveBeenLastCalledWith({ sessionGone: false, quiet: false });
+    await syncNow(); // the queue is empty now
+    expect(recheck).toHaveBeenLastCalledWith({ sessionGone: false, quiet: true });
+  } finally { stop(); }
+});
 it("a 403 on a replayed change while the session is valid (getUser OK, my_session confirms) holds that change only: no lock, no marks, one normal recheck", async () => {
   const storage = new Map<string, string>();
   const cookies: string[] = [];

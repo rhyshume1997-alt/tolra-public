@@ -1,5 +1,6 @@
 "use client";
 
+import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { missingDbObject } from "@/lib/db-features";
 import { supabase } from "@/lib/supabase";
 import { isSupplierStatus, type SupplierStatus } from "@/lib/supplier-status";
@@ -65,7 +66,9 @@ export async function getCurrentOrganizationId() {
 export async function getCurrentUserAndOrganization(): Promise<{ userId: string; organizationId: string }> {
   if (!supabase) throw new Error("Supabase is not configured.");
 
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  // The auth server's confirmation, shared with the rest of this page load when it is seconds old (lib/confirmed-user.ts): the
+  // company below, and every read or write made with it, is still decided by the database (RLS, 017's session check).
+  const { data: userData, error: userError } = await confirmedUser({ maxAgeMs: CONFIRMED_USER_REUSE_MS });
   if (userError || !userData.user) throw new Error("You must be signed in.");
 
   // The company of THIS sign-in session, as the database sees it (not the profile's copy).
