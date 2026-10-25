@@ -97,6 +97,23 @@ describe("sign-out on a shared device", () => {
     expect(await ids(alice)).toEqual(["a-late"]);
   });
 
+  it("a second tab queues after the final check (between confirmSignOut and the wipe): that item and its bytes are kept", async () => {
+    await enqueue(alice, clock("a1"));
+    await enqueue(bob, clock("b1"));
+    setOfflineScope(alice);
+    const confirmed = await confirmSignOut(offline, () => true, vi.fn());
+    expect([...confirmed!]).toHaveLength(1);
+    // Another tab, after the final check: a clock action and a photo with its bytes.
+    const blobKey = `u:user-a|o:org-1|photo|tab2`;
+    await enqueue(alice, clock("tab2-clock"));
+    await enqueue(alice, { kind: "photo", photoId: "tab2", jobId: "j", jobNo: "J-2", note: null, capturedAt: null, byteSize: 3, blobKey }, new Date(), { [blobKey]: "tab2-bytes" });
+    await wipeOfflineData(confirmed!);
+    expect(await ids(alice)).toEqual(["tab2-clock", undefined]);
+    expect(await readAttachment(blobKey)).toBe("tab2-bytes");
+    expect(await ids(bob)).toEqual(["b1"]);
+    expect(takeDiscardedNotice()).toMatchObject({ count: 1, others: 0 });
+  });
+
   it("use-user signOut records ids before the prompt and wipes only them", () => {
     const source = readFileSync(path.resolve(__dirname, "../../lib/use-user.ts"), "utf8");
     const flow = source.slice(source.indexOf("const signOut"), source.indexOf("const switchOrganization"));
