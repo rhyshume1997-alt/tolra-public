@@ -9,7 +9,7 @@ import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, forgetLastActive, idleMessage }
 import { adoptServerAccessEnded } from "@/lib/offline/access";
 import { INVALID_CREDENTIALS_MESSAGE, UNREACHABLE_MESSAGE, classifySignInResponse, isUnreachableError } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
-import { LAST_ORG_KEY, isOrgSlug, type LoginBranding } from "@/lib/branding";
+import { LAST_ORG_KEY, fetchLoginBranding, isOrgSlug, type LoginBranding } from "@/lib/branding";
 
 /**
  * The branding the server rendered (?org, the company subdomain or this device's brand cookie: app/login/page.tsx). Only a device
@@ -24,9 +24,7 @@ function useLoginBranding(initial: LoginBranding | null, hasOrgParam: boolean) {
     try { stored = window.localStorage.getItem(LAST_ORG_KEY); } catch { /* storage blocked */ }
     if (!isOrgSlug(stored)) return;
     let cancelled = false;
-    fetch(`/api/branding?org=${encodeURIComponent(stored)}`)
-      .then(async (response) => (response.ok ? ((await response.json()) as LoginBranding | null) : null))
-      .catch(() => null)
+    fetchLoginBranding(stored)
       .then((result) => {
         if (cancelled) return;
         setBranding(result);
