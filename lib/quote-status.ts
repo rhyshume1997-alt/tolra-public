@@ -113,6 +113,17 @@ export function quoteSendBlock(ref: string, totalValue: unknown): string | null 
   return pence(totalValue) <= 0 ? `${ref} is £0.00, so it can't be sent. Add prices to its lines first.` : null;
 }
 
+/**
+ * Why a quote cannot be marked accepted, or null when it can: a £0.00 quote, one with no lines, or (in the Confirm Accepted dialog)
+ * ticked lines that come to £0.00 would make a sales order and job worth nothing. `lineCount` and `tickedSubtotal` are optional.
+ */
+export function quoteAcceptBlock(totalValue: unknown, lineCount?: number, tickedSubtotal?: number): string | null {
+  if (pence(totalValue) <= 0) return "A quote for £0.00 can't be accepted. Add a price or decline it.";
+  if (lineCount !== undefined && lineCount <= 0) return "A quote with no lines can't be accepted. Add a line or decline it.";
+  if (tickedSubtotal !== undefined && pence(tickedSubtotal) <= 0) return "The ticked lines come to £0.00, so they can't be accepted. Tick a priced line or decline the quote.";
+  return null;
+}
+
 /** How many quotes are in each (shown) status: the legend and the bar above the list, counted over the quotes in the current Show scope. */
 export function statusCounts(rows: Array<{ status: QuoteStatus }>): Record<QuoteStatus, number> {
   const counts: Record<QuoteStatus, number> = { draft: 0, sent: 0, accepted: 0, rejected: 0, expired: 0, superseded: 0 };

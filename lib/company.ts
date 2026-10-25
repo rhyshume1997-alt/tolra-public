@@ -327,6 +327,7 @@ export function storedProfile(profile: CompanyProfile): Omit<CompanyProfile, "lo
 
 let active: CompanyProfile | null = null;
 let loaded = false;
+let loadFailed = false;
 let loadPromise: Promise<CompanyProfile | null> | null = null;
 const listeners = new Set<() => void>();
 
@@ -336,9 +337,17 @@ export class CompanyProfileMissingError extends Error {
   }
 }
 
-/** Loads the signed-in organisation's profile once per page load. */
+/** The profile could not be read (network or database error), as opposed to not being set up. */
+export class CompanyProfileLoadError extends Error {
+  constructor() {
+    super("Couldn't load company details. Try again.");
+  }
+}
+
+/** Loads the signed-in organisation's profile once per page load. A failed load is not cached: the next call retries. */
 export function loadCompanyProfile(force = false): Promise<CompanyProfile | null> {
   if (loadPromise && !force) return loadPromise;
+  let failed = false;
   loadPromise = (async () => {
     try {
       if (!supabase) return DEMO_MODE ? JNR_PROFILE : null;
@@ -349,11 +358,14 @@ export function loadCompanyProfile(force = false): Promise<CompanyProfile | null
       return { ...profile, logoSrc: await loadOrgLogo(data?.organization_id, profile.logoPath) };
     } catch (err) {
       console.error(err);
+      failed = true;
       return DEMO_MODE ? JNR_PROFILE : null;
     }
   })().then((profile) => {
+    loadFailed = failed;
+    if (failed) loadPromise = null;
     active = profile;
-    loaded = true;
+    loaded = !failed;
     listeners.forEach((fn) => fn());
     return profile;
   });
@@ -364,6 +376,7 @@ export function loadCompanyProfile(force = false): Promise<CompanyProfile | null
 export function resetCompanyProfile() {
   active = null;
   loaded = false;
+  loadFailed = false;
   loadPromise = null;
   listeners.forEach((fn) => fn());
 }
@@ -382,16 +395,17 @@ export function getCompanyProfile(): CompanyProfile {
 
 /** Like getCompanyProfile but awaits loading first. Use in download/print handlers. */
 export async function requireCompanyProfile(): Promise<CompanyProfile> {
-  const profile = loaded ? active : await loadCompanyProfile();
+  let profile = loaded ? active : await loadCompanyProfile();
+  if (!profile && loadFailed) profile = await loadCompanyProfile();
   if (profile) return profile;
   if (DEMO_MODE) return JNR_PROFILE;
-  throw new CompanyProfileMissingError();
+  throw loadFailed ? new CompanyProfileLoadError() : new CompanyProfileMissingError();
 }
 
 export function useCompanyProfile() {
-  const [state, setState] = useState<{ profile: CompanyProfile | null; loading: boolean }>({ profile: active, loading: !loaded });
+  const [state, setState] = useState<{ profile: CompanyProfile | null; loading: boolean }>({ profile: active, loading: !loaded && !loadFailed });
   useEffect(() => {
-    const sync = () => setState({ profile: active, loading: !loaded });
+    const sync = () => setState({ profile: active, loading: !loaded && !loadFailed });
     listeners.add(sync);
     void loadCompanyProfile().then(sync);
     return () => {

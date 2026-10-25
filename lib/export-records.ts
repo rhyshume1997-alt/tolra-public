@@ -27,7 +27,7 @@ export const EXPORT_TITLES = {
 type ExportRow = Record<string, string | number | boolean | null | undefined>;
 
 function rowsToTable(rows: ExportRow[]) {
-  if (!rows.length) return "<p>No records selected.</p>";
+  if (!rows.length) return "<p>No records to export.</p>";
   const headers = Object.keys(rows[0]);
   return `<table><thead><tr>${headers.map((header) => `<th>${esc(header)}</th>`).join("")}</tr></thead><tbody>${rows
     .map((row) => `<tr>${headers.map((header) => `<td>${esc(row[header])}</td>`).join("")}</tr>`)
@@ -37,7 +37,7 @@ function rowsToTable(rows: ExportRow[]) {
 /** `entityTable` is the record type exported (audit log); `filename` is only the download title. */
 export async function exportRows(format: "word" | "pdf" | "print", filename: string, rows: ExportRow[], entityTable: AuditTable) {
   if (!rows.length) {
-    toast.error("Select at least one record to export.");
+    toast.error("Nothing to export: no records match the current filter.");
     return;
   }
 

@@ -23,8 +23,8 @@ import { auditEvent } from "@/lib/audit";
 import { useCompanyProfile, workStartOn, workingHoursOf } from "@/lib/company";
 import { supabase } from "@/lib/supabase";
 import {
-  type BookingSaveOptions, DEFAULT_WORKING_DAYS, bookedNotStarted, WEEKDAY_OPTIONS, addDaysToDate, bookingSaveMessage, completeFinishedJobBookings, computeFinish, daysBetweenDates, deleteBooking, demoBookings, demoJobs, demoMachines, fetchSchedule,
-  findOverlaps, formatDateTimeShort, formatDayPlan, isoWeekday, timeOf, formatHours, localDateString, machineStatus, normaliseStart, planSegments, saveBooking, saveMachine, scheduleAll,
+  CLEAR_START_MAX_STEPS, type BookingSaveOptions, DEFAULT_WORKING_DAYS, bookedNotStarted, WEEKDAY_OPTIONS, addDaysToDate, bookingSaveMessage, completeFinishedJobBookings, computeFinish, deleteBooking, demoBookings, demoJobs, demoMachines, fetchSchedule,
+  findOverlaps, formatDateTimeShort, formatDayPlan, isoWeekday, timeOf, formatHours, localDateString, machineStatus, nextClearStart, planSegments, saveBooking, saveMachine, scheduleAll, splitClearShift, startAfterBooking,
   formatHoursClock, liveLeftText, runClock, toLocalInputValue, type Booking, type BookingStatus, type Machine, type ScheduledBooking, type ScheduleJob,
 } from "@/lib/machine-schedule";
 import { DEMO_MACHINES } from "@/lib/job-worksheet";
@@ -399,7 +399,7 @@ export default function SchedulePage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card id="machines" className="scroll-mt-20">
               <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle className="text-lg">Machines</CardTitle>
                 {canManageMachines ? <Button variant="outline" onClick={() => setEditingMachine(emptyMachine)}><Plus className="size-4" /> Add machine</Button> : null}
@@ -578,7 +578,7 @@ function BookJobDialog({ machines, jobs, scheduled, now, isAdmin, initialJobId, 
   const pausedHere = machine ? (paused.find((row) => row.machine_id === machine.id && row.job_id !== jobId) ?? null) : null;
   const pause = shownPause && shownPause.machine_id === machineId ? shownPause : pausedHere;
   const needsCheck = Boolean(pause && checkedRun !== pause.paused_run_id);
-  const defaultStart = useMemo(() => (machine ? toLocalInputValue(machineStatus(machine, scheduled, now).nextFree) : ""), [machine, scheduled, now]);
+  const defaultStart = useMemo(() => (machine ? toLocalInputValue(startAfterBooking(machineStatus(machine, scheduled, now).nextFree, machine)) : ""), [machine, scheduled, now]);
   const start = startTouched ? startOverride : defaultStart;
   const hoursNum = Number(hours);
   const startDate = start ? new Date(start) : null;
@@ -598,21 +598,26 @@ function BookJobDialog({ machines, jobs, scheduled, now, isAdmin, initialJobId, 
 
   function startAfterCurrent() {
     if (!machine) return;
-    const latest = Math.max(...overlaps.map((b) => b.finish.getTime()));
-    const after = normaliseStart(new Date(latest), machine);
+    const noSlot = () => toast.error(`Couldn't find a free slot after ${CLEAR_START_MAX_STEPS} tries. Pick a start yourself.`);
     if (split.on) {
-      // Move the whole split (same gaps between its dates, same times) so it begins the day after the clash ends, or that day when
-      // the clash ends by the first day's start time.
+      // Move the whole split (same gaps between its dates, same times) to the first day where nothing clashes: each step begins the day
+      // after the latest clash ends, or that day when the clash ends by the first day's start time.
       const firstRow = split.rows.filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date))[0];
       const first = firstRow?.date;
-      const clashEnd = new Date(latest);
-      const target = localDateString(timeOf(clashEnd) > (firstRow?.start || workStartOn(workingHours, first ? isoWeekday(first) : null)) ? new Date(clashEnd.getFullYear(), clashEnd.getMonth(), clashEnd.getDate() + 1) : clashEnd);
-      const shift = first ? daysBetweenDates(first, target) : 0;
-      if (shift > 0) split.setRows(split.rows.map((r) => (r.date ? { ...r, date: addDaysToDate(r.date, shift) } : r)));
+      if (!first) { toast.info("Add a date to a day first."); return; }
+      const firstStart = firstRow.start || workStartOn(workingHours, isoWeekday(first));
+      const found = splitClearShift(split.rows, first, firstStart, hoursNum, machine, scheduled);
+      if (!found.ok) { if (found.reason === "invalid") toast.error(found.message); else noSlot(); return; }
+      const shift = found.shift;
+      if (shift <= 0) toast.info("Already starts after the current booking.");
+      else split.setRows(split.rows.map((r) => (r.date ? { ...r, date: addDaysToDate(r.date, shift) } : r)));
       return;
     }
+    if (!startDate || !validStart) return;
+    const clear = nextClearStart(startDate, machine, (at) => findOverlaps(machine, scheduled, at, computeFinish(at, hoursNum, machine)));
+    if (!clear) { noSlot(); return; }
     setStartTouched(true);
-    setStartOverride(toLocalInputValue(after));
+    setStartOverride(toLocalInputValue(clear));
   }
 
   async function submit(event: React.FormEvent) {
@@ -718,6 +723,7 @@ function BookingDetailDialog({ booking, now, liveLeft, canEdit, canDelete, isAdm
   onDelete: () => void;
 }) {
   const [clashOverride, setClashOverride] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [reason, setReason] = useState("");
   const [hoursDone, setHoursDone] = useState(String(booking.hoursDone));
   const [estimated, setEstimated] = useState(String(booking.estimatedHours));
@@ -789,10 +795,21 @@ function BookingDetailDialog({ booking, now, liveLeft, canEdit, canDelete, isAdm
                   {clashOverride ? <Textarea data-testid="override-reason" placeholder="Why this booking goes over the other job (required, 3 to 500 characters)" value={reason} onChange={(e) => setReason(e.target.value)} /> : null}
                 </div>
               ) : null}
-              {booking.status === "booked" ? <Button variant="outline" className="min-h-11" onClick={() => mark("running")}>Mark running</Button> : null}
-              {booking.status !== "complete" ? <Button variant="outline" className="min-h-11" onClick={() => mark("complete")}>Mark complete</Button> : null}
-              {canDelete ? <Button variant="outline" className="text-red-700" onClick={onDelete}>Remove booking</Button> : null}
+              {/* Always both, in the same place whatever the status (a button that is not for this status is disabled, never moved or removed). */}
+              <Button variant="outline" className="min-h-11" disabled={booking.status !== "booked"} onClick={() => mark("running")}>Mark running</Button>
+              <Button variant="outline" className="min-h-11" disabled={booking.status === "complete"} onClick={() => mark("complete")}>Mark complete</Button>
             </div>
+            {canDelete ? (
+              <div data-testid="remove-booking-area" className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+                {confirmRemove ? (
+                  <>
+                    <p role="alert" className="basis-full text-sm font-medium text-red-700 dark:text-red-400">Remove this booking? This can&apos;t be undone.</p>
+                    <Button variant="destructive" className="min-h-11" onClick={onDelete}>Yes, remove booking</Button>
+                    <Button variant="outline" className="min-h-11" onClick={() => setConfirmRemove(false)}>Keep booking</Button>
+                  </>
+                ) : <Button variant="destructive" className="min-h-11" onClick={() => setConfirmRemove(true)}>Remove booking</Button>}
+              </div>
+            ) : null}
           </div>
         ) : <p className="text-sm text-slate-500">Status: {bookingStatusLabel(booking, now)}. {booking.notes}</p>}
       </DialogContent>

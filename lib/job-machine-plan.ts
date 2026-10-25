@@ -171,15 +171,33 @@ export async function loadJobMachinesForDialog(jobId: string): Promise<{ machine
 }
 
 /** One machine on a job, as the board shows it: name, hours and whether it is booked on the schedule. */
-export type JobMachineChip = { machine_id: string; name: string; hours: number; booked: boolean; /** The schedule booking's status; null when there is none. `booked` is true only for status "booked". */ state?: BookingStatus | null };
+export type JobMachineChip = { machine_id: string; name: string; hours: number; booked: boolean; /** The schedule booking's status; null when there is none. `booked` is true only for status "booked". */ state?: BookingStatus | null; /** The plan (job_machines) has a row for this machine. Absent in a snapshot cached before this existed. */ planned?: boolean };
 
-/** The chip's suffix: " (booked)" only for a still-booked booking on an open job; " (running)", " (done)" otherwise; nothing without a booking. */
-export function chipBookingSuffix(chip: Pick<JobMachineChip, "state" | "booked">, jobFinished: boolean): string {
+/**
+ * The chip's suffix: " (booked)" only for a still-booked booking on an open job (a machine_bookings row exists for it); " (running)", " (done)"
+ * otherwise; " (not booked)" for a planned machine with no booking row on an open job; nothing for a machine only the schedule names.
+ */
+export function chipBookingSuffix(chip: Pick<JobMachineChip, "state" | "booked"> & { planned?: boolean }, jobFinished: boolean): string {
   // A snapshot cached before `state` existed carries only `booked`.
   const state = chip.state ?? (chip.booked ? "booked" : null);
-  if (!state) return "";
+  if (!state) return chip.planned && !jobFinished ? " (not booked)" : "";
   if (state === "complete" || jobFinished) return " (done)";
   return state === "running" ? " (running)" : " (booked)";
+}
+
+/**
+ * The Machine column's one-line summary on the picker's button. Running: "Add machine". Machines ticked: their names. The bench ticked while
+ * the job has planned machines: the plan is named ("Planned: Mill (bench ticked)") rather than "No machine (bench)" alone, which read as
+ * "no machine" next to the card's own "Planned: Mill 3 h" line. Nothing ticked: "Pick a machine".
+ */
+export function pickerSummaryText(input: { running: boolean; pick: { machines: string[]; bench: boolean }; machines: { id: string; name: string; planned: boolean }[] }): string {
+  if (input.running) return "Add machine";
+  const named = input.machines.filter((m) => input.pick.machines.includes(m.id)).map((m) => m.name);
+  if (input.pick.bench) {
+    const plan = input.machines.filter((m) => m.planned).map((m) => m.name);
+    return plan.length ? `Planned: ${plan.join(", ")} (bench ticked)` : "No machine (bench)";
+  }
+  return named.length ? named.join(", ") : "Pick a machine";
 }
 
 const nameOf = (raw: unknown) => {
@@ -217,7 +235,7 @@ export async function loadBoardJobMachines(): Promise<Map<string, JobMachineChip
   const map = new Map<string, JobMachineChip[]>();
   for (const jobId of new Set([...linksByJob.keys(), ...bookingsByJob.keys()])) {
     const entries = jobMachineEntries(jobId, linksByJob.get(jobId) ?? [], bookingsByJob.get(jobId) ?? []);
-    if (entries.length) map.set(jobId, entries.map((e) => ({ machine_id: e.machineId, name: names.get(e.machineId) ?? "Machine", hours: e.hours, booked: e.booking?.status === "booked", state: e.booking?.status ?? null })));
+    if (entries.length) map.set(jobId, entries.map((e) => ({ machine_id: e.machineId, name: names.get(e.machineId) ?? "Machine", hours: e.hours, booked: e.booking?.status === "booked", state: e.booking?.status ?? null, planned: e.planned })));
   }
   return map;
 }

@@ -15,7 +15,8 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { VIEWPORTS, deviceContext } from "../support/ui-pr1-screenshots";
-import { adminClient, signedInClient, withDb } from "../support/fixtures";
+import { adminClient, EMAIL_DOMAIN, signedInClient, withDb } from "../support/fixtures";
+import { generatePassword } from "@/lib/password";
 import { confirmPause, pauseControl, pickMachines, playControl, playJob, signIn, world } from "./helpers";
 
 const w = world();
@@ -87,11 +88,27 @@ test("workshop: Mill and Lathe ticked, Play, amber Pause frees both, Resume; all
   await expect(r.getByTestId("job-in-use")).toContainText(latheName);
   expect((await runsOf(J.multi)).filter((x) => !x.ended_at).map((x) => x.machine_id).sort()).toEqual([mill, lathe].sort());
 
-  // Another job planned only on the mill: nothing free, so Play says "Pick a machine" and opens the picker.
+  // The Start is finished only once its refresh is back (Starting... gone, the board's pickers enabled again): until then Play on another
+  // job says "Wait for the last change to finish." and opens nothing, by design (jobs/page.tsx play()).
   const busy = row(page, J.busy);
+  await expect(pauseControl(r, J.multi)).not.toHaveAttribute("aria-busy", "true");
+  await expect(busy.getByRole("button", { name: `Choose where ${J.busy} runs: Pick a machine` })).toBeEnabled();
+
+  // Another job planned only on the mill: nothing free, so Play says "Pick a machine" and opens the picker.
   await expect(playControl(busy, J.busy)).toContainText("Pick a machine");
   await expect(playControl(busy, J.busy)).toHaveAttribute("aria-disabled", "true");
-  await playControl(busy, J.busy).click({ force: true });
+  // Play is aria-disabled here, so the click needs force, which also skips Playwright's "receives events" check: a force click whose
+  // centre sits under the "J-JBMULTI started" toast (top right, 8 s) lands on the toast and opens nothing. Put that one check back: the
+  // tap must hit Play itself. Then prove play() took the open-the-picker branch (its toast), not the "Wait for the last change" guard.
+  const pickPlay = playControl(busy, J.busy);
+  await pickPlay.scrollIntoViewIfNeeded();
+  await expect.poll(() => pickPlay.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+    return hit ? (el.contains(hit) ? "play" : `covered by ${hit.closest("[data-sonner-toast]") ? "a toast" : `${hit.tagName.toLowerCase()} ${(hit.textContent ?? "").trim().slice(0, 60)}`}`) : "off screen";
+  }), { message: `nothing covers ${J.busy}'s Play before the forced tap`, timeout: 20_000 }).toBe("play");
+  await pickPlay.click({ force: true });
+  await expect(page.getByText(`${J.busy}: pick a machine, or No machine (bench), then press Play.`)).toBeVisible();
   const picker = page.locator('[data-testid="machine-picker"]:visible');
   await expect(picker.getByTestId("picker-machine").filter({ hasText: millName }).getByTestId("picker-in-use")).toContainText(`In use: ${J.multi}, Dave Operator`);
   await expect(picker.getByLabel(`Start on ${millName}`)).toBeDisabled();
@@ -279,7 +296,8 @@ test("booking over a paused machine: confirm; re-paused in between, asked again 
   await page.getByRole("button", { name: "New booking" }).click();
   const dialog = page.getByRole("dialog", { name: "Book job onto machine" });
   await dialog.getByLabel("Job").selectOption(ids[J.book]);
-  await dialog.getByLabel("Machine").selectOption({ label: millName });
+  // By role and a name that starts with "Machine": the Job <label> wraps its options' text, so a bare getByLabel("Machine") can match it too.
+  await dialog.getByRole("combobox", { name: /^Machine/ }).selectOption({ label: millName });
   await dialog.getByLabel(/Estimated hours/).fill("2");
   const warning = dialog.getByTestId("book-paused-warning");
   await expect(warning).toContainText(`${millName} was paused on`);
@@ -338,4 +356,123 @@ test("phone (390 px, coarse pointer): the bottom-sheet picker, Play on the bench
   await expect(playControl(card, J.phone)).toHaveAccessibleName(`Resume ${J.phone}`);
   expect((await runsOf(J.phone)).map((x) => [x.machine_id, x.end_reason])).toEqual([[null, "paused"]]);
   await context.close();
+});
+
+// Bug 5: "Add machine" on a job that runs on the company's only machine explains itself. The other tests' machines belong to alpha, so this
+// uses beta, whose other machines are retired for the length of the block (the suite runs one worker, so nothing else reads them now).
+test.describe("Add machine with nothing to add", () => {
+  let betaMill = "";
+  let betaMillName = "";
+  let betaJob = "";
+  let betaJobNo = "";
+  let retired: string[] = [];
+
+  test.beforeAll(async () => {
+    const admin = adminClient();
+    const beta = w.tenants.beta.id;
+    betaMillName = `JB Only ${w.runId}`;
+    betaJobNo = `J-JBONLY-${w.runId}`;
+    // Every setup step is checked, so a failed insert fails here with its own message (and afterAll then has only what was made).
+    const active = await admin.from("machines").select("id").eq("organization_id", beta).eq("active", true);
+    expect(active.error, "read beta's active machines").toBeNull();
+    retired = (active.data ?? []).map((m) => m.id as string);
+    if (retired.length) expect((await admin.from("machines").update({ active: false }).in("id", retired)).error, "retire beta's machines").toBeNull();
+    const mill = await admin.from("machines").insert({ organization_id: beta, name: betaMillName, active: true }).select("id").single();
+    expect(mill.error, "insert the beta mill").toBeNull();
+    betaMill = mill.data!.id as string;
+    const job = await admin.from("jobs").insert({ organization_id: beta, job_no: betaJobNo, customer: "Only Co", description: "Only one" }).select("id").single();
+    expect(job.error, "insert the beta job").toBeNull();
+    betaJob = job.data!.id as string;
+    const workshop = await signedInClient(w.tenants.beta.users.workshop);
+    expect((await workshop.rpc("start_machine_run", { p_job: betaJob, p_machines: [betaMill], p_client_op_id: null, p_started_at: null, p_override: false, p_reason: null })).error).toBeNull();
+  });
+
+  test.afterAll(async () => {
+    const office = await signedInClient(w.tenants.beta.users.office);
+    expect((await office.rpc("pause_machine_run", { p_job: betaJob, p_machines: null, p_client_op_id: null, p_ended_at: null })).error, "pause the beta run").toBeNull();
+    // Put beta back as it was, checking each step, so a leak fails here and not in a later beta spec (layout's "example machines",
+    // walkthrough's booking dialog: CI run 40133694045). The runs go first: machine_runs.machine_id is ON DELETE RESTRICT (044), and
+    // the job's other rows (job_machines, paused-ack ops, labour) cascade with the job.
+    const admin = adminClient();
+    expect((await admin.from("machine_runs").delete().eq("job_id", betaJob)).error).toBeNull();
+    expect((await admin.from("jobs").delete().eq("id", betaJob).select("id")).data).toHaveLength(1);
+    expect((await admin.from("machines").delete().eq("id", betaMill).select("id")).data).toHaveLength(1);
+    if (retired.length) expect((await admin.from("machines").update({ active: true }).in("id", retired)).error).toBeNull();
+    const left = await admin.from("machines").select("id").eq("organization_id", w.tenants.beta.id).eq("active", true);
+    expect(left.error).toBeNull();
+    expect(left.data!.map((m) => m.id as string).sort()).toEqual([...retired].sort());
+  });
+
+  const reason = () => `${betaMillName} is the only machine, and this job is already on it.`;
+
+  test("office, desk List view: the reason and a link to the Machines card on the Machine Schedule", async ({ page }) => {
+    await signIn(page, w.tenants.beta.users.office);
+    await page.goto("/jobs");
+    const r = page.locator(`tr[data-job-id="${betaJob}"]`);
+    await r.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+    const picker = page.getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker.getByTestId("picker-add-machine-link")).toHaveAttribute("href", "/schedule#machines");
+    await picker.getByTestId("picker-add-machine-link").click();
+    await expect(page).toHaveURL(/\/schedule#machines$/);
+    await expect(page.locator("#machines")).toContainText("Machines");
+    await expect(page.locator("#machines").getByRole("button", { name: "Add machine" })).toBeVisible();
+  });
+
+  test("workshop, Cards view: the reason, no link, asked to go to an admin or office", async ({ page }) => {
+    await signIn(page, w.tenants.beta.users.workshop);
+    await page.goto("/jobs");
+    await page.getByRole("button", { name: "Cards", exact: true }).click();
+    const card = page.locator(`[data-testid="job-card"][data-job-no="${betaJobNo}"]:visible`);
+    await card.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+    const picker = page.getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker).toContainText("Ask an admin or office to add a machine.");
+    await expect(picker.getByRole("link")).toHaveCount(0);
+  });
+
+  test("phone sheet (390 px): the reason and the link for the office", async ({ browser }) => {
+    const context = await deviceContext(browser, VIEWPORTS[0], String(test.info().project.use.baseURL));
+    const page = await context.newPage();
+    await signIn(page, w.tenants.beta.users.office);
+    await page.goto("/jobs");
+    const card = page.locator(`[data-testid="job-card"][data-job-no="${betaJobNo}"]:visible`);
+    await card.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).tap();
+    const picker = page.getByRole("dialog").getByTestId("picker-empty");
+    await expect(picker).toContainText(reason());
+    await expect(picker.getByTestId("picker-add-machine-link")).toBeVisible();
+    await context.close();
+  });
+
+  test("office with the Machine Schedule page hidden: the reason, no link to a page they cannot open", async ({ page }) => {
+    const admin = adminClient();
+    const email = `nosched.beta.${w.runId}@${EMAIL_DOMAIN}`;
+    const password = generatePassword(16);
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "nosched beta" } });
+    if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
+    const userId = created.data.user.id;
+    // The user exists only for this test: everything after it runs in try, and finally removes exactly this user (its beta membership
+    // goes with it: organization_members.user_id is ON DELETE CASCADE, 007), so no extra beta member is left for later specs.
+    try {
+      const added = await admin.rpc("add_member", { p_org: w.tenants.beta.id, p_email: email, p_role: "office" });
+      if (added.error || added.data !== "member") throw new Error(`add_member ${email}: ${added.error?.message ?? added.data}`);
+      const hide = await admin.from("organization_members").update({ hidden_sections: ["schedule"] }).eq("organization_id", w.tenants.beta.id).eq("user_id", userId);
+      expect(hide.error).toBeNull();
+      await signIn(page, { id: userId, email, password, role: "office" });
+      await page.goto("/jobs");
+      const r = page.locator(`tr[data-job-id="${betaJob}"]`);
+      await r.getByRole("button", { name: `Add a machine to ${betaJobNo}` }).click();
+      const picker = page.getByTestId("picker-empty");
+      await expect(picker).toContainText(reason());
+      await expect(picker.getByTestId("picker-add-machine-link")).toHaveCount(0);
+      await expect(picker.getByRole("link")).toHaveCount(0);
+    } finally {
+      await page.close();
+      const removed = await admin.auth.admin.deleteUser(userId);
+      expect(removed.error, `delete the test user ${email}`).toBeNull();
+      const member = await admin.from("organization_members").select("user_id").eq("user_id", userId);
+      expect(member.error).toBeNull();
+      expect(member.data, "no beta membership left for the test user").toEqual([]);
+    }
+  });
 });

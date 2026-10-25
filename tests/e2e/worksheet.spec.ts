@@ -86,6 +86,14 @@ test("workshop pack: the selected jobs print together on one worksheet sheet", a
   expect(pdf.match(/\/Type\s*\/Page(?![s\w])/g)?.length).toBe(1);
 });
 
+test("workshop pack with no job selected says what to do instead of failing silently", async ({ page }) => {
+  await newJob(`J-PK0-${w.runId}`);
+  await signIn(page, w.tenants.beta.users.admin);
+  await page.goto("/jobs");
+  await page.getByRole("button", { name: "Print Workshop Pack" }).click();
+  await expect(page.getByText(/No jobs selected\. Tick the jobs to print/)).toBeVisible();
+});
+
 test("prints show the sign-off of the current revision only; an earlier revision's is not signed off; the old typed box prints as an earlier typed record (R5, M4)", async ({ page }) => {
   const signed = `J-SG-${w.runId}`;
   const stale = `J-ST-${w.runId}`;

@@ -19,7 +19,19 @@ test("removing a booking takes it off the machine chart, the list and the dashbo
   const chart = page.locator(`button[title^="${jobNo} on "]`);
   await expect(chart.first()).toBeVisible();
   await chart.first().click();
-  await page.getByRole("button", { name: "Remove booking" }).click();
+  // Mark running and Mark complete are always in the dialog (disabled when not for this status), above and apart from Remove booking.
+  const complete = page.getByRole("button", { name: "Mark complete" });
+  const remove = page.getByRole("button", { name: "Remove booking" });
+  await expect(page.getByRole("button", { name: "Mark running" })).toBeVisible();
+  expect((await remove.boundingBox())!.y).toBeGreaterThan((await complete.boundingBox())!.y + (await complete.boundingBox())!.height - 1);
+  // Remove asks first; Keep booking changes nothing.
+  await remove.click();
+  await page.getByRole("button", { name: "Keep booking" }).click();
+  expect((await admin.from("machine_bookings").select("id").eq("job_no", jobNo)).data).toHaveLength(1);
+  await expect(remove).toBeVisible();
+  await remove.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Remove this booking? This can't be undone." })).toBeVisible();
+  await page.getByRole("button", { name: "Yes, remove booking" }).click();
   await expect(page.getByText("Booking removed")).toBeVisible();
   await expect(chart).toHaveCount(0);
   await expect(page.getByRole("row").filter({ hasText: jobNo })).toHaveCount(0);

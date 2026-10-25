@@ -9,6 +9,7 @@
  * Play, on what is ticked; a machine or the bench must be ticked first, never a guessed default): pick, Start, with no separate Done.
  */
 import { useState } from "react";
+import Link from "next/link";
 import { Popover } from "radix-ui";
 import { ChevronDown } from "lucide-react";
 
@@ -16,12 +17,14 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { type MachinePick, pickIsChosen } from "@/lib/job-actions";
 import { type InUseRow, type PausedRow, pausedChoiceText } from "@/lib/machine-runs";
+import { pickerSummaryText } from "@/lib/job-machine-plan";
+import { pickerEmptyReason } from "@/lib/machine-picker-empty";
 import { fmtDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 export type PickerMachine = { id: string; name: string; planned: boolean; booked: boolean };
 
-export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onChange, role, disabled, running, sheet, onAdd, onStart, touch, active = true, open: openProp, onOpenChange, stage }: {
+export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onChange, role, disabled, running, sheet, onAdd, onStart, touch, active = true, open: openProp, onOpenChange, stage, loadFailed = false, loading = false, canAddMachine = false }: {
   jobNo: string;
   jobId: string;
   machines: PickerMachine[];
@@ -46,13 +49,21 @@ export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onC
   onOpenChange?: (open: boolean) => void;
   /** The stage Play moves the job to (only offered while it is at Material or Setup; lib/job-actions stageAfterStart). */
   stage?: { value: "setup" | "machining"; fromSetup: boolean; onChange: (stage: "setup" | "machining") => void } | null;
+  /** The company's machine list could not be read: an empty picker says so rather than "No machines set up yet". */
+  loadFailed?: boolean;
+  /** The company's machine list is still being read: an empty picker says "Loading machines…", not "No machines set up yet". */
+  loading?: boolean;
+  /** The person may add a machine and the Machine Schedule page is open to them (admin or office, section on): the empty notice links there. */
+  canAddMachine?: boolean;
 }) {
   const [openState, setOpenState] = useState(false);
   const open = (openProp ?? openState) && active;
   const setOpen = (next: boolean) => { setOpenState(next); onOpenChange?.(next); };
   const [adding, setAdding] = useState<Set<string>>(new Set());
   const isAdmin = role === "admin";
-  const summary = running ? "Add machine" : pick.bench ? "No machine (bench)" : pick.machines.length ? machines.filter((m) => pick.machines.includes(m.id)).map((m) => m.name).join(", ") || "Pick a machine" : "Pick a machine";
+  // Nothing can be ticked: say why (and where machines are added) instead of an inert list.
+  const empty = pickerEmptyReason(machines, inUse, role, jobId, loadFailed, { running, canAdd: canAddMachine, loading });
+  const summary = pickerSummaryText({ running: !!running, pick, machines });
 
   const toggle = (id: string) => {
     if (running) {
@@ -69,7 +80,14 @@ export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onC
 
   const list = (
     <div className="space-y-1" data-testid="machine-picker" data-job-id={jobId}>
-      <ul className="max-h-72 space-y-1 overflow-y-auto" aria-label={`Machines for ${jobNo}`}>
+      {empty ? (
+        <div data-testid="picker-empty" data-reason={empty.code} role="status" className="space-y-1 rounded-md border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:text-slate-200">
+          <p>{empty.reason}</p>
+          {empty.next === "link" ? <p><Link href="/schedule#machines" data-testid="picker-add-machine-link" className="font-semibold text-brand underline">Add a machine on the Machine Schedule</Link></p> : null}
+          {empty.next === "ask" ? <p className="text-xs text-slate-600 dark:text-slate-300">Ask an admin or office to add a machine.</p> : null}
+        </div>
+      ) : null}
+      {running && empty ? null : <ul className="max-h-72 space-y-1 overflow-y-auto" aria-label={`Machines for ${jobNo}`}>
         {machines.map((machine) => {
           const live = inUse.get(machine.id);
           const taken = Boolean(live && live.job_id !== jobId);
@@ -94,8 +112,8 @@ export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onC
             </li>
           );
         })}
-      </ul>
-      {running ? (
+      </ul>}
+      {running && empty ? null : running ? (
         <Button size="sm" variant="start" className={cn("w-full", touch)} disabled={disabled || adding.size === 0} onClick={() => { onAdd?.([...adding]); setAdding(new Set()); setOpen(false); }}>
           {`Add ${adding.size || ""} machine${adding.size === 1 ? "" : "s"}`.replace("  ", " ")}
         </Button>
@@ -117,7 +135,7 @@ export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onC
   );
 
   const trigger = (
-    <Button type="button" size="sm" variant="outline" className={cn("max-w-full justify-between gap-1 normal-case tracking-normal", touch)} disabled={disabled} aria-label={running ? `Add a machine to ${jobNo}` : `Choose where ${jobNo} runs: ${summary}`} aria-haspopup="dialog" aria-expanded={open} onClick={sheet ? () => setOpen(true) : undefined}>
+    <Button type="button" size="sm" variant="outline" className={cn("max-w-full justify-between gap-1 normal-case tracking-normal", touch)} disabled={disabled} aria-label={running ? `Add a machine to ${jobNo}${empty ? `, none can be added: ${empty.reason}` : ""}` : `Choose where ${jobNo} runs: ${summary}`} aria-haspopup="dialog" aria-expanded={open} onClick={sheet ? () => setOpen(true) : undefined}>
       <span className="truncate font-sans text-xs">{summary}</span><ChevronDown className="size-3.5 shrink-0" />
     </Button>
   );

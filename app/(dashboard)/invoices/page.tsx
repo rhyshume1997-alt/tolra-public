@@ -55,7 +55,7 @@ import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { INVOICE_COLUMNS, PAYMENT_COLUMNS, paymentExportRows } from "@/lib/import-columns";
-import { exportScopeTitle } from "@/lib/spreadsheet";
+import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { friendlyError } from "@/lib/friendly-error";
 import { linkedInvoiceId } from "@/lib/invoice-link";
 import { useUser } from "@/lib/use-user";
@@ -68,6 +68,7 @@ import { DraftInvoiceEditor } from "@/components/draft-invoice-editor";
 import { useDatabaseHas067 } from "@/lib/use-database-has-067";
 import { useDatabaseHas073 } from "@/lib/use-database-has-073";
 import { VoidInvoiceDialog } from "@/components/void-invoice-dialog";
+import { chipsForPhase } from "@/lib/invoice-phase-filters";
 import { isVoid, voidOffered } from "@/lib/invoice-void";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
 import { InvoiceFromDeliveryNotes } from "@/components/invoice-from-delivery-notes";
@@ -356,6 +357,7 @@ export default function InvoicesPage() {
   /** The payment being reversed, and why. */
   const [reversing, setReversing] = useState<InvoicePayment | null>(null);
   const [reverseReason, setReverseReason] = useState("");
+  const [reverseTried, setReverseTried] = useState(false);
   /** Payment history of the invoice on screen; bumped to load it again after a payment or a reversal. */
   const [payments, setPayments] = useState<InvoicePayment[]>([]);
   const [paymentsVersion, setPaymentsVersion] = useState(0);
@@ -644,11 +646,11 @@ export default function InvoicesPage() {
     ...extraLines.map((line) => ({ quantity: Number(line.qty) || 0, unitPrice: Number(line.unit) || 0, ...fromVatChoice(line.vat) })),
   ], Number(formCarriage) || 0,
     { vatEnabled: formVatOn, carriageVat: true, standardRate: vat.standardRate });
-  // CSV / Excel: the selected invoices if any, otherwise every invoice in the current filter; the import column spec, not the display columns.
-  const exportScope = selectedInvoices.length ? invoices.filter((invoice) => selectedInvoices.includes(invoice.reference)) : visibleInvoices;
+  // CSV / Excel / Word / PDF: the selected invoices if any, otherwise every invoice in the current filter. CSV / Excel use the import column spec, not the display columns.
+  const exportScope = exportScopeRows(invoices.filter((invoice) => selectedInvoices.includes(invoice.reference)), visibleInvoices);
   const scopeTitle = exportScopeTitle("invoice", selectedInvoices.length, visibleInvoices.length);
   const paymentsTitle = selectedInvoices.length ? `Exports the payments of the ${selectedInvoices.length} selected invoice${selectedInvoices.length === 1 ? "" : "s"}` : "Exports every payment recorded on every invoice (nothing is selected)";
-  const selectedInvoiceRows = invoices.filter((invoice) => selectedInvoices.includes(invoice.reference)).map((invoice) => ({
+  const selectedInvoiceRows = exportScope.map((invoice) => ({
     Invoice: shownInvoiceRef(invoice),
     Customer: invoice.customer,
     Amount: currency(invoice.amount),
@@ -947,7 +949,7 @@ export default function InvoicesPage() {
     const payment = reversing;
     const invoice = viewingInvoice;
     if (!payment || !invoice?.id || !supabase) return;
-    if (!reverseReason.trim()) { toast.error("Give a reason for the reversal."); return; }
+    if (!reverseReason.trim()) { setReverseTried(true); return; }
     await run(async () => {
       try {
         const { data, error } = await supabase!.rpc("reverse_invoice_payment", { p_payment: payment.id, p_reason: reverseReason.trim() });
@@ -959,6 +961,7 @@ export default function InvoicesPage() {
         setPaymentsVersion((n) => n + 1);
         setReversing(null);
         setReverseReason("");
+        setReverseTried(false);
         toast.success(`Payment of ${currency(payment.amount)} reversed on ${invoice.reference}`);
       } catch (err) {
         toast.error(userMessage(err, "Could not reverse the payment. Nothing was changed."));
@@ -1299,7 +1302,7 @@ export default function InvoicesPage() {
       </Card>
 
       {listFilter ? <ListFilterNotice label={INVOICE_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
-      <PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} note={INVOICE_SHOW_NOTE} />
+      <PhaseFilter value={phase} onChange={(next) => { setPhase(next); setFilters((current) => chipsForPhase(current, next)); }} counts={phaseCounts} note={INVOICE_SHOW_NOTE} />
         <FilterBar
         activeValues={[...filters]}
         options={[
@@ -1322,8 +1325,8 @@ export default function InvoicesPage() {
           { label: "Excel", title: scopeTitle, onSelect: () => void exportSpreadsheet("xlsx", "Invoices", INVOICE_COLUMNS, exportScope, "invoices") },
           { label: "Payments CSV", title: paymentsTitle, onSelect: () => void exportPayments("csv") },
           { label: "Payments Excel", title: paymentsTitle, onSelect: () => void exportPayments("xlsx") },
-          { label: "Word", onSelect: () => void exportRows("word", EXPORT_TITLES.invoices, selectedInvoiceRows, "invoices") },
-          { label: "PDF", onSelect: () => void exportRows("pdf", EXPORT_TITLES.invoices, selectedInvoiceRows, "invoices") },
+          { label: "Word", title: scopeTitle, onSelect: () => void exportRows("word", EXPORT_TITLES.invoices, selectedInvoiceRows, "invoices") },
+          { label: "PDF", title: scopeTitle, onSelect: () => void exportRows("pdf", EXPORT_TITLES.invoices, selectedInvoiceRows, "invoices") },
         ]}
         actions={
           <Button variant="outline" disabled={saving} onClick={() => {
@@ -1360,7 +1363,7 @@ export default function InvoicesPage() {
       ) : loadError && !DEMO_MODE ? null : visibleInvoices.length === 0 ? (
         <EmptyList
           title={invoices.length ? "No invoices match this filter" : "No invoices yet"}
-          hint={invoices.length ? "Try a different filter." : invoicesEmptyHint()}
+          hint={invoices.length ? (phase !== "all" ? `Nothing in Show: ${phase[0].toUpperCase()}${phase.slice(1)} matches this status. Try Show: All, or a different status.` : "Try a different filter.") : invoicesEmptyHint()}
           hintTestId={invoices.length ? undefined : "empty-hint"}
           action={invoices.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setOpen(true)}><Plus className="size-4" /> New invoice</Button>}
         />
@@ -1490,7 +1493,7 @@ export default function InvoicesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(reversing)} onOpenChange={(nextOpen) => { if (!nextOpen) { setReversing(null); setReverseReason(""); } }}>
+      <Dialog open={Boolean(reversing)} onOpenChange={(nextOpen) => { if (!nextOpen) { setReversing(null); setReverseReason(""); setReverseTried(false); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reverse this payment?</DialogTitle>
@@ -1498,10 +1501,11 @@ export default function InvoicesPage() {
               {reversing ? `${currency(reversing.amount)} received ${fmtDate(reversing.paidOn)}${reversing.method ? ` by ${reversing.method}` : ""}. The payment stays in the history, struck through with your reason, and the invoice balance goes back up. This can't be undone; if it was a mistake, record the payment again.` : ""}
             </DialogDescription>
           </DialogHeader>
-          <label className="grid gap-1 text-xs text-slate-500">Reason (required)<Textarea name="reverse_reason" rows={3} maxLength={500} value={reverseReason} onChange={(event) => setReverseReason(event.target.value)} placeholder="For example: cheque bounced" /></label>
+          <label className="grid gap-1 text-xs text-slate-500">Reason (required)<Textarea name="reverse_reason" rows={3} maxLength={500} value={reverseReason} onChange={(event) => setReverseReason(event.target.value)} placeholder="For example: cheque bounced" aria-invalid={reverseTried && !reverseReason.trim()} /></label>
+          {reverseTried && !reverseReason.trim() ? <p role="alert" className="text-sm text-red-700">Give a reason (at least 1 character).</p> : null}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setReversing(null); setReverseReason(""); }}>Cancel</Button>
-            <Button className="bg-red-600 text-white hover:bg-red-700" disabled={saving || !reverseReason.trim()} onClick={() => void reversePayment()}>{saving ? "Saving…" : "Reverse payment"}</Button>
+            <Button variant="outline" onClick={() => { setReversing(null); setReverseReason(""); setReverseTried(false); }}>Cancel</Button>
+            <Button className="bg-red-600 text-white hover:bg-red-700" disabled={saving} onClick={() => void reversePayment()}>{saving ? "Saving…" : "Reverse payment"}</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1580,7 +1584,7 @@ export default function InvoicesPage() {
                   defaultVat={vat.defaultChoice}
                   textLines={has073}
                   onClose={() => setEditingDraft(false)}
-                  onSaved={() => { setEditingDraft(false); setReopenId(viewingInvoice.id ?? null); void loadInvoices(); }}
+                  onSaved={() => { const savedId = viewingInvoice.id ?? null; setEditingDraft(false); void loadInvoices().then((loaded) => { if (loaded) setReopenId(savedId); else setViewingInvoice(null); }); }}
                 />
               ) : null}
               {viewingInvoice.rawStatus !== "draft" ? (
@@ -1655,7 +1659,7 @@ export default function InvoicesPage() {
           open
           invoice={{ id: voidFor.id, reference: voidFor.reference, customer: voidFor.customer }}
           onClose={() => setVoidFor(null)}
-          onVoided={() => { setVoidFor(null); setReopenId(voidFor.id ?? null); void loadInvoices(); }}
+          onVoided={() => { const voidedId = voidFor.id ?? null; setVoidFor(null); void loadInvoices().then((loaded) => { if (loaded) setReopenId(voidedId); else setViewingInvoice(null); }); }}
         />
       ) : null}
       <ConfirmDialog

@@ -196,6 +196,8 @@ test("4. Machine schedule: add a booking, remove it - it comes off the chart", a
 
   await bar.first().click();
   await page.getByRole("button", { name: "Remove booking" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Remove this booking? This can't be undone." })).toBeVisible();
+  await page.getByRole("button", { name: "Yes, remove booking" }).click();
   await expect(page.getByText("Booking removed")).toBeVisible();
   await expect(bar).toHaveCount(0);
   await shot(page, "schedule-removed");

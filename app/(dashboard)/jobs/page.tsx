@@ -61,7 +61,7 @@ import { DUE_CHIPS, formatAverageJobTime, hasRequiredDate, jobMatchesStatus, job
 import { DEMO_MODE } from "@/lib/demo";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { JOB_COLUMNS } from "@/lib/import-columns";
-import { exportScopeTitle } from "@/lib/spreadsheet";
+import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { friendlyError } from "@/lib/friendly-error";
 import { type InspectionRecord, type RecordedInspection, inspectedActionOffered, inspectionSummary, latestByJob, loadCanInspect, loadInspections } from "@/lib/inspection";
 import { JOB_STAGES, JOB_STATUS_LABELS, type JobStatusKey, STAGE_LABELS, confirmedFinishers, earlyReleaseOffered, finishesLeftQueue, flowBadge, jobStatusOf, reopenCheck, reworkTag, stageLabel, stageOf } from "@/lib/job-flow";
@@ -75,6 +75,8 @@ import { type RunBooking, loadRunBookings } from "@/lib/run-bookings";
 import { type RunPlan, loadRunPlan, planBooking, runPlanKey } from "@/lib/run-plan";
 import { runClock, runTimerText } from "@/lib/machine-schedule";
 import { useUser } from "@/lib/use-user";
+import { canOpenDestination } from "@/lib/destinations";
+import { useOrgSettings } from "@/lib/org-settings";
 import type { JobRecord } from "@/types";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type BoardFiles, boardDescription, shownJobColumns, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
@@ -258,7 +260,8 @@ function rowToJob(row: Record<string, any>): WorkshopJob { // eslint-disable-lin
 }
 
 export default function JobsPage() {
-  const { activeRole, profile } = useUser();
+  const { activeRole, profile, hiddenSections } = useUser();
+  const orgSettings = useOrgSettings();
   const [jobs, setJobs] = useState<WorkshopJob[]>(DEMO_MODE ? demoJobs : []);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -288,6 +291,10 @@ export default function JobsPage() {
   const [people, setPeople] = useState<PeopleMap>({});
   const [assignable, setAssignable] = useState<{ user_id: string; display_name: string }[]>([]);
   const [machinesList, setMachinesList] = useState<{ id: string; name: string }[]>([]);
+  /** The machines read failed (the picker then says so rather than "No machines set up yet"). */
+  const [machinesLoadError, setMachinesLoadError] = useState(false);
+  /** The machines read has finished once (a list, an offline copy, or a failure): until then an empty picker says "Loading machines…". */
+  const [machinesLoaded, setMachinesLoaded] = useState(false);
   // Job Board Play/Pause (migration 049, plan R2.2, R2.3, R3.4): each job's run facts, the machines paused on another job, this device's
   // pending Starts and Pauses (folded into the board's state, so it survives a reload), the Machine column's picks, the Start in flight.
   const [runFacts, setRunFacts] = useState<Map<string, JobRunFacts> | null>(null);
@@ -453,9 +460,11 @@ export default function JobsPage() {
     return onSyncComplete(() => { void refreshPending(); void loadLive(false); void confirmQueuedFinishes(); });
   }, [loadLive, refreshPending, confirmQueuedFinishes]);
   const loadMachinesList = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase) { setMachinesLoaded(true); return; }
     const { data, error } = await supabase.from("machines").select("id, name, active").order("name");
-    if (error) return;
+    if (error) { setMachinesLoadError(true); setMachinesLoaded(true); return; }
+    setMachinesLoadError(false);
+    setMachinesLoaded(true);
     const list = (data ?? []).filter((m) => m.active !== false).map((m) => ({ id: String(m.id), name: String(m.name) }));
     setMachinesList(list);
     // Kept on the device, so an offline Start can still name the machine.
@@ -531,7 +540,7 @@ export default function JobsPage() {
         const copy = isNetworkError(error) ? await loadOfflineSnapshot<Record<string, unknown>[]>("jobs") : null;
         if (copy && active) {
           setJobs(copy.data.map(rowToJob));
-          void loadOfflineSnapshot<{ id: string; name: string }[]>("machines").then((cached) => { if (cached && active) setMachinesList(cached.data); });
+          void loadOfflineSnapshot<{ id: string; name: string }[]>("machines").then((cached) => { if (!active) return; if (cached) setMachinesList(cached.data); else setMachinesLoadError(true); setMachinesLoaded(true); });
           void loadOfflineSnapshot<[string, JobMachineChip[]][]>("job_machines").then((cached) => { if (cached && active) setMachinesByJob(new Map(cached.data)); });
           void loadOfflineSnapshot<BenchRow[]>("bench_runs").then((cached) => { if (cached && active) setBench(benchRows(cached.data)); });
           void loadOfflineSnapshot<InUseRow[]>("in_use").then((cached) => { if (cached && active) setInUse(inUseRows(cached.data)); });
@@ -1045,8 +1054,8 @@ export default function JobsPage() {
   useEffect(() => { setSelectedIds((current) => keepVisibleSelected(current, visibleIds)); }, [visibleIds]);
   const hiddenSelected = selectedJobs.filter((job) => !visibleIds.has(job.id)).length;
   const finishBlocked = bulkDisabledReason("finish", selectedJobs, actionContext);
-  // CSV / Excel: the selected jobs if any, otherwise every job in the current filter; the import column spec, not the display columns.
-  const exportScope = selectedJobs.length ? selectedJobs : visible;
+  // CSV / Excel / Word / PDF: the selected jobs if any, otherwise every job in the current filter. CSV / Excel use the import column spec, not the display columns.
+  const exportScope = exportScopeRows(selectedJobs, visible);
   const scopeTitle = exportScopeTitle("job", selectedJobs.length, visible.length);
   const bulkPlan = bulkKind ? planBulk(bulkKind, selectedJobs, "", actionContext) : null;
   const allFilteredSelected = visible.length > 0 && visible.every((job) => selectedSet.has(job.id));
@@ -1091,22 +1100,22 @@ export default function JobsPage() {
 
   function printWorkshopPack() {
     if (!selectedIds.length) {
-      toast.error("Select at least one job to print.");
+      toast.error(`No jobs selected. Tick the jobs to print${visible.length ? ` (or use "Select all ${visible.length} filtered")` : ""}, then press Print Workshop Pack again.`);
       return;
     }
     const selected = jobs.filter((job) => selectedIds.includes(job.id));
     // The pack prints one worksheet sheet (the single worksheet's form) with every selected job on it.
     const opened = window.open(`/jobs/print?ids=${selected.map((job) => encodeURIComponent(job.id)).join(",")}`, "_blank");
     if (!opened) {
-      toast.error("Allow pop-ups to print");
+      toast.error("Your browser blocked the workshop pack window. Allow pop-ups for this site, then press Print Workshop Pack again.");
       return;
     }
     void auditEvent({ action: "PRINT_PACK", entityTable: "jobs", metadata: { title: "Workshop Job Pack", section_count: selected.length } });
-    toast.success(`Preparing ${selected.length} job workshop pack`);
+    toast.success(`Workshop pack for ${selected.length} job${selected.length === 1 ? "" : "s"} opened in a new tab.`);
   }
 
   function selectedJobRows() {
-    return jobs.filter((job) => selectedIds.includes(job.id)).map((job) => ({
+    return exportScope.map((job) => ({
       "Job No": job.job_no,
       Customer: job.customer,
       Description: job.description,
@@ -1270,13 +1279,15 @@ export default function JobsPage() {
    * on the bench "N/A (bench)"; otherwise the picker Play starts on (prefilled per R2.4). A viewer, or a finished job: text only.
    */
   const machineCell = (job: WorkshopJob, sheet = false) => {
+    // Machines are added on the Machine Schedule (admin or office), unless that page is hidden from this person or the company.
+    const canAddMachine = (activeRole === "admin" || activeRole === "office") && canOpenDestination("/schedule", { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav });
     const view = viewOf(job);
     const state = playOf(job);
     const rows = live.byJob.get(job.id) ?? [];
     const canPick = Boolean(state.button) && (activeRole === "admin" || activeRole === "office" || activeRole === "workshop");
     const waiting = runViewLabel(view, machineName);
     const picker = (running: boolean) => (
-      <MachinePicker jobNo={job.job_no} jobId={job.id} machines={pickerMachines(job)} inUse={live.byMachine} paused={pausedByMachine} pick={pickOf(job)} role={activeRole} disabled={saving}
+      <MachinePicker jobNo={job.job_no} jobId={job.id} machines={pickerMachines(job)} inUse={live.byMachine} paused={pausedByMachine} pick={pickOf(job)} role={activeRole} disabled={saving} loadFailed={machinesLoadError} loading={!machinesLoaded} canAddMachine={canAddMachine}
         running={running} sheet={sheet} active={sheet === isPhone} open={pickerFor === job.id} onOpenChange={(open) => setPickerFor(open ? job.id : null)}
         onChange={(pick) => setPick(job, pick)} onAdd={(ids) => play(job, { machines: ids, bench: false })} onStart={(chosen) => play(job, chosen)} touch={workshop ? "pointer-coarse:min-h-12" : undefined}
         stage={stageAfterStart(job.stage, "machining") ? { value: stages.get(job.id) ?? DEFAULT_START_STAGE, fromSetup: job.stage === "setup", onChange: (next) => setStages((current) => new Map(current).set(job.id, next)) } : null} />
@@ -1592,8 +1603,8 @@ export default function JobsPage() {
         exports={[
           { label: "CSV", title: scopeTitle, onSelect: () => void exportSpreadsheet("csv", "Jobs", JOB_COLUMNS, exportScope, "jobs") },
           { label: "Excel", title: scopeTitle, onSelect: () => void exportSpreadsheet("xlsx", "Jobs", JOB_COLUMNS, exportScope, "jobs") },
-          { label: "Word", onSelect: () => void exportRows("word", EXPORT_TITLES.jobs, selectedJobRows(), "jobs") },
-          { label: "PDF", onSelect: () => void exportRows("pdf", EXPORT_TITLES.jobs, selectedJobRows(), "jobs") },
+          { label: "Word", title: scopeTitle, onSelect: () => void exportRows("word", EXPORT_TITLES.jobs, selectedJobRows(), "jobs") },
+          { label: "PDF", title: scopeTitle, onSelect: () => void exportRows("pdf", EXPORT_TITLES.jobs, selectedJobRows(), "jobs") },
         ]}
         actions={isViewer ? null : (
           <>

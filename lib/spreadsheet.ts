@@ -156,6 +156,11 @@ export function downloadFile(filename: string, data: BlobPart, type: string) {
   URL.revokeObjectURL(url);
 }
 
+/** The rows an export covers: the selected rows if any, otherwise every row the current filters show. Same rule for CSV, Excel, Word and PDF. */
+export function exportScopeRows<T>(selected: T[], visible: T[]): T[] {
+  return selected.length > 0 ? selected : visible;
+}
+
 /** The button title that says what an export covers: the selected rows if any, otherwise every row in the current filter. */
 export function exportScopeTitle(noun: string, selected: number, inFilter: number): string {
   const plural = (n: number) => `${n} ${noun}${n === 1 ? "" : "s"}`;

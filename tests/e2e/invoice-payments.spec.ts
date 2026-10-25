@@ -24,6 +24,8 @@ test("record a part payment, see Part paid and the balance, then pay the rest an
   });
   const stored = async () => (await adminClient().from("invoices").select("status, amount_paid, paid_at").eq("id", id).single()).data;
   const rows = async () => ((await adminClient().from("invoice_payments").select("amount, method, reference, source").eq("invoice_id", id).order("created_at")).data ?? []);
+  /** A reversal is its own negative row pointing at the payment it reverses (032): none until one is recorded. */
+  const reversals = async () => ((await adminClient().from("invoice_payments").select("amount, reverses_payment_id, void_reason").eq("invoice_id", id).not("reverses_payment_id", "is", null)).data ?? []);
 
   await signIn(page, w.tenants.alpha.users.admin);
   await page.goto("/invoices");
@@ -82,9 +84,21 @@ test("record a part payment, see Part paid and the balance, then pay the rest an
   await expect(history.getByTestId("payment-row")).toHaveCount(2);
   await history.getByTestId("payment-row").nth(1).getByRole("button", { name: "Reverse" }).click();
   const reverseDialog = page.getByRole("dialog", { name: "Reverse this payment?" });
-  await expect(reverseDialog.getByRole("button", { name: "Reverse payment" })).toBeDisabled();
+  // No reason yet: Reverse payment stays pressable and says why it did nothing (PR 2 UX), and nothing is reversed. The history list
+  // sits behind this dialog, so "nothing reversed" is read from the database: no reversal row, still two payments, still paid in full.
+  await reverseDialog.getByRole("button", { name: "Reverse payment" }).click();
+  await expect(reverseDialog.getByRole("alert")).toHaveText("Give a reason (at least 1 character).");
+  await expect(reverseDialog).toBeVisible();
+  expect(await reversals(), "no reversal recorded without a reason").toEqual([]);
+  expect(await rows()).toHaveLength(2);
+  expect(await stored()).toMatchObject({ status: "paid", amount_paid: 120 });
   await reverseDialog.getByLabel("Reason").fill("Paid to the wrong invoice");
   await reverseDialog.getByRole("button", { name: "Reverse payment" }).click();
+  await expect(reverseDialog).toBeHidden();
+  // The reversal row: negative, pointing at the second payment, carrying the reason.
+  await expect.poll(reversals).toHaveLength(1);
+  expect((await reversals())[0]).toMatchObject({ void_reason: "Paid to the wrong invoice" });
+  expect((await reversals())[0].amount).toBeLessThan(0);
   await expect(history.getByTestId("payment-row").nth(1)).toContainText("Reversed");
   await expect(history.getByTestId("payment-row").nth(1)).toContainText("Paid to the wrong invoice");
   await expect(history.getByTestId("payment-row").nth(1).getByRole("button", { name: "Reverse" })).toHaveCount(0);

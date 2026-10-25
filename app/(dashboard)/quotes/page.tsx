@@ -45,11 +45,11 @@ import { type ExpiredQuoteAction, type ExpiredQuoteCheck, expiredQuoteAuditEvent
 import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { QUOTE_COLUMNS } from "@/lib/import-columns";
-import { exportScopeTitle } from "@/lib/spreadsheet";
+import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { type QuoteAttachmentReader, type QuoteAttachmentRow, listQuoteAttachments } from "@/lib/quote-attachments";
 import { friendlyError } from "@/lib/friendly-error";
 import { issuedBillTo, issuedCompany } from "@/lib/document-snapshot";
-import { canRecordDecision, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteFigures, quoteSendBlock, uploadSummary, quoteValidityDays, type QuoteStatus, storedQuoteStatus } from "@/lib/quote-status";
+import { canRecordDecision, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteSendBlock, uploadSummary, quoteValidityDays, type QuoteStatus, storedQuoteStatus } from "@/lib/quote-status";
 import { documentTotals, gbp } from "@/lib/money";
 import { companyVat, fromVatChoice, toVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
@@ -357,6 +357,12 @@ export default function QuotesPage() {
   const [viewItems, setViewItems] = useState<QuoteItem[]>([]);
   const [viewItemsLoading, setViewItemsLoading] = useState(false);
   const [viewItemsError, setViewItemsError] = useState<string | null>(null);
+  // Confirm Accepted: why the ticked lines can't be accepted (they sum to £0.00), shown only where the tick boxes are.
+  const acceptedLinesBlock = (() => {
+    const lines = viewItems.filter((item) => item.id);
+    if (lines.length < 2) return null;
+    return quoteAcceptBlock(1, undefined, documentTotals(lines.filter((item) => !decisionUnticked.has(item.id!)).map((item) => ({ quantity: item.quantity, unitPrice: item.unitPrice, vatPct: 0 }))).subtotal);
+  })();
   const [selectedRefs, setSelectedRefs] = useState<string[]>([]);
   // A link from elsewhere (RFQ Control's "Open QUO-...") names a quote as /quotes?quote=<id>: once the list has loaded, open that quote (once).
   const linkedQuoteDone = useRef(false);
@@ -479,10 +485,10 @@ export default function QuotesPage() {
   );
   // The same figures as the dashboard (lib/quote-status quoteFigures): Open = sent, still valid, undecided.
   const stats = useMemo(() => quoteFigures(quotes.map((quote) => ({ status: quote.rawStatus, valid_until: quote.validUntil, total_value: quote.value, declined_value: quote.declinedValue ?? 0 })), toDateInput(new Date())), [quotes]);
-  // CSV / Excel: the selected quotes if any, otherwise every quote in the current filter; the import column spec, not the display columns.
-  const exportScope = selectedRefs.length ? quotes.filter((quote) => selectedRefs.includes(quote.ref)) : visible;
+  // CSV / Excel / Word / PDF: the selected quotes if any, otherwise every quote in the current filter. CSV / Excel use the import column spec, not the display columns.
+  const exportScope = exportScopeRows(quotes.filter((quote) => selectedRefs.includes(quote.ref)), visible);
   const scopeTitle = exportScopeTitle("quote", selectedRefs.length, visible.length);
-  const selectedRows = quotes.filter((quote) => selectedRefs.includes(quote.ref)).map((quote) => ({
+  const selectedRows = exportScope.map((quote) => ({
     "Quote Ref": quote.ref,
     Customer: quote.customer,
     Value: currency(quote.value),
@@ -722,6 +728,11 @@ export default function QuotesPage() {
 
   /** Mark Accepted: asks first when the quote is past its valid-until date, then opens the decision form as it always did. */
   function askToAccept(quote: QuoteRow, expiryConfirmed = false) {
+    const blocked = quoteAcceptBlock(quote.value);
+    if (blocked) {
+      toast.error(blocked);
+      return;
+    }
     const expired = expiryConfirmed ? null : expiredQuoteCheck(quote.rawStatus, quote.validUntil, toDateInput(new Date()), "accept");
     if (expired) {
       setExpiredAsk({ quote, action: "accept", check: expired });
@@ -971,8 +982,8 @@ export default function QuotesPage() {
         exports={[
           { label: "CSV", title: scopeTitle, onSelect: () => void exportSpreadsheet("csv", "Quotes", QUOTE_COLUMNS, exportScope, "quotes") },
           { label: "Excel", title: scopeTitle, onSelect: () => void exportSpreadsheet("xlsx", "Quotes", QUOTE_COLUMNS, exportScope, "quotes") },
-          { label: "Word", onSelect: () => void exportRows("word", EXPORT_TITLES.quotes, selectedRows, "quotes") },
-          { label: "PDF", onSelect: () => void exportRows("pdf", EXPORT_TITLES.quotes, selectedRows, "quotes") },
+          { label: "Word", title: scopeTitle, onSelect: () => void exportRows("word", EXPORT_TITLES.quotes, selectedRows, "quotes") },
+          { label: "PDF", title: scopeTitle, onSelect: () => void exportRows("pdf", EXPORT_TITLES.quotes, selectedRows, "quotes") },
         ]}
       />
       {loadError ? (
@@ -1144,7 +1155,8 @@ export default function QuotesPage() {
                 {canRecordDecision(viewingQuote.rawStatus) && !viewReplacedBy ? (
                   <>
                     <Button variant="outline" className="w-full sm:w-auto" disabled={saving} onClick={() => setDecision({ quote: viewingQuote, outcome: "rejected" })}>Mark Rejected</Button>
-                    <Button variant="outline" className="w-full sm:w-auto" disabled={saving} onClick={() => askToAccept(viewingQuote)}>Mark Accepted</Button>
+                    <Button variant="outline" className="w-full sm:w-auto" disabled={saving || Boolean(quoteAcceptBlock(viewingQuote.value))} title={quoteAcceptBlock(viewingQuote.value) ?? undefined} aria-describedby={quoteAcceptBlock(viewingQuote.value) ? "accept-block-reason" : undefined} onClick={() => askToAccept(viewingQuote)}>Mark Accepted</Button>
+                    {quoteAcceptBlock(viewingQuote.value) ? <span id="accept-block-reason" className="sr-only">{quoteAcceptBlock(viewingQuote.value)}</span> : null}
                   </>
                 ) : null}
                 <Button variant="outline" className="w-full sm:w-auto" disabled={Boolean(viewProblem)} onClick={() => void downloadQuotePdf(viewingQuote)}><Download className="size-4" /> Download PDF</Button>
@@ -1252,9 +1264,10 @@ export default function QuotesPage() {
               </p>
             </fieldset>
           ) : null}
+          {decision?.outcome === "accepted" && acceptedLinesBlock ? <p id="accept-lines-block" role="alert" className="text-sm text-red-700">{acceptedLinesBlock}</p> : null}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => { setDecision(null); setDecisionPo(""); setDecisionDue(""); }}>Cancel</Button>
-            <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => decision && void recordDecision(decision.quote, decision.outcome)}>
+            <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || Boolean(decision?.outcome === "accepted" && acceptedLinesBlock)} aria-describedby={decision?.outcome === "accepted" && acceptedLinesBlock ? "accept-lines-block" : undefined} onClick={() => decision && void recordDecision(decision.quote, decision.outcome)}>
               {saving ? "Saving…" : decision?.outcome === "accepted" ? "Confirm Accepted" : "Confirm Rejected"}
             </Button>
           </div>

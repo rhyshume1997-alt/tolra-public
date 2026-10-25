@@ -17,6 +17,14 @@ describe("chipBookingSuffix", () => {
     expect(chipBookingSuffix({ booked: true }, false)).toBe(" (booked)");
     expect(chipBookingSuffix({ booked: false }, false)).toBe("");
   });
+  it('says "(not booked)" for a planned machine with no booking row on an open job, and nothing otherwise', () => {
+    expect(chipBookingSuffix({ state: null, booked: false, planned: true }, false)).toBe(" (not booked)");
+    expect(chipBookingSuffix({ state: null, booked: false, planned: true }, true)).toBe("");
+    expect(chipBookingSuffix({ state: null, booked: false, planned: false }, false)).toBe("");
+    // A booking row wins over the plan flag; "(booked)" never appears without one.
+    expect(chipBookingSuffix({ state: "booked", booked: true, planned: true }, false)).toBe(" (booked)");
+    expect(chipBookingSuffix({ state: null, booked: false, planned: true }, false)).not.toContain("(booked)");
+  });
 });
 
 describe("completeFinishedJobBookings", () => {
