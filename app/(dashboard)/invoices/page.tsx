@@ -3,6 +3,7 @@
 import { deletedOne } from "@/lib/delete-result";
 import { EmptyList } from "@/components/empty-list";
 import { ActivityPanel } from "@/components/activity-panel";
+import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Banknote, Plus, Send, Trash2, TrendingDown } from "lucide-react";
@@ -1410,6 +1411,7 @@ export default function InvoicesPage() {
             <DialogTitle>Issue this invoice to {issueConfirm?.customer}?</DialogTitle>
             <DialogDescription>It gets the next invoice number and its contents are fixed. From then on it counts as money owed, whether or not it has been e-mailed. This can&apos;t be undone.{issueThenSend ? " The e-mail and PDF open straight after; you then confirm it has gone." : ""}</DialogDescription>
           </DialogHeader>
+          <AiFinanceCheckPanel kind="invoice" id={issueConfirm?.id} />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIssueConfirm(null)}>Cancel</Button>
             <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => issueConfirm && void issueInvoice(issueConfirm, issueThenSend)}>

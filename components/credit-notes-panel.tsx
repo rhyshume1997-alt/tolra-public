@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { CreditNotePDF } from "@/components/pdf/CreditNotePDF";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -222,6 +223,7 @@ export function CreditNotesPanel({ invoice, onChanged }: {
                   {note.status === "issued" && left > 0 ? <Button size="sm" variant="outline" disabled={busy} onClick={() => startApplying(note)}>Apply credit</Button> : null}
                   {note.status === "issued" ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void pdf(note)}>Download PDF</Button> : null}
                 </span>
+                {note.status === "draft" ? <div className="basis-full"><AiFinanceCheckPanel kind="credit_note" id={note.id} /></div> : null}
                 <WhoWhen table="credit_notes" row={note as unknown as Record<string, unknown>} className="basis-full" />
               </li>
             );

@@ -1,4 +1,6 @@
+import { AiFeaturesProvider } from "@/components/ai-features";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { aiFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
 import { type ShellBrand, shellBrandFrom } from "@/lib/brand-pending";
 import { createSupabaseServerClient } from "@/lib/server/auth";
 
@@ -33,6 +35,9 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <DashboardShell company={await readCompany()}>{children}</DashboardShell>
+    <DashboardShell company={await readCompany()}>
+      {/* AI features this server has on: plain booleans only (the env var stays on the server). All off by default. */}
+      <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled() }}>{children}</AiFeaturesProvider>
+    </DashboardShell>
   );
 }
