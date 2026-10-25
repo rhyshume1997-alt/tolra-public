@@ -17,7 +17,7 @@ export type QuotePdfData = {
   carriageVat?: boolean;
   /** Customer-facing lines only. Never pass internal notes. */
   customerMessage?: string[];
-  /** Printed valid-until date ("" or absent prints "Not set", so the customer sees it was left open). */
+  /** Printed valid-until date. "" or absent omits the Valid Until line (the Terms line still states the period), matching the on-screen quote. */
   validUntil?: string;
   /** Customer-facing scope of work (the quote's description). */
   scope?: string;
@@ -27,12 +27,12 @@ export type QuotePdfData = {
   storedTotals?: PdfDocumentData["storedTotals"];
 };
 
-/** Header rows of a quote: number, date, validity (always printed, audit D21) and terms. */
+/** Header rows of a quote: number, date, validity (only when a date is stored: never "Not set" beside "Valid for N days") and terms. */
 export function quoteKeyValues(data: Pick<QuotePdfData, "number" | "date" | "validUntil" | "terms">, company: Pick<CompanyProfile, "defaultQuoteTerms">): PdfKeyValue[] {
   return [
     { label: "Our Quote No.", value: data.number },
     { label: "Date", value: data.date },
-    { label: "Valid Until", value: data.validUntil?.trim() ? data.validUntil : "Not set" },
+    ...(data.validUntil?.trim() ? [{ label: "Valid Until", value: data.validUntil }] : []),
     { label: "Terms", value: data.terms || company.defaultQuoteTerms },
   ];
 }
