@@ -1,6 +1,7 @@
 "use client";
 
 import { ActivityPanel } from "@/components/activity-panel";
+import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { EmptyList } from "@/components/empty-list";
 import { DocumentAttachments } from "@/components/document-attachments";
 import Link from "next/link";
@@ -526,6 +527,7 @@ export default function PurchaseOrdersPage() {
                 {issueNotice.text}
               </p>
             ) : null}
+            {poAction?.kind === "issue" ? <AiFinanceCheckPanel kind="purchase_order" id={poAction.po.id} /> : null}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setPoAction(null)}>{poAction?.kind === "issue" ? "Cancel" : "Not yet"}</Button>
               <Button className="bg-brand text-brand-ink" disabled={saving || issueNotice?.tone === "blocked"} onClick={() => poAction && void applyPoAction(poAction)}>{poAction?.kind === "issue" ? "Issue Purchase Order" : "I\u2019ve sent it"}</Button>
