@@ -248,3 +248,143 @@ describe("exactly one Activity entry per change (094)", () => {
     expect(storedRows).toBe(1);
   });
 });
+
+/**
+ * A company's audit chain written directly, with created_at chosen by the test. HOW EQUALITY IS FORCED: production's
+ * security_audit.set_audit_hash (BEFORE INSERT) always sets created_at := clock_timestamp() and computes the hash, so no ordinary write
+ * can give two rows the same time. Here the superuser test connection (postgres, the owner) writes the rows in one transaction with
+ * `set local session_replication_role = replica` (the same switch destroySyntheticWorld uses), which skips that trigger for this
+ * transaction only, and computes each row's previous_hash and hash itself with set_audit_hash's own formula (sha256 over the previous
+ * hash and the row's fields, created_at::text last). The result is a correctly chained run of rows, some with identical created_at.
+ * No guard, trigger, function or setting is changed; production writes are untouched. The rows go with the company at teardown.
+ */
+type ChainRow = { action: string; table: string; entity: string; source: "write_audit" | "database_trigger"; at: string;
+  old?: Record<string, unknown> | null; new?: Record<string, unknown> | null; meta?: Record<string, unknown> };
+async function writeChain(org: string, actor: string, chain: ChainRow[]) {
+  return withDb(async (db) => {
+    await db.query("begin");
+    try {
+      await db.query("set local session_replication_role = replica");
+      let previous: string | null = (await db.query<{ h: string | null }>(
+        "select hash as h from security_audit.audit_log where organization_id = $1 order by organization_id, created_at desc limit 1", [org])).rows[0]?.h ?? null;
+      const ids: string[] = [];
+      for (const r of chain) {
+        const row = (await db.query<{ id: string; hash: string }>(
+          `insert into security_audit.audit_log (organization_id, actor_user_id, action, entity_table, entity_id, old_data, new_data, metadata, created_at, previous_hash, hash)
+           select $1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7::jsonb, $8::jsonb, $9::timestamptz, $10::text,
+                  encode(extensions.digest(coalesce($10::text, '') || $1::uuid::text || coalesce($2::uuid::text, '') || $3 || $4 || coalesce($5, '')
+                    || coalesce($6::jsonb::text, '') || coalesce($7::jsonb::text, '') || coalesce($8::jsonb::text, '') || $9::timestamptz::text, 'sha256'), 'hex')
+           returning id, hash`,
+          [org, actor, r.action, r.table, r.entity, r.old ?? null, r.new ?? null, JSON.stringify({ source: r.source, ...(r.meta ?? {}) }), r.at, previous])).rows[0];
+        previous = row.hash;
+        ids.push(row.id);
+      }
+      await db.query("commit");
+      return ids;
+    } catch (error) {
+      await db.query("rollback");
+      throw error;
+    }
+  });
+}
+
+describe("matching never depends on timestamp order (094)", () => {
+  const C = { org: "", admin: person("admin-c") };
+
+  beforeAll(async () => {
+    await withDb(async (db) => {
+      C.org = await makeOrg(db, "c");
+      await member(db, C.org, C.admin, "admin");
+    });
+  });
+
+  it("an ISSUE and its row change with the SAME created_at: only Issued is listed; two unrelated rows sharing a time are both listed; an event stamped LATER than its row change still hides it", async () => {
+    const [inv1, inv2, inv3, cust] = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+    const t = "2026-10-20 10:00:00.123456+00";
+    const t2 = "2026-10-20 10:05:00.5+00";
+    const issued = { old: { status: "draft" }, new: { status: "issued" } };
+    const [issueId, rowChangeId, otherA, otherB, laterRowChange, laterIssue, laterChangeId] = await writeChain(C.org, C.admin.id, [
+      // 1. the stamp trigger's ISSUE, then its row change: identical created_at, linked by previous_hash
+      { action: "ISSUE", table: "invoices", entity: inv1, source: "write_audit", at: t, meta: { invoice_ref: "INV-EQ1" } },
+      { action: "UPDATE", table: "invoices", entity: inv1, source: "database_trigger", at: t, ...issued },
+      // 2. two unrelated changes at one identical time (another invoice's edit, then a customer's): both stay
+      { action: "UPDATE", table: "invoices", entity: inv2, source: "database_trigger", at: t2, old: { notes: null }, new: { notes: "Deliver to rear" } },
+      { action: "UPDATE", table: "customers", entity: cust, source: "database_trigger", at: t2, old: { phone: null }, new: { phone: "0700" } },
+      // 3. times the wrong way round: a plain edit of inv3, then an ISSUE of inv3 stamped 11:00, then its row change stamped 08:00
+      //    (three hours EARLIER than the event it is chained to)
+      { action: "UPDATE", table: "invoices", entity: inv3, source: "database_trigger", at: "2026-10-20 09:00:00+00", old: { notes: "x" }, new: { notes: "y" } },
+      { action: "ISSUE", table: "invoices", entity: inv3, source: "write_audit", at: "2026-10-20 11:00:00+00", meta: { invoice_ref: "INV-EQ3" } },
+      { action: "UPDATE", table: "invoices", entity: inv3, source: "database_trigger", at: "2026-10-20 08:00:00+00", ...issued },
+    ]);
+    const stamps = await withDb(async (db) => (await db.query<{ id: string; at: string }>(
+      "select id, created_at::text as at from security_audit.audit_log where id = any($1)", [[issueId, rowChangeId, otherA, otherB]])).rows);
+    const at = Object.fromEntries(stamps.map((s) => [s.id, s.at]));
+    expect(at[issueId]).toBe(at[rowChangeId]); // the pair shares one created_at
+    expect(at[otherA]).toBe(at[otherB]);
+    const listed = new Set((await activity(C.admin)).map((r) => r.id));
+    expect(listed.has(issueId)).toBe(true);
+    expect(listed.has(rowChangeId)).toBe(false);
+    expect(listed.has(otherA) && listed.has(otherB)).toBe(true);
+    expect(listed.has(laterRowChange)).toBe(true); // its predecessor is a plain row change, not an ISSUE: listed
+    expect(listed.has(laterIssue)).toBe(true);
+    expect(listed.has(laterChangeId)).toBe(false); // chained to an ISSUE stamped three hours LATER than itself: still hidden
+    // The rows are all stored: nothing hidden is gone.
+    expect((await withDb((db) => db.query("select count(*)::int as n from security_audit.audit_log where id = any($1)",
+      [[issueId, rowChangeId, otherA, otherB, laterRowChange, laterIssue, laterChangeId]]))).rows[0].n).toBe(7);
+  });
+});
+
+describe("who may read the Activity log (unchanged by 094)", () => {
+  const R = { workshop: person("workshop-a"), viewer: person("viewer-a"), support: person("support-a"), ended: person("ended-a") };
+
+  beforeAll(async () => {
+    await withDb(async (db) => {
+      await member(db, W.A, R.workshop, "workshop");
+      await member(db, W.A, R.viewer, "viewer");
+      // Support access (036): a platform owner's expiring admin membership, chosen for the session under its grant. One live, one ended.
+      for (const [p, live] of [[R.support, true], [R.ended, false]] as const) {
+        await db.query("insert into auth.users (id, email) values ($1, $2)", [p.id, p.email]);
+        await db.query(`insert into public.user_profiles (id, email, full_name, role, organization_id, active, must_change_password)
+                        values ($1, $2, 'Tolra Support', 'admin', $3, true, false)`, [p.id, p.email, W.A]);
+        await db.query("insert into security_audit.platform_admins (user_id) values ($1)", [p.id]);
+        const grant = randomUUID();
+        await db.query(`insert into public.organization_members (user_id, organization_id, role, active, support, expires_at, support_grant)
+                        values ($1, $2, 'admin', true, true, now() + case when $3 then interval '2 hours' else interval '-1 hour' end, $4)`, [p.id, W.A, live, grant]);
+        p.session = randomUUID();
+        await db.query("insert into auth.sessions (id, user_id) values ($1, $2)", [p.session, p.id]);
+        await db.query("insert into security_audit.session_company (session_id, user_id, organization_id, grant_id) values ($1, $2, $3, $4)", [p.session, p.id, W.A, grant]);
+      }
+    });
+  });
+
+  afterAll(async () => {
+    await withDb((db) => db.query("delete from security_audit.platform_admins where user_id = any($1)", [[R.support.id, R.ended.id]]));
+  });
+
+  it("office, workshop and viewer are refused (42501 Only admins can view the activity log); anon has no EXECUTE; an ended support window is refused", async () => {
+    for (const p of [W.officeA, R.workshop, R.viewer, R.ended]) {
+      await expect(activity(p)).rejects.toMatchObject({ code: "42501", message: "Only admins can view the activity log" });
+    }
+    const anon = await withDb(async (db) => {
+      await db.query("begin");
+      try {
+        await db.query("set local role anon");
+        await db.query("select * from public.org_activity()");
+        return null;
+      } catch (error) {
+        return error as { code?: string; message: string };
+      } finally {
+        await db.query("rollback");
+      }
+    });
+    expect(anon).toMatchObject({ code: "42501", message: expect.stringContaining("permission denied for function org_activity") });
+    expect(await withDb(async (db) => (await db.query<{ v: boolean }>(
+      "select has_function_privilege('anon', 'public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)', 'EXECUTE') as v")).rows[0].v)).toBe(false);
+  });
+
+  it("a live support session (036: admin role, read-only) reads A's log exactly as A's admin does, nothing of B's; B's admin sees nothing of A's", async () => {
+    const support = (await activity(R.support)).map((r) => r.id);
+    expect(support).toEqual((await activity(W.adminA)).map((r) => r.id));
+    expect((await activity(W.adminB)).some((r) => [W.customer, W.invoice, W.adminA.id, W.officeA.id].includes(r.entity_id))).toBe(false);
+  });
+});
