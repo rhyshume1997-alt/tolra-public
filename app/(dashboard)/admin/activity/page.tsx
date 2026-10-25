@@ -110,14 +110,16 @@ export default function ActivityPage() {
               <ul className="divide-y divide-slate-100">
                 {rows.map((entry) => {
                   const { title, details } = describeEntry(entry, people);
-                  const label = recordLabel(entry);
+                  // The title already starts with the record type ("Clock action created"), so only add the type when it does not.
+                  const type = typeLabel(entry);
+                  const badge = [title.startsWith(type) ? null : type, recordLabel(entry)].filter(Boolean).join(" ");
                   return (
                     <li key={entry.id} className="grid gap-1 px-4 py-3 sm:grid-cols-[170px_180px_1fr] sm:gap-4">
                       <p className="text-xs text-slate-500 sm:text-sm">{fmtDateTime(entry.created_at)}</p>
                       <p className="truncate text-sm font-medium text-slate-800" data-testid="activity-actor">{actorLabel(entry, people)}</p>
                       <div className="min-w-0">
                         <p className="text-sm text-slate-900">
-                          <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{typeLabel(entry)}{label ? ` ${label}` : ""}</span>
+                          {badge ? <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">{badge}</span> : null}
                           {title}
                         </p>
                         {details.length ? <ul className="mt-1 space-y-0.5 text-xs text-slate-600">{details.slice(0, 10).map((line, index) => <li key={index} className="break-words">{line}</li>)}</ul> : null}
