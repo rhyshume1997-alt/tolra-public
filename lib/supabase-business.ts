@@ -55,6 +55,14 @@ function normalizeSupplierStatus(status: string) {
 }
 
 export async function getCurrentOrganizationId() {
+  return (await getCurrentUserAndOrganization()).organizationId;
+}
+
+/**
+ * The signed-in user (confirmed by the auth server) and the company of THIS sign-in session, from the same two requests
+ * getCurrentOrganizationId makes: a caller that needs both (lib/org-settings) does not ask the auth server a second time.
+ */
+export async function getCurrentUserAndOrganization(): Promise<{ userId: string; organizationId: string }> {
   if (!supabase) throw new Error("Supabase is not configured.");
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -63,7 +71,7 @@ export async function getCurrentOrganizationId() {
   // The company of THIS sign-in session, as the database sees it (not the profile's copy).
   const { data: organizationId, error: organizationError } = await supabase.rpc("current_user_organization_id");
   if (organizationError || typeof organizationId !== "string") throw new Error("User profile organization was not found.");
-  return organizationId;
+  return { userId: userData.user.id, organizationId };
 }
 
 export async function fetchSuppliersFromSupabase() {
