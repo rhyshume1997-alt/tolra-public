@@ -45,7 +45,6 @@ test("record a part payment, see Part paid and the balance, then pay the rest an
   // Correcting the amount clears the "more than the balance" message at once, before any resubmit.
   await dialog.getByLabel("Amount received").fill("50");
   await expect(dialog.getByRole("alert")).toHaveCount(0);
-  await dialog.getByLabel("Amount received").fill("50");
   await dialog.getByLabel("Method").selectOption("cheque");
   await dialog.getByLabel("Reference").fill("CHQ 100");
   await dialog.getByRole("button", { name: "Save payment" }).click();
