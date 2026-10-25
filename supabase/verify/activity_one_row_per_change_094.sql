@@ -6,7 +6,7 @@ WITH org AS (
 )
 -- org_activity: 080's body plus the two 094 filters; definer, STABLE, 080's search_path.
 SELECT 'org_activity_is_094' AS check_name,
-       coalesce((SELECT body = 'b4c46509fab9c5746b74bfd3afa30e00' AND prosecdef AND provolatile = 's'
+       coalesce((SELECT body = '168ae55fc923bf2cbf39aadc153536b4' AND prosecdef AND provolatile = 's'
                    AND proconfig = ARRAY['search_path=pg_catalog, public, security_audit'] FROM org), FALSE) AS ok
 -- Signed-in only: authenticated may call it; anon and PUBLIC may not (as 080).
 UNION ALL SELECT 'org_activity_signed_in_only',
@@ -22,7 +22,7 @@ UNION ALL SELECT 'org_activity_signature_unchanged',
 UNION ALL SELECT 'filters_in_body',
   coalesce((SELECT position('a.entity_table = ANY (v_row_audited)' IN prosrc) > 0
               AND position('security_audit.log_row_change()' IN prosrc) > 0
-              AND position('n.hash = a.previous_hash' IN prosrc) > 0
+              AND position('p.hash = a.previous_hash' IN prosrc) > 0
               AND position('''ISSUE'', ''MARK_PAID'', ''RESEND'', ''CONFIRM'', ''REOPEN''' IN prosrc) > 0 FROM org), FALSE)
 -- The admin-only check comes first, as 080's (a signed-in non-admin, or no session, is refused 42501).
 UNION ALL SELECT 'admin_check_unchanged',

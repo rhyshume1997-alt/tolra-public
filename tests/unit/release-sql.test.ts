@@ -992,10 +992,11 @@ describe("prepared release text for the Activity page's one row per change (supa
     }
     const filters = def.slice(def.indexOf("    -- 094 (a)"), def.indexOf("  ORDER BY a.created_at DESC, a.id DESC"));
     expect(filters).toContain("a.entity_table = ANY (v_row_audited)");
-    expect(filters).toContain("n.hash = a.previous_hash");
-    expect(filters).toContain("n.action IN ('ISSUE', 'MARK_PAID', 'RESEND', 'CONFIRM', 'REOPEN')");
-    expect(filters).toContain("n.entity_table = a.entity_table AND n.entity_id = a.entity_id");
-    expect(filters).toContain("n.actor_user_id IS NOT DISTINCT FROM a.actor_user_id");
+    expect(filters).toContain("p.hash = a.previous_hash");
+    expect(filters).not.toMatch(/created_at|LIMIT/);
+    expect(filters).toContain("p.action IN ('ISSUE', 'MARK_PAID', 'RESEND', 'CONFIRM', 'REOPEN')");
+    expect(filters).toContain("p.organization_id = a.organization_id AND p.entity_table = a.entity_table AND p.entity_id = a.entity_id");
+    expect(filters).toContain("p.actor_user_id IS NOT DISTINCT FROM a.actor_user_id");
     expect(def.replace(filters, "")).toBe(definition(m080()));
     const outside = sql.replace(/\$\$[\s\S]*?\$\$/g, "$$$$");
     expect(outside).not.toMatch(/^\s*(ALTER TABLE|CREATE TABLE|CREATE POLICY|DROP POLICY|ALTER POLICY|CREATE TRIGGER|DROP TRIGGER|UPDATE |INSERT INTO|DELETE FROM)/m);

@@ -179,3 +179,72 @@ describe("org_activity: one row per change (094)", () => {
     expect(paged.map((r) => r.id)).toEqual(all.map((r) => r.id));
   });
 });
+
+/** Every audit row as stored: how many, and an md5 over each row's id and chain hash (any write, change or removal moves it). */
+const auditFingerprint = () => withDb(async (db) => (await db.query<{ n: string; h: string }>(
+  "select count(*)::text as n, md5(coalesce(string_agg(id::text || ':' || coalesce(hash, ''), ',' order by id), '')) as h from security_audit.audit_log")).rows[0]);
+
+/**
+ * One change, made the way the app makes it (`steps`, each its own request): the Activity entries it adds for `entityId`, how many audit
+ * rows it stored, and proof that reading the Activity log wrote, changed and removed no audit row.
+ */
+async function once(steps: (() => Promise<unknown>)[], entityId: string) {
+  const before = new Set((await activity(W.adminA)).map((r) => r.id));
+  const storedBefore = (await stored([entityId])).length;
+  for (const step of steps) await step();
+  const audit = await auditFingerprint();
+  const added = (await activity(W.adminA)).filter((r) => !before.has(r.id) && (r.entity_id === entityId || r.record_id === entityId));
+  await activity(W.adminA, { limit: 3 });
+  expect(await auditFingerprint(), "org_activity wrote, changed or removed no audit row").toEqual(audit);
+  return { added, storedRows: (await stored([entityId])).length - storedBefore };
+}
+
+describe("exactly one Activity entry per change (094)", () => {
+  it("issuing an invoice: the Issued entry only (its row change and nothing else listed)", async () => {
+    const invoice = await as(W.officeA, async (db) => {
+      const id = (await db.query<{ id: string }>(
+        "insert into public.invoices (organization_id, customer, status, subtotal, vat, total) values ($1, $2, 'draft', 50, 10, 60) returning id", [W.A, `Acme ${run}`])).rows[0].id;
+      await db.query("insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, vat_pct, vat_exempt) values ($1, $2, 0, 'Bush', 1, 50, 20, false)", [W.A, id]);
+      return id;
+    });
+    const { added, storedRows } = await once([() => as(W.officeA, (db) => db.query("select public.issue_invoice($1)", [invoice]))], invoice);
+    expect(added.map((r) => r.action)).toEqual(["ISSUE"]);
+    expect(storedRows).toBe(2); // ISSUE and the row change: both kept
+  });
+
+  it("updating a customer: one entry, the row change with what changed (the page's own UPDATE note hidden)", async () => {
+    const customer = await as(W.officeA, async (db) => (await db.query<{ id: string }>(
+      "insert into public.customers (organization_id, name) values ($1, $2) returning id", [W.A, `Once Co ${run}`])).rows[0].id);
+    const { added, storedRows } = await once([
+      () => as(W.officeA, (db) => db.query("update public.customers set email = 'accounts@once.example.test' where id = $1", [customer])),
+      () => as(W.officeA, (db) => writeAudit(db, "UPDATE", "customers", customer, { email: null }, { email: "accounts@once.example.test" })),
+    ], customer);
+    expect(added.map((r) => `${r.action} ${Object.keys(r.changes ?? {}).join(",")}`)).toEqual(["UPDATE email"]);
+    expect(storedRows).toBe(2);
+  });
+
+  it("renaming a user (the admin route: the update as the admin, then its write_audit UPDATE on user_profiles): one entry", async () => {
+    const { added, storedRows } = await once([
+      () => as(W.adminA, (db) => db.query("update public.user_profiles set full_name = 'Olive O. Office' where id = $1", [W.officeA.id])),
+      () => as(W.adminA, (db) => writeAudit(db, "UPDATE", "user_profiles", W.officeA.id, { full_name: "Olive Office" }, { full_name: "Olive O. Office" })),
+    ], W.officeA.id);
+    expect(added.map((r) => `${r.action} ${Object.keys(r.changes ?? {}).join(",")}`)).toEqual(["UPDATE full_name"]);
+    expect(storedRows).toBe(2);
+  });
+
+  it("changing a status: a sales order confirmed (the stamp trigger's CONFIRM) is one entry, Confirmed", async () => {
+    const order = await as(W.officeA, async (db) => (await db.query<{ id: string }>(
+      "insert into public.sales_orders (organization_id, so_number, customer, status) values ($1, $2, $3, 'open') returning id", [W.A, `SO-${run}`, `Acme ${run}`])).rows[0].id);
+    const { added, storedRows } = await once([() => as(W.officeA, (db) => db.query("update public.sales_orders set status = 'confirmed' where id = $1", [order]))], order);
+    expect(added.map((r) => r.action)).toEqual(["CONFIRM"]);
+    expect(storedRows).toBe(2);
+  });
+
+  it("changing a status with no named event (a draft quote sent, as the Quotes page does): one entry, the row change", async () => {
+    const quote = await as(W.officeA, async (db) => (await db.query<{ id: string }>(
+      "insert into public.quotes (organization_id, quote_ref, customer, status, total_value) values ($1, $2, $3, 'draft', 0) returning id", [W.A, `QUO-${run}`, `Acme ${run}`])).rows[0].id);
+    const { added, storedRows } = await once([() => as(W.officeA, (db) => db.query("update public.quotes set status = 'sent', sent_at = now() where id = $1", [quote]))], quote);
+    expect(added.map((r) => `${r.action} ${(r.changes?.status as { to?: string } | undefined)?.to}`)).toEqual(["UPDATE sent"]);
+    expect(storedRows).toBe(1);
+  });
+});
