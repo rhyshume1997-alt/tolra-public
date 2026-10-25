@@ -12,6 +12,29 @@ import { PRODUCT } from "@/lib/product";
  */
 export const LAST_ORG_KEY = "qf.login.org";
 
+/** Tab storage key: the company this tab has already asked the server to remember (rememberBrand). */
+export const REMEMBERED_KEY = "qf.brand.remembered";
+
+/**
+ * Browser only. Asks the server to remember this session's company for the next sign-in page (app/api/branding/remember: the
+ * server decides, from the session, and only for a company with branded sign-in on). Once per company per tab. The browser-only
+ * record from before the cookie is then no longer needed. Any failure is left for the next page load to try again.
+ *
+ * The answer is always read to the end, whatever its status: a response whose body is never read is never finished in the
+ * browser, so the page would stay busy on the network for as long as it is open (CI run 40182770805).
+ */
+export async function rememberBrand(organizationId: string): Promise<void> {
+  try { if (window.sessionStorage.getItem(REMEMBERED_KEY) === organizationId) return; } catch { /* storage blocked: ask again */ }
+  await fetch("/api/branding/remember", { method: "POST" }).then(async (response) => {
+    await response.text();
+    if (!response.ok) return;
+    try {
+      window.sessionStorage.setItem(REMEMBERED_KEY, organizationId);
+      window.localStorage.removeItem(LAST_ORG_KEY);
+    } catch { /* storage blocked */ }
+  }).catch(() => undefined);
+}
+
 export type LoginBranding = {
   slug: string;
   name: string;

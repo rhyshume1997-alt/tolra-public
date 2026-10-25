@@ -12,7 +12,7 @@ import { ThemeColour } from "@/components/theme-colour";
 import { Topbar } from "@/components/topbar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type ShellBrand, shellColours } from "@/lib/brand-pending";
-import { LAST_ORG_KEY } from "@/lib/branding";
+import { rememberBrand } from "@/lib/branding";
 import { primeShellBrand } from "@/lib/company";
 import { OFFLINE_IDENTITY_MAX_AGE_HOURS, OfflineIdentityExpiredError } from "@/lib/offline/identity-age";
 import { useIdleSignOut } from "@/lib/use-idle-sign-out";
@@ -20,24 +20,14 @@ import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/friendly-error";
 import { UserProvider, useUser } from "@/lib/use-user";
 
-const REMEMBERED_KEY = "qf.brand.remembered";
-
 /**
  * After sign-in and after a company switch (both load the app afresh), asks the server to remember this session's company for the
- * next sign-in page (app/api/branding/remember: the server decides, from the session, and only for a company with branded sign-in
- * on). Once per company per tab. The browser-only record from before the cookie is then no longer needed.
+ * next sign-in page (lib/branding.ts rememberBrand). Once per company per tab.
  */
 function useRememberBrand(organizationId: string | null | undefined) {
   useEffect(() => {
     if (!organizationId || !supabase) return;
-    try { if (window.sessionStorage.getItem(REMEMBERED_KEY) === organizationId) return; } catch { /* storage blocked: ask again */ }
-    void fetch("/api/branding/remember", { method: "POST" }).then((response) => {
-      if (!response.ok) return;
-      try {
-        window.sessionStorage.setItem(REMEMBERED_KEY, organizationId);
-        window.localStorage.removeItem(LAST_ORG_KEY);
-      } catch { /* storage blocked */ }
-    }).catch(() => undefined);
+    void rememberBrand(organizationId);
   }, [organizationId]);
 }
 
