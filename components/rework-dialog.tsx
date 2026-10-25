@@ -12,7 +12,7 @@ import { type PeopleMap, personName } from "@/lib/people";
 import { canReadUsernames, loadCompanyPeople } from "@/lib/company-people";
 import { useMaybeUser } from "@/lib/use-user";
 import {
-  CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkEntry, type ReworkRecord, type ReworkSummary, finishRework, loadReworkEntries, pendingCostEntry, loadReworkSummary, loadReworks,
+  CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkEntry, type ReworkRecord, type ReworkSummary, finishRework, finishWithPendingCost, loadReworkEntries, pendingCostEntry, loadReworkSummary, loadReworks,
   openReplacementRework, quantityText, recordReworkCost, replacementsOwed, scrapQuantity, startRework,
 } from "@/lib/rework";
 import { supabase } from "@/lib/supabase";
@@ -70,10 +70,11 @@ function LiveRework({ live, lineName, entries, entryLine, people, canWrite, canC
     // Hours or material typed but not added are booked with the finish, checked exactly as Add checks them; a half-valid entry stops the finish.
     const pending = pendingCostEntry({ hours, material, materialCost, note });
     if (pending.kind === "error") return setError(`You have hours or material typed in but not added, and it can't be saved: ${pending.message} Fix it or clear the fields.`);
-    act(async () => {
-      if (pending.kind === "entry") { await recordReworkCost({ reworkId: live.id, ...pending }); clearCost(); }
-      await finishRework(live.id, finishNote, count);
-    }, () => { setFinishNote(""); setRemade(""); });
+    act(() => finishWithPendingCost(pending, {
+      book: (entry) => recordReworkCost({ reworkId: live.id, ...entry }),
+      clear: clearCost,
+      finish: () => finishRework(live.id, finishNote, count),
+    }), () => { setFinishNote(""); setRemade(""); });
   }
 
   return (

@@ -172,6 +172,16 @@ export function pendingCostEntry(f: { hours: string; material: string; materialC
   return { kind: "entry", hours: h, material: f.material, materialCost: cost, note: f.note };
 }
 
+/**
+ * Finish with any typed-but-not-added entry: books it first and clears the fields as soon as it is saved, so if the finish then fails
+ * a retry finds nothing pending and cannot book the same hours or material twice.
+ */
+export async function finishWithPendingCost(pending: PendingCost, steps: { book: (entry: Extract<PendingCost, { kind: "entry" }>) => Promise<void>; clear: () => void; finish: () => Promise<void> }) {
+  if (pending.kind === "error") throw new Error(pending.message);
+  if (pending.kind === "entry") { await steps.book(pending); steps.clear(); }
+  await steps.finish();
+}
+
 export async function scrapQuantity(args: { reworkId: string; quantity: number; reason: string }) {
   const { data, error } = await client().rpc("scrap_job_quantity", { p_rework: args.reworkId, p_quantity: args.quantity, p_reason: args.reason });
   if (error) throw error;
