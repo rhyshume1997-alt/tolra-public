@@ -19,11 +19,12 @@ import { friendlyError } from "@/lib/friendly-error";
 import { adminStopText } from "@/lib/job-actions";
 import { newClientOpId } from "@/lib/machine-runs";
 import { type ClockOp, type LabourOp } from "@/lib/offline/outbox";
-import { queueOffline, useOfflineStatus } from "@/lib/offline/scope";
+import { currentOfflineStatus, offlineScope, queueOffline, useOfflineStatus } from "@/lib/offline/scope";
+import { scopeKey } from "@/lib/offline/store";
 import { executeClockOp, executeLabourOp, syncNow } from "@/lib/offline/sync";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
-import { type JobInfo, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending } from "@/lib/time-data";
+import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, timeSendNotice } from "@/lib/time-data";
 import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, dayTotals, hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
 import { useUser } from "@/lib/use-user";
@@ -46,12 +47,16 @@ export function isClockChangeDay(date: string) {
   const b = localDayBounds(date);
   return b.end.getTime() - b.start.getTime() !== 86_400_000;
 }
+/** How long a clock action waits for the sync pass before saying it is still on this device (the pass carries on). */
+const SEND_WAIT_MS = 8_000;
+const showNotice = (n: SendNotice) => (n.tone === "error" ? toast.error(n.message) : n.tone === "info" ? toast.info(n.message) : toast.success(n.message));
 const actionLabel: Record<string, string> = { in: "Clock in", out: "Clock out", break_start: "Break start", break_end: "Break end", void: "Removed" };
 
 /**
  * The daily job sheet (migrations 050, 051): one person's day. Clock in and out (and breaks), the jobs they worked on with the time on
  * each, and the totals. Workshop staff see and fill in their own; admin and office can open anyone's in the company. Clock actions and
- * job Start/Stop go into the device's outbox first ("saved on this device") and sync when they can, so the sheet works offline.
+ * job Start/Stop go into the device's outbox first and sync when they can, so the sheet works offline. Online the outbox is sent at once
+ * and the toast says "saved" once the server has it; "saved on this device" only while it is still waiting here (lib/time-data.ts).
  * The day line's tick boxes (Overtime, Saturday, Sunday, Bank holiday; 074) are for the person and for office/admin viewing their day;
  * they appear once the database has 074 and save online only (components/time/day-flags.tsx).
  */
@@ -148,9 +153,20 @@ export function DaySheet() {
         if (allowed.reason === TIME_NEEDS_DATABASE_UPDATE) setNeedsUpdate(true);
         return;
       }
+      const scopeBefore = offlineScope();
       if (await queueOffline(op)) {
-        toast.success(`${label}: saved on this device${offline.offline ? ". It will sync when you're back online." : "."}`);
-        void syncNow().then(() => load());
+        const wasOffline = offline.offline;
+        if (wasOffline) showNotice(timeSendNotice(label, op.clientOpId, { offline: true, settled: false, pending: [], held: [] }));
+        const sync = syncNow().then(() => true, () => false);
+        void sync.then(() => load());
+        if (!wasOffline) {
+          // Say "saved" once the server has it; "saved on this device" only while it is still waiting here.
+          const settled = await Promise.race([sync, new Promise<boolean>((resolve) => window.setTimeout(() => resolve(false), SEND_WAIT_MS))]);
+          const scopeAfter = offlineScope();
+          const same = Boolean(scopeBefore && scopeAfter && scopeKey(scopeBefore) === scopeKey(scopeAfter));
+          const s = currentOfflineStatus();
+          showNotice(timeSendNotice(label, op.clientOpId, { offline: false, settled: settled && same, pending: s.pendingItems, held: [...s.rejected, ...s.conflicts] }));
+        }
       } else if (supabase) {
         // This device can't hold it (no offline store): send it now.
         const outcome = op.kind === "clock" ? await executeClockOp(op, supabase, profile?.organization_id ?? undefined) : await executeLabourOp(op, supabase);
