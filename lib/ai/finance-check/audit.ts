@@ -19,8 +19,9 @@ export type AiAuditMetadata = { kind: FinanceCheckKind; suggestion_id?: string; 
  * Records one event through the app's audit path (write_audit, as the caller: their JWT, their company). No IP or user agent is
  * sent. Returns false when the database refuses it, and the caller then answers "not available": the check never runs unaudited.
  *
- * NOTE (needs SQL, not written here): write_audit only accepts actions and tables listed in audit_event_allowed (latest 076). These
- * four lower-case names, and the credit_notes table, are not listed, so the database refuses them (42501) until a migration adds them.
+ * Migration 095 (supabase/migrations/095_ai_finance_check_audit_events.sql) lets these four names through audit_event_allowed on
+ * invoices, purchase_orders and credit_notes (admin and office), and write_audit accepts them only with exactly this metadata shape.
+ * Before 095 is applied the database refuses them (42501).
  */
 export async function writeAiAudit(supabase: SupabaseClient, action: AiAuditAction, kind: FinanceCheckKind, documentId: string, metadata: Omit<AiAuditMetadata, "kind" | "checker"> = {}): Promise<boolean> {
   const { error } = await supabase.rpc("write_audit", {
