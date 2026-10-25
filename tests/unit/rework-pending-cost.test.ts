@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { FinishAfterCostError, finishWithPendingCost, pendingCostEntry } from "@/lib/rework";
+import { FinishAfterCostError, finishAfterCostMessage, finishWithPendingCost, pendingCostEntry } from "@/lib/rework";
 
 const blank = { hours: "", material: "", materialCost: "", note: "" };
 
@@ -56,5 +56,18 @@ describe("finishWithPendingCost (finish books a typed entry once)", () => {
   it("nothing typed and the finish fails: the plain error, no 'Costs saved'", async () => {
     const failed = await finishWithPendingCost(pendingCostEntry(blank), { book: async () => {}, clear: () => {}, finish: async () => { throw new Error("x"); } }).catch((e: unknown) => e);
     expect(failed).not.toBeInstanceOf(FinishAfterCostError);
+  });
+  it("cost saved, finish failed, and the reload throws too: 'Costs saved; finishing failed' still shows", async () => {
+    let reloads = 0;
+    const message = await finishAfterCostMessage(async () => { reloads += 1; throw new Error("Can't reach the server."); }, "Try Finish again.");
+    expect(reloads).toBe(1);
+    expect(message).toBe("Costs saved; finishing failed. Try Finish again.");
+  });
+  it("cost saved, finish failed, reload works: the same message after the reload", async () => {
+    const order: string[] = [];
+    const message = await finishAfterCostMessage(async () => { order.push("reload"); }, "Try Finish again.");
+    order.push("message");
+    expect(order).toEqual(["reload", "message"]);
+    expect(message).toBe("Costs saved; finishing failed. Try Finish again.");
   });
 });

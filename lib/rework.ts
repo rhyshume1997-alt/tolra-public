@@ -187,6 +187,16 @@ export async function finishWithPendingCost(pending: PendingCost, steps: { book:
   }
 }
 
+/** After a FinishAfterCostError: reload (so the saved cost shows), then the message, which is returned even if the reload throws. */
+export async function finishAfterCostMessage(reload: () => Promise<void>, reason: string): Promise<string> {
+  try {
+    await reload();
+  } catch {
+    // The cost is saved either way; the person must still be told so.
+  }
+  return `Costs saved; finishing failed. ${reason}`;
+}
+
 /** The typed hours/material were saved, then finishing the rework failed: the dialog reloads the costs and says so. */
 export class FinishAfterCostError extends Error {
   constructor(readonly finishError: unknown) {

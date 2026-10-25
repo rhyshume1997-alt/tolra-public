@@ -12,7 +12,7 @@ import { type PeopleMap, personName } from "@/lib/people";
 import { canReadUsernames, loadCompanyPeople } from "@/lib/company-people";
 import { useMaybeUser } from "@/lib/use-user";
 import {
-  CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkEntry, type ReworkRecord, type ReworkSummary, FinishAfterCostError, finishRework, finishWithPendingCost, loadReworkEntries, pendingCostEntry, loadReworkSummary, loadReworks,
+  CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkEntry, type ReworkRecord, type ReworkSummary, FinishAfterCostError, finishAfterCostMessage, finishRework, finishWithPendingCost, loadReworkEntries, pendingCostEntry, loadReworkSummary, loadReworks,
   openReplacementRework, quantityText, recordReworkCost, replacementsOwed, scrapQuantity, startRework,
 } from "@/lib/rework";
 import { supabase } from "@/lib/supabase";
@@ -234,9 +234,8 @@ export function ReworkDialog({ job, role, onClose, onChanged }: Props) {
       } catch (err) {
         if (err instanceof FinishAfterCostError) {
           // The cost entry is on the server: show it, and say only the finish needs another go (the cost fields stay cleared).
-          await load(job.id);
-          onChanged();
-          setError(`Costs saved; finishing failed. ${friendlyError(err.finishError, "Try Finish again.")}`);
+          // The message shows even if the reload itself fails.
+          setError(await finishAfterCostMessage(async () => { await load(job.id); onChanged(); }, friendlyError(err.finishError, "Try Finish again.")));
         } else {
           setError(friendlyError(err, "Couldn't save. Nothing was changed."));
         }
