@@ -1,5 +1,5 @@
 /**
- * The app's audit contract (lib/audit-contract.ts) and the database's rule (audit_event_allowed, latest in migration 076): every
+ * The app's audit contract (lib/audit-contract.ts) and the database's rule (audit_event_allowed, latest in migration 095, which keeps 076's read list): every
  * record type the database lets a read event name is one the app may send, so neither list drifts from the other.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -22,7 +22,7 @@ function databaseReadTables() {
 describe("audit contract", () => {
   it("every table the database accepts for a read event is in AUDIT_TABLES", () => {
     const { latest, tables } = databaseReadTables();
-    expect(latest).toMatch(/_data_import\.sql$/);
+    expect(latest).toMatch(/_ai_finance_check_audit_events\.sql$/);
     expect(tables).toEqual(expect.arrayContaining(["invoice_payments", "time_week_approvals"]));
     for (const t of tables) expect(AUDIT_TABLES as readonly string[], `${t} (${latest})`).toContain(t);
   });

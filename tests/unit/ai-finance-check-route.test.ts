@@ -75,8 +75,9 @@ import { POST as check } from "@/app/api/ai/finance-check/route";
 import { POST as decide } from "@/app/api/ai/finance-check/decision/route";
 import { AiFeaturesProvider } from "@/components/ai-features";
 import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
-import { AI_AUDIT_ACTIONS } from "@/lib/ai/finance-check/audit";
+import { AI_AUDIT_ACTIONS, KIND_TABLE } from "@/lib/ai/finance-check/audit";
 import { AI_FINANCE_CHECK_FLAG, aiFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
+import { FINANCE_CHECK_ROLES } from "@/lib/ai/finance-check/request";
 
 const post = (url: string, body: unknown) => new Request(`http://localhost${url}`, { method: "POST", body: JSON.stringify(body) });
 const runCheck = (body: unknown = { kind: "invoice", id: INV }) => check(post("/api/ai/finance-check", body));
@@ -297,10 +298,12 @@ describe("never-do list (static)", () => {
     for (const line of logs) expect(line).not.toMatch(/Acme|Bracket|eyJ|cookie|token|sb-/i);
   });
 
-  it("the database does not yet accept these audit names (a migration is needed; flag must stay off until then)", () => {
+  it("the database accepts these audit names from 095, on the three document tables the check names (audit_event_allowed)", () => {
     const dir = path.join(root, "supabase/migrations");
     const latest = readdirSync(dir).filter((f) => f.endsWith(".sql") && /FUNCTION public\.audit_event_allowed\(/.test(readFileSync(path.join(dir, f), "utf8"))).sort().at(-1)!;
+    expect(latest).toMatch(/_ai_finance_check_audit_events\.sql$/);
     const sql = readFileSync(path.join(dir, latest), "utf8");
-    for (const action of AI_AUDIT_ACTIONS) expect(sql).not.toContain(`'${action}'`);
+    expect(sql).toContain(`IF p_action IN (${AI_AUDIT_ACTIONS.map((a) => `'${a}'`).join(", ")}) THEN`);
+    expect(sql).toContain(`RETURN p_table IN (${[...new Set(Object.values(KIND_TABLE))].map((t) => `'${t}'`).join(", ")}) AND public.has_org_role(ARRAY[${FINANCE_CHECK_ROLES.map((r) => `'${r}'`).join(", ")}]);`);
   });
 });
