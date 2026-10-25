@@ -12,7 +12,8 @@
 import { useEffect, useState } from "react";
 
 import { type BankDetails, EMPTY_BANK_DETAILS, parseBankDetails } from "@/lib/bank-details";
-import { isHexColour } from "@/lib/branding";
+import { companyLogoUrl, isHexColour } from "@/lib/branding";
+import type { ShellBrand } from "@/lib/brand-pending";
 import { DEMO_MODE } from "@/lib/demo";
 import { supabase } from "@/lib/supabase";
 
@@ -51,6 +52,9 @@ export type CompanyProfile = {
   logoPath: string;
   /** The logo, ready for PDFs (data: URL). Only set when logoPath is inside the signed-in organisation's folder. */
   logoSrc?: string;
+  /** The logo at a cacheable URL for the app's own pages (app/api/company-logo). Only set when logoPath is inside the signed-in
+   *  organisation's folder; the route serves it only to a session working in that organisation. */
+  logoUrl?: string;
   defaultQuoteTerms: string;
   defaultInvoiceTerms: string;
   /** Closing lines printed on quotes. */
@@ -309,7 +313,7 @@ export async function loadOrgLogo(organizationId: string | null | undefined, pat
   }
 }
 
-/** Writes the organisation's company profile (never the resolved logo image itself) and reloads it. */
+/** Writes the organisation's company profile (never the resolved logo image or its URL) and reloads it. */
 export async function saveCompanyProfile(organizationId: string, next: Omit<CompanyProfile, "logoSrc">) {
   if (!supabase) throw new Error("Supabase is not configured.");
   const { error } = await supabase
@@ -321,7 +325,7 @@ export async function saveCompanyProfile(organizationId: string, next: Omit<Comp
 
 export function storedProfile(profile: CompanyProfile): Omit<CompanyProfile, "logoSrc"> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { logoSrc, ...rest } = profile;
+  const { logoSrc, logoUrl, ...rest } = profile;
   return rest;
 }
 
@@ -329,6 +333,10 @@ let active: CompanyProfile | null = null;
 let loaded = false;
 let loadFailed = false;
 let loadPromise: Promise<CompanyProfile | null> | null = null;
+/** What the shell wears until the full profile has loaded (primeShellBrand): the server's name, colours and logo URL, nothing else. */
+let provisional: ShellCompany | null = null;
+/** primeShellBrand works once per page load, and never after a reset (the page is about to be left). */
+let primed = false;
 const listeners = new Set<() => void>();
 
 export class CompanyProfileMissingError extends Error {
@@ -355,7 +363,7 @@ export function loadCompanyProfile(force = false): Promise<CompanyProfile | null
       if (error) throw error;
       const profile = parseCompanyProfile(data?.company_profile);
       if (!profile) return DEMO_MODE ? JNR_PROFILE : null;
-      return { ...profile, logoSrc: await loadOrgLogo(data?.organization_id, profile.logoPath) };
+      return { ...profile, logoUrl: companyLogoUrl(data?.organization_id, profile.logoPath), logoSrc: await loadOrgLogo(data?.organization_id, profile.logoPath) };
     } catch (err) {
       console.error(err);
       failed = true;
@@ -372,12 +380,30 @@ export function loadCompanyProfile(force = false): Promise<CompanyProfile | null
   return loadPromise;
 }
 
+/** The few fields the app shell (sidebar, top bar, colours) shows. */
+export type ShellCompany = Pick<CompanyProfile, "name" | "brandPrimary" | "brandAccent" | "logoUrl" | "logoSrc">;
+
+/**
+ * Holds the brand the server read for this session (app/(dashboard)/layout.tsx: as the signed-in user, under RLS, and only the name,
+ * colours and logo URL) so the shell shows the company's name, colours and logo on its first paint instead of a placeholder while the
+ * full profile loads. It is NOT the company profile: getCompanyProfile, requireCompanyProfile and useCompanyProfile never see it, and
+ * the full profile is always read by the browser as before. Once per page load, never after a reset.
+ */
+export function primeShellBrand(brand: ShellBrand) {
+  // Browser only: on the server this module's state would be shared by every request (and so every company).
+  if (typeof window === "undefined" || primed) return;
+  primed = true;
+  provisional = { name: brand.name, brandPrimary: brand.brandPrimary, brandAccent: brand.brandAccent, logoUrl: brand.logoUrl };
+}
+
 /** Call on sign-out so the next user in this tab can't see the previous organisation's details. */
 export function resetCompanyProfile() {
   active = null;
   loaded = false;
   loadFailed = false;
   loadPromise = null;
+  provisional = null;
+  primed = true;
   listeners.forEach((fn) => fn());
 }
 
@@ -414,6 +440,23 @@ export function useCompanyProfile() {
   }, []);
   return state;
 }
+
+/**
+ * What the shell shows: the full profile once it has loaded, and until then the server's brand (primeShellBrand) if there is one.
+ * Only the shell uses this; everything that prints or edits company details uses useCompanyProfile.
+ */
+export function useShellCompany(): { profile: ShellCompany | null; loading: boolean } {
+  const { profile, loading } = useCompanyProfile();
+  return pickShellCompany(profile, loading, provisional);
+}
+
+/** The full profile once it has loaded (found or not); until then the held brand, if any, and the shell no longer shows its placeholder. */
+export function pickShellCompany(profile: ShellCompany | null, loading: boolean, held: ShellCompany | null): { profile: ShellCompany | null; loading: boolean } {
+  return loading && held ? { profile: held, loading: false } : { profile, loading };
+}
+
+/** The brand held for the shell (primeShellBrand), or null. */
+export const getShellBrand = (): ShellCompany | null => provisional;
 
 /** "Tel/ Fax" line as printed in the document footer. */
 export function companyTelFax(company: CompanyProfile) {
