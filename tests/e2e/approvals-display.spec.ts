@@ -38,7 +38,7 @@ test.afterAll(async () => {
 
 async function hideField(page: Page, label: string) {
   await page.getByRole("button", { name: "Columns" }).click();
-  const item = page.getByRole("menuitemcheckbox", { name: label });
+  const item = page.getByRole("menuitemcheckbox", { name: label, exact: true });
   await expect(item).toHaveAttribute("aria-checked", "true");
   await item.click();
   await expect(item).toHaveAttribute("aria-checked", "false");
