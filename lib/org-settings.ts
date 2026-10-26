@@ -32,9 +32,33 @@ export const NAV_TOGGLES: NavToggle[] = [
 
 export const NEVER_HIDDEN_HREFS = ["/dashboard", "/settings"];
 
-/** `locked`: always shown, so the picker lists it switched on and disabled (never in the hidden list). */
+/** `locked` items are always shown: the picker and Settings > Display show them ticked and disabled, and they can never be hidden. */
 export type ColumnDef = { key: string; label: string; locked?: boolean };
-export type TableDef = { key: string; label: string; columns: ColumnDef[] };
+/**
+ * `kind: "elements"`: a screen that is not a table (the Machine Schedule timeline); its "columns" are the parts of the screen a person can hide.
+ */
+export type TableDef = { key: string; label: string; columns: ColumnDef[]; kind?: "elements" };
+
+/** Machine Schedule display definition: the one list the picker, Settings and the page all use (tests/unit/schedule-display.test.ts). */
+const SCHEDULE_DISPLAY: TableDef = {
+  key: "schedule",
+  label: "Machine Schedule",
+  kind: "elements",
+  columns: [
+    { key: "machine", label: "Machine name", locked: true },
+    { key: "days", label: "Day headers (time axis)", locked: true },
+    { key: "status-cards", label: "Machine status cards" },
+    { key: "next-free", label: "Next free line (on the cards)" },
+    { key: "machine-type", label: "Machine type under the name" },
+    { key: "bar-labels", label: "Job numbers and times on the bars" },
+    { key: "running-badge", label: "Running and Complete labels on the bars" },
+    { key: "now-marker", label: "Now marker" },
+    { key: "legend", label: "Colour legend" },
+    { key: "jobs-table", label: "Jobs on machines table", locked: true },
+    { key: "hours-left", label: "Hours left column (jobs table)" },
+    { key: "machines-table", label: "Machines list", locked: true },
+  ],
+};
 
 /** Selection checkbox and Actions columns are always shown, so they are not listed. Each table's reference column is locked. */
 export const COLUMN_TABLES: TableDef[] = [
@@ -53,6 +77,7 @@ export const COLUMN_TABLES: TableDef[] = [
   { key: "hours", label: "Weekly hours", columns: [{ key: "days", label: "Days worked" }, { key: "clocked", label: "Clocked", locked: true }, { key: "breaks", label: "Breaks" }, { key: "jobs", label: "On jobs" }, { key: "unallocated", label: "Not on a job" }, { key: "ticks", label: "Day ticks" }, { key: "check", label: "Check", locked: true }, { key: "approval", label: "Approval", locked: true }] },
   /** The RFQ screen is a card list: its fields come from lib/rfq-display.ts (the one definition). */
   { key: RFQ_DISPLAY_KEY, label: "RFQ", columns: RFQ_CARD_FIELDS.map(({ key, label, locked }) => ({ key, label, ...(locked ? { locked } : {}) })) },
+  SCHEDULE_DISPLAY,
 ];
 
 export type OrgSettings = {
