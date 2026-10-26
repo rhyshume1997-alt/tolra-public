@@ -51,6 +51,8 @@ export const COLUMN_TABLES: TableDef[] = [
   { key: "delivery-notes", label: "Delivery Notes", columns: [{ key: "ref", label: "DN Ref", locked: true }, { key: "customer", label: "Customer" }, { key: "job", label: "Job Ref" }, { key: "date", label: "Delivery Date" }, { key: "status", label: "Status" }, { key: "email", label: "Email" }] },
   { key: "customers", label: "Customers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "address", label: "Address" }] },
   { key: "suppliers", label: "Suppliers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "notes", label: "Notes" }, { key: "status", label: "Status" }] },
+  /** Approval Queue (cards): fields in rendered order. Recipient, To and Subject line identify the draft and Copy / Mark as Sent / Edit / Skip are actions, so all stay on. */
+  { key: "approvals", label: "Approval Queue", columns: [{ key: "type", label: "Type" }, { key: "customer", label: "Recipient", locked: true }, { key: "detail", label: "Subject line", locked: true }, { key: "drafted", label: "Drafted date" }, { key: "to", label: "To address", locked: true }, { key: "subject", label: "Subject" }, { key: "preview", label: "Message preview" }] },
 ];
 
 /* ---- Settings > Display: every screen's show / hide choices in one place (built from COLUMN_TABLES) ---- */

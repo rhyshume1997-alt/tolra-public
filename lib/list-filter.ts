@@ -68,9 +68,9 @@ export function invoiceMatchesFilter(filter: string, i: { status: string; rawSta
   return true;
 }
 
-/** Invoicing's drafts line: every draft, and how many of them are over DRAFT_INVOICE_DAYS old (the ones the dashboard counts). */
-export function draftInvoiceCounts(invoices: ReadonlyArray<{ status: string; rawStatus: string; createdAt?: string }>, today: string): { total: number; old: number } {
-  const drafts = invoices.filter((invoice) => invoice.rawStatus === "draft");
+/** Invoicing's drafts line: every open draft (archived ones, per record_archive_state, are left out), and how many of them are over DRAFT_INVOICE_DAYS old (the ones the dashboard counts). */
+export function draftInvoiceCounts<I extends { status: string; rawStatus: string; createdAt?: string }>(invoices: ReadonlyArray<I>, today: string, isArchived: (invoice: I) => boolean = () => false): { total: number; old: number } {
+  const drafts = invoices.filter((invoice) => invoice.rawStatus === "draft" && !isArchived(invoice));
   return { total: drafts.length, old: drafts.filter((invoice) => invoiceMatchesFilter("draft-old", invoice, today)).length };
 }
 

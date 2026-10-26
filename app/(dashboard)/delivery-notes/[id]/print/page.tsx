@@ -10,6 +10,7 @@ import { resolveCustomerAddress } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { fmtDate } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
+import { deliveryNoteReceivedLine } from "@/lib/delivery-note-print";
 import { deliveryNoteInspectionLine } from "@/lib/inspection";
 import { supabase } from "@/lib/supabase";
 import { PrintLogo } from "@/components/print-logo";
@@ -25,6 +26,9 @@ type PrintNote = {
   items: Array<{ description: string; quantity: number }>;
   /** 081: "Inspected/checked by <name>, <date>" from the job's latest pass or concession; never whether it was independent. */
   inspected?: string | null;
+  /** Who signed for the goods and when (a note recorded as signed). */
+  signedByName?: string | null;
+  signedAt?: string | null;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -56,6 +60,8 @@ async function loadNote(id: string): Promise<PrintNote | null> {
     date: data.delivery_date || data.ship_date || data.created_at || "",
     taxDate: data.tax_date || "",
     shipVia: data.ship_via || "",
+    signedByName: data.signed_by_name ?? null,
+    signedAt: data.signed_at ?? null,
     items: (items ?? []).map((row) => ({ description: String(row.description || ""), quantity: Number(row.quantity || 0) })),
   };
 }
@@ -105,7 +111,7 @@ export default function PrintDeliveryNotePage() {
         <div className="space-y-1"><p><strong>Delivery Date:</strong> {fmtDate(note.date)}</p>{note.taxDate ? <p><strong>Tax Date:</strong> {fmtDate(note.taxDate)}</p> : null}<p><strong>Job Ref:</strong> {note.job || "No linked job"}</p>{note.inspected ? <p data-testid="dn-inspected">{note.inspected}</p> : null}{note.shipVia ? <p><strong>Ship Via:</strong> {note.shipVia}</p> : null}<p><strong>Status:</strong> <span className="capitalize">{note.status}</span></p></div>
       </div>
       <table className="mt-8 w-full border-collapse text-sm"><thead><tr><th className="border p-2 text-left">Item</th><th className="border p-2">Qty</th></tr></thead><tbody>{note.items.length ? note.items.map((item, index) => <tr key={`${item.description}-${index}`}><td className="border p-2 whitespace-pre-line">{item.description}</td><td className="border p-2 text-center">{item.quantity}</td></tr>) : <tr><td className="border p-2 text-slate-500" colSpan={2}>No items recorded.</td></tr>}</tbody></table>
-      <p className="mt-10">Received by: __________________ Signature: __________________ Date: __________</p>
+      <p className="mt-10" data-testid="dn-received">{deliveryNoteReceivedLine(note, fmtDate)}</p>
     </div>
   );
 }
