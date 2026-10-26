@@ -495,10 +495,6 @@ export default function InvoicesPage() {
     }
     return loaded;
   }, []);
-  // Every draft of any age, and how many of them are over 2 days old (the dashboard counts only those).
-  const drafts = useMemo(() => draftInvoiceCounts(invoices, today), [invoices, today]);
-  const draftsWaiting = drafts.total;
-
   useEffect(() => { void loadInvoices(); }, [loadInvoices]);
   useEffect(() => {
     if (!supabase) return;
@@ -585,6 +581,9 @@ export default function InvoicesPage() {
   // /invoices?filter=overdue|draft-old (the dashboard's "View all"): only those invoices, whatever Show says.
   const [listFilter, clearListFilter] = useListFilter("invoices");
   const phaseFor = useCallback((invoice: (typeof invoices)[number]) => phaseOf({ final: ["paid", "void", "cancelled"].includes(invoice.status), finalDate: invoice.paidAt || invoice.date }, invoice.id ? archive.manual.get(String(invoice.id)) : undefined, archive.months), [archive.manual, archive.months]);
+  // Open drafts of any age (archived ones are not waiting), and how many are over 2 days old (the dashboard counts only those).
+  const drafts = useMemo(() => draftInvoiceCounts(invoices, today, (invoice) => phaseFor(invoice) === "archived"), [invoices, today, phaseFor]);
+  const draftsWaiting = drafts.total;
   const phaseCounts = useMemo(() => ({ open: invoices.filter((x) => phaseFor(x) === "open").length, done: invoices.filter((x) => phaseFor(x) === "done").length, archived: invoices.filter((x) => phaseFor(x) === "archived").length }), [invoices, phaseFor]);
   const visibleInvoices = useMemo(() => invoices.filter((invoice) => (listFilter ? invoiceMatchesFilter(listFilter, invoice, today) : (phase === "all" || phaseFor(invoice) === phase) && (filters.has("all") || filters.has(invoice.status) || (filters.has("partial") && invoice.partPaid)))), [filters, invoices, listFilter, phase, phaseFor, today]);
   // Collectible invoices only (no drafts, void or cancelled), counted at what is still owed.
