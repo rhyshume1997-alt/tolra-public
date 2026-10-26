@@ -22,13 +22,24 @@ for (const width of [1280, 768, 390]) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 
       await page.goto("/customers");
-      await page.getByRole("button", { name: "List", exact: true }).click();
-      await expect(page.locator('table[data-view="list"]')).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Name", exact: true })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toHaveCount(0);
-      await page.reload();
-      await expect(page.getByRole("columnheader", { name: "Name", exact: true })).toBeVisible();
-      await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toHaveCount(0);
+      if (width < 768) {
+        // Phones: the View switcher is hidden and the page always renders cards (no table headers).
+        const nameCells = page.locator('table[data-view="cards"] td[data-label="Name"]');
+        const phoneCells = page.locator('table[data-view="cards"] td[data-label="Phone"]');
+        await expect(nameCells.first()).toBeVisible();
+        await expect(phoneCells).toHaveCount(0);
+        await page.reload();
+        await expect(nameCells.first()).toBeVisible();
+        await expect(phoneCells).toHaveCount(0);
+      } else {
+        await page.getByRole("button", { name: "List", exact: true }).click();
+        await expect(page.locator('table[data-view="list"]')).toBeVisible();
+        await expect(page.getByRole("columnheader", { name: "Name", exact: true })).toBeVisible();
+        await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toHaveCount(0);
+        await page.reload();
+        await expect(page.getByRole("columnheader", { name: "Name", exact: true })).toBeVisible();
+        await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toHaveCount(0);
+      }
 
       await page.goto("/settings");
       await expect(phone).not.toBeChecked();
@@ -36,7 +47,8 @@ for (const width of [1280, 768, 390]) {
       await expect(phone).toBeChecked();
       await expect(count).toHaveText("5 of 5 shown");
       await page.goto("/customers");
-      await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toBeVisible();
+      if (width < 768) await expect(page.locator('table[data-view="cards"] td[data-label="Phone"]').first()).toBeVisible();
+      else await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toBeVisible();
     } finally {
       await page.goto("/settings");
       const resetBtn = page.getByRole("button", { name: "Reset all to default" });
