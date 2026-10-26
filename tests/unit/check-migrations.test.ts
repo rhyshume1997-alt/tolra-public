@@ -102,6 +102,56 @@ describe("applied migrations are frozen (c)", () => {
   });
 });
 
+describe("documented exceptions", () => {
+  const rel = "supabase/migrations/002_second.sql";
+  const full = { commit: "a7198394", reason: "guard only", production_note: "production was not repasted" };
+  function withException(root: string, ex: Record<string, unknown>) {
+    const mp = path.join(root, "supabase/applied-migrations.json");
+    const m = JSON.parse(readFileSync(mp, "utf8"));
+    m.exceptions = ex;
+    writeFileSync(mp, JSON.stringify(m));
+  }
+
+  it("passes a file whose sha256 matches its exception, keeping the applied sha256 recorded", () => {
+    const root = tree();
+    write(root, rel, "select 2; -- guard\n");
+    withException(root, { [rel]: { sha256: sha("select 2; -- guard\n"), ...full } });
+    expect(checkMigrations(root).problems).toEqual([]);
+  });
+
+  it("fails the same file with any other change", () => {
+    const root = tree();
+    write(root, rel, "select 2; -- guard\n");
+    withException(root, { [rel]: { sha256: sha("select 2; -- guard\n"), ...full } });
+    write(root, rel, "select 2; -- guard\n-- again\n");
+    expect(checkMigrations(root).problems).toEqual([expect.stringContaining("Applied migration 002 changed")]);
+  });
+
+  it("does not let an exception for another path or another sha excuse the file", () => {
+    const root = tree();
+    write(root, rel, "select 2; -- guard\n");
+    withException(root, { "supabase/migrations/001_first.sql": { sha256: sha("select 2; -- guard\n"), ...full }, [rel]: { sha256: sha("other"), ...full } });
+    expect(checkMigrations(root).problems).toEqual([expect.stringContaining("Applied migration 002 changed")]);
+  });
+
+  it.each(["sha256", "commit", "reason", "production_note"])("fails an exception missing %s", (field) => {
+    const root = tree();
+    write(root, rel, "select 2; -- guard\n");
+    const ex: Record<string, unknown> = { sha256: sha("select 2; -- guard\n"), ...full };
+    delete ex[field];
+    withException(root, { [rel]: ex });
+    const { problems } = checkMigrations(root);
+    expect(problems.some((p) => p.includes(`Exception for ${rel} is malformed: missing ${field}`))).toBe(true);
+    expect(problems.some((p) => p.includes("Applied migration 002 changed"))).toBe(true);
+  });
+
+  it("is harmless when the applied sha256 already matches", () => {
+    const root = tree();
+    withException(root, { [rel]: { sha256: sha("select 2; -- guard\n"), ...full } });
+    expect(checkMigrations(root).problems).toEqual([]);
+  });
+});
+
 describe("a new migration ships its file set (d)", () => {
   it("passes with release, rollback, verify and a preflight marker", () => {
     const root = tree();
@@ -177,6 +227,17 @@ describe("this repository", () => {
     const r = checkMigrations(repo);
     expect(r.problems).toEqual([]);
     expect(r.applied).toBeGreaterThan(60);
+  });
+
+  it("keeps the original applied sha256 for 080 and documents the current one as an exception", () => {
+    const j = JSON.parse(readFileSync(path.join(repo, "supabase/applied-migrations.json"), "utf8"));
+    expect(j.migrations["080"].migration.sha256).toBe("f66d887a80747849c42137b5df9a4908b7621387e994b264d2f96a3690236de8");
+    expect(j.migrations["080"].release.sha256).toBe("94d961fb1a91b87f08fabb5778d7ed37843ab26182cbbf4782e485f0c13c7808");
+    expect(Object.keys(j.exceptions).sort()).toEqual([j.migrations["080"].migration.path, j.migrations["080"].release.path].sort());
+    for (const x of Object.values(j.exceptions) as { commit: string; production_note: string }[]) {
+      expect(x.commit).toBe("a7198394");
+      expect(x.production_note).toContain("NOT repasted");
+    }
   });
 
   it("lists 082 with its four files and leaves out what production does not have", () => {

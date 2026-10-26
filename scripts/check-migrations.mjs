@@ -6,6 +6,10 @@
  *
  * (c) Every file listed in supabase/applied-migrations.json (migration, release, verify, rollback) must exist at its
  *     path with the recorded sha256. An applied migration is never edited, renamed or removed: write a new one.
+ *     Documented exception: the manifest's top-level "exceptions" object maps a file path to { sha256, commit, reason,
+ *     production_note }. That exact path also passes with that exact repository sha256 (the applied sha256 stays
+ *     recorded as what production ran). Anything else still fails; an exception missing a field fails the check.
+ *     Used only for 080 (guard-only edit, commit a7198394); production was not repasted.
  * (d) Every migration file NOT in the manifest (a new one, above the highest applied) must ship, as 081 to 083 do:
  *       supabase/release/NNN_slug.release.sql, supabase/release/NNN_slug.rollback.sql, a verify script
  *       supabase/verify/<name>_NNN.sql, and a marker ('NNN ...') in supabase/verify/release_preflight.sql.
@@ -33,13 +37,30 @@ export function checkMigrations(root) {
   }
   if (!manifest || typeof manifest !== "object") return { problems: ["supabase/applied-migrations.json has no \"migrations\" object"], applied: 0, added: [] };
 
+  let exceptions = {};
+  try {
+    exceptions = JSON.parse(readFileSync(manifestPath, "utf8")).exceptions ?? {};
+  } catch {
+    /* already reported above */
+  }
+  if (!exceptions || typeof exceptions !== "object" || Array.isArray(exceptions)) {
+    problems.push('supabase/applied-migrations.json "exceptions" must be an object keyed by file path');
+    exceptions = {};
+  }
+  const valid = {};
+  for (const [p, x] of Object.entries(exceptions)) {
+    const missing = ["sha256", "commit", "reason", "production_note"].filter((k) => typeof x?.[k] !== "string" || !x[k].trim());
+    if (missing.length) problems.push(`Exception for ${p} is malformed: missing ${missing.join(", ")}`);
+    else valid[p] = x.sha256;
+  }
+
   // (c) every listed file exists and is byte for byte what was applied.
   for (const [num, files] of Object.entries(manifest)) {
     for (const [kind, f] of Object.entries(files)) {
       const file = path.join(root, f.path);
       if (!existsSync(file)) {
         problems.push(`Applied migration ${num} ${kind} file is missing or renamed: ${f.path}: write a new migration instead`);
-      } else if (sha256(file) !== f.sha256) {
+      } else if (sha256(file) !== f.sha256 && sha256(file) !== valid[f.path]) {
         problems.push(`Applied migration ${num} changed: write a new migration instead (${kind} file ${f.path})`);
       }
     }

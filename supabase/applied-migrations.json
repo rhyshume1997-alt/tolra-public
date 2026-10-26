@@ -360,5 +360,20 @@
       "rollback": { "path": "supabase/release/095_ai_finance_check_audit_events.rollback.sql", "sha256": "4441f2e92d4eee0d5c54fcdca7938f13114b5e76ff0c629b3832ced5d15831ea" },
       "verify": { "path": "supabase/verify/ai_finance_check_audit_events_095.sql", "sha256": "4ec1aaf7f55c14233d865183789cf5147ffa91b8ec77033822fc881c42b8fda3" }
     }
+  },
+  "exceptions_comment": "Documented exceptions to the freeze, per file path and exact repository sha256 only. The applied sha256 in migrations stays what production ran; an exception also lets the named repository sha256 pass. Each needs sha256, commit, reason and production_note, or check-migrations fails.",
+  "exceptions": {
+    "supabase/migrations/080_activity_labels_job_work.sql": {
+      "sha256": "a4f977cad01693565b001098a6e9b9b9d6b2c54ab46bb8469197cc5a6a36aad0",
+      "commit": "a7198394",
+      "reason": "Guard-only change so the CI re-run of every migration file from 044 passes once 094 is applied: 080's guard also accepts 094's org_activity body a29b5655c21474b4b40d54760de5a9c4. No definition change.",
+      "production_note": "Production was NOT repasted. It still runs the ORIGINAL 080 recorded in the applied sha256 above and never re-runs 080. Production did not run the edited file."
+    },
+    "supabase/release/080_activity_labels_job_work.release.sql": {
+      "sha256": "ae8787be64a04de5155b5e17fde81c64af250215e2af51fdfe862ead9df33e13",
+      "commit": "a7198394",
+      "reason": "Guard-only change so the CI re-run of every migration file from 044 passes once 094 is applied: 080's guard also accepts 094's org_activity body a29b5655c21474b4b40d54760de5a9c4. No definition change.",
+      "production_note": "Production was NOT repasted. It still runs the ORIGINAL 080 recorded in the applied sha256 above and never re-runs 080. Production did not run the edited file."
+    }
   }
 }
