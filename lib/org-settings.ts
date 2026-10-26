@@ -78,6 +78,8 @@ export const COLUMN_TABLES: TableDef[] = [
   /** The RFQ screen is a card list: its fields come from lib/rfq-display.ts (the one definition). */
   { key: RFQ_DISPLAY_KEY, label: "RFQ", columns: RFQ_CARD_FIELDS.map(({ key, label, locked }) => ({ key, label, ...(locked ? { locked } : {}) })) },
   SCHEDULE_DISPLAY,
+  /** Approval Queue (cards): fields in rendered order. Recipient, To and Subject line identify the draft and Copy / Mark as Sent / Edit / Skip are actions, so all stay on. */
+  { key: "approvals", label: "Approval Queue", columns: [{ key: "type", label: "Type" }, { key: "customer", label: "Recipient", locked: true }, { key: "detail", label: "Subject line", locked: true }, { key: "drafted", label: "Drafted date" }, { key: "to", label: "To address", locked: true }, { key: "subject", label: "Subject" }, { key: "preview", label: "Message preview" }] },
 ];
 
 export type OrgSettings = {

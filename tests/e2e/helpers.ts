@@ -162,3 +162,38 @@ export async function playJob(page: Page, scope: Locator, jobNo: string, choice?
   if (choice) await pickMachines(page, scope, jobNo, choice);
   await playControl(scope, jobNo).click();
 }
+
+/**
+ * The Columns picker on a list page (admin / office). Opens it, sets each named column to ticked or unticked by its label, closes it.
+ * The picker stays open while ticking (the page's onSelect keeps it open), so one open covers every change.
+ */
+export async function setColumnTicks(page: Page, ticks: Array<[label: string, on: boolean]>) {
+  await page.getByRole("button", { name: "Columns", exact: true }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  for (const [label, on] of ticks) {
+    const item = menu.getByRole("menuitemcheckbox", { name: label, exact: true });
+    if ((await item.getAttribute("aria-checked")) === String(on)) continue;
+    await item.click();
+    await expect(item).toHaveAttribute("aria-checked", String(on));
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+}
+
+/** "Reset to default" in the Columns picker when the page offers it; otherwise ticks every column (the default is all shown). */
+export async function resetColumns(page: Page, allLabels: string[]) {
+  await page.getByRole("button", { name: "Columns", exact: true }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  const reset = menu.getByRole("menuitem", { name: /^Reset to default$/i });
+  if (await reset.count()) {
+    await reset.click();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+    return;
+  }
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await setColumnTicks(page, allLabels.map((label) => [label, true] as [string, boolean]));
+}
