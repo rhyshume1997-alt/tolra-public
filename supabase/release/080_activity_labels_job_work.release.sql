@@ -48,8 +48,10 @@ BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_org FROM pg_proc p WHERE p.oid = to_regprocedure('public.org_activity(timestamptz,timestamptz,uuid,text,timestamptz,uuid,integer)');
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_conv FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)');
   -- 292d6e26...: 035's org_activity; ae7e2416...: this file's (section 3). 5555212a...: 068's convert_sales_order; dc816554...: this file's
-  -- (section 4). All with every whitespace character removed.
-  IF v_org IS NULL OR v_org NOT IN ('292d6e2612099e36dd107422bd50e1b5', 'ae7e2416ce0a54b0d8ccb721aeb2d245') THEN
+  -- (section 4). All with every whitespace character removed. a29b5655...: 094's org_activity, accepted only so the run sheet's re-run of
+  -- every file from 044 on (tests/db/machine-runs-risk.test.ts) can pass 080 once 094 is applied: this file then puts 080's body back
+  -- and 094, re-run after it, restores its own (as 046 does for 044's start_machine_run).
+  IF v_org IS NULL OR v_org NOT IN ('292d6e2612099e36dd107422bd50e1b5', 'ae7e2416ce0a54b0d8ccb721aeb2d245', 'a29b5655c21474b4b40d54760de5a9c4') THEN
     RAISE EXCEPTION '080: public.org_activity is not 035''s (md5 without whitespace %); stop and compare it first', coalesce(v_org, 'missing');
   END IF;
   IF v_conv IS NULL OR v_conv NOT IN ('5555212a1d32070ce74209e718c3896d', 'dc8165549871bd15047765ac4fba811e') THEN
