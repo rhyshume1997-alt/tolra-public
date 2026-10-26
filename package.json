@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "check:bundle": "node scripts/check-bundle.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
     "test": "vitest run",
     "test:backend": "scripts/test-backend.sh start",
     "test:backend:stop": "scripts/test-backend.sh stop",

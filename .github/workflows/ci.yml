@@ -9,7 +9,8 @@
 #         skipped when every changed file is under tests/live/ (the manual live-tenant checks, which no CI job runs).
 #   * Everything runs whenever it can't be sure: the first push of a branch, a force push whose old commit is gone, an
 #     empty or failed diff, or the "changes" job itself failing. Any other changed file (code, migrations, tests, this
-#     file) runs everything.
+#     file) runs everything. supabase/applied-migrations.json and scripts/check-migrations.mjs are code, not docs (the
+#     `web` job's migration check reads them).
 #   * Once per commit, not twice: it runs on `push` only for main, and on `pull_request` for every branch. A feature
 #     branch with an open pull request is checked by the pull request run alone (a push to a branch without a pull
 #     request is not checked until one is opened). The "changes" job handles both events, as before.
@@ -107,6 +108,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Applied migrations frozen; new migrations ship release, verify, rollback and preflight marker
+        run: npm run check:migrations
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
