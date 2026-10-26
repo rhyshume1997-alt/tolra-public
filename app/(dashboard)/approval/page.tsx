@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle, Clipboard, Info, Mail } from "lucide-react";
 
+import { ColumnToggle } from "@/components/column-toggle";
 import { Badge } from "@/components/ui/badge";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { auditEvent } from "@/lib/audit";
 import { fmtDate, fmtDateTime, nowIso } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { awaitingApproval } from "@/lib/approval-queue";
+import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { useSaving } from "@/lib/use-saving";
 import { cn } from "@/lib/utils";
@@ -69,6 +71,7 @@ function toApproval(row: any): ApprovalItem {
 
 export default function ApprovalPage() {
   const { saving, run } = useSaving();
+  const { isVisible } = useColumnVisibility("approvals");
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [recent, setRecent] = useState<SentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -199,6 +202,7 @@ export default function ApprovalPage() {
           <h1 className="page-title">Approval Queue</h1>
           <p className="mt-2 text-sm text-slate-500">Emails Tolra has drafted wait here for you to check before they go to customers.</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="approvals" /></div>
         {/* No Settings button: it linked to the admin-only general /settings page, which has no e-mail or approval settings (sweep item 8). */}
       </section>
 
@@ -236,29 +240,33 @@ export default function ApprovalPage() {
               <Card key={item.id} className={cn("border-l-4 shadow-sm", styles.border)}>
                 <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
-                    <Badge className={styles.badge}>{item.badge}</Badge>
+                    {isVisible("type") ? <Badge className={styles.badge}>{item.badge}</Badge> : null}
                     <div>
                       <CardTitle className="text-xl">{item.customer}</CardTitle>
                       <p className="mt-1 text-sm text-slate-500">{item.detail}</p>
                     </div>
                   </div>
-                  <div className="text-sm text-slate-500">Drafted: {item.drafted}</div>
+                  {isVisible("drafted") ? <div className="text-sm text-slate-500">Drafted: {item.drafted}</div> : null}
                 </CardHeader>
 
                 <CardContent className="space-y-4">
                   <div className="grid gap-3 rounded-lg bg-slate-50 p-4 text-sm md:grid-cols-[auto_1fr]">
                     <span className="field-label">To:</span>
                     <span className="text-slate-900">{item.to}</span>
-                    <span className="field-label">Subject:</span>
-                    <span className="text-slate-900">&quot;{item.subject}&quot;</span>
+                    {isVisible("subject") ? (
+                      <>
+                        <span className="field-label">Subject:</span>
+                        <span className="text-slate-900">&quot;{item.subject}&quot;</span>
+                      </>
+                    ) : null}
                   </div>
 
-                  <div className="relative max-h-24 overflow-hidden rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
+                  {isVisible("preview") ? <div className="relative max-h-24 overflow-hidden rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
                     {item.body.split("\n").slice(0, 5).map((line, index) => (
                       <p key={`${item.id}-preview-${index}`}>{line || " "}</p>
                     ))}
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-white/0" />
-                  </div>
+                  </div> : null}
 
                   <div className="flex flex-col gap-2 md:flex-row md:items-center">
                     <Button className={styles.button} onClick={() => void copyToClipboard(item)}>

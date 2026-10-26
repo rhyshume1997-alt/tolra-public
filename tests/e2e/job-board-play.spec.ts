@@ -69,6 +69,26 @@ test.afterAll(async () => {
 const row = (page: Page, no: string) => page.locator(`tr[data-job-id="${ids[no]}"]`);
 const runsOf = async (no: string) => (await adminClient().from("machine_runs").select("id, machine_id, operator_id, started_at, ended_at, end_reason").eq("job_id", ids[no]).order("started_at").order("created_at")).data!;
 const goOffline = async (page: Page) => { for (const pattern of ["**/rest/v1/**", "**/auth/v1/**", "**/storage/v1/**"]) await page.route(pattern, (route) => route.abort("internetdisconnected")); };
+/**
+ * The board's offline copy is written to IndexedDB without being awaited (jobs/page.tsx: saveOfflineSnapshot after each load), so the UI
+ * can show the live state before the copy is on the device. A reload then reads whatever was written: no run_facts copy shows a
+ * bulk-started job as "Resume" (factsOf: unknown never claims "not timed"), no paused_machines copy skips the paused-machine check. Wait
+ * until every copy the offline board reads is stored before going offline and reloading. Each test has a fresh context, so any copy
+ * found was written by this page's load.
+ */
+const OFFLINE_COPIES = ["jobs", "machines", "job_machines", "bench_runs", "in_use", "paused_machines", "run_facts"];
+const offlineCopiesSaved = (page: Page) => page.evaluate((names) => new Promise<string[]>((resolve, reject) => {
+  const open = indexedDB.open("tolra-offline", 1);
+  open.onupgradeneeded = () => open.result.createObjectStore("kv"); // the app's own schema (lib/offline/store.ts)
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const db = open.result;
+    const keys = db.transaction("kv", "readonly").objectStore("kv").getAllKeys();
+    keys.onsuccess = () => { db.close(); resolve(names.filter((name) => (keys.result as string[]).some((k) => k.endsWith(`|snap:${name}`)))); };
+    keys.onerror = () => { db.close(); reject(keys.error); };
+  };
+}), OFFLINE_COPIES);
+const offlineCopyStored = async (page: Page) => expect.poll(() => offlineCopiesSaved(page), { message: "the board's offline copy is stored on the device" }).toEqual(OFFLINE_COPIES);
 const goOnline = async (page: Page) => { await page.unrouteAll({ behavior: "ignoreErrors" }); await page.evaluate(() => window.dispatchEvent(new Event("online"))); };
 const audit = async (no: string, action: string) => (await withDb((db) => db.query("select metadata from security_audit.audit_log where entity_table = 'jobs' and entity_id = $1 and action = $2 order by created_at", [ids[no], action]))).rows.map((r) => r.metadata as Record<string, unknown>);
 
@@ -175,6 +195,7 @@ test("offline: Start then Pause shows 'Paused, waiting to sync' across a reload;
   await page.goto("/jobs");
   const r = () => row(page, J.offSP);
   await expect(r()).toBeVisible();
+  await offlineCopyStored(page);
   await goOffline(page);
   await page.reload();
   await expect(page.getByText(/Offline - last synced \d\d:\d\d/)).toBeVisible();
@@ -215,6 +236,7 @@ test("offline: Pause then Start on a running job shows 'Running on the mill, wai
   await page.goto("/jobs");
   const r = () => row(page, J.offPS);
   await expect(pauseControl(r(), J.offPS)).toBeVisible(); // the live state is now on the device
+  await offlineCopyStored(page);
   await goOffline(page);
   await page.reload();
   await expect(page.getByText(/Offline - last synced \d\d:\d\d/)).toBeVisible();
@@ -237,6 +259,7 @@ test("offline Start timer on the bench of a bulk-started job: 'On the bench, wai
   await page.goto("/jobs");
   const r = () => row(page, J.bulkOff);
   await expect(r().getByTestId("job-progress")).toHaveText("Started (not timed)");
+  await offlineCopyStored(page);
   await goOffline(page);
   await page.reload();
   await expect(page.getByText(/Offline - last synced \d\d:\d\d/)).toBeVisible();
@@ -253,6 +276,7 @@ test("another session takes the lathe while this one is offline: conflict notice
   await page.goto("/jobs");
   const r = () => row(page, J.clash);
   await expect(r().getByRole("button", { name: `Choose where ${J.clash} runs: ${latheName}` })).toBeVisible();
+  await offlineCopyStored(page);
   await goOffline(page);
   await page.reload();
   await expect(page.getByText(/Offline - last synced \d\d:\d\d/)).toBeVisible();
