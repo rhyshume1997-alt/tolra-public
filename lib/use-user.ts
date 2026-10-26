@@ -7,8 +7,9 @@ import type { User } from "@supabase/supabase-js";
 import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
 import { resetCompanyProfile } from "@/lib/company";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
-import { confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
-import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding } from "@/lib/access-recheck";
+import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
+import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
+import { confirmedUser, invalidateConfirmedUser } from "@/lib/confirmed-user";
 import { OfflineIdentityExpiredError, offlineIdentityExpired } from "@/lib/offline/identity-age";
 import { pendingEntries, waitForReplayIdle } from "@/lib/offline/outbox";
 import { accessSignal, confirmOfflineAccess, OFFLINE_ACCESS_EVENT, sessionGoneReason, signalAccessRecheck } from "@/lib/offline/access";
@@ -92,8 +93,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
 
   const signOut = useCallback(async () => {
-    if (!(await confirmUnsyncedDiscard("Signing out", syncNow, undefined, { everything: true }))) return;
+    // Ids read before the person is asked; only these (and only this person's) are removed below. Work queued meanwhile aborts it.
+    const confirmedSignOut = await confirmSignOut(syncNow);
+    if (!confirmedSignOut) return;
     sessionEnding.value = true;
+    // Nothing the auth server confirmed for this sign-in is reused after this point (lib/confirmed-user.ts).
+    invalidateConfirmedUser();
     try {
       if (supabase) await supabase.auth.signOut();
     } catch (err) {
@@ -103,7 +108,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     clearAuthCookies();
     forgetLastActive();
     // Nothing from this person stays on the device (lib/offline).
-    await wipeOfflineData();
+    await wipeOfflineData(confirmedSignOut);
     resetCompanyProfile();
     resetOrgSettings();
     writeStoredRole(null);
@@ -123,6 +128,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     // announced to them, and waits until no tab has a request of this company's queue open (they send nothing more once announced).
     const leaving = offlineScope();
     beginOrganizationSwitch(Date.now(), leaving?.orgId ?? null);
+    invalidateConfirmedUser();
     try {
       let idle = true;
       // Work queued (or held) in another tab during the wait was never asked about: refuse, the same as the check above.
@@ -130,6 +136,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (!idle) throw new Error("Offline changes are still being sent in another tab. Try again in a moment.");
       const { error: switchError } = await supabase.rpc("switch_organization", { p_org: organizationId });
       if (switchError) throw switchError;
+      invalidateConfirmedUser();
       // Switching away: the previous company's offline copy and the queue the person agreed to remove go from this device.
       const kept = await wipeOfflineScope(offlineScope(), confirmed);
       setOfflineScope(null);
@@ -160,6 +167,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     let confirmedAt: string | null = null;
     // The offline limit passed and the app shows "Connect to sign in again": the next "online" loads for real.
     let expiredLock = false;
+    // When the last full server confirmation began (loadUser online, or a recheck pass that read the profile and my_session): a
+    // quiet sync pass straight after it does not ask the same three questions again (lib/access-recheck.ts syncPassNeedsRecheck).
+    let fullyConfirmedAt: number | null = null;
 
     /** Locks the open app when the saved identity has passed its offline age (a timer, not only a check at load). */
     function armExpiry(scopeIds: { userId: string; orgId: string }) {
@@ -178,6 +188,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     /** The server no longer lets this person in: cached access stops and the app goes to sign-in; pending work stays. */
     async function endAccess(reason: "signed-out" | "disabled" | "removed" | "moved") {
+      fullyConfirmedAt = null;
+      invalidateConfirmedUser();
       if (sessionEnding.value) return; // the idle lock or a sign-out is already taking the person to the sign-in page
       if (reason === "signed-out") {
         // A session the server ended (lib/supabase.ts noted it and how many changes are kept): the sign-in page says so. The offline
@@ -233,9 +245,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const runner = createRecheckRunner(async (isCurrent) => {
         if (!supabase) return;
         const client = supabase;
+        const passStartedAt = Date.now();
         try {
+          // A fresh auth-server answer every pass (never a shared one; lib/confirmed-user.ts).
           const read = await askAccess({
-            getUser: () => client.auth.getUser(),
+            getUser: () => confirmedUser(),
             readProfile: () => client.from("user_profiles").select("active").eq("id", currentUser.id).maybeSingle(),
             readSession: () => client.rpc("my_session"),
           }, currentUser.id);
@@ -278,6 +292,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             setActiveRoleState(role);
           }
           setHiddenSections(hidden);
+          fullyConfirmedAt = passStartedAt;
           if (keepCopy) {
             confirmedAt = new Date().toISOString();
             armExpiry(scopeIds);
@@ -309,7 +324,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const loadStartedAt = Date.now();
+        // Always its own auth-server request; the answer is shared with the rest of this page load (lib/confirmed-user.ts).
+        const { data: userData, error: userError } = await confirmedUser();
         // "No session" means signed out; anything else (network, server) is an error to show,
         // not a reason to redirect to /login (middleware would bounce straight back).
         if (userError && userError.name !== "AuthSessionMissingError" && userError.status !== 401 && userError.status !== 403) throw userError;
@@ -376,6 +393,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // Offline copies are filed under this person + company; the identity lets the workshop pages open offline. A support
         // session keeps nothing on the device.
         if (nextProfile.organization_id) {
+          fullyConfirmedAt = loadStartedAt;
           const keepCopy = offlineCopyAllowed(info);
           setOfflineScope({ userId: currentUser.id, orgId: nextProfile.organization_id }, { support: !keepCopy });
           if (keepCopy) {
@@ -456,7 +474,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
-    const stopSyncListener = onSyncComplete(() => void recheck?.());
+    const stopSyncListener = onSyncComplete((event) => {
+      if (syncPassNeedsRecheck(event, fullyConfirmedAt)) void recheck?.();
+    });
     void loadUser();
     return () => {
       mounted = false;

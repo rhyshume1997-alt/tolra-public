@@ -3,6 +3,7 @@
 import { deletedOne } from "@/lib/delete-result";
 import { EmptyList } from "@/components/empty-list";
 import { ActivityPanel } from "@/components/activity-panel";
+import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Banknote, Plus, Send, Trash2, TrendingDown } from "lucide-react";
@@ -802,6 +803,11 @@ export default function InvoicesPage() {
     return { status: result.status, balance: Number(result.balance_due), amountPaid: Number(result.amount_paid) };
   }
 
+  /** Editing the amount or date drops the last check's message (e.g. "more than the balance due"); recordPayment checks again on submit. The "can't confirm it was saved" notice stays: editing doesn't answer it. */
+  function clearPayProblem() {
+    setPayError((current) => (current === UNCERTAIN_MESSAGE ? current : null));
+  }
+
   /** The dialog's "Record payment" button. */
   async function recordPayment() {
     const invoice = paymentFor;
@@ -1405,6 +1411,7 @@ export default function InvoicesPage() {
             <DialogTitle>Issue this invoice to {issueConfirm?.customer}?</DialogTitle>
             <DialogDescription>It gets the next invoice number and its contents are fixed. From then on it counts as money owed, whether or not it has been e-mailed. This can&apos;t be undone.{issueThenSend ? " The e-mail and PDF open straight after; you then confirm it has gone." : ""}</DialogDescription>
           </DialogHeader>
+          <AiFinanceCheckPanel kind="invoice" id={issueConfirm?.id} />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIssueConfirm(null)}>Cancel</Button>
             <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => issueConfirm && void issueInvoice(issueConfirm, issueThenSend)}>
@@ -1437,8 +1444,8 @@ export default function InvoicesPage() {
           </DialogHeader>
           <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); void recordPayment(); }}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-1 text-xs text-slate-500">Amount received (£)<Input name="payment_amount" type="number" step="0.01" min="0.01" inputMode="decimal" required value={payAmount} onChange={(event) => setPayAmount(event.target.value)} /></label>
-              <label className="grid gap-1 text-xs text-slate-500">Date received<Input name="payment_date" type="date" required max={today} value={payDate} onChange={(event) => setPayDate(event.target.value)} /></label>
+              <label className="grid gap-1 text-xs text-slate-500">Amount received (£)<Input name="payment_amount" type="number" step="0.01" min="0.01" inputMode="decimal" required value={payAmount} onChange={(event) => { setPayAmount(event.target.value); clearPayProblem(); }} /></label>
+              <label className="grid gap-1 text-xs text-slate-500">Date received<Input name="payment_date" type="date" required max={today} value={payDate} onChange={(event) => { setPayDate(event.target.value); clearPayProblem(); }} /></label>
               <label className="grid gap-1 text-xs text-slate-500">Method<select name="payment_method" value={payMethod} onChange={(event) => setPayMethod(event.target.value)} className="h-9 rounded-lg border border-slate-300 px-3 text-sm text-slate-950">{PAYMENT_METHODS.map((method) => <option key={method} value={method}>{method === "BACS" ? "BACS" : method[0].toUpperCase() + method.slice(1)}</option>)}</select></label>
               <label className="grid gap-1 text-xs text-slate-500">Reference (optional)<Input name="payment_reference" maxLength={100} placeholder="Cheque no. or bank reference" value={payReference} onChange={(event) => setPayReference(event.target.value)} /></label>
             </div>

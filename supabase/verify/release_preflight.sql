@@ -107,7 +107,10 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'machine_runs_labour' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '48f0b169d1beb1de9976f542ac182b3e')),
     ('093 platform owner login protected', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_login_is_protected')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_set_company_access' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '378818d240f26ff55595ff4168f7a40e')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_member_access' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '2fc2a6a96b80cc9f7a7f8baf9b67df04'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_member_access' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '2fc2a6a96b80cc9f7a7f8baf9b67df04')),
+    ('094 activity one row per change',   EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'org_activity' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a29b5655c21474b4b40d54760de5a9c4')),
+    ('095 finance check audit events',    EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'audit_event_allowed' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '7e8d396511ddb056daa61953bfccd12b')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -158,11 +161,11 @@ checks(n, check_name, value, expected) AS (
               FROM fn WHERE nspname = 'public' AND proname = 'import_company_data_run'), 'missing'),
     '076 before 079, 079 after (085 after 085; other: stop, 079 refuses to replace it; missing: 076 not applied)'
   UNION ALL SELECT 18, '080 needs: public.org_activity is 035''s and public.convert_sales_order 068''s (or already 080''s)',
-    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '292d6e2612099e36dd107422bd50e1b5' THEN '035' WHEN 'ae7e2416ce0a54b0d8ccb721aeb2d245' THEN '080' ELSE 'other' END
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '292d6e2612099e36dd107422bd50e1b5' THEN '035' WHEN 'ae7e2416ce0a54b0d8ccb721aeb2d245' THEN '080' WHEN 'a29b5655c21474b4b40d54760de5a9c4' THEN '094' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'org_activity'), 'missing') || ' / ' ||
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '5555212a1d32070ce74209e718c3896d' THEN '068' WHEN 'dc8165549871bd15047765ac4fba811e' THEN '080' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'convert_sales_order'), 'missing'),
-    '035 / 068 before 080, 080 / 080 after (other: stop, 080 refuses to replace it)'
+    '035 / 068 before 080, 080 / 080 after (094 / 080 after 094; other: stop, 080 refuses to replace it)'
   UNION ALL SELECT 19, '080: jobs still described ''Converted from SO-...'' whose quote has ordered lines (080 describes them by that work)',
     -- quote_line_items.declined is 068's: read through query_to_xml so the preflight still runs on an older database (the rehearsal's 013 base).
     CASE WHEN NOT EXISTS (SELECT 1 FROM col WHERE table_name = 'quote_line_items' AND column_name = 'declined')
@@ -279,6 +282,16 @@ checks(n, check_name, value, expected) AS (
                 || ' / ' || (SELECT count(DISTINCT m.user_id) FROM public.organization_members m JOIN security_audit.platform_admins a ON a.user_id = m.user_id WHERE m.support) AS n$q$,
                 FALSE, TRUE, '')))[1]::TEXT, '?') END,
     'informational, the same before and after 093 (093 changes no row: such support rows stay, and from 093 count for nothing in Admin > Users): report the figures'
+  UNION ALL SELECT 39, '094 needs: public.org_activity is 080''s (or already 094''s)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'ae7e2416ce0a54b0d8ccb721aeb2d245' THEN '080' WHEN 'a29b5655c21474b4b40d54760de5a9c4' THEN '094' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'org_activity'), 'missing'),
+    '080 before 094, 094 after (other: stop, 094 refuses to replace it)'
+  UNION ALL SELECT 40, '095 needs: public.audit_event_allowed is 076''s and write_audit 035''s (or already 095''s)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '35078684fa2379d7708c06fa7994dcf3' THEN '076' WHEN '7e8d396511ddb056daa61953bfccd12b' THEN '095' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'audit_event_allowed'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '959f759894cd9dbefbf8d25768530197' THEN '035' WHEN 'a6531bb5559ae9936387729bb91071a0' THEN '095' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'write_audit'), 'missing'),
+    '076 / 035 before 095, 095 / 095 after (other: stop, 095 refuses to replace it). 39 is 094''s row'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

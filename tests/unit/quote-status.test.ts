@@ -25,9 +25,14 @@ import { quoteKeyValues, quoteMessage } from "@/components/pdf/QuotePDF";
 
 describe("quote PDF content (audit D21)", () => {
   const company = { defaultQuoteTerms: "Valid for 30 days", defaultCustomerMessage: ["Please use the quote number as reference"] };
-  it("prints the validity date, or says it isn't set", () => {
+  it("prints the validity date, or omits the line rather than contradict the terms", () => {
     expect(quoteKeyValues({ number: "QUO-1", date: "09/10/2026", validUntil: "08/11/2026" }, company)).toContainEqual({ label: "Valid Until", value: "08/11/2026" });
-    expect(quoteKeyValues({ number: "QUO-1", date: "09/10/2026", validUntil: "" }, company)).toContainEqual({ label: "Valid Until", value: "Not set" });
+    for (const validUntil of ["", "  ", undefined]) {
+      const rows = quoteKeyValues({ number: "QUO-1", date: "09/10/2026", validUntil, terms: "Valid for 7 days" }, company);
+      expect(rows.map((r) => r.label)).toEqual(["Our Quote No.", "Date", "Terms"]);
+      expect(JSON.stringify(rows)).not.toContain("Not set");
+      expect(rows).toContainEqual({ label: "Terms", value: "Valid for 7 days" });
+    }
   });
   it("prints the scope before the customer message, never internal notes (not an input)", () => {
     expect(quoteMessage({ scope: "Machine 40 flanges to drawing 12-B", customerMessage: ["Thanks"] }, company)).toEqual(["Scope: Machine 40 flanges to drawing 12-B", "Thanks"]);

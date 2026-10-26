@@ -155,6 +155,56 @@ export async function recordReworkCost(args: { reworkId: string; hours: number |
   if (error) throw error;
 }
 
+/** The hours/material fields as typed: an entry to book, nothing typed, or the one thing wrong (the same checks the Add button makes). */
+export type PendingCost =
+  | { kind: "none" }
+  | { kind: "error"; message: string }
+  | { kind: "entry"; hours: number | null; material: string; materialCost: number | null; note: string };
+
+export function pendingCostEntry(f: { hours: string; material: string; materialCost: string; note: string }): PendingCost {
+  if (!f.hours.trim() && !f.material.trim() && !f.materialCost.trim() && !f.note.trim()) return { kind: "none" };
+  const h = f.hours.trim() === "" ? null : Number(f.hours);
+  if (h !== null && (!Number.isFinite(h) || h <= 0 || h > 999)) return { kind: "error", message: "Hours must be more than 0." };
+  if (h === null && !f.material.trim()) return { kind: "error", message: "Enter the hours worked, the material used, or both." };
+  const cost = f.materialCost.trim() === "" ? null : Number(f.materialCost);
+  if (cost !== null && (!Number.isFinite(cost) || cost < 0)) return { kind: "error", message: "The material cost must be a sum of money." };
+  if (cost !== null && !f.material.trim()) return { kind: "error", message: "Say which material the cost is for." };
+  return { kind: "entry", hours: h, material: f.material, materialCost: cost, note: f.note };
+}
+
+/**
+ * Finish with any typed-but-not-added entry: books it first and clears the fields as soon as it is saved, so if the finish then fails
+ * a retry finds nothing pending and cannot book the same hours or material twice.
+ */
+export async function finishWithPendingCost(pending: PendingCost, steps: { book: (entry: Extract<PendingCost, { kind: "entry" }>) => Promise<void>; clear: () => void; finish: () => Promise<void> }) {
+  if (pending.kind === "error") throw new Error(pending.message);
+  if (pending.kind === "entry") { await steps.book(pending); steps.clear(); }
+  try {
+    await steps.finish();
+  } catch (err) {
+    if (pending.kind === "entry") throw new FinishAfterCostError(err);
+    throw err;
+  }
+}
+
+/** After a FinishAfterCostError: reload (so the saved cost shows), then the message, which is returned even if the reload throws. */
+export async function finishAfterCostMessage(reload: () => Promise<void>, reason: string): Promise<string> {
+  try {
+    await reload();
+  } catch {
+    // The cost is saved either way; the person must still be told so.
+  }
+  return `Costs saved; finishing failed. ${reason}`;
+}
+
+/** The typed hours/material were saved, then finishing the rework failed: the dialog reloads the costs and says so. */
+export class FinishAfterCostError extends Error {
+  constructor(readonly finishError: unknown) {
+    super("Costs saved; finishing failed.");
+    this.name = "FinishAfterCostError";
+  }
+}
+
 export async function scrapQuantity(args: { reworkId: string; quantity: number; reason: string }) {
   const { data, error } = await client().rpc("scrap_job_quantity", { p_rework: args.reworkId, p_quantity: args.quantity, p_reason: args.reason });
   if (error) throw error;

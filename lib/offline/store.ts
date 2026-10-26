@@ -339,16 +339,56 @@ export async function wipeScope(scope: Scope, confirmed?: ReadonlySet<string>) {
  * Removes every offline copy on this device (sign-out, disabled account, ended session). Returns unsynced changes removed. The
  * notice describes only `ownerUserId`'s own work; anyone else's (a shared tablet) is counted, never named.
  */
-export async function wipeAllOffline(ownerUserId?: string) {
+export async function wipeAllOffline(ownerUserId?: string, confirmed?: ReadonlySet<string>) {
   const store = offlineBackend();
   if (!store) return 0;
   const keys = await store.keys();
+  if (confirmed) return wipeOwnOffline(store, keys, ownerUserId, confirmed);
   const ownKey = (key: string) => ownerUserId !== undefined && key.startsWith(userPrefix(ownerUserId));
   const mine = await summarise(store, keys.filter(ownKey));
   const others = await summarise(store, keys.filter((key) => !ownKey(key)));
   for (const key of keys) await store.delete(key);
   noteDiscarded(mine, others.changes);
   return mine.changes + others.changes;
+}
+
+/**
+ * Sign-out with the ids the person was asked about: removes only `ownerUserId`'s copies (every company), and of their queued and
+ * held changes only those in `confirmed`. Another person's keys (a shared tablet) are never touched, and a change of the owner's
+ * queued after the prompt (another tab) stays, with its bytes. Lists are read and changed in one storage transaction.
+ */
+async function wipeOwnOffline(store: OfflineBackend, keys: string[], ownerUserId: string | undefined, confirmed: ReadonlySet<string>) {
+  if (ownerUserId === undefined) return 0;
+  const own = keys.filter((key) => key.startsWith(userPrefix(ownerUserId)));
+  const discarded = await store.transact<UnsyncedSummary>(own, (values) => {
+    const gone = emptySummary();
+    const keep = new Set<string>();
+    const set: Record<string, unknown> = {};
+    for (const list of own.filter(isListKey)) {
+      const entries = (values[list] as Listed[] | undefined) ?? [];
+      const kept = entries.filter((entry) => !confirmed.has(String(entry?.id)));
+      tally(gone, entries.filter((entry) => !kept.includes(entry)), list.endsWith("|outbox"));
+      if (!kept.length) continue;
+      set[list] = kept;
+      keep.add(list);
+      for (const entry of kept) if (entry?.op?.blobKey) keep.add(entry.op.blobKey);
+    }
+    for (const key of own) if (!keep.has(key)) set[key] = undefined;
+    return { set, result: gone };
+  });
+  noteDiscarded(discarded);
+  return discarded.changes;
+}
+
+/** Ids of every queued, conflicted or refused change `userId` has on this device, in all their companies. */
+export async function unsyncedIdsForUser(userId: string): Promise<Set<string>> {
+  const store = offlineBackend();
+  const ids = new Set<string>();
+  if (!store) return ids;
+  for (const key of (await store.keys()).filter((k) => k.startsWith(userPrefix(userId)) && isListKey(k))) {
+    for (const entry of (await store.get<Listed[]>(key)) ?? []) if (entry?.id) ids.add(String(entry.id));
+  }
+  return ids;
 }
 
 /** Money fields never stored offline (Job Board rows carry the job value for office/admin screens). */

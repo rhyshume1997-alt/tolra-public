@@ -137,7 +137,7 @@
  {
   "kind": "function",
   "object": "public.audit_event_allowed(p_action text, p_table text)",
-  "detail": "invoker search_path=pg_catalog, public 61b92341cb771f686566e56ddeea4a71"
+  "detail": "invoker search_path=pg_catalog, public 15480cf6b1747b79a96342636286be8b"
  },
  {
   "kind": "function",
@@ -1102,7 +1102,7 @@
  {
   "kind": "function",
   "object": "public.org_activity(p_from timestamp with time zone, p_to timestamp with time zone, p_actor uuid, p_table text, p_before timestamp with time zone, p_before_id uuid, p_limit integer)",
-  "detail": "definer search_path=pg_catalog, public, security_audit 758e1bcfacc8c9309ac5c2056aa2bde0"
+  "detail": "definer search_path=pg_catalog, public, security_audit b538db6aa130c2a2c02a484df09f3d42"
  },
  {
   "kind": "function",
@@ -1672,7 +1672,7 @@
  {
   "kind": "function",
   "object": "public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)",
-  "detail": "definer search_path=pg_catalog, public, security_audit 3a96b0c057cb51dd3f264c07247a244e"
+  "detail": "definer search_path=pg_catalog, public, security_audit 52b82a9a15d88c28e457e2f631970499"
  },
  {
   "kind": "function",

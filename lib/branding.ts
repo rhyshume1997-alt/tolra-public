@@ -35,6 +35,20 @@ export async function rememberBrand(organizationId: string): Promise<void> {
   }).catch(() => undefined);
 }
 
+/**
+ * Browser only. The sign-in page's own lookup for a remembered company (/api/branding?org=). The answer is always read to the end,
+ * whatever its status, for the same reason as rememberBrand: an unread body keeps the page busy on the network. Any failure is null.
+ */
+export async function fetchLoginBranding(slug: string): Promise<LoginBranding | null> {
+  try {
+    const response = await fetch(`/api/branding?org=${encodeURIComponent(slug)}`);
+    const text = await response.text();
+    return response.ok ? ((JSON.parse(text) as LoginBranding | null) ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type LoginBranding = {
   slug: string;
   name: string;

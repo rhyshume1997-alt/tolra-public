@@ -12,7 +12,7 @@ import { type PeopleMap, personName } from "@/lib/people";
 import { canReadUsernames, loadCompanyPeople } from "@/lib/company-people";
 import { useMaybeUser } from "@/lib/use-user";
 import {
-  CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkEntry, type ReworkRecord, type ReworkSummary, finishRework, loadReworkEntries, loadReworkSummary, loadReworks,
+  CLOSED_LABELS, REWORK_STATUS_LABELS, type ReworkEntry, type ReworkRecord, type ReworkSummary, FinishAfterCostError, finishAfterCostMessage, finishRework, finishWithPendingCost, loadReworkEntries, pendingCostEntry, loadReworkSummary, loadReworks,
   openReplacementRework, quantityText, recordReworkCost, replacementsOwed, scrapQuantity, startRework,
 } from "@/lib/rework";
 import { supabase } from "@/lib/supabase";
@@ -45,14 +45,13 @@ function LiveRework({ live, lineName, entries, entryLine, people, canWrite, canC
   const [remade, setRemade] = useState("");
   const owed = replacementsOwed(live);
 
+  const clearCost = () => { setHours(""); setMaterial(""); setMaterialCost(""); setNote(""); };
+
   function bookCost() {
-    const h = hours.trim() === "" ? null : Number(hours);
-    if (h !== null && (!Number.isFinite(h) || h <= 0 || h > 999)) return setError("Hours must be more than 0.");
-    if (h === null && !material.trim()) return setError("Enter the hours worked, the material used, or both.");
-    const cost = materialCost.trim() === "" ? null : Number(materialCost);
-    if (cost !== null && (!Number.isFinite(cost) || cost < 0)) return setError("The material cost must be a sum of money.");
-    if (cost !== null && !material.trim()) return setError("Say which material the cost is for.");
-    act(() => recordReworkCost({ reworkId: live.id, hours: h, material, materialCost: cost, note }), () => { setHours(""); setMaterial(""); setMaterialCost(""); setNote(""); });
+    const p = pendingCostEntry({ hours, material, materialCost, note });
+    if (p.kind === "none") return setError("Enter the hours worked, the material used, or both.");
+    if (p.kind === "error") return setError(p.message);
+    act(() => recordReworkCost({ reworkId: live.id, ...p }), clearCost);
   }
 
   function scrap() {
@@ -68,7 +67,14 @@ function LiveRework({ live, lineName, entries, entryLine, people, canWrite, canC
       count = Number(remade);
       if (remade.trim() === "" || !Number.isInteger(count) || count < 0 || count > owed) return setError(`Enter how many replacements were made for the scrapped parts, from 0 to ${owed}.`);
     }
-    act(() => finishRework(live.id, finishNote, count), () => { setFinishNote(""); setRemade(""); });
+    // Hours or material typed but not added are booked with the finish, checked exactly as Add checks them; a half-valid entry stops the finish.
+    const pending = pendingCostEntry({ hours, material, materialCost, note });
+    if (pending.kind === "error") return setError(`You have hours or material typed in but not added, and it can't be saved: ${pending.message} Fix it or clear the fields.`);
+    act(() => finishWithPendingCost(pending, {
+      book: (entry) => recordReworkCost({ reworkId: live.id, ...entry }),
+      clear: clearCost,
+      finish: () => finishRework(live.id, finishNote, count),
+    }), () => { setFinishNote(""); setRemade(""); });
   }
 
   return (
@@ -226,7 +232,13 @@ export function ReworkDialog({ job, role, onClose, onChanged }: Props) {
         await load(job.id);
         onChanged();
       } catch (err) {
-        setError(friendlyError(err, "Couldn't save. Nothing was changed."));
+        if (err instanceof FinishAfterCostError) {
+          // The cost entry is on the server: show it, and say only the finish needs another go (the cost fields stay cleared).
+          // The message shows even if the reload itself fails.
+          setError(await finishAfterCostMessage(async () => { await load(job.id); onChanged(); }, friendlyError(err.finishError, "Try Finish again.")));
+        } else {
+          setError(friendlyError(err, "Couldn't save. Nothing was changed."));
+        }
       } finally {
         setBusy(false);
       }

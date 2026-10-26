@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ALERT_TEST_NETWORK_ERROR, type AlertTestOutcome, describeAlertTest } from "@/lib/alert-test-message";
+import { auditActionLabel, recordTypeLabel } from "@/lib/activity";
 import { fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { supabase } from "@/lib/supabase";
@@ -183,8 +184,8 @@ export default function CompliancePage() {
                     <TableHead>When</TableHead>
                     <TableHead>User</TableHead>
                     <TableHead>Action</TableHead>
-                    <TableHead>Module</TableHead>
-                    <TableHead>Hash</TableHead>
+                    <TableHead>Record</TableHead>
+                    <TableHead>Integrity code</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -192,8 +193,8 @@ export default function CompliancePage() {
                     <TableRow key={entry.id}>
                       <TableCell className="whitespace-nowrap text-xs">{fmtDateTime(entry.created_at)}</TableCell>
                       <TableCell className="text-xs">{entry.actor_email || "System"}</TableCell>
-                      <TableCell><Badge variant="outline">{entry.action}</Badge></TableCell>
-                      <TableCell className="text-xs">{entry.entity_table}</TableCell>
+                      <TableCell><Badge variant="outline">{auditActionLabel(entry.action)}</Badge></TableCell>
+                      <TableCell className="text-xs">{recordTypeLabel(entry.entity_table)}</TableCell>
                       <TableCell className="whitespace-normal break-all font-mono text-xs">{entry.hash || "Pending"}</TableCell>
                     </TableRow>
                   ))}

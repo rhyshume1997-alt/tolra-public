@@ -5,7 +5,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LAST_ORG_KEY, REMEMBERED_KEY, rememberBrand } from "@/lib/branding";
+import { LAST_ORG_KEY, REMEMBERED_KEY, fetchLoginBranding, rememberBrand } from "@/lib/branding";
 
 const ORG = "11111111-1111-4111-8111-111111111111";
 
@@ -81,5 +81,26 @@ describe("rememberBrand (app shell, after sign-in and a company switch)", () => 
     fetchMock.mockImplementation(async () => answer(200));
     await expect(rememberBrand(ORG)).resolves.toBeUndefined();
     expect(answers[0].bodyUsed).toBe(true);
+  });
+});
+
+describe("fetchLoginBranding (sign-in page ?org= lookup)", () => {
+  it("reads the body to the end when the answer is not ok, and returns null", async () => {
+    fetchMock.mockImplementation(async () => answer(404));
+    expect(await fetchLoginBranding("acme")).toBeNull();
+    expect(answers).toHaveLength(1);
+    expect(answers[0].bodyUsed).toBe(true);
+  });
+
+  it("reads the body and returns the branding when ok", async () => {
+    fetchMock.mockImplementation(async () => answer(200));
+    expect(await fetchLoginBranding("acme")).toEqual({ ok: true });
+    expect(answers[0].bodyUsed).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith("/api/branding?org=acme");
+  });
+
+  it("returns null when the request fails", async () => {
+    fetchMock.mockRejectedValue(new Error("offline"));
+    expect(await fetchLoginBranding("acme")).toBeNull();
   });
 });

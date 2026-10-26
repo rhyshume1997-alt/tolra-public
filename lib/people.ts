@@ -4,7 +4,7 @@
  * (triggers, from the session); these helpers turn a record's actor columns into the "Started by Dave · 12/10/2026, 09:30"
  * lines on the detail views. Nothing here guesses: a missing actor or time stays missing.
  */
-import { fmtDateTime } from "@/lib/dates";
+import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { USERNAME_PATTERN } from "@/lib/username";
 
 /** What an unknown person or time shows as. */
@@ -74,11 +74,13 @@ export type WhoLine = {
   at: string | null;
   /** "recorded by Dave" on a customer signature. */
   note?: string;
+  /** The time is not a real clock time (a date stored at noon UTC, e.g. invoices.paid_at): show the date only. */
+  dateOnly?: boolean;
 };
 
 /** One line as text: "Started by Dave · 12/10/2026, 09:30". An unknown time is left off rather than guessed. */
 export function lineText(line: WhoLine): string {
-  const when = line.at ? fmtDateTime(line.at) : "";
+  const when = line.at ? (line.dateOnly ? fmtDate(line.at) : fmtDateTime(line.at)) : "";
   return `${line.label} ${line.name}${line.note ? ` (${line.note})` : ""}${when ? ` · ${when}` : ""}`;
 }
 
@@ -138,7 +140,7 @@ export function whoWhenLines(table: string, row: Row, people: PeopleMap, payment
       payments
         .filter((p) => !p.reverses_payment_id)
         .forEach((p, index) => out.push(line(`payment-${index}`, "Payment recorded by", p.created_by, p.created_at)));
-      if (status(row) === "paid") out.push(line("paid", "Paid (cleared) by", row.paid_by, row.paid_at));
+      if (status(row) === "paid") out.push(line("paid", "Paid (cleared) by", row.paid_by, row.paid_at, { dateOnly: true })); // paid_at is the payment date stored at 12:00 UTC (migration 032), not a clock time
       break;
     case "purchase_orders":
       if (row.received_at) out.push(line("received", "Received by", row.received_by, row.received_at));
