@@ -347,6 +347,18 @@
       "release": { "path": "supabase/release/093_protect_platform_owner_login.release.sql", "sha256": "25fb65a2bb83721e8494dd350a07af24158d743c63047ebbbbfabc64b1344fbd" },
       "rollback": { "path": "supabase/release/093_protect_platform_owner_login.rollback.sql", "sha256": "c8c752be3e79040fe6aadc62d0f9470cc3614d4d957bf081e4ddb234b3a986f3" },
       "verify": { "path": "supabase/verify/protect_platform_owner_login_093.sql", "sha256": "db6893e267dd931342ec4dfc6728b3e900eb5b28f47bfd4c666ebe83a977b1ce" }
+    },
+    "094": {
+      "migration": { "path": "supabase/migrations/094_activity_one_row_per_change.sql", "sha256": "3989bfd4e0e10b2f882384466ecdd532bd2625a4f2601839b52a49fab0772d60" },
+      "release": { "path": "supabase/release/094_activity_one_row_per_change.release.sql", "sha256": "b5b22a3b08849c76ff0a28dd88fade747550d21ec46cbf095101ca9855f60cb2" },
+      "rollback": { "path": "supabase/release/094_activity_one_row_per_change.rollback.sql", "sha256": "518a67db9fc0975fb9cd101d40ce402bbb6e523408aaa7d2c209a9ddc61cde2d" },
+      "verify": { "path": "supabase/verify/activity_one_row_per_change_094.sql", "sha256": "606e79b3b6ac306aa3121fe98bd42342a1586bbb3d9d82b7df47fbc60ad49813" }
+    },
+    "095": {
+      "migration": { "path": "supabase/migrations/095_ai_finance_check_audit_events.sql", "sha256": "bfc19293db0e55815ac235708c7afa6b73ab550c9e17e82b7c44fec4478cbdb9" },
+      "release": { "path": "supabase/release/095_ai_finance_check_audit_events.release.sql", "sha256": "3843c3f4108037a173d807002539aaf6e7380365b89ce6e4e11f173efd5637fe" },
+      "rollback": { "path": "supabase/release/095_ai_finance_check_audit_events.rollback.sql", "sha256": "4441f2e92d4eee0d5c54fcdca7938f13114b5e76ff0c629b3832ced5d15831ea" },
+      "verify": { "path": "supabase/verify/ai_finance_check_audit_events_095.sql", "sha256": "4ec1aaf7f55c14233d865183789cf5147ffa91b8ec77033822fc881c42b8fda3" }
     }
   }
 }
