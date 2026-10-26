@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { JOB_TABLE_COLUMNS } from "@/lib/job-board-files";
 import { supabase } from "@/lib/supabase";
+import { RFQ_CARD_FIELDS, RFQ_DISPLAY_KEY } from "@/lib/rfq-display";
 import { getCurrentOrganizationId, getCurrentUserAndOrganization } from "@/lib/supabase-business";
 
 export type NavToggle = { key: string; href: string; label: string; section: string };
@@ -50,6 +51,8 @@ export const COLUMN_TABLES: TableDef[] = [
   { key: "suppliers", label: "Suppliers", columns: [{ key: "name", label: "Name", locked: true }, { key: "contact", label: "Contact" }, { key: "email", label: "Email" }, { key: "phone", label: "Phone" }, { key: "notes", label: "Notes" }, { key: "status", label: "Status" }] },
   /** Weekly hours, both tabs, in rendered order. The person / day and Paid (the daily and week total) are always shown, so they are not listed; "Not on a job" shows on Today only, "Days", "Day ticks", "Check" and "Approval" on This week only. Clocked (the context beside Person), Check and Approval (the warnings and the approval) are locked on. */
   { key: "hours", label: "Weekly hours", columns: [{ key: "days", label: "Days worked" }, { key: "clocked", label: "Clocked", locked: true }, { key: "breaks", label: "Breaks" }, { key: "jobs", label: "On jobs" }, { key: "unallocated", label: "Not on a job" }, { key: "ticks", label: "Day ticks" }, { key: "check", label: "Check", locked: true }, { key: "approval", label: "Approval", locked: true }] },
+  /** The RFQ screen is a card list: its fields come from lib/rfq-display.ts (the one definition). */
+  { key: RFQ_DISPLAY_KEY, label: "RFQ", columns: RFQ_CARD_FIELDS.map(({ key, label, locked }) => ({ key, label, ...(locked ? { locked } : {}) })) },
 ];
 
 export type OrgSettings = {
