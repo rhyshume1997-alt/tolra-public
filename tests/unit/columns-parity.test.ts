@@ -148,4 +148,11 @@ describe("columns parity: one column list per page, in every view", () => {
     // Status is not a column anywhere: the List and Table render the badges inside the Due cell.
     expect(source).not.toMatch(/<TableHead[^>]*>Status<\/TableHead>/);
   });
+
+  it("quotes: the Cards title is gated by the Quote column, which is locked on so the title is always shown", () => {
+    expect(COLUMN_TABLES.find((def) => def.key === "quotes")!.columns.find((column) => column.key === "ref")?.locked).toBe(true);
+    const source = read("quotes");
+    const cards = source.slice(source.indexOf("grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"));
+    expect(cards).toContain('{isVisible("ref") ? <CardHeader><CardTitle');
+  });
 });
