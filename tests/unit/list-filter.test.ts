@@ -132,6 +132,11 @@ describe("Invoicing's drafts line against the dashboard's count", () => {
     const invoices = [draft("2026-10-01T09:00:00Z"), draft("2026-10-15T09:00:00Z"), draft("2026-10-01T09:00:00Z", "issued")];
     expect(draftInvoiceCounts(invoices, TODAY)).toEqual({ total: 2, old: 1 });
   });
+  it("archived drafts are not counted: 3 drafts, 2 archived, is 1", () => {
+    const invoices = [{ ...draft("2026-10-15T09:00:00Z"), id: "a" }, { ...draft("2026-10-01T09:00:00Z"), id: "b" }, { ...draft("2026-10-01T09:00:00Z"), id: "c" }];
+    const archived = new Set(["b", "c"]);
+    expect(draftInvoiceCounts(invoices, TODAY, (invoice) => archived.has(invoice.id))).toEqual({ total: 1, old: 0 });
+  });
   it("no drafts is 0 of 0", () => {
     expect(draftInvoiceCounts([], TODAY)).toEqual({ total: 0, old: 0 });
   });

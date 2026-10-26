@@ -136,7 +136,33 @@ jobs:
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120  # Raised from 60 with Rhys's OK, 15 Oct 2026 (runs reached 58 min), and from 90 with Rhys's OK, 22 Oct 2026 (PR 1's run was cancelled at 90 min with 7 browser tests left). Flag it if runs approach 120; do not raise silently.
+    # The Supabase images come from ghcr.io (supabase/setup-cli@v1 sets it for CLI < 2.108.0). Anonymous pulls were
+    # rate-limited on 26 Oct 2026 (HTTP 429, runs 40360101636 and 40367638716; public.ecr.aws then refused anonymous pulls
+    # with "Data limit exceeded", run 40384629882), so this job signs in to ghcr.io with its own token, read-only.
+    permissions:
+      contents: read
+      packages: read
     steps:
+      # Linux hands out 32768-60999 as source ports for outgoing connections, and Supabase listens on 54320-54324, so an
+      # outgoing connection (npm ci, the cache, image pulls) could hold one first: "failed to bind host port ... address
+      # already in use" (26 Oct 2026, runs 40378990100 and 40319104185). Reserve 54320-54329 before anything else runs so the
+      # kernel never picks them; Supabase's own binds still work. Existing reservations are kept. Fails the job if the
+      # reservation does not take.
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import sys
+          s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+          reserved = set()
+          for part in filter(None, s.split(",")):
+              lo, _, hi = part.partition("-")
+              reserved.update(range(int(lo), int(hi or lo) + 1))
+          missing = [p for p in range(54320, 54330) if p not in reserved]
+          print("reserved ports now:", s)
+          sys.exit(f"not reserved: {missing}" if missing else 0)
+          PY
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -146,6 +172,30 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.40.7
+      # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The reservation stops new allocations but cannot free a port already held, so check the ports Supabase binds
+      # (api 54321, db 54322, mail 54324: supabase/config.toml) are free right before it starts, and name any that are not.
+      - name: Supabase ports are free
+        run: |
+          python3 - <<'PY'
+          import socket, sys
+          busy = []
+          for port in (54321, 54322, 54324):
+              s = socket.socket()
+              try:
+                  s.bind(("0.0.0.0", port))
+              except OSError as e:
+                  busy.append(f"{port}: {e}")
+              finally:
+                  s.close()
+          print("busy:", busy or "none")
+          sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+          PY
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
