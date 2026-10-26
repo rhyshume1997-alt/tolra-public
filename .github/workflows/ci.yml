@@ -136,12 +136,12 @@ jobs:
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
     runs-on: ubuntu-latest
     timeout-minutes: 120  # Raised from 60 with Rhys's OK, 15 Oct 2026 (runs reached 58 min), and from 90 with Rhys's OK, 22 Oct 2026 (PR 1's run was cancelled at 90 min with 7 browser tests left). Flag it if runs approach 120; do not raise silently.
-    env:
-      # Pull the Supabase images from Amazon's public registry (the CLI's own default). supabase/setup-cli@v1 otherwise sets
-      # ghcr.io for CLI < 2.108.0, and ghcr.io rate-limited anonymous pulls on 26 Oct 2026 (HTTP 429 in "Start disposable
-      # Supabase", runs 40360101636 and 40367638716). setup-cli leaves a value that is already set. No retry, no timeout change:
-      # a real start failure still fails the job.
-      SUPABASE_INTERNAL_IMAGE_REGISTRY: public.ecr.aws
+    # The Supabase images come from ghcr.io (supabase/setup-cli@v1 sets it for CLI < 2.108.0). Anonymous pulls were
+    # rate-limited on 26 Oct 2026 (HTTP 429, runs 40360101636 and 40367638716; public.ecr.aws then refused anonymous pulls
+    # with "Data limit exceeded", run 40384629882), so this job signs in to ghcr.io with its own token, read-only.
+    permissions:
+      contents: read
+      packages: read
     steps:
       # Linux hands out 32768-60999 as source ports for outgoing connections, and Supabase listens on 54320-54324, so an
       # outgoing connection (npm ci, the cache, image pulls) could hold one first: "failed to bind host port ... address
@@ -172,6 +172,12 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.40.7
+      # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # The reservation stops new allocations but cannot free a port already held, so check the ports Supabase binds
       # (api 54321, db 54322, mail 54324: supabase/config.toml) are free right before it starts, and name any that are not.
       - name: Supabase ports are free
