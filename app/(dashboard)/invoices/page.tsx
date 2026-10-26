@@ -1452,7 +1452,7 @@ export default function InvoicesPage() {
             {payError ? <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{payError}</p> : null}
             <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setPaymentFor(null)}>Cancel</Button>
-              <Button type="button" variant="outline" onClick={() => paymentFor && setPayAmount(balanceDue(paymentFor.amount, paymentFor.amountPaid, paymentFor.credited, paymentFor.refunded).toFixed(2))}>Pay balance in full</Button>
+              <Button type="button" variant="outline" onClick={() => { if (!paymentFor) return; setPayAmount(balanceDue(paymentFor.amount, paymentFor.amountPaid, paymentFor.credited, paymentFor.refunded).toFixed(2)); clearPayProblem(); }}>Pay balance in full</Button>
               <Button type="submit" className="bg-green-600 text-white hover:bg-green-700" disabled={saving}>{saving ? "Saving…" : payUncertain ? "Check and save" : "Save payment"}</Button>
             </div>
           </form>
