@@ -88,3 +88,27 @@ test("a used customer can't be deleted; another company can't archive it or see 
   await page.getByRole("button", { name: "All", exact: true }).click();
   await expect(page.getByText(used)).toHaveCount(0);
 });
+
+test("the picker fails closed: a failed archive-list read shows the error and no customers; Retry recovers", async ({ page }) => {
+  const admin = adminClient();
+  const org = w.tenants.alpha.id;
+  const tag = w.runId.slice(0, 8);
+  const name = `Arch Closed ${tag} Ltd`;
+  expect((await admin.from("customers").insert({ organization_id: org, name })).error).toBeNull();
+  const customersArchive = (url: URL) => url.pathname.endsWith("/rest/v1/record_archive_state") && url.searchParams.get("record_table") === "eq.customers";
+  await signIn(page, w.tenants.alpha.users.office);
+  await page.route(customersArchive, (route) => route.abort("connectionreset"));
+  await page.goto("/sales-orders");
+  await page.getByRole("button", { name: /New sales order/ }).first().click();
+  const dialog = page.getByRole("dialog", { name: "New Sales Order" });
+  const picker = dialog.locator("select[name=customer]");
+  const error = dialog.getByTestId("customer-picker-error");
+  await expect(error).toContainText("Couldn't load the customer list");
+  await expect(picker.locator("option")).toHaveCount(1);
+  await expect(picker.locator("option").first()).toHaveText("Couldn't load customers");
+  await page.unroute(customersArchive);
+  await error.getByRole("button", { name: "Retry" }).click();
+  await expect(error).toHaveCount(0);
+  await expect(picker.locator("option", { hasText: name })).toHaveCount(1);
+  await expect(picker.locator("option", { hasText: "+ Add new customer" })).toHaveCount(1);
+});

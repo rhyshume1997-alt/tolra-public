@@ -159,17 +159,27 @@ export function withoutArchived<C extends { id?: string }>(customers: C[], archi
 }
 
 /**
- * The customer pickers' list (new documents): saved customers less the archived ones. If the archive choices can't be read the
- * whole saved list is offered (archiving only tidies the pickers; it never stops a document naming a customer).
+ * The customer pickers' list (new documents): saved customers less the archived ones. Fails closed: if the archive choices can't
+ * be read this throws (the picker then offers no customer, says so and offers Retry), never the whole saved list.
  */
 export async function fetchPickerCustomers(): Promise<CustomerRecord[]> {
   const customers = await fetchCustomers();
+  return withoutArchived(customers, await readArchivedCustomerIds(supabase as unknown as ArchivedCustomerReader));
+}
+
+/** The picker's names: what `load` returns, or none and `failed` when it throws (fail closed: never a list it couldn't check). */
+export async function loadPickerNames(load: () => Promise<CustomerRecord[]>): Promise<{ names: string[]; failed: boolean }> {
   try {
-    return withoutArchived(customers, await readArchivedCustomerIds(supabase as unknown as ArchivedCustomerReader));
+    return { names: (await load()).map((customer) => customer.name), failed: false };
   } catch (err) {
     console.error(err);
-    return customers;
+    return { names: [], failed: true };
   }
+}
+
+/** The picker's options: the names, with the document's own customer first when it isn't among them (an archived one stays shown). */
+export function pickerOptions(names: string[], current: string): string[] {
+  return current && !names.includes(current) ? [current, ...names] : names;
 }
 
 /** A customer shown in the Customers page and the pickers: a saved record, or a name that exists only on documents (`notSaved`). */

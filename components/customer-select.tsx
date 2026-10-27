@@ -8,12 +8,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { auditEvent } from "@/lib/audit";
 import { DEMO_MODE } from "@/lib/demo";
-import { fetchPickerCustomers, loadDemoCustomers, saveCustomer } from "@/lib/customers";
+import { fetchPickerCustomers, loadDemoCustomers, loadPickerNames, pickerOptions, saveCustomer } from "@/lib/customers";
 import { friendlyError } from "@/lib/friendly-error";
 import { useSaving } from "@/lib/use-saving";
 import { ValidationError } from "@/lib/validation/schemas";
 
 const ADD_NEW = "__add_new__";
+
+/** Said under the picker when the customer list (or which customers are archived) couldn't be read. */
+export const PICKER_LOAD_FAILED = "Couldn't load the customer list, so no customer can be picked. Nothing was changed.";
 
 type CustomerSelectProps = {
   name: string;
@@ -23,6 +26,42 @@ type CustomerSelectProps = {
   required?: boolean;
   className?: string;
 };
+
+/**
+ * The picker itself (no loading): the names, or none with the error and Retry when the load failed. The document's own customer
+ * stays shown either way. Exported for tests.
+ */
+export function CustomerSelectView({ name, required, className, current, names, failed, onChoose, onRetry }: {
+  name: string;
+  required?: boolean;
+  className?: string;
+  current: string;
+  names: string[];
+  failed: boolean;
+  onChoose: (value: string) => void;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      <select
+        name={name}
+        required={required}
+        value={current}
+        onChange={(event) => onChoose(event.target.value)}
+        className={className ?? "h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"}
+      >
+        <option value="">{failed ? "Couldn't load customers" : "Select customer..."}</option>
+        {pickerOptions(failed ? [] : names, current).map((customer) => <option key={customer} value={customer}>{customer}</option>)}
+        {failed ? null : <option value={ADD_NEW}>+ Add new customer</option>}
+      </select>
+      {failed ? (
+        <p role="alert" className="mt-1 text-sm text-red-700" data-testid="customer-picker-error">
+          {PICKER_LOAD_FAILED} <button type="button" className="font-semibold underline" onClick={onRetry}>Retry</button>
+        </p>
+      ) : null}
+    </>
+  );
+}
 
 /**
  * Native select of customers that submits the customer NAME under `name`,
@@ -37,16 +76,11 @@ export function CustomerSelect({ name, defaultValue = "", value, onValueChange, 
   const current = value ?? internal;
 
   const load = useCallback(async () => {
-    try {
-      // Archived customers (097) are left out; a document that already names one still shows it (`options` below).
-      const data = await fetchPickerCustomers();
-      setNames(data.map((c) => c.name));
-      setLoadFailed(false);
-    } catch (err) {
-      console.error(err);
-      setLoadFailed(true);
-      setNames(DEMO_MODE ? (await loadDemoCustomers()).map((c) => c.name) : []);
-    }
+    // Archived customers (097) are left out; a document that already names one still shows it (pickerOptions). Fails closed: if
+    // the list or the archive choices can't be read, no customer is offered (demo mode keeps its placeholder list).
+    const result = await loadPickerNames(fetchPickerCustomers);
+    setLoadFailed(result.failed);
+    setNames(result.failed && DEMO_MODE ? (await loadDemoCustomers()).map((c) => c.name) : result.names);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -85,21 +119,10 @@ export function CustomerSelect({ name, defaultValue = "", value, onValueChange, 
     });
   }
 
-  const options = current && !names.includes(current) ? [current, ...names] : names;
-
   return (
     <>
-      <select
-        name={name}
-        required={required}
-        value={current}
-        onChange={(event) => choose(event.target.value)}
-        className={className ?? "h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm"}
-      >
-        <option value="">{loadFailed && !DEMO_MODE ? "Couldn't load customers" : "Select customer..."}</option>
-        {options.map((customer) => <option key={customer} value={customer}>{customer}</option>)}
-        <option value={ADD_NEW}>+ Add new customer</option>
-      </select>
+      <CustomerSelectView name={name} required={required} className={className} current={current} names={names} failed={loadFailed && !DEMO_MODE}
+        onChoose={choose} onRetry={() => void load()} />
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add new customer</DialogTitle><DialogDescription>Saved to your customer list and selected automatically.</DialogDescription></DialogHeader>
