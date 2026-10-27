@@ -10,6 +10,10 @@
  * years of imported history (old unpaid invoices, long-expired quotes) would otherwise open on a wall of stale items on day
  * one; those stay findable on their own pages. Exactly 365 days old is still shown, 366 is not.
  *
+ * BILLING (migration 099): a job is invoiced as it is despatched, so a Complete job whose order still has quantity to send, or quantity
+ * sent and not invoiced, is listed ("jobs-unbilled", admin and office; quantities only, no money), read from
+ * jobs_awaiting_despatch_or_invoice(). Before 099 that function is missing and the section is simply empty.
+ *
  * ROLES: admin sees every rule. Office sees the non-money rules (the dashboard already keeps invoice figures from office).
  * Workshop and viewer see only the workshop rules: late jobs, jobs awaiting inspection, delivery notes awaiting. Money rules
  * (overdue invoices, draft invoices, uninvoiced delivery notes) are never offered to workshop or viewer, and the loader does
@@ -46,7 +50,8 @@ export type AttentionRuleId =
   | "invoices-draft"
   | "delivery-awaiting"
   | "jobs-inspection"
-  | "delivery-uninvoiced";
+  | "delivery-uninvoiced"
+  | "jobs-unbilled";
 
 type Rule = { id: AttentionRuleId; title: string; href: string; roles: AttentionRole[]; money: boolean };
 
@@ -64,6 +69,7 @@ export const ATTENTION_RULES: Rule[] = [
   { id: "delivery-awaiting", title: "Delivery notes awaiting for over a day", href: "/delivery-notes?filter=awaiting-old", roles: ALL, money: false },
   { id: "jobs-inspection", title: "Jobs waiting for inspection", href: "/jobs?filter=awaiting-inspection", roles: ALL, money: false },
   { id: "delivery-uninvoiced", title: "Delivery notes despatched with no invoice", href: "/delivery-notes?filter=not-invoiced", roles: ["admin"], money: true },
+  { id: "jobs-unbilled", title: "Complete jobs not yet fully despatched or invoiced", href: "/jobs?filter=complete-unbilled", roles: OFFICE, money: false },
 ];
 
 /** The rules this role may see (the loader reads only these). */
@@ -90,6 +96,8 @@ export type AttentionInput = {
   invoices: Row[] | null;
   /** Delivery notes (status awaiting, or sent out). */
   deliveryNotes: Row[] | null;
+  /** 099: Complete jobs with order quantity to despatch or to invoice (jobs_awaiting_despatch_or_invoice). Optional: none before 099. */
+  unbilledJobs?: Row[] | null;
 };
 
 export type AttentionItem = { key: string; title: string; detail: string; href: string; ageDays: number };
@@ -227,6 +235,17 @@ export function buildAttention(input: AttentionInput, role: AttentionRole, today
       if (!since) return null;
       const days = Math.max(0, daysBetween(since, today));
       return { key: `du-${row.id}`, title: `Delivery note ${text(row.dn_number)} not invoiced`, detail: `${text(row.customer)} (${text(row.status)} ${plural(days, "day")} ago)`, href: "/delivery-notes", ageDays: days };
+    }),
+    // 099: Complete, and the order still has quantity to send (to_despatch NULL: no order lines yet, nothing sent) or sent and not invoiced.
+    "jobs-unbilled": () => section(rule("jobs-unbilled"), input.unbilledJobs === undefined ? [] : input.unbilledJobs, (row) => {
+      const done = dayOf(row.completed_at);
+      if (!done) return null;
+      const toDespatch = row.to_despatch == null ? null : Number(row.to_despatch);
+      const toInvoice = Number(row.to_invoice ?? 0);
+      if (toDespatch !== null && toDespatch <= 0 && toInvoice <= 0) return null;
+      const parts = [toDespatch === null ? "nothing despatched yet" : toDespatch > 0 ? `${toDespatch} to despatch` : null, toInvoice > 0 ? `${toInvoice} despatched, not invoiced` : null].filter(Boolean);
+      const days = Math.max(0, daysBetween(done, today));
+      return { key: `jb-${row.job_id}`, title: `Job ${text(row.job_no)} is Complete: ${parts.join(", ")}`, detail: `${text(row.customer)} (complete ${plural(days, "day")})`, href: jobHref(row.job_id), ageDays: days };
     }),
   };
   return ATTENTION_RULES.filter((r) => visible.has(r.id)).map((r) => out[r.id]());
