@@ -10,7 +10,10 @@ import { signIn, world } from "./helpers";
 const w = world();
 
 const london = (offsetDays: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + offsetDays * 86_400_000));
-const stamp = (offsetDays: number) => new Date(Date.now() + offsetDays * 86_400_000).toISOString();
+// Noon UTC, offsetDays whole days from today's London date: that instant has the same London date in GMT and BST, so the app's whole
+// London calendar days ("N days") are exactly -offsetDays at any hour. Now minus N x 24 h is not: within 6 days after the clocks
+// go back, a run between 23:00 and 24:00 UTC lands on the next London date and shows N - 1 (CI run 40420511653, 26 Oct 2026).
+const stamp = (offsetDays: number) => new Date(Date.parse(`${london(0)}T12:00:00Z`) + offsetDays * 86_400_000).toISOString();
 
 test("admin sees one item per rule with its count and View all link", async ({ page }) => {
   const solo = await createSoloTenant(w.runId, "attention");
