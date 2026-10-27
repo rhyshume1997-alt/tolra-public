@@ -112,8 +112,8 @@ markers(migration, present) AS (
     ('095 finance check audit events',    EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'audit_event_allowed' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '7e8d396511ddb056daa61953bfccd12b')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0')),
     ('099 part despatch invoice quantity', EXISTS (SELECT 1 FROM col WHERE table_name = 'invoice_line_items' AND column_name = 'sales_order_line_id')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af2b452bdda21370c6988fa7f363024b')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '10b805353825ebc49549d103a36eb900'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8c4d3694cec4ac679916f916afc41985')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -296,13 +296,13 @@ checks(n, check_name, value, expected) AS (
               FROM fn WHERE nspname = 'public' AND proname = 'write_audit'), 'missing'),
     '076 / 035 before 095, 095 / 095 after (other: stop, 095 refuses to replace it). 39 is 094''s row'
   UNION ALL SELECT 41, '099 needs: invoice_from_delivery_notes_draft 059''s, job_finish_draft_invoice and delivery_note_try_draft 081''s, replace_draft_invoice 073''s (or already 099''s)',
-    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cff9113a2490bda9b901764974adfa0a' THEN '059' WHEN '135a95ccc2934df3fee8811c3d7047a7' THEN '099' ELSE 'other' END
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cff9113a2490bda9b901764974adfa0a' THEN '059' WHEN 'd467a505ab13a1cc1b1fa51cd8922f58' THEN '099' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'invoice_from_delivery_notes_draft'), 'missing')
-    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '492fa39d76311ecfc78ce860a5f1160b' THEN '081' WHEN 'af2b452bdda21370c6988fa7f363024b' THEN '099' ELSE 'other' END
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '492fa39d76311ecfc78ce860a5f1160b' THEN '081' WHEN '8c4d3694cec4ac679916f916afc41985' THEN '099' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice'), 'missing')
-    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '52a9771fec832f0e20e9d780e7561caa' THEN '081' WHEN '86586da39cd1064a47265a1180480d27' THEN '099' ELSE 'other' END
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '52a9771fec832f0e20e9d780e7561caa' THEN '081' WHEN 'c1464c01f419d1866e7143a41076e7d0' THEN '099' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'delivery_note_try_draft'), 'missing')
-    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'bc56dd3aa75000c36f959955b71026ca' THEN '073' WHEN '10b805353825ebc49549d103a36eb900' THEN '099' ELSE 'other' END
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'bc56dd3aa75000c36f959955b71026ca' THEN '073' WHEN '8e8e4cc70d1cd7ad4c3268c49e52f305' THEN '099' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice'), 'missing'),
     '059 / 081 / 081 / 073 before 099, 099 / 099 / 099 / 099 after (other: stop, 099 refuses to replace it)'
   UNION ALL SELECT 42, '099 (informational): live Job Finish invoices made by 081 (from 099 they count the whole order as invoiced) / all live invoices',

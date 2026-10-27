@@ -1,8 +1,9 @@
 -- 099 rollback: ONLY with Rhys's approval. Puts back 059's public.invoice_from_delivery_notes_draft, 081's job_finish_draft_invoice and
 -- delivery_note_try_draft and 073's replace_draft_invoice byte for byte (same signatures, security and grants), and removes everything
--- 099 added: the triggers invoice_lines_within_despatched, invoice_lines_link_kept and zz_same_org_sales_order_line_id, the functions
--- order_line_billing, order_lines_lock, invoice_add_delivery_note, invoice_lines_within_despatched, invoice_lines_link_kept and
--- draft_invoice_balances, the table invoice_job_finish_legacy and the column invoice_line_items.sales_order_line_id (with its index).
+-- 099 added: the triggers invoice_lines_within_despatched, invoice_lines_kind_guard and zz_same_org_sales_order_line_id, the functions
+-- order_line_billing, order_lines_lock, invoice_add_delivery_note, invoice_lines_within_despatched, invoice_lines_kind_guard,
+-- draft_invoice_balances, draft_invoice_order_lines and jobs_awaiting_despatch_or_invoice, the tables invoice_job_finish_legacy and invoice_notes_legacy, and the
+-- columns invoice_line_items.sales_order_line_id (with its index) and line_kind (with its check).
 -- No invoice, line quantity or delivery note is changed: drafts made under 099 keep the despatched quantities they bill (only their
 -- order-line links go). Afterwards Job Finish again drafts the order's full quantities, and draft quantities are not checked against
 -- what was despatched. Run the whole text as one transaction, then the release preflight (marker 099 shows "not applied").
@@ -19,16 +20,16 @@ BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_td FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_note_try_draft(uuid,uuid,text)');
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) INTO v_rd FROM pg_proc p WHERE p.oid = to_regprocedure('public.replace_draft_invoice(uuid,timestamp with time zone,jsonb,jsonb)');
   -- First of each pair: 099's body; second: the predecessor's (a second run of this rollback).
-  IF v_dn IS NULL OR v_dn NOT IN ('135a95ccc2934df3fee8811c3d7047a7', 'cff9113a2490bda9b901764974adfa0a') THEN
+  IF v_dn IS NULL OR v_dn NOT IN ('d467a505ab13a1cc1b1fa51cd8922f58', 'cff9113a2490bda9b901764974adfa0a') THEN
     RAISE EXCEPTION '099 rollback: invoice_from_delivery_notes_draft (md5 %) is neither 099''s nor 059''s; stop and compare', coalesce(v_dn, 'missing');
   END IF;
-  IF v_jf IS NULL OR v_jf NOT IN ('af2b452bdda21370c6988fa7f363024b', '492fa39d76311ecfc78ce860a5f1160b') THEN
+  IF v_jf IS NULL OR v_jf NOT IN ('8c4d3694cec4ac679916f916afc41985', '492fa39d76311ecfc78ce860a5f1160b') THEN
     RAISE EXCEPTION '099 rollback: job_finish_draft_invoice (md5 %) is neither 099''s nor 081''s; stop and compare', coalesce(v_jf, 'missing');
   END IF;
-  IF v_td IS NULL OR v_td NOT IN ('86586da39cd1064a47265a1180480d27', '52a9771fec832f0e20e9d780e7561caa') THEN
+  IF v_td IS NULL OR v_td NOT IN ('c1464c01f419d1866e7143a41076e7d0', '52a9771fec832f0e20e9d780e7561caa') THEN
     RAISE EXCEPTION '099 rollback: delivery_note_try_draft (md5 %) is neither 099''s nor 081''s; stop and compare', coalesce(v_td, 'missing');
   END IF;
-  IF v_rd IS NULL OR v_rd NOT IN ('10b805353825ebc49549d103a36eb900', 'bc56dd3aa75000c36f959955b71026ca') THEN
+  IF v_rd IS NULL OR v_rd NOT IN ('8e8e4cc70d1cd7ad4c3268c49e52f305', 'bc56dd3aa75000c36f959955b71026ca') THEN
     RAISE EXCEPTION '099 rollback: replace_draft_invoice (md5 %) is neither 099''s nor 073''s; stop and compare', coalesce(v_rd, 'missing');
   END IF;
 END
@@ -446,16 +447,21 @@ GRANT EXECUTE ON FUNCTION public.replace_draft_invoice(UUID, TIMESTAMPTZ, JSONB,
 
 -- What 099 added.
 DROP TRIGGER IF EXISTS invoice_lines_within_despatched ON public.invoice_line_items;
-DROP TRIGGER IF EXISTS invoice_lines_link_kept ON public.invoice_line_items;
+DROP TRIGGER IF EXISTS invoice_lines_kind_guard ON public.invoice_line_items;
 DROP TRIGGER IF EXISTS zz_same_org_sales_order_line_id ON public.invoice_line_items;
 DROP FUNCTION IF EXISTS public.draft_invoice_balances(UUID);
 DROP FUNCTION IF EXISTS public.invoice_add_delivery_note(UUID, UUID, UUID);
 DROP FUNCTION IF EXISTS public.invoice_lines_within_despatched();
-DROP FUNCTION IF EXISTS public.invoice_lines_link_kept();
+DROP FUNCTION IF EXISTS public.invoice_lines_kind_guard();
+DROP FUNCTION IF EXISTS public.jobs_awaiting_despatch_or_invoice();
+DROP FUNCTION IF EXISTS public.draft_invoice_order_lines(UUID);
 DROP FUNCTION IF EXISTS public.order_lines_lock(UUID[]);
 DROP FUNCTION IF EXISTS public.order_line_billing(UUID, UUID);
 DROP TABLE IF EXISTS public.invoice_job_finish_legacy;
+DROP TABLE IF EXISTS public.invoice_notes_legacy;
 DROP INDEX IF EXISTS public.idx_invoice_line_items_order_line;
+ALTER TABLE public.invoice_line_items DROP CONSTRAINT IF EXISTS invoice_line_items_line_kind;
+ALTER TABLE public.invoice_line_items DROP COLUMN IF EXISTS line_kind;
 ALTER TABLE public.invoice_line_items DROP COLUMN IF EXISTS sales_order_line_id;
 
 DO $$
@@ -467,6 +473,8 @@ BEGIN
     RAISE EXCEPTION '099 rollback: a function is not its predecessor''s afterwards';
   END IF;
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'invoice_line_items' AND column_name = 'sales_order_line_id')
+     OR EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'invoice_line_items' AND column_name = 'line_kind')
+     OR to_regclass('public.invoice_notes_legacy') IS NOT NULL OR to_regprocedure('public.jobs_awaiting_despatch_or_invoice()') IS NOT NULL OR to_regprocedure('public.draft_invoice_order_lines(uuid)') IS NOT NULL
      OR to_regclass('public.invoice_job_finish_legacy') IS NOT NULL OR to_regprocedure('public.order_line_billing(uuid,uuid)') IS NOT NULL
      OR to_regprocedure('public.draft_invoice_balances(uuid)') IS NOT NULL THEN
     RAISE EXCEPTION '099 rollback: something 099 added is still there';

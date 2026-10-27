@@ -377,7 +377,7 @@
  {
   "kind": "function",
   "object": "public.delivery_note_try_draft(p_note uuid, p_org uuid, p_cause text)",
-  "detail": "definer search_path=pg_catalog, public 7aa3dc1a6cee984602a1cc11fe6366ae"
+  "detail": "definer search_path=pg_catalog, public 5a30f0c0bd41a73d94e232dac663174c"
  },
  {
   "kind": "function",
@@ -412,7 +412,12 @@
  {
   "kind": "function",
   "object": "public.draft_invoice_balances(p_invoice uuid)",
-  "detail": "definer search_path=pg_catalog, public 33d4249dc04815fa58bab006575dff38"
+  "detail": "definer search_path=pg_catalog, public 2a30a9618f69eeb6b5bf36bbd17d67c5"
+ },
+ {
+  "kind": "function",
+  "object": "public.draft_invoice_order_lines(p_invoice uuid)",
+  "detail": "definer search_path=pg_catalog, public 8bbf5738e41dc4560d172f7bed8881d3"
  },
  {
   "kind": "function",
@@ -712,12 +717,12 @@
  {
   "kind": "function",
   "object": "public.invoice_add_delivery_note(p_org uuid, p_invoice uuid, p_note uuid)",
-  "detail": "definer search_path=pg_catalog, public cdc198e9b53ea391c827656768c08ab7"
+  "detail": "definer search_path=pg_catalog, public a7c7a2261479990d342178c238f4cdf2"
  },
  {
   "kind": "function",
   "object": "public.invoice_from_delivery_notes_draft(p_org uuid, p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)",
-  "detail": "definer search_path=pg_catalog, public c2dd3e1ef004d3244c3233780a773325"
+  "detail": "definer search_path=pg_catalog, public 0b513d82f75d7a15c1e5f61e18899e09"
  },
  {
   "kind": "function",
@@ -736,13 +741,13 @@
  },
  {
   "kind": "function",
-  "object": "public.invoice_lines_link_kept()",
-  "detail": "invoker search_path=pg_catalog, public b2fbe498beed04232f1bb613f20c8047"
+  "object": "public.invoice_lines_kind_guard()",
+  "detail": "invoker search_path=pg_catalog, public 0ee7c39b81be34d0a75a9093eccb7372"
  },
  {
   "kind": "function",
   "object": "public.invoice_lines_within_despatched()",
-  "detail": "definer search_path=pg_catalog, public 2aec7ea5bfae0e3ab125ebc6b3d8dbcb"
+  "detail": "definer search_path=pg_catalog, public 3e16df9427883cf192114f4cd7ea1d13"
  },
  {
   "kind": "function",
@@ -837,7 +842,7 @@
  {
   "kind": "function",
   "object": "public.job_finish_draft_invoice(p_job uuid, p_org uuid)",
-  "detail": "definer search_path=pg_catalog, public 7f5dc3157306422ffc7779ab6a2e8a58"
+  "detail": "definer search_path=pg_catalog, public 4a2618d65635800a436faef36946473c"
  },
  {
   "kind": "function",
@@ -898,6 +903,11 @@
   "kind": "function",
   "object": "public.jobs_assignment_keep()",
   "detail": "invoker search_path=pg_catalog, public a19d1e88ed370ee74d4d2de746ffc00f"
+ },
+ {
+  "kind": "function",
+  "object": "public.jobs_awaiting_despatch_or_invoice()",
+  "detail": "definer search_path=pg_catalog, public ef521946254e1effd5ccaffa4d77ffc1"
  },
  {
   "kind": "function",
@@ -1122,7 +1132,7 @@
  {
   "kind": "function",
   "object": "public.order_line_billing(p_line uuid, p_except_invoice uuid)",
-  "detail": "definer search_path=pg_catalog, public 5005a9b7ff6263c1ddf04553e69fdede"
+  "detail": "definer search_path=pg_catalog, public 9a3f18207baac08a89418d2e1d79d42c"
  },
  {
   "kind": "function",
@@ -1357,7 +1367,7 @@
  {
   "kind": "function",
   "object": "public.replace_draft_invoice(p_invoice uuid, p_expected_updated_at timestamp with time zone, p_header jsonb, p_lines jsonb)",
-  "detail": "invoker search_path=pg_catalog, public 86f77bed6b26d4e9e7a64b4d4a80361e"
+  "detail": "invoker search_path=pg_catalog, public 1c64d417fb36b8741d99397bdc9366ee"
  },
  {
   "kind": "function",
@@ -2201,6 +2211,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.draft_invoice_order_lines(p_invoice uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.enforce_same_org_parent()",
   "detail": "authenticated,service_role"
  },
@@ -2521,7 +2536,7 @@
  },
  {
   "kind": "function-grant",
-  "object": "public.invoice_lines_link_kept()",
+  "object": "public.invoice_lines_kind_guard()",
   "detail": "service_role"
  },
  {
@@ -2683,6 +2698,11 @@
   "kind": "function-grant",
   "object": "public.jobs_assignment_keep()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.jobs_awaiting_despatch_or_invoice()",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",
@@ -4671,6 +4691,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.invoice_notes_legacy",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.invoice_payments",
   "detail": "enabled"
  },
@@ -5846,13 +5871,13 @@
  },
  {
   "kind": "trigger",
-  "object": "public.invoice_line_items :: invoice_lines_link_kept",
-  "detail": "O ce180d087cff6d840dbfadde7ab45602"
+  "object": "public.invoice_line_items :: invoice_lines_kind_guard",
+  "detail": "O 4f4349a5c3df8193aea1199b62cd65df"
  },
  {
   "kind": "trigger",
   "object": "public.invoice_line_items :: invoice_lines_within_despatched",
-  "detail": "O 7679605ffac85ec7731595b303ec700a"
+  "detail": "O b3822200fc632f614d3f6e047669cd35"
  },
  {
   "kind": "trigger",
@@ -5868,6 +5893,11 @@
   "kind": "trigger",
   "object": "public.invoice_line_items :: zz_same_org_sales_order_line_id",
   "detail": "O d34c1c7fc257c61ebaa6517678c36dd2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoice_notes_legacy :: support_read_only",
+  "detail": "O 8759b6f73ec65c527c4fef2cd8c69e80"
  },
  {
   "kind": "trigger",

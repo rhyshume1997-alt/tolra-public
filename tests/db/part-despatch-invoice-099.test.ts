@@ -5,6 +5,9 @@
  *   - a part despatch drafts only that part; a second part goes on the job's draft (or its own draft), the rest stays outstanding;
  *   - a draft's quantity can't be raised above what is despatched and not on another invoice: through the editor, a direct write,
  *     or two writers at once; the editor's links are kept;
+ *   - reducing or deleting a line of an unissued draft frees that quantity: the next draft of the order takes it, or the editor adds it
+ *     back; a reduction racing a raise is serialised;
+ *   - a line is 'order' (linked, made only by the drafting functions) or 'manual' (tooling, carriage: never linked);
  *   - the delivery note path and Job Finish never bill the same quantity twice, also against a Job Finish draft made before 099;
  *   - an issued invoice is never changed; another company can't read or touch any of it.
  *
@@ -100,6 +103,9 @@ const invoice = (id: string) => one<{ status: string; invoice_ref: string | null
 const lines = (id: string) => rows<{ id: string; description: string; quantity: string; unit_price: string; sales_order_line_id: string | null }>(
   "select id, description, quantity, unit_price, sales_order_line_id from public.invoice_line_items where invoice_id = $1 order by position, id", [id]);
 const short = async (id: string) => (await lines(id)).map((l) => [l.description, Number(l.quantity)]);
+/** The dashboard's "Complete jobs not yet fully despatched or invoiced" row for a job, as the office reads it. */
+const awaiting = async (jobId: string) => (await q<{ job_id: string; to_despatch: string | null; to_invoice: string }>(who("office"), "select * from public.jobs_awaiting_despatch_or_invoice()"))
+  .filter((r) => r.job_id === jobId).map((r) => ({ toDespatch: r.to_despatch === null ? null : Number(r.to_despatch), toInvoice: Number(r.to_invoice) }));
 const jobInvoices = (jobId: string) => rows<{ id: string; status: string }>("select id, status from public.invoices where job_id = $1 order by created_at, id", [jobId]);
 const balances = (by: Who, id: string) => q<{ line_position: number; sales_order_line_id: string | null; ordered: string | null; despatched: string | null; on_other_invoices: string | null; available: string | null }>(
   by, "select * from public.draft_invoice_balances($1)", [id]);
@@ -107,17 +113,22 @@ const pickFrom = (by: Who, notes: string[]) => q<{ r: { invoice_id: string; subt
   by, "select public.create_invoice_from_delivery_notes($1::uuid[], current_date, current_date + 30, '30 days') as r", [notes]).then((r) => r[0].r);
 const pickRefusal = (by: Who, notes: string[]) => refusal(by, "select public.create_invoice_from_delivery_notes($1::uuid[], current_date, current_date + 30, '30 days')", [notes]);
 
+type Sent = { description: string; quantity: number; unit_price: number; vat_pct: number; vat_exempt: boolean; sales_order_line_id?: string | null };
 /** What the editor sends for `invoiceId` (replace_draft_invoice) with each line's quantity changed by `qty` (and its link as stored). */
-async function editorSave(by: Who, invoiceId: string, qty: (l: { description: string; quantity: number }) => number, opts: { links?: boolean; relink?: string } = {}) {
-  const ls = await lines(invoiceId);
-  // updated_at as text: the token keeps its microseconds (a JS Date would drop them and read as changed).
-  const inv = await one<{ updated_at: string; vat_enabled: boolean }>("select updated_at::text as updated_at, vat_enabled from public.invoices where id = $1", [invoiceId]);
-  const sent = ls.map((l, i) => {
+async function editorSave(by: Who, invoiceId: string, qty: (l: { description: string; quantity: number }) => number, opts: { links?: boolean; relink?: string; add?: Sent[]; drop?: string } = {}) {
+  const ls = (await lines(invoiceId)).filter((l) => l.description !== opts.drop);
+  const sent: Sent[] = ls.map((l, i) => {
     const quantity = qty({ description: l.description, quantity: Number(l.quantity) });
     const base = { description: l.description, quantity, unit_price: Number(l.unit_price), vat_pct: 20, vat_exempt: false };
     if (opts.links === false) return base;
     return { ...base, sales_order_line_id: i === 0 && opts.relink ? opts.relink : l.sales_order_line_id };
-  });
+  }).concat(opts.add ?? []);
+  return saveLines(by, invoiceId, sent);
+}
+/** replace_draft_invoice with exactly these lines, the header's totals worked out as the editor does. */
+async function saveLines(by: Who, invoiceId: string, sent: Sent[]) {
+  // updated_at as text: the token keeps its microseconds (a JS Date would drop them and read as changed).
+  const inv = await one<{ updated_at: string; vat_enabled: boolean }>("select updated_at::text as updated_at, vat_enabled from public.invoices where id = $1", [invoiceId]);
   const net = sent.reduce((s, l) => s + Math.round(l.quantity * l.unit_price * 100) / 100, 0);
   const vat = sent.reduce((s, l) => s + Math.round(Math.round(l.quantity * l.unit_price * 100) / 100 * 20) / 100, 0);
   const n = Math.round(net * 100) / 100;
@@ -159,11 +170,15 @@ describe("a part despatch, then a second part", () => {
     expect(await jobInvoices(j.jobId)).toEqual([]);
     const job = await one<{ n: string }>("select count(*) as n from security_audit.audit_log where action = 'JOB_DRAFT_INVOICE' and entity_id = $1", [j.jobId]);
     expect(Number(job.n)).toBe(0);
+    // Meanwhile the dashboard lists it: Complete, 19 to despatch (12 + 7), nothing to invoice. The workshop doesn't read this list.
+    expect(await awaiting(j.jobId)).toEqual([{ toDespatch: 19, toInvoice: 0 }]);
+    expect(await refusal(who("workshop"), "select * from public.jobs_awaiting_despatch_or_invoice()")).toMatchObject({ code: "42501" });
 
     const n1 = await despatch(j, [[j.flange, 5]]);
     const draft = (await noteInvoice(n1))!;
     expect(await short(draft)).toEqual([["Flange 80mm", 5]]);
     expect((await invoice(draft)).subtotal).toBe("750.00");
+    expect(await awaiting(j.jobId)).toEqual([{ toDespatch: 14, toInvoice: 0 }]);
     const n2 = await despatch(j, [[j.flange, 4], [j.bush, 7]]);
     expect(await noteInvoice(n2)).toBe(draft);
     expect(await jobInvoices(j.jobId)).toHaveLength(1);
@@ -184,8 +199,12 @@ describe("a part despatch, then a second part", () => {
     const billed = await rows<{ id: string; q: string }>(
       "select l.sales_order_line_id as id, sum(l.quantity) as q from public.invoice_line_items l join public.invoices i on i.id = l.invoice_id where i.job_id = $1 group by 1", [j.jobId]);
     expect(Object.fromEntries(billed.map((b) => [b.id, Number(b.q)]))).toEqual({ [j.flange]: 12, [j.bush]: 7 });
-    // Nothing is left: the manual picker has nothing to bill.
+    // Nothing is left: the manual picker has nothing to bill, and the dashboard no longer lists the job.
     expect(await pickRefusal(who("office"), [n3])).toMatchObject({ code: "22023" });
+    expect(await awaiting(j.jobId)).toEqual([]);
+    // Taking the flanges off the last draft lists it again as despatched and not invoiced.
+    expect(await editorSave(who("office"), next, () => 1)).toBeNull();
+    expect(await awaiting(j.jobId)).toEqual([{ toDespatch: 0, toInvoice: 2 }]);
   });
 });
 
@@ -210,10 +229,13 @@ describe("editing a draft: never more than despatched and not invoiced elsewhere
     expect(await editorSave(who("office"), b, () => 3.001)).toMatchObject({ code: "22023", hint: "over_despatched" });
   });
 
-  it("the editor keeps links: an old screen's save (no links) and a link to another order line are refused", async () => {
+  it("the editor keeps links: an old screen's save (no links) and a link to another order's line are refused", async () => {
     const { o, b } = await twoDrafts();
+    const other = await order();
     expect(await editorSave(who("office"), b, () => 3, { links: false })).toMatchObject({ code: "22023", hint: "reload_needed" });
-    expect(await editorSave(who("office"), b, () => 1, { relink: o.bush })).toMatchObject({ code: "22023", hint: "order_link_kept" });
+    expect(await editorSave(who("office"), b, () => 1, { relink: other.flange })).toMatchObject({ code: "22023", hint: "order_link_kept" });
+    // A line of the draft's own order is allowed, but only for what is despatched (no bush has gone out).
+    expect(await editorSave(who("office"), b, () => 1, { relink: o.bush })).toMatchObject({ code: "22023", hint: "over_despatched" });
     expect((await lines(b)).map((l) => l.sales_order_line_id)).toEqual([o.flange]);
   });
 
@@ -224,10 +246,67 @@ describe("editing a draft: never more than despatched and not invoiced elsewhere
     expect(await refusal(who("office"), "update public.invoice_line_items set sales_order_line_id = null where id = $1", [line.id])).toMatchObject({ code: "22023", hint: "order_link_kept" });
     expect(await refusal(who("office"), "update public.invoice_line_items set sales_order_line_id = $2 where id = $1", [line.id, o.bush])).toMatchObject({ code: "22023", hint: "order_link_kept" });
     expect(await refusal(who("office"), "insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, sales_order_line_id) values ($1, $2, 5, 'Flange 80mm', 1, 150, $3)",
-      [alpha().id, a, o.flange])).toMatchObject({ code: "22023", hint: "over_despatched" });
+      [alpha().id, a, o.flange])).toMatchObject({ code: "42501", hint: "order_link_by_drafting" });
     // The database owner is held to it too (it's not a role check).
     await expect(rows("update public.invoice_line_items set quantity = 9 where id = $1", [line.id])).rejects.toMatchObject({ code: "22023" });
     expect(await short(b)).toEqual([["Flange 80mm", 3]]);
+  });
+
+  it("reducing an unissued draft frees the quantity: the editor shows it, and a reduction racing a raise is serialised", async () => {
+    const { o, a, b } = await twoDrafts();
+    // b may take only what is not on a (8 despatched, 5 on a).
+    expect(Number((await balances(who("office"), b))[0].available)).toBe(3);
+    expect(await editorSave(who("office"), a, () => 3)).toBeNull();
+    // a now bills 3 of its note's 5: 2 are free, and b's balance says so.
+    expect(Number((await balances(who("office"), b))[0].available)).toBe(5);
+    // Race: a reduction (a: 3 -> 1) holds the order line's lock; a raise of b to 7 waits for it, then sees the 2 it freed.
+    const r = await withDb((watch) => withDb((x) => withDb(async (y) => {
+      await x.query("begin");
+      await become(x, who("office"));
+      await x.query("update public.invoice_line_items set quantity = 1 where invoice_id = $1 and sales_order_line_id = $2", [a, o.flange]);
+      await y.query("begin");
+      await become(y, who("admin"));
+      const pid = (await y.query<{ p: number }>("select pg_backend_pid() as p")).rows[0].p;
+      const pending = y.query("update public.invoice_line_items set quantity = 7 where invoice_id = $1 and sales_order_line_id = $2", [b, o.flange]).then(() => null, (e: { code?: string; hint?: string }) => e);
+      let waited = false;
+      for (let i = 0; i < 500 && !waited; i += 1) {
+        waited = (await watch.query<{ t: string | null }>("select wait_event_type as t from pg_stat_activity where pid = $1", [pid])).rows[0]?.t === "Lock";
+        if (!waited) await sleep(10);
+      }
+      await x.query("commit");
+      const second = await pending;
+      await y.query(second ? "rollback" : "commit");
+      return { waited, second };
+    })));
+    expect(r).toEqual({ waited: true, second: null });
+    expect(await short(a)).toEqual([["Flange 80mm", 1]]);
+    expect(await short(b)).toEqual([["Flange 80mm", 7]]);
+    // Exactly what went out is billed: 1 + 7 = 8; nothing more fits.
+    expect(await editorSave(who("office"), a, () => 2)).toMatchObject({ code: "22023", hint: "over_despatched" });
+  });
+
+  it("deleting a line of an unissued draft frees it; the next draft of the order takes it (as the next delivery note goes out)", async () => {
+    const o = await order();
+    const d1 = (await noteInvoice(await despatch(o, [[o.flange, 5], [o.bush, 7]])))!;
+    // The bushes are taken off this draft (and it is issued without them): 7 bushes are despatched and not invoiced.
+    expect(await editorSave(who("office"), d1, (l) => l.quantity, { drop: "Bush 25mm" })).toBeNull();
+    expect(await short(d1)).toEqual([["Flange 80mm", 5]]);
+    // The next note (2 flanges) drafts its flanges plus the 7 freed bushes, linked.
+    const d2 = (await noteInvoice(await despatch(o, [[o.flange, 2]])))!;
+    expect((await lines(d2)).map((l) => [l.description, Number(l.quantity), l.sales_order_line_id])).toEqual([["Flange 80mm", 2, o.flange], ["Bush 25mm", 7, o.bush]]);
+    expect(await invoice(d2)).toMatchObject({ subtotal: "400.03", vat: "80.01", total: "480.04" });
+    // Freed again (the bushes off d2): the editor of d1 offers them, and adding them there is allowed.
+    expect(await editorSave(who("office"), d2, (l) => l.quantity, { drop: "Bush 25mm" })).toBeNull();
+    const offered = (await balances(who("office"), d1)).filter((b) => b.line_position === null);
+    expect(offered.map((b) => [b.sales_order_line_id, Number(b.available)])).toEqual([[o.bush, 7]]);
+    expect(await editorSave(who("office"), d1, (l) => l.quantity, { add: [{ description: "Bush 25mm", quantity: 8, unit_price: 14.29, vat_pct: 20, vat_exempt: false, sales_order_line_id: o.bush }] }))
+      .toMatchObject({ code: "22023", hint: "over_despatched" });
+    expect(await editorSave(who("office"), d1, (l) => l.quantity, { add: [{ description: "Bush 25mm", quantity: 7, unit_price: 14.29, vat_pct: 20, vat_exempt: false, sales_order_line_id: o.bush }] })).toBeNull();
+    expect((await lines(d1)).map((l) => [l.description, Number(l.quantity), l.sales_order_line_id])).toEqual([["Flange 80mm", 5, o.flange], ["Bush 25mm", 7, o.bush]]);
+    // Everything that went out is on exactly one live invoice: 5 + 2 flanges, 7 bushes.
+    const billed = await rows<{ id: string; q: string }>(
+      "select l.sales_order_line_id as id, sum(l.quantity) as q from public.invoice_line_items l where l.invoice_id = any($1::uuid[]) group by 1", [[d1, d2]]);
+    expect(Object.fromEntries(billed.map((b) => [b.id, Number(b.q)]))).toEqual({ [o.flange]: 7, [o.bush]: 7 });
   });
 
   it("two writers taking the same outstanding quantity at once: the second waits, then is refused", async () => {
@@ -257,6 +336,49 @@ describe("editing a draft: never more than despatched and not invoiced elsewhere
     expect(r.second).toMatchObject({ code: "22023", hint: "over_despatched" });
     expect(await short(a)).toEqual([["Flange 80mm", 7]]);
     expect(await short(b)).toEqual([["Flange 80mm", 3]]);
+  });
+});
+
+describe("order lines and manual lines (099)", () => {
+  it("a line is 'order' (linked) or 'manual' (tooling, carriage: never linked); only the drafting functions link; the kind never changes", async () => {
+    const o = await order();
+    const d = (await noteInvoice(await despatch(o, [[o.flange, 2]])))!;
+    expect((await rows<{ line_kind: string }>("select line_kind from public.invoice_line_items where invoice_id = $1", [d]))).toEqual([{ line_kind: "order" }]);
+    // A carriage line typed in the editor: manual, saved.
+    expect(await editorSave(who("office"), d, (l) => l.quantity, { add: [{ description: "Carriage (pallet)", quantity: 1, unit_price: 35, vat_pct: 20, vat_exempt: false, sales_order_line_id: null }] })).toBeNull();
+    expect(await rows("select description, line_kind, sales_order_line_id from public.invoice_line_items where invoice_id = $1 order by position", [d]))
+      .toEqual([{ description: "Flange 80mm", line_kind: "order", sales_order_line_id: o.flange }, { description: "Carriage (pallet)", line_kind: "manual", sales_order_line_id: null }]);
+    // Tooling on a hand-made invoice through create_with_lines: manual, allowed. The same call carrying an order link is refused.
+    const lineOf = (link: string | null) => JSON.stringify([{ description: "Tooling charge", quantity: 1, unit_price: 250, vat_pct: 20, vat_exempt: false, ...(link ? { sales_order_line_id: link } : {}) }]);
+    const head = JSON.stringify({ customer: "Part Co", status: "draft", subtotal: 250, vat: 50, total: 300, carriage: 0, vat_enabled: true, invoice_date: "2026-10-27", due_date: "2026-11-26" });
+    const made = (await q<{ r: string }>(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', $2::jsonb) as r", [head, lineOf(null)]))[0].r;
+    expect(await rows("select line_kind from public.invoice_line_items where invoice_id = $1", [made])).toEqual([{ line_kind: "manual" }]);
+    expect(await refusal(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', $2::jsonb)", [head, lineOf(o.flange)]))
+      .toMatchObject({ code: "42501", hint: "order_link_by_drafting" });
+    // Declared kinds can't be forged either way, by any role, and a kind never changes.
+    expect(await refusal(who("admin"), "insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, line_kind) values ($1, $2, 9, 'x', 1, 1, 'order')", [alpha().id, made]))
+      .toMatchObject({ code: "22023", hint: "order_line_needs_link" });
+    await expect(rows("insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, sales_order_line_id) values ($1, $2, 9, 'x', 1, 150, $3)", [alpha().id, made, o.flange]))
+      .rejects.toMatchObject({ code: "42501" });
+    expect(await refusal(who("office"), "update public.invoice_line_items set line_kind = 'order' where invoice_id = $1", [made])).toMatchObject({ code: "22023", hint: "order_link_kept" });
+  });
+
+  it("an invoice made before 099 keeps counting its notes (reducing it frees nothing) and is offered nothing to add", async () => {
+    const o = await order();
+    const note = await despatchedByOwner(o, [[o.flange, 4]]);
+    // As 059 made it before 099: one unlinked line for the note, the note on it, and in the notes snapshot.
+    const legacy = await one<{ id: string }>(
+      `insert into public.invoices (organization_id, customer, status, subtotal, vat, total, carriage, vat_enabled, carriage_vat, amount_paid, invoice_date, due_date, description, quantity, unit_price)
+       values ($1, 'Part Co', 'draft', 600, 120, 720, 0, true, true, 0, current_date, current_date + 30, 'Flange 80mm', 4, 150) returning id`, [alpha().id]);
+    await rows("insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, vat_pct, vat_exempt, line_kind) values ($1, $2, 0, 'Flange 80mm', 4, 150, 20, false, null)", [alpha().id, legacy.id]);
+    await rows("update public.delivery_notes set invoice_id = $1 where id = $2", [legacy.id, note]);
+    await rows("insert into public.invoice_notes_legacy (invoice_id, organization_id) values ($1, $2)", [legacy.id, alpha().id]);
+    expect(await editorSave(who("office"), legacy.id, () => 1)).toBeNull();
+    expect(await balances(who("office"), legacy.id)).toEqual([expect.objectContaining({ line_position: 0, sales_order_line_id: null })]);
+    // Still counted at its note's 4: a picker for the note is refused, and the next note drafts only its own.
+    expect(await pickRefusal(who("office"), [note])).toMatchObject({ code: "22023" });
+    const next = (await noteInvoice(await despatch(o, [[o.flange, 3]])))!;
+    expect(await short(next)).toEqual([["Flange 80mm", 3]]);
   });
 });
 
