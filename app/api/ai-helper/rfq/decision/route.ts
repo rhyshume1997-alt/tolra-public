@@ -29,6 +29,10 @@ export async function POST(request: Request) {
   const parsed = decisionSchema.safeParse(json.data);
   if (!parsed.success) return jsonError("Invalid request", 400);
   const body = parsed.data;
+  // The company's RFQ switch, as the rfq route checks it: off (or no settings row) records nothing.
+  const { data: status, error: statusError } = await auth.supabase.rpc("ai_helper_status");
+  if (statusError) return jsonError("The AI helper is not available right now.", 503);
+  if ((status as { rfq_enabled?: boolean } | null)?.rfq_enabled !== true) return jsonError("The AI helper is off for this company.", 404);
   const { error } = await auth.supabase.rpc("ai_helper_decide", {
     p_request: body.requestId, p_decision: body.decision, p_quote: body.decision === "approved" ? body.quoteId : null,
   });

@@ -143,9 +143,15 @@ afterAll(async () => {
 
 describe("101: off by default, roles", () => {
   it("a new company: both features off, no cap, no key; reserve refuses while off", async () => {
+    // No settings row at all (nothing is inserted by the migration or by a status read): it reads as off with a cap of 0.
+    expect(await sql("select 1 from public.ai_helper_settings where organization_id = $1", [orgA])).toHaveLength(0);
+    expect(await sql<{ v: unknown }>("select column_default as v from information_schema.columns where table_schema = 'public' and table_name = 'ai_helper_settings' and column_name in ('roundup_enabled', 'rfq_enabled', 'monthly_cap_pence') order by column_name"))
+      .toEqual([{ v: "0" }, { v: "false" }, { v: "false" }]);
+    expect(await reserve(A.admin, "roundup", 1)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
     expect(await status(A.office)).toEqual({ ok: true, value: { roundup_enabled: false, rfq_enabled: false, monthly_cap_pence: 0, key_set: false, key_last4: null, month_spent_pence: 0, month_reserved_pence: 0, can_manage: false } });
     expect(await reserve(A.office, "rfq", 5)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
     expect(await sql("select 1 from public.ai_helper_requests where organization_id = $1", [orgA])).toHaveLength(0);
+    expect(await sql("select 1 from public.ai_helper_settings where organization_id = $1", [orgA])).toHaveLength(0);
   });
 
   it("workshop and viewer get nothing from any function; office may not change settings or the key", async () => {
@@ -234,6 +240,22 @@ describe("101: the cap", () => {
     expect((await audit(orgA, "ai_helper_failed")).at(-1)?.metadata).toMatchObject({ reason: "unavailable", cost_pence: 0 });
   });
 
+  it("two requests at once against a cap that fits only one: exactly one passes, every time; the other is refused 'cap'", async () => {
+    for (let round = 0; round < 10; round += 1) {
+      const used = (await usage(orgA))[0];
+      expect(await save(A.admin, true, true, used.spent_pence + used.reserved_pence + 10)).toMatchObject({ ok: true });
+      const pair = await Promise.all([reserve(A.office, "rfq", 10), reserve(A.admin, "rfq", 10)]);
+      const passed = pair.filter((r) => r.ok && (r.value as { ok: boolean }).ok);
+      expect(passed, `round ${round}`).toHaveLength(1);
+      expect(pair.filter((r) => r.ok && (r.value as { ok: boolean; reason?: string }).reason === "cap"), `round ${round}`).toHaveLength(1);
+      const after = (await usage(orgA))[0];
+      expect(after.spent_pence + after.reserved_pence).toBe(used.spent_pence + used.reserved_pence + 10);
+      const winner = pair.indexOf(passed[0]) === 0 ? A.office : A.admin;
+      await settle(winner, (passed[0] as unknown as { value: { request_id: string } }).value.request_id, "failed", "unavailable", 0, null);
+    }
+    expect(await save(A.admin, true, true, 100)).toMatchObject({ ok: true });
+  });
+
   it("a reservation left open over 10 minutes is released by the next reserve; its late answer still records the spend", async () => {
     const r = await reserve(A.office, "roundup", 5);
     const id = (r as unknown as { value: { request_id: string } }).value.request_id;
@@ -313,6 +335,20 @@ describe("101: two companies", () => {
     }
     expect(await status(B.admin)).toMatchObject({ ok: true, value: { key_set: false, rfq_enabled: true, roundup_enabled: false, monthly_cap_pence: 500 } });
     await expect(as(B.admin, (db) => db.query("select api_key_enc from public.ai_helper_secrets"))).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("the cap: only an admin changes it, and only for their own company", async () => {
+    const capOf = async (org: string) => (await sql<{ c: number }>("select monthly_cap_pence as c from public.ai_helper_settings where organization_id = $1", [org]))[0]?.c;
+    const alpha = await capOf(orgA);
+    const beta = await capOf(orgB);
+    expect(await save(B.office, true, true, 1)).toMatchObject({ ok: false, code: "42501" });
+    expect(await save(A.office, true, true, 1)).toMatchObject({ ok: false, code: "42501" });
+    expect(await save(B.admin, false, true, 250)).toMatchObject({ ok: true, value: { monthly_cap_pence: 250 } });
+    expect(await capOf(orgB)).toBe(250);
+    expect(await capOf(orgA)).toBe(alpha);
+    expect(await save(A.admin, true, true, 100001)).toMatchObject({ ok: false, code: "22023" });
+    expect(await capOf(orgA)).toBe(alpha);
+    expect(await save(B.admin, false, true, beta)).toMatchObject({ ok: true });
   });
 
   it("beta can't settle or decide alpha's requests, and a beta key never reaches alpha", async () => {

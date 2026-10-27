@@ -148,6 +148,26 @@ describe("switches and roles", () => {
     expect(model.calls).toBe(0);
   });
 
+  it("company switch off, or no settings row at all: every route that reads, spends or records refuses (404); only status, settings and the key stay open to switch it on", async () => {
+    const quote = "44444444-4444-4444-8444-444444444444";
+    for (const off of [{ roundup_enabled: false, rfq_enabled: false }, null]) {
+      db.status = off as Record<string, unknown>;
+      db.rpcs = [];
+      auth.role = "admin";
+      expect((await rfq(post({ text: GOOD_RFQ }))).status).toBe(404);
+      expect((await roundup(post({ period: "daily" }))).status).toBe(404);
+      expect((await decide(post({ requestId: REQ, decision: "approved", quoteId: quote }))).status).toBe(404);
+      expect((await decide(post({ requestId: REQ, decision: "rejected" }))).status).toBe(404);
+      expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_status", "ai_helper_status", "ai_helper_status"]);
+      expect(db.reads).toEqual([]);
+      expect(model.calls).toBe(0);
+      // The admin's way to switch it on stays open: the status read, the settings save and the key (they run no model and spend nothing).
+      expect((await status()).status).toBe(200);
+      expect((await settings(post({ roundupEnabled: false, rfqEnabled: false, monthlyCapPence: 0 }))).status).toBe(200);
+      expect(model.calls).toBe(0);
+    }
+  });
+
   it("company switch off: no read, no reservation, no model call", async () => {
     db.status = { roundup_enabled: false, rfq_enabled: false };
     expect((await rfq(post({ text: GOOD_RFQ }))).status).toBe(404);
@@ -272,7 +292,9 @@ describe("decision", () => {
     expect((await decide(post({ requestId: REQ, decision: "approved", quoteId: quote }))).status).toBe(200);
     expect((await decide(post({ requestId: REQ, decision: "rejected" }))).status).toBe(200);
     expect(db.rpcs).toEqual([
+      { fn: "ai_helper_status", args: undefined },
       { fn: "ai_helper_decide", args: { p_request: REQ, p_decision: "approved", p_quote: quote } },
+      { fn: "ai_helper_status", args: undefined },
       { fn: "ai_helper_decide", args: { p_request: REQ, p_decision: "rejected", p_quote: null } },
     ]);
   });
