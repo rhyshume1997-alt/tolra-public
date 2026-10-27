@@ -13,7 +13,8 @@ export function columnScopeText(localOnly: boolean) {
   return localOnly ? "Supabase unavailable: changes are saved in this browser only." : "Changes apply to everyone in this company.";
 }
 
-export function ColumnToggle({ tableKey }: { tableKey: string }) {
+/** `keys` limits the menu to those columns (the Dashboard shows each role only its own tiles). */
+export function ColumnToggle({ tableKey, keys }: { tableKey: string; keys?: string[] }) {
   const { hasAnyRole } = useUser();
   const { isVisible, isLocked, setColumnVisible, resetColumns, hidden, loaded, localOnly } = useColumnVisibility(tableKey);
   const table = COLUMN_TABLES.find((entry) => entry.key === tableKey);
@@ -29,7 +30,7 @@ export function ColumnToggle({ tableKey }: { tableKey: string }) {
         <DropdownMenuLabel>{table.kind === "elements" ? `${table.label}: show / hide` : `${table.label} columns`}</DropdownMenuLabel>
         <p className="px-2 pb-1.5 text-xs text-slate-500" data-testid="column-scope">{columnScopeText(localOnly)}</p>
         <DropdownMenuSeparator />
-        {table.columns.map((column) => (
+        {table.columns.filter((column) => !keys || keys.includes(column.key)).map((column) => (
           <DropdownMenuCheckboxItem
             key={column.key}
             checked={isLocked(column.key) || isVisible(column.key)}
