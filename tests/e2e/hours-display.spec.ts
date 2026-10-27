@@ -82,7 +82,9 @@ for (const size of [{ name: "1280", width: 1280, height: 800 }, { name: "390", w
 
     // The same list is in Settings > Table Columns, and putting Breaks back restores header and cell.
     await page.goto("/settings");
-    await expect(page.getByText("Show Breaks in Weekly hours")).toBeVisible();
+    const breaksSwitch = page.getByRole("switch", { name: "Show Breaks in Weekly hours" });
+    await expect(breaksSwitch).toBeVisible();
+    await expect(breaksSwitch).toHaveAttribute("aria-checked", "false");
     await page.goto(WEEK);
     await expect(row).toBeVisible();
     await setBreaks(page, true);
