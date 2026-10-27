@@ -80,11 +80,11 @@ for (const size of [{ name: "1280", width: 1280, height: 800 }, { name: "390", w
     await expect(totals.getByText("Breaks", { exact: true })).toHaveCount(0);
     await expect(totals.getByText("Clocked", { exact: true })).toBeVisible();
 
-    // The same list is in Settings > Table Columns, and putting Breaks back restores header and cell.
+    // The same list is in Settings > Display (the Weekly hours block), and putting Breaks back restores header and cell.
     await page.goto("/settings");
-    const breaksSwitch = page.getByRole("switch", { name: "Show Breaks in Weekly hours" });
-    await expect(breaksSwitch).toBeVisible();
-    await expect(breaksSwitch).toHaveAttribute("aria-checked", "false");
+    const breaksBox = page.getByTestId("display-screen-hours").getByRole("checkbox", { name: "Breaks", exact: true });
+    await expect(breaksBox).toBeVisible();
+    await expect(breaksBox).not.toBeChecked();
     await page.goto(WEEK);
     await expect(row).toBeVisible();
     await setBreaks(page, true);
@@ -122,6 +122,7 @@ test("with every optional column hidden, the header is still Person, Clocked, Pa
   await expect(totals.getByText("Breaks", { exact: true })).toHaveCount(0);
 
   await page.goto("/settings");
-  await expect(page.getByRole("switch", { name: "Approval is always shown in Weekly hours" })).toBeDisabled();
-  await expect(page.getByRole("switch", { name: "Approval is always shown in Weekly hours" })).toHaveAttribute("aria-checked", "true");
+  const approvalBox = page.getByTestId("display-screen-hours").getByRole("checkbox", { name: /^Approval/ });
+  await expect(approvalBox).toBeDisabled();
+  await expect(approvalBox).toBeChecked();
 });
