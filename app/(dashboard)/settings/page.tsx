@@ -20,7 +20,7 @@ import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
 import { useUser } from "@/lib/use-user";
 import { hexOr, isHexColour, PRODUCT_BRANDING, textOn } from "@/lib/branding";
-import { COLUMN_TABLES, NAV_TOGGLES, resetColumns, setColumnHidden, setNavHidden, type SaveResult, useOrgSettings } from "@/lib/org-settings";
+import { NAV_TOGGLES, resetHiddenColumns, saveOrgSettings, screensByGroup, setColumnHidden, setItemShown, setNavHidden, shownCount, type SaveResult, useOrgSettings } from "@/lib/org-settings";
 import { PRODUCT } from "@/lib/product";
 import { WEEKDAY_OPTIONS } from "@/lib/machine-schedule";
 import { BREAK_MINUTES, LUNCH_MINUTES, MIN_DAY_HOURS, formatHoursMinutes, paidDay, paidWeek } from "@/lib/working-hours";
@@ -613,8 +613,21 @@ export default function SettingsPage() {
 
   function toggleColumn(tableKey: string, columnKey: string, visible: boolean) {
     const current = settings.hiddenColumns[tableKey] ?? [];
-    const next = visible ? current.filter((item) => item !== columnKey) : Array.from(new Set([...current, columnKey]));
-    void persist(setColumnHidden(tableKey, columnKey, !visible), "Column settings", { hiddenColumns: { [tableKey]: current } }, { hiddenColumns: { [tableKey]: next } }, { table: tableKey, column: columnKey, visible });
+    const table = screensByGroup().flatMap((entry) => entry.screens).find((screen) => screen.key === tableKey);
+    if (!table || table.columns.find((column) => column.key === columnKey)?.locked) return;
+    const next = setItemShown(table, current, columnKey, visible);
+    void persist(setColumnHidden(tableKey, columnKey, !visible), "Display settings", { hiddenColumns: { [tableKey]: current } }, { hiddenColumns: { [tableKey]: next } }, { table: tableKey, column: columnKey, visible });
+  }
+
+  /** Reset to default = nothing hidden. Each screen is cleared as its own merge-save, so other screens and the menu are untouched. */
+  function resetScreens(screenKeys: string[] | undefined, label: string) {
+    const before = settings.hiddenColumns;
+    const after = resetHiddenColumns(before, screenKeys);
+    const cleared = Object.keys(before).filter((key) => !(key in after) && (before[key] ?? []).length > 0);
+    if (!cleared.length) return;
+    const oldData = { hiddenColumns: Object.fromEntries(cleared.map((key) => [key, before[key]])) };
+    const newData = { hiddenColumns: Object.fromEntries(cleared.map((key) => [key, [] as string[]])) };
+    void persist(saveOrgSettings(newData), "Display settings", oldData, newData, { reset: label });
   }
 
   return (
@@ -652,24 +665,45 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><Columns3 className="size-5 text-brand-accent" /> Table Columns</CardTitle></CardHeader>
-          <CardContent className="space-y-5">
-            <p className="text-sm text-slate-500">Choose which columns show in each list. Changes apply to everyone in this company. Selection and Actions columns, and each list&apos;s reference column, are always shown. Admin and office users can also change these from the Columns button on each page.</p>
-            {COLUMN_TABLES.map((table) => (
-              <div key={table.key}>
-                <div className="flex items-center justify-between gap-3 pb-2"><p className="text-sm font-semibold text-slate-900">{table.label}</p><Button type="button" variant="outline" size="sm" disabled={!(settings.hiddenColumns[table.key] ?? []).length} onClick={() => void persist(resetColumns(table.key), "Column settings", { hiddenColumns: { [table.key]: settings.hiddenColumns[table.key] ?? [] } }, { hiddenColumns: { [table.key]: [] } }, { table: table.key, reset: true })}>Show all</Button></div>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {table.columns.map((column) => {
-                    const visible = Boolean(column.locked) || !(settings.hiddenColumns[table.key] ?? []).includes(column.key);
-                    return (
-                      <label key={column.key} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                        <span className="text-sm text-slate-800">{column.label}</span>
-                        <Switch checked={visible} disabled={column.locked} label={column.locked ? `${column.label} is always shown in ${table.label}` : `Show ${column.label} in ${table.label}`} onChange={(checked) => { if (!column.locked) toggleColumn(table.key, column.key, checked); }} />
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Columns3 className="size-5 text-brand-accent" /> Display</CardTitle></CardHeader>
+          <CardContent className="space-y-5" data-testid="display-settings">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <p className="min-w-0 flex-1 basis-64 text-sm text-slate-500">Choose what each screen shows. Changes apply to everyone in this company. Locked items are always shown. Admin and office users can also change these from the Columns button on each screen.</p>
+              <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={() => resetScreens(undefined, "all")}>Reset all to default</Button>
+            </div>
+            {screensByGroup().map(({ group, screens }) => (
+              <section key={group} aria-label={`${group} screens`} className="space-y-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group}</p>
+                {screens.map((table) => {
+                  const hidden = settings.hiddenColumns[table.key] ?? [];
+                  const { shown, total } = shownCount(table, hidden);
+                  return (
+                    <div key={table.key} data-testid={`display-screen-${table.key}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">{table.label}</p>
+                          <p className="text-xs text-slate-500">{table.description}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-slate-500" data-testid={`display-count-${table.key}`}>{shown} of {total} shown</span>
+                          <Button type="button" variant="outline" size="sm" className="min-h-9" disabled={hidden.length === 0} aria-label={`Reset ${table.label} to default`} onClick={() => resetScreens([table.key], table.label)}>Reset to default</Button>
+                        </div>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {table.columns.map((column) => {
+                          const visible = column.locked || !hidden.includes(column.key);
+                          return (
+                            <label key={column.key} className="flex min-w-0 items-center gap-3 rounded-lg border p-3">
+                              <input type="checkbox" className="size-4 shrink-0" checked={visible} disabled={column.locked} onChange={(event) => toggleColumn(table.key, column.key, event.target.checked)} />
+                              <span className="min-w-0 text-sm text-slate-800">{column.label}{column.locked ? <span className="ml-1 text-xs text-slate-500">(always shown)</span> : null}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </section>
             ))}
             {saving ? <p className="text-xs text-slate-500">Saving...</p> : null}
           </CardContent>

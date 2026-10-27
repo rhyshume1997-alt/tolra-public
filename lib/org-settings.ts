@@ -31,9 +31,12 @@ export const NAV_TOGGLES: NavToggle[] = [
 
 export const NEVER_HIDDEN_HREFS = ["/dashboard", "/settings"];
 
-/** `locked`: always shown, so the picker lists it switched on and disabled (never in the hidden list). */
+/** `locked` items are always shown: Settings > Display shows them ticked and disabled, and they can never be hidden. */
 export type ColumnDef = { key: string; label: string; locked?: boolean };
-export type TableDef = { key: string; label: string; columns: ColumnDef[] };
+/** `group` and `description` are optional; Settings > Display falls back to DISPLAY_META, then to "Tables". */
+export type TableDef = { key: string; label: string; columns: ColumnDef[]; group?: DisplayGroup; description?: string };
+
+export type DisplayGroup = "Tables" | "Cards" | "Timeline" | "Sheet" | "Dashboard";
 
 /** Selection checkbox and Actions columns are always shown, so they are not listed. Each table's reference column is locked. */
 export const COLUMN_TABLES: TableDef[] = [
@@ -51,6 +54,58 @@ export const COLUMN_TABLES: TableDef[] = [
   /** Approval Queue (cards): fields in rendered order. Recipient, To and Subject line identify the draft and Copy / Mark as Sent / Edit / Skip are actions, so all stay on. */
   { key: "approvals", label: "Approval Queue", columns: [{ key: "type", label: "Type" }, { key: "customer", label: "Recipient", locked: true }, { key: "detail", label: "Subject line", locked: true }, { key: "drafted", label: "Drafted date" }, { key: "to", label: "To address", locked: true }, { key: "subject", label: "Subject" }, { key: "preview", label: "Message preview" }] },
 ];
+
+/* ---- Settings > Display: every screen's show / hide choices in one place (built from COLUMN_TABLES) ---- */
+
+export const DISPLAY_GROUPS: DisplayGroup[] = ["Tables", "Cards", "Timeline", "Sheet", "Dashboard"];
+
+/** Per-screen group and description for entries that do not carry their own. Add a line here or set `group` / `description` on the COLUMN_TABLES entry. */
+export const DISPLAY_META: Record<string, { group: DisplayGroup; description: string }> = {
+  quotes: { group: "Tables", description: "The quotes list." },
+  "sales-orders": { group: "Tables", description: "The sales orders list." },
+  "purchase-orders": { group: "Tables", description: "The purchase orders list." },
+  invoices: { group: "Tables", description: "The invoices list." },
+  "delivery-notes": { group: "Tables", description: "The delivery notes list." },
+  customers: { group: "Tables", description: "The customers list." },
+  suppliers: { group: "Tables", description: "The suppliers list." },
+  schedule: { group: "Timeline", description: "The schedule timeline." },
+  hours: { group: "Sheet", description: "The weekly hours sheet." },
+  dashboard: { group: "Dashboard", description: "The dashboard." },
+  rfq: { group: "Cards", description: "Requests for quote." },
+  approvals: { group: "Cards", description: "Approvals." },
+};
+
+export type DisplayScreen = TableDef & { group: DisplayGroup; description: string };
+
+/** Every screen the Settings page lists, in COLUMN_TABLES order. Entries other branches add to COLUMN_TABLES appear here automatically. */
+export function screensForSettings(): DisplayScreen[] {
+  return COLUMN_TABLES.map((table) => {
+    const meta = DISPLAY_META[table.key];
+    return { ...table, group: table.group ?? meta?.group ?? "Tables", description: table.description ?? meta?.description ?? `The ${table.label} screen.` };
+  });
+}
+
+export function screensByGroup(screens: DisplayScreen[] = screensForSettings()): { group: DisplayGroup; screens: DisplayScreen[] }[] {
+  return DISPLAY_GROUPS.map((group) => ({ group, screens: screens.filter((screen) => screen.group === group) })).filter((entry) => entry.screens.length > 0);
+}
+
+/** "n of m shown" for one screen. Locked items always count as shown. */
+export function shownCount(screen: TableDef, hidden: string[] = []) {
+  const shown = screen.columns.filter((column) => column.locked || !hidden.includes(column.key)).length;
+  return { shown, total: screen.columns.length };
+}
+
+/** Next hidden list for one screen after ticking or unticking an item. Locked items are never hidden. */
+export function setItemShown(screen: TableDef, hidden: string[] = [], key: string, shown: boolean): string[] {
+  if (screen.columns.find((column) => column.key === key)?.locked) return hidden.filter((item) => item !== key);
+  return shown ? hidden.filter((item) => item !== key) : Array.from(new Set([...hidden, key]));
+}
+
+/** Reset to default = nothing hidden. Pass screen keys to reset those screens, or none to reset every registered screen. Other keys are kept. */
+export function resetHiddenColumns(hiddenColumns: Record<string, string[]>, screenKeys?: string[]): Record<string, string[]> {
+  const keys = new Set(screenKeys ?? COLUMN_TABLES.map((table) => table.key));
+  return Object.fromEntries(Object.entries(hiddenColumns).filter(([key]) => !keys.has(key)));
+}
 
 export type OrgSettings = {
   hiddenNav: string[];
