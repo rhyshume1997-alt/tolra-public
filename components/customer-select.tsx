@@ -76,7 +76,7 @@ export function CustomerSelect({ name, defaultValue = "", value, onValueChange, 
   const current = value ?? internal;
 
   const load = useCallback(async () => {
-    // Archived customers (097) are left out; a document that already names one still shows it (pickerOptions). Fails closed: if
+    // Archived customers (100) are left out; a document that already names one still shows it (pickerOptions). Fails closed: if
     // the list or the archive choices can't be read, no customer is offered (demo mode keeps its placeholder list).
     const result = await loadPickerNames(fetchPickerCustomers);
     setLoadFailed(result.failed);

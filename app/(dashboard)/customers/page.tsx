@@ -53,7 +53,7 @@ export default function CustomersPage() {
   const { saving, run } = useSaving();
   /** The customer's mobile needs migration 073: a new customer offers it only once the database has it. */
   const has073 = useDatabaseHas073() === true;
-  // Archive / Unarchive (migration 097, as 028's records): an archived customer leaves the pickers and this default list; nothing is
+  // Archive / Unarchive (migration 100, as 028's records): an archived customer leaves the pickers and this default list; nothing is
   // deleted, and documents that name it keep showing it. Names found only on documents can't be archived (there is no record).
   const archive = useArchive("customers");
   const [phase, setPhase] = useState<PhaseFilterValue>("open");

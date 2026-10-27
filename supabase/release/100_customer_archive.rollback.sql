@@ -1,7 +1,7 @@
--- 097 rollback: ONLY with Rhys's approval. Puts back 028's public.set_archive_state byte for byte (same signature, security and
+-- 100 rollback: ONLY with Rhys's approval. Puts back 028's public.set_archive_state byte for byte (same signature, security and
 -- grants) and 028's record_table check on public.record_archive_state. Customers' archive choices are removed first (028's check
 -- can't hold them): every archived customer shows again in the pickers and the Customers list. No customer row is changed; every
--- other record's archive choice is kept. Run the whole text as one transaction, then the release preflight (marker 097 shows
+-- other record's archive choice is kept. Run the whole text as one transaction, then the release preflight (marker 100 shows
 -- "not applied").
 BEGIN;
 DO $$
@@ -9,9 +9,9 @@ DECLARE
   v_fn TEXT;
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_archive_state(text,uuid,text)') INTO v_fn;
-  -- 0b3bc80a...: 097's body; 4b31a2b9...: 028's (a second run of this rollback).
+  -- 0b3bc80a...: 100's body; 4b31a2b9...: 028's (a second run of this rollback).
   IF v_fn IS NULL OR v_fn NOT IN ('0b3bc80a57f0e0e16e4f0d7f42c5eccf', '4b31a2b95d2c7c52e9c31fe660a7e61b') THEN
-    RAISE EXCEPTION '097 rollback: set_archive_state (md5 %) is neither 097''s nor 028''s; stop and compare', coalesce(v_fn, 'missing');
+    RAISE EXCEPTION '100 rollback: set_archive_state (md5 %) is neither 100''s nor 028''s; stop and compare', coalesce(v_fn, 'missing');
   END IF;
 END
 $$;
@@ -63,11 +63,11 @@ BEGIN
              OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']
              OR has_function_privilege('anon', p.oid, 'EXECUTE') OR NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
       FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_archive_state(text,uuid,text)')) THEN
-    RAISE EXCEPTION '097 rollback: set_archive_state is not 028''s afterwards';
+    RAISE EXCEPTION '100 rollback: set_archive_state is not 028''s afterwards';
   END IF;
   IF EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = 'public.record_archive_state'::regclass AND c.conname = 'record_archive_state_record_table_check'
                AND pg_get_constraintdef(c.oid) LIKE '%''customers''::text%') THEN
-    RAISE EXCEPTION '097 rollback: record_archive_state still accepts customers';
+    RAISE EXCEPTION '100 rollback: record_archive_state still accepts customers';
   END IF;
 END
 $$;

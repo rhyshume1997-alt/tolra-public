@@ -1,5 +1,5 @@
 /**
- * Customer archive (migration 097): office archives a customer on the Customers page; it leaves the default list and the customer
+ * Customer archive (migration 100): office archives a customer on the Customers page; it leaves the default list and the customer
  * pickers for new documents, the Archived filter shows it, Unarchive puts it back. Documents that name it keep showing it. A used
  * customer can't be deleted (the database refuses it), and another company can't archive it.
  */

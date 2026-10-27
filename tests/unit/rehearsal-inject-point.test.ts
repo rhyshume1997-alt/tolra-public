@@ -229,7 +229,7 @@ describe("rehearsal candidates for 077 (it creates nothing: the probe is securit
   });
 });
 
-describe("rehearsal candidates for 097 (it creates nothing: the probe is record_archive_state's new check, or set_archive_state's new body)", () => {
+describe("rehearsal candidates for 100 (it creates nothing: the probe is record_archive_state's new check, or set_archive_state's new body)", () => {
   const file = readdirSync(MIGRATIONS).find((f) => f.endsWith("_customer_archive.sql"))!;
   const text = readFileSync(path.join(MIGRATIONS, file), "utf8");
   const ls = text.split("\n");
@@ -246,7 +246,7 @@ describe("rehearsal candidates for 097 (it creates nothing: the probe is record_
     expect(candidates[0].exists).toContain("= ARRAY['customers', 'delivery_notes', 'invoices', 'jobs', 'purchase_orders', 'quotes', 'sales_orders']::text[])");
   });
 
-  it("late: the function's new body first, then the check (both fallbacks: 097 creates no object)", () => {
+  it("late: the function's new body first, then the check (both fallbacks: 100 creates no object)", () => {
     const candidates = injectCandidates(above(injectPoint(ls, "late")!));
     expect(candidates.map((c) => c.what)).toEqual(["function public.set_archive_state", "body of public.set_archive_state", CHECK]);
   });

@@ -1,12 +1,12 @@
 /**
- * Migration 097: customers can be archived (028's Archive / Unarchive), never deleted once used.
+ * Migration 100: customers can be archived (028's Archive / Unarchive), never deleted once used.
  *
  *   - admin and office archive and unarchive their own company's customers; the customer row is never changed;
  *   - workshop and viewer can't; another company's customer is refused as not found; the table is still written only through
  *     set_archive_state, and members see only their own company's choices;
  *   - a customer named on any document (quote, RFQ, sales order, job, delivery note, invoice, credit note) can't be deleted by a
  *     signed-in user through the API (082's guard), archived or not; a customer used nowhere can be;
- *   - supabase/verify/customer_archive_097.sql answers TRUE on every row; the rollback puts 028's function and check back (inside a
+ *   - supabase/verify/customer_archive_100.sql answers TRUE on every row; the rollback puts 028's function and check back (inside a
  *     transaction that is rolled back) and the release applies again cleanly.
  */
 import { readFileSync } from "node:fs";
@@ -39,7 +39,7 @@ afterAll(async () => {
   if (world) await destroySyntheticWorld(world.runId);
 });
 
-describe("set_archive_state for customers (097)", () => {
+describe("set_archive_state for customers (100)", () => {
   it("admin and office archive and unarchive their own company's customer; the customer row is unchanged", async () => {
     const before = (await adminClient().from("customers").select("*").eq("id", customer.alpha).single()).data;
     const office = await signedInClient(world.tenants.alpha.users.office);
@@ -124,9 +124,9 @@ describe("hard delete of a customer (082's guard, through the API)", () => {
   });
 });
 
-describe("097 release files on the local stack", () => {
+describe("100 release files on the local stack", () => {
   it("the verify script answers TRUE on every row", async () => {
-    const rows = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/customer_archive_097.sql"))).rows);
+    const rows = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/customer_archive_100.sql"))).rows);
     expect(rows).toHaveLength(6);
     expect(rows.filter((r) => !r.ok)).toEqual([]);
   });
@@ -136,16 +136,16 @@ describe("097 release files on the local stack", () => {
       await db.query("begin");
       try {
         await db.query("insert into public.record_archive_state (organization_id, record_table, record_id, state) values ($1, 'jobs', gen_random_uuid(), 'archived')", [world.tenants.alpha.id]);
-        await db.query(unwrapped(read("supabase/release/097_customer_archive.rollback.sql")));
-        const after = (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/customer_archive_097.sql"))).rows;
-        expect(Object.fromEntries(after.map((r) => [r.check_name, r.ok]))).toMatchObject({ set_archive_state_is_097: false, record_archive_state_accepts_customers: false });
+        await db.query(unwrapped(read("supabase/release/100_customer_archive.rollback.sql")));
+        const after = (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/customer_archive_100.sql"))).rows;
+        expect(Object.fromEntries(after.map((r) => [r.check_name, r.ok]))).toMatchObject({ set_archive_state_is_100: false, record_archive_state_accepts_customers: false });
         expect((await db.query("select count(*)::int as n from public.record_archive_state where record_table = 'customers'")).rows[0].n).toBe(0);
         expect((await db.query("select count(*)::int as n from public.record_archive_state where record_table = 'jobs' and organization_id = $1", [world.tenants.alpha.id])).rows[0].n).toBeGreaterThan(0);
-        await db.query(unwrapped(read("supabase/release/097_customer_archive.release.sql")));
-        const again = (await db.query<{ ok: boolean }>(read("supabase/verify/customer_archive_097.sql"))).rows;
+        await db.query(unwrapped(read("supabase/release/100_customer_archive.release.sql")));
+        const again = (await db.query<{ ok: boolean }>(read("supabase/verify/customer_archive_100.sql"))).rows;
         expect(again.every((r) => r.ok)).toBe(true);
         // Safe to run again.
-        await db.query(unwrapped(read("supabase/release/097_customer_archive.release.sql")));
+        await db.query(unwrapped(read("supabase/release/100_customer_archive.release.sql")));
       } finally {
         await db.query("rollback");
       }

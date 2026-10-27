@@ -50,7 +50,7 @@ describe("set_archive_state", () => {
     expect((await admin.rpc("set_archive_state", { p_table: "jobs", p_id: invoice.beta, p_state: "archived" })).error).toMatchObject({ code: "P0002" });
     const direct = await admin.from("record_archive_state").insert({ organization_id: world.tenants.alpha.id, record_table: "jobs", record_id: invoice.alpha, state: "archived" });
     expect(direct.error).not.toBeNull();
-    // A table outside the list is refused (customers joined it in 097: tests/db/customer-archive-097.test.ts).
+    // A table outside the list is refused (customers joined it in 100: tests/db/customer-archive-100.test.ts).
     expect((await admin.rpc("set_archive_state", { p_table: "suppliers", p_id: invoice.alpha, p_state: "archived" })).error).toMatchObject({ code: "22023" });
   });
 

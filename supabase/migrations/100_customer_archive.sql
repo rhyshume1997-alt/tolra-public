@@ -1,8 +1,5 @@
--- 097_customer_archive.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
-BEGIN;
-
 -- =====================================================================================================
--- 097: customers can be archived (never deleted once used). NUMBERING (provisional): 096 is reserved for another job; numbers
+-- 100: customers can be archived (never deleted once used). NUMBERING (provisional): 096 is reserved for another job; numbers
 -- are settled at merge. Needs 028 (record_archive_state, set_archive_state) and 082 (customers_in_use_guard). Touches none of
 -- 083 to 095's objects.
 --
@@ -20,13 +17,13 @@ BEGIN;
 --   a. public.record_archive_state: its record_table check also allows 'customers' (028's six tables plus one).
 --   b. public.set_archive_state: 028's text with 'customers' added to the tables it accepts. Same signature, definer, search_path,
 --      grants; same role rule (admin and office) and same-company rule (another company's customer: P0002 not found).
--- GUARD (section 1): set_archive_state must be 028's (or already 097's), md5 with every whitespace character removed, and the
--- check must be 028's (or already 097's). Safe to run again.
--- SELF-CHECK (section 4). Rollback: supabase/release/097_customer_archive.rollback.sql (only with Rhys's approval).
+-- GUARD (section 1): set_archive_state must be 028's (or already 100's), md5 with every whitespace character removed, and the
+-- check must be 028's (or already 100's). Safe to run again.
+-- SELF-CHECK (section 4). Rollback: supabase/release/100_customer_archive.rollback.sql (only with Rhys's approval).
 -- =====================================================================================================
 
 -- -----------------------------------------------------------------------------------------------------
--- 1. The guard: set_archive_state is 028's (or already 097's); the record_table check is 028's (or already 097's).
+-- 1. The guard: set_archive_state is 028's (or already 100's); the record_table check is 028's (or already 100's).
 DO $$
 DECLARE
   v_fn  TEXT;
@@ -35,18 +32,18 @@ BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_archive_state(text,uuid,text)') INTO v_fn;
   -- 4b31a2b95d2c7c52e9c31fe660a7e61b: 028's set_archive_state; 0b3bc80a57f0e0e16e4f0d7f42c5eccf: this file's (section 3); both with every whitespace character removed.
   IF v_fn IS NULL OR v_fn NOT IN ('4b31a2b95d2c7c52e9c31fe660a7e61b', '0b3bc80a57f0e0e16e4f0d7f42c5eccf') THEN
-    RAISE EXCEPTION '097: public.set_archive_state is not 028''s (md5 without whitespace %); stop and compare it first', coalesce(v_fn, 'missing');
+    RAISE EXCEPTION '100: public.set_archive_state is not 028''s (md5 without whitespace %); stop and compare it first', coalesce(v_fn, 'missing');
   END IF;
   SELECT pg_get_constraintdef(c.oid) FROM pg_constraint c
   WHERE c.conrelid = to_regclass('public.record_archive_state') AND c.conname = 'record_archive_state_record_table_check' INTO v_chk;
   IF v_chk IS NULL OR v_chk NOT IN (
     'CHECK ((record_table = ANY (ARRAY[''jobs''::text, ''quotes''::text, ''invoices''::text, ''purchase_orders''::text, ''sales_orders''::text, ''delivery_notes''::text])))',
     'CHECK ((record_table = ANY (ARRAY[''jobs''::text, ''quotes''::text, ''invoices''::text, ''purchase_orders''::text, ''sales_orders''::text, ''delivery_notes''::text, ''customers''::text])))') THEN
-    RAISE EXCEPTION '097: record_archive_state''s record_table check is not 028''s (%); stop and compare it first', coalesce(v_chk, 'missing');
+    RAISE EXCEPTION '100: record_archive_state''s record_table check is not 028''s (%); stop and compare it first', coalesce(v_chk, 'missing');
   END IF;
   IF to_regprocedure('public.customers_in_use_guard()') IS NULL
      OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.customers'::regclass AND tgname = 'customers_in_use_guard') THEN
-    RAISE EXCEPTION '097: 082''s customers_in_use_guard is missing';
+    RAISE EXCEPTION '100: 082''s customers_in_use_guard is missing';
   END IF;
 END
 $$;
@@ -95,7 +92,7 @@ REVOKE ALL ON FUNCTION public.set_archive_state(TEXT, UUID, TEXT) FROM PUBLIC, a
 GRANT EXECUTE ON FUNCTION public.set_archive_state(TEXT, UUID, TEXT) TO authenticated;
 
 -- -----------------------------------------------------------------------------------------------------
--- 4. Self-check before COMMIT (the same checks as supabase/verify/customer_archive_097.sql).
+-- 4. Self-check before COMMIT (the same checks as supabase/verify/customer_archive_100.sql).
 DO $$
 BEGIN
   IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> '0b3bc80a57f0e0e16e4f0d7f42c5eccf' OR NOT p.prosecdef
@@ -103,13 +100,11 @@ BEGIN
              OR has_function_privilege('anon', p.oid, 'EXECUTE') OR NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
              OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE')
       FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_archive_state(text,uuid,text)')) THEN
-    RAISE EXCEPTION '097: set_archive_state is not 097''s after the replace';
+    RAISE EXCEPTION '100: set_archive_state is not 100''s after the replace';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = 'public.record_archive_state'::regclass AND c.conname = 'record_archive_state_record_table_check'
                    AND pg_get_constraintdef(c.oid) LIKE '%''customers''::text%') THEN
-    RAISE EXCEPTION '097: record_archive_state does not accept customers after the change';
+    RAISE EXCEPTION '100: record_archive_state does not accept customers after the change';
   END IF;
 END
 $$;
-
-COMMIT;

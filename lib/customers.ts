@@ -145,8 +145,8 @@ export type ArchivedCustomerReader = {
 };
 
 /**
- * The ids of the customers archived by hand (migration 097: record_archive_state, Archive on the Customers page), every row page by
- * page. Before 097 there are none (the table holds no customers' rows), so this reads an empty set.
+ * The ids of the customers archived by hand (migration 100: record_archive_state, Archive on the Customers page), every row page by
+ * page. Before 100 there are none (the table holds no customers' rows), so this reads an empty set.
  */
 export async function readArchivedCustomerIds(client: ArchivedCustomerReader): Promise<Set<string>> {
   const { rows } = await fetchAll((from, to) => client.from("record_archive_state").select("record_id").eq("record_table", "customers").eq("state", "archived").order("record_id").range(from, to), { maxRows: Number.MAX_SAFE_INTEGER });

@@ -1,4 +1,4 @@
-/** Archived customers (migration 097) leave the pickers for new documents: lib/customers withoutArchived / readArchivedCustomerIds. */
+/** Archived customers (migration 100) leave the pickers for new documents: lib/customers withoutArchived / readArchivedCustomerIds. */
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";

@@ -200,7 +200,7 @@ function checkDefinitions(above: string): InjectCandidate[] {
  * BODY (077 creates nothing and only replaces security_audit.set_audit_hash). It "exists" when the stored body (prosrc) is exactly the
  * text between the file's dollar quotes: false before the file runs (the old body is stored), true mid-file, false after a rollback.
  * Last, also fallbacks only: each CHECK constraint the part (re)adds with `ALTER TABLE public.T ADD CONSTRAINT name CHECK (...)` that
- * names string literals, as its NEW DEFINITION (097 creates nothing: it widens record_archive_state's check and replaces a function). It
+ * names string literals, as its NEW DEFINITION (100 creates nothing: it widens record_archive_state's check and replaces a function). It
  * "exists" when a check constraint of that name on that table holds exactly the file's set of string literals: false before the file
  * runs (the old check, without the new value), true mid-file, false after a rollback.
  */

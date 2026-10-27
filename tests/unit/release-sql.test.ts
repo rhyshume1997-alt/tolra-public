@@ -1104,7 +1104,7 @@ describe("prepared release text for the finance check's audit events (supabase/r
   });
 });
 
-describe("prepared release text for the customer archive (supabase/release, 097)", () => {
+describe("prepared release text for the customer archive (supabase/release, 100)", () => {
   const root = path.resolve(__dirname, "../..");
   const read = (file: string) => readFileSync(path.join(root, file), "utf8");
   const file = () => readdirSync(path.join(root, "supabase/migrations")).find((f) => f.endsWith("_customer_archive.sql"))!;
@@ -1142,14 +1142,14 @@ describe("prepared release text for the customer archive (supabase/release, 097)
     expect(sql.replace(/REVOKE ALL ON FUNCTION public\.set_archive_state\([^)]*\) FROM PUBLIC, anon;|GRANT EXECUTE ON FUNCTION public\.set_archive_state\([^)]*\) TO authenticated;/g, "")).not.toMatch(/\b(GRANT|REVOKE) [A-Z, ]+ ON\b/);
     expect(md5(body(m028()))).toBe("4b31a2b95d2c7c52e9c31fe660a7e61b");
     expect(md5(body(def))).toBe("0b3bc80a57f0e0e16e4f0d7f42c5eccf");
-    expect(read("supabase/verify/customer_archive_097.sql")).toContain("body = '0b3bc80a57f0e0e16e4f0d7f42c5eccf'");
+    expect(read("supabase/verify/customer_archive_100.sql")).toContain("body = '0b3bc80a57f0e0e16e4f0d7f42c5eccf'");
     const preflight = read("supabase/verify/release_preflight.sql");
-    expect(preflight).toContain("('097 customer archive'");
+    expect(preflight).toContain("('100 customer archive'");
     for (const h of ["0b3bc80a57f0e0e16e4f0d7f42c5eccf", "4b31a2b95d2c7c52e9c31fe660a7e61b"]) expect(preflight).toContain(`'${h}'`);
   });
 
   it("its rollback puts back 028's set_archive_state exactly (with its grants) and 028's check, guarded by both bodies", () => {
-    const rollback = read("supabase/release/097_customer_archive.rollback.sql");
+    const rollback = read("supabase/release/100_customer_archive.rollback.sql");
     expect(rollback.match(/^BEGIN;$/gm)).toHaveLength(1);
     expect(rollback.trimEnd().endsWith("COMMIT;")).toBe(true);
     expect(rollback).toContain(m028());

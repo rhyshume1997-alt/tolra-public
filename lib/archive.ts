@@ -19,7 +19,7 @@ import type { AuditTable } from "@/lib/audit-contract";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
-/** "customers" (migration 097): archived by hand only (no age rule); an archived customer leaves the pickers and the default list. */
+/** "customers" (migration 100): archived by hand only (no age rule); an archived customer leaves the pickers and the default list. */
 export type ArchiveTable = "jobs" | "quotes" | "invoices" | "purchase_orders" | "sales_orders" | "delivery_notes" | "customers";
 export type Phase = "open" | "done" | "archived";
 export type PhaseFilterValue = Phase | "all";

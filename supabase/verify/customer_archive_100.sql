@@ -1,11 +1,11 @@
--- Migration 097 (customers can be archived; a used customer can't be deleted). Read only: every row should be TRUE (6). Bodies are
+-- Migration 100 (customers can be archived; a used customer can't be deleted). Read only: every row should be TRUE (6). Bodies are
 -- compared with every whitespace character removed (an SQL-editor paste may store CRLF).
 WITH fn AS (
   SELECT p.oid, p.prosecdef, p.proconfig, md5(regexp_replace(p.prosrc, '\s', '', 'g')) AS body
   FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_archive_state(text,uuid,text)')
 )
 -- set_archive_state: 028's body with 'customers' added; definer, 028's search_path.
-SELECT 'set_archive_state_is_097' AS check_name,
+SELECT 'set_archive_state_is_100' AS check_name,
        coalesce((SELECT body = '0b3bc80a57f0e0e16e4f0d7f42c5eccf' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public'] FROM fn), FALSE) AS ok
 -- Signed-in only (as 028): authenticated may call it; anon and PUBLIC may not.
 UNION ALL SELECT 'set_archive_state_signed_in_only',
