@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { VatRateSelect } from "@/components/vat-controls";
 import { VatTotals } from "@/components/vat-totals";
 import { auditEvent } from "@/lib/audit";
-import { type DraftForm, type DraftLine, type DraftVatSettings, type StoredLine, buildDraftReplace, draftFormFrom, draftTotals } from "@/lib/draft-invoice-edit";
+import { type DraftForm, type DraftLine, type DraftVatSettings, type LineBalance, type StoredLine, balanceText, buildDraftReplace, draftFormFrom, draftTotals, overBalanceProblem } from "@/lib/draft-invoice-edit";
 import { missingDbObject } from "@/lib/db-features";
 import { friendlyError } from "@/lib/friendly-error";
 import { DELIVERY_ADDRESS_MAX, INVOICE_NOTE_MAX } from "@/lib/invoice-fields";
@@ -37,6 +37,27 @@ export type DraftInvoice = {
   deliveryAddress?: string | null;
 };
 
+/** 099: each line's order-line link and balance, from draft_invoice_balances (position order, as the lines are loaded). */
+type Links = { state: "loading" } | { state: "none" } | { state: "ready"; byIndex: Array<string | null>; balances: Map<string, LineBalance> } | { state: "stale" };
+
+async function loadLinks(invoiceId: string, lineCount: number): Promise<Links> {
+  if (!supabase) return { state: "none" };
+  const { data, error } = await supabase.rpc("draft_invoice_balances", { p_invoice: invoiceId });
+  if (error) {
+    if (missingDbObject(error)) return { state: "none" }; // before 099: no links, the editor works as before
+    throw error;
+  }
+  const rows = (data ?? []) as Array<{ sales_order_line_id: string | null; ordered: number | string | null; despatched: number | string | null; on_other_invoices: number | string | null; available: number | string | null }>;
+  if (rows.length !== lineCount) return { state: "stale" };
+  const balances = new Map<string, LineBalance>();
+  for (const row of rows) {
+    if (row.sales_order_line_id) {
+      balances.set(row.sales_order_line_id, { ordered: Number(row.ordered), despatched: Number(row.despatched), onOtherInvoices: Number(row.on_other_invoices), available: Number(row.available) });
+    }
+  }
+  return { state: "ready", byIndex: rows.map((row) => row.sales_order_line_id), balances };
+}
+
 /**
  * Edit a draft invoice before it is issued (migration 067, replace_draft_invoice): remove or change lines, quantities, prices and
  * descriptions, the dates, terms, customer PO and carriage. Totals and VAT follow the invoice's own VAT settings, as when it was made.
@@ -55,7 +76,27 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
 }) {
   const [form, setForm] = useState<DraftForm>(() => draftFormFrom(invoice, lines));
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (open) setForm(draftFormFrom(invoice, lines)); }, [open, invoice, lines]);
+  const [links, setLinks] = useState<Links>({ state: "loading" });
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setForm(draftFormFrom(invoice, lines));
+    setLinks({ state: "loading" });
+    loadLinks(invoice.id, lines.length).then((loaded) => {
+      if (cancelled) return;
+      setLinks(loaded);
+      if (loaded.state === "ready") {
+        setForm((current) => ({ ...current, lines: current.lines.map((line, i) => (loaded.byIndex[i] ? { ...line, orderLine: loaded.byIndex[i] ?? undefined } : line)) }));
+      }
+    }, (error) => {
+      if (cancelled) return;
+      setLinks({ state: "stale" });
+      toast.error(friendlyError(error, "Couldn't read what has been despatched for this draft."));
+    });
+    return () => { cancelled = true; };
+  }, [open, invoice, lines]);
+  const balances = links.state === "ready" ? links.balances : undefined;
+  const overProblem = overBalanceProblem(form.lines, balances);
 
   const totals = draftTotals(form, vat);
   const setLine = (index: number, patch: Partial<DraftLine>) => setForm((current) => ({ ...current, lines: current.lines.map((line, i) => (i === index ? { ...line, ...patch } : line)) }));
@@ -64,7 +105,9 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
   const addTextLine = () => setForm((current) => ({ ...current, lines: [...current.lines, { description: "", qty: "0", unit: "0.00", vat: defaultVat, text: true }] }));
 
   async function save() {
-    const built = buildDraftReplace(form, vat, { textLines });
+    if (links.state === "loading") { toast.error("Still reading what has been despatched for this draft. Try again in a moment."); return; }
+    if (links.state === "stale") { toast.error("This draft changed since the page loaded: reload it and make your changes again. Nothing was changed."); return; }
+    const built = buildDraftReplace(form, vat, { textLines, links: links.state === "ready", balances });
     if (!built.ok) { toast.error(built.error); return; }
     setSaving(true);
     try {
@@ -115,8 +158,12 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
                 <label className="space-y-1"><span className="text-xs text-slate-600">Unit price</span><Input aria-label={`Line ${index + 1} unit price`} inputMode="decimal" value={line.unit} onChange={(e) => setLine(index, { unit: e.target.value })} /></label>
                 {vat.registered && vat.vatEnabled ? <VatRateSelect value={line.vat} onChange={(choice) => setLine(index, { vat: choice })} label={`Line ${index + 1} VAT rate`} /> : <span />}
                 <Button type="button" variant="ghost" size="sm" aria-label={`Remove line ${index + 1}`} disabled={form.lines.length === 1} onClick={() => removeLine(index)}><Trash2 className="size-4" /></Button>
+                {line.orderLine && balances?.get(line.orderLine) ? (
+                  <p className="text-xs text-slate-600 sm:col-span-5" data-testid={`line-balance-${index}`}>{balanceText(balances.get(line.orderLine)!)}</p>
+                ) : null}
               </div>
             ))}
+            {overProblem ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-2 text-sm text-red-800" data-testid="over-balance">{overProblem}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={addLine}><Plus className="size-4" /> Add line</Button>
               {textLines ? <Button type="button" variant="outline" size="sm" onClick={addTextLine}><Plus className="size-4" /> Add text line</Button> : null}

@@ -377,7 +377,7 @@
  {
   "kind": "function",
   "object": "public.delivery_note_try_draft(p_note uuid, p_org uuid, p_cause text)",
-  "detail": "definer search_path=pg_catalog, public 869260997e5714cd7eabb727bc835d95"
+  "detail": "definer search_path=pg_catalog, public 7aa3dc1a6cee984602a1cc11fe6366ae"
  },
  {
   "kind": "function",
@@ -408,6 +408,11 @@
   "kind": "function",
   "object": "public.documents_start_as_drafts()",
   "detail": "invoker search_path=pg_catalog, public c3c9417bf2d70e2220f4567fad93d569"
+ },
+ {
+  "kind": "function",
+  "object": "public.draft_invoice_balances(p_invoice uuid)",
+  "detail": "definer search_path=pg_catalog, public 33d4249dc04815fa58bab006575dff38"
  },
  {
   "kind": "function",
@@ -706,8 +711,13 @@
  },
  {
   "kind": "function",
+  "object": "public.invoice_add_delivery_note(p_org uuid, p_invoice uuid, p_note uuid)",
+  "detail": "definer search_path=pg_catalog, public cdc198e9b53ea391c827656768c08ab7"
+ },
+ {
+  "kind": "function",
   "object": "public.invoice_from_delivery_notes_draft(p_org uuid, p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)",
-  "detail": "definer search_path=pg_catalog, public a41d30870382115fe49332082028a7ac"
+  "detail": "definer search_path=pg_catalog, public c2dd3e1ef004d3244c3233780a773325"
  },
  {
   "kind": "function",
@@ -723,6 +733,16 @@
   "kind": "function",
   "object": "public.invoice_lines_issue_lock()",
   "detail": "definer search_path=pg_catalog, public da36e2d42eea9c19131a69c6b0e75c46"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoice_lines_link_kept()",
+  "detail": "invoker search_path=pg_catalog, public b2fbe498beed04232f1bb613f20c8047"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoice_lines_within_despatched()",
+  "detail": "definer search_path=pg_catalog, public 2aec7ea5bfae0e3ab125ebc6b3d8dbcb"
  },
  {
   "kind": "function",
@@ -817,7 +837,7 @@
  {
   "kind": "function",
   "object": "public.job_finish_draft_invoice(p_job uuid, p_org uuid)",
-  "detail": "definer search_path=pg_catalog, public 0279344e1a0bb99bb2868769cbffc411"
+  "detail": "definer search_path=pg_catalog, public 7f5dc3157306422ffc7779ab6a2e8a58"
  },
  {
   "kind": "function",
@@ -1101,6 +1121,16 @@
  },
  {
   "kind": "function",
+  "object": "public.order_line_billing(p_line uuid, p_except_invoice uuid)",
+  "detail": "definer search_path=pg_catalog, public 5005a9b7ff6263c1ddf04553e69fdede"
+ },
+ {
+  "kind": "function",
+  "object": "public.order_lines_lock(p_lines uuid[])",
+  "detail": "invoker search_path=pg_catalog, public c39395c12456f0f4dc0ce0e926ca92e1"
+ },
+ {
+  "kind": "function",
   "object": "public.org_activity(p_from timestamp with time zone, p_to timestamp with time zone, p_actor uuid, p_table text, p_before timestamp with time zone, p_before_id uuid, p_limit integer)",
   "detail": "definer search_path=pg_catalog, public, security_audit b538db6aa130c2a2c02a484df09f3d42"
  },
@@ -1327,7 +1357,7 @@
  {
   "kind": "function",
   "object": "public.replace_draft_invoice(p_invoice uuid, p_expected_updated_at timestamp with time zone, p_header jsonb, p_lines jsonb)",
-  "detail": "invoker search_path=pg_catalog, public a6e72c410ec06937fdc322a0c25e4c7c"
+  "detail": "invoker search_path=pg_catalog, public 86f77bed6b26d4e9e7a64b4d4a80361e"
  },
  {
   "kind": "function",
@@ -2166,6 +2196,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.draft_invoice_balances(p_invoice uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.enforce_same_org_parent()",
   "detail": "authenticated,service_role"
  },
@@ -2461,6 +2496,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.invoice_add_delivery_note(p_org uuid, p_invoice uuid, p_note uuid)",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
   "object": "public.invoice_from_delivery_notes_draft(p_org uuid, p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)",
   "detail": ""
  },
@@ -2477,6 +2517,16 @@
  {
   "kind": "function-grant",
   "object": "public.invoice_lines_issue_lock()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.invoice_lines_link_kept()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.invoice_lines_within_despatched()",
   "detail": "service_role"
  },
  {
@@ -2853,6 +2903,16 @@
   "kind": "function-grant",
   "object": "public.open_replacement_rework(p_rework uuid, p_instructions text)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.order_line_billing(p_line uuid, p_except_invoice uuid)",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.order_lines_lock(p_lines uuid[])",
+  "detail": ""
  },
  {
   "kind": "function-grant",
@@ -4601,6 +4661,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.invoice_job_finish_legacy",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.invoice_line_items",
   "detail": "enabled"
  },
@@ -5761,6 +5826,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoice_job_finish_legacy :: support_read_only",
+  "detail": "O c93f6d38ded2a24827c13fbbdeea785d"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoice_line_items :: admin_mfa",
   "detail": "O 5d5432e56d149d6faa5de3adb183f9ac"
  },
@@ -5776,6 +5846,16 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoice_line_items :: invoice_lines_link_kept",
+  "detail": "O ce180d087cff6d840dbfadde7ab45602"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoice_line_items :: invoice_lines_within_despatched",
+  "detail": "O 7679605ffac85ec7731595b303ec700a"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoice_line_items :: support_read_only",
   "detail": "O 90f5672659525be3c5c86624fb80e77d"
  },
@@ -5783,6 +5863,11 @@
   "kind": "trigger",
   "object": "public.invoice_line_items :: zz_same_org_invoice_id",
   "detail": "O 49425a50299d922ed23cc6c619ab8c2b"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoice_line_items :: zz_same_org_sales_order_line_id",
+  "detail": "O d34c1c7fc257c61ebaa6517678c36dd2"
  },
  {
   "kind": "trigger",
