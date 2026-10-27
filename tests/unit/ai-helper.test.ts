@@ -240,7 +240,7 @@ describe("Anthropic provider (stand-in client, no network)", () => {
     const auth = new Anthropic.AuthenticationError(401, { type: "error", error: { type: "authentication_error", message: "bad key sk-ant-test" } }, "bad key", new Headers());
     await expect(run(async () => { throw auth; })).rejects.toMatchObject({ kind: "unavailable", detail: "auth" });
     await expect(run(async () => { throw new Anthropic.APIConnectionError({ message: "down" }); })).rejects.toMatchObject({ kind: "unavailable" });
-    const err = await run(async () => { throw auth; }).catch((e: AiProviderError) => e);
+    const err = (await run(async () => { throw auth; }).catch((e: unknown) => e)) as AiProviderError;
     expect(String(err.message)).not.toContain("sk-ant");
   });
 });
