@@ -26,7 +26,7 @@ import { supabase } from "@/lib/supabase";
 import { newClientOpId } from "@/lib/machine-runs";
 import { DAY_FLAG_KEYS, DAY_FLAG_LABEL, type WeekDayFlags, flagTotalsSnapshot, flagsShort, saveDayFlags, shortDay } from "@/lib/time-day-flags";
 import { databaseHasTime, missingDbObject } from "@/lib/time-features";
-import { type TimeSettings, FLAG_TEXT, addDays, approvalSnapshot, hm, hmSigned, localDateOf, weekStartOf } from "@/lib/time-sheet";
+import { type TimeSettings, FLAG_TEXT, ROUNDING_NOTE, addDays, approvalSnapshot, hm, hmSigned, localDateOf, weekStartOf } from "@/lib/time-sheet";
 import { type PersonWeek, WEEK_STATE_TEXT, loadWeek } from "@/lib/time-week";
 import { useUser } from "@/lib/use-user";
 
@@ -185,6 +185,7 @@ export function WeekReview() {
           </table>
         </div>
       ) : null}
+      <p className="text-xs text-slate-500" data-testid="rounding-note">{ROUNDING_NOTE}</p>
       <p className="text-xs text-slate-500">
         Hours only: no rates or pay. Paid = clock in to clock out minus unpaid breaks. Overtime is not worked out: it is the days someone ticked Overtime.
         {canApprove ? " After a correction an approved week shows “Changed since approval” until you approve it again." : ""}
