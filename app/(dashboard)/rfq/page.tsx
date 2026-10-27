@@ -7,6 +7,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { FileText, HelpCircle, Inbox, MailCheck, Plus, Send, Sparkles } from "lucide-react";
 
+import { ColumnToggle } from "@/components/column-toggle";
 import { FilterBar } from "@/components/filter-bar";
 import { RoleGate } from "@/components/role-gate";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,8 @@ import { fmtDate, nowIso } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { friendlyError } from "@/lib/friendly-error";
 import { gbp } from "@/lib/money";
+import { RFQ_DISPLAY_KEY, rfqCardFields } from "@/lib/rfq-display";
+import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
@@ -90,6 +93,8 @@ export default function RfqPage() {
   const { profile: company } = useCompanyProfile();
   const { profile } = useUser();
   const { saving, run } = useSaving();
+  const { hidden: hiddenFields } = useColumnVisibility(RFQ_DISPLAY_KEY);
+  const cardFields = useMemo(() => rfqCardFields(hiddenFields), [hiddenFields]);
   const [rfqs, setRfqs] = useState<RfqRow[]>(DEMO_MODE ? sampleRfqs : []);
   const [filters, setFilters] = useState(new Set(["all"]));
   const [linked, setLinked] = useState<Map<string, LinkedQuote>>(new Map());
@@ -321,6 +326,7 @@ export default function RfqPage() {
           <p className="mt-2 text-sm text-slate-500">RFQ means request for quote: a customer asking us for a price.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+        <ColumnToggle tableKey={RFQ_DISPLAY_KEY} />
         {profile?.role === "admin" && mailConfigured ? <Button variant="outline" disabled={checking} onClick={() => void checkInbox()}><MailCheck className="size-4" /> {checking ? "Checking\u2026" : "Check inbox"}</Button> : null}
         <Dialog open={creating} onOpenChange={setCreating}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New RFQ</Button></DialogTrigger>
@@ -371,9 +377,25 @@ export default function RfqPage() {
                 <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex gap-4">
                     <div className="flex size-11 items-center justify-center rounded-lg bg-slate-50"><Icon className="size-5 text-brand-accent" /></div>
-                    <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-slate-950">{rfq.customer}</h3>{showsStatusBadge(stageOf(rfq)) ? <Badge className={meta.badge}>{meta.label}</Badge> : null}<Badge className={STAGE_META[stageOf(rfq)].badge}>{rfqStageLabel(stageOf(rfq), linked.get(rfq.id))}{linked.get(rfq.id) ? <> {"\u00b7"} <strong className="font-bold">{linked.get(rfq.id)!.ref}</strong></> : null}</Badge></div><p className="mt-2 text-sm text-slate-600">{rfq.description}</p><p className="mt-2 text-xs text-slate-500">Value: <strong>{gbp(rfq.value, 0)}</strong> · Received: {rfq.received}</p></div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {cardFields.filter((field) => field.group === "title").map((field) => {
+                          if (field.key === "customer") return <h3 key={field.key} data-rfq-field="customer" className="font-semibold text-slate-950">{rfq.customer}</h3>;
+                          if (field.key === "status") return showsStatusBadge(stageOf(rfq)) ? <Badge key={field.key} data-rfq-field="status" className={meta.badge}>{meta.label}</Badge> : null;
+                          return <Badge key={field.key} data-rfq-field="stage" className={STAGE_META[stageOf(rfq)].badge}>{rfqStageLabel(stageOf(rfq), linked.get(rfq.id))}{linked.get(rfq.id) ? <> {"\u00b7"} <strong className="font-bold">{linked.get(rfq.id)!.ref}</strong></> : null}</Badge>;
+                        })}
+                      </div>
+                      {cardFields.filter((field) => field.group === "body").map((field) => <p key={field.key} data-rfq-field={field.key} className="mt-2 text-sm text-slate-600">{rfq.description}</p>)}
+                      {cardFields.some((field) => field.group === "meta" && field.key !== "actions") ? (
+                        <p className="mt-2 text-xs text-slate-500">
+                          {cardFields.filter((field) => field.group === "meta" && field.key !== "actions").map((field, index) => (
+                            <span key={field.key} data-rfq-field={field.key}>{index ? " \u00b7 " : ""}{field.key === "value" ? <>Value: <strong>{gbp(rfq.value, 0)}</strong></> : <>Received: {rfq.received}</>}</span>
+                          ))}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div data-rfq-field="actions" className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => setViewing(rfq)}>View</Button>
                     {profile?.role === "admin" && inboundByRfq.has(rfq.id) ? <><Button variant="outline" onClick={() => openMail(rfq, "reply")}>Reply</Button><Button variant="outline" onClick={() => openMail(rfq, "forward")}>Forward</Button></> : null}
                     {rfq.status === "clarification" && stageOf(rfq) === "outstanding" ? <Button className="bg-amber-500 text-white hover:bg-amber-600" onClick={() => openClarify(rfq)}>Clarify</Button> : linked.get(rfq.id) ? <Button asChild variant="outline"><Link href={linked.get(rfq.id)!.id ? `/quotes?quote=${encodeURIComponent(linked.get(rfq.id)!.id!)}` : "/quotes"}>Open {linked.get(rfq.id)!.ref}</Link></Button> : <Button asChild className="bg-brand text-brand-ink hover:bg-brand-hover"><Link href={`/quotes?rfq=${encodeURIComponent(rfq.id)}`}>Quote</Link></Button>}

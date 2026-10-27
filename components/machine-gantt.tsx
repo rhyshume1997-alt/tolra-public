@@ -9,6 +9,7 @@ import {
   formatDateTimeShort, formatHours, formatMinutes, formatPlanDate, isWorkingDay, localDateString, mondayOf, timeOf, windowFor, worksOn,
   type BookingSegment, type Machine, type ScheduledBooking,
 } from "@/lib/machine-schedule";
+import { useColumnVisibility } from "@/lib/org-settings";
 import type { PeopleMap } from "@/lib/people";
 import { SCHEDULE_FREE_FILL, SCHEDULE_ORDER, SCHEDULE_STATES, scheduleBlockClass, scheduleLegendText } from "@/lib/status-colours";
 import { runBarLabel, runBarsFor, uncoveredParts, type RunBar, type RunRow } from "@/lib/schedule-live";
@@ -52,6 +53,7 @@ function sameDay(a: Date, b: Date) {
 type Segment = { booking: ScheduledBooking; left: number; width: number; first: boolean; planned?: BookingSegment; outOfHours?: boolean };
 
 export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, runs = [], people = {}, onSelectRun, onRangeChange }: Props) {
+  const { isVisible } = useColumnVisibility("schedule");
   const [span, setSpan] = useState(14);
   const [startDate, setStartDate] = useState(() => mondayOf(new Date()));
 
@@ -95,6 +97,11 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
       });
   }
 
+  /** The bar's tooltip and, with the labels hidden, its accessible name. */
+  function bookingTitle(seg: Segment, machine: Machine) {
+    return `${seg.booking.jobNo} on ${machine.name}\nStart ${formatDateTimeShort(seg.booking.start)}\nEst. finish ${formatDateTimeShort(seg.booking.finish)}\n${liveLeftOf?.(seg.booking) ?? `${formatHours(seg.booking.hoursLeft)} left`} (${seg.booking.status})${seg.planned ? `\nSplit by day: ${formatPlanDate(seg.planned.date)} ${seg.planned.from}-${seg.planned.to} (${formatMinutes(seg.planned.minutes)})${seg.outOfHours ? `, partly or wholly outside ${machine.name}'s hours (drawn at the edge of the day)` : ""}` : ""}`;
+  }
+
   const rangeLabel = `${days[0].toLocaleDateString("en-GB", { day: "numeric", month: "short" })} - ${days[days.length - 1].toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
 
   return (
@@ -102,7 +109,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
       <CardHeader className="gap-3 md:flex md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle className="text-lg">Machine timeline</CardTitle>
-          <p className="mt-1 text-sm text-slate-500">{rangeLabel}. {scheduleLegendText()}</p>
+          <p className="mt-1 text-sm text-slate-500">{rangeLabel}.{isVisible("legend") ? ` ${scheduleLegendText()}` : ""}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5" role="group" aria-label="Timeline length">
@@ -143,7 +150,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                 <div key={machine.id} className="grid border-b border-slate-100" style={{ gridTemplateColumns: `${LABEL_COL}px repeat(${days.length}, minmax(0, 1fr))` }}>
                   <div className="sticky left-0 z-20 flex flex-col justify-center bg-white p-2">
                     <span className="truncate text-sm font-semibold text-slate-900" title={machine.name}>{machine.name}</span>
-                    {machine.type ? <span className="truncate text-[11px] text-slate-500">{machine.type}</span> : null}
+                    {machine.type && isVisible("machine-type") ? <span className="truncate text-[11px] text-slate-500">{machine.type}</span> : null}
                   </div>
                   {days.map((day, i) => {
                     const working = isWorkingDay(day, machine);
@@ -170,7 +177,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                               type="button"
                               data-booking-id={seg.booking.id}
                               data-covered={covered ? "true" : undefined}
-                              aria-label={covered ? `${seg.booking.jobNo} on ${machine.name}, hidden under machine use (${seg.booking.status})` : undefined}
+                              aria-label={covered ? `${seg.booking.jobNo} on ${machine.name}, hidden under machine use (${seg.booking.status})` : isVisible("bar-labels") ? undefined : bookingTitle(seg, machine)}
                               data-plan-date={seg.planned?.date}
                               data-plan-hours={seg.planned?.hours}
                               data-plan-start={seg.planned?.from}
@@ -179,11 +186,11 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                               onClick={() => onSelect?.(seg.booking)}
                               className={`absolute ${covered ? "inset-y-auto top-0 z-[6] h-2" : "inset-y-1"} overflow-hidden px-1 text-left text-[10px] font-semibold leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${scheduleBlockClass(done ? "complete" : running ? "running" : "booked")} hover:brightness-110 ${seg.outOfHours ? "border-y-2 border-dashed border-amber-300" : ""}`}
                               style={{ left: `${seg.left}%`, width: `${seg.width}%` }}
-                              title={`${seg.booking.jobNo} on ${machine.name}\nStart ${formatDateTimeShort(seg.booking.start)}\nEst. finish ${formatDateTimeShort(seg.booking.finish)}\n${liveLeftOf?.(seg.booking) ?? `${formatHours(seg.booking.hoursLeft)} left`} (${seg.booking.status})${seg.planned ? `\nSplit by day: ${formatPlanDate(seg.planned.date)} ${seg.planned.from}-${seg.planned.to} (${formatMinutes(seg.planned.minutes)})${seg.outOfHours ? `, partly or wholly outside ${machine.name}'s hours (drawn at the edge of the day)` : ""}` : ""}`}
+                              title={bookingTitle(seg, machine)}
                             >
-                              {seg.first && running ? <span className="block [overflow-wrap:anywhere] uppercase tracking-wide">Running</span> : null}
-                              {seg.first && done ? <span className="flex min-w-0 items-center gap-0.5 uppercase tracking-wide"><Check aria-hidden className="size-3 shrink-0" /><span className="min-w-0 [overflow-wrap:anywhere]">Complete</span></span> : null}
-                              {seg.planned
+                              {isVisible("running-badge") && seg.first && running ? <span className="block [overflow-wrap:anywhere] uppercase tracking-wide">Running</span> : null}
+                              {isVisible("running-badge") && seg.first && done ? <span className="flex min-w-0 items-center gap-0.5 uppercase tracking-wide"><Check aria-hidden className="size-3 shrink-0" /><span className="min-w-0 [overflow-wrap:anywhere]">Complete</span></span> : null}
+                              {!isVisible("bar-labels") ? null : seg.planned
                                 ? <span className="block [overflow-wrap:anywhere]">{seg.first ? <>{seg.booking.jobNo} </> : null}<span className="font-normal">{seg.planned.from}-{seg.planned.to} {formatMinutes(seg.planned.minutes)}</span>{seg.outOfHours ? <span className="font-normal"> (out of hours)</span> : null}</span>
                                 : seg.first ? <span className="block [overflow-wrap:anywhere]">{seg.booking.jobNo}</span> : null}
                             </button>
@@ -210,11 +217,11 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                               style={{ left: `${bar.left}%`, width: `${bar.width}%` }}
                             >
                               {bar.marks.map((m) => <span key={m} aria-hidden className="pointer-events-none absolute inset-y-0 w-px bg-white/40" style={{ left: `${m}%` }} />)}
-                              <span className="relative flex min-w-0 items-center gap-0.5 uppercase tracking-wide">
+                              {isVisible("running-badge") ? <span className="relative flex min-w-0 items-center gap-0.5 uppercase tracking-wide">
                                 {bar.kind === "finished" ? <Check aria-hidden className="size-3 shrink-0" /> : null}
                                 <span className="min-w-0 [overflow-wrap:anywhere]">{bar.kind === "running" ? "Running" : bar.kind === "paused" ? "Paused" : "Finished"}</span>
-                              </span>
-                              <span className="relative block [overflow-wrap:anywhere] font-normal">{bar.run.job_no}</span>
+                              </span> : null}
+                              {isVisible("bar-labels") ? <span className="relative block [overflow-wrap:anywhere] font-normal">{bar.run.job_no}</span> : null}
                             </button>
                           );
                         })}
@@ -223,7 +230,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                   })}
                 </div>
               ))}
-              {todayIndex >= 0 ? (
+              {todayIndex >= 0 && isVisible("now-marker") ? (
                 <div
                   data-testid="now-marker"
                   className="pointer-events-none absolute bottom-0 top-0 z-10 w-0.5 bg-brand"
@@ -235,14 +242,14 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
             </div>
           </div>
         )}
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
+        {isVisible("legend") ? <div data-testid="schedule-legend" className="mt-3 flex flex-wrap gap-4 text-xs text-slate-600">
           {SCHEDULE_ORDER.map((state) => (
             <span key={state} data-testid="schedule-legend-item" data-state={state} className="flex items-center gap-1.5">
               <span className={`flex size-3 items-center justify-center rounded-sm ${scheduleBlockClass(state)} ${state === "free" ? "ring-1 ring-slate-300" : ""}`}>{state === "complete" ? <Check aria-hidden className="size-2.5" /> : null}</span> {SCHEDULE_STATES[state].label}
             </span>
           ))}
           <span className="flex items-center gap-1.5"><span className="size-3 rounded-sm bg-slate-200" /> Non-working day</span>
-        </div>
+        </div> : null}
       </CardContent>
     </Card>
   );
