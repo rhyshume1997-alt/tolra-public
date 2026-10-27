@@ -18,7 +18,8 @@
 import { calendarDate } from "@/lib/dates";
 import { requiredDate } from "@/lib/job-status";
 import { gbp } from "@/lib/money";
-import { invoiceLifecycle, invoiceStatus, owed } from "@/lib/receivables";
+import { isOpenDraft } from "@/lib/open-drafts";
+import { invoiceLifecycle, owed } from "@/lib/receivables";
 import { storedQuoteStatus } from "@/lib/quote-status";
 
 export const ATTENTION_CUTOFF_DAYS = 365;
@@ -196,7 +197,7 @@ export function buildAttention(input: AttentionInput, role: AttentionRole, today
     }),
     // Still a draft more than 2 days after it was created.
     "invoices-draft": () => section(rule("invoices-draft"), input.invoices, (row) => {
-      if (invoiceStatus(row.status as string | null) !== "draft") return null;
+      if (!isOpenDraft(row.status as string | null, false)) return null; // archived drafts are already removed by the loader (lib/attention-load)
       const created = dayOf(row.created_at);
       if (!created) return null;
       const days = daysBetween(created, today);
