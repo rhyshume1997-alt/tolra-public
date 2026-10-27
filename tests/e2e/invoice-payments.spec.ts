@@ -42,6 +42,14 @@ test("record a part payment, see Part paid and the balance, then pay the rest an
   await expect(dialog.getByRole("alert")).toContainText("That is more than the balance due (£120.00).");
   expect(await rows()).toHaveLength(0);
 
+  // "Pay balance in full" sets a valid amount, so the message goes too (live smoke test 26 Oct: it stayed).
+  await dialog.getByRole("button", { name: "Pay balance in full" }).click();
+  await expect(dialog.getByLabel("Amount received")).toHaveValue("120.00");
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await dialog.getByLabel("Amount received").fill("200");
+  await dialog.getByRole("button", { name: "Save payment" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("That is more than the balance due (£120.00).");
+
   // Correcting the amount clears the "more than the balance" message at once, before any resubmit.
   await dialog.getByLabel("Amount received").fill("50");
   await expect(dialog.getByRole("alert")).toHaveCount(0);

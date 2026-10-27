@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { type AttentionInput, type AttentionRole, buildAttention, rulesForRole } from "@/lib/attention-items";
 import { toDateInput } from "@/lib/dates";
 import { fetchAll } from "@/lib/fetch-all";
+import { invoiceStatus } from "@/lib/receivables";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Page = (from: number, to: number) => PromiseLike<{ data: any; error: unknown }>;
@@ -22,6 +23,11 @@ async function rowsOf(page: Page): Promise<Record<string, unknown>[] | null> {
     console.error(err);
     return null;
   }
+}
+
+/** Drafts archived by hand (record_archive_state) are not waiting to issue: Invoicing's drafts line leaves them out, so the dashboard does too. Other invoices are untouched. */
+export function withoutArchivedDrafts(rows: Record<string, unknown>[], archivedIds: ReadonlySet<string>): Record<string, unknown>[] {
+  return rows.filter((row) => !(invoiceStatus(row.status as string | null) === "draft" && archivedIds.has(String(row.id))));
 }
 
 export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
@@ -57,8 +63,13 @@ export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
       ? rowsOf((from, to) => db.from("delivery_notes").select("id, dn_number, customer, status, invoice_id, delivery_date, created_at, updated_at").in("status", wanted.has("delivery-uninvoiced") ? ["awaiting", "despatched", "delivered", "signed"] : ["awaiting"]).order("id").range(from, to))
       : none,
   ]);
+  // A failed archive read gives null invoices ("couldn't load"), never a draft list that might include archived ones.
+  const archivedInvoices = need("invoices-draft") && invoices
+    ? await rowsOf((from, to) => db.from("record_archive_state").select("record_id").eq("record_table", "invoices").eq("state", "archived").order("record_id").range(from, to))
+    : null;
+  const invoiceRows = !invoices ? null : need("invoices-draft") ? (archivedInvoices ? withoutArchivedDrafts(invoices, new Set(archivedInvoices.map((row) => String(row.record_id)))) : null) : invoices;
   const input: AttentionInput = {
-    quotes, rfqs, purchaseOrders, lateJobs, finishedJobs, invoices, deliveryNotes,
+    quotes, rfqs, purchaseOrders, lateJobs, finishedJobs, invoices: invoiceRows, deliveryNotes,
     quotedRfqIds: quoted ? quoted.map((row) => String(row.rfq_id)) : null,
   };
   return buildAttention(input, role, toDateInput(new Date()));

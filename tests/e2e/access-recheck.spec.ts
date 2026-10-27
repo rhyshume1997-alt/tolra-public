@@ -240,7 +240,11 @@ test("opened offline and removed meanwhile: access ends at the first sync once t
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await page.clock.fastForward("01:05");
   await page.waitForURL(/\/login/, { timeout: 30_000 });
-  await page.goto("/jobs");
+  // The access check ends with its own hard /login?disabled=1 (lib/use-user.ts endAccess), which can land just after the shell's
+  // soft /login and cancel this navigation (ERR_ABORTED): both lead to sign-in, which is what is checked (as session-timeout.spec.ts).
+  await page.goto("/jobs").catch((err: Error) => {
+    if (!/ERR_ABORTED|interrupted by another navigation/.test(err.message)) throw err;
+  });
   await expect(page).toHaveURL(/\/login/);
 });
 
