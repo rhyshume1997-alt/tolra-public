@@ -447,6 +447,129 @@ describe("the delivery note path and Job Finish never bill the same quantity twi
   });
 });
 
+describe("freed quantity: a delete racing a raise, a job's draft, and what is never changed (099)", () => {
+  /** Every live invoice line billing `line`, added up (what the order line is billed for). */
+  const billedFor = async (line: string) => Number((await one<{ q: string | null }>(
+    `select sum(l.quantity) as q from public.invoice_line_items l join public.invoices i on i.id = l.invoice_id
+     where l.sales_order_line_id = $1 and lower(coalesce(i.status, 'draft')) not in ('void', 'voided', 'cancelled', 'canceled')`, [line])).q ?? 0);
+  /** Runs `first` in an open transaction, then `second` in another, which must wait on the order line's lock; commits the first, then the second. */
+  async function interleave(first: [Who, string, unknown[]], second: [Who, string, unknown[]]) {
+    return withDb((watch) => withDb((x) => withDb(async (y) => {
+      await x.query("begin");
+      await become(x, first[0]);
+      await x.query(first[1], first[2]);
+      await y.query("begin");
+      await become(y, second[0]);
+      const pid = (await y.query<{ p: number }>("select pg_backend_pid() as p")).rows[0].p;
+      const pending = y.query(second[1], second[2]).then(() => null, (e: { code?: string; hint?: string }) => e);
+      let waited = false;
+      for (let i = 0; i < 500 && !waited; i += 1) {
+        waited = (await watch.query<{ t: string | null }>("select wait_event_type as t from pg_stat_activity where pid = $1", [pid])).rows[0]?.t === "Lock";
+        if (!waited) await sleep(10);
+      }
+      await x.query("commit");
+      const out = await pending;
+      await y.query(out ? "rollback" : "commit");
+      return { waited, second: out };
+    })));
+  }
+
+  it("a delete racing a raise on the same order line: the raise waits, then takes exactly what the delete freed; never more than went out, nothing lost", async () => {
+    const o = await order();
+    const a = (await noteInvoice(await despatch(o, [[o.flange, 5]])))!;
+    const b = (await noteInvoice(await despatch(o, [[o.flange, 3]])))!;
+    // Raise first, delete second: the raise is refused at once (a still bills 5), and the delete then frees 5.
+    expect(await refusal(who("admin"), "update public.invoice_line_items set quantity = 8 where invoice_id = $1", [b])).toMatchObject({ code: "22023", hint: "over_despatched" });
+    // Delete first (holding the lock), raise second: the raise waits for the delete, then sees the 5 it freed and takes them.
+    const r = await interleave(
+      [who("office"), "delete from public.invoice_line_items where invoice_id = $1 and sales_order_line_id = $2", [a, o.flange]],
+      [who("admin"), "update public.invoice_line_items set quantity = 8 where invoice_id = $1 and sales_order_line_id = $2", [b, o.flange]]);
+    expect(r).toEqual({ waited: true, second: null });
+    expect(await short(a)).toEqual([]);
+    expect(await short(b)).toEqual([["Flange 80mm", 8]]);
+    // Billed = despatched = 8 (of 12 ordered): nothing over, nothing lost. A third writer can't add any.
+    expect(await billedFor(o.flange)).toBe(8);
+    expect(await refusal(who("office"), "update public.invoice_line_items set quantity = 9 where invoice_id = $1", [b])).toMatchObject({ code: "22023", hint: "over_despatched" });
+    // The other way round, a raise holding the lock first and a delete waiting: the raise (to what is free) goes first, the delete then.
+    const c = (await noteInvoice(await despatch(o, [[o.flange, 2]])))!;
+    expect(await billedFor(o.flange)).toBe(10);
+    await q(who("office"), "update public.invoice_line_items set quantity = 6 where invoice_id = $1", [b]); // 2 free
+    expect(await billedFor(o.flange)).toBe(8);
+    const r2 = await interleave(
+      [who("admin"), "update public.invoice_line_items set quantity = 8 where invoice_id = $1 and sales_order_line_id = $2", [b, o.flange]],
+      [who("office"), "delete from public.invoice_line_items where invoice_id = $1 and sales_order_line_id = $2", [c, o.flange]]);
+    expect(r2).toEqual({ waited: true, second: null });
+    expect(await short(b)).toEqual([["Flange 80mm", 8]]);
+    expect(await short(c)).toEqual([]);
+    expect(await billedFor(o.flange)).toBe(8);
+  });
+
+  it("freed on a JOB's draft, then the next note goes on that same draft: it takes the note and the freed quantity, once", async () => {
+    const j = await orderJob();
+    await complete(j.jobId);
+    const n1 = await despatch(j, [[j.flange, 5], [j.bush, 7]]);
+    const draft = (await noteInvoice(n1))!;
+    expect(await short(draft)).toEqual([["Flange 80mm", 5], ["Bush 25mm", 7]]);
+    // Bushes reduced to 3 (4 freed), flanges deleted (5 freed), on the job's unissued draft.
+    expect(await editorSave(who("office"), draft, (l) => (l.description === "Bush 25mm" ? 3 : l.quantity), { drop: "Flange 80mm" })).toBeNull();
+    expect(await short(draft)).toEqual([["Bush 25mm", 3]]);
+    expect(await billedFor(j.flange)).toBe(0);
+    expect(await billedFor(j.bush)).toBe(3);
+    // The next note (2 flanges) goes on the job's draft (one draft per job) through invoice_add_delivery_note, adding the 2 it took
+    // plus the 5 flanges and 4 bushes freed: exactly what went out, once.
+    const n2 = await despatch(j, [[j.flange, 2]]);
+    expect(await noteInvoice(n2)).toBe(draft);
+    expect(await jobInvoices(j.jobId)).toHaveLength(1);
+    expect((await lines(draft)).map((l) => [l.description, Number(l.quantity), l.sales_order_line_id])).toEqual([["Bush 25mm", 7, j.bush], ["Flange 80mm", 7, j.flange]]);
+    expect(await billedFor(j.flange)).toBe(7);
+    expect(await billedFor(j.bush)).toBe(7);
+    // 7 x 150 + 7 x 14.29 = 1050.00 + 100.03; VAT 210.00 + 20.01.
+    expect(await invoice(draft)).toMatchObject({ subtotal: "1150.03", vat: "230.01", total: "1380.04" });
+    // A further note adds only itself; nothing is billed twice.
+    const n3 = await despatch(j, [[j.flange, 1]]);
+    expect(await noteInvoice(n3)).toBe(draft);
+    expect(await billedFor(j.flange)).toBe(8);
+    expect(await billedFor(j.bush)).toBe(7);
+  });
+
+  it("issued invoices and invoices made before 099 are never changed: not by these flows, and not by running the release again", async () => {
+    // An issued invoice (from a full despatch) and a pre-099 invoice (unlinked, its note in the snapshot), both on orders the flows below touch.
+    const o = await order();
+    const issued = (await noteInvoice(await despatch(o, [[o.flange, 4], [o.bush, 7]])))!;
+    await q(who("office"), "select public.issue_invoice($1)", [issued]);
+    const old = await order();
+    const oldNote = await despatchedByOwner(old, [[old.flange, 6]]);
+    const legacy = await one<{ id: string }>(
+      `insert into public.invoices (organization_id, customer, status, subtotal, vat, total, carriage, vat_enabled, carriage_vat, amount_paid, invoice_date, due_date, description, quantity, unit_price)
+       values ($1, 'Part Co', 'draft', 900, 180, 1080, 0, true, true, 0, current_date, current_date + 30, 'Flange 80mm', 6, 150) returning id`, [alpha().id]);
+    await rows("insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, vat_pct, vat_exempt) values ($1, $2, 0, 'Flange 80mm', 6, 150, 20, false)", [alpha().id, legacy.id]);
+    await rows("update public.delivery_notes set invoice_id = $1 where id = $2", [legacy.id, oldNote]);
+    await rows("insert into public.invoice_notes_legacy (invoice_id, organization_id) values ($1, $2)", [legacy.id, alpha().id]);
+    const snapshot = async () => ({
+      heads: await rows("select id, status, invoice_ref, subtotal, vat, total, issued_at from public.invoices where id = any($1::uuid[]) order by id", [[issued, legacy.id]]),
+      lines: await rows("select invoice_id, position, description, quantity, unit_price, vat_pct, vat_exempt, sales_order_line_id, line_kind from public.invoice_line_items where invoice_id = any($1::uuid[]) order by invoice_id, position, id", [[issued, legacy.id]]),
+      notes: await rows("select id, invoice_id from public.delivery_notes where invoice_id = any($1::uuid[]) order by id", [[issued, legacy.id]]),
+    });
+    const before = await snapshot();
+    // The flows: more despatched on both orders (new drafts), a reduction and a delete on those drafts, the editor offering freed quantity.
+    const d1 = (await noteInvoice(await despatch(o, [[o.flange, 3]])))!;
+    expect(await editorSave(who("office"), d1, () => 1)).toBeNull();
+    const d2 = (await noteInvoice(await despatch(old, [[old.flange, 2]])))!;
+    expect(await short(d2)).toEqual([["Flange 80mm", 2]]);
+    expect(await editorSave(who("office"), d1, (l) => l.quantity, { add: [{ description: "Flange 80mm", quantity: 2, unit_price: 150, vat_pct: 20, vat_exempt: false, sales_order_line_id: o.flange }] }))
+      .toBeNull();
+    await rows("delete from public.invoices where id = $1", [d2]);
+    expect(await snapshot()).toEqual(before);
+    // The release run again (it is safe to re-run): it takes no new snapshot and changes no stored row.
+    const notesSnapshot = await rows("select invoice_id from public.invoice_notes_legacy order by invoice_id");
+    const finishSnapshot = await rows("select invoice_id from public.invoice_job_finish_legacy order by invoice_id");
+    await withDb((db) => db.query(readFileSync(path.resolve(__dirname, "../../supabase/release/099_part_despatch_invoice_quantity.release.sql"), "utf8")));
+    expect(await snapshot()).toEqual(before);
+    expect(await rows("select invoice_id from public.invoice_notes_legacy order by invoice_id")).toEqual(notesSnapshot);
+    expect(await rows("select invoice_id from public.invoice_job_finish_legacy order by invoice_id")).toEqual(finishSnapshot);
+  });
+});
+
 describe("another company", () => {
   it("can't read the balances of, edit, or link to this company's drafts and order lines; nobody reads the legacy table", async () => {
     const o = await order();
