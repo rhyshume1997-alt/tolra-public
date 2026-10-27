@@ -176,6 +176,21 @@ export const probeSql = (unique: string, what: string, existsExpr: string) =>
 /** One object the part of a migration above the injection point creates (or, for a dropped signature, removes), and how to test it. */
 export type InjectCandidate = { index: number; what: string; exists: string };
 
+/** A CHECK constraint (re)added by `above`, as its new definition (injectCandidates' last fallback). */
+function checkDefinitions(above: string): InjectCandidate[] {
+  return [...above.matchAll(/^ALTER TABLE public\.(\w+) ADD CONSTRAINT (\w+)\s+CHECK\s*\(([\s\S]*?)\);[ \t]*$/gm)].flatMap((m) => {
+    const literals = [...new Set([...m[3].matchAll(/'((?:[^']|'')*)'/g)].map((l) => l[1].replace(/''/g, "'")))].sort();
+    if (!literals.length) return [];
+    const quoted = literals.map((l) => `'${l.replace(/'/g, "''")}'`).join(", ");
+    return [{
+      index: m.index,
+      what: `check public.${m[1]}.${m[2]} as this file defines it`,
+      exists: `EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.${m[1]}') AND c.conname = '${m[2]}' AND c.contype = 'c'`
+        + ` AND ARRAY(SELECT DISTINCT x[1] COLLATE "C" AS v FROM regexp_matches(pg_get_constraintdef(c.oid), '''((?:[^'']|'''')*)''', 'g') AS x ORDER BY 1) = ARRAY[${quoted}]::text[])`,
+    }];
+  });
+}
+
 /**
  * The candidates for the rehearsal's probe in `above` (the text before the injection point), latest first: the functions, tables and
  * columns it creates, and (049) each signature it drops with `DROP FUNCTION IF EXISTS public.X(args)`. A dropped signature "exists" when it
@@ -184,6 +199,10 @@ export type InjectCandidate = { index: number; what: string; exists: string };
  * After all of those, as fallbacks only (so no earlier file's pick changes): each function the part replaces, in any schema, as its NEW
  * BODY (077 creates nothing and only replaces security_audit.set_audit_hash). It "exists" when the stored body (prosrc) is exactly the
  * text between the file's dollar quotes: false before the file runs (the old body is stored), true mid-file, false after a rollback.
+ * Last, also fallbacks only: each CHECK constraint the part (re)adds with `ALTER TABLE public.T ADD CONSTRAINT name CHECK (...)` that
+ * names string literals, as its NEW DEFINITION (100 creates nothing: it widens record_archive_state's check and replaces a function). It
+ * "exists" when a check constraint of that name on that table holds exactly the file's set of string literals: false before the file
+ * runs (the old check, without the new value), true mid-file, false after a rollback.
  */
 export function injectCandidates(above: string): InjectCandidate[] {
   const bodies = [...above.matchAll(/^CREATE OR REPLACE FUNCTION (\w+)\.(\w+)\([^)]*\)[^$]*?\bAS (\$\w*\$)([\s\S]*?)\3;/gm)].map((m) => ({
@@ -199,5 +218,5 @@ export function injectCandidates(above: string): InjectCandidate[] {
       const signature = `public.${m[1]}(${m[2].replace(/\s+/g, " ").trim()})`;
       return { index: m.index, what: `${signature} gone`, exists: `(to_regprocedure('${signature}') IS NULL)` };
     }),
-  ].sort((x, y) => y.index - x.index).concat(bodies.sort((x, y) => y.index - x.index));
+  ].sort((x, y) => y.index - x.index).concat(bodies.sort((x, y) => y.index - x.index), checkDefinitions(above).sort((x, y) => y.index - x.index));
 }

@@ -113,7 +113,8 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0')),
     ('099 part despatch invoice quantity', EXISTS (SELECT 1 FROM col WHERE table_name = 'invoice_line_items' AND column_name = 'sales_order_line_id')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8c4d3694cec4ac679916f916afc41985')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305')),
+    ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -312,6 +313,11 @@ checks(n, check_name, value, expected) AS (
                 || ' / ' || (SELECT count(*) FROM public.invoices i WHERE lower(coalesce(i.status, 'draft')) NOT IN ('void', 'voided', 'cancelled', 'canceled')) AS n$q$,
                 FALSE, TRUE, '')))[1]::TEXT, '?') END,
     'informational, the same before and after 099 (099 changes no invoice): report both figures'
+  UNION ALL SELECT 43, '100 needs: public.set_archive_state is 028''s (or already 100''s); customers_in_use_guard (082) present',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '4b31a2b95d2c7c52e9c31fe660a7e61b' THEN '028' WHEN '0b3bc80a57f0e0e16e4f0d7f42c5eccf' THEN '100' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state'), 'missing')
+    || ' / guard ' || CASE WHEN EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'customers_in_use_guard') THEN 'present' ELSE 'missing' END,
+    '028 / guard present before 100, 100 / guard present after (other or missing: stop, 100 refuses to replace it)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
