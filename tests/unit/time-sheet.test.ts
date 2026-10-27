@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  type AttendanceEvent, type LabourSession, DEFAULT_TIME_SETTINGS, addDays, allocate, dayTotals, effectiveEvents, hm, localDateOf, localDayBounds,
+  type AttendanceEvent, type LabourSession, DEFAULT_TIME_SETTINGS, addDays, allocate, dayTotals, effectiveEvents, hm, hmSigned, localDateOf, localDayBounds,
   approvalSnapshot, localInstant, localTimeOf, pairAttendance, settingsFromRow, weekStartOf, weekTotals, zoneLabel,
 } from "@/lib/time-sheet";
 
@@ -245,5 +245,62 @@ describe("settings", () => {
   it("defaults for a missing row; values from a row", () => {
     expect(settingsFromRow(null)).toEqual(S);
     expect(settingsFromRow({ breaks_paid: true, daily_overtime_hours: "7.5", approver_roles: ["admin", "office"] })).toMatchObject({ breaksPaid: true, dailyOvertimeHours: 7.5, approverRoles: ["admin", "office"], lunchMinutes: 30 });
+  });
+});
+
+describe("paid is worked out from exact minutes and rounded once", () => {
+  // No unpaid allowance, so the clocked breaks are deducted as clocked.
+  const exact = { ...S, lunchMinutes: 0, breakMinutes: 0 };
+  const iso = (ms: number) => new Date(ms).toISOString();
+  // 2026-10-19 is BST (UTC+1): 08:00 BST = 07:00Z. Day of 8h29m24s clocked with one 29m36s break.
+  function exactDay(date: string, startUtc: string) {
+    const t0 = new Date(startUtc).getTime();
+    const mk = (action: AttendanceEvent["action"], off: number): AttendanceEvent => {
+      n += 1;
+      return { id: `x${n}`, user_id: "u", action, at: iso(t0 + off * 1000), received_at: new Date(2026, 0, 1, 0, 0, n).toISOString() };
+    };
+    const day8 = 8 * 3600 + 29 * 60 + 24;
+    return [mk("in", 0), mk("break_start", 4 * 3600), mk("break_end", 4 * 3600 + 29 * 60 + 36), mk("out", day8)];
+  }
+
+  it("8h29m24s clocked with a 29m36s break: Clocked 8:29, Breaks -0:30, Paid 8:00 (exact 479.8 minutes)", () => {
+    const d = day("2026-10-19", exactDay("2026-10-19", "2026-10-19T07:00:00Z"), [], exact);
+    expect(d.attendance).toBeCloseTo(509.4, 9);
+    expect(d.clockedBreaks).toBeCloseTo(29.6, 9);
+    expect(d.paid).toBeCloseTo(479.8, 9);
+    expect(hm(d.attendance)).toBe("8:29");
+    expect(hmSigned(-d.breakDeduction)).toBe("−0:30");
+    expect(hm(d.paid)).toBe("8:00"); // not 7:59, which rounded Clocked minus rounded Breaks would give
+  });
+
+  it("a sub-minute break: 4m40s clocked with a 20s break reads Clocked 0:05, Breaks 0:00, Paid 0:04", () => {
+    const t0 = new Date("2026-10-19T07:00:00Z").getTime();
+    const mk = (action: AttendanceEvent["action"], off: number): AttendanceEvent => {
+      n += 1;
+      return { id: `s${n}`, user_id: "u", action, at: new Date(t0 + off * 1000).toISOString(), received_at: new Date(2026, 0, 1, 0, 0, n).toISOString() };
+    };
+    const d = day("2026-10-19", [mk("in", 0), mk("break_start", 60), mk("break_end", 80), mk("out", 280)], [], exact);
+    expect(d.attendance).toBeCloseTo(280 / 60, 9);
+    expect(d.breakDeduction).toBeCloseTo(20 / 60, 9);
+    expect(d.paid).toBeCloseTo(260 / 60, 9);
+    expect(hm(d.attendance)).toBe("0:05");
+    expect(hmSigned(-d.breakDeduction)).toBe("0:00");
+    expect(hm(d.paid)).toBe("0:04");
+  });
+
+  it("a week total is round(sum of exact paid), not the sum of rounded days", () => {
+    const days = ["2026-10-19", "2026-10-20", "2026-10-21"];
+    const events = days.flatMap((dt) => exactDay(dt, `${dt}T07:00:00Z`));
+    const w = weekTotals({ weekStart: "2026-10-19", events, labour: [], settings: exact, bankHolidays: NONE, now: LATER });
+    const exactSum = 3 * 479.8;
+    expect(w.paid).toBeCloseTo(exactSum, 9);
+    const sumOfRounded = w.days.reduce((s, d) => s + Math.round(d.paid), 0); // 3 * 480 = 1440
+    expect(sumOfRounded).toBe(1440);
+    expect(Math.round(w.paid)).toBe(1439); // 1439.4
+    expect(hm(w.paid)).toBe("23:59");
+    const snap = approvalSnapshot(w);
+    expect(snap.paid_minutes).toBe(1439);
+    expect(snap.basic_minutes).toBe(1439);
+    expect(snap.days.map((x) => x.paid).slice(0, 3)).toEqual([480, 480, 480]); // stored per-day figures unchanged
   });
 });

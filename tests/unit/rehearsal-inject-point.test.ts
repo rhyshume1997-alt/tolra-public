@@ -228,3 +228,42 @@ describe("rehearsal candidates for 077 (it creates nothing: the probe is securit
     expect(injectCandidates("-- CREATE OR REPLACE FUNCTION security_audit.x() in a comment\n")).toEqual([]);
   });
 });
+
+describe("rehearsal candidates for 100 (it creates nothing: the probe is record_archive_state's new check, or set_archive_state's new body)", () => {
+  const file = readdirSync(MIGRATIONS).find((f) => f.endsWith("_customer_archive.sql"))!;
+  const text = readFileSync(path.join(MIGRATIONS, file), "utf8");
+  const ls = text.split("\n");
+  const above = (at: number) => ls.slice(0, at).join("\n");
+  const CHECK = "check public.record_archive_state.record_archive_state_record_table_check as this file defines it";
+
+  it("middle: after the check is re-added and before the function; the only candidate is the check, by its exact set of literals", () => {
+    const at = injectPoint(ls, "middle")!;
+    expect(above(at)).toContain("ADD CONSTRAINT record_archive_state_record_table_check");
+    expect(above(at)).not.toContain("CREATE OR REPLACE FUNCTION public.set_archive_state");
+    const candidates = injectCandidates(above(at));
+    expect(candidates.map((c) => c.what)).toEqual([CHECK]);
+    expect(candidates[0].exists).toContain("c.conrelid = to_regclass('public.record_archive_state') AND c.conname = 'record_archive_state_record_table_check' AND c.contype = 'c'");
+    expect(candidates[0].exists).toContain("= ARRAY['customers', 'delivery_notes', 'invoices', 'jobs', 'purchase_orders', 'quotes', 'sales_orders']::text[])");
+  });
+
+  it("late: the function's new body first, then the check (both fallbacks: 100 creates no object)", () => {
+    const candidates = injectCandidates(above(injectPoint(ls, "late")!));
+    expect(candidates.map((c) => c.what)).toEqual(["function public.set_archive_state", "body of public.set_archive_state", CHECK]);
+  });
+
+  it("a check with no string literal gives no candidate; earlier files' lists are unchanged by the new fallback", () => {
+    expect(injectCandidates("ALTER TABLE public.t ADD CONSTRAINT t_n CHECK (n > 0);\n")).toEqual([]);
+    expect(injectCandidates("ALTER TABLE public.t ADD CONSTRAINT t_s CHECK (s IN ('a', 'it''s'));\n")[0].exists).toContain("ARRAY['a', 'it''s']::text[]");
+    for (const f of readdirSync(MIGRATIONS).filter((x) => /^\d{3}_.+\.sql$/.test(x) && x < file)) {
+      const fl = readFileSync(path.join(MIGRATIONS, f), "utf8").split("\n");
+      for (const where of ["middle", "late"] as const) {
+        const at = injectPoint(fl, where);
+        if (!at) continue;
+        const list = injectCandidates(fl.slice(0, at).join("\n"));
+        const first = list.findIndex((c) => c.what.startsWith("check "));
+        // Any check candidate an earlier file has sits after every object and body candidate, so its pick is unchanged.
+        if (first >= 0) expect(list.slice(first).every((c) => c.what.startsWith("check ")), `${f} ${where}`).toBe(true);
+      }
+    }
+  });
+});

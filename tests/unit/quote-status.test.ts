@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canRecordDecision, DEFAULT_QUOTE_VALIDITY_DAYS, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteSendBlock, quoteValidityDays, statusCounts, uploadSummary, sentSince, storedQuoteStatus } from "@/lib/quote-status";
+import { canOfferSend, canRecordDecision, DEFAULT_QUOTE_VALIDITY_DAYS, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteRejectedSendBlock, quoteSendBlock, quoteValidityDays, statusCounts, uploadSummary, sentSince, storedQuoteStatus } from "@/lib/quote-status";
 
 describe("quote lifecycle (audit D1)", () => {
   const today = "2026-10-09";
@@ -139,5 +139,16 @@ describe("uploadSummary", () => {
     expect(uploadSummary(0, ["big.pdf"])).toBe("Nothing was uploaded: big.pdf is larger than 20 MB.");
     expect(uploadSummary(0, ["a", "b"])).toBe("Nothing was uploaded: 2 files are larger than 20 MB.");
     expect(uploadSummary(0, [])).toBe("Nothing was uploaded.");
+  });
+});
+
+describe("sending after a decision", () => {
+  it("allows an accepted quote to be sent again and blocks a rejected one, with a clear message", () => {
+    expect(quoteRejectedSendBlock("QUO-0007", "accepted")).toBeNull();
+    expect(quoteRejectedSendBlock("QUO-0007", "rejected")).toBe("QUO-0007 was rejected by the customer, so it can't be sent again. Make a new quote instead.");
+    for (const status of ["draft", "sent", "expired", "superseded"] as const) expect(quoteRejectedSendBlock("QUO-0007", status)).toBeNull();
+  });
+  it("offers the Send buttons for every status but rejected and superseded", () => {
+    expect((["draft", "sent", "accepted", "rejected", "expired", "superseded"] as const).map(canOfferSend)).toEqual([true, true, true, false, true, false]);
   });
 });

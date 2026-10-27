@@ -516,6 +516,9 @@ export function approvalSnapshot(week: WeekTotals, dayFlags?: Record<string, { d
 }
 
 // ----- display --------------------------------------------------------------------------------------------------------------------------
+/** Shown with the weekly hours: each figure is rounded once, for display only; Paid is worked out from the exact times, never from the rounded Clocked and Breaks. */
+export const ROUNDING_NOTE = "Times shown to the nearest minute; Paid is worked out from exact times.";
+
 /** "7:15" (hours:minutes), rounded to the minute; "0:00" for nothing. */
 export function hm(mins: number) {
   const m = Math.max(0, roundMinutes(mins));

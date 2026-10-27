@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
+import { DASHBOARD_TILES } from "@/lib/dashboard-tiles";
 import { JOB_TABLE_COLUMNS } from "@/lib/job-board-files";
 import { supabase } from "@/lib/supabase";
 import { RFQ_CARD_FIELDS, RFQ_DISPLAY_KEY } from "@/lib/rfq-display";
@@ -83,6 +84,8 @@ export const COLUMN_TABLES: TableDef[] = [
   SCHEDULE_DISPLAY,
   /** Approval Queue (cards): fields in rendered order. Recipient, To and Subject line identify the draft and Copy / Mark as Sent / Edit / Skip are actions, so all stay on. */
   { key: "approvals", label: "Approval Queue", columns: [{ key: "type", label: "Type" }, { key: "customer", label: "Recipient", locked: true }, { key: "detail", label: "Subject line", locked: true }, { key: "drafted", label: "Drafted date" }, { key: "to", label: "To address", locked: true }, { key: "subject", label: "Subject" }, { key: "preview", label: "Message preview" }] },
+  /** The Dashboard's tiles and sections (lib/dashboard-tiles), in rendered order. Same storage and picker as the tables. */
+  { key: "dashboard", label: "Dashboard", columns: DASHBOARD_TILES.map(({ key, label }) => ({ key, label })) },
 ];
 
 /* ---- Settings > Display: every screen's show / hide choices in one place (built from COLUMN_TABLES) ---- */

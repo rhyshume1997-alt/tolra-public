@@ -49,7 +49,7 @@ import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { type QuoteAttachmentReader, type QuoteAttachmentRow, listQuoteAttachments } from "@/lib/quote-attachments";
 import { friendlyError } from "@/lib/friendly-error";
 import { issuedBillTo, issuedCompany } from "@/lib/document-snapshot";
-import { canRecordDecision, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteSendBlock, uploadSummary, quoteValidityDays, type QuoteStatus, storedQuoteStatus } from "@/lib/quote-status";
+import { canOfferSend, canRecordDecision, defaultValidUntil, effectiveQuoteStatus, newestFirst, quoteAcceptBlock, quoteFigures, quoteRejectedSendBlock, quoteSendBlock, uploadSummary, quoteValidityDays, type QuoteStatus, storedQuoteStatus } from "@/lib/quote-status";
 import { documentTotals, gbp } from "@/lib/money";
 import { companyVat, fromVatChoice, toVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
@@ -690,6 +690,12 @@ export default function QuotesPage() {
     return fresh;
   }
 
+  /** A send of a rejected quote refused: told to the person (unless the caller does) and kept in the audit log as a SEND marked refused. */
+  function refusedSend(quote: QuoteRow, reason: string, tell = true) {
+    if (tell) toast.error(reason);
+    void auditEvent({ action: "SEND", entityTable: "quotes", entityId: quote.ref, newData: { status: "rejected" }, metadata: { outcome: "refused", reason } });
+  }
+
   /**
    * Send (go-live polish 19e): asks first, "Send QUO-0005 to buyer@acme.example?", naming the address on file and, for a draft with
    * no valid-until date, the date it will get. Nothing is prepared until the person confirms.
@@ -697,6 +703,11 @@ export default function QuotesPage() {
   async function askToSend(quote: QuoteRow, expiryConfirmed = false) {
     if (quote.rawStatus === "superseded") {
       toast.error(`${quote.ref} has been replaced by a newer version: send the latest version.`);
+      return;
+    }
+    const rejected = quoteRejectedSendBlock(quote.ref, quote.rawStatus);
+    if (rejected) {
+      refusedSend(quote, rejected);
       return;
     }
     const blocked = quoteSendBlock(quote.ref, quote.value);
@@ -751,6 +762,18 @@ export default function QuotesPage() {
         // The PDF the customer gets is made from details as they are now (R4); the draft keeps that snapshot, and the default
         // valid-until date when it had none (saved on the draft before the PDF is made, so the PDF and the record agree).
         quote = await freshDraft(quote, validUntil && quote.rawStatus === "draft" && !quote.validUntil ? { valid_until: validUntil } : {});
+        // The stored status, read again: the row may have been rejected elsewhere since this list was loaded.
+        let storedStatus = quote.rawStatus;
+        if (supabase && quote.id && quote.rawStatus !== "draft") {
+          const { data: current, error: statusError } = await supabase.from("quotes").select("status").eq("id", quote.id).single();
+          if (statusError) throw statusError;
+          storedStatus = storedQuoteStatus(current?.status);
+        }
+        const rejected = quoteRejectedSendBlock(quote.ref, storedStatus);
+        if (rejected) {
+          refusedSend(quote, rejected, false);
+          throw new ValidationError(rejected);
+        }
         const blocked = quoteSendBlock(quote.ref, quote.value);
         if (blocked) throw new ValidationError(blocked);
         const element = await buildQuotePdf(quote, items, profile);
@@ -775,6 +798,11 @@ export default function QuotesPage() {
   async function confirmQuoteSent(quote: QuoteRow) {
     await run(async () => {
       try {
+        const rejected = quoteRejectedSendBlock(quote.ref, quote.rawStatus);
+        if (rejected) {
+          refusedSend(quote, rejected, false);
+          throw new ValidationError(rejected);
+        }
         if (canRecordDecision(quote.rawStatus) && quote.rawStatus !== "sent") {
           if (supabase && quote.id) {
             // Only a quote still in the state shown moves; zero rows changed is not success (R7).
@@ -1035,7 +1063,7 @@ export default function QuotesPage() {
                       <TableCell>
                         <div className="flex flex-wrap justify-end gap-1">
                           <Button size="icon" variant="outline" className="size-8" title={`View ${quote.ref}`} aria-label={`View ${quote.ref}`} onClick={() => setViewingQuote(quote)}><Eye className="size-4" aria-hidden /></Button>
-                          <Button size="icon" className="size-8 bg-brand text-brand-ink hover:bg-brand-hover" title={`${quote.rawStatus === "draft" ? "Send" : "Resend"} ${quote.ref} to the customer`} aria-label={`${quote.rawStatus === "draft" ? "Send" : "Resend"} ${quote.ref} to the customer`} disabled={saving || quote.rawStatus === "superseded"} onClick={() => void askToSend(quote)}><Send className="size-4" /></Button>
+                          {canOfferSend(quote.rawStatus) ? <Button size="icon" className="size-8 bg-brand text-brand-ink hover:bg-brand-hover" title={`${quote.rawStatus === "draft" ? "Send" : "Resend"} ${quote.ref} to the customer`} aria-label={`${quote.rawStatus === "draft" ? "Send" : "Resend"} ${quote.ref} to the customer`} disabled={saving} onClick={() => void askToSend(quote)}><Send className="size-4" /></Button> : null}
                           <Button size="icon" variant="outline" className="size-8" title={`Download ${quote.ref} as PDF`} aria-label={`Download ${quote.ref} as PDF`} onClick={() => void downloadQuotePdf(quote)}><Download className="size-4" aria-hidden /></Button>
                         </div>
                       </TableCell>
@@ -1066,7 +1094,7 @@ export default function QuotesPage() {
                   {isVisible("valid") ? <div><dt className="label-mono field-caption">Valid until</dt><dd>{quote.validUntil ? fmtDate(quote.validUntil) : "No expiry date"}</dd></div> : null}
                 </dl>
                 {quote.rawStatus === "draft" && quote.validUntil && quote.validUntil < toDateInput(new Date()) ? <p className="text-sm font-medium text-red-700">Date has passed: edit before sending</p> : null}
-                <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setViewingQuote(quote)}>View</Button>{quote.rawStatus === "superseded" ? null : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => void askToSend(quote)}><Send className="size-4" /> {quote.rawStatus === "draft" ? "Send" : "Resend"}</Button>}<Button variant="outline" onClick={() => void downloadQuotePdf(quote)}><Download className="size-4" /> PDF</Button>{archive.canManage ? <ArchiveButton id={quote.id} phase={phaseFor(quote)} manual={quote.id ? archive.manual.get(quote.id) : undefined} onSet={archive.setState} size="default" /> : null}</div>
+                <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => setViewingQuote(quote)}>View</Button>{!canOfferSend(quote.rawStatus) ? null : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => void askToSend(quote)}><Send className="size-4" /> {quote.rawStatus === "draft" ? "Send" : "Resend"}</Button>}<Button variant="outline" onClick={() => void downloadQuotePdf(quote)}><Download className="size-4" /> PDF</Button>{archive.canManage ? <ArchiveButton id={quote.id} phase={phaseFor(quote)} manual={quote.id ? archive.manual.get(quote.id) : undefined} onSet={archive.setState} size="default" /> : null}</div>
               </CardContent>
             </Card>
           ))}
@@ -1160,7 +1188,7 @@ export default function QuotesPage() {
                   </>
                 ) : null}
                 <Button variant="outline" className="w-full sm:w-auto" disabled={Boolean(viewProblem)} onClick={() => void downloadQuotePdf(viewingQuote)}><Download className="size-4" /> Download PDF</Button>
-                {viewingQuote.rawStatus === "superseded" ? null : <Button className="w-full bg-brand text-brand-ink hover:bg-brand-hover sm:w-auto" disabled={saving || Boolean(viewProblem)} onClick={() => void askToSend(viewingQuote)}><Send className="size-4" /> {saving ? "Sending…" : "Send to Customer"}</Button>}
+                {!canOfferSend(viewingQuote.rawStatus) ? null : <Button className="w-full bg-brand text-brand-ink hover:bg-brand-hover sm:w-auto" disabled={saving || Boolean(viewProblem)} onClick={() => void askToSend(viewingQuote)}><Send className="size-4" /> {saving ? "Sending…" : "Send to Customer"}</Button>}
               </div>
             </div>
           ) : null}

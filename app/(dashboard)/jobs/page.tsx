@@ -55,6 +55,7 @@ import { NAME_NOT_SET } from "@/lib/display-name";
 import { loadOfflineSnapshot, queueOffline, reportOffline, saveOfflineSnapshot } from "@/lib/offline/scope";
 import { isNetworkError, stripJobMoney } from "@/lib/offline/store";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
+import { unbilledJobsOf } from "@/lib/attention-load";
 import { jobMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { DUE_CHIPS, formatAverageJobTime, hasRequiredDate, jobMatchesStatus, jobStatus, requiredDate } from "@/lib/job-status";
@@ -82,7 +83,7 @@ import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type BoardFiles, boardDescription, shownJobColumns, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
 import { useColumnVisibility } from "@/lib/org-settings";
 
-const JOB_FILTER_LABELS: Record<string, string> = { overdue: "Jobs past their required date", "awaiting-inspection": "Jobs waiting for inspection" };
+const JOB_FILTER_LABELS: Record<string, string> = { overdue: "Jobs past their required date", "awaiting-inspection": "Jobs waiting for inspection", "complete-unbilled": "Complete jobs not yet fully despatched or invoiced" };
 
 type WorkshopJob = JobRecord & {
   /** Who finished it (035): the person who may undo their own Finish while it awaits inspection (081). */
@@ -560,11 +561,20 @@ export default function JobsPage() {
     return () => { active = false; };
   }, [attempt, loadLive, loadMachinesList, refreshPending]);
 
+  // 099: "Complete jobs not yet fully despatched or invoiced" (from the dashboard) asks the database which jobs those are.
+  const [unbilledIds, setUnbilledIds] = useState<ReadonlySet<string> | undefined>(undefined);
+  useEffect(() => {
+    if (listFilter !== "complete-unbilled" || !supabase) return;
+    let active = true;
+    void unbilledJobsOf(supabase).then((rows) => { if (active) setUnbilledIds(new Set((rows ?? []).map((row) => String(row.job_id)))); });
+    return () => { active = false; };
+  }, [listFilter, attempt]);
+
   const visible = useMemo(
-    () => listFilter ? jobs.filter((job) => jobMatchesFilter(listFilter, job, toDateInput(new Date()))) : jobs.filter((job) => (show === "all" || show === showOf(job)) && (!statusTile || jobStatusOf(job) === statusTile) && (!reworkOnly || reworkTag(job) !== null)
+    () => listFilter ? jobs.filter((job) => jobMatchesFilter(listFilter, job, toDateInput(new Date()), unbilledIds)) : jobs.filter((job) => (show === "all" || show === showOf(job)) && (!statusTile || jobStatusOf(job) === statusTile) && (!reworkOnly || reworkTag(job) !== null)
       && (statusFilters.has("all") || (inDueScope(job) && [...statusFilters].some((status) => jobMatchesStatus(job, status)))) && (stageFilters.size === 0 || stageFilters.has(stageOf(job.stage) ?? ""))
       && (jobType === "all" || (jobType === "internal") === Boolean(job.is_internal))),
-    [jobs, listFilter, show, showOf, statusTile, reworkOnly, stageFilters, statusFilters, jobType]
+    [jobs, listFilter, unbilledIds, show, showOf, statusTile, reworkOnly, stageFilters, statusFilters, jobType]
   );
 
   // Related jobs, both ways: the job a job is for, and the jobs that name it.

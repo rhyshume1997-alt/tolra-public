@@ -7,13 +7,14 @@
 import { calendarDate } from "@/lib/dates";
 import { daysBetween, DELIVERY_AWAITING_DAYS, DRAFT_INVOICE_DAYS, QUOTE_NO_DECISION_DAYS } from "@/lib/attention-items";
 import { requiredDate } from "@/lib/job-status";
+import { isOpenDraft } from "@/lib/open-drafts";
 import { statusCounts, type QuoteStatus } from "@/lib/quote-status";
 
 export const LIST_FILTERS = {
   quotes: ["expired", "no-decision"],
   invoices: ["overdue", "draft-old"],
   "purchase-orders": ["late"],
-  jobs: ["overdue", "awaiting-inspection"],
+  jobs: ["overdue", "awaiting-inspection", "complete-unbilled"],
   "delivery-notes": ["awaiting-old", "not-invoiced"],
   rfq: ["clarification"],
 } as const;
@@ -59,19 +60,19 @@ export function quoteLegend<Q extends { status: QuoteStatus; rawStatus: string; 
 }
 
 /** `status` is the displayed status (lib/receivables: "overdue" already means collectible, confirmed, owing and past due). */
-export function invoiceMatchesFilter(filter: string, i: { status: string; rawStatus: string; createdAt?: string }, today: string): boolean {
+export function invoiceMatchesFilter(filter: string, i: { status: string; rawStatus: string; createdAt?: string }, today: string, archived = false): boolean {
   if (filter === "overdue") return i.status === "overdue";
   if (filter === "draft-old") {
     const created = day(i.createdAt);
-    return i.rawStatus === "draft" && Boolean(created) && daysBetween(created, today) > DRAFT_INVOICE_DAYS;
+    return isOpenDraft(i.rawStatus, archived) && Boolean(created) && daysBetween(created, today) > DRAFT_INVOICE_DAYS;
   }
   return true;
 }
 
-/** Invoicing's drafts line: every open draft (archived ones, per record_archive_state, are left out), and how many of them are over DRAFT_INVOICE_DAYS old (the ones the dashboard counts). */
+/** Invoicing's drafts line: every open draft (lib/open-drafts: archived ones, per record_archive_state, are left out), and how many of them are over DRAFT_INVOICE_DAYS old (the ones the dashboard counts). */
 export function draftInvoiceCounts<I extends { status: string; rawStatus: string; createdAt?: string }>(invoices: ReadonlyArray<I>, today: string, isArchived: (invoice: I) => boolean = () => false): { total: number; old: number } {
-  const drafts = invoices.filter((invoice) => invoice.rawStatus === "draft" && !isArchived(invoice));
-  return { total: drafts.length, old: drafts.filter((invoice) => invoiceMatchesFilter("draft-old", invoice, today)).length };
+  const drafts = invoices.filter((invoice) => isOpenDraft(invoice.rawStatus, isArchived(invoice)));
+  return { total: drafts.length, old: drafts.filter((invoice) => invoiceMatchesFilter("draft-old", invoice, today, false)).length };
 }
 
 export function purchaseOrderMatchesFilter(filter: string, po: { status: string; delivery?: string; receivedAt?: string }, today: string): boolean {
@@ -80,12 +81,14 @@ export function purchaseOrderMatchesFilter(filter: string, po: { status: string;
   return Boolean(due) && due < today && !po.receivedAt && !["draft", "received", "cancelled"].includes(po.status.toLowerCase());
 }
 
-export function jobMatchesFilter(filter: string, job: { finished_at?: string | null; inspected_at?: string | null; stage?: string | null; date_required?: string | null; due_date?: string | null }, today: string): boolean {
+/** `unbilled`: 099's Complete jobs still to despatch or invoice (jobs_awaiting_despatch_or_invoice), by id; none known yet: no match. */
+export function jobMatchesFilter(filter: string, job: { id?: string; finished_at?: string | null; inspected_at?: string | null; stage?: string | null; date_required?: string | null; due_date?: string | null }, today: string, unbilled?: ReadonlySet<string>): boolean {
   if (filter === "overdue") {
     const due = requiredDate({ date_required: job.date_required, due_date: job.due_date });
     return !job.finished_at && Boolean(due) && due < today;
   }
   if (filter === "awaiting-inspection") return Boolean(job.finished_at) && !job.inspected_at && job.stage !== "rework";
+  if (filter === "complete-unbilled") return Boolean(job.id && unbilled?.has(job.id));
   return true;
 }
 

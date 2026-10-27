@@ -54,6 +54,7 @@ for (const size of [{ name: "1280", width: 1280, height: 800 }, { name: "390", w
     await expect(row).toBeVisible();
     const paid = (await row.getByTestId("week-paid").innerText()).trim();
     expect(paid).not.toBe("");
+    await expect(page.getByTestId("rounding-note")).toHaveText("Times shown to the nearest minute; Paid is worked out from exact times.");
     const allHeaders = await headers(page).count();
     expect(await firstRowCells(page).count()).toBe(allHeaders);
     await expect(headers(page).filter({ hasText: "Breaks" })).toHaveCount(1);

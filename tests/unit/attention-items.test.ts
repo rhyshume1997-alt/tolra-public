@@ -19,6 +19,24 @@ const empty: AttentionInput = { quotes: [], rfqs: [], quotedRfqIds: [], purchase
 const run = (input: Partial<AttentionInput>, id: AttentionRuleId, role: "admin" | "office" | "workshop" | "viewer" = "admin") =>
   buildAttention({ ...empty, ...input }, role, TODAY).find((s) => s.id === id)!;
 
+describe("Complete jobs not yet fully despatched or invoiced (099)", () => {
+  const j = (over: Record<string, unknown>) => ({ job_id: "j", job_no: "J-1", customer: "Acme", completed_at: `${ago(4)}T10:00:00Z`, to_despatch: 0, to_invoice: 0, ...over });
+  it("lists a Complete job with order quantity to send, or sent and not invoiced, or nothing despatched yet; not one fully billed", () => {
+    const s = run({ unbilledJobs: [j({ job_id: "a", to_despatch: 4 }), j({ job_id: "b", to_invoice: 2 }), j({ job_id: "c", to_despatch: null }), j({ job_id: "d" })] }, "jobs-unbilled");
+    expect(s.count).toBe(3);
+    expect(s.items.map((i) => i.title).sort()).toEqual([
+      "Job J-1 is Complete: 2 despatched, not invoiced", "Job J-1 is Complete: 4 to despatch", "Job J-1 is Complete: nothing despatched yet",
+    ]);
+    expect(s.items[0]).toMatchObject({ detail: "Acme (complete 4 days)", href: "/jobs?job=a", ageDays: 4 });
+  });
+  it("is for admin and office only (quantities, no money); empty before 099 (no rows); a failed read says so", () => {
+    expect(rulesForRole("office").map((r) => r.id)).toContain("jobs-unbilled");
+    expect(rulesForRole("workshop").map((r) => r.id)).not.toContain("jobs-unbilled");
+    expect(run({}, "jobs-unbilled")).toMatchObject({ count: 0, failed: false });
+    expect(run({ unbilledJobs: null }, "jobs-unbilled")).toMatchObject({ failed: true });
+  });
+});
+
 describe("daysBetween", () => {
   it("counts whole calendar days across the clock change", () => {
     expect(daysBetween("2026-10-24", "2026-10-26")).toBe(2);
@@ -231,7 +249,7 @@ describe("delivery notes sent out with no invoice", () => {
 describe("roles and failures", () => {
   const ids = (role: "admin" | "office" | "workshop" | "viewer") => rulesForRole(role).map((r) => r.id);
   it("admin sees every rule", () => {
-    expect(ids("admin")).toHaveLength(10);
+    expect(ids("admin")).toHaveLength(11);
   });
   it("office sees no money rules", () => {
     expect(ids("office")).not.toContain("invoices-overdue");

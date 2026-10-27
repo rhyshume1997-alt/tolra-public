@@ -9,13 +9,17 @@
  * a one-line invoice note and a delivery address. Before 073 none of these is offered or sent: text lines only when the caller says the
  * database has them, and the note and address only when the invoice was loaded with those columns (the form keeps them undefined
  * otherwise, so nothing is ever saved over a value that wasn't read).
+ *
+ * With migration 099 a line made from a delivery note bills an order line (its link, `orderLine`), and a draft may bill no more of an
+ * order line than was despatched and is not on another invoice. The editor reads each linked line's balance (draft_invoice_balances),
+ * sends every line's link back (null for a line typed by hand), and refuses more than the balance here; the database refuses it again.
  */
 import { deliveryAddressProblem, invoiceNoteProblem } from "@/lib/invoice-fields";
 import { documentTotals, isTextLine, type DocumentTotals } from "@/lib/money";
 import { fromVatChoice, toVatChoice, type VatChoice } from "@/lib/vat";
 
 /** `text`: a £0 text-only line (073); its quantity and price are 0 whatever the fields say. */
-export type DraftLine = { description: string; qty: string; unit: string; vat: VatChoice; text?: boolean };
+export type DraftLine = { description: string; qty: string; unit: string; vat: VatChoice; text?: boolean; /** 099: the order line it bills. */ orderLine?: string };
 export type DraftForm = {
   invoiceDate: string; dueDate: string; terms: string; customerPo: string; carriage: string; lines: DraftLine[];
   /** undefined: not offered (the database has no such column yet). */
@@ -24,16 +28,21 @@ export type DraftForm = {
 };
 /** The invoice's own VAT settings and the company's, as the totals are worked out with them. */
 export type DraftVatSettings = { vatEnabled: boolean; carriageVat: boolean; registered: boolean; standardRate: number };
-export type StoredLine = { description: string; quantity: number; unitPrice: number; vatPct: number; vatExempt?: boolean };
-/** What the database supports (migration 073): £0 text-only lines. */
-export type DraftOptions = { textLines?: boolean };
+export type StoredLine = { description: string; quantity: number; unitPrice: number; vatPct: number; vatExempt?: boolean; salesOrderLineId?: string | null };
+/** 099: an order line's balance as this draft sees it. `available` is the most this draft may bill of it (despatched less other invoices). */
+export type LineBalance = { ordered: number; despatched: number; onOtherInvoices: number; available: number };
+/**
+ * What the database supports: £0 text-only lines (073); order-line links (099: every line is sent with its link, and `balances`, by
+ * order line, holds the quantities to the balance).
+ */
+export type DraftOptions = { textLines?: boolean; links?: boolean; balances?: ReadonlyMap<string, LineBalance> };
 
 export type DraftReplace = {
   header: {
     description: string; quantity: number; unit_price: number; subtotal: number; vat: number; total: number; carriage: number; invoice_date: string; due_date: string; terms: string; customer_po: string;
     invoice_note?: string; delivery_address?: string;
   };
-  lines: Array<{ description: string; quantity: number; unit_price: number; vat_pct: number; vat_exempt: boolean }>;
+  lines: Array<{ description: string; quantity: number; unit_price: number; vat_pct: number; vat_exempt: boolean; sales_order_line_id?: string | null }>;
   totals: DocumentTotals;
 };
 
@@ -53,9 +62,12 @@ export function draftFormFrom(
     terms: invoice.terms ?? "",
     customerPo: invoice.customerPo ?? "",
     carriage: String(invoice.carriage || 0),
-    lines: lines.map((line) => isTextLine(line)
-      ? { description: line.description, qty: "0", unit: "0.00", vat: toVatChoice(line.vatPct, line.vatExempt), text: true }
-      : { description: line.description, qty: String(line.quantity), unit: line.unitPrice.toFixed(2), vat: toVatChoice(line.vatPct, line.vatExempt) }),
+    lines: lines.map((line) => ({
+      ...(isTextLine(line)
+        ? { description: line.description, qty: "0", unit: "0.00", vat: toVatChoice(line.vatPct, line.vatExempt), text: true }
+        : { description: line.description, qty: String(line.quantity), unit: line.unitPrice.toFixed(2), vat: toVatChoice(line.vatPct, line.vatExempt) }),
+      ...(line.salesOrderLineId ? { orderLine: line.salesOrderLineId } : {}),
+    })),
     ...(invoice.invoiceNote === undefined ? {} : { invoiceNote: invoice.invoiceNote ?? "" }),
     ...(invoice.deliveryAddress === undefined ? {} : { deliveryAddress: invoice.deliveryAddress ?? "" }),
   };
@@ -66,6 +78,32 @@ const QTY = /^\d+(\.\d{1,3})?$/;
 const MONEY = /^\d+(\.\d{1,2})?$/;
 
 const lineQty = (line: DraftLine) => (line.text ? 0 : Number(line.qty) || 0);
+const thousandths = (n: number) => Math.round(n * 1000);
+
+/** 099: "despatched 8, 5 on other invoices: up to 3 on this draft" for a linked line. */
+export function balanceText(balance: LineBalance): string {
+  return `Despatched ${balance.despatched} of ${balance.ordered}, ${balance.onOtherInvoices} on other invoices: up to ${balance.available} on this draft.`;
+}
+
+/**
+ * 099: the first line that takes more of its order line than the balance allows (the quantities of every line billing that order line
+ * added together), as the message to show; null when every linked line is within its balance.
+ */
+export function overBalanceProblem(lines: DraftLine[], balances: ReadonlyMap<string, LineBalance> | undefined): string | null {
+  if (!balances) return null;
+  const used = new Map<string, number>();
+  for (const [index, line] of lines.entries()) {
+    if (!line.orderLine) continue;
+    const balance = balances.get(line.orderLine);
+    if (!balance) continue;
+    const total = (used.get(line.orderLine) ?? 0) + thousandths(lineQty(line));
+    used.set(line.orderLine, total);
+    if (total > thousandths(balance.available)) {
+      return `Line ${index + 1}: only ${balance.available} of "${line.description.trim()}" can be billed on this draft (${balance.despatched} despatched, ${balance.onOtherInvoices} on other invoices). The rest is billed when it is despatched.`;
+    }
+  }
+  return null;
+}
 const lineUnit = (line: DraftLine) => (line.text ? 0 : Number(line.unit) || 0);
 
 /** Totals for the form as it stands (for the preview); lines that aren't numbers yet count as 0, text lines always do. */
@@ -91,6 +129,8 @@ export function buildDraftReplace(form: DraftForm, vat: DraftVatSettings, option
     if (!QTY.test(line.qty.trim()) || Number(line.qty) <= 0) return { ok: false, error: `Line ${n}: the quantity must be more than 0, with at most 3 decimal places.` };
     if (!MONEY.test(line.unit.trim())) return { ok: false, error: `Line ${n}: the price must be in pounds and pence and not negative.` };
   }
+  const over = overBalanceProblem(form.lines, options.balances);
+  if (over) return { ok: false, error: over };
   if (!form.lines.some((line) => !line.text)) return { ok: false, error: "Keep at least one priced line. If nothing is to be billed, delete the draft instead." };
   if (!MONEY.test(form.carriage.trim() || "0")) return { ok: false, error: "Carriage must be in pounds and pence and not negative." };
   if (!DATE.test(form.invoiceDate) || !DATE.test(form.dueDate)) return { ok: false, error: "Give the invoice date and the due date." };
@@ -108,7 +148,10 @@ export function buildDraftReplace(form: DraftForm, vat: DraftVatSettings, option
 
   const lines = form.lines.map((line) => {
     const rate = fromVatChoice(line.vat);
-    return { description: line.description.trim(), quantity: lineQty(line), unit_price: lineUnit(line), vat_pct: rate.vatPct, vat_exempt: rate.vatExempt };
+    return {
+      description: line.description.trim(), quantity: lineQty(line), unit_price: lineUnit(line), vat_pct: rate.vatPct, vat_exempt: rate.vatExempt,
+      ...(options.links ? { sales_order_line_id: line.orderLine ?? null } : {}),
+    };
   });
   const totals = draftTotals(form, vat);
   // The header's one-line summary (what the database has always taken as sent): the first priced line.

@@ -70,6 +70,14 @@ async function line(orderId: string) {
   await q(who("office"), "select public.ensure_sales_order_lines($1)", [orderId]);
   return one<{ id: string }>("select id from public.sales_order_lines where sales_order_id = $1 order by position limit 1", [orderId]);
 }
+/** 099: Finish drafts only what has been despatched (nothing, before a job is released), so a job's draft is made by hand: £120 + VAT. */
+async function handDraft(jobId: string) {
+  const id = (await q<{ r: string }>(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', $2::jsonb) as r", [
+    JSON.stringify({ customer: "Flow Co", job_id: jobId, status: "draft", subtotal: 120, vat: 24, total: 144, carriage: 0, vat_enabled: true, invoice_date: "2026-10-01", due_date: "2026-10-31" }),
+    JSON.stringify([{ description: "Flow work", quantity: 1, unit_price: 120, vat_pct: 20, vat_exempt: false }]),
+  ]))[0].r;
+  return { id };
+}
 const DN_SQL = "select public.create_delivery_note($1, $2, current_date, current_date, null, null, $3::jsonb) as r";
 async function deliveryNote(by: Who, j: { orderId: string; jobId: string }) {
   const l = await line(j.orderId);
@@ -155,7 +163,7 @@ describe("reopen: who, when and why (081)", () => {
     const k = await orderJob();
     await finish(who("workshop"), k.jobId);
     await inspect(who("office"), k.jobId);
-    const [draft] = await invoices(k.jobId);
+    const draft = await handDraft(k.jobId);
     await q(who("office"), "select public.issue_invoice($1)", [draft.id]);
     expect(await refusal(who("admin"), "select public.reopen_job($1, $2)", [k.jobId, "Customer changed the finish spec"])).toMatchObject({ code: "22023", hint: "invoice_issued" });
   });
@@ -230,8 +238,8 @@ describe("a failed inspection (8.7): disposition, put back, a new inspection (08
     expect(await job(j.jobId)).toMatchObject({ flow_status: "in_progress", stage: "rework" });
     expect((await inspections(j.jobId))[0]).toMatchObject({ result: "fail", disposition: "rework", disposition_by: who("office").id, acceptance_criteria: "Drawing ACL-7 rev C: bore 25.00 +0.02/-0" });
     expect((await events(j.jobId)).at(-1)).toMatchObject({ kind: "put_back", inspection_id: failed.inspection_id, detail: { disposition: "rework" } });
-    // The draft invoice made at Finish stays unissued.
-    const [draft] = await invoices(j.jobId);
+    // The job's draft invoice stays unissued.
+    const draft = await handDraft(j.jobId);
     expect(await refusal(who("office"), "select public.issue_invoice($1)", [draft.id])).toMatchObject({ code: "22023", hint: "job_not_complete" });
     expect(await inspectRefusal(who("office"), j.jobId)).toMatchObject({ code: "22023" }); // in rework
     const rework = await one<{ id: string }>("select id from public.job_rework where job_id = $1 and status = 'open'", [j.jobId]);
@@ -327,26 +335,28 @@ describe("release (8.6): delivery notes and invoices only for a Complete job, or
     expect((await one<{ status: string }>("select status from public.delivery_notes where id = $1", [dn.id])).status).toBe("despatched");
   });
 
-  it("one draft invoice is made at Finish (no number); it is issued only once Complete; a note sent out goes on it, never a second draft", async () => {
+  it("one draft invoice per job, issued only once Complete; Finish drafts only what was despatched (099); notes sent out go on the job's draft", async () => {
     const j = await orderJob(250);
-    expect(await invoices(j.jobId)).toHaveLength(0);
     await finish(who("workshop"), j.jobId);
+    // 099: nothing has been despatched (a job is released only once Complete), so Finish makes no draft.
+    expect(await invoices(j.jobId)).toHaveLength(0);
+    const hand = await handDraft(j.jobId);
+    expect(await refusal(who("office"), "select public.issue_invoice($1)", [hand.id])).toMatchObject({ code: "22023", hint: "job_not_complete" });
+    // A second draft for the job is refused from any path.
+    expect(await refusal(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', '[]'::jsonb)",
+      [JSON.stringify({ customer: "Flow Co", job_id: j.jobId, status: "draft", subtotal: 0, vat: 0, total: 0 })])).toMatchObject({ code: "22023", hint: "job_has_draft" });
+    await withDb((db) => db.query("delete from public.invoices where id = $1", [hand.id]));
+    // Reopened and finished again: still none.
+    await reopen(who("workshop"), j.jobId);
+    await finish(who("workshop"), j.jobId);
+    expect(await invoices(j.jobId)).toHaveLength(0);
+    await inspect(who("office"), j.jobId);
+    const dn = await deliveryNote(who("workshop"), j);
+    await q(who("office"), "update public.delivery_notes set status = 'despatched' where id = $1", [dn.id]);
     const drafts = await invoices(j.jobId);
     expect(drafts).toHaveLength(1);
     expect(drafts[0]).toMatchObject({ status: "draft", invoice_ref: null, subtotal: "250.00" });
     expect(Number(drafts[0].total)).toBe(Number(drafts[0].subtotal) + Number(drafts[0].vat));
-    expect(await refusal(who("office"), "select public.issue_invoice($1)", [drafts[0].id])).toMatchObject({ code: "22023", hint: "job_not_complete" });
-    // A second draft for the job is refused from any path.
-    expect(await refusal(who("office"), "select public.create_with_lines('invoices', $1::jsonb, 'invoice_line_items', 'invoice_id', '[]'::jsonb)",
-      [JSON.stringify({ customer: "Flow Co", job_id: j.jobId, status: "draft", subtotal: 0, vat: 0, total: 0 })])).toMatchObject({ code: "22023", hint: "job_has_draft" });
-    // Reopened and finished again: still one draft.
-    await reopen(who("workshop"), j.jobId);
-    await finish(who("workshop"), j.jobId);
-    expect(await invoices(j.jobId)).toHaveLength(1);
-    await inspect(who("office"), j.jobId);
-    const dn = await deliveryNote(who("workshop"), j);
-    await q(who("office"), "update public.delivery_notes set status = 'despatched' where id = $1", [dn.id]);
-    expect(await invoices(j.jobId)).toHaveLength(1);
     expect((await one<{ invoice_id: string }>("select invoice_id from public.delivery_notes where id = $1", [dn.id])).invoice_id).toBe(drafts[0].id);
     const ref = (await q<{ r: string }>(who("office"), "select public.issue_invoice($1) as r", [drafts[0].id]))[0].r;
     expect(ref).toMatch(/^INV-/);
@@ -503,7 +513,7 @@ describe("races (081)", () => {
     const j = await orderJob();
     await finish(who("workshop"), j.jobId);
     await inspect(who("office"), j.jobId);
-    const [draft] = await invoices(j.jobId);
+    const draft = await handDraft(j.jobId);
     const r = await race(who("office"), ["select public.reopen_job($1, $2)", [j.jobId, "Customer changed the finish spec"]], who("office"), ["select public.issue_invoice($1)", [draft.id]]);
     expect(r.waited).toBe(true);
     expect(r.firstOut.ok).toBe(true);

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { customersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
 import { Pencil, Plus } from "lucide-react";
 
 import { ColumnToggle } from "@/components/column-toggle";
+import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { useViewMode } from "@/lib/view-mode";
@@ -18,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { type Phase, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { auditEvent } from "@/lib/audit";
 import { fetchKnownCustomers, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
@@ -51,6 +53,16 @@ export default function CustomersPage() {
   const { saving, run } = useSaving();
   /** The customer's mobile needs migration 073: a new customer offers it only once the database has it. */
   const has073 = useDatabaseHas073() === true;
+  // Archive / Unarchive (migration 100, as 028's records): an archived customer leaves the pickers and this default list; nothing is
+  // deleted, and documents that name it keep showing it. Names found only on documents can't be archived (there is no record).
+  const archive = useArchive("customers");
+  const [phase, setPhase] = useState<PhaseFilterValue>("open");
+  const phaseFor = (customer: KnownCustomer): Phase => (customer.id && archive.manual.get(customer.id) === "archived" ? "archived" : "open");
+  const phaseCounts = useMemo(() => {
+    const archived = customers.filter((customer) => customer.id && archive.manual.get(customer.id) === "archived").length;
+    return { open: customers.length - archived, done: 0, archived };
+  }, [customers, archive.manual]);
+  const shown = customers.filter((customer) => phase === "all" || phaseFor(customer) === phase);
 
   async function load() {
     setLoading(true);
@@ -121,7 +133,7 @@ export default function CustomersPage() {
           <div className="flex flex-wrap items-center gap-2"><ColumnToggle tableKey="customers" /><ViewSwitcher value={view} onChange={setView} /><Button className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setEditing(newDraft(""))}><Plus className="size-4" /> New customer</Button></div>
         </div>
         <ListToolbar
-          visibleCount={customers.length}
+          visibleCount={shown.length}
           selectedCount={0}
           buttonClassName="min-h-11"
           exports={[
@@ -129,6 +141,7 @@ export default function CustomersPage() {
             { label: "Excel", title: exportAllTitle("customer", savedCustomers.length), onSelect: () => void exportSpreadsheet("xlsx", "Customers", CUSTOMER_COLUMNS, savedCustomers, "customers") },
           ]}
         />
+        <PhaseFilter value={phase} onChange={setPhase} counts={phaseCounts} phases={["open", "archived", "all"]} labels={{ open: "Active" }} />
         {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={load} className="font-semibold underline">Retry</button></div> : null}
         {namesTruncated ? <p className="text-sm text-amber-800" data-testid="customer-names-truncated">{DOCUMENT_NAMES_TRUNCATED}</p> : null}
         {loading ? <Skeleton className="h-72" /> : (
@@ -136,7 +149,7 @@ export default function CustomersPage() {
             <Table data-view={view}>
               <TableHeader className="hidden md:table-header-group"><TableRow>{isVisible("name") ? <TableHead>Name</TableHead> : null}{isVisible("contact") ? <TableHead>Contact</TableHead> : null}{isVisible("email") ? <TableHead>Email</TableHead> : null}{isVisible("phone") ? <TableHead>Phone</TableHead> : null}{isVisible("address") ? <TableHead>Address</TableHead> : null}<TableHead>Actions</TableHead></TableRow></TableHeader>
               <TableBody>
-                {customers.map((customer) => (
+                {shown.map((customer) => (
                   <TableRow key={customer.id || customer.name} className="block md:table-row">
                     {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{customer.name}{customer.notSaved ? <span className="block text-xs font-normal text-slate-500" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}{credits.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}</TableCell> : null}
                     {isVisible("contact") ? <TableCell data-label="Contact" className="block md:table-cell">{customer.contactName || "-"}</TableCell> : null}
@@ -145,10 +158,11 @@ export default function CustomersPage() {
                     {isVisible("address") ? <TableCell data-label="Address" className="block md:table-cell">{customer.address || "-"}</TableCell> : null}
                     <TableCell data-actions className="block md:table-cell">{customer.notSaved
                       ? <Button variant="outline" size="sm" onClick={() => setEditing(newDraft(customer.name))}><Plus className="size-3.5" /> Add customer</Button>
-                      : <Button variant="outline" size="sm" onClick={() => setEditing(customer)} disabled={!customer.id} title={customer.id ? undefined : "Demo data cannot be edited"}><Pencil className="size-3.5" /> Edit</Button>}</TableCell>
+                      : <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => setEditing(customer)} disabled={!customer.id} title={customer.id ? undefined : "Demo data cannot be edited"}><Pencil className="size-3.5" /> Edit</Button>{archive.canManage ? <ArchiveButton id={customer.id} phase={phaseFor(customer)} manual={customer.id ? archive.manual.get(customer.id) : undefined} onSet={archive.setState} /> : null}</div>}</TableCell>
                   </TableRow>
                 ))}
                 {!customers.length ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-slate-500">No customers yet. {customersEmptyHint()}</TableCell></TableRow> : null}
+                {customers.length && !shown.length ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-slate-500">{phase === "archived" ? "No archived customers." : "Every customer is archived: see Show > Archived."}</TableCell></TableRow> : null}
               </TableBody>
             </Table>
           </CardContent></Card>
