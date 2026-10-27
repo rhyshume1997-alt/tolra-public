@@ -9,7 +9,7 @@
  */
 import { expect, test } from "@playwright/test";
 
-import { adminClient, signedInClient } from "../support/fixtures";
+import { adminClient, signedInClient, withDb } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 
 const w = world();
@@ -29,6 +29,9 @@ async function requests(org: string) {
   const { data } = await adminClient().from("ai_helper_requests").select("id, status, refusal, failure, feature, result_quote_id, created_at").eq("organization_id", org).order("created_at", { ascending: false });
   return data ?? [];
 }
+/** Audit rows of one action (the audit schema is not served over the API: read with SQL, as other specs do). */
+const auditRows = (org: string, action: string) => withDb(async (db) =>
+  (await db.query("select action, entity_id, metadata, actor_user_id from security_audit.audit_log where organization_id = $1 and action like $2 order by created_at, id", [org, action])).rows);
 async function count(table: string, org: string) {
   const { count: n } = await adminClient().from(table).select("id", { count: "exact", head: true }).eq("organization_id", org);
   return n ?? 0;
@@ -69,8 +72,8 @@ test("an admin turns it on in Settings with a cap and the company's own key; the
   const { data: stored } = await adminClient().from("ai_helper_secrets").select("api_key_enc").eq("organization_id", w.tenants.alpha.id).single();
   expect(stored!.api_key_enc).toMatch(/^v1\./);
   expect(stored!.api_key_enc).not.toContain("SYNTHETIC");
-  const { data: events } = await adminClient().schema("security_audit").from("audit_log").select("action").eq("organization_id", w.tenants.alpha.id).like("action", "ai_helper_%");
-  expect((events ?? []).map((e) => e.action).sort()).toEqual(["ai_helper_key_set", "ai_helper_settings_updated"]);
+  const events = await auditRows(w.tenants.alpha.id, "ai\\_helper\\_%");
+  expect(events.map((e) => e.action).sort()).toEqual(["ai_helper_key_set", "ai_helper_settings_updated"]);
 });
 
 test("office: RFQ email -> suggestion with Needs human review -> Approve creates a draft quote and an audit row", async ({ page }) => {
@@ -98,7 +101,7 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
   await expect(draft).not.toContainText("Needs human review: customer");
   // Approve is refused until every price is filled.
   await draft.getByRole("button", { name: "Approve and create draft quote" }).click();
-  await expect(page.getByRole("alert")).toContainText("fill in the description, quantity and price");
+  await expect(page.getByTestId("ai-rfq-panel").getByRole("alert")).toContainText("fill in the description, quantity and price");
   expect(await count("quotes", org)).toBe(quotesBefore);
   await line1.getByRole("textbox", { name: "Line 1 unit price" }).fill("12.50");
   await line2.getByRole("textbox", { name: "Line 2 unit price" }).fill("3");
@@ -116,7 +119,7 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
   ]);
   const [request] = await requests(org);
   expect(request).toMatchObject({ feature: "rfq", status: "approved", result_quote_id: quotes![0].id });
-  const { data: approved } = await adminClient().schema("security_audit").from("audit_log").select("entity_id, metadata, actor_user_id").eq("organization_id", org).eq("action", "ai_helper_approved");
+  const approved = (await auditRows(org, "ai_helper_approved")).map((row) => ({ entity_id: row.entity_id, actor_user_id: row.actor_user_id, metadata: row.metadata }));
   expect(approved).toEqual([{ entity_id: request.id, actor_user_id: w.tenants.alpha.users.office.id, metadata: { feature: "rfq", quote_id: quotes![0].id, source: "ai_helper" } }]);
   // Nothing was issued or sent.
   expect(await count("invoices", org)).toBe(invoicesBefore);
@@ -149,7 +152,7 @@ test("model down: a clear message and nothing changes", async ({ page }) => {
   await page.goto("/ai-helper");
   await page.getByRole("textbox", { name: "RFQ email text" }).fill(`${rfqText("AI Acme")}\n[mock:down]`);
   await page.getByRole("button", { name: "Read email" }).click();
-  await expect(page.getByRole("alert")).toContainText("The AI service is not answering right now. Nothing was changed");
+  await expect(page.getByTestId("ai-rfq-panel").getByRole("alert")).toContainText("The AI service is not answering right now. Nothing was changed");
   await expect(page.getByRole("region", { name: "Suggested draft" })).toHaveCount(0);
   expect((await requests(org))[0]).toMatchObject({ status: "failed", failure: "unavailable" });
   expect(await count("quotes", org)).toBe(quotesBefore);
@@ -181,7 +184,7 @@ test("cap reached: a clear message, no model call, nothing changes", async ({ pa
   await page.goto("/ai-helper");
   await page.getByRole("textbox", { name: "RFQ email text" }).fill(rfqText("AI Acme"));
   await page.getByRole("button", { name: "Read email" }).click();
-  await expect(page.getByRole("alert")).toContainText("AI limit for the month has been reached, so nothing was sent to the AI");
+  await expect(page.getByTestId("ai-rfq-panel").getByRole("alert")).toContainText("AI limit for the month has been reached, so nothing was sent to the AI");
   const [request] = await requests(org);
   expect(request).toMatchObject({ status: "refused", refusal: "cap" });
   const { data: after } = await adminClient().from("ai_helper_usage").select("spent_pence, reserved_pence").eq("organization_id", org).single();

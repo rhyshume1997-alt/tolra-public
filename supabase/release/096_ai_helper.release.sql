@@ -10,10 +10,10 @@ BEGIN;
 --
 -- WHAT IT ADDS. Four tables, seven functions; no existing table, row, function, policy or grant changes.
 --   a. public.ai_helper_settings: one row per company: roundup_enabled and rfq_enabled (default FALSE), monthly_cap_pence (default 0:
---      nothing runs until an admin sets a cap), api_key_last4. Read by the company's admin and office users; row audited.
+--      nothing runs until an admin sets a cap), api_key_last4. Read by the company's admin and office users.
 --   b. public.ai_helper_secrets: the company's own Anthropic API key, encrypted by the server (lib/integrations/crypto.ts, AES-256-GCM
 --      bound to the company; the database never sees the key). No grant to anyone: only ai_helper_reserve hands the ciphertext back, to
---      an office or admin user of that company with a feature on and the cap not reached. NOT row audited (no ciphertext in the log).
+--      an office or admin user of that company with a feature on and the cap not reached. No ciphertext ever reaches the audit log.
 --   c. public.ai_helper_usage: one row per company per month (Europe/London): reserved_pence and spent_pence. The cap is reserved BEFORE
 --      each model request in one row-locked UPDATE (reserved + spent + estimate <= cap), so two requests at once cannot both pass it;
 --      settled after with the provider's own usage (never above the reservation). A reservation older than 10 minutes is released.
@@ -123,10 +123,8 @@ CREATE POLICY "ai_helper_requests office select" ON public.ai_helper_requests FO
 REVOKE ALL ON public.ai_helper_settings, public.ai_helper_secrets, public.ai_helper_usage, public.ai_helper_requests FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.ai_helper_settings, public.ai_helper_usage, public.ai_helper_requests TO authenticated;
 
--- Row audit on the settings only (no secret in it). Requests and usage are recorded by the named events (ids and pence, no text).
-DROP TRIGGER IF EXISTS audit_ai_helper_settings_changes ON public.ai_helper_settings;
-CREATE TRIGGER audit_ai_helper_settings_changes AFTER INSERT OR DELETE OR UPDATE ON public.ai_helper_settings
-  FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
+-- No row audit trigger (security_audit.log_row_change needs an id column; these tables are keyed by company): every change is one of
+-- the named events below, written by the function that makes it (settings, key, request, decision; ids and pence, no text).
 
 DROP TRIGGER IF EXISTS support_read_only ON public.ai_helper_settings;
 CREATE TRIGGER support_read_only BEFORE INSERT OR DELETE OR UPDATE ON public.ai_helper_settings FOR EACH STATEMENT EXECUTE FUNCTION public.support_readonly_guard();

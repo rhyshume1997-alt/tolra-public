@@ -183,11 +183,18 @@ describe("096: off by default, roles", () => {
   it("a support session and an admin without the second step get nothing", async () => {
     expect(await reserve(A.support, "rfq", 1)).toMatchObject({ ok: false, code: "42501" });
     expect(await status(A.support)).toMatchObject({ ok: false, code: "42501" });
-    await sql("update public.organizations set require_admin_mfa = true where id = $1", [orgA]);
+    // Set as the database owner with triggers off: 065's guard refuses the switch while an admin has no authenticator app.
+    const mfa = (on: boolean) => withDb(async (db) => {
+      await db.query("begin");
+      await db.query("set local session_replication_role = replica");
+      await db.query("update public.organizations set require_admin_mfa = $2 where id = $1", [orgA, on]);
+      await db.query("commit");
+    });
+    await mfa(true);
     const aal1 = { ...A.admin, aal: "aal1" };
     expect(await reserve(aal1, "rfq", 1)).toMatchObject({ ok: false, code: "42501" });
     expect(await save(aal1, false, false, 0)).toMatchObject({ ok: false, code: "42501" });
-    await sql("update public.organizations set require_admin_mfa = false where id = $1", [orgA]);
+    await mfa(false);
   });
 });
 

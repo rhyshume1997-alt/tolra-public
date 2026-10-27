@@ -1,6 +1,16 @@
 [
  {
   "kind": "function",
+  "object": "public._ai_helper_audit(p_org uuid, p_action text, p_table text, p_entity text, p_metadata jsonb)",
+  "detail": "invoker search_path=pg_catalog, public 4245c749599b3e5eb2294d59ec221d67"
+ },
+ {
+  "kind": "function",
+  "object": "public._ai_helper_caller(p_roles text[])",
+  "detail": "invoker search_path=pg_catalog, public 739af61c9471096cb131ff14099ecae2"
+ },
+ {
+  "kind": "function",
   "object": "public._apply_membership_to_profile(p_user uuid, p_org uuid)",
   "detail": "definer search_path=pg_catalog, public f079944a77e99d6d8496eb734a70e0c4"
  },
@@ -73,6 +83,36 @@
   "kind": "function",
   "object": "public.admin_set_company_access(p_org uuid, p_user uuid, p_role text, p_secondary_role text, p_clear_secondary boolean, p_active boolean)",
   "detail": "definer search_path=pg_catalog, public 20de2912faff48bd43f241ba0239afcd"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)",
+  "detail": "definer search_path=pg_catalog, public 5dc4045f555f47b9505e982cedc61047"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
+  "detail": "definer search_path=pg_catalog, public 695bbafdbd9a7d727ab75b97ee8e7b4f"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)",
+  "detail": "definer search_path=pg_catalog, public a8ab54c5c90053d65ef4e5137c28fef7"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_set_key(p_key_enc text, p_last4 text)",
+  "detail": "definer search_path=pg_catalog, public 33a7cd0f6c790b93ea21ad7c5b77b26b"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)",
+  "detail": "definer search_path=pg_catalog, public 95a849aa7b6caea4d6c19d23e344913e"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_status()",
+  "detail": "definer search_path=pg_catalog, public 1e01143ab0b5a284a2d4768074fd3b36"
  },
  {
   "kind": "function",
@@ -1756,6 +1796,16 @@
  },
  {
   "kind": "function-grant",
+  "object": "public._ai_helper_audit(p_org uuid, p_action text, p_table text, p_entity text, p_metadata jsonb)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public._ai_helper_caller(p_roles text[])",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public._apply_membership_to_profile(p_user uuid, p_org uuid)",
   "detail": "service_role"
  },
@@ -1827,6 +1877,36 @@
  {
   "kind": "function-grant",
   "object": "public.admin_set_company_access(p_org uuid, p_user uuid, p_role text, p_secondary_role text, p_clear_secondary boolean, p_active boolean)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_set_key(p_key_enc text, p_last4 text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_status()",
   "detail": "authenticated,service_role"
  },
  {
@@ -3511,6 +3591,21 @@
  },
  {
   "kind": "policy",
+  "object": "public.ai_helper_requests :: ai_helper_requests office select",
+  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
+  "object": "public.ai_helper_settings :: ai_helper_settings office select",
+  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
+  "object": "public.ai_helper_usage :: ai_helper_usage office select",
+  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
   "object": "public.attendance_event_network_ips :: attendance_event_network_ips rbac select",
   "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
  },
@@ -4461,6 +4556,26 @@
  },
  {
   "kind": "rls",
+  "object": "public.ai_helper_requests",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.ai_helper_secrets",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.ai_helper_settings",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.ai_helper_usage",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.attendance_event_network_ips",
   "detail": "enabled"
  },
@@ -4876,6 +4991,21 @@
  },
  {
   "kind": "table-grant",
+  "object": "public.ai_helper_requests :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.ai_helper_settings :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.ai_helper_usage :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
   "object": "public.attendance_event_network_ips :: authenticated",
   "detail": "SELECT"
  },
@@ -5218,6 +5348,46 @@
   "kind": "trigger",
   "object": "auth.users :: on_auth_user_signed_in_sync_last_login",
   "detail": "O 9cb1827a15f6e452843398f624937604"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_requests :: admin_mfa",
+  "detail": "O cd5746a2733428110876fb51bc30f1b8"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_requests :: support_read_only",
+  "detail": "O c502c11831697635101171057931ab50"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_secrets :: admin_mfa",
+  "detail": "O fe3218264e88dfbb236ae4dc0dad016c"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_secrets :: support_read_only",
+  "detail": "O 5edcd3df1b174f9e89c79ce77f2bcc4a"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_settings :: admin_mfa",
+  "detail": "O cb538f58ab5cfdd5208a80a384015eb1"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_settings :: support_read_only",
+  "detail": "O e2f2c3b34a8a9809d6d8dbf41a0e0a1e"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_usage :: admin_mfa",
+  "detail": "O 9e26355b0095648b59c922d0c6e19bd8"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.ai_helper_usage :: support_read_only",
+  "detail": "O 862812bd3543b9dd3d74b71c46b5cb3e"
  },
  {
   "kind": "trigger",
@@ -7038,6 +7208,11 @@
   "kind": "trigger",
   "object": "security_audit.org_entry_log :: org_entry_log_immutable",
   "detail": "O fc56ea4dd401fc7b1e4e5a4a7f09aa43"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.ai_helper_requests :: ai_helper_requests_one_quote",
+  "detail": "0dcb1f3c0d246ebb55ff350fb5cd6fad"
  },
  {
   "kind": "unique-index",

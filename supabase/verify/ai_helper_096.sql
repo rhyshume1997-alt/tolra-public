@@ -33,11 +33,10 @@ UNION ALL SELECT 'off_by_default',
 UNION ALL SELECT 'usage_month_key_and_checks',
   EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.ai_helper_usage'::regclass AND contype = 'p')
   AND (SELECT count(*) = 3 FROM pg_constraint WHERE conrelid = 'public.ai_helper_usage'::regclass AND contype = 'c')
--- Every table carries the support read-only and admin second-step guards; the settings are row audited, the secrets are not.
+-- Every table carries the support read-only and admin second-step guards, and nothing else (no row audit: no ciphertext in the log).
 UNION ALL SELECT 'guards_on_every_table',
   (SELECT count(*) = 8 FROM pg_trigger tg JOIN t ON t.oid = tg.tgrelid WHERE NOT tg.tgisinternal AND tg.tgname IN ('support_read_only', 'admin_mfa'))
-  AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.ai_helper_settings'::regclass AND tgname = 'audit_ai_helper_settings_changes')
-  AND NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.ai_helper_secrets'::regclass AND tgfoid = 'security_audit.log_row_change()'::regprocedure)
+  AND (SELECT count(*) = 8 FROM pg_trigger tg JOIN t ON t.oid = tg.tgrelid WHERE NOT tg.tgisinternal)
 -- The six app functions: definer, pinned search_path, signed-in only.
 UNION ALL SELECT 'functions_definer_signed_in_only',
   (SELECT count(*) = 6 AND bool_and(prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
