@@ -13,7 +13,7 @@ export const LIST_FILTERS = {
   quotes: ["expired", "no-decision"],
   invoices: ["overdue", "draft-old"],
   "purchase-orders": ["late"],
-  jobs: ["overdue", "awaiting-inspection"],
+  jobs: ["overdue", "awaiting-inspection", "complete-unbilled"],
   "delivery-notes": ["awaiting-old", "not-invoiced"],
   rfq: ["clarification"],
 } as const;
@@ -80,12 +80,14 @@ export function purchaseOrderMatchesFilter(filter: string, po: { status: string;
   return Boolean(due) && due < today && !po.receivedAt && !["draft", "received", "cancelled"].includes(po.status.toLowerCase());
 }
 
-export function jobMatchesFilter(filter: string, job: { finished_at?: string | null; inspected_at?: string | null; stage?: string | null; date_required?: string | null; due_date?: string | null }, today: string): boolean {
+/** `unbilled`: 099's Complete jobs still to despatch or invoice (jobs_awaiting_despatch_or_invoice), by id; none known yet: no match. */
+export function jobMatchesFilter(filter: string, job: { id?: string; finished_at?: string | null; inspected_at?: string | null; stage?: string | null; date_required?: string | null; due_date?: string | null }, today: string, unbilled?: ReadonlySet<string>): boolean {
   if (filter === "overdue") {
     const due = requiredDate({ date_required: job.date_required, due_date: job.due_date });
     return !job.finished_at && Boolean(due) && due < today;
   }
   if (filter === "awaiting-inspection") return Boolean(job.finished_at) && !job.inspected_at && job.stage !== "rework";
+  if (filter === "complete-unbilled") return Boolean(job.id && unbilled?.has(job.id));
   return true;
 }
 

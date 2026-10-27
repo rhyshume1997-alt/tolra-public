@@ -79,6 +79,12 @@ describe("row tests match the attention rules", () => {
     expect(jobMatchesFilter("awaiting-inspection", { finished_at: "2026-10-10T10:00:00Z", stage: "rework" }, TODAY)).toBe(false);
     expect(jobMatchesFilter("awaiting-inspection", {}, TODAY)).toBe(false);
   });
+  it("jobs: complete-unbilled is exactly the jobs the database lists (099); none while that list hasn't loaded", () => {
+    const listed = new Set(["j1"]);
+    expect(jobMatchesFilter("complete-unbilled", { id: "j1" }, TODAY, listed)).toBe(true);
+    expect(jobMatchesFilter("complete-unbilled", { id: "j2" }, TODAY, listed)).toBe(false);
+    expect(jobMatchesFilter("complete-unbilled", { id: "j1" }, TODAY)).toBe(false);
+  });
   it("delivery notes: awaiting-old is awaiting over a day; not-invoiced is sent out with no invoice", () => {
     expect(deliveryNoteMatchesFilter("awaiting-old", { status: "awaiting", updatedAt: "2026-10-13T10:00:00Z" }, TODAY)).toBe(true);
     expect(deliveryNoteMatchesFilter("awaiting-old", { status: "awaiting", updatedAt: "2026-10-14T10:00:00Z" }, TODAY)).toBe(false);

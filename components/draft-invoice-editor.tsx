@@ -16,7 +16,7 @@ import { missingDbObject } from "@/lib/db-features";
 import { friendlyError } from "@/lib/friendly-error";
 import { DELIVERY_ADDRESS_MAX, INVOICE_NOTE_MAX } from "@/lib/invoice-fields";
 import { supabase } from "@/lib/supabase";
-import type { VatChoice } from "@/lib/vat";
+import { toVatChoice, type VatChoice } from "@/lib/vat";
 
 /** Shown if the draft is saved before 067 is applied (the Edit Draft button is normally hidden until then). */
 export const DRAFT_EDIT_NEEDS_UPDATE = "Editing drafts isn't available yet: the database update that adds it hasn't been applied. Nothing was changed.";
@@ -38,7 +38,9 @@ export type DraftInvoice = {
 };
 
 /** 099: each line's order-line link and balance, from draft_invoice_balances (position order, as the lines are loaded). */
-type Links = { state: "loading" } | { state: "none" } | { state: "ready"; byIndex: Array<string | null>; balances: Map<string, LineBalance> } | { state: "stale" };
+/** An order line of the draft's orders, despatched and not invoiced, that the draft can add (freed from a draft, or never drafted). */
+type Addable = { orderLine: string; description: string; unitPrice: number; vat: VatChoice; balance: LineBalance };
+type Links = { state: "loading" } | { state: "none" } | { state: "ready"; byIndex: Array<string | null>; balances: Map<string, LineBalance>; addable: Addable[] } | { state: "stale" };
 
 async function loadLinks(invoiceId: string, lineCount: number): Promise<Links> {
   if (!supabase) return { state: "none" };
@@ -47,15 +49,19 @@ async function loadLinks(invoiceId: string, lineCount: number): Promise<Links> {
     if (missingDbObject(error)) return { state: "none" }; // before 099: no links, the editor works as before
     throw error;
   }
-  const rows = (data ?? []) as Array<{ sales_order_line_id: string | null; ordered: number | string | null; despatched: number | string | null; on_other_invoices: number | string | null; available: number | string | null }>;
+  type Row = { line_position: number | null; sales_order_line_id: string | null; description: string | null; unit_price: number | string | null; vat_pct: number | string | null; vat_exempt: boolean | null;
+    ordered: number | string | null; despatched: number | string | null; on_other_invoices: number | string | null; available: number | string | null };
+  const all = (data ?? []) as Row[];
+  // The draft's own lines come first, in position order; rows with no position are other lines of its orders that can be added.
+  const rows = all.filter((row) => row.line_position !== null);
   if (rows.length !== lineCount) return { state: "stale" };
+  const balanceOf = (row: Row): LineBalance => ({ ordered: Number(row.ordered), despatched: Number(row.despatched), onOtherInvoices: Number(row.on_other_invoices), available: Number(row.available) });
   const balances = new Map<string, LineBalance>();
-  for (const row of rows) {
-    if (row.sales_order_line_id) {
-      balances.set(row.sales_order_line_id, { ordered: Number(row.ordered), despatched: Number(row.despatched), onOtherInvoices: Number(row.on_other_invoices), available: Number(row.available) });
-    }
-  }
-  return { state: "ready", byIndex: rows.map((row) => row.sales_order_line_id), balances };
+  for (const row of all) if (row.sales_order_line_id) balances.set(row.sales_order_line_id, balanceOf(row));
+  const addable = all.filter((row) => row.line_position === null && row.sales_order_line_id && Number(row.available) > 0).map((row) => ({
+    orderLine: row.sales_order_line_id!, description: row.description ?? "", unitPrice: Number(row.unit_price ?? 0), vat: toVatChoice(Number(row.vat_pct ?? 20), Boolean(row.vat_exempt)), balance: balanceOf(row),
+  }));
+  return { state: "ready", byIndex: rows.map((row) => row.sales_order_line_id), balances, addable };
 }
 
 /**
@@ -97,6 +103,9 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
   }, [open, invoice, lines]);
   const balances = links.state === "ready" ? links.balances : undefined;
   const overProblem = overBalanceProblem(form.lines, balances);
+  /** 099: lines of the draft's orders despatched and not invoiced, not already on the form: "Add" puts the rest on this draft. */
+  const addable = links.state === "ready" ? links.addable.filter((a) => !form.lines.some((line) => line.orderLine === a.orderLine)) : [];
+  const addOrderLine = (a: Addable) => setForm((current) => ({ ...current, lines: [...current.lines, { description: a.description, qty: String(a.balance.available), unit: a.unitPrice.toFixed(2), vat: a.vat, orderLine: a.orderLine }] }));
 
   const totals = draftTotals(form, vat);
   const setLine = (index: number, patch: Partial<DraftLine>) => setForm((current) => ({ ...current, lines: current.lines.map((line, i) => (i === index ? { ...line, ...patch } : line)) }));
@@ -163,6 +172,17 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
                 ) : null}
               </div>
             ))}
+            {addable.length ? (
+              <div className="space-y-1 rounded-lg border border-dashed p-2" data-testid="despatched-not-invoiced">
+                <p className="text-xs font-medium text-slate-700">Despatched, not yet invoiced on this order</p>
+                {addable.map((a) => (
+                  <div key={a.orderLine} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span>{a.description}: {a.balance.available} ({balanceText(a.balance)})</span>
+                    <Button type="button" variant="outline" size="sm" aria-label={`Add ${a.description}`} onClick={() => addOrderLine(a)}><Plus className="size-4" /> Add</Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {overProblem ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-2 text-sm text-red-800" data-testid="over-balance">{overProblem}</p> : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={addLine}><Plus className="size-4" /> Add line</Button>
