@@ -114,6 +114,17 @@ export function quoteSendBlock(ref: string, totalValue: unknown): string | null 
 }
 
 /**
+ * Why a quote cannot be sent because of its decision, or null when it can: an accepted quote may be sent again, a rejected one may not
+ * (the customer has said no; the database keeps it final, migration 020, and there is no reopen). Superseded has its own message on the page.
+ */
+export function quoteRejectedSendBlock(ref: string, stored: QuoteStatus): string | null {
+  return stored === "rejected" ? `${ref} was rejected by the customer, so it can't be sent again. Make a new quote instead.` : null;
+}
+
+/** Whether the Send / Resend buttons are offered: not for a superseded quote (the newer version is sent) or a rejected one. */
+export const canOfferSend = (stored: QuoteStatus) => stored !== "superseded" && stored !== "rejected";
+
+/**
  * Why a quote cannot be marked accepted, or null when it can: a £0.00 quote, one with no lines, or (in the Confirm Accepted dialog)
  * ticked lines that come to £0.00 would make a sales order and job worth nothing. `lineCount` and `tickedSubtotal` are optional.
  */
