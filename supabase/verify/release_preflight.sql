@@ -111,6 +111,9 @@ markers(migration, present) AS (
     ('094 activity one row per change',   EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'org_activity' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a29b5655c21474b4b40d54760de5a9c4')),
     ('095 finance check audit events',    EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'audit_event_allowed' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '7e8d396511ddb056daa61953bfccd12b')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0')),
+    ('099 part despatch invoice quantity', EXISTS (SELECT 1 FROM col WHERE table_name = 'invoice_line_items' AND column_name = 'sales_order_line_id')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8c4d3694cec4ac679916f916afc41985')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305')),
     ('097 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf'))
 ),
 checks(n, check_name, value, expected) AS (
@@ -293,11 +296,28 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '959f759894cd9dbefbf8d25768530197' THEN '035' WHEN 'a6531bb5559ae9936387729bb91071a0' THEN '095' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'write_audit'), 'missing'),
     '076 / 035 before 095, 095 / 095 after (other: stop, 095 refuses to replace it). 39 is 094''s row'
-  UNION ALL SELECT 42, '097 needs: public.set_archive_state is 028''s (or already 097''s); customers_in_use_guard (082) present',
+  UNION ALL SELECT 41, '099 needs: invoice_from_delivery_notes_draft 059''s, job_finish_draft_invoice and delivery_note_try_draft 081''s, replace_draft_invoice 073''s (or already 099''s)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cff9113a2490bda9b901764974adfa0a' THEN '059' WHEN 'd467a505ab13a1cc1b1fa51cd8922f58' THEN '099' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'invoice_from_delivery_notes_draft'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '492fa39d76311ecfc78ce860a5f1160b' THEN '081' WHEN '8c4d3694cec4ac679916f916afc41985' THEN '099' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '52a9771fec832f0e20e9d780e7561caa' THEN '081' WHEN 'c1464c01f419d1866e7143a41076e7d0' THEN '099' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'delivery_note_try_draft'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'bc56dd3aa75000c36f959955b71026ca' THEN '073' WHEN '8e8e4cc70d1cd7ad4c3268c49e52f305' THEN '099' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice'), 'missing'),
+    '059 / 081 / 081 / 073 before 099, 099 / 099 / 099 / 099 after (other: stop, 099 refuses to replace it)'
+  UNION ALL SELECT 42, '099 (informational): live Job Finish invoices made by 081 (from 099 they count the whole order as invoiced) / all live invoices',
+    CASE WHEN to_regprocedure('public.job_finish_draft_invoice(uuid,uuid)') IS NULL THEN 'n/a (before 081)'
+         ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT (SELECT count(DISTINCT i.id) FROM security_audit.audit_log a JOIN public.invoices i ON i.id::TEXT = a.metadata ->> 'invoice_id'
+                WHERE a.action = 'JOB_DRAFT_INVOICE' AND a.metadata ->> 'outcome' = 'drafted' AND lower(coalesce(i.status, 'draft')) NOT IN ('void', 'voided', 'cancelled', 'canceled'))
+                || ' / ' || (SELECT count(*) FROM public.invoices i WHERE lower(coalesce(i.status, 'draft')) NOT IN ('void', 'voided', 'cancelled', 'canceled')) AS n$q$,
+                FALSE, TRUE, '')))[1]::TEXT, '?') END,
+    'informational, the same before and after 099 (099 changes no invoice): report both figures'
+  UNION ALL SELECT 43, '097 needs: public.set_archive_state is 028''s (or already 097''s); customers_in_use_guard (082) present',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '4b31a2b95d2c7c52e9c31fe660a7e61b' THEN '028' WHEN '0b3bc80a57f0e0e16e4f0d7f42c5eccf' THEN '097' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state'), 'missing')
     || ' / guard ' || CASE WHEN EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'customers_in_use_guard') THEN 'present' ELSE 'missing' END,
-    '028 / guard present before 097, 097 / guard present after (other or missing: stop, 097 refuses to replace it). 41 is left for 096'
+    '028 / guard present before 097, 097 / guard present after (other or missing: stop, 097 refuses to replace it)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

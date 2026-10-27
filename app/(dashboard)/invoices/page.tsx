@@ -585,7 +585,7 @@ export default function InvoicesPage() {
   const drafts = useMemo(() => draftInvoiceCounts(invoices, today, (invoice) => phaseFor(invoice) === "archived"), [invoices, today, phaseFor]);
   const draftsWaiting = drafts.total;
   const phaseCounts = useMemo(() => ({ open: invoices.filter((x) => phaseFor(x) === "open").length, done: invoices.filter((x) => phaseFor(x) === "done").length, archived: invoices.filter((x) => phaseFor(x) === "archived").length }), [invoices, phaseFor]);
-  const visibleInvoices = useMemo(() => invoices.filter((invoice) => (listFilter ? invoiceMatchesFilter(listFilter, invoice, today) : (phase === "all" || phaseFor(invoice) === phase) && (filters.has("all") || filters.has(invoice.status) || (filters.has("partial") && invoice.partPaid)))), [filters, invoices, listFilter, phase, phaseFor, today]);
+  const visibleInvoices = useMemo(() => invoices.filter((invoice) => (listFilter ? invoiceMatchesFilter(listFilter, invoice, today, phaseFor(invoice) === "archived") : (phase === "all" || phaseFor(invoice) === phase) && (filters.has("all") || filters.has(invoice.status) || (filters.has("partial") && invoice.partPaid)))), [filters, invoices, listFilter, phase, phaseFor, today]);
   // Collectible invoices only (no drafts, void or cancelled), counted at what is still owed.
   const unpaid = useMemo(() => invoices.filter((invoice) => invoice.status === "overdue" || invoice.status === "outstanding"), [invoices]);
   const totalOwed = useMemo(() => fromPence(unpaid.reduce((sum, invoice) => sum + toPence(invoice.balance), 0)), [unpaid]);

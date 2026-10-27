@@ -44,6 +44,8 @@ const CALLER_ONLY = [
   "public.my_request_network()",
   // 084: the caller's own company's integration (admins only): connection without secrets, what is unmapped, the send log's counts.
   "public.integration_overview(p_provider text)",
+  // 099: the caller's company's Complete jobs still to despatch or invoice only (admin and office).
+  "public.jobs_awaiting_despatch_or_invoice()",
 ];
 
 beforeAll(async () => {
@@ -169,6 +171,9 @@ function attempts(): Attempt[] {
     ["public.resolve_mail_send(p_id uuid, p_as text)", () => alpha.rpc("resolve_mail_send", { p_id: beta.send, p_as: "failed" }), "refused"],
     ["public.reserve_job_email(p_job uuid, p_recipient text, p_subject text, p_body text, p_key text, p_mode text)", () => alpha.rpc("reserve_job_email", { p_job: beta.job, p_recipient: "x@example.test", p_subject: "S", p_body: "B", p_key: randomUUID(), p_mode: "sending" }), "refused"],
     ["public.record_invoice_payment(p_invoice uuid, p_amount numeric, p_paid_on date, p_method text, p_reference text, p_request_id uuid)", () => alpha.rpc("record_invoice_payment", { p_invoice: beta.invoice, p_amount: 10, p_paid_on: "2026-10-10", p_method: "BACS", p_reference: null, p_request_id: randomUUID() }), "refused"],
+    // 099: the draft editor's balances, pointed at beta's invoice.
+    ["public.draft_invoice_balances(p_invoice uuid)", () => alpha.rpc("draft_invoice_balances", { p_invoice: beta.invoice }), "refused"],
+    ["public.draft_invoice_order_lines(p_invoice uuid)", () => alpha.rpc("draft_invoice_order_lines", { p_invoice: beta.invoice }), "refused"],
     ["public.confirm_invoice_payments(p_invoice uuid, p_note text)", () => alpha.rpc("confirm_invoice_payments", { p_invoice: beta.invoice, p_note: "cross-company attempt" }), "refused"],
     ["public.reverse_invoice_payment(p_payment uuid, p_reason text)", () => alpha.rpc("reverse_invoice_payment", { p_payment: beta.payment, p_reason: "cross-company attempt" }), "refused"],
     ["public.record_job_inspection(p_job uuid, p_result text, p_notes text, p_attachment_path text, p_attachment_name text, p_concession_reason text, p_expected_version integer)", () => alpha.rpc("record_job_inspection", { p_job: beta.job, p_result: "pass", p_notes: "Cross-company attempt", p_attachment_path: null, p_attachment_name: null, p_concession_reason: null, p_expected_version: 0 }), "refused"],

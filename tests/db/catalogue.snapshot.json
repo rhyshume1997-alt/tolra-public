@@ -377,7 +377,7 @@
  {
   "kind": "function",
   "object": "public.delivery_note_try_draft(p_note uuid, p_org uuid, p_cause text)",
-  "detail": "definer search_path=pg_catalog, public 869260997e5714cd7eabb727bc835d95"
+  "detail": "definer search_path=pg_catalog, public 5a30f0c0bd41a73d94e232dac663174c"
  },
  {
   "kind": "function",
@@ -408,6 +408,16 @@
   "kind": "function",
   "object": "public.documents_start_as_drafts()",
   "detail": "invoker search_path=pg_catalog, public c3c9417bf2d70e2220f4567fad93d569"
+ },
+ {
+  "kind": "function",
+  "object": "public.draft_invoice_balances(p_invoice uuid)",
+  "detail": "definer search_path=pg_catalog, public 2a30a9618f69eeb6b5bf36bbd17d67c5"
+ },
+ {
+  "kind": "function",
+  "object": "public.draft_invoice_order_lines(p_invoice uuid)",
+  "detail": "definer search_path=pg_catalog, public 8bbf5738e41dc4560d172f7bed8881d3"
  },
  {
   "kind": "function",
@@ -706,8 +716,13 @@
  },
  {
   "kind": "function",
+  "object": "public.invoice_add_delivery_note(p_org uuid, p_invoice uuid, p_note uuid)",
+  "detail": "definer search_path=pg_catalog, public a7c7a2261479990d342178c238f4cdf2"
+ },
+ {
+  "kind": "function",
   "object": "public.invoice_from_delivery_notes_draft(p_org uuid, p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)",
-  "detail": "definer search_path=pg_catalog, public a41d30870382115fe49332082028a7ac"
+  "detail": "definer search_path=pg_catalog, public 0b513d82f75d7a15c1e5f61e18899e09"
  },
  {
   "kind": "function",
@@ -723,6 +738,16 @@
   "kind": "function",
   "object": "public.invoice_lines_issue_lock()",
   "detail": "definer search_path=pg_catalog, public da36e2d42eea9c19131a69c6b0e75c46"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoice_lines_kind_guard()",
+  "detail": "invoker search_path=pg_catalog, public 0ee7c39b81be34d0a75a9093eccb7372"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoice_lines_within_despatched()",
+  "detail": "definer search_path=pg_catalog, public 3e16df9427883cf192114f4cd7ea1d13"
  },
  {
   "kind": "function",
@@ -817,7 +842,7 @@
  {
   "kind": "function",
   "object": "public.job_finish_draft_invoice(p_job uuid, p_org uuid)",
-  "detail": "definer search_path=pg_catalog, public 0279344e1a0bb99bb2868769cbffc411"
+  "detail": "definer search_path=pg_catalog, public 4a2618d65635800a436faef36946473c"
  },
  {
   "kind": "function",
@@ -878,6 +903,11 @@
   "kind": "function",
   "object": "public.jobs_assignment_keep()",
   "detail": "invoker search_path=pg_catalog, public a19d1e88ed370ee74d4d2de746ffc00f"
+ },
+ {
+  "kind": "function",
+  "object": "public.jobs_awaiting_despatch_or_invoice()",
+  "detail": "definer search_path=pg_catalog, public ef521946254e1effd5ccaffa4d77ffc1"
  },
  {
   "kind": "function",
@@ -1098,6 +1128,16 @@
   "kind": "function",
   "object": "public.open_replacement_rework(p_rework uuid, p_instructions text)",
   "detail": "definer search_path=pg_catalog, public, security_audit 9b3510e00bfe37024bab55dbef8ae6c5"
+ },
+ {
+  "kind": "function",
+  "object": "public.order_line_billing(p_line uuid, p_except_invoice uuid)",
+  "detail": "definer search_path=pg_catalog, public 9a3f18207baac08a89418d2e1d79d42c"
+ },
+ {
+  "kind": "function",
+  "object": "public.order_lines_lock(p_lines uuid[])",
+  "detail": "invoker search_path=pg_catalog, public c39395c12456f0f4dc0ce0e926ca92e1"
  },
  {
   "kind": "function",
@@ -1327,7 +1367,7 @@
  {
   "kind": "function",
   "object": "public.replace_draft_invoice(p_invoice uuid, p_expected_updated_at timestamp with time zone, p_header jsonb, p_lines jsonb)",
-  "detail": "invoker search_path=pg_catalog, public a6e72c410ec06937fdc322a0c25e4c7c"
+  "detail": "invoker search_path=pg_catalog, public 1c64d417fb36b8741d99397bdc9366ee"
  },
  {
   "kind": "function",
@@ -2166,6 +2206,16 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.draft_invoice_balances(p_invoice uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.draft_invoice_order_lines(p_invoice uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.enforce_same_org_parent()",
   "detail": "authenticated,service_role"
  },
@@ -2461,6 +2511,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.invoice_add_delivery_note(p_org uuid, p_invoice uuid, p_note uuid)",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
   "object": "public.invoice_from_delivery_notes_draft(p_org uuid, p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)",
   "detail": ""
  },
@@ -2477,6 +2532,16 @@
  {
   "kind": "function-grant",
   "object": "public.invoice_lines_issue_lock()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.invoice_lines_kind_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.invoice_lines_within_despatched()",
   "detail": "service_role"
  },
  {
@@ -2633,6 +2698,11 @@
   "kind": "function-grant",
   "object": "public.jobs_assignment_keep()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.jobs_awaiting_despatch_or_invoice()",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",
@@ -2853,6 +2923,16 @@
   "kind": "function-grant",
   "object": "public.open_replacement_rework(p_rework uuid, p_instructions text)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.order_line_billing(p_line uuid, p_except_invoice uuid)",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.order_lines_lock(p_lines uuid[])",
+  "detail": ""
  },
  {
   "kind": "function-grant",
@@ -4601,7 +4681,17 @@
  },
  {
   "kind": "rls",
+  "object": "public.invoice_job_finish_legacy",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.invoice_line_items",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.invoice_notes_legacy",
   "detail": "enabled"
  },
  {
@@ -5761,6 +5851,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoice_job_finish_legacy :: support_read_only",
+  "detail": "O c93f6d38ded2a24827c13fbbdeea785d"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoice_line_items :: admin_mfa",
   "detail": "O 5d5432e56d149d6faa5de3adb183f9ac"
  },
@@ -5776,6 +5871,16 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoice_line_items :: invoice_lines_kind_guard",
+  "detail": "O 4f4349a5c3df8193aea1199b62cd65df"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoice_line_items :: invoice_lines_within_despatched",
+  "detail": "O b3822200fc632f614d3f6e047669cd35"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoice_line_items :: support_read_only",
   "detail": "O 90f5672659525be3c5c86624fb80e77d"
  },
@@ -5783,6 +5888,16 @@
   "kind": "trigger",
   "object": "public.invoice_line_items :: zz_same_org_invoice_id",
   "detail": "O 49425a50299d922ed23cc6c619ab8c2b"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoice_line_items :: zz_same_org_sales_order_line_id",
+  "detail": "O d34c1c7fc257c61ebaa6517678c36dd2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoice_notes_legacy :: support_read_only",
+  "detail": "O 8759b6f73ec65c527c4fef2cd8c69e80"
  },
  {
   "kind": "trigger",

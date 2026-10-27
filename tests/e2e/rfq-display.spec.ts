@@ -56,6 +56,9 @@ for (const width of [1280, 390]) {
     await page.getByRole("menuitemcheckbox", { name: "Received" }).click();
     await page.keyboard.press("Escape");
     await expect(card(page)).toContainText("Received:");
+    // The save runs after the screen updates; reload so the next test starts only once it has reached the database.
+    await page.reload();
+    await expect(card(page)).toContainText("Received:");
   });
 }
 
@@ -63,8 +66,10 @@ test("Outstanding -> Quoted still works with a field hidden", async ({ page }) =
   await page.setViewportSize({ width: 1280, height: 900 });
   await signIn(page, solo.admin);
   await page.goto("/rfq");
+  await expect(card(page)).toContainText("Outstanding");
   await page.getByRole("button", { name: "Columns" }).click();
-  await page.getByRole("menuitemcheckbox", { name: "Received" }).click();
+  const received = page.getByRole("menuitemcheckbox", { name: "Received" });
+  if ((await received.getAttribute("aria-checked")) === "true") await received.click();
   await page.keyboard.press("Escape");
   await expect(card(page)).toContainText("Outstanding");
   await expect(card(page)).not.toContainText("Received:");

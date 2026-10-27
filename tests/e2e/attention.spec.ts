@@ -34,6 +34,9 @@ test("admin sees one item per rule with its count and View all link", async ({ p
     { organization_id: org, job_no: "J-LATE", customer: "Acme", date_required: london(-2) },
     { organization_id: org, job_no: "J-INSPECT", customer: "Acme", finished_at: stamp(-3), stage: "inspection" },
   ]);
+  // 099: a Complete job from an order with nothing despatched yet (and so nothing invoiced): awaiting despatch.
+  const { data: done } = await db.from("sales_orders").insert({ organization_id: org, so_number: "SO-DONE", customer: "Acme", status: "confirmed", total_value: 80, vat_enabled: false, vat_pct: 0 }).select("id").single();
+  await ok(db.from("jobs").insert({ organization_id: org, job_no: "J-DONE", customer: "Acme", converted_from_sales_order_id: done!.id, started_at: stamp(-6), finished_at: stamp(-5), inspected_at: stamp(-4), stage: "complete" }));
   await each("invoices", [
     { organization_id: org, invoice_ref: "INV-OVERDUE", customer: "Acme", status: "sent", total: 120, subtotal: 120, vat: 0, vat_enabled: false, due_date: london(-5) },
     { organization_id: org, invoice_ref: "INV-DRAFT", customer: "Acme", status: "draft", total: 50, subtotal: 50, vat: 0, vat_enabled: false, created_at: stamp(-5) },
@@ -45,7 +48,7 @@ test("admin sees one item per rule with its count and View all link", async ({ p
 
   await signIn(page, solo.admin);
   const card = page.getByTestId("needs-attention");
-  for (const id of ["quotes-expired", "quotes-no-decision", "rfqs-clarification", "pos-late", "jobs-late", "invoices-overdue", "invoices-draft", "delivery-awaiting", "jobs-inspection", "delivery-uninvoiced"]) {
+  for (const id of ["quotes-expired", "quotes-no-decision", "rfqs-clarification", "pos-late", "jobs-late", "invoices-overdue", "invoices-draft", "delivery-awaiting", "jobs-inspection", "delivery-uninvoiced", "jobs-unbilled"]) {
     await expect(card.getByTestId(`attention-count-${id}`), id).toHaveText("1");
   }
   const href = async (id: string) => card.getByTestId(`attention-${id}`).getByRole("link", { name: /View all/ }).getAttribute("href");
@@ -59,6 +62,8 @@ test("admin sees one item per rule with its count and View all link", async ({ p
   await expect(card.getByText("Q-ACCEPTED")).toHaveCount(0);
   await expect(card.getByText("RFQ awaiting clarification")).toBeVisible();
   await expect(card.getByText("6 days")).toBeVisible();
+  await expect(card.getByText("Job J-DONE is Complete: nothing despatched yet")).toBeVisible();
+  expect(await href("jobs-unbilled")).toBe("/jobs?filter=complete-unbilled");
 
   // "View all" opens the list filtered to exactly the rows counted: the expired quote, not the silent or accepted ones.
   await card.getByTestId("attention-quotes-expired").getByRole("link", { name: /View all/ }).click();
@@ -67,6 +72,13 @@ test("admin sees one item per rule with its count and View all link", async ({ p
   await expect(page.getByText("Q-EXPIRED").first()).toBeVisible();
   await expect(page.getByText("Q-SILENT")).toHaveCount(0);
   await expect(page.getByText("Q-ACCEPTED")).toHaveCount(0);
+  // 099: "View all" for Complete jobs not fully despatched or invoiced lists exactly that job.
+  await page.goto("/dashboard");
+  await card.getByTestId("attention-jobs-unbilled").getByRole("link", { name: /View all/ }).click();
+  await expect(page).toHaveURL(/\/jobs\?filter=complete-unbilled/);
+  await expect(page.getByTestId("list-filter-notice")).toBeVisible();
+  await expect(page.getByText("J-DONE").first()).toBeVisible();
+  await expect(page.getByText("J-LATE")).toHaveCount(0);
   // An unknown value is harmless: no notice, the page opens as normal.
   await page.goto("/quotes?filter=bogus");
   await expect(page.getByTestId("list-filter-notice")).toHaveCount(0);
