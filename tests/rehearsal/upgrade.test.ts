@@ -1009,6 +1009,25 @@ async function expect095(db: Client, present: boolean) {
     "095 audit_event_allowed invoker, STABLE").toBe(true);
 }
 
+const IS_097 = (file: string) => file.endsWith("_customer_archive.sql");
+
+/**
+ * What 097 changes: set_archive_state's body (028's plus 'customers') compared without whitespace, and record_archive_state's record_table
+ * check (028's six tables plus customers): 097's after a clean run, 028's after a failed one. Security, grants and 082's delete guard as before.
+ */
+async function expect097(db: Client, present: boolean) {
+  const q = async (text: string) => (await db.query<{ v: boolean }>(text)).rows[0].v;
+  const md5 = (await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = to_regprocedure('public.set_archive_state(text,uuid,text)')")).rows[0]?.v;
+  expect(md5, `097 set_archive_state is ${present ? "097's" : "028's"}`).toBe(present ? "0b3bc80a57f0e0e16e4f0d7f42c5eccf" : "4b31a2b95d2c7c52e9c31fe660a7e61b");
+  const six = "'jobs'::text, 'quotes'::text, 'invoices'::text, 'purchase_orders'::text, 'sales_orders'::text, 'delivery_notes'::text";
+  const check = (await db.query<{ v: string }>("select pg_get_constraintdef(oid) as v from pg_constraint where conrelid = 'public.record_archive_state'::regclass and conname = 'record_archive_state_record_table_check'")).rows[0]?.v;
+  expect(check, `097 record_archive_state check is ${present ? "097's" : "028's"}`).toBe(`CHECK ((record_table = ANY (ARRAY[${six}${present ? ", 'customers'::text" : ""}])))`);
+  expect(await q("select p.prosecdef and has_function_privilege('authenticated', p.oid, 'EXECUTE') and not has_function_privilege('anon', p.oid, 'EXECUTE') as v from pg_proc p where p.oid = 'public.set_archive_state(text,uuid,text)'::regprocedure"),
+    "097 set_archive_state security and grants unchanged").toBe(true);
+  expect(await q("select exists (select 1 from pg_trigger where tgrelid = 'public.customers'::regclass and tgname = 'customers_in_use_guard' and tgenabled = 'O') as v"),
+    "097 082's customers_in_use_guard unchanged").toBe(true);
+}
+
 /**
  * What 078 changes, part A (clock-in addresses; torn down and re-applied with the time files): attendance_event_network_ips (RLS on, read
  * only, NOT audited), the purge (admin RPC signed-in only, retention and purge helpers internal), 075's check trigger writing the address
@@ -1510,6 +1529,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_093(last)) await expect093(db, false);
       if (IS_094(last)) await expect094(db, false);
       if (IS_095(last)) await expect095(db, false);
+      if (IS_097(last)) await expect097(db, false);
       // Twice: a failure late in the file (its last section still to come) and one midway.
       for (const where of ["late", "middle"] as const) {
         const plan = injectionPlan(sql(path.join(MIGRATIONS, last)), where);
@@ -1575,6 +1595,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
         if (IS_093(last)) await expect093(db, false);
         if (IS_094(last)) await expect094(db, false);
         if (IS_095(last)) await expect095(db, false);
+        if (IS_097(last)) await expect097(db, false);
         checked.push({ where, chosen });
       }
       // A clean run of the same file then applies normally. When the newest file is 033 or 034 it is the one whose effect on the CRLF bodies is checked here.
@@ -1635,6 +1656,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_093(last)) await expect093(db, true);
       if (IS_094(last)) await expect094(db, true);
       if (IS_095(last)) await expect095(db, true);
+      if (IS_097(last)) await expect097(db, true);
       expect(await structure(db)).not.toEqual(structureBefore);
       await db.query("notify pgrst, 'reload schema'");
       await db.query("notify pgrst, 'reload config'");
@@ -1683,6 +1705,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_093(newest)) await expect093(db, true);
       if (IS_094(newest)) await expect094(db, true);
       if (IS_095(newest)) await expect095(db, true);
+      if (IS_097(newest)) await expect097(db, true);
     });
   });
 
