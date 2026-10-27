@@ -110,7 +110,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_member_access' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '2fc2a6a96b80cc9f7a7f8baf9b67df04')),
     ('094 activity one row per change',   EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'org_activity' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a29b5655c21474b4b40d54760de5a9c4')),
     ('095 finance check audit events',    EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'audit_event_allowed' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '7e8d396511ddb056daa61953bfccd12b')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0')),
+    ('096 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -292,6 +294,10 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '959f759894cd9dbefbf8d25768530197' THEN '035' WHEN 'a6531bb5559ae9936387729bb91071a0' THEN '095' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'write_audit'), 'missing'),
     '076 / 035 before 095, 095 / 095 after (other: stop, 095 refuses to replace it). 39 is 094''s row'
+  UNION ALL SELECT 41, '096 needs: assert_privileged_aal, _session_membership, support_readonly_guard and the audit log (033, 036)',
+    (to_regprocedure('public.assert_privileged_aal()') IS NOT NULL AND to_regprocedure('public._session_membership()') IS NOT NULL
+     AND to_regprocedure('public.support_readonly_guard()') IS NOT NULL AND to_regclass('security_audit.audit_log') IS NOT NULL)::TEXT,
+    'true (096 replaces no existing object; its tables are new)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

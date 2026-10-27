@@ -1,0 +1,51 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import { useAiFeatures } from "@/components/ai-features";
+import { useUser } from "@/lib/use-user";
+
+export type AiHelperStatus = {
+  roundup_enabled: boolean;
+  rfq_enabled: boolean;
+  monthly_cap_pence: number;
+  key_set: boolean;
+  key_last4: string | null;
+  month_spent_pence: number;
+  month_reserved_pence: number;
+  can_manage: boolean;
+};
+
+/**
+ * The company's AI helper state, read from the server (GET /api/ai-helper/status, as the person) only when this server has the helper
+ * on and the person is working as office or admin. Null while loading, when off, or on any error: every AI UI then stays hidden.
+ */
+export function useAiHelperStatus() {
+  const { aiHelper } = useAiFeatures();
+  const { profile, activeRole } = useUser();
+  const allowed = Boolean(aiHelper && profile && (activeRole === "admin" || activeRole === "office"));
+  const [status, setStatus] = useState<AiHelperStatus | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  const reload = useCallback(async () => {
+    if (!allowed) {
+      setStatus(null);
+      setLoaded(true);
+      return;
+    }
+    try {
+      const response = await fetch("/api/ai-helper/status", { cache: "no-store" });
+      setStatus(response.ok ? ((await response.json()) as AiHelperStatus) : null);
+    } catch {
+      setStatus(null);
+    } finally {
+      setLoaded(true);
+    }
+  }, [allowed]);
+
+  useEffect(() => { void reload(); }, [reload]);
+
+  return { status, loaded, allowed, reload, setStatus };
+}
+
+export const anyFeatureOn = (status: AiHelperStatus | null) => Boolean(status && (status.roundup_enabled || status.rfq_enabled));

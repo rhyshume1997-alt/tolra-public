@@ -1,5 +1,6 @@
 "use client";
 
+import { AiHelperDashboardLink } from "@/components/ai-helper/dashboard-link";
 import { fetchAll } from "@/lib/fetch-all";
 import { invoiceLifecycle, owed } from "@/lib/receivables";
 import { HAS_REQUIRED_DATE_FILTER, onTimeJobCount } from "@/lib/job-status";
@@ -470,7 +471,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div><h1 className="page-title">Dashboard</h1><p className="mt-2 text-sm text-slate-500">{getGreeting(profile?.full_name)}. {new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" }).format(new Date())}</p></div>
-        {role === "admin" || role === "office" ? <ApprovalLink /> : null}
+        {role === "admin" || role === "office" ? <div className="flex flex-wrap items-center gap-2"><AiHelperDashboardLink /><ApprovalLink /></div> : null}
       </section>
       {role === "workshop" || role === "viewer" ? <WorkshopDashboard role={role} /> : role === "office" ? <AdminDashboard office /> : <AdminDashboard />}
     </div>
