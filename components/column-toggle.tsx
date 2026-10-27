@@ -23,10 +23,10 @@ export function ColumnToggle({ tableKey }: { tableKey: string }) {
     <DropdownMenu>
       {/* Disabled until the saved columns have loaded, so a tick made first is never overwritten by the load landing after it. */}
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="min-h-9" disabled={!loaded}><Columns3 className="size-4" /> Columns</Button>
+        <Button type="button" variant="outline" size="sm" className="min-h-9" disabled={!loaded}><Columns3 className="size-4" /> {table.kind === "elements" ? "Show / hide" : "Columns"}</Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>{table.label} columns</DropdownMenuLabel>
+        <DropdownMenuLabel>{table.kind === "elements" ? `${table.label}: show / hide` : `${table.label} columns`}</DropdownMenuLabel>
         <p className="px-2 pb-1.5 text-xs text-slate-500" data-testid="column-scope">{columnScopeText(localOnly)}</p>
         <DropdownMenuSeparator />
         {table.columns.map((column) => (

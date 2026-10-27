@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AlertTriangle, CalendarClock, Flag, Pencil, Plus } from "lucide-react";
 
 import { DayPlanField, planStartIso, todayString, useDayPlanForm } from "@/components/day-plan-editor";
+import { ColumnToggle } from "@/components/column-toggle";
 import { MachineGantt } from "@/components/machine-gantt";
 import { MachineStatusCards } from "@/components/machine-status-cards";
 import { type InUseRow, type PausedRow, indexInUse, inUseRows, newClientOpId, pausedRows, pausedWarningText, runRefusal } from "@/lib/machine-runs";
@@ -33,6 +34,7 @@ import { DEMO_MODE } from "@/lib/demo";
 import { loadOfflineSnapshot, reportOffline, saveOfflineSnapshot } from "@/lib/offline/scope";
 import { isNetworkError } from "@/lib/offline/store";
 import { friendlyError } from "@/lib/friendly-error";
+import { useColumnVisibility } from "@/lib/org-settings";
 import { useSaving } from "@/lib/use-saving";
 import { useUser } from "@/lib/use-user";
 
@@ -45,6 +47,7 @@ const bookingStatusLabel = (b: ScheduledBooking, now: Date) => (bookedNotStarted
 const emptyMachine: Omit<Machine, "id"> & { id?: string } = { name: "", type: "", hoursPerDay: 8, workingDays: DEFAULT_WORKING_DAYS, active: true };
 
 export default function SchedulePage() {
+  const { isVisible } = useColumnVisibility("schedule");
   const { activeRole } = useUser();
   const canManageMachines = activeRole === "admin" || activeRole === "office";
   const canBook = canManageMachines || activeRole === "workshop";
@@ -335,7 +338,10 @@ export default function SchedulePage() {
             <h1 className="page-title">Machine Schedule</h1>
             <p className="mt-2 text-sm text-slate-500">Book jobs onto machines and see when each machine is free.</p>
           </div>
-          {canBook ? <Button className={`min-h-11 ${navy}`} onClick={() => setBooking({})} disabled={!activeMachines.length}><CalendarClock className="size-4" /> New booking</Button> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <ColumnToggle tableKey="schedule" />
+            {canBook ? <Button className={`min-h-11 ${navy}`} onClick={() => setBooking({})} disabled={!activeMachines.length}><CalendarClock className="size-4" /> New booking</Button> : null}
+          </div>
         </div>
         {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error} <button onClick={() => void load()} className="font-semibold underline">Retry</button></div> : null}
         {liveError && !error ? <div role="alert" data-testid="schedule-live-error" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Live machine use may be out of date. {liveError} <button onClick={() => void refresh("all")} className="font-semibold underline">Retry</button></div> : null}
@@ -352,11 +358,11 @@ export default function SchedulePage() {
               runs={runs} people={people} onRangeChange={onRangeChange} onSelectRun={(bar, label) => setRunDetail({ bar, label })}
             />
 
-            <Card>
+            {isVisible("jobs-table") ? <Card>
               <CardHeader><CardTitle className="text-lg">Jobs on machines</CardTitle></CardHeader>
               <CardContent className="p-0">
                 <Table>
-                  <TableHeader className="hidden md:table-header-group"><TableRow><TableHead>Job</TableHead><TableHead>Machine</TableHead><TableHead>Start</TableHead><TableHead>Est. finish</TableHead><TableHead>Hours left</TableHead><TableHead>Status</TableHead><TableHead>Required</TableHead><TableHead /></TableRow></TableHeader>
+                  <TableHeader className="hidden md:table-header-group"><TableRow><TableHead>Job</TableHead><TableHead>Machine</TableHead><TableHead>Start</TableHead><TableHead>Est. finish</TableHead>{isVisible("hours-left") ? <TableHead>Hours left</TableHead> : null}<TableHead>Status</TableHead><TableHead>Required</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
                     {runningRows.map((r) => {
                       const req = jobs.find((j) => j.id === r.job_id)?.dateRequired || "";
@@ -367,7 +373,7 @@ export default function SchedulePage() {
                           <TableCell className="block md:table-cell">{r.machine_name}</TableCell>
                           <TableCell className="block md:table-cell">{formatDateTimeShort(new Date(r.started_at))}</TableCell>
                           <TableCell data-testid="unbooked-finish" className="block md:table-cell">{view ? unbookedFinishText(view) : "-"}</TableCell>
-                          <TableCell data-testid="unbooked-left" className="block md:table-cell">{view ? unbookedLeftText(view) : "-"}</TableCell>
+                          {isVisible("hours-left") ? <TableCell data-testid="unbooked-left" className="block md:table-cell">{view ? unbookedLeftText(view) : "-"}</TableCell> : null}
                           <TableCell className="block font-semibold text-red-700 md:table-cell">Running now (not booked)<span className="block text-xs font-normal text-slate-600">by {r.operator_name ?? "—"} since {sinceText(r.started_at, now)}{view?.clock ? `, ${runningForText(view.clock.elapsedMinutes)}` : ""}</span></TableCell>
                           <TableCell className="block md:table-cell">{req ? fmtDate(req) : "-"}</TableCell>
                           <TableCell className="block md:table-cell">{canBook ? <Button variant="outline" size="sm" onClick={() => setBooking({ jobId: r.job_id, machineId: r.machine_id })}>Book it</Button> : null}</TableCell>
@@ -386,20 +392,20 @@ export default function SchedulePage() {
                             {formatDateTimeShort(b.finish)}
                             {late ? <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700"><Flag className="size-3" /> After required date</span> : null}
                           </TableCell>
-                          <TableCell className="block md:table-cell">{liveLeftOf(b) ? <span data-testid="live-hours-left">{liveLeftOf(b)} ({formatHoursClock(b.estimatedHours)} booked)</span> : <>{formatHours(b.hoursLeft)} of {formatHours(b.estimatedHours)}</>}</TableCell>
+                          {isVisible("hours-left") ? <TableCell className="block md:table-cell">{liveLeftOf(b) ? <span data-testid="live-hours-left">{liveLeftOf(b)} ({formatHoursClock(b.estimatedHours)} booked)</span> : <>{formatHours(b.hoursLeft)} of {formatHours(b.estimatedHours)}</>}</TableCell> : null}
                           <TableCell className="block md:table-cell">{bookingStatusLabel(b, now)}</TableCell>
                           <TableCell className="block md:table-cell">{req ? fmtDate(req) : "-"}</TableCell>
                           <TableCell className="block md:table-cell"><Button variant="outline" size="sm" onClick={() => setSelectedId(b.id)}>{canBook ? "Update" : "View"}</Button></TableCell>
                         </TableRow>
                       );
                     })}
-                    {!tableRows.length && !runningRows.length ? <TableRow><TableCell colSpan={8} className="py-8 text-center text-slate-500">No jobs booked onto machines yet.</TableCell></TableRow> : null}
+                    {!tableRows.length && !runningRows.length ? <TableRow><TableCell colSpan={isVisible("hours-left") ? 8 : 7} className="py-8 text-center text-slate-500">No jobs booked onto machines yet.</TableCell></TableRow> : null}
                   </TableBody>
                 </Table>
               </CardContent>
-            </Card>
+            </Card> : null}
 
-            <Card id="machines" className="scroll-mt-20">
+            {isVisible("machines-table") ? <Card id="machines" className="scroll-mt-20">
               <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle className="text-lg">Machines</CardTitle>
                 {canManageMachines ? <Button variant="outline" onClick={() => setEditingMachine(emptyMachine)}><Plus className="size-4" /> Add machine</Button> : null}
@@ -426,7 +432,7 @@ export default function SchedulePage() {
                   </TableBody>
                 </Table>
               </CardContent>
-            </Card>
+            </Card> : null}
           </>
         )}
 

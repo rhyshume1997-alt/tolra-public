@@ -133,7 +133,7 @@ describe("save: per-table merge onto the row as it is now", () => {
 });
 
 describe("reset one screen and defaults", () => {
-  it("Show all on one screen removes only that screen's entry; hidden_nav and other screens are untouched", async () => {
+  it("Reset to default on one screen removes only that screen's entry; hidden_nav and other screens are untouched", async () => {
     h.db.row = { hidden_nav: ["rfq"], hidden_columns: { customers: ["phone", "email"], suppliers: ["notes"], jobs: ["machine"] } };
     await loadOrgSettings(true);
     const result = await resetColumns("customers");
@@ -287,7 +287,7 @@ describe("reset: generation guard and the per-user-and-company key", () => {
 describe("locked columns", () => {
   it("every table's reference column is locked", () => {
     const locked = Object.fromEntries(COLUMN_TABLES.map((table) => [table.key, table.columns.filter((column) => column.locked).map((column) => column.label)]));
-    expect(locked).toEqual({ jobs: ["Job No", "Due", "Actions"], quotes: ["Quote"], "sales-orders": ["SO Ref"], "purchase-orders": ["PO Ref"], invoices: ["Invoice"], "delivery-notes": ["DN Ref"], customers: ["Name"], suppliers: ["Name"], approvals: ["Recipient", "Subject line", "To address"] });
+    expect(locked).toEqual({ jobs: ["Job No", "Due", "Actions"], quotes: ["Quote"], "sales-orders": ["SO Ref"], "purchase-orders": ["PO Ref"], invoices: ["Invoice"], "delivery-notes": ["DN Ref"], customers: ["Name"], suppliers: ["Name"], hours: ["Clocked", "Check", "Approval"], rfq: ["Customer", "Actions"], schedule: ["Machine name", "Day headers (time axis)", "Jobs on machines table", "Machines list"], approvals: ["Recipient", "Subject line", "To address"] });
   });
 
   it("cleanColumns strips locked keys from a crafted row and keeps unknown tables and keys", () => {

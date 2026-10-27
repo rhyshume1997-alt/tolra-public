@@ -13,10 +13,12 @@ import { NeedsDatabaseUpdate } from "@/components/time/needs-update";
 import { ClockCorrectionDialog, type ClockCorrection, LabourDialog, type LabourEdit } from "@/components/time/time-dialogs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ColumnToggle } from "@/components/column-toggle";
 import { StatTile } from "@/components/stat-tile";
 import { loadCompanyPeople } from "@/lib/company-people";
 import { friendlyError } from "@/lib/friendly-error";
 import { adminStopText } from "@/lib/job-actions";
+import { useColumnVisibility } from "@/lib/org-settings";
 import { newClientOpId } from "@/lib/machine-runs";
 import { type ClockOp, type LabourOp } from "@/lib/offline/outbox";
 import { currentOfflineStatus, offlineScope, queueOffline, useOfflineStatus } from "@/lib/offline/scope";
@@ -72,6 +74,8 @@ export function DaySheet() {
   const personId = (seesEveryone && params.get("user")) || me;
   const own = personId === me;
   const isToday = date === today();
+  /** Display only (Columns picker, key "hours"): which totals show. Paid always shows; no figure is computed from this. */
+  const { isVisible } = useColumnVisibility("hours");
 
   const [data, setData] = useState<TimeData | null>(null);
   const [people, setPeople] = useState<PeopleMap>({});
@@ -244,6 +248,7 @@ export function DaySheet() {
           </select>
         ) : null}
         <div className="ml-auto flex gap-2">
+          <ColumnToggle tableKey="hours" />
           <Button asChild variant="outline" size="sm"><Link href={printHref}><Printer className="size-4" /> Print</Link></Button>
         </div>
       </div>
@@ -275,11 +280,11 @@ export function DaySheet() {
       {day ? (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5" data-testid="day-totals">
-            <StatTile label="Clocked" value={hm(day.attendance)} sub="clock in to out" />
-            <StatTile label="Breaks" value={hmSigned(-day.breakDeduction)} sub={breakSub(day.breakRule, day.clockedBreaks)} />
+            {isVisible("clocked") ? <StatTile label="Clocked" value={hm(day.attendance)} sub="clock in to out" /> : null}
+            {isVisible("breaks") ? <StatTile label="Breaks" value={hmSigned(-day.breakDeduction)} sub={breakSub(day.breakRule, day.clockedBreaks)} /> : null}
             <StatTile label="Paid" value={hm(day.paid)} tone="info" />
-            <StatTile label="On jobs" value={hm(day.labour)} sub={day.labourOutsideAttendance > 0.5 ? `${hm(day.labourOutsideAttendance)} outside clock times` : undefined} />
-            <StatTile label="Not on a job" value={hm(day.unallocated)} sub="paid time with no job time" tone={day.unallocated > 60 ? "warn" : "neutral"} />
+            {isVisible("jobs") ? <StatTile label="On jobs" value={hm(day.labour)} sub={day.labourOutsideAttendance > 0.5 ? `${hm(day.labourOutsideAttendance)} outside clock times` : undefined} /> : null}
+            {isVisible("unallocated") ? <StatTile label="Not on a job" value={hm(day.unallocated)} sub="paid time with no job time" tone={day.unallocated > 60 ? "warn" : "neutral"} /> : null}
           </div>
           {day.flags.length ? (
             <ul className="space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" data-testid="day-flags">

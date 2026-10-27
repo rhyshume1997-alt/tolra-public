@@ -1,5 +1,6 @@
 "use client";
 
+import { useColumnVisibility } from "@/lib/org-settings";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDayTime, type MachineStatus } from "@/lib/machine-schedule";
 import { statusCardText } from "@/lib/schedule-live";
@@ -11,7 +12,8 @@ import type { UnbookedRunView } from "@/lib/run-plan";
  * pill says "In use by Dave since 09:12" and the card never says "Free now" while a run is open (lib/schedule-live statusCardText).
  */
 export function MachineStatusCards({ statuses, inUse = new Map(), now = new Date(), unbooked = new Map() }: { statuses: MachineStatus[]; inUse?: Map<string, InUseRow>; now?: Date; unbooked?: Map<string, UnbookedRunView> }) {
-  if (!statuses.length) return null;
+  const { isVisible } = useColumnVisibility("schedule");
+  if (!statuses.length || !isVisible("status-cards")) return null;
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {statuses.map((s) => {
@@ -24,7 +26,7 @@ export function MachineStatusCards({ statuses, inUse = new Map(), now = new Date
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-slate-950">{s.machine.name}</p>
-                  {s.machine.type ? <p className="truncate text-xs text-slate-500">{s.machine.type}</p> : null}
+                  {s.machine.type && isVisible("machine-type") ? <p className="truncate text-xs text-slate-500">{s.machine.type}</p> : null}
                 </div>
                 <span data-testid="machine-status-pill" className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${red ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
                   {text.pill}
@@ -37,10 +39,10 @@ export function MachineStatusCards({ statuses, inUse = new Map(), now = new Date
               ) : null}
               {text.staleNote ? <p className="text-xs font-semibold text-amber-700">{text.staleNote}</p> : null}
               <p className="text-sm text-slate-700">{text.body}</p>
-              <p className="text-xs text-slate-500">
+              {isVisible("next-free") ? <p className="text-xs text-slate-500">
                 <span className="field-label">Next free:</span> <span className="font-medium text-slate-700">{text.nextFree}</span>
                 {s.next ? <> · Next job {s.next.jobNo} from {formatDayTime(s.nextStart ?? s.next.start)}</> : null}
-              </p>
+              </p> : null}
             </CardContent>
           </Card>
         );
