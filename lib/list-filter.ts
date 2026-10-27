@@ -7,6 +7,7 @@
 import { calendarDate } from "@/lib/dates";
 import { daysBetween, DELIVERY_AWAITING_DAYS, DRAFT_INVOICE_DAYS, QUOTE_NO_DECISION_DAYS } from "@/lib/attention-items";
 import { requiredDate } from "@/lib/job-status";
+import { isOpenDraft } from "@/lib/open-drafts";
 import { statusCounts, type QuoteStatus } from "@/lib/quote-status";
 
 export const LIST_FILTERS = {
@@ -59,19 +60,19 @@ export function quoteLegend<Q extends { status: QuoteStatus; rawStatus: string; 
 }
 
 /** `status` is the displayed status (lib/receivables: "overdue" already means collectible, confirmed, owing and past due). */
-export function invoiceMatchesFilter(filter: string, i: { status: string; rawStatus: string; createdAt?: string }, today: string): boolean {
+export function invoiceMatchesFilter(filter: string, i: { status: string; rawStatus: string; createdAt?: string }, today: string, archived = false): boolean {
   if (filter === "overdue") return i.status === "overdue";
   if (filter === "draft-old") {
     const created = day(i.createdAt);
-    return i.rawStatus === "draft" && Boolean(created) && daysBetween(created, today) > DRAFT_INVOICE_DAYS;
+    return isOpenDraft(i.rawStatus, archived) && Boolean(created) && daysBetween(created, today) > DRAFT_INVOICE_DAYS;
   }
   return true;
 }
 
-/** Invoicing's drafts line: every open draft (archived ones, per record_archive_state, are left out), and how many of them are over DRAFT_INVOICE_DAYS old (the ones the dashboard counts). */
+/** Invoicing's drafts line: every open draft (lib/open-drafts: archived ones, per record_archive_state, are left out), and how many of them are over DRAFT_INVOICE_DAYS old (the ones the dashboard counts). */
 export function draftInvoiceCounts<I extends { status: string; rawStatus: string; createdAt?: string }>(invoices: ReadonlyArray<I>, today: string, isArchived: (invoice: I) => boolean = () => false): { total: number; old: number } {
-  const drafts = invoices.filter((invoice) => invoice.rawStatus === "draft" && !isArchived(invoice));
-  return { total: drafts.length, old: drafts.filter((invoice) => invoiceMatchesFilter("draft-old", invoice, today)).length };
+  const drafts = invoices.filter((invoice) => isOpenDraft(invoice.rawStatus, isArchived(invoice)));
+  return { total: drafts.length, old: drafts.filter((invoice) => invoiceMatchesFilter("draft-old", invoice, today, false)).length };
 }
 
 export function purchaseOrderMatchesFilter(filter: string, po: { status: string; delivery?: string; receivedAt?: string }, today: string): boolean {
