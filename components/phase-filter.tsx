@@ -10,18 +10,20 @@ import { friendlyError } from "@/lib/friendly-error";
 const LABELS: Record<PhaseFilterValue, string> = { open: "Open", done: "Done", archived: "Archived", all: "All" };
 
 /** Open / Done / Archived / All with counts (lib/archive). */
-export function PhaseFilter({ value, onChange, counts, labels = {}, note }: {
+export function PhaseFilter({ value, onChange, counts, labels = {}, note, phases = ["open", "done", "archived", "all"] }: {
   value: PhaseFilterValue;
   onChange: (value: PhaseFilterValue) => void;
   counts: Record<Phase, number>;
   labels?: Partial<Record<PhaseFilterValue, string>>;
+  /** The buttons shown (default all four; customers have no Done). */
+  phases?: ReadonlyArray<PhaseFilterValue>;
   /** A short line saying what the counts count, shown beside the buttons (and on hover). */
   note?: string;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Show" title={note}>
       <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Show</span>
-      {(["open", "done", "archived", "all"] as const).map((phase) => (
+      {phases.map((phase) => (
         <Button key={phase} size="sm" variant={value === phase ? "default" : "outline"} aria-pressed={value === phase} className={value === phase ? "bg-brand text-brand-ink" : ""} onClick={() => onChange(phase)}>
           {labels[phase] ?? LABELS[phase]}{phase === "all" ? "" : ` (${counts[phase]})`}
         </Button>

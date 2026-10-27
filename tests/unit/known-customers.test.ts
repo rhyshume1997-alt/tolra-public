@@ -87,7 +87,12 @@ describe("readDocumentCustomerNames", () => {
 describe("customer pickers", () => {
   it("keep the saved customer list: only the Customers page reads names from documents", () => {
     const picker = readFileSync("components/customer-select.tsx", "utf8");
-    expect(picker).toContain("fetchCustomers()");
+    // The saved list less archived customers (097): fetchPickerCustomers reads fetchCustomers, never document names.
+    expect(picker).toContain("fetchPickerCustomers()");
+    const lib = readFileSync("lib/customers.ts", "utf8");
+    const fn = lib.slice(lib.indexOf("export async function fetchPickerCustomers"), lib.indexOf("\n}\n", lib.indexOf("export async function fetchPickerCustomers")));
+    expect(fn).toContain("await fetchCustomers()");
+    expect(fn).not.toMatch(/fetchKnownCustomers|readDocumentCustomerNames/);
     expect(picker).not.toMatch(/fetchKnownCustomers|readDocumentCustomerNames/);
   });
 });

@@ -110,7 +110,8 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_member_access' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '2fc2a6a96b80cc9f7a7f8baf9b67df04')),
     ('094 activity one row per change',   EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'org_activity' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a29b5655c21474b4b40d54760de5a9c4')),
     ('095 finance check audit events',    EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'audit_event_allowed' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '7e8d396511ddb056daa61953bfccd12b')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_audit' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0')),
+    ('097 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -292,6 +293,11 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '959f759894cd9dbefbf8d25768530197' THEN '035' WHEN 'a6531bb5559ae9936387729bb91071a0' THEN '095' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'write_audit'), 'missing'),
     '076 / 035 before 095, 095 / 095 after (other: stop, 095 refuses to replace it). 39 is 094''s row'
+  UNION ALL SELECT 42, '097 needs: public.set_archive_state is 028''s (or already 097''s); customers_in_use_guard (082) present',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '4b31a2b95d2c7c52e9c31fe660a7e61b' THEN '028' WHEN '0b3bc80a57f0e0e16e4f0d7f42c5eccf' THEN '097' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state'), 'missing')
+    || ' / guard ' || CASE WHEN EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'customers_in_use_guard') THEN 'present' ELSE 'missing' END,
+    '028 / guard present before 097, 097 / guard present after (other or missing: stop, 097 refuses to replace it). 41 is left for 096'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

@@ -139,6 +139,39 @@ export async function fetchCustomers(): Promise<CustomerRecord[]> {
   return withTraceableDefaults(supabase as unknown as TraceableReader, customers);
 }
 
+/** The reads the archived customers need (an injected client keeps it testable). */
+export type ArchivedCustomerReader = {
+  from: (table: "record_archive_state") => { select: (columns: string) => { eq: (column: string, value: string) => { eq: (column: string, value: string) => { order: (column: string) => { range: (from: number, to: number) => PromiseLike<{ data: Record<string, unknown>[] | null; error: unknown }> } } } } };
+};
+
+/**
+ * The ids of the customers archived by hand (migration 097: record_archive_state, Archive on the Customers page), every row page by
+ * page. Before 097 there are none (the table holds no customers' rows), so this reads an empty set.
+ */
+export async function readArchivedCustomerIds(client: ArchivedCustomerReader): Promise<Set<string>> {
+  const { rows } = await fetchAll((from, to) => client.from("record_archive_state").select("record_id").eq("record_table", "customers").eq("state", "archived").order("record_id").range(from, to), { maxRows: Number.MAX_SAFE_INTEGER });
+  return new Set(rows.map((row) => String(row.record_id)));
+}
+
+/** The customers a new document may pick: every saved customer that isn't archived. Pure. */
+export function withoutArchived<C extends { id?: string }>(customers: C[], archived: ReadonlySet<string>): C[] {
+  return customers.filter((customer) => !customer.id || !archived.has(customer.id));
+}
+
+/**
+ * The customer pickers' list (new documents): saved customers less the archived ones. If the archive choices can't be read the
+ * whole saved list is offered (archiving only tidies the pickers; it never stops a document naming a customer).
+ */
+export async function fetchPickerCustomers(): Promise<CustomerRecord[]> {
+  const customers = await fetchCustomers();
+  try {
+    return withoutArchived(customers, await readArchivedCustomerIds(supabase as unknown as ArchivedCustomerReader));
+  } catch (err) {
+    console.error(err);
+    return customers;
+  }
+}
+
 /** A customer shown in the Customers page and the pickers: a saved record, or a name that exists only on documents (`notSaved`). */
 export type KnownCustomer = CustomerRecord & { notSaved?: true };
 

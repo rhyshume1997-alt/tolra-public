@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { auditEvent } from "@/lib/audit";
 import { DEMO_MODE } from "@/lib/demo";
-import { fetchCustomers, loadDemoCustomers, saveCustomer } from "@/lib/customers";
+import { fetchPickerCustomers, loadDemoCustomers, saveCustomer } from "@/lib/customers";
 import { friendlyError } from "@/lib/friendly-error";
 import { useSaving } from "@/lib/use-saving";
 import { ValidationError } from "@/lib/validation/schemas";
@@ -26,7 +26,7 @@ type CustomerSelectProps = {
 
 /**
  * Native select of customers that submits the customer NAME under `name`,
- * so existing FormData-based forms keep working. Includes "+ Add new customer".
+ * so existing FormData-based forms keep working. Includes "+ Add new customer". Archived customers are not offered.
  */
 export function CustomerSelect({ name, defaultValue = "", value, onValueChange, required, className }: CustomerSelectProps) {
   const [names, setNames] = useState<string[]>([]);
@@ -38,7 +38,8 @@ export function CustomerSelect({ name, defaultValue = "", value, onValueChange, 
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchCustomers();
+      // Archived customers (097) are left out; a document that already names one still shows it (`options` below).
+      const data = await fetchPickerCustomers();
       setNames(data.map((c) => c.name));
       setLoadFailed(false);
     } catch (err) {
