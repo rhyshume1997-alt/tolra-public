@@ -7,7 +7,7 @@ import { clockTime, dayHeading } from "@/components/time/day-sheet";
 import { useCompanyProfile } from "@/lib/company";
 import { DAY_FLAG_KEYS, DAY_FLAG_LABEL, type DayFlags, type WeekDayFlags, flagsShort } from "@/lib/time-day-flags";
 import type { JobInfo } from "@/lib/time-data";
-import { type DayTotals, type WeekTotals, FLAG_TEXT, hm, hmSigned } from "@/lib/time-sheet";
+import { type DayTotals, type WeekTotals, FLAG_TEXT, ROUNDING_NOTE, hm, hmSigned } from "@/lib/time-sheet";
 
 const exact: CSSProperties = { WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" };
 const HEAD = "#cfd9e8";
@@ -125,7 +125,7 @@ export function WeekSummaryPrint({ person, week, approval, dayFlags = null }: { 
           </tr>
         </tbody>
       </table>
-      <p className="mt-2 text-[11px]">Paid {hm(week.paid)} h. Overtime is not worked out: it is the days ticked Overtime. Hours only: no rates or pay.</p>
+      <p className="mt-2 text-[11px]">Paid {hm(week.paid)} h. Overtime is not worked out: it is the days ticked Overtime. Hours only: no rates or pay. {ROUNDING_NOTE}</p>
       {dayFlags ? (
         <p className="mt-1 text-[11px]" data-testid="week-print-day-flags">
           <strong>Day ticks</strong> (saved; days, and paid hours on those days): {DAY_FLAG_KEYS.map((k) => `${DAY_FLAG_LABEL[k]} ${dayFlags.totals[k].days} (${hm(dayFlags.totals[k].paidMinutes)} h)`).join(" · ")}.
