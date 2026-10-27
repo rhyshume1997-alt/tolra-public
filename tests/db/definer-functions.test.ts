@@ -46,7 +46,7 @@ const CALLER_ONLY = [
   "public.integration_overview(p_provider text)",
   // 099: the caller's company's Complete jobs still to despatch or invoice only (admin and office).
   "public.jobs_awaiting_despatch_or_invoice()",
-  // 096: the caller's own company's AI helper switches, cap and spend (office and admin; never the key).
+  // 101: the caller's own company's AI helper switches, cap and spend (office and admin; never the key).
   "public.ai_helper_status()",
 ];
 
@@ -122,7 +122,7 @@ beforeAll(async () => {
   beta.integrationSend = (await service.from("integration_sends").insert({ organization_id: org, provider: "xero", doc_type: "invoice", doc_id: beta.invoice, action: "create", status: "failed", last_error: "x" }).select("id").single()).data!.id;
   if ((await service.from("integration_contacts").insert({ organization_id: org, provider: "xero", customer_name: `${MARKER} Customer`, state: "problem", problem: "Two contacts" })).error) throw new Error("beta integration contact");
 
-  // 096: an AI helper suggestion of beta's, waiting for a decision, for settle and decide to be pointed at (written as its functions would).
+  // 101: an AI helper suggestion of beta's, waiting for a decision, for settle and decide to be pointed at (written as its functions would).
   beta.aiRequest = (await service.from("ai_helper_requests").insert({ organization_id: org, user_id: beta.adminId, feature: "rfq", month: `${new Date().toISOString().slice(0, 7)}-01`, status: "suggested", input_digest: "a".repeat(64), input_bytes: 10, output: { kind: "rfq", lines: [] } }).select("id").single()).data!.id;
 
   // A photo reserved on beta's job by beta's admin (040), for finalise and remove to be pointed at.
@@ -315,7 +315,7 @@ function attempts(): Attempt[] {
     ["public.org_activity(p_from timestamp with time zone, p_to timestamp with time zone, p_actor uuid, p_table text, p_before timestamp with time zone, p_before_id uuid, p_limit integer)", () => alpha.rpc("org_activity", { p_from: null, p_to: null, p_actor: world.tenants.beta.users.admin.id, p_table: null, p_before: null, p_before_id: null, p_limit: 50 }), "nothing of beta's"],
     ["public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)", () => alpha.rpc("record_inbound_email", { p_graph_message_id: `AAA-${randomUUID()}`, p_internet_message_id: null, p_from_address: "a@example.test", p_from_name: null, p_subject: `Re: ${MARKER}`, p_received_at: day, p_body_preview: "", p_body_text: "" }), "nothing of beta's"],
     ["public.save_mail_poll_state(p_next_link text, p_checkpoint timestamp with time zone)", () => alpha.rpc("save_mail_poll_state", { p_next_link: null, p_checkpoint: day }), "nothing of beta's"],
-    // 096: the AI helper. Settings and key change the caller's own company only; reserve answers from the caller's company (alpha's
+    // 101: the AI helper. Settings and key change the caller's own company only; reserve answers from the caller's company (alpha's
     // features are off, so it refuses); settle and decide pointed at beta's suggestion refuse.
     ["public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)", () => alpha.rpc("ai_helper_save_settings", { p_roundup: false, p_rfq: false, p_cap_pence: 0 }), "nothing of beta's"],
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],

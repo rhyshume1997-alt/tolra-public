@@ -1,12 +1,14 @@
--- 096_ai_helper.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
+-- 101_ai_helper.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
 BEGIN;
 
 -- =====================================================================================================
--- 096: the Tolra AI admin helper, first version (lib/ai-helper, app/api/ai-helper, AI_HELPER_ENABLED). Two features, both OFF by
+-- 101: the Tolra AI admin helper, first version (lib/ai-helper, app/api/ai-helper, AI_HELPER_ENABLED). Two features, both OFF by
 -- default per company: the round-up (a read-only summary of what is late, waiting or unbilled) and RFQ email to draft quote (a
 -- suggestion only; a person's Approve click creates a normal draft through create_with_lines under their own session). Needs 033
 -- (assert_privileged_aal, require_admin_mfa_guard), 036 (_session_membership, support_readonly_guard), 000/035 (security_audit.audit_log,
 -- log_row_change). INDEPENDENT OF 094 AND 095: touches none of their objects (or 081 to 093's). Safe to run again.
+-- NUMBERING: 101 is a working number (was 096). Production applies it after 099 and 100, so it sorts after them; it touches none of
+-- their objects (no invoice, customer or archive table or function).
 --
 -- WHAT IT ADDS. Four tables, seven functions; no existing table, row, function, policy or grant changes.
 --   a. public.ai_helper_settings: one row per company: roundup_enabled and rfq_enabled (default FALSE), monthly_cap_pence (default 0:
@@ -28,11 +30,11 @@ BEGIN;
 -- ai_helper_failed, ai_helper_approved, ai_helper_rejected, ai_helper_settings_updated, ai_helper_key_set, ai_helper_key_cleared. Ids,
 -- feature, model, counts and pence only: no text, no names, no key. The names are guarded: write_audit (the app's own path) still refuses
 -- them (audit_event_allowed does not list them), so a client can't make one up. audit_event_allowed and write_audit are NOT replaced
--- (095's bodies stay, and re-running 095 after 096 still passes its guard).
+-- (095's bodies stay, and re-running 095 after 101 still passes its guard).
 -- RLS: on all four. SELECT for the company's admin and office users on a, c, d; nothing on b; no INSERT, UPDATE or DELETE grant (only the
 -- functions write). Every table carries support_read_only and admin_mfa, as 084's do.
--- GUARD (section 1). SELF-CHECK (section 5). Verify: supabase/verify/ai_helper_096.sql (every row TRUE).
--- Rollback: supabase/release/096_ai_helper.rollback.sql (drops the four tables and seven functions; audit rows stay; Rhys's approval).
+-- GUARD (section 1). SELF-CHECK (section 5). Verify: supabase/verify/ai_helper_101.sql (every row TRUE).
+-- Rollback: supabase/release/101_ai_helper.rollback.sql (drops the four tables and seven functions; audit rows stay; Rhys's approval).
 -- =====================================================================================================
 
 -- -----------------------------------------------------------------------------------------------------
@@ -44,7 +46,7 @@ BEGIN
      OR to_regprocedure('public.support_readonly_guard()') IS NULL OR to_regprocedure('public._session_membership()') IS NULL
      OR to_regprocedure('security_audit.log_row_change()') IS NULL OR to_regclass('security_audit.audit_log') IS NULL
      OR to_regclass('public.quotes') IS NULL OR to_regclass('public.user_profiles') IS NULL THEN
-    RAISE EXCEPTION '096: a function or table it needs (033, 036, the audit log, quotes) is missing';
+    RAISE EXCEPTION '101: a function or table it needs (033, 036, the audit log, quotes) is missing';
   END IF;
 END
 $$;
@@ -441,24 +443,24 @@ DECLARE
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_class c WHERE c.oid IN ('public.ai_helper_settings'::regclass, 'public.ai_helper_secrets'::regclass,
                 'public.ai_helper_usage'::regclass, 'public.ai_helper_requests'::regclass) AND NOT c.relrowsecurity) THEN
-    RAISE EXCEPTION '096: row level security is off on an AI helper table';
+    RAISE EXCEPTION '101: row level security is off on an AI helper table';
   END IF;
   IF has_table_privilege('authenticated', 'public.ai_helper_secrets', 'SELECT') OR has_table_privilege('anon', 'public.ai_helper_settings', 'SELECT')
      OR has_table_privilege('authenticated', 'public.ai_helper_settings', 'INSERT') OR has_table_privilege('authenticated', 'public.ai_helper_usage', 'UPDATE')
      OR has_table_privilege('authenticated', 'public.ai_helper_requests', 'UPDATE') OR has_table_privilege('authenticated', 'public.ai_helper_requests', 'DELETE') THEN
-    RAISE EXCEPTION '096: an AI helper table grants more than SELECT';
+    RAISE EXCEPTION '101: an AI helper table grants more than SELECT';
   END IF;
   FOREACH v_fn IN ARRAY ARRAY['public.ai_helper_status()', 'public.ai_helper_save_settings(boolean,boolean,integer)', 'public.ai_helper_set_key(text,text)',
                               'public.ai_helper_reserve(text,integer,text,integer)', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)',
                               'public.ai_helper_decide(uuid,text,uuid)'] LOOP
     IF NOT (SELECT p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'] FROM pg_proc p WHERE p.oid = to_regprocedure(v_fn))
        OR NOT has_function_privilege('authenticated', v_fn, 'EXECUTE') OR has_function_privilege('anon', v_fn, 'EXECUTE') THEN
-      RAISE EXCEPTION '096: % is not definer, pinned and signed-in only', v_fn;
+      RAISE EXCEPTION '101: % is not definer, pinned and signed-in only', v_fn;
     END IF;
   END LOOP;
   IF has_function_privilege('authenticated', 'public._ai_helper_audit(uuid,text,text,text,jsonb)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public._ai_helper_caller(text[])', 'EXECUTE') THEN
-    RAISE EXCEPTION '096: an internal AI helper function is callable';
+    RAISE EXCEPTION '101: an internal AI helper function is callable';
   END IF;
 END
 $$;

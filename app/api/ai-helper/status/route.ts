@@ -4,7 +4,7 @@ import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
 import { isErrorResponse, jsonError, requireProfile } from "@/lib/server/auth";
 
 /**
- * The AI admin helper's state for the caller's company (migration 096 ai_helper_status, as the caller): the two switches, the monthly
+ * The AI admin helper's state for the caller's company (migration 101 ai_helper_status, as the caller): the two switches, the monthly
  * cap and this month's spend, and whether a key is set (an admin also sees its last four characters; the key itself never leaves the
  * server). Off (404) unless AI_HELPER_ENABLED is exactly "true". Office and admin only; a support session gets nothing.
  */

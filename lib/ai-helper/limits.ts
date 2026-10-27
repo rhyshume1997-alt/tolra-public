@@ -1,7 +1,7 @@
 /**
  * Fixed limits for the AI admin helper: models, sizes, output caps and the price table the monthly cap is reserved from.
  *
- * COST. The cap (migration 096, pence) is reserved BEFORE each request from an upper bound: every byte of the system prompt and the
+ * COST. The cap (migration 101, pence) is reserved BEFORE each request from an upper bound: every byte of the system prompt and the
  * data counted as one input token (a token always covers at least one byte), plus framing, plus the full output cap (thinking included:
  * max_tokens bounds all output). The request is sent with that output cap, so the provider's own usage can never exceed the estimate,
  * and the database never settles above the reservation either. Prices are the provider's list prices in US dollars per million tokens;

@@ -1,4 +1,4 @@
--- Migration 096 (the AI admin helper's tables and functions). Read only: every row should be TRUE (12).
+-- Migration 101 (the AI admin helper's tables and functions). Read only: every row should be TRUE (12).
 WITH t AS (
   SELECT c.oid, c.relname, c.relrowsecurity FROM pg_class c
   WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('ai_helper_settings', 'ai_helper_secrets', 'ai_helper_usage', 'ai_helper_requests')
@@ -50,7 +50,7 @@ UNION ALL SELECT 'internal_helpers_closed',
 UNION ALL SELECT 'reserve_checks_cap',
   coalesce((SELECT position('u.reserved_pence + u.spent_pence + p_estimate_pence' IN prosrc) > 0 AND position('monthly_cap_pence' IN prosrc) > 0
             FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')), FALSE)
--- The audit log's own functions are untouched by 096 (095's bodies) and the log keeps its append-only guard.
+-- The audit log's own functions are untouched by 101 (095's bodies) and the log keeps its append-only guard.
 UNION ALL SELECT 'audit_functions_still_095',
   coalesce((SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) = '7e8d396511ddb056daa61953bfccd12b' FROM pg_proc WHERE oid = to_regprocedure('public.audit_event_allowed(text,text)')), FALSE)
   AND coalesce((SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) = 'a6531bb5559ae9936387729bb91071a0' FROM pg_proc WHERE oid = to_regprocedure('public.write_audit(text,text,text,jsonb,jsonb,jsonb,text,text)')), FALSE)

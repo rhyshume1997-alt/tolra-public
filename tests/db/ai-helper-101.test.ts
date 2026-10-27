@@ -1,5 +1,5 @@
 /**
- * Migration 096 (working number): the AI admin helper's tables and functions, on the local stack.
+ * Migration 101 (working number): the AI admin helper's tables and functions, on the local stack.
  *
  *   - Off by default: a new company's status has both features off, no cap and no key; reserve refuses while a feature is off.
  *   - Roles: office and admin may reserve, settle and decide; only admin may change settings or the key; workshop and viewer get
@@ -35,7 +35,7 @@ async function makeOrg(db: Client, label: string) {
   const id = randomUUID();
   counter += 1;
   await db.query("insert into public.organizations (id, name, slug, status) values ($1, $2, $3, 'active')",
-    [id, `096 ${label} ${run}`, `${SYNTHETIC_SLUG_PREFIX}${run}-096-${label}-${counter}`]);
+    [id, `101 ${label} ${run}`, `${SYNTHETIC_SLUG_PREFIX}${run}-101-${label}-${counter}`]);
   orgs.push(id);
   return id;
 }
@@ -141,7 +141,7 @@ afterAll(async () => {
   });
 });
 
-describe("096: off by default, roles", () => {
+describe("101: off by default, roles", () => {
   it("a new company: both features off, no cap, no key; reserve refuses while off", async () => {
     expect(await status(A.office)).toEqual({ ok: true, value: { roundup_enabled: false, rfq_enabled: false, monthly_cap_pence: 0, key_set: false, key_last4: null, month_spent_pence: 0, month_reserved_pence: 0, can_manage: false } });
     expect(await reserve(A.office, "rfq", 5)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
@@ -198,7 +198,7 @@ describe("096: off by default, roles", () => {
   });
 });
 
-describe("096: the cap", () => {
+describe("101: the cap", () => {
   it("reserve hands back the key and a request id, audited; settle moves the actual cost (never above the reservation) to spent", async () => {
     const r = await reserve(A.office, "rfq", 10);
     expect(r).toMatchObject({ ok: true, value: { ok: true, key_enc: KEY_ENC } });
@@ -257,7 +257,7 @@ describe("096: the cap", () => {
   });
 });
 
-describe("096: decisions and audit", () => {
+describe("101: decisions and audit", () => {
   let suggestion = "";
   let quote = "";
   beforeAll(async () => {
@@ -302,7 +302,7 @@ describe("096: decisions and audit", () => {
   });
 });
 
-describe("096: two companies", () => {
+describe("101: two companies", () => {
   it("beta sees none of alpha's settings, ledger or requests, and only its own status", async () => {
     for (const table of ["ai_helper_settings", "ai_helper_usage", "ai_helper_requests"]) {
       const seen = await as(B.admin, async (db) => (await db.query(`select organization_id from public.${table}`)).rows);
