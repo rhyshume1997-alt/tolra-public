@@ -19,10 +19,12 @@ export const DOT: Record<StatTone, string> = {
  * One headline number: mono label, large figure, one line of context. Colour is a small dot, not a tinted card,
  * so a page of stats stays calm and the numbers carry the weight.
  */
-export function StatTile({ label, value, sub, tone = "neutral", href, onClick, active, className, valueClassName, labelClassName }: {
+export function StatTile({ label, value, sub, hint, tone = "neutral", href, onClick, active, className, valueClassName, labelClassName }: {
   label: string;
   value: React.ReactNode;
   sub?: React.ReactNode;
+  /** The full definition behind the number, shown on hover, so the line under the figure can stay short. */
+  hint?: string;
   tone?: StatTone;
   href?: string;
   /** Makes the tile a button (e.g. "filter the list below by this"). */
@@ -34,7 +36,7 @@ export function StatTile({ label, value, sub, tone = "neutral", href, onClick, a
   labelClassName?: string;
 }) {
   const body = (
-    <div className={cn("group h-full rounded-xl border border-line bg-surface px-5 py-5 text-left transition-colors", (href || onClick) && "hover:border-ink/20", active && "border-brand-accent/50 ring-1 ring-brand-accent/30", className)}>
+    <div title={hint} className={cn("group h-full rounded-xl border border-line bg-surface px-5 py-5 text-left transition-colors", (href || onClick) && "hover:border-ink/20", active && "border-brand-accent/50 ring-1 ring-brand-accent/30", className)}>
       <p data-kpi-label="" className={cn("label-mono field-label flex items-center gap-2", labelClassName)}>
         <span className={cn("size-1.5 rounded-full", DOT[tone])} aria-hidden />
         {label}
