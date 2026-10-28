@@ -7,7 +7,7 @@
 -- NUMBERING: 101 is a working number (was 096). Production applies it after 099 and 100, so it sorts after them; it touches none of
 -- their objects (no invoice, customer or archive table or function).
 --
--- WHAT IT ADDS. Four tables, seven functions; no existing table, row, function, policy or grant changes.
+-- WHAT IT ADDS. Four tables, eight functions (six the app calls, two internal); no existing table, row, function, policy or grant changes.
 --   a. public.ai_helper_settings: one row per company: roundup_enabled and rfq_enabled (default FALSE), monthly_cap_pence (default 0:
 --      nothing runs until an admin sets a cap), api_key_last4. Read by the company's admin and office users.
 --   b. public.ai_helper_secrets: the company's own Anthropic API key, encrypted by the server (lib/integrations/crypto.ts, AES-256-GCM
@@ -21,7 +21,8 @@
 --      draft quote it became).
 --   Functions (SECURITY DEFINER, signed-in only; company from current_user_organization_id(), person from auth.uid(); a support session
 --   is refused; admins pass assert_privileged_aal): ai_helper_status() (admin, office), ai_helper_save_settings and ai_helper_set_key
---   (admin), ai_helper_reserve, ai_helper_settle and ai_helper_decide (admin, office). Internal: _ai_helper_audit (no grant).
+--   (admin), ai_helper_reserve, ai_helper_settle and ai_helper_decide (admin, office).
+--   Internal, no grant to anyone: _ai_helper_audit and _ai_helper_caller.
 -- AUDIT. The events are written by these functions themselves, in the same transaction as the change, straight into
 -- security_audit.audit_log (as 072's and 093's functions do): ai_helper_requested, ai_helper_refused, ai_helper_suggested,
 -- ai_helper_failed, ai_helper_approved, ai_helper_rejected, ai_helper_settings_updated, ai_helper_key_set, ai_helper_key_cleared. Ids,
@@ -31,7 +32,7 @@
 -- RLS: on all four. SELECT for the company's admin and office users on a, c, d; nothing on b; no INSERT, UPDATE or DELETE grant (only the
 -- functions write). Every table carries support_read_only and admin_mfa, as 084's do.
 -- GUARD (section 1). SELF-CHECK (section 5). Verify: supabase/verify/ai_helper_101.sql (every row TRUE).
--- Rollback: supabase/release/101_ai_helper.rollback.sql (drops the four tables and seven functions; audit rows stay; Rhys's approval).
+-- Rollback: supabase/release/101_ai_helper.rollback.sql (drops the four tables and eight functions; audit rows stay; Rhys's approval).
 -- =====================================================================================================
 
 -- -----------------------------------------------------------------------------------------------------

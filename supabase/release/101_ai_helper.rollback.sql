@@ -1,4 +1,4 @@
--- 101 rollback: ONLY with Rhys's approval. Removes the AI helper's four tables and seven functions: every company's switches, cap,
+-- 101 rollback: ONLY with Rhys's approval. Removes the AI helper's four tables and eight functions: every company's switches, cap,
 -- usage ledger, stored (encrypted) API key and suggestion records go with them. The app then answers "not available" (the status call
 -- fails), so no AI UI shows. Draft quotes a person approved stay (they are normal quotes). Audit rows already written stay (the audit
 -- log is append-only). Nothing else is touched: 101 replaced no existing object. Run the whole text as one transaction, then the release
