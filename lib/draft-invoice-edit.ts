@@ -86,6 +86,25 @@ export function balanceText(balance: LineBalance): string {
 }
 
 /**
+ * 099: while draft_invoice_balances is being read, lines can't be added or removed. Its answer is put on the lines by position (the
+ * draft's stored order), so a line removed or added before it lands would shift every line after it onto another line's order link,
+ * and replace_draft_invoice accepts any link of the draft's orders (the double-billing path ChatGPT and Grok found, 28 Oct).
+ */
+export function lineRowsLocked(linksState: string): boolean {
+  return linksState === "loading";
+}
+
+/** The draft's lines without the one at `index`; unchanged while the order links are loading (lineRowsLocked). */
+export function removeDraftLine(lines: DraftLine[], index: number, linksState: string): DraftLine[] {
+  return lineRowsLocked(linksState) ? lines : lines.filter((_, i) => i !== index);
+}
+
+/** 099: the order links read by position (draft_invoice_balances) put on the form's lines, which are still in the stored order. */
+export function linesWithLoadedLinks(lines: DraftLine[], byIndex: ReadonlyArray<string | null>): DraftLine[] {
+  return lines.map((line, i) => (byIndex[i] ? { ...line, orderLine: byIndex[i] ?? undefined } : line));
+}
+
+/**
  * 099: the first line that takes more of its order line than the balance allows (the quantities of every line billing that order line
  * added together), as the message to show; null when every linked line is within its balance.
  */
