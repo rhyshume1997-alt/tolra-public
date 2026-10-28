@@ -123,6 +123,14 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
     ["Bracket · Material: 6082-T6 aluminium · Finish: clear anodise · Required by 2026-12-04", 25, 0, "BR-100"],
     ["Spacer · Material: 303 stainless", 4, 0, null],
   ]);
+  // The draft carries the AI flags in its internal notes (never shown to the customer), and the quote view shows them.
+  const { data: header } = await adminClient().from("quotes").select("internal_notes, customer_notes").eq("id", quotes![0].id).single();
+  expect(String(header!.internal_notes).split("\n")).toEqual([
+    "AI-suggested: drafted by the AI helper from a pasted RFQ email, then checked and approved by a person.",
+    "Needs human review: line 1: price (saved at £0.00)",
+    "Needs human review: line 2: finish, due date, price (saved at £0.00)",
+  ]);
+  expect(header!.customer_notes).toBeNull();
   // The server created the draft and recorded the decision in the same request.
   const [request] = await requests(org);
   expect(request).toMatchObject({ feature: "rfq", status: "approved", result_quote_id: quotes![0].id });
@@ -130,6 +138,17 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
   expect(approved).toEqual([{ entity_id: request.id, actor_user_id: w.tenants.alpha.users.office.id, metadata: { feature: "rfq", quote_id: quotes![0].id, source: "ai_helper" } }]);
   // Nothing was issued or sent.
   expect(await count("invoices", org)).toBe(invoicesBefore);
+
+  // Opening the draft from the panel's link shows the flags where the draft opens.
+  await page.getByTestId("ai-rfq-created").getByRole("link", { name: "Open it in Quotes" }).click();
+  const flags = page.getByRole("dialog").getByTestId("quote-ai-flags");
+  await expect(flags).toContainText("AI-suggested");
+  await expect(flags.getByRole("list", { name: "Needs human review" }).getByRole("listitem")).toHaveText([
+    "Needs human review: line 1: price (saved at £0.00)",
+    "Needs human review: line 2: finish, due date, price (saved at £0.00)",
+  ]);
+  await page.keyboard.press("Escape");
+  await page.goto("/ai-helper");
 
   // The round-up is read only and works from the same page.
   await page.getByRole("button", { name: "Make round-up" }).click();

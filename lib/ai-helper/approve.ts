@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { aiDraftNotes } from "@/lib/ai-helper/draft-notes";
 import { RFQ_MAX_LINES } from "@/lib/ai-helper/limits";
 import { type ReviewField, type RfqField, RFQ_FIELDS, clean, lineDescription, realDate, wholeQuantity } from "@/lib/ai-helper/rfq";
 import { documentTotals } from "@/lib/money";
@@ -22,6 +23,7 @@ import { fromVatChoice, toVatChoice } from "@/lib/vat";
  *   - The customer is checked again against this company's own customers.
  * The draft is created as the Quote Builder creates one: next_doc_number('QUO'), then create_with_lines with status 'draft', under the
  * person's own session (company scoping, role checks, row triggers and audit of that path unchanged). It is never sent or issued.
+ * The draft carries its flags in its internal notes (lib/ai-helper/draft-notes.ts): "AI-suggested" and every "Needs human review" item.
  */
 
 const nullableText = (max: number) => z.string().max(max).nullable();
@@ -49,7 +51,7 @@ type StoredLine = {
   description: string | null; partNumber: string | null; material: string | null; finish: string | null;
   quantity: number | null; dueDate: string | null; review: ReviewField[];
 };
-export type StoredSuggestion = { customer: string | null; lines: StoredLine[] };
+export type StoredSuggestion = { customer: string | null; suspicious: boolean; truncated: boolean; lines: StoredLine[] };
 
 const REVIEW_FIELDS = new Set<string>([...RFQ_FIELDS, "price"]);
 
@@ -65,16 +67,12 @@ export function readStoredSuggestion(output: unknown): StoredSuggestion | null {
       review: Array.isArray(l.review) ? [...new Set(l.review.filter((f): f is ReviewField => typeof f === "string" && REVIEW_FIELDS.has(f)))] : ["price"],
     };
   });
-  return { customer: clean(o.customer, 200), lines };
+  return { customer: clean(o.customer, 200), suspicious: o.suspicious === true, truncated: o.truncated === true, lines };
 }
 
 /** A draft line as it will be saved. */
-export type DraftLine = {
-  description: string; partNumber: string | null; quantity: number; unitPrice: number; pricedBy: "costing" | "none"; review: ReviewField[];
-  /** Kept for the review notes: the stored line's own number (1-based). */
-  sourceLine: number;
-};
-export type DraftPlan = { customer: string; customerKnown: boolean; lines: DraftLine[] };
+export type DraftLine = { description: string; partNumber: string | null; quantity: number; unitPrice: number; pricedBy: "costing" | "none"; review: ReviewField[] };
+export type DraftPlan = { customer: string; customerKnown: boolean; suspicious: boolean; truncated: boolean; lines: DraftLine[] };
 
 const FIELD_KEYS: Record<RfqField, keyof Omit<StoredLine, "review">> = {
   description: "description", part_number: "partNumber", material: "material", finish: "finish", quantity: "quantity", due_date: "dueDate",
@@ -84,8 +82,8 @@ const FIELD_KEYS: Record<RfqField, keyof Omit<StoredLine, "review">> = {
  * The lines to save, from the stored suggestion plus the person's edits (if any), cleaned. Throws ValidationError (nothing saved) for
  * an edit naming a line the suggestion does not have, a line named twice, or a kept line with no description or quantity.
  */
-export function rebuildLines(stored: StoredSuggestion, edits: ApproveEdits | undefined): { customer: string | null; lines: (StoredLine & { sourceLine: number })[] } {
-  if (!edits) return { customer: stored.customer, lines: stored.lines.map((line, i) => ({ ...line, sourceLine: i + 1 })) };
+export function rebuildLines(stored: StoredSuggestion, edits: ApproveEdits | undefined): { customer: string | null; lines: StoredLine[] } {
+  if (!edits) return { customer: stored.customer, lines: stored.lines };
   const seen = new Set<number>();
   const lines = edits.lines.map((edit) => {
     const base = stored.lines[edit.index];
@@ -101,7 +99,7 @@ export function rebuildLines(stored: StoredSuggestion, edits: ApproveEdits | und
       if (next[key] === null) return field !== "part_number" || base.review.includes("part_number");
       return next[key] === base[key] && base.review.includes(field);
     }) as ReviewField[];
-    return { ...next, review: [...review, "price" as const], sourceLine: edit.index + 1 };
+    return { ...next, review: [...review, "price" as const] };
   });
   return { customer: clean(edits.customer, 200), lines };
 }
@@ -124,6 +122,8 @@ export async function planDraft(
   return {
     customer: rebuilt.customer,
     customerKnown,
+    suspicious: stored.suspicious,
+    truncated: stored.truncated,
     lines: rebuilt.lines.map((l, i) => {
       const price = prices[i] ?? null;
       return {
@@ -133,7 +133,6 @@ export async function planDraft(
         unitPrice: price ?? 0,
         pricedBy: price === null ? "none" : "costing",
         review: price === null ? l.review : l.review.filter((f) => f !== "price"),
-        sourceLine: l.sourceLine,
       };
     }),
   };
@@ -148,15 +147,13 @@ export function companyVatFromProfile(profile: unknown): CompanyVat {
   return { registered: v.vatRegistered !== false, standardRate: rate };
 }
 
-export const AI_DRAFT_NOTE = "Drafted from a pasted RFQ email with the AI helper, then checked and approved by a person.";
-
 /** Creates the DRAFT quote from the plan under the person's own session. Returns its id and number. */
 export async function createDraftQuote(db: SupabaseClient, plan: DraftPlan, vatSetup: CompanyVat): Promise<{ id: string; ref: string }> {
   const parsed = parseOrThrow(quoteSaveSchema, {
     customer: plan.customer,
     description: `RFQ from ${plan.customer}`,
     customerNotes: "",
-    internalNotes: AI_DRAFT_NOTE,
+    internalNotes: aiDraftNotes(plan),
     terms: "",
     validUntil: "",
     lines: plan.lines.map((line) => ({ description: line.description, quantity: line.quantity, unitPrice: line.unitPrice })),

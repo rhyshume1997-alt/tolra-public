@@ -18,6 +18,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { anthropicProvider } from "@/lib/ai-helper/anthropic";
 import { approveEditsSchema, companyVatFromProfile, createDraftQuote, planDraft, readStoredSuggestion } from "@/lib/ai-helper/approve";
+import { AI_SUGGESTED_LINE, aiDraftNotes, readAiDraftNotes } from "@/lib/ai-helper/draft-notes";
 import { AI_HELPER_FLAG, aiHelperEnabled } from "@/lib/ai-helper/flag";
 import { AI_HELPER_MODELS, MAX_OUTPUT_TOKENS, actualPence, estimatePence } from "@/lib/ai-helper/limits";
 import { mockProvider } from "@/lib/ai-helper/mock";
@@ -189,8 +190,8 @@ describe("prices", () => {
 
 describe("Approve", () => {
   const QUOTE = "11111111-1111-4111-8111-111111111111";
-  const plan = { customer: "Acme Engineering Ltd", customerKnown: true, lines: [
-    { description: "Bracket · Material: 6082-T6", partNumber: "BR-100", quantity: 25, unitPrice: 12.5, pricedBy: "costing" as const, review: [], sourceLine: 1 },
+  const plan = { customer: "Acme Engineering Ltd", customerKnown: true, suspicious: false, truncated: false, lines: [
+    { description: "Bracket · Material: 6082-T6", partNumber: "BR-100", quantity: 25, unitPrice: 12.5, pricedBy: "costing" as const, review: [] },
   ] };
   const rpcStub = () => vi.fn(async (fn: string) => ({ data: fn === "next_doc_number" ? "QUO-0100" : QUOTE, error: null }));
 
@@ -207,7 +208,7 @@ describe("Approve", () => {
 
   it("refuses what the Quote Builder refuses (no customer, no lines) before taking a number", async () => {
     const rpc = vi.fn();
-    await expect(createDraftQuote({ rpc } as never, { customer: "", customerKnown: false, lines: [] }, { registered: true, standardRate: 20 })).rejects.toThrow();
+    await expect(createDraftQuote({ rpc } as never, { customer: "", customerKnown: false, suspicious: false, truncated: false, lines: [] }, { registered: true, standardRate: 20 })).rejects.toThrow();
     expect(rpc).not.toHaveBeenCalled();
   });
 
@@ -235,9 +236,9 @@ describe("Approve: the draft is rebuilt from the STORED suggestion", () => {
     const price = priceAt(9.99);
     const out = await planDraft(stored, undefined, { price, customerKnown: async () => true });
     expect(price).toHaveBeenCalledWith([{ partNumber: "BR-100", quantity: 25 }, { partNumber: null, quantity: 4 }]);
-    expect(out).toEqual({ customer: "Acme Engineering Ltd", customerKnown: true, lines: [
-      { description: "Bracket · Material: 6082-T6 · Finish: clear anodise · Required by 2026-12-04", partNumber: "BR-100", quantity: 25, unitPrice: 9.99, pricedBy: "costing", review: [], sourceLine: 1 },
-      { description: "Spacer · Material: 303 stainless", partNumber: null, quantity: 4, unitPrice: 0, pricedBy: "none", review: ["finish", "due_date", "price"], sourceLine: 2 },
+    expect(out).toEqual({ customer: "Acme Engineering Ltd", customerKnown: true, suspicious: false, truncated: false, lines: [
+      { description: "Bracket · Material: 6082-T6 · Finish: clear anodise · Required by 2026-12-04", partNumber: "BR-100", quantity: 25, unitPrice: 9.99, pricedBy: "costing", review: [] },
+      { description: "Spacer · Material: 303 stainless", partNumber: null, quantity: 4, unitPrice: 0, pricedBy: "none", review: ["finish", "due_date", "price"] },
     ] });
   });
 
@@ -246,8 +247,8 @@ describe("Approve: the draft is rebuilt from the STORED suggestion", () => {
       { index: 1, description: "Spacer\u0007 long", partNumber: "BR-100", material: "303 stainless", finish: "passivate", dueDate: "2026-02-30", quantity: 8 },
     ] };
     const out = await planDraft(stored, edits, { price: priceAt(1.5), customerKnown: async () => false });
-    expect(out).toEqual({ customer: "Acme Engineering Ltd", customerKnown: false, lines: [
-      { description: "Spacer long · Material: 303 stainless · Finish: passivate", partNumber: "BR-100", quantity: 8, unitPrice: 1.5, pricedBy: "costing", review: ["due_date"], sourceLine: 2 },
+    expect(out).toEqual({ customer: "Acme Engineering Ltd", customerKnown: false, suspicious: false, truncated: false, lines: [
+      { description: "Spacer long · Material: 303 stainless · Finish: passivate", partNumber: "BR-100", quantity: 8, unitPrice: 1.5, pricedBy: "costing", review: ["due_date"] },
     ] });
   });
 
@@ -267,6 +268,34 @@ describe("Approve: the draft is rebuilt from the STORED suggestion", () => {
     expect(approveEditsSchema.safeParse({ customer: "A", lines: [{ ...line, unitPrice: 0.01 }] }).success).toBe(false);
     expect(approveEditsSchema.safeParse({ customer: "A", lines: [{ ...line, index: undefined }] }).success).toBe(false);
     expect(approveEditsSchema.safeParse({ customer: "A", lines: [line], total: 1 }).success).toBe(false);
+  });
+});
+
+describe("the draft carries the AI flags in its internal notes", () => {
+  it("AI-suggested first, then one Needs human review line per item, and read back the same", () => {
+    const notes = aiDraftNotes({ customerKnown: false, suspicious: true, truncated: false, lines: [{ review: [] }, { review: ["price", "finish", "due_date"] }] });
+    expect(notes.split("\n")).toEqual([
+      AI_SUGGESTED_LINE,
+      "Needs human review: the email held text that reads like instructions to the AI; it was treated as plain text. Check every field.",
+      "Needs human review: customer (not found in your customers)",
+      "Needs human review: line 2: finish, due date, price (saved at £0.00)",
+    ]);
+    expect(readAiDraftNotes(notes)).toEqual({ aiSuggested: true, review: [
+      "the email held text that reads like instructions to the AI; it was treated as plain text. Check every field.",
+      "customer (not found in your customers)",
+      "line 2: finish, due date, price (saved at £0.00)",
+    ] });
+  });
+
+  it("a quote the AI did not suggest shows no flags, even if its notes mention review", () => {
+    expect(readAiDraftNotes("Needs human review: customer")).toEqual({ aiSuggested: false, review: [] });
+    expect(readAiDraftNotes(null)).toEqual({ aiSuggested: false, review: [] });
+  });
+
+  it("all clear: still marked AI-suggested, nothing to review", () => {
+    const notes = aiDraftNotes({ customerKnown: true, suspicious: false, truncated: false, lines: [{ review: [] }] });
+    expect(notes).toBe(AI_SUGGESTED_LINE);
+    expect(readAiDraftNotes(notes)).toEqual({ aiSuggested: true, review: [] });
   });
 });
 

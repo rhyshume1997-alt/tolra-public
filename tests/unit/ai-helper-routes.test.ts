@@ -408,6 +408,17 @@ describe("decision", () => {
     expect(createArgs()!.p_header.total_value).toBe(750);
   });
 
+  it("the saved draft carries the AI-suggested and Needs human review flags in its internal notes", async () => {
+    db.customers = [];
+    expect((await decide(post({ requestId: REQ, decision: "approved" }))).status).toBe(200);
+    expect(String(createArgs()!.p_header.internal_notes).split("\n")).toEqual([
+      "AI-suggested: drafted by the AI helper from a pasted RFQ email, then checked and approved by a person.",
+      "Needs human review: customer (not found in your customers)",
+      "Needs human review: line 2: finish, due date, price (saved at £0.00)",
+    ]);
+    expect(createArgs()!.p_header.customer_notes).toBeNull();
+  });
+
   it("a suggestion not waiting for a decision, or not an RFQ: not found, nothing created", async () => {
     for (const over of [{ status: "approved" }, { status: "rejected" }, { feature: "roundup" }, { output: { kind: "roundup" } }]) {
       db.requests = [{ id: REQ, organization_id: ORG, feature: "rfq", status: "suggested", output: STORED, ...over }];
