@@ -353,7 +353,7 @@ export default function RfqPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Show">
-        <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Show</span>
+        <span className="text-[0.8125rem] font-semibold text-slate-600">Show</span>
         {(["outstanding", "quoted", "won", "lost", "all"] as const).map((value) => (
           <Button key={value} size="sm" variant={stage === value ? "default" : "outline"} aria-pressed={stage === value} className={stage === value ? "bg-brand text-brand-ink" : ""} onClick={() => setStage(value)}>
             {value === "all" ? "All" : `${STAGE_META[value].label} (${figures[value]})`}

@@ -71,7 +71,7 @@ export function ActivityPanel({ table, recordId, className }: { table: RecordTab
               const { title, details } = describeGroup(group, people);
               return (
                 <li key={head.id} className="relative pb-3 pl-4">
-                  <span className="absolute -left-[4.5px] top-1.5 size-2 rounded-full bg-slate-300" aria-hidden />
+                  <span className="absolute -left-[4.5px] top-1.5 size-2 rounded-none bg-slate-300" aria-hidden />
                   <p className="text-sm text-slate-900">{title}</p>
                   {details.length ? (
                     <ul className="mt-0.5 space-y-0.5 text-xs text-slate-600">{details.map((line, index) => <li key={index}>{line}</li>)}</ul>

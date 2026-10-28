@@ -225,7 +225,7 @@ export default function ApprovalPage() {
         ) : !error && approvals.length === 0 ? (
           <Card className="border-green-200 shadow-sm">
             <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-              <div className="flex size-14 items-center justify-center rounded-full bg-green-50">
+              <div className="flex size-14 items-center justify-center rounded-none bg-green-50">
                 <CheckCircle className="size-8 text-green-600" />
               </div>
               <h3 className="mt-4 text-lg font-semibold text-slate-950">All Caught Up</h3>

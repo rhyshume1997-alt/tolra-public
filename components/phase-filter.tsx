@@ -22,7 +22,7 @@ export function PhaseFilter({ value, onChange, counts, labels = {}, note, phases
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Show" title={note}>
-      <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase">Show</span>
+      <span className="text-[0.8125rem] font-semibold text-slate-600">Show</span>
       {phases.map((phase) => (
         <Button key={phase} size="sm" variant={value === phase ? "default" : "outline"} aria-pressed={value === phase} className={value === phase ? "bg-brand text-brand-ink" : ""} onClick={() => onChange(phase)}>
           {labels[phase] ?? LABELS[phase]}{phase === "all" ? "" : ` (${counts[phase]})`}

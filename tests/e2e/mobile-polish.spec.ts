@@ -35,9 +35,9 @@ test("Job Board card: bold captions; inspection dialog has an Attach files butto
   for (const caption of ["Customer", "Description", "Machine"]) {
     const style = await card.locator("dt", { hasText: new RegExp(`^${caption}$`) }).evaluate((el) => { const s = getComputedStyle(el); return { weight: Number(s.fontWeight), border: parseFloat(s.borderTopWidth) + parseFloat(s.borderLeftWidth), radius: parseFloat(s.borderTopLeftRadius) }; });
     expect(style.weight, `${caption} caption weight`).toBeGreaterThanOrEqual(700);
-    // Boxed, not just underlined (Rhys, 15 Oct): a border on every side and rounded corners.
+    // Boxed, not just underlined (Rhys, 15 Oct): a border on every side; square corners like the rest of the app (Rhys, 28 Oct).
     expect(style.border, `${caption} caption box`).toBeGreaterThanOrEqual(2);
-    expect(style.radius, `${caption} caption corners`).toBeGreaterThan(0);
+    expect(style.radius, `${caption} caption corners`).toBe(0);
   }
   await card.getByRole("button", { name: "Inspected", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: `Record inspection: ${no}` });

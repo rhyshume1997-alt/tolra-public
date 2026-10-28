@@ -79,7 +79,7 @@ describe("the Integrations page is admin only", () => {
 
   it("the sidebar link is admin only and hidden until the database has 084", () => {
     const sidebar = readFileSync("components/sidebar.tsx", "utf8");
-    expect(sidebar).toContain('{ href: "/admin/integrations", label: "Integrations", icon: Plug, roles: ["admin"] }');
+    expect(sidebar).toContain('{ href: "/admin/integrations", label: "Integrations", roles: ["admin"] }');
     expect(sidebar).toContain('(item.href !== "/admin/integrations" || has084)');
     const panel = readFileSync("components/integrations-panel.tsx", "utf8");
     expect(panel).toContain("if (missing084 || !has084) return");

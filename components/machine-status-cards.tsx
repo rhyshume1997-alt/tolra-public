@@ -28,7 +28,7 @@ export function MachineStatusCards({ statuses, inUse = new Map(), now = new Date
                   <p className="truncate font-semibold text-slate-950">{s.machine.name}</p>
                   {s.machine.type && isVisible("machine-type") ? <p className="truncate text-xs text-slate-500">{s.machine.type}</p> : null}
                 </div>
-                <span data-testid="machine-status-pill" className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${red ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                <span data-testid="machine-status-pill" className={`shrink-0 rounded-none px-2.5 py-1 text-xs font-semibold ${red ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
                   {text.pill}
                 </span>
               </div>
