@@ -1550,14 +1550,14 @@ export default function JobsPage() {
 
       {/* Below desktop width (tablets) the tiles are shorter and three to a row, so the list starts higher up the screen. */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 xl:gap-4">
-        <StatTile label="Open jobs" value={stat(openCount)} tone="neutral" className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub="Not started + Running + Waiting for inspection. Complete not counted." active={show === "active" && !statusTile} onClick={() => { setStatusTile(null); setShow("active"); }} />
+        <StatTile label="Open jobs" value={stat(openCount)} tone="neutral" className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub="Not started, running or waiting" hint="Not started + Running + Waiting for inspection. Complete jobs are not counted." active={show === "active" && !statusTile} onClick={() => { setStatusTile(null); setShow("active"); }} />
         {([
-          ["not_started", "neutral", "Open: no work started yet"],
-          ["running", "info", "Open: started, not finished (rework included)"],
-          ["waiting_for_inspection", "warn", "Open: finished, not yet passed"],
-          ["complete", "good", "Passed inspection; not archived"],
-        ] as const).map(([status, tone, sub]) => (
-          <StatTile key={status} label={JOB_STATUS_LABELS[status]} value={stat(statusCount(status))} tone={tone} className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub={sub} active={statusTile === status} onClick={() => pickStatus(status)} />
+          ["not_started", "neutral", "No work yet", "Open: no work started yet"],
+          ["running", "info", "In progress", "Open: started, not finished (rework included)"],
+          ["waiting_for_inspection", "warn", "Finished, not passed", "Open: finished, not yet passed"],
+          ["complete", "good", "Passed inspection", "Passed inspection; not archived"],
+        ] as const).map(([status, tone, sub, hint]) => (
+          <StatTile key={status} label={JOB_STATUS_LABELS[status]} value={stat(statusCount(status))} tone={tone} className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub={sub} hint={hint} active={statusTile === status} onClick={() => pickStatus(status)} />
         ))}
         <StatTile
           className={tileCompact}

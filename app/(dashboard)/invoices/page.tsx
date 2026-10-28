@@ -1191,8 +1191,8 @@ export default function InvoicesPage() {
         <div>
           <h1 className="page-title">Invoicing</h1>
           <p className="mt-2 text-sm text-slate-500">Invoices are what customers owe us. See what is unpaid and chase it.</p>
-          {draftsWaiting > 0 ? <p className="mt-1 text-sm font-medium text-ink" data-testid="drafts-waiting">Drafts waiting to issue: {draftsWaiting} ({drafts.old} over {DRAFT_INVOICE_DAYS} days old, which is what the dashboard counts). A draft has no number and isn&apos;t owed until a person issues it.</p> : null}
-          {creditHeld.total > 0 ? <p className="mt-1 text-sm font-medium text-amber-800" data-testid="customer-credit-held">Customer credit held: {currency(creditHeld.total)} for {creditHeld.customers} customer{creditHeld.customers === 1 ? "" : "s"}. Open an invoice with credit to refund it or apply it to another invoice.</p> : null}
+          {draftsWaiting > 0 ? <p className="mt-1 text-sm font-medium text-ink" data-testid="drafts-waiting" title={`${drafts.old} over ${DRAFT_INVOICE_DAYS} days old (what the dashboard counts). A draft has no number and isn't owed until a person issues it.`}>Drafts waiting to issue: {draftsWaiting}</p> : null}
+          {creditHeld.total > 0 ? <p className="mt-1 text-sm font-medium text-amber-800" data-testid="customer-credit-held" title="Open an invoice with credit to refund it or apply it to another invoice.">Customer credit held: {currency(creditHeld.total)} for {creditHeld.customers} customer{creditHeld.customers === 1 ? "" : "s"}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className={overdueInvoices.length ? "border-amber-500 bg-amber-500 text-[#1c1917] hover:border-amber-400 hover:bg-amber-400" : undefined} disabled={saving || loading || !overdueInvoices.length} onClick={() => void chaseOverdue()} title={overdueInvoices.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}>

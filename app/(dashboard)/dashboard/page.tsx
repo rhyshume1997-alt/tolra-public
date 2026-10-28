@@ -287,11 +287,11 @@ function getGreeting(name?: string | null) {
   return first ? `${base}, ${first}` : base;
 }
 
-function KpiCard({ label, value, subtext, href, accent = "border-l-blue-500", valueClass }: { label: string; value: string; subtext: string; icon?: React.ElementType; href?: string; accent?: string; valueClass?: string }) {
+function KpiCard({ label, value, subtext, hint, href, accent = "border-l-blue-500", valueClass }: { label: string; value: string; subtext: string; hint?: string; icon?: React.ElementType; href?: string; accent?: string; valueClass?: string }) {
   const tone = toneFromAccent(accent);
   const canOpen = useCanOpen();
   // A tile is a link only when its page opens for this person in this view (no link to an "Access denied" page).
-  return <StatTile label={label} value={value} sub={subtext} href={href && canOpen(href) ? href : undefined} tone={tone} valueClassName={tone === "bad" && valueClass ? "text-red-600" : undefined} />;
+  return <StatTile label={label} value={value} sub={subtext} hint={hint} href={href && canOpen(href) ? href : undefined} tone={tone} valueClassName={tone === "bad" && valueClass ? "text-red-600" : undefined} />;
 }
 
 function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -310,7 +310,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
     office
       ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to Quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" accent="border-l-amber-500" />]
       : ["money-owed", <KpiCard key="money-owed" label="Money Owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}` : "Unpaid invoices"} icon={AlertCircle} href="/invoices" accent={d?.moneyOwed ? "border-l-red-500" : "border-l-slate-400"} valueClass="text-red-600" />],
-    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={`Not started + Running + Waiting for inspection${d?.dueThisWeek != null ? `; ${d.dueThisWeek} open jobs due this week` : ""}`} icon={Layers} href="/jobs" />],
+    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due this week` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted." icon={Layers} href="/jobs" />],
     ["open-quotes", <KpiCard key="open-quotes" label="Open Quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" accent="border-l-amber-500" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
@@ -332,12 +332,12 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
         <>
           {isVisible("revenue-trend") ? <Card>
             <CardHeader>
-              <CardTitle>Revenue Trend - Last 6 Months</CardTitle>
+              <CardTitle>Revenue, last 6 months</CardTitle>
               <p className="text-sm text-slate-500">{revenueTotal !== null ? `${gbp(revenueTotal, 0)} received over the last 6 months` : "Payments received by month"}</p>
             </CardHeader>
-            <CardContent className="h-80">
+            <CardContent className="h-56">
               {d?.revenue ? (
-                <ResponsiveContainer width="100%" height="100%"><BarChart data={d.revenue}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="month" /><YAxis tickFormatter={(value) => `£${Number(value) / 1000}k`} /><Tooltip formatter={(value) => gbp(Number(value), 0)} /><Bar dataKey="revenue" fill="var(--brand)" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer>
+                <ResponsiveContainer width="100%" height="100%"><BarChart data={d.revenue} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}><CartesianGrid stroke="var(--line)" vertical={false} /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} /><YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} tickFormatter={(value) => `£${Number(value) / 1000}k`} /><Tooltip cursor={{ fill: "var(--canvas)" }} formatter={(value) => gbp(Number(value), 0)} /><Bar dataKey="revenue" fill="var(--brand-accent)" maxBarSize={48} radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
               ) : <div className="flex h-full items-center justify-center text-slate-400">{loading ? "Loading..." : DASH}</div>}
             </CardContent>
           </Card> : null}
@@ -416,8 +416,8 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
   const { isVisible } = useColumnVisibility("dashboard");
   const d = data;
   const kpis: Array<[string, React.ReactNode]> = [
-    ["jobs-running", <KpiCard key="jobs-running" label="Jobs Running" value={num(d?.running, loading)} subtext="Started, not finished (rework included)" icon={Layers} href="/jobs" />],
-    ["due-this-week", <KpiCard key="due-this-week" label="Due This Week" value={num(d?.dueThisWeek, loading)} subtext="Not started or Running, by required date" icon={Clock} href="/jobs" />],
+    ["jobs-running", <KpiCard key="jobs-running" label="Jobs Running" value={num(d?.running, loading)} subtext="Started, not finished" hint="Started, not finished (rework included)" icon={Layers} href="/jobs" />],
+    ["due-this-week", <KpiCard key="due-this-week" label="Due This Week" value={num(d?.dueThisWeek, loading)} subtext="By required date" hint="Not started or Running, by required date" icon={Clock} href="/jobs" />],
     ["delivery-notes", <KpiCard key="delivery-notes" label="Delivery Notes" value={num(d?.deliveryNotes, loading)} subtext="Awaiting signature" icon={FileText} href="/delivery-notes" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
