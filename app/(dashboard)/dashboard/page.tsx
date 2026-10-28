@@ -327,7 +327,7 @@ function getGreeting(name?: string | null) {
 }
 
 /** A traffic light as a tile's dot tone (components/stat-tile). */
-const LIGHT_TONE: Record<Light, "good" | "warn" | "bad" | "neutral"> = { green: "good", amber: "warn", red: "bad", none: "neutral" };
+const LIGHT_TONE: Record<Light, "good" | "warn" | "bad" | "info" | "neutral"> = { green: "good", amber: "warn", red: "bad", blue: "info", none: "neutral" };
 
 function KpiCard({ label, value, subtext, hint, href, accent = "border-l-blue-500", light, valueClass }: { label: string; value: string; subtext: string; hint?: string; icon?: React.ElementType; href?: string; accent?: string; light?: Light; valueClass?: string }) {
   const tone = light ? LIGHT_TONE[light] : toneFromAccent(accent);
@@ -354,7 +354,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
       ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]
       : ["money-owed", <KpiCard key="money-owed" label="Money owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}${overdueOwed ? `, ${gbp(overdueOwed, 0)} overdue` : ""}` : "Unpaid invoices"} hint="Green: nothing overdue. Red: money is past its due date." icon={AlertCircle} href="/invoices" light={lights.moneyOwed(d?.moneyOwed ?? null, overdueOwed)} valueClass="text-red-600" />],
     ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due this week${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} overdue` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Green: on time. Amber: due within a week. Red: overdue." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
-    ["open-quotes", <KpiCard key="open-quotes" label="Open quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light={d?.openQuotes ? "green" : "none"} />],
+    ["open-quotes", <KpiCard key="open-quotes" label="Open quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light="none" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
   const lastOnTime = d?.onTime ? [...d.onTime].reverse().find((m) => m.percent !== null)?.percent ?? null : null;

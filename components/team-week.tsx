@@ -10,7 +10,8 @@ import { teamRows, type NowState, type TeamRow } from "@/lib/team-week";
 import { hm, localDateOf, localTimeOf, weekStartOf } from "@/lib/time-sheet";
 import { loadWeek } from "@/lib/time-week";
 
-const NOW_LIGHT: Record<NowState["state"], Light> = { on_job: "green", clocked_in: "amber", on_break: "amber", out: "none" };
+// On a job is "running" (blue in the status map; green is kept for completed work).
+const NOW_LIGHT: Record<NowState["state"], Light> = { on_job: "blue", clocked_in: "amber", on_break: "amber", out: "none" };
 
 function nowText(now: NowState) {
   if (now.state === "on_job") return `On ${now.jobNo} since ${localTimeOf(now.since)}`;

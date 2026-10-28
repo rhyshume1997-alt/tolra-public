@@ -10,8 +10,8 @@ import { quoteFigures, type QuoteFigureRow } from "@/lib/quote-status";
 
 const DAY_MS = 86_400_000;
 
-/** John's traffic light: green fine, amber watch, red act now, none when there is nothing to judge. */
-export type Light = "green" | "amber" | "red" | "none";
+/** John's traffic light: green done, amber watch, red act now, blue in progress, none when there is nothing to judge. */
+export type Light = "green" | "amber" | "red" | "blue" | "none";
 
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to.slice(0, 10)}T00:00:00Z`) - Date.parse(`${from.slice(0, 10)}T00:00:00Z`)) / DAY_MS);
 
@@ -150,7 +150,8 @@ export function topCustomers(invoices: Array<{ customer?: string | null; total?:
 /** Traffic lights for the headline tiles. */
 export const lights = {
   moneyOwed: (owedTotal: number | null, overdueTotal: number | null): Light => (owedTotal === null ? "none" : overdueTotal ? "red" : owedTotal > 0 ? "green" : "none"),
-  openJobs: (byStatus: JobsByStatus | null): Light => (!byStatus || byStatus.notStarted + byStatus.running + byStatus.waiting === 0 ? "none" : byStatus.overdue ? "red" : byStatus.dueSoon ? "amber" : "green"),
+  // Open work is never green (Rhys, 28 Oct: only completed is green): red when overdue, amber when due within a week, otherwise grey.
+  openJobs: (byStatus: JobsByStatus | null): Light => (!byStatus ? "none" : byStatus.overdue ? "red" : byStatus.dueSoon ? "amber" : "none"),
   percent: (value: number | null, green: number, amber: number): Light => (value === null ? "none" : value >= green ? "green" : value >= amber ? "amber" : "red"),
   daysToPay: (days: number | null, terms = 30): Light => (days === null ? "none" : days <= terms ? "green" : days <= terms + 15 ? "amber" : "red"),
 };
