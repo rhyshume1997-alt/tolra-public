@@ -9,7 +9,8 @@ import { StatTile, toneFromAccent } from "@/components/stat-tile";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Clock, FileText, Layers } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, SplitBar } from "@/components/dashboard-charts";
+import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, topCustomers, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,15 @@ type AdminData = {
   /** A read behind the attention list failed, so the list may be missing items. */
   attentionFailed: boolean;
   draftEmails: number | null;
+  /** The analytics panels (lib/dashboard-analytics); null when their read failed. */
+  owedByAge: AgeBucket[] | null;
+  quotes90: ReturnType<typeof quoteOutcomes> | null;
+  jobsStatus: JobsByStatus | null;
+  onTime: Array<{ month: string; percent: number | null; finished: number }> | null;
+  rft: ReturnType<typeof rightFirstTime> | null;
+  machines: MachineLoad[] | null;
+  workDue: Array<{ date: string; count: number }> | null;
+  customers: Array<{ customer: string; value: number }> | null;
 };
 
 type WorkshopData = {
@@ -156,19 +166,36 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
     ? rfqFigures(rfqRows.data.map((row) => ({ id: String(row.id), status: String(row.status || "new") })), linkedQuotes(quoteRows.data))
     : null;
 
+  // The analytics panels: open jobs by status and coming due, jobs finished and inspected over the six months, and machine load this
+  // week (bookings against each machine's working hours).
+  const monday = new Date();
+  monday.setHours(0, 0, 0, 0);
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  const sunday = new Date(monday.getTime() + 7 * DAY_MS);
+  const ninetyDaysAgo = toDateInput(new Date(Date.now() - 90 * DAY_MS));
+  const [openJobRows, finishedJobRows, inspectionRows, machineRows, bookingRows] = await Promise.all([
+    qAll((from, to) => supabase!.from("jobs").select("id, stage, started_at, finished_at, inspected_at, flow_status, date_required, due_date").or(OPEN_JOBS_FILTER).order("id").range(from, to)),
+    qAll((from, to) => supabase!.from("jobs").select("id, finished_at, date_required, due_date").gte("finished_at", sinceIso).order("id").range(from, to)),
+    qAll((from, to) => supabase!.from("job_inspections").select("job_id, result, inspected_at").gte("inspected_at", sinceIso).order("id").range(from, to)),
+    q(supabase!.from("machines").select("id, name, hours_per_day, working_days").order("name")),
+    qAll((from, to) => supabase!.from("machine_bookings").select("id, machine_id, start_at, estimated_hours").gte("start_at", monday.toISOString()).lt("start_at", sunday.toISOString()).order("id").range(from, to)),
+  ]);
+
   let moneyOwed: number | null = null;
   let unpaidInvoices: number | null = null;
   let revenue: AdminData["revenue"] = null;
   let thisMonthRevenue: number | null = null;
   let avgDaysToPay: number | null = null;
   let paidCount: number | null = null;
+  let ageBuckets: AgeBucket[] | null = null;
+  let customers: AdminData["customers"] = null;
   const attention: AttentionItem[] = [];
   let attentionFailed = false;
 
   if (!office) {
     const [unpaidRes, paidRes, paidHead, paymentRes] = await Promise.all([
       qAll((from, to) => supabase!.from("invoices").select("id, invoice_ref, customer, total, status, amount_paid, credited_amount, refunded_amount, due_date, payment_unverified").neq("status", "paid").order("id").range(from, to)),
-      qAll((from, to) => supabase!.from("invoices").select("id, total, paid_at, invoice_date, created_at").eq("status", "paid").or(`paid_at.gte.${sinceIso},invoice_date.gte.${sinceIso},created_at.gte.${sinceIso}`).order("id").range(from, to)),
+      qAll((from, to) => supabase!.from("invoices").select("id, customer, total, paid_at, invoice_date, created_at").eq("status", "paid").or(`paid_at.gte.${sinceIso},invoice_date.gte.${sinceIso},created_at.gte.${sinceIso}`).order("id").range(from, to)),
       q(head("invoices").eq("status", "paid")),
       // Money received in the period comes from the payment rows by the date received (migration 032), reversals
       // (negative rows) included on their own date: never from invoice totals.
@@ -182,6 +209,7 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
       const open = unpaidRes.data.filter(unpaid);
       unpaidInvoices = open.length;
       moneyOwed = open.reduce((sum, row) => sum + owedOn(row), 0);
+      ageBuckets = owedByAge(open, today);
     }
     if (paymentRes.data) {
       const buckets = new Map(months.map((m) => [m.key, 0]));
@@ -199,6 +227,8 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
         if (row.paid_at && row.invoice_date) gaps.push((new Date(row.paid_at).getTime() - new Date(row.invoice_date).getTime()) / DAY_MS);
       }
       avgDaysToPay = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
+      // Top customers: invoices paid in the six months, by the date they were paid.
+      customers = topCustomers(paidRes.data.filter((row) => row.paid_at && String(row.paid_at).slice(0, 10) >= sinceIso));
     }
   }
 
@@ -220,6 +250,14 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
     attention,
     attentionFailed,
     draftEmails: drafts.count,
+    owedByAge: ageBuckets,
+    quotes90: quoteRows.data ? quoteOutcomes(quoteRows.data, ninetyDaysAgo, today) : null,
+    jobsStatus: openJobRows.data ? jobsByStatus(openJobRows.data, today) : null,
+    onTime: finishedJobRows.data ? onTimeByMonth(finishedJobRows.data, months) : null,
+    rft: inspectionRows.data ? rightFirstTime(inspectionRows.data.map((row: any) => ({ job_id: String(row.job_id), result: String(row.result), inspected_at: String(row.inspected_at) }))) : null,
+    machines: machineRows.data && bookingRows.data ? machineLoad(machineRows.data.map((m: any) => ({ ...m, id: String(m.id) })), bookingRows.data.map((b: any) => ({ ...b, machine_id: String(b.machine_id) })), monday) : null,
+    workDue: openJobRows.data ? workloadDue(openJobRows.data, today) : null,
+    customers,
   };
 }
 
@@ -287,8 +325,11 @@ function getGreeting(name?: string | null) {
   return first ? `${base}, ${first}` : base;
 }
 
-function KpiCard({ label, value, subtext, hint, href, accent = "border-l-blue-500", valueClass }: { label: string; value: string; subtext: string; hint?: string; icon?: React.ElementType; href?: string; accent?: string; valueClass?: string }) {
-  const tone = toneFromAccent(accent);
+/** A traffic light as a tile's dot tone (components/stat-tile). */
+const LIGHT_TONE: Record<Light, "good" | "warn" | "bad" | "neutral"> = { green: "good", amber: "warn", red: "bad", none: "neutral" };
+
+function KpiCard({ label, value, subtext, hint, href, accent = "border-l-blue-500", light, valueClass }: { label: string; value: string; subtext: string; hint?: string; icon?: React.ElementType; href?: string; accent?: string; light?: Light; valueClass?: string }) {
+  const tone = light ? LIGHT_TONE[light] : toneFromAccent(accent);
   const canOpen = useCanOpen();
   // A tile is a link only when its page opens for this person in this view (no link to an "Access denied" page).
   return <StatTile label={label} value={value} sub={subtext} hint={hint} href={href && canOpen(href) ? href : undefined} tone={tone} valueClassName={tone === "bad" && valueClass ? "text-red-600" : undefined} />;
@@ -306,48 +347,86 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const pipe = d?.pipeline;
   const canOpen = useCanOpen();
   const { isVisible } = useColumnVisibility("dashboard");
+  const overdueOwed = d?.owedByAge ? d.owedByAge.filter((b) => b.key !== "not_due").reduce((sum, b) => sum + b.value, 0) : null;
   const kpis: Array<[string, React.ReactNode]> = [
     office
-      ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to Quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" accent="border-l-amber-500" />]
-      : ["money-owed", <KpiCard key="money-owed" label="Money Owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}` : "Unpaid invoices"} icon={AlertCircle} href="/invoices" accent={d?.moneyOwed ? "border-l-red-500" : "border-l-slate-400"} valueClass="text-red-600" />],
-    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due this week` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted." icon={Layers} href="/jobs" />],
-    ["open-quotes", <KpiCard key="open-quotes" label="Open Quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" accent="border-l-amber-500" />],
+      ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to Quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]
+      : ["money-owed", <KpiCard key="money-owed" label="Money Owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}${overdueOwed ? `, ${gbp(overdueOwed, 0)} overdue` : ""}` : "Unpaid invoices"} hint="Green: nothing overdue. Red: money is past its due date." icon={AlertCircle} href="/invoices" light={lights.moneyOwed(d?.moneyOwed ?? null, overdueOwed)} valueClass="text-red-600" />],
+    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due this week${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} overdue` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Green: on time. Amber: due within a week. Red: overdue." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
+    ["open-quotes", <KpiCard key="open-quotes" label="Open Quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light={d?.openQuotes ? "green" : "none"} />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
+  const lastOnTime = d?.onTime ? [...d.onTime].reverse().find((m) => m.percent !== null)?.percent ?? null : null;
   const stats = ([
-    ["this-month-revenue", "This Month Revenue", money(d?.thisMonthRevenue, loading), "Payments received this month", "/invoices"],
-    ["quotes-sent", "Quotes Sent", num(d?.quotesSentThisMonth, loading), "Sent this month", "/quotes"],
-    ["jobs-late-on-time", "Jobs Late / On Time", d && d.lateJobs !== null && d.onTimeJobs !== null ? `${d.lateJobs} / ${d.onTimeJobs}` : DASH, "Jobs not finished, by required date", "/jobs"],
-    ["avg-days-to-pay", "Avg Days to Pay", d?.avgDaysToPay != null ? `${Math.round(d.avgDaysToPay)} days` : DASH, "Invoice date to final payment", "/invoices"],
-  ] as Array<[string, string, string, string, string]>).filter(([key]) => isVisible(key));
+    ["this-month-revenue", "This Month Revenue", money(d?.thisMonthRevenue, loading), "Payments received this month", "/invoices", "none"],
+    ["quotes-sent", "Quotes Sent", num(d?.quotesSentThisMonth, loading), "Sent this month", "/quotes", "none"],
+    ["jobs-late-on-time", "Jobs Late / On Time", d && d.lateJobs !== null && d.onTimeJobs !== null ? `${d.lateJobs} / ${d.onTimeJobs}` : DASH, "Jobs not finished, by required date", "/jobs", d && d.lateJobs !== null ? (d.lateJobs ? "red" : "green") : "none"],
+    ["avg-days-to-pay", "Avg Days to Pay", d?.avgDaysToPay != null ? `${Math.round(d.avgDaysToPay)} days` : DASH, "Invoice date to final payment", "/invoices", lights.daysToPay(d?.avgDaysToPay ?? null)],
+  ] as Array<[string, string, string, string, string, Light]>).filter(([key]) => isVisible(key));
   const showAttention = isVisible("needs-attention");
   const showPipeline = isVisible("quote-pipeline");
+  const waiting = loading ? "Loading…" : "Couldn't load this.";
+  const topRow = [!office && isVisible("revenue-trend"), !office && isVisible("money-by-age"), isVisible("quote-outcomes")].filter(Boolean).length;
+  const opsRow = [isVisible("jobs-by-status"), isVisible("on-time-delivery"), isVisible("right-first-time")].filter(Boolean).length;
+  const loadRow = [isVisible("machine-load"), isVisible("work-due"), !office && isVisible("top-customers")].filter(Boolean).length;
+  const rowCols = (n: number) => (["", "", "lg:grid-cols-2", "lg:grid-cols-3"][n] ?? "");
 
   return (
     <>
       {error ? <ErrorCard message={error} onRetry={retry} /> : null}
       {shownKpis.length ? <section className={`grid gap-4 ${kpiGridClass(shownKpis.length)}`}>{shownKpis.map(([, tile]) => tile)}</section> : null}
 
-      {!office ? (
-        <>
-          {isVisible("revenue-trend") ? <Card>
-            <CardHeader>
-              <CardTitle>Revenue, last 6 months</CardTitle>
-              <p className="text-sm text-slate-500">{revenueTotal !== null ? `${gbp(revenueTotal, 0)} received over the last 6 months` : "Payments received by month"}</p>
-            </CardHeader>
-            <CardContent className="h-56">
-              {d?.revenue ? (
-                <ResponsiveContainer width="100%" height="100%"><BarChart data={d.revenue} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}><CartesianGrid stroke="var(--line)" vertical={false} /><XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} /><YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} tickFormatter={(value) => `£${Number(value) / 1000}k`} /><Tooltip cursor={{ fill: "var(--canvas)" }} formatter={(value) => gbp(Number(value), 0)} /><Bar dataKey="revenue" fill="var(--brand-accent)" maxBarSize={48} radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
-              ) : <div className="flex h-full items-center justify-center text-slate-400">{loading ? "Loading..." : DASH}</div>}
-            </CardContent>
-          </Card> : null}
-          {stats.length ? <section className={`grid gap-4 ${statGridClass(stats.length)}`}>
-            {stats.map(([key, label, value, sub, href]) => (
-              <StatTile key={key} label={label} value={value} sub={sub} href={canOpen(href) ? href : undefined} tone="neutral" valueClassName="text-2xl" />
-            ))}
-          </section> : null}
-        </>
-      ) : null}
+      {topRow ? <section className={`grid gap-4 ${topRow === 3 ? "xl:grid-cols-4" : rowCols(topRow)}`}>
+        {!office && isVisible("revenue-trend") ? <Panel title="Revenue, last 6 months" meta={revenueTotal !== null ? `${gbp(revenueTotal, 0)} received` : undefined} href={canOpen("/invoices") ? "/invoices" : undefined} className={topRow === 3 ? "xl:col-span-2" : undefined}>
+          {d?.revenue ? <RevenueLine data={d.revenue} /> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+        {!office && isVisible("money-by-age") ? <Panel title="Money owed by age" meta={d?.moneyOwed != null ? gbp(d.moneyOwed, 0) : undefined} href={canOpen("/invoices") ? "/invoices" : undefined}>
+          {d?.owedByAge ? <div className="space-y-3"><SplitBar parts={d.owedByAge} /><ul className="divide-y divide-line/70">{d.owedByAge.map((b) => <li key={b.key} className="flex items-center gap-2 py-2 text-sm"><LightDot light={b.value > 0 ? b.light : "none"} /><span className="text-ink">{b.label}</span><span className="ml-auto font-semibold tabular-nums text-ink">{gbp(b.value, 0)}</span></li>)}</ul></div> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+        {isVisible("quote-outcomes") ? <Panel title="Quotes, last 90 days" meta={d?.quotes90?.winRate != null ? `Win rate ${d.quotes90.winRate}%` : undefined} href={canOpen("/quotes") ? "/quotes" : undefined}>
+          {d?.quotes90 ? <BarList rows={d.quotes90.outcomes.map((o) => ({ key: o.key, label: o.label, value: o.count, light: o.key === "accepted" ? "green" as const : o.key === "expired" ? "amber" as const : o.key === "rejected" ? "none" as const : undefined, colour: o.key === "sent" ? "var(--brand-accent)" : undefined }))} empty="No quotes sent in the last 90 days." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+      </section> : null}
+
+      {!office && stats.length ? <section className={`grid gap-4 ${statGridClass(stats.length)}`}>
+        {stats.map(([key, label, value, sub, href, light]) => (
+          <StatTile key={key} label={label} value={value} sub={sub} href={canOpen(href) ? href : undefined} tone={LIGHT_TONE[light]} valueClassName="text-2xl" />
+        ))}
+      </section> : null}
+
+      {opsRow ? <section className={`grid gap-4 ${rowCols(opsRow)}`}>
+        {isVisible("jobs-by-status") ? <Panel title="Open jobs by status" meta={d?.jobsStatus ? `${d.jobsStatus.notStarted + d.jobsStatus.running + d.jobsStatus.waiting} open` : undefined} href={canOpen("/jobs") ? "/jobs" : undefined}>
+          {d?.jobsStatus ? <BarList rows={[
+            { key: "not-started", label: "Not started", value: d.jobsStatus.notStarted, colour: "var(--muted-foreground)" },
+            { key: "running", label: "Running", value: d.jobsStatus.running, colour: "var(--brand-accent)" },
+            { key: "waiting", label: "Waiting for inspection", value: d.jobsStatus.waiting, light: "amber" },
+            { key: "overdue", label: "Overdue", value: d.jobsStatus.overdue, light: "red" },
+          ]} empty="No open jobs." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+        {isVisible("on-time-delivery") ? <Panel title="On-time delivery" meta={lastOnTime !== null ? <span className="inline-flex items-center gap-2"><LightDot light={lights.percent(lastOnTime, 95, 85)} />{lastOnTime}% latest month</span> : undefined}>
+          {d?.onTime ? <PercentLine data={d.onTime} target={95} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+        {isVisible("right-first-time") ? <Panel title="Right first time" meta="Last 6 months">
+          {d?.rft ? (d.rft.percent === null ? <p className="py-6 text-center text-sm text-muted-foreground">No inspections in the last 6 months.</p> : (
+            <div className="flex h-full flex-col justify-center gap-2 py-2">
+              <div className="flex items-center gap-3"><LightDot light={lights.percent(d.rft.percent, 95, 85)} className="size-3" /><span className="text-[2.5rem] font-semibold leading-none tabular-nums text-ink">{d.rft.percent}%</span></div>
+              <span className="text-sm text-muted-foreground">{d.rft.jobs} job{d.rft.jobs === 1 ? "" : "s"} inspected, {d.rft.failedFirst} failed first inspection</span>
+            </div>
+          )) : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+      </section> : null}
+
+      {loadRow ? <section className={`grid gap-4 ${rowCols(loadRow)}`}>
+        {isVisible("machine-load") ? <Panel title="Machine load this week" meta="Booked hours of available" href={canOpen("/schedule") ? "/schedule" : undefined}>
+          {d?.machines ? <BarList rows={d.machines.map((m) => ({ key: m.id, label: m.name, value: m.percent, light: m.percent > 100 ? "red" as const : m.percent >= 85 ? "amber" as const : "green" as const }))} format={(v) => `${v}%`} empty="No machines booked this week." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+        {isVisible("work-due") ? <Panel title="Work coming due" meta="Next 14 days" href={canOpen("/jobs") ? "/jobs" : undefined}>
+          {d?.workDue ? <DueColumns data={d.workDue} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+        {!office && isVisible("top-customers") ? <Panel title="Top customers" meta="Paid, last 6 months">
+          {d?.customers ? <BarList rows={d.customers.map((c) => ({ key: c.customer, label: c.customer, value: c.value }))} format={(v) => gbp(v, 0)} empty="No paid invoices in the last 6 months." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+        </Panel> : null}
+      </section> : null}
 
       {showAttention || showPipeline ? <section className="grid gap-6 xl:grid-cols-3">
         {showAttention ? <AttentionList role={office ? "office" : "admin"} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide={!showPipeline} /> : null}
@@ -391,7 +470,7 @@ function AttentionList({ role, extra = [], extraFailed = false, extraLoading = f
         {(sections ?? []).map((sec) => (sec.failed || sec.count > 0) ? (
           <div key={sec.id} data-testid={`attention-${sec.id}`} className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-950">{sec.title} {sec.failed ? null : <span data-testid={`attention-count-${sec.id}`} className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{sec.count}</span>}</h3>
+              <h3 className="text-sm font-semibold text-slate-950">{sec.title} {sec.failed ? null : <span data-testid={`attention-count-${sec.id}`} className="ml-1 rounded-none bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{sec.count}</span>}</h3>
               {!sec.failed && canOpen(sec.href) ? <Link href={sec.href} className="text-sm font-medium text-brand underline-offset-2 hover:underline">View all<span className="sr-only"> {sec.title}</span></Link> : null}
             </div>
             {sec.failed ? <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Couldn&apos;t load this list. <button type="button" className="font-medium underline" onClick={retry}>Retry</button></p> : null}

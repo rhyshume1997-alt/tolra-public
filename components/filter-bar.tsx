@@ -78,7 +78,7 @@ export function FilterBar({
         onClick={() => toggle(option.value)}
         aria-pressed={selected}
         className={cn(
-          "h-8 rounded-full border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11",
+          "h-8 rounded-none border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11",
           selected
             ? "border-ink bg-ink text-white"
             : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink"

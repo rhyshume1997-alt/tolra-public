@@ -31,8 +31,8 @@ const navSections = Array.from(new Set(NAV_TOGGLES.map((item) => item.section)))
 
 function Switch({ checked, onChange, label, disabled = false }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-60 ${checked ? "bg-brand" : "bg-slate-300"}`}>
-      <span className={`inline-block size-5 rounded-full bg-white shadow transition ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)} className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-none transition disabled:cursor-not-allowed disabled:opacity-60 ${checked ? "bg-brand" : "bg-slate-300"}`}>
+      <span className={`inline-block size-5 rounded-none bg-white shadow transition ${checked ? "translate-x-5" : "translate-x-0.5"}`} />
     </button>
   );
 }
@@ -648,7 +648,7 @@ export default function SettingsPage() {
             <p className="text-sm text-slate-500">Turn off sections you do not use. Hidden items disappear from the sidebar for everyone in the organisation. Dashboard and Settings are always shown.</p>
             {navSections.map((section) => (
               <div key={section}>
-                <p className="pb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{section}</p>
+                <p className="pb-2 text-[0.8125rem] font-semibold text-slate-500">{section}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {NAV_TOGGLES.filter((item) => item.section === section).map((item) => {
                     const visible = !settings.hiddenNav.includes(item.key);
@@ -673,7 +673,7 @@ export default function SettingsPage() {
             </div>
             {screensByGroup().map(({ group, screens }) => (
               <section key={group} aria-label={`${group} screens`} className="space-y-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group}</p>
+                <p className="text-[0.8125rem] font-semibold text-slate-500">{group}</p>
                 {screens.map((table) => {
                   const hidden = settings.hiddenColumns[table.key] ?? [];
                   const { shown, total } = shownCount(table, hidden);

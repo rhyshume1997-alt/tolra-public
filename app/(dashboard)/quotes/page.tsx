@@ -988,14 +988,14 @@ export default function QuotesPage() {
       </div>
       {scopeTotal ? (
         <div className="space-y-2">
-          <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-ink/5" role="img" aria-label="Quotes by status">
+          <div className="flex h-1.5 w-full overflow-hidden rounded-none bg-ink/5" role="img" aria-label="Quotes by status">
             {STATUS_ORDER.filter((status) => scopeCounts[status]).map((status) => (
               <span key={status} title={`${STATUS_STYLES[status].label}: ${scopeCounts[status]}`} className={`${STATUS_STYLES[status].bar} h-full`} style={{ width: `${(scopeCounts[status] / scopeTotal) * 100}%` }} />
             ))}
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
             <span className="font-semibold">{legend.scope}{!listFilter && phase === "open" ? " (expired quotes are under Done)" : ""}:</span>
-            {STATUS_ORDER.map((status) => <span key={status} className="inline-flex items-center gap-1.5"><span className={`size-2.5 rounded-full ${STATUS_STYLES[status].bar}`} />{STATUS_STYLES[status].label} ({scopeCounts[status]})</span>)}
+            {STATUS_ORDER.map((status) => <span key={status} className="inline-flex items-center gap-1.5"><span className={`size-2.5 rounded-none ${STATUS_STYLES[status].bar}`} />{STATUS_STYLES[status].label} ({scopeCounts[status]})</span>)}
           </div>
         </div>
       ) : null}
@@ -1077,7 +1077,7 @@ export default function QuotesPage() {
         <div className={`space-y-6 ${view !== "cards" ? "md:hidden" : ""}`}>
         {groups.map((group) => (
         <section key={group.status} aria-label={`${STATUS_STYLES[group.status].label} quotes`}>
-        <h2 className={`mb-2 flex items-center gap-2 text-sm font-semibold ${STATUS_STYLES[group.status].text}`}><span className={`size-2.5 rounded-full ${STATUS_STYLES[group.status].bar}`} />{group.status === "draft" ? "Drafts" : STATUS_STYLES[group.status].label} ({group.items.length})</h2>
+        <h2 className={`mb-2 flex items-center gap-2 text-sm font-semibold ${STATUS_STYLES[group.status].text}`}><span className={`size-2.5 rounded-none ${STATUS_STYLES[group.status].bar}`} />{group.status === "draft" ? "Drafts" : STATUS_STYLES[group.status].label} ({group.items.length})</h2>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {group.items.map((quote) => (
             <Card key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "border-brand-accent/60 ring-1 ring-brand-accent/40" : undefined}>

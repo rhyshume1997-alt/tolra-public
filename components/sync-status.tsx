@@ -83,7 +83,7 @@ export function SyncStatus({ className }: { className?: string }) {
           aria-label={`Sync status: ${state.label}`}
           title={state.label}
           className={cn(
-            "flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-medium outline-none transition hover:bg-ink/[0.06] focus-visible:ring-3 focus-visible:ring-brand-accent/35 pointer-coarse:h-11 pointer-coarse:min-w-11",
+            "flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 rounded-none px-2 text-xs font-medium outline-none transition hover:bg-ink/[0.06] focus-visible:ring-3 focus-visible:ring-brand-accent/35 pointer-coarse:h-11 pointer-coarse:min-w-11",
             SYNC_TONE[state.tone],
             className,
           )}

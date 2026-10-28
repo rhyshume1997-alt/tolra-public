@@ -149,7 +149,7 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
                   </div>
                 ) : null}
                 <button type="submit" disabled={loading}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full font-mono text-[0.75rem] font-medium uppercase tracking-[0.12em] transition hover:brightness-90 active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand)]/30 disabled:opacity-70"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-none font-mono text-[0.75rem] font-medium uppercase tracking-[0.12em] transition hover:brightness-90 active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand)]/30 disabled:opacity-70"
                   style={{ background: primary, color: onPrimary }}>
                   <Lock className="size-4" aria-hidden />{loading ? "Signing in..." : "Sign in"}
                 </button>

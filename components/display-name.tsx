@@ -94,7 +94,7 @@ export function DisplayNamePrompt() {
       <div className="flex items-start gap-2">
         <UserRound className="mt-0.5 size-4 shrink-0" aria-hidden />
         <p className="min-w-0 flex-1"><strong>Add your name</strong> so colleagues can see who is working on what.</p>
-        <button type="button" onClick={dismiss} aria-label="Remind me later" className="-m-1 flex size-9 shrink-0 items-center justify-center rounded-full text-sky-900/70 hover:bg-sky-900/10 pointer-coarse:size-11 dark:text-sky-100/70"><X className="size-4" /></button>
+        <button type="button" onClick={dismiss} aria-label="Remind me later" className="-m-1 flex size-9 shrink-0 items-center justify-center rounded-none text-sky-900/70 hover:bg-sky-900/10 pointer-coarse:size-11 dark:text-sky-100/70"><X className="size-4" /></button>
       </div>
       <div className="mt-2"><DisplayNameForm compact /></div>
     </section>

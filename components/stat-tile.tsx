@@ -38,7 +38,7 @@ export function StatTile({ label, value, sub, hint, tone = "neutral", href, onCl
   const body = (
     <div title={hint} className={cn("group h-full rounded-xl border border-line bg-surface px-5 py-5 text-left transition-colors", (href || onClick) && "hover:border-ink/20", active && "border-brand-accent/50 ring-1 ring-brand-accent/30", className)}>
       <p data-kpi-label="" className={cn("label-mono field-label flex items-center gap-2", labelClassName)}>
-        <span className={cn("size-1.5 rounded-full", DOT[tone])} aria-hidden />
+        <span className={cn("size-2.5 shrink-0 rounded-none", DOT[tone])} aria-hidden />
         {label}
       </p>
       <p data-kpi-value="" className={cn("mt-4 text-[2rem] font-semibold leading-none tracking-tight tabular-nums text-ink", valueClassName)}>{value}</p>

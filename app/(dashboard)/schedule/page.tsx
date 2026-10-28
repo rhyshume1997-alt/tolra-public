@@ -390,7 +390,7 @@ export default function SchedulePage() {
                           <TableCell className="block md:table-cell">{formatDateTimeShort(b.start)}</TableCell>
                           <TableCell className={`block md:table-cell ${late ? "font-semibold text-red-700" : ""}`}>
                             {formatDateTimeShort(b.finish)}
-                            {late ? <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700"><Flag className="size-3" /> After required date</span> : null}
+                            {late ? <span className="ml-2 inline-flex items-center gap-1 rounded-none bg-red-100 px-2 py-0.5 text-xs text-red-700"><Flag className="size-3" /> After required date</span> : null}
                           </TableCell>
                           {isVisible("hours-left") ? <TableCell className="block md:table-cell">{liveLeftOf(b) ? <span data-testid="live-hours-left">{liveLeftOf(b)} ({formatHoursClock(b.estimatedHours)} booked)</span> : <>{formatHours(b.hoursLeft)} of {formatHours(b.estimatedHours)}</>}</TableCell> : null}
                           <TableCell className="block md:table-cell">{bookingStatusLabel(b, now)}</TableCell>

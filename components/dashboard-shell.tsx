@@ -108,7 +108,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       <SupportBanner />
       <div className="min-h-screen desk:pl-[248px] print:min-h-0 print:pl-0">
         <Topbar />
-        <main className="mx-auto w-full max-w-[1400px] px-4 py-6 md:px-6 md:py-8 desk:px-10 desk:py-10 print:max-w-none print:p-0"><DisplayNamePrompt /><OfflineBanner />{children}</main>
+        <main className="w-full px-4 py-6 md:px-6 md:py-8 desk:px-8 desk:py-8 print:p-0"><DisplayNamePrompt /><OfflineBanner />{children}</main>
       </div>
     </div>
   );

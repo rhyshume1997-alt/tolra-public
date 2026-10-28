@@ -13,7 +13,7 @@ function initials(name?: string | null, email?: string | null) {
 
 /** The connection dot: green online, amber offline or changes waiting. */
 export function ConnectionDot({ tone, className }: { tone: "good" | "warn"; className?: string }) {
-  return <span aria-hidden data-testid="connection-dot" data-tone={tone} className={cn("size-2.5 shrink-0 rounded-full", tone === "good" ? "bg-emerald-500" : "bg-amber-500", className)} />;
+  return <span aria-hidden data-testid="connection-dot" data-tone={tone} className={cn("size-2.5 shrink-0 rounded-none", tone === "good" ? "bg-emerald-500" : "bg-amber-500", className)} />;
 }
 
 /**
@@ -36,9 +36,9 @@ export function ShellStatusChip({ onOpen, className }: { onOpen: () => void; cla
       aria-label={summary}
       title={summary}
       onClick={onOpen}
-      className={cn("flex h-9 min-w-9 max-w-[15rem] items-center gap-2 rounded-full pr-1 text-left outline-none transition hover:bg-ink/[0.06] focus-visible:ring-3 focus-visible:ring-brand-accent/35 pointer-coarse:h-11 pointer-coarse:min-w-11 sm:pr-3", className)}
+      className={cn("flex h-9 min-w-9 max-w-[15rem] items-center gap-2 rounded-none pr-1 text-left outline-none transition hover:bg-ink/[0.06] focus-visible:ring-3 focus-visible:ring-brand-accent/35 pointer-coarse:h-11 pointer-coarse:min-w-11 sm:pr-3", className)}
     >
-      <span className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-accent text-xs font-semibold text-white pointer-coarse:size-9">
+      <span className="relative flex size-8 shrink-0 items-center justify-center rounded-none bg-brand-accent text-xs font-semibold text-white pointer-coarse:size-9">
         {initials(profile?.full_name, profile?.email)}
         <ConnectionDot tone={connection.tone} className="absolute -bottom-0.5 -right-0.5 ring-2 ring-canvas" />
       </span>

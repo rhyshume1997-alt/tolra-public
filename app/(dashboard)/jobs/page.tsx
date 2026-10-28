@@ -1593,8 +1593,8 @@ export default function JobsPage() {
       <FilterBar variant="board" label="Due" groupLabel="Due (Not started and Running jobs)" note="Not started and Running jobs only" activeValues={[...statusFilters]} options={[{ label: "All", value: "all" }, ...DUE_CHIPS.map((chip) => ({ label: `${chip.label} (${stat(dueCount(chip.value))})`, value: chip.value }))]} onChange={setStatusFilters} />
       <BoardFilterRow label="Tag">
         <button type="button" aria-pressed={reworkOnly} title="Running jobs put back after a failed inspection (or for replacements)" onClick={toggleRework}
-          className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11", reworkOnly ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink")}>
-          <span aria-hidden className={cn("size-2 rounded-full", COLOUR_CLASSES.purple.dot)} />{`Rework (${stat(reworkCount)})`}
+          className={cn("inline-flex h-8 items-center gap-1.5 rounded-none border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11", reworkOnly ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink")}>
+          <span aria-hidden className={cn("size-2 rounded-none", COLOUR_CLASSES.purple.dot)} />{`Rework (${stat(reworkCount)})`}
         </button>
       </BoardFilterRow>
       <FilterBar variant="board" label="Stage" activeValues={[...stageFilters]} defaultActive={[]} options={JOB_STAGES.map((stage) => ({ label: STAGE_LABELS[stage], value: stage }))} onChange={setStageFilters} />

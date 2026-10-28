@@ -5,28 +5,7 @@ import type { FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ElementType } from "react";
-import {
-  CalendarClock,
-  Timer,
-  Calculator,
-  CheckCircle,
-  Database,
-  FileText,
-  History,
-  Layers,
-  LayoutDashboard,
-  Lock,
-  LogOut,
-  Package,
-  Plug,
-  Receipt,
-  Settings,
-  ShieldCheck,
-  ShoppingCart,
-  Truck,
-  Users,
-} from "lucide-react";
+import { Lock, LogOut, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -53,43 +32,42 @@ import { DisplayNameForm } from "@/components/display-name";
 type NavItem = {
   href: string;
   label: string;
-  icon: ElementType;
   roles: UserRole[];
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
-  { title: "Workspace", items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "office", "workshop", "viewer"] }] },
+  { title: "Workspace", items: [{ href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] }] },
   {
     title: "Sales Pipeline",
     items: [
-      { href: "/rfq", label: "RFQ Control Centre", icon: FileText, roles: ["admin", "office"] },
-      { href: "/quotes", label: "Quote Generator", icon: Calculator, roles: ["admin", "office"] },
-      { href: "/sales-orders", label: "Sales Orders", icon: Receipt, roles: ["admin", "office"] },
+      { href: "/rfq", label: "RFQ Control Centre", roles: ["admin", "office"] },
+      { href: "/quotes", label: "Quote Generator", roles: ["admin", "office"] },
+      { href: "/sales-orders", label: "Sales Orders", roles: ["admin", "office"] },
     ],
   },
   {
     title: "Operations",
     items: [
-      { href: "/jobs", label: "Job Board", icon: Layers, roles: ["admin", "office", "workshop", "viewer"] },
-      { href: "/schedule", label: "Machine Schedule", icon: CalendarClock, roles: ["admin", "office", "workshop", "viewer"] },
-      { href: "/time", label: "Weekly hours", icon: Timer, roles: ["admin", "office", "workshop"] },
-      { href: "/invoices", label: "Invoicing", icon: Receipt, roles: ["admin", "office"] },
-      { href: "/approval", label: "Approval Queue", icon: CheckCircle, roles: ["admin", "office"] },
-      { href: "/purchase-orders", label: "Purchase Orders", icon: ShoppingCart, roles: ["admin", "office"] },
-      { href: "/delivery-notes", label: "Delivery Notes", icon: Truck, roles: ["admin", "office", "workshop"] },
+      { href: "/jobs", label: "Job Board", roles: ["admin", "office", "workshop", "viewer"] },
+      { href: "/schedule", label: "Machine Schedule", roles: ["admin", "office", "workshop", "viewer"] },
+      { href: "/time", label: "Weekly hours", roles: ["admin", "office", "workshop"] },
+      { href: "/invoices", label: "Invoicing", roles: ["admin", "office"] },
+      { href: "/approval", label: "Approval Queue", roles: ["admin", "office"] },
+      { href: "/purchase-orders", label: "Purchase Orders", roles: ["admin", "office"] },
+      { href: "/delivery-notes", label: "Delivery Notes", roles: ["admin", "office", "workshop"] },
     ],
   },
   {
     title: "Resources",
     items: [
-      { href: "/customers", label: "Customers", icon: Users, roles: ["admin", "office"] },
-      { href: "/suppliers", label: "Suppliers", icon: Package, roles: ["admin", "office"] },
-      { href: "/admin/users", label: "User Management", icon: Users, roles: ["admin"] },
-      { href: "/admin/activity", label: "Activity", icon: History, roles: ["admin"] },
-      { href: "/admin/compliance", label: "Security", icon: ShieldCheck, roles: ["admin"] },
-      { href: "/admin/data", label: "Data", icon: Database, roles: ["admin"] },
-      { href: "/admin/integrations", label: "Integrations", icon: Plug, roles: ["admin"] },
-      { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+      { href: "/customers", label: "Customers", roles: ["admin", "office"] },
+      { href: "/suppliers", label: "Suppliers", roles: ["admin", "office"] },
+      { href: "/admin/users", label: "User Management", roles: ["admin"] },
+      { href: "/admin/activity", label: "Activity", roles: ["admin"] },
+      { href: "/admin/compliance", label: "Security", roles: ["admin"] },
+      { href: "/admin/data", label: "Data", roles: ["admin"] },
+      { href: "/admin/integrations", label: "Integrations", roles: ["admin"] },
+      { href: "/settings", label: "Settings", roles: ["admin"] },
     ],
   },
 ];
@@ -235,24 +213,22 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         ) : null}
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 pb-4">
+      <nav className="flex-1 overflow-y-auto pb-4">
         {navSections.map((section) => {
           const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
           if (!visibleItems.length) return null;
 
           return (
             <div key={section.title} className="mb-5">
-              <p className="label-mono px-3 pb-2 text-brand-ink/45">{section.title}</p>
+              <p className="label-mono px-6 pb-2 text-brand-ink/50">{section.title}</p>
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
-                  const Icon = item.icon;
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const badge = item.href === "/approval" && approvalCount ? approvalCount.toString() : null;
                   return (
-                    <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/70 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.11] font-medium text-brand-ink before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-brand-accent")}>
-                      <Icon className="size-[18px] shrink-0" strokeWidth={1.75} />
+                    <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>
-                      {badge ? <span className="flex min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 font-mono text-[10px] font-medium text-white">{badge}</span> : null}
+                      {badge ? <span className="flex min-w-5 items-center justify-center bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">{badge}</span> : null}
                     </Link>
                   );
                 })}
@@ -265,13 +241,13 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t border-brand-ink/10 p-4">
         {/* Top-aligned: the settings button sits level with the name however many lines the role and status take. */}
         <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-accent text-xs font-semibold text-white">{(profile?.full_name?.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2) || profile?.email?.[0] || "").toUpperCase()}</div>
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-brand-accent text-xs font-semibold text-white">{(profile?.full_name?.trim().split(/\s+/).map((part) => part[0]).join("").slice(0, 2) || profile?.email?.[0] || "").toUpperCase()}</div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{profile?.full_name || profile?.email || ""}</p>
             <span className="label-mono flex flex-wrap items-center gap-x-1.5 text-brand-ink/50"><span>{roleLabel(activeRole)}</span><span className="flex min-w-0 items-center gap-1.5"><ConnectionDot tone={connection.tone} /><span data-testid="drawer-connection">{connection.label}</span></span></span>
           </div>
           <Dialog>
-            <DialogTrigger asChild><button type="button" className="-mt-2.5 flex size-10 shrink-0 items-center justify-center rounded-full pointer-coarse:-mt-3 pointer-coarse:size-11 text-brand-ink/55 transition hover:bg-brand-ink/10 hover:text-brand-ink" aria-label="Settings"><Settings className="size-[18px]" strokeWidth={1.75} /></button></DialogTrigger>
+            <DialogTrigger asChild><button type="button" className="-mt-2.5 flex size-10 shrink-0 items-center justify-center rounded-none pointer-coarse:-mt-3 pointer-coarse:size-11 text-brand-ink/55 transition hover:bg-brand-ink/10 hover:text-brand-ink" aria-label="Settings"><Settings className="size-[18px]" strokeWidth={1.75} /></button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Account Settings</DialogTitle><DialogDescription>Profile and {PRODUCT.name} preferences.</DialogDescription></DialogHeader>
               <div className="space-y-4 text-sm">
