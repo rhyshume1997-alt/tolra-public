@@ -176,6 +176,37 @@ describe("101: off by default, roles", () => {
     }
   });
 
+  it("the internal helpers: neither anon nor authenticated may EXECUTE _ai_helper_audit or _ai_helper_caller (privilege and a real call)", async () => {
+    const helpers = [
+      { sig: "public._ai_helper_audit(uuid,text,text,text,jsonb)", call: "select public._ai_helper_audit($1, 'ai_helper_approved', 'ai_helper_requests', 'x', '{}'::jsonb)", params: [orgA] },
+      { sig: "public._ai_helper_caller(text[])", call: "select public._ai_helper_caller(array['admin', 'office'])", params: [] },
+    ];
+    for (const h of helpers) {
+      const [row] = await sql<{ anon: boolean; authed: boolean; pub: boolean }>(
+        "select has_function_privilege('anon', $1, 'EXECUTE') as anon, has_function_privilege('authenticated', $1, 'EXECUTE') as authed, " +
+        "exists (select 1 from pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where p.oid = $1::regprocedure and a.grantee = 0 and a.privilege_type = 'EXECUTE') as pub",
+        [h.sig]);
+      expect(row, h.sig).toEqual({ anon: false, authed: false, pub: false });
+      // A real call as each role fails on the privilege itself (not on the helper's own role check, which also uses 42501).
+      await expect(as(A.admin, (db) => db.query(h.call, h.params)), `${h.sig} as authenticated`)
+        .rejects.toMatchObject({ code: "42501", message: expect.stringMatching(/^permission denied for function _ai_helper_/) });
+      await expect(withDb(async (db) => {
+        await db.query("begin");
+        try {
+          await db.query("set local role anon");
+          await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: "anon" })]);
+          return await db.query(h.call, h.params);
+        } finally {
+          await db.query("rollback");
+        }
+      }), `${h.sig} as anon`).rejects.toMatchObject({ code: "42501", message: expect.stringMatching(/^permission denied for function _ai_helper_/) });
+    }
+    // The check can see a grant when there is one: the app's own functions are executable by authenticated, never by anon.
+    const [control] = await sql<{ authed: boolean; anon: boolean }>(
+      "select has_function_privilege('authenticated', 'public.ai_helper_status()', 'EXECUTE') as authed, has_function_privilege('anon', 'public.ai_helper_status()', 'EXECUTE') as anon");
+    expect(control).toEqual({ authed: true, anon: false });
+  });
+
   it("admin turns features on, sets the cap and the key (only the last four come back); every change is audited", async () => {
     expect(await save(A.admin, true, true, 100)).toMatchObject({ ok: true, value: { roundup_enabled: true, rfq_enabled: true, monthly_cap_pence: 100, key_set: false } });
     expect(await setKey(A.admin, "sk-ant-plain-text-key", "WXYZ")).toMatchObject({ ok: false, code: "22023" });
