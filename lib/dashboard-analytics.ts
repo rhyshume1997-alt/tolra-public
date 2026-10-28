@@ -63,6 +63,10 @@ export function jobsByStatus(jobs: Array<FlowJob & { date_required?: string | nu
     if (status === "not_started") out.notStarted += 1;
     else if (status === "running") out.running += 1;
     else out.waiting += 1;
+    // Late and due soon count unfinished jobs only, the same rule as the Jobs late / on time tile (finished_at is null) and the
+    // Job Board's due status (lib/job-status jobStatus keeps a finished job's stored status): a job finished and waiting for
+    // inspection is not late, whatever its date.
+    if (job.finished_at) continue;
     const date = requiredDate(job);
     if (!date) continue;
     const left = daysBetween(today, date);
