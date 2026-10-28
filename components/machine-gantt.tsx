@@ -236,7 +236,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                   className="pointer-events-none absolute bottom-0 top-0 z-10 w-0.5 bg-brand"
                   style={{ left: `calc(${LABEL_COL}px + (100% - ${LABEL_COL}px) * ${(todayIndex + nowFraction) / days.length})` }}
                   aria-hidden
-                ><span data-testid="now-marker-label" className={`absolute bottom-0 whitespace-nowrap rounded bg-brand px-1 text-[10px] font-semibold leading-4 text-white ${(todayIndex + nowFraction) / days.length > 0.9 ? "right-1" : "left-1"}`}>Now</span></div>
+                ><span data-testid="now-marker-label" className={`absolute bottom-0 whitespace-nowrap rounded-none bg-brand px-1 text-[10px] font-semibold leading-4 text-white ${(todayIndex + nowFraction) / days.length > 0.9 ? "right-1" : "left-1"}`}>Now</span></div>
               ) : null}
               </div>
             </div>

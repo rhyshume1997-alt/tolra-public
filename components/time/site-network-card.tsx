@@ -89,7 +89,7 @@ export function SiteNetworkCard() {
         ) : null}
         {error ? <p className="text-red-700">{error}</p> : null}
         {here ? (
-          <p className="rounded border p-2 text-slate-700" data-testid="site-network-here">
+          <p className="rounded-none border p-2 text-slate-700" data-testid="site-network-here">
             This device reaches Tolra from <span className="font-mono">{here.ip ?? "an address Tolra can't see"}</span>
             {here.ip ? (here.on_saved_network ? ": a saved site network." : ": not a saved site network.") : "."}
           </p>
@@ -99,7 +99,7 @@ export function SiteNetworkCard() {
           {networks.length ? (
             <ul className="space-y-1">
               {networks.map((n) => (
-                <li key={n.id} className="flex items-center justify-between gap-2 rounded border p-2" data-testid="site-network-row">
+                <li key={n.id} className="flex items-center justify-between gap-2 rounded-none border p-2" data-testid="site-network-row">
                   <span><span className="font-medium">{n.label}</span> <span className="font-mono text-slate-600">{n.network}</span></span>
                   <Button size="sm" variant="outline" disabled={busy} aria-label={`Remove ${n.label}`}
                     onClick={() => supabase && void run(() => removeSiteNetwork(supabase!, newClientOpId(), n.id), `${n.label} removed.`, "Couldn't remove it.")}>

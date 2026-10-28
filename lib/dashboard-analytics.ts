@@ -150,7 +150,7 @@ export function topCustomers(invoices: Array<{ customer?: string | null; total?:
 /** Traffic lights for the headline tiles. */
 export const lights = {
   moneyOwed: (owedTotal: number | null, overdueTotal: number | null): Light => (owedTotal === null ? "none" : overdueTotal ? "red" : owedTotal > 0 ? "green" : "none"),
-  openJobs: (byStatus: JobsByStatus | null): Light => (!byStatus ? "none" : byStatus.overdue ? "red" : byStatus.dueSoon ? "amber" : "green"),
+  openJobs: (byStatus: JobsByStatus | null): Light => (!byStatus || byStatus.notStarted + byStatus.running + byStatus.waiting === 0 ? "none" : byStatus.overdue ? "red" : byStatus.dueSoon ? "amber" : "green"),
   percent: (value: number | null, green: number, amber: number): Light => (value === null ? "none" : value >= green ? "green" : value >= amber ? "amber" : "red"),
   daysToPay: (days: number | null, terms = 30): Light => (days === null ? "none" : days <= terms ? "green" : days <= terms + 15 ? "amber" : "red"),
 };

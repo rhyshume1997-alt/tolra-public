@@ -102,7 +102,7 @@ export function DataImportHistory({ refreshKey }: { refreshKey: number }) {
                   const kept = refusedCount(row.run.refused);
                   return (
                     <li key={row.key} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm" data-testid="history-row" data-status={row.run.status}>
-                      <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{row.run.file_name ?? "File"} <span className="ml-1 rounded bg-slate-900 px-1.5 py-0.5 text-xs font-normal text-white">Large import</span></span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{row.run.file_name ?? "File"} <span className="ml-1 rounded-none bg-slate-900 px-1.5 py-0.5 text-xs font-normal text-white">Large import</span></span>
                       <span className="text-xs text-slate-500">{fmtDateTime(row.at)}</span>
                       <span className="text-slate-700" data-testid="history-state">{state.label}{kept ? `; ${kept} kept (changed or used since)` : ""}</span>
                       {state.action ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setAsking(row.run)}>{state.action === "undo" ? "Undo" : "Discard"}</Button> : null}

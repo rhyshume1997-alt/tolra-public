@@ -226,7 +226,7 @@ function CompanyDetailsCard() {
         <div>
           <label className="text-sm font-semibold text-slate-700">Logo on documents</label>
           <div className="mt-2 flex flex-wrap items-center gap-4 rounded-lg border p-3">
-            <div className="flex h-24 w-36 items-center justify-center rounded border bg-white">
+            <div className="flex h-24 w-36 items-center justify-center rounded-none border bg-white">
               {profile?.logoSrc
                 ? <Image src={profile.logoSrc} alt="Company logo" width={144} height={96} unoptimized className="max-h-24 w-auto object-contain" />
                 : <span className="px-2 text-center text-xs text-slate-500">No logo. Documents print the company name.</span>}
@@ -261,7 +261,7 @@ function CompanyDetailsCard() {
               <div key={key}>
                 <label className="text-sm font-semibold text-slate-700" htmlFor={`colour-${key}`}>{label}</label>
                 <div className="mt-2 flex items-center gap-2">
-                  <input id={`colour-${key}`} type="color" aria-label={`${label} picker`} className="h-10 w-12 cursor-pointer rounded border"
+                  <input id={`colour-${key}`} type="color" aria-label={`${label} picker`} className="h-10 w-12 cursor-pointer rounded-none border"
                     value={isHexColour(form[key]) ? form[key] : fallback} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
                   <Input value={form[key]} placeholder={fallback} maxLength={7} onChange={set(key)} aria-label={`${label} hex`} />
                 </div>
@@ -287,7 +287,7 @@ function CompanyDetailsCard() {
           </div>
           {currentSlug ? (
             <p className="text-xs text-slate-500">
-              Your sign-in link: <code className="rounded bg-slate-100 px-1">{origin}/login?org={currentSlug}</code>
+              Your sign-in link: <code className="rounded-none bg-slate-100 px-1">{origin}/login?org={currentSlug}</code>
               {form.brandedLogin ? "" : " (switch branding on and save to use it)"}
             </p>
           ) : null}

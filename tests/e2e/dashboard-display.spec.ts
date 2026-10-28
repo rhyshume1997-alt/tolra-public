@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { signIn, world } from "./helpers";
 
 const w = world();
-const HIDE = [{ label: "Open Quotes", text: "Open Quotes" }, { label: "Quote Pipeline", text: "Quote Pipeline" }];
+const HIDE = [{ label: "Open quotes", text: "Open quotes" }, { label: "Quote pipeline", text: "Quote pipeline" }];
 
 test.describe.configure({ mode: "serial" });
 

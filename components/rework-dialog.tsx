@@ -95,7 +95,7 @@ function LiveRework({ live, lineName, entries, entryLine, people, canWrite, canC
         {live.finished_at ? <div><dt className="field-label inline">Finished by: </dt><dd className="inline">{personName(people, live.finished_by)}, {fmtDateTime(live.finished_at)}</dd></div> : null}
       </dl>
       {entries.length ? (
-        <ul className="divide-y rounded border text-xs" aria-label="Hours, material and scrap">
+        <ul className="divide-y rounded-none border text-xs" aria-label="Hours, material and scrap">
           {entries.map((entry) => <li key={entry.id} className="p-1.5">{entryLine(entry)}</li>)}
         </ul>
       ) : null}

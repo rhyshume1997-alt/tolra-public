@@ -153,7 +153,7 @@ function FileNames({ names, empty = "", testId }: { names: string[]; empty?: str
 
 /** The "Internal" tag, the same in the list, the table and the cards. */
 function InternalBadge() {
-  return <span data-testid="internal-badge" className="inline-flex shrink-0 items-center rounded bg-violet-100 px-1.5 py-0.5 font-sans text-[11px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">Internal</span>;
+  return <span data-testid="internal-badge" className="inline-flex shrink-0 items-center rounded-none bg-violet-100 px-1.5 py-0.5 font-sans text-[11px] font-semibold text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">Internal</span>;
 }
 type JobType = "all" | "customer" | "internal";
 
@@ -1308,7 +1308,7 @@ export default function JobsPage() {
           <span data-testid="job-in-use" className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-red-700 dark:text-red-400">
             {rows.map((row) => (
               <span key={row.run_id} className="inline-flex flex-wrap items-center gap-1" data-stale={isStale(row) ? "true" : undefined}>
-                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-red-800 dark:bg-red-900/40 dark:text-red-200">In use</span>
+                <span className="rounded-none bg-red-100 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-red-800 dark:bg-red-900/40 dark:text-red-200">In use</span>
                 <span className="font-normal text-slate-700 dark:text-slate-200">{row.machine_name}, since {fmtDateTime(row.started_at)}{isStale(row) ? " (no Finish or Pause for 12 h+)" : ""}</span>
                 {activeRole === "admin" ? <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", secondaryTouch)} aria-label={`Release ${row.machine_name}`} title="Free this machine (the run ends now; recorded)" disabled={saving} onClick={() => { setReleaseReason(""); setReleaseRow(row); }}><Unlock className="size-3.5" /> Release</Button> : null}
               </span>
@@ -1359,7 +1359,7 @@ export default function JobsPage() {
       <span data-testid="job-assignee" className="flex flex-wrap items-center gap-1 font-sans text-xs font-normal text-slate-600 dark:text-slate-300">
         {name ? <>Assigned to <span className="font-semibold text-ink" data-testid="job-operator">{name}</span></> : <span className="text-slate-400" data-testid="job-operator">Unassigned</span>}
         {canPick ? (
-          <select aria-label={`Assign ${job.job_no}`} className={cn("ml-1 max-w-full rounded border border-slate-300 bg-white px-1 py-0.5 text-xs dark:bg-slate-900", workshop ? "pointer-coarse:min-h-12" : "pointer-coarse:min-h-11")} value={job.assigned_to ?? ""} disabled={saving} onChange={(event) => assignJob(job, event.target.value || null)}>
+          <select aria-label={`Assign ${job.job_no}`} className={cn("ml-1 max-w-full rounded-none border border-slate-300 bg-white px-1 py-0.5 text-xs dark:bg-slate-900", workshop ? "pointer-coarse:min-h-12" : "pointer-coarse:min-h-11")} value={job.assigned_to ?? ""} disabled={saving} onChange={(event) => assignJob(job, event.target.value || null)}>
             <option value="">Unassigned</option>
             {assignable.map((person) => <option key={person.user_id} value={person.user_id}>{person.display_name}</option>)}
           </select>
@@ -1567,7 +1567,7 @@ export default function JobsPage() {
           value={formatAverageJobTime(avgDays, timeUnit)}
           sub={<span className="flex flex-wrap items-center gap-1">Start to finish.{" "}
             {(["hours", "days"] as const).map((unit) => (
-              <button key={unit} type="button" aria-pressed={timeUnit === unit} onClick={() => chooseTimeUnit(unit)} className={`rounded px-1.5 py-0.5 text-xs font-semibold ${workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : "pointer-coarse:min-h-11 pointer-coarse:min-w-11"} ${timeUnit === unit ? "bg-brand text-brand-ink" : "border border-slate-300 text-slate-600 dark:text-slate-300"}`}>{unit === "hours" ? "Hours" : "Days"}</button>
+              <button key={unit} type="button" aria-pressed={timeUnit === unit} onClick={() => chooseTimeUnit(unit)} className={`rounded-none px-1.5 py-0.5 text-xs font-semibold ${workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : "pointer-coarse:min-h-11 pointer-coarse:min-w-11"} ${timeUnit === unit ? "bg-brand text-brand-ink" : "border border-slate-300 text-slate-600 dark:text-slate-300"}`}>{unit === "hours" ? "Hours" : "Days"}</button>
             ))}</span>}
         />
       </div>
@@ -1768,7 +1768,7 @@ export default function JobsPage() {
         <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle><DialogDescription>Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription></DialogHeader>
           {worksheetJob && !worksheetJob.finished_at && (benchPaused(worksheetJob) || benchRunning(worksheetJob)) ? (
-            <p data-testid="worksheet-bench" className="text-sm"><span className={cn("rounded px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide", benchPaused(worksheetJob) ? "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100")}>{benchPaused(worksheetJob) ? "Paused" : "Running"}</span> <span className="text-slate-600 dark:text-slate-300">{benchPaused(worksheetJob) ? "Start on the board resumes it." : "On the bench (no machine)."}</span></p>
+            <p data-testid="worksheet-bench" className="text-sm"><span className={cn("rounded-none px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide", benchPaused(worksheetJob) ? "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100")}>{benchPaused(worksheetJob) ? "Paused" : "Running"}</span> <span className="text-slate-600 dark:text-slate-300">{benchPaused(worksheetJob) ? "Start on the board resumes it." : "On the bench (no machine)."}</span></p>
           ) : null}
           {worksheetJob ? <JobWorksheetForm key={worksheetJob.id} job={{ id: worksheetJob.id, job_no: worksheetJob.job_no, customer: worksheetJob.customer, description: worksheetJob.description, due_date: worksheetJob.due_date, drawings: worksheetJob.drawings, customer_po: worksheetJob.customer_po, date_received: worksheetJob.date_received, date_required: worksheetJob.date_required, quote_ref: worksheetJob.quote_ref, quantity_required: worksheetJob.quantity_required, drawing_no: worksheetJob.drawing_no }} onDirtyChange={setWorksheetDirty} onSaved={(ws, row) => setJobs((current) => current.map((item) => (item.id === worksheetJob.id ? (row ? rowToJob(row) : { ...item, description: ws.description }) : item)))} /> : null}
         {worksheetJob ? <JobDrawingRevision key={`drawing-${worksheetJob.id}`} jobId={worksheetJob.id} role={activeRole} /> : null}

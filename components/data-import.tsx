@@ -39,7 +39,7 @@ function ProgressBar({ progress }: { progress: Progress | null }) {
   return (
     <div className="space-y-1" data-testid="import-progress">
       <p className="text-sm text-slate-700">{label}: {progress.done} of {progress.total} parts done</p>
-      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2 w-full overflow-hidden rounded bg-slate-200">
+      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2 w-full overflow-hidden rounded-none bg-slate-200">
         <div className="h-full bg-brand transition-all" style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -400,7 +400,7 @@ export function DataImport() {
         <section className="space-y-3" aria-label="Check result" data-testid="import-preview">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold text-slate-950">{clean ? "The file is clean" : "The file has problems"}</h2>
-            {dry.large ? <span className="rounded bg-slate-900 px-2 py-0.5 text-xs font-medium text-white" data-testid="import-large">Large import</span> : null}
+            {dry.large ? <span className="rounded-none bg-slate-900 px-2 py-0.5 text-xs font-medium text-white" data-testid="import-large">Large import</span> : null}
           </div>
           <p className="text-sm text-slate-600">
             {clean
