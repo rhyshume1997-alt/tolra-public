@@ -309,7 +309,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const kpis: Array<[string, React.ReactNode]> = [
     office
       ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to Quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" accent="border-l-amber-500" />]
-      : ["money-owed", <KpiCard key="money-owed" label="Money Owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}` : "Unpaid invoices"} icon={AlertCircle} href="/invoices" accent="border-l-red-500" valueClass="text-red-600" />],
+      : ["money-owed", <KpiCard key="money-owed" label="Money Owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}` : "Unpaid invoices"} icon={AlertCircle} href="/invoices" accent={d?.moneyOwed ? "border-l-red-500" : "border-l-slate-400"} valueClass="text-red-600" />],
     ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={`Not started + Running + Waiting for inspection${d?.dueThisWeek != null ? `; ${d.dueThisWeek} open jobs due this week` : ""}`} icon={Layers} href="/jobs" />],
     ["open-quotes", <KpiCard key="open-quotes" label="Open Quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" accent="border-l-amber-500" />],
   ];
@@ -352,7 +352,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
       {showAttention || showPipeline ? <section className="grid gap-6 xl:grid-cols-3">
         {showAttention ? <AttentionList role={office ? "office" : "admin"} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide={!showPipeline} /> : null}
         {showPipeline ? <MaybeLink href="/quotes" allowed={canOpen("/quotes")} className={showAttention ? undefined : "xl:col-span-3"}><Card className={`h-full transition ${canOpen("/quotes") ? "cursor-pointer hover:bg-slate-50" : ""}`}><CardHeader><CardTitle>Quote Pipeline</CardTitle></CardHeader><CardContent className="grid auto-rows-fr grid-cols-2 gap-3">{([["RFQs outstanding", pipe?.rfqs], ["Quotes awaiting reply", pipe?.quoted], ["Accepted", pipe?.accepted], ...(office ? [] : [["Invoices paid", pipe?.paid]])] as Array<[string, number | null | undefined]>).map(([label, value]) => (
-          <div key={label} className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg bg-gradient-to-r from-brand to-brand-accent p-3 text-white"><span className="text-sm leading-tight">{label}</span><span className="text-2xl font-semibold leading-none tabular-nums">{num(value, loading)}</span></div>
+          <div key={label} className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg bg-canvas p-3 text-ink"><span className="text-sm leading-tight text-muted-foreground">{label}</span><span className="text-2xl font-semibold leading-none tabular-nums">{num(value, loading)}</span></div>
         ))}</CardContent></Card></MaybeLink> : null}
       </section> : null}
     </>

@@ -21,7 +21,7 @@ export function MachineStatusCards({ statuses, inUse = new Map(), now = new Date
         const text = statusCardText(s, live, now, unbooked.get(s.machine.id));
         const red = text.inUse || s.busy;
         return (
-          <Card key={s.machine.id} data-testid="machine-status" data-machine={s.machine.name} data-in-use={text.inUse ? "true" : undefined} className={`border-l-4 ${red ? "border-l-red-500" : "border-l-emerald-500"}`}>
+          <Card key={s.machine.id} data-testid="machine-status" data-machine={s.machine.name} data-in-use={text.inUse ? "true" : undefined}>
             <CardContent className="space-y-2 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

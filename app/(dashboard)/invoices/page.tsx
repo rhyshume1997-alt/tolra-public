@@ -221,15 +221,6 @@ function derive(base: InvoiceBase, today: string): InvoiceRow {
   return { ...base, status: daysOverdue > 0 ? "overdue" : "outstanding", daysOverdue, balance: balanceDue(base.amount, base.amountPaid, base.credited, base.refunded), partPaid };
 }
 
-function statusClasses(row: InvoiceRow) {
-  if (row.status === "paid") return "border-l-green-500";
-  if (row.status === "closed") return "border-l-slate-300";
-  if (row.status === "unverified") return "border-l-amber-300";
-  if (row.daysOverdue > 60) return "border-l-red-600";
-  if (row.daysOverdue > 0) return "border-l-amber-500";
-  return "border-l-blue-500";
-}
-
 /** Demo mode only. JNR's real records are imported lazily so they never ship in the production bundle. */
 async function loadDemoInvoices(): Promise<InvoiceBase[]> {
   const m = await import("@/lib/jnr-test-data");
@@ -1204,7 +1195,7 @@ export default function InvoicesPage() {
           {creditHeld.total > 0 ? <p className="mt-1 text-sm font-medium text-amber-800" data-testid="customer-credit-held">Customer credit held: {currency(creditHeld.total)} for {creditHeld.customers} customer{creditHeld.customers === 1 ? "" : "s"}. Open an invoice with credit to refund it or apply it to another invoice.</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button className="bg-amber-500 text-white hover:bg-amber-600" disabled={saving || loading || !overdueInvoices.length} onClick={() => void chaseOverdue()} title={overdueInvoices.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}>
+          <Button variant="outline" className={overdueInvoices.length ? "border-amber-500 bg-amber-500 text-[#1c1917] hover:border-amber-400 hover:bg-amber-400" : undefined} disabled={saving || loading || !overdueInvoices.length} onClick={() => void chaseOverdue()} title={overdueInvoices.length ? "Draft a chaser email for every overdue invoice" : "No overdue invoices"}>
             <Send className="size-4" /> Chase All Overdue
           </Button>
           <Button variant="outline" onClick={() => setFromNotesOpen(true)}>Invoice from Delivery Notes</Button>
@@ -1261,19 +1252,19 @@ export default function InvoicesPage() {
 
       {DEMO_MODE ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Demo mode: sample data is shown if the database can&apos;t be reached.</div> : null}
 
-      <Card className="overflow-hidden border-red-200 bg-gradient-to-r from-red-50 via-amber-50 to-white shadow-sm">
+      <Card className="overflow-hidden">
         <CardContent className="grid gap-4 p-6 lg:grid-cols-[1.2fr_2fr]">
           <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-red-700"><Banknote className="size-5" /> Money Dashboard</div>
-            <div className="mt-4 text-5xl font-bold text-red-600">{loading ? "—" : currency(totalOwed)}</div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-ink"><Banknote className="size-5 text-muted-foreground" /> Money Dashboard</div>
+            <div className={`mt-4 text-5xl font-semibold tabular-nums tracking-tight ${overdueInvoices.length ? "text-red-600" : "text-ink"}`}>{loading ? "—" : currency(totalOwed)}</div>
             <p className="mt-2 text-sm text-slate-600">{loading ? "Loading…" : `Across ${unpaid.length} outstanding invoice${unpaid.length === 1 ? "" : "s"}`}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {aging.map(({ label, value, color }) => (
-              <Card key={label} className="cursor-pointer bg-white/80 transition hover:bg-white" onClick={() => setFilters(new Set(label === "Current" ? ["outstanding"] : ["overdue"]))}>
+              <Card key={label} className="cursor-pointer transition hover:bg-canvas" onClick={() => setFilters(new Set(label === "Current" ? ["outstanding"] : ["overdue"]))}>
                 <CardContent className="p-4">
                   <p className="text-xs font-medium text-slate-500">{label}</p>
-                  <p className={`mt-2 text-xl font-bold ${color}`}>{loading ? "—" : currency(value)}</p>
+                  <p className={`mt-2 text-xl font-semibold tabular-nums ${value > 0 ? color : "text-ink"}`}>{loading ? "—" : currency(value)}</p>
                 </CardContent>
               </Card>
             ))}
@@ -1381,7 +1372,7 @@ export default function InvoicesPage() {
               </TableHeader>
               <TableBody>
                 {visibleInvoices.map((invoice) => (
-                  <TableRow key={invoice.id ?? invoice.reference} className={`block border-l-4 md:table-row ${statusClasses(invoice)} ${invoice.status === "paid" ? "opacity-60" : ""}`}>
+                  <TableRow key={invoice.id ?? invoice.reference} className={`block md:table-row ${invoice.status === "paid" ? "opacity-60" : ""}`}>
                     <TableCell className="block md:table-cell"><SelectBox aria-label={`Select ${shownInvoiceRef(invoice)}`} checked={selectedInvoices.includes(invoice.reference)} onChange={() => setSelectedInvoices((current) => current.includes(invoice.reference) ? current.filter((ref) => ref !== invoice.reference) : [...current, invoice.reference])} /></TableCell>
                     {isVisible("invoice") ? <TableCell data-label="Invoice" className="block font-mono font-semibold md:table-cell"><InvoiceRefCell invoice={invoice} autoDraftedFrom={invoice.id ? autoDrafted.get(invoice.id) : null} jobStage={jobDraftStage({ status: invoice.rawStatus, job_id: invoice.jobId }, invoice.jobId ? draftJobs.get(invoice.jobId) : null)} /></TableCell> : null}
                     {isVisible("customer") ? <TableCell data-label="Customer" className="block md:table-cell">{invoice.customer}</TableCell> : null}
