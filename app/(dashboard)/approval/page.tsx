@@ -18,7 +18,6 @@ import { awaitingApproval } from "@/lib/approval-queue";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { useSaving } from "@/lib/use-saving";
-import { cn } from "@/lib/utils";
 import { PRODUCT } from "@/lib/product";
 
 type ApprovalTone = "red" | "amber" | "blue";
@@ -37,10 +36,10 @@ type ApprovalItem = {
 
 type SentItem = { id: string; customer: string; when: string; status: string };
 
-const toneStyles: Record<ApprovalTone, { border: string; badge: string; button: string }> = {
-  red: { border: "border-l-red-600", badge: "bg-red-600 text-white", button: "bg-red-600 text-white hover:bg-red-700" },
-  amber: { border: "border-l-amber-500", badge: "bg-amber-500 text-white", button: "bg-amber-500 text-white hover:bg-amber-600" },
-  blue: { border: "border-l-blue-600", badge: "bg-blue-600 text-white", button: "bg-blue-600 text-white hover:bg-blue-700" },
+const toneStyles: Record<ApprovalTone, { badge: string; button: string }> = {
+  red: { badge: "bg-red-600 text-white", button: "bg-red-600 text-white hover:bg-red-700" },
+  amber: { badge: "bg-amber-500 text-white", button: "bg-amber-500 text-white hover:bg-amber-600" },
+  blue: { badge: "bg-blue-600 text-white", button: "bg-blue-600 text-white hover:bg-blue-700" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -237,7 +236,7 @@ export default function ApprovalPage() {
           approvals.map((item) => {
             const styles = toneStyles[item.tone];
             return (
-              <Card key={item.id} className={cn("border-l-4 shadow-sm", styles.border)}>
+              <Card key={item.id}>
                 <CardHeader className="gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     {isVisible("type") ? <Badge className={styles.badge}>{item.badge}</Badge> : null}
