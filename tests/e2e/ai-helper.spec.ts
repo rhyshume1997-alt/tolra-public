@@ -117,6 +117,8 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
     ["Bracket · Material: 6082-T6 aluminium · Finish: clear anodise · Required by 2026-12-04", 25, 12.5, "BR-100"],
     ["Spacer · Material: 303 stainless", 4, 3, null],
   ]);
+  // The panel shows the draft as soon as it exists, then records the decision (one more request): wait for that to land.
+  await expect.poll(async () => (await requests(org))[0]?.status).toBe("approved");
   const [request] = await requests(org);
   expect(request).toMatchObject({ feature: "rfq", status: "approved", result_quote_id: quotes![0].id });
   const approved = (await auditRows(org, "ai_helper_approved")).map((row) => ({ entity_id: row.entity_id, actor_user_id: row.actor_user_id, metadata: row.metadata }));
