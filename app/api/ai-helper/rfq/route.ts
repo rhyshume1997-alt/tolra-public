@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { knownCustomer } from "@/lib/ai-helper/customers";
 import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
 import { RFQ_BODY_MAX_BYTES, RFQ_MAX_BYTES, RFQ_MAX_CHARS, RFQ_MAX_LINES, RFQ_PAST_LINES } from "@/lib/ai-helper/limits";
 import {
@@ -32,19 +33,11 @@ async function pastLines(db: SupabaseClient, org: string, text: string): Promise
   }
 }
 
-/** True when the name exactly (ignoring case) matches one of this company's customers. */
-async function knownCustomer(db: SupabaseClient, org: string, name: string | null): Promise<boolean> {
-  if (!name) return false;
-  const pattern = name.replace(/[\\%_]/g, (c) => `\\${c}`);
-  const { data, error } = await db.from("customers").select("name").eq("organization_id", org).ilike("name", pattern).limit(1);
-  return !error && (data?.length ?? 0) > 0;
-}
-
 /**
  * RFQ email to draft quote (SUGGEST ONLY). POST { text }: the pasted email text (no attachments in v1). The model reads it, with this
  * company's similar past quote lines as examples, into customer and spec lines; lib/ai-helper/rfq.ts keeps only what it allows and flags
  * every missing or unclear field "Needs human review". No price comes from the model. Nothing is saved here but the request's audit and
- * cost rows: the person edits the suggestion and Approve creates a normal draft through create_with_lines under their own session.
+ * cost rows and the validated suggestion: Approve (rfq/decision) rebuilds the draft from that stored suggestion on the server.
  * Off (404) unless AI_HELPER_ENABLED is exactly "true"; the company's RFQ switch, the role, the key and the cap are checked by the
  * database before any model call (ai_helper_reserve).
  */

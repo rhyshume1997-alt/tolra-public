@@ -6,7 +6,8 @@
  *   - Round-up: facts carry no customer names or amounts; the wording is dropped when it holds a number the facts don't.
  *   - Cost: the estimate is an upper bound on what any answer within the output cap can cost.
  *   - Prices: only from the costing calculation, matched by exact part number; blank otherwise.
- *   - Approve: the draft goes through create_with_lines exactly as the Quote Builder's, status draft.
+ *   - Approve: the draft is rebuilt from the stored suggestion and priced on the server (never the browser's lines or prices), then
+ *     goes through next_doc_number and create_with_lines exactly as the Quote Builder's, status draft.
  *   - The Anthropic provider: no tools, structured output, refusal / cut-short / errors handled, key never in an error.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -16,7 +17,7 @@ vi.mock("server-only", () => ({}));
 import Anthropic from "@anthropic-ai/sdk";
 
 import { anthropicProvider } from "@/lib/ai-helper/anthropic";
-import { createDraftQuote } from "@/lib/ai-helper/approve";
+import { approveEditsSchema, companyVatFromProfile, createDraftQuote, planDraft, readStoredSuggestion } from "@/lib/ai-helper/approve";
 import { AI_HELPER_FLAG, aiHelperEnabled } from "@/lib/ai-helper/flag";
 import { AI_HELPER_MODELS, MAX_OUTPUT_TOKENS, actualPence, estimatePence } from "@/lib/ai-helper/limits";
 import { mockProvider } from "@/lib/ai-helper/mock";
@@ -27,6 +28,7 @@ import {
 } from "@/lib/ai-helper/rfq";
 import { buildRoundupData, checkedSummary, roundupFacts, totalItems } from "@/lib/ai-helper/roundup";
 import { aiHelperProvider } from "@/lib/ai-helper/server";
+import { ValidationError } from "@/lib/validation/schemas";
 import type { AttentionSection } from "@/lib/attention-items";
 
 const req = (data: string) => ({ model: AI_HELPER_MODELS.rfq, system: RFQ_SYSTEM_PROMPT, data, schema: RFQ_OUTPUT_SCHEMA, maxOutputTokens: 8000, effort: "medium" as const, timeoutMs: 1000, apiKey: "sk-ant-test-not-a-real-key-000000" });
@@ -186,28 +188,85 @@ describe("prices", () => {
 });
 
 describe("Approve", () => {
-  it("creates a draft through create_with_lines, as the Quote Builder does", async () => {
-    const rpc = vi.fn(async () => ({ data: "11111111-1111-4111-8111-111111111111", error: null }));
-    const out = await createDraftQuote({ rpc } as never, {
-      customer: "Acme Engineering Ltd", description: "RFQ from Acme Engineering Ltd",
-      lines: [{ description: "Bracket · Material: 6082-T6", partNumber: "BR-100", quantity: 25, unitPrice: 12.5, pricedBy: "person" }],
-      vat: { registered: true, standardRate: 20, defaultChoice: "20" },
-    }, async () => "QUO-0100");
-    expect(out).toEqual({ id: "11111111-1111-4111-8111-111111111111", ref: "QUO-0100" });
-    expect(rpc).toHaveBeenCalledTimes(1);
-    const [fn, args] = rpc.mock.calls[0] as unknown as [string, Record<string, Record<string, unknown> & unknown[]>];
-    expect(fn).toBe("create_with_lines");
+  const QUOTE = "11111111-1111-4111-8111-111111111111";
+  const plan = { customer: "Acme Engineering Ltd", customerKnown: true, lines: [
+    { description: "Bracket · Material: 6082-T6", partNumber: "BR-100", quantity: 25, unitPrice: 12.5, pricedBy: "costing" as const, review: [], sourceLine: 1 },
+  ] };
+  const rpcStub = () => vi.fn(async (fn: string) => ({ data: fn === "next_doc_number" ? "QUO-0100" : QUOTE, error: null }));
+
+  it("creates a draft through next_doc_number then create_with_lines, as the Quote Builder does", async () => {
+    const rpc = rpcStub();
+    const out = await createDraftQuote({ rpc } as never, plan, { registered: true, standardRate: 20 });
+    expect(out).toEqual({ id: QUOTE, ref: "QUO-0100" });
+    expect(rpc.mock.calls.map((c) => c[0])).toEqual(["next_doc_number", "create_with_lines"]);
+    const args = (rpc.mock.calls[1] as unknown as [string, Record<string, Record<string, unknown> & unknown[]>])[1];
     expect(args.p_parent).toBe("quotes");
     expect(args.p_header).toMatchObject({ quote_ref: "QUO-0100", status: "draft", customer: "Acme Engineering Ltd", total_value: 375 });
-    expect((args.p_lines as unknown as Record<string, unknown>[])[0]).toMatchObject({ unit_price: 12.5, quantity: 25, source: "manual", part_number: "BR-100", vat_pct: 20 });
+    expect((args.p_lines as unknown as Record<string, unknown>[])[0]).toMatchObject({ unit_price: 12.5, quantity: 25, source: "costing_engine", part_number: "BR-100", vat_pct: 20 });
   });
 
   it("refuses what the Quote Builder refuses (no customer, no lines) before taking a number", async () => {
-    const allocate = vi.fn(async () => "QUO-1");
     const rpc = vi.fn();
-    await expect(createDraftQuote({ rpc } as never, { customer: "", description: "", lines: [], vat: { registered: true, standardRate: 20, defaultChoice: "20" } }, allocate)).rejects.toThrow();
-    expect(allocate).not.toHaveBeenCalled();
+    await expect(createDraftQuote({ rpc } as never, { customer: "", customerKnown: false, lines: [] }, { registered: true, standardRate: 20 })).rejects.toThrow();
     expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("the company's VAT comes from its own stored profile, as lib/company.ts reads it", () => {
+    expect(companyVatFromProfile({ vatRegistered: false, defaultVatRate: 5 })).toEqual({ registered: false, standardRate: 5 });
+    expect(companyVatFromProfile(null)).toEqual({ registered: true, standardRate: 20 });
+    expect(companyVatFromProfile({ defaultVatRate: 500 })).toEqual({ registered: true, standardRate: 20 });
+  });
+});
+
+describe("Approve: the draft is rebuilt from the STORED suggestion", () => {
+  const stored = readStoredSuggestion({ kind: "rfq", customer: "Acme Engineering Ltd", customer_known: true, suspicious: false, truncated: false, lines: [
+    { description: "Bracket", partNumber: "BR-100", material: "6082-T6", finish: "clear anodise", quantity: 25, dueDate: "2026-12-04", similarQuoteRef: null, review: ["price"] },
+    { description: "Spacer", partNumber: null, material: "303 stainless", finish: null, quantity: 4, dueDate: null, similarQuoteRef: null, review: ["finish", "due_date", "price"] },
+  ] })!;
+  const priceAt = (unit: number) => vi.fn(async (lines: { partNumber: string | null }[]) => lines.map((l) => (l.partNumber === "BR-100" ? unit : null)));
+
+  it("reads only the stored shape back (not an RFQ: nothing)", () => {
+    expect(stored.lines).toHaveLength(2);
+    expect(readStoredSuggestion({ kind: "roundup", lines: [] })).toBeNull();
+    expect(readStoredSuggestion(null)).toBeNull();
+  });
+
+  it("no edits: the stored lines, priced on the server; an unpriced line is £0.00 and keeps Needs human review: price", async () => {
+    const price = priceAt(9.99);
+    const out = await planDraft(stored, undefined, { price, customerKnown: async () => true });
+    expect(price).toHaveBeenCalledWith([{ partNumber: "BR-100", quantity: 25 }, { partNumber: null, quantity: 4 }]);
+    expect(out).toEqual({ customer: "Acme Engineering Ltd", customerKnown: true, lines: [
+      { description: "Bracket · Material: 6082-T6 · Finish: clear anodise · Required by 2026-12-04", partNumber: "BR-100", quantity: 25, unitPrice: 9.99, pricedBy: "costing", review: [], sourceLine: 1 },
+      { description: "Spacer · Material: 303 stainless", partNumber: null, quantity: 4, unitPrice: 0, pricedBy: "none", review: ["finish", "due_date", "price"], sourceLine: 2 },
+    ] });
+  });
+
+  it("edits are cleaned and re-priced; a corrected field loses its flag, an untouched one keeps it; a dropped line is gone", async () => {
+    const edits = { customer: "  Acme   Engineering Ltd ", lines: [
+      { index: 1, description: "Spacer\u0007 long", partNumber: "BR-100", material: "303 stainless", finish: "passivate", dueDate: "2026-02-30", quantity: 8 },
+    ] };
+    const out = await planDraft(stored, edits, { price: priceAt(1.5), customerKnown: async () => false });
+    expect(out).toEqual({ customer: "Acme Engineering Ltd", customerKnown: false, lines: [
+      { description: "Spacer long · Material: 303 stainless · Finish: passivate", partNumber: "BR-100", quantity: 8, unitPrice: 1.5, pricedBy: "costing", review: ["due_date"], sourceLine: 2 },
+    ] });
+  });
+
+  it("an edit can't add a line or name one twice, and a kept line needs a description and quantity: refused, nothing priced", async () => {
+    const line = { index: 0, description: "Bracket", partNumber: null, material: null, finish: null, dueDate: null, quantity: 1 };
+    const price = vi.fn();
+    for (const lines of [[{ ...line, index: 2 }], [line, line], [{ ...line, quantity: null }], [{ ...line, description: "   " }]]) {
+      await expect(planDraft(stored, { customer: "Acme", lines }, { price, customerKnown: async () => true })).rejects.toBeInstanceOf(ValidationError);
+    }
+    await expect(planDraft(stored, { customer: " ", lines: [line] }, { price, customerKnown: async () => true })).rejects.toBeInstanceOf(ValidationError);
+    expect(price).not.toHaveBeenCalled();
+  });
+
+  it("the edit schema has no price, no free line and no other key", () => {
+    const line = { index: 0, description: "x", partNumber: null, material: null, finish: null, dueDate: null, quantity: 1 };
+    expect(approveEditsSchema.safeParse({ customer: "A", lines: [line] }).success).toBe(true);
+    expect(approveEditsSchema.safeParse({ customer: "A", lines: [{ ...line, unitPrice: 0.01 }] }).success).toBe(false);
+    expect(approveEditsSchema.safeParse({ customer: "A", lines: [{ ...line, index: undefined }] }).success).toBe(false);
+    expect(approveEditsSchema.safeParse({ customer: "A", lines: [line], total: 1 }).success).toBe(false);
   });
 });
 

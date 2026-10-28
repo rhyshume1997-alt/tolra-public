@@ -1,11 +1,13 @@
-import { calculatePartCost, fetchCostingParts, isCostingEngineConfigured, type CostingBreakdown, type CostingPart } from "@/lib/costing";
+import type { CostingBreakdown, CostingPart } from "@/lib/costing";
 import { fromPence, toPence } from "@/lib/money";
 
 /**
  * Prices for a reviewed RFQ suggestion, from the EXISTING fixed calculation only: the costing engine the Quote Builder's costing
- * picker uses (lib/costing.ts: the company's rates, material prices and machine hours, through /api/costing), never the model. A line
- * is priced only when its part number is exactly one of the engine's parts (case and spaces aside) and its quantity is known; anything
- * else stays blank and flagged, and the person types the price. With the engine not configured, every price is blank.
+ * picker uses (the company's rates, material prices and machine hours), never the model. The panel's preview reaches it through
+ * /api/costing (browser deps); the Approve route prices again on the server for the caller's company (lib/server/costing-engine.ts),
+ * and only that server price is saved. A line is priced only when its part number is exactly one of the engine's parts (case and
+ * spaces aside) and its quantity is known; anything else is saved at £0.00 and flagged "Needs human review: price", and the person
+ * types the price in the saved draft. With the engine not configured, every price is blank.
  */
 /** The margin the Quote Builder's costing picker starts at (components/costing-line-picker.tsx), as a percentage. */
 export const COSTING_MARGIN_PCT = 20;
@@ -16,12 +18,10 @@ export type CostingDeps = {
   calculate: (partId: number, quantity: number, marginPct: number) => Promise<CostingBreakdown>;
 };
 
-const defaultDeps: CostingDeps = { configured: isCostingEngineConfigured, parts: fetchCostingParts, calculate: calculatePartCost };
-
 const key = (value: string) => value.replace(/\s+/g, "").toUpperCase();
 
 /** One unit price per line (pounds, to the penny), or null where the calculation can't price it. Never throws. */
-export async function costingPrices(lines: { partNumber: string | null; quantity: number | null }[], deps: CostingDeps = defaultDeps): Promise<(number | null)[]> {
+export async function costingPrices(lines: { partNumber: string | null; quantity: number | null }[], deps: CostingDeps): Promise<(number | null)[]> {
   const blank = lines.map(() => null);
   try {
     if (!lines.some((l) => l.partNumber && l.quantity) || !(await deps.configured())) return blank;

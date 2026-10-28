@@ -2,19 +2,19 @@
  * RFQ email to draft quote: what the model is asked, and what of its answer survives (plain code, no I/O; the route and the panel share
  * the types). The office pastes the email TEXT (no attachments in v1). The model may fill, per line: description, part number, material,
  * finish, quantity and due date, and say which of them are unclear. It never gives a price: the schema has no price field, anything
- * extra is dropped, and every line starts with "price" flagged until the existing costing calculation fills it in the browser
- * (lib/ai-helper/pricing.ts) or a person types it.
+ * extra is dropped, and every line starts with "price" flagged until the existing costing calculation fills it (lib/ai-helper/pricing.ts,
+ * run again on the server at Approve). A price the calculation can't give is typed by a person in the saved draft, never sent here.
  *
  * "Needs human review" is never a guess: a field is flagged when the model left it empty, said it is unclear, or gave a value this code
  * refuses (a quantity that is not a whole number above 0, a date that is not a real date, a past quote reference the server never sent).
  * The customer is flagged unless it exactly matches one of this company's customers.
  *
  * The pasted text is untrusted. It goes to the model as a string value inside one JSON document, after a fixed system prompt that says
- * so; the model has no tools; and whatever it answers can only become this validated suggestion, which a person edits and approves.
+ * so; the model has no tools; and whatever it answers can only become this validated suggestion, which a person checks and approves.
  */
 export const RFQ_FIELDS = ["description", "part_number", "material", "finish", "quantity", "due_date"] as const;
 export type RfqField = (typeof RFQ_FIELDS)[number];
-/** What a person must check on a line: an RFQ field, or the price (always, until the costing calculation or a person fills it). */
+/** What a person must check on a line: an RFQ field, or the price (always, until the server's costing calculation fills it). */
 export type ReviewField = RfqField | "price";
 
 export type RfqLine = {
@@ -100,15 +100,15 @@ export const ATTACHMENTS_REFUSED = "Attachments aren't read yet: paste the email
 
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F‪-‮⁦-⁩]/g;
 
-/** A trimmed single-line string up to `max` characters, or null. */
-function clean(value: unknown, max: number): string | null {
+/** A trimmed single-line string up to `max` characters, or null. The Approve route re-checks a person's edits with it too. */
+export function clean(value: unknown, max: number): string | null {
   if (typeof value !== "string") return null;
   const text = value.replace(CONTROL, "").replace(/\s+/g, " ").trim();
   if (!text) return null;
   return text.length > max ? text.slice(0, max).trimEnd() : text;
 }
 
-function wholeQuantity(value: unknown): number | null {
+export function wholeQuantity(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 1_000_000 ? value : null;
 }
 

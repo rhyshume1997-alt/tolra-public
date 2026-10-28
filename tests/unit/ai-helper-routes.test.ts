@@ -6,6 +6,8 @@
  *   - Cap reached or no key: a clear message and NO model call. Model down / refused / garbage: a clear message, settled as failed.
  *   - A malicious RFQ changes nothing: the answer is only the validated suggestion (no price, no action), flagged suspicious, and the
  *     only database functions called are status, reserve and settle.
+ *   - Approve: the server rebuilds the draft from the STORED suggestion and prices it from the caller's company's own records; a
+ *     tampered body (a price, an extra line, a quote id, another company's item or suggestion) can't change what is saved.
  *   - The key is encrypted before it reaches the database, never returned and never logged.
  *   - No service role, no direct table write, only the expected functions, only the expected env vars, in every helper file.
  */
@@ -19,6 +21,14 @@ vi.mock("server-only", () => ({}));
 
 const ORG = "00000000-0000-4000-8000-0000000000a1";
 const REQ = "33333333-3333-4333-8333-333333333333";
+const OTHER_ORG = "00000000-0000-4000-8000-0000000000b2";
+const OTHER_REQ = "66666666-6666-4666-8666-666666666666";
+const NEW_QUOTE = "55555555-5555-4555-8555-555555555555";
+/** The suggestion as ai_helper_settle stored it (storedRfqOutput): what Approve must rebuild from. */
+const STORED = { kind: "rfq", customer: "Acme Engineering Ltd", customer_known: true, suspicious: false, truncated: false, lines: [
+  { description: "Bracket", partNumber: "BR-100", material: "6082-T6 aluminium", finish: "clear anodise", quantity: 25, dueDate: "2026-12-04", similarQuoteRef: null, review: ["price"] },
+  { description: "Spacer", partNumber: null, material: "303 stainless", finish: null, quantity: 4, dueDate: null, similarQuoteRef: null, review: ["finish", "due_date", "price"] },
+] };
 
 const db = vi.hoisted(() => ({
   rpcs: [] as Array<{ fn: string; args: Record<string, unknown> }>,
@@ -26,13 +36,36 @@ const db = vi.hoisted(() => ({
   status: { roundup_enabled: true, rfq_enabled: true } as Record<string, unknown>,
   reserve: null as null | ((args: Record<string, unknown>) => { data: unknown; error: unknown }),
   customers: ["Acme Engineering Ltd"],
+  /** ai_helper_requests rows the caller's RLS lets it read (this company's only). */
+  requests: [] as Record<string, unknown>[],
+  profile: { vatRegistered: true, defaultVatRate: 20 } as Record<string, unknown>,
+}));
+
+/** The costing engine per company (X-Org-Id): only the caller's company's parts and prices exist for it. */
+const engine = vi.hoisted(() => ({
+  orgs: [] as string[],
+  parts: {} as Record<string, Array<{ id: number; part_number: string; unit: number }>>,
+}));
+vi.mock("@/lib/server/costing-engine", () => ({
+  serverCostingDeps: (org: string) => {
+    engine.orgs.push(org);
+    const parts = engine.parts[org] ?? [];
+    return {
+      configured: async () => true,
+      parts: async () => parts.map((p) => ({ id: p.id, part_number: p.part_number, description: null, material_id: 1, operations: [] })),
+      calculate: async (id: number) => ({ summary: { unit_price: parts.find((p) => p.id === id)!.unit } }),
+    };
+  },
 }));
 
 function builder(table: string) {
-  let rows: Record<string, unknown>[] = table === "customers" ? db.customers.map((name) => ({ name, organization_id: "o" })) : [];
+  let rows: Record<string, unknown>[] = table === "customers" ? db.customers.map((name) => ({ name, organization_id: "o" }))
+    : table === "ai_helper_requests" ? db.requests.filter((r) => r.organization_id === ORG)
+    : table === "organization_settings" ? [{ organization_id: ORG, company_profile: db.profile }] : [];
   const q = {
     select: (cols: string) => { db.reads.push(`${table}:${cols}`); return q; },
-    eq: () => q, in: () => q, or: () => q, order: () => q,
+    eq: (c: string, v: unknown) => { if (table !== "customers") rows = rows.filter((r) => r[c] === v); return q; }, in: () => q, or: () => q, order: () => q,
+    maybeSingle: async () => ({ data: rows[0] ?? null, error: null }),
     ilike: (_c: string, v: string) => { rows = rows.filter((r) => String(r.name).toLowerCase() === v.replace(/\\(.)/g, "$1").toLowerCase()); return q; },
     limit: () => q,
     then: (resolve: (v: { data: unknown[]; error: null }) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
@@ -45,6 +78,8 @@ const supabase = {
     db.rpcs.push({ fn, args });
     if (fn === "ai_helper_status") return { data: db.status, error: null };
     if (fn === "ai_helper_reserve") return db.reserve!(args);
+    if (fn === "next_doc_number") return { data: "QUO-0100", error: null };
+    if (fn === "create_with_lines") return { data: NEW_QUOTE, error: null };
     return { data: fn === "ai_helper_set_key" || fn === "ai_helper_save_settings" ? { key_set: true, key_last4: "WXYZ" } : null, error: null };
   },
 };
@@ -98,6 +133,13 @@ beforeEach(() => {
   delete process.env.VERCEL_ENV;
   process.env.INTEGRATIONS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
   db.rpcs = []; db.reads = []; db.status = { roundup_enabled: true, rfq_enabled: true };
+  db.requests = [
+    { id: REQ, organization_id: ORG, feature: "rfq", status: "suggested", output: STORED },
+    { id: OTHER_REQ, organization_id: OTHER_ORG, feature: "rfq", status: "suggested", output: STORED },
+  ];
+  db.profile = { vatRegistered: true, defaultVatRate: 20 };
+  engine.orgs = [];
+  engine.parts = { [ORG]: [{ id: 7, part_number: "BR-100", unit: 12.5 }], [OTHER_ORG]: [{ id: 9, part_number: "BETA-1", unit: 0.01 }, { id: 10, part_number: "BR-100", unit: 0.01 }] };
   db.reserve = () => ({ data: { ok: true, request_id: REQ, key_enc: encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" }) }, error: null });
   auth.role = "office"; auth.support = false; auth.calls = 0; auth.roles = [];
   model.calls = 0;
@@ -149,14 +191,13 @@ describe("switches and roles", () => {
   });
 
   it("company switch off, or no settings row at all: every route that reads, spends or records refuses (404); only status, settings and the key stay open to switch it on", async () => {
-    const quote = "44444444-4444-4444-8444-444444444444";
     for (const off of [{ roundup_enabled: false, rfq_enabled: false }, null]) {
       db.status = off as Record<string, unknown>;
       db.rpcs = [];
       auth.role = "admin";
       expect((await rfq(post({ text: GOOD_RFQ }))).status).toBe(404);
       expect((await roundup(post({ period: "daily" }))).status).toBe(404);
-      expect((await decide(post({ requestId: REQ, decision: "approved", quoteId: quote }))).status).toBe(404);
+      expect((await decide(post({ requestId: REQ, decision: "approved" }))).status).toBe(404);
       expect((await decide(post({ requestId: REQ, decision: "rejected" }))).status).toBe(404);
       expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status", "ai_helper_status", "ai_helper_status", "ai_helper_status"]);
       expect(db.reads).toEqual([]);
@@ -284,19 +325,96 @@ describe("RFQ email to draft quote", () => {
 });
 
 describe("decision", () => {
-  it("approved needs the draft's id; rejected takes none; both go only to ai_helper_decide", async () => {
+  const fns = () => db.rpcs.map((r) => r.fn);
+  const createArgs = () => db.rpcs.find((r) => r.fn === "create_with_lines")?.args as { p_header: Record<string, unknown>; p_lines: Record<string, unknown>[] } | undefined;
+  const savedLines = () => createArgs()!.p_lines.map((l) => [l.description, l.quantity, l.unit_price, l.part_number ?? null, l.source]);
+  const keep = (index: number, over: Record<string, unknown> = {}) => {
+    const l = STORED.lines[index];
+    return { index, description: l.description, partNumber: l.partNumber, material: l.material, finish: l.finish, dueDate: l.dueDate, quantity: l.quantity, ...over };
+  };
+  /** The server's own rebuild of the stored suggestion, priced from this company's engine records (BR-100 at £12.50). */
+  const REBUILT = [
+    ["Bracket · Material: 6082-T6 aluminium · Finish: clear anodise · Required by 2026-12-04", 25, 12.5, "BR-100", "costing_engine"],
+    ["Spacer · Material: 303 stainless", 4, 0, null, "manual"],
+  ];
+
+  it("rejected takes only the id and goes only to ai_helper_decide; approved takes no quote id from the browser", async () => {
     const quote = "44444444-4444-4444-8444-444444444444";
-    expect((await decide(post({ requestId: REQ, decision: "approved" }))).status).toBe(400);
+    expect((await decide(post({ requestId: REQ, decision: "approved", quoteId: quote }))).status).toBe(400);
     expect((await decide(post({ requestId: REQ, decision: "rejected", quoteId: quote }))).status).toBe(400);
-    expect((await decide(post({ requestId: REQ, decision: "issued", quoteId: quote }))).status).toBe(400);
-    expect((await decide(post({ requestId: REQ, decision: "approved", quoteId: quote }))).status).toBe(200);
+    expect((await decide(post({ requestId: REQ, decision: "issued" }))).status).toBe(400);
+    expect(db.rpcs).toEqual([]);
     expect((await decide(post({ requestId: REQ, decision: "rejected" }))).status).toBe(200);
-    expect(db.rpcs).toEqual([
-      { fn: "ai_helper_status", args: undefined },
-      { fn: "ai_helper_decide", args: { p_request: REQ, p_decision: "approved", p_quote: quote } },
-      { fn: "ai_helper_status", args: undefined },
-      { fn: "ai_helper_decide", args: { p_request: REQ, p_decision: "rejected", p_quote: null } },
+    expect(db.rpcs).toEqual([{ fn: "ai_helper_status", args: undefined }, { fn: "ai_helper_decide", args: { p_request: REQ, p_decision: "rejected", p_quote: null } }]);
+  });
+
+  it("approve with no edits: the server rebuilds the STORED suggestion, prices it from this company's records, creates the draft, then links it", async () => {
+    const response = await decide(post({ requestId: REQ, decision: "approved" }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, quoteId: NEW_QUOTE, ref: "QUO-0100" });
+    expect(fns()).toEqual(["ai_helper_status", "next_doc_number", "create_with_lines", "ai_helper_decide"]);
+    expect(engine.orgs).toEqual([ORG]);
+    expect(savedLines()).toEqual(REBUILT);
+    expect(createArgs()!.p_header).toMatchObject({ status: "draft", customer: "Acme Engineering Ltd", quote_ref: "QUO-0100", total_value: 375, vat_enabled: true });
+    expect(db.rpcs.at(-1)).toEqual({ fn: "ai_helper_decide", args: { p_request: REQ, p_decision: "approved", p_quote: NEW_QUOTE } });
+  });
+
+  it("a tampered browser payload can't change what is saved: a changed price, an extra line or a quote id is refused and nothing is created", async () => {
+    const tampered = [
+      { requestId: REQ, decision: "approved", lines: [{ description: "Bracket", quantity: 25, unitPrice: 0.01 }] },
+      { requestId: REQ, decision: "approved", unitPrice: 0.01 },
+      { requestId: REQ, decision: "approved", total: 0.01 },
+      { requestId: REQ, decision: "approved", edits: { customer: "Acme Engineering Ltd", lines: [keep(0, { unitPrice: 0.01 }), keep(1)] } },
+      { requestId: REQ, decision: "approved", edits: { customer: "Acme Engineering Ltd", lines: [keep(0, { price: 0.01 })] } },
+      { requestId: REQ, decision: "approved", edits: { customer: "Acme Engineering Ltd", lines: [keep(0), keep(1)], total: 0.01 } },
+      { requestId: REQ, decision: "approved", edits: { customer: "Acme Engineering Ltd", lines: [keep(0), keep(1), { ...keep(0), index: 2, description: "Extra line" }] } },
+      { requestId: REQ, decision: "approved", edits: { customer: "Acme Engineering Ltd", lines: [keep(0), keep(0)] } },
+      { requestId: REQ, decision: "approved", quoteId: NEW_QUOTE },
+    ];
+    for (const body of tampered) {
+      db.rpcs = [];
+      const response = await decide(post(body));
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      expect(fns(), JSON.stringify(body)).not.toContain("create_with_lines");
+      expect(fns(), JSON.stringify(body)).not.toContain("next_doc_number");
+      expect(fns(), JSON.stringify(body)).not.toContain("ai_helper_decide");
+    }
+  });
+
+  it("another company's item or suggestion: priced only from the caller's own records, and another company's suggestion is not found", async () => {
+    // BETA-1 exists only in the other company's engine records; BR-100 there is priced at £0.01, here at £12.50.
+    const response = await decide(post({ requestId: REQ, decision: "approved", edits: { customer: "Acme Engineering Ltd", lines: [keep(0), keep(1, { partNumber: "BETA-1" })] } }));
+    expect(response.status).toBe(200);
+    expect(engine.orgs).toEqual([ORG]);
+    expect(savedLines()).toEqual([REBUILT[0], ["Spacer · Material: 303 stainless", 4, 0, "BETA-1", "manual"]]);
+    db.rpcs = [];
+    expect((await decide(post({ requestId: OTHER_REQ, decision: "approved" }))).status).toBe(404);
+    expect(fns()).toEqual(["ai_helper_status"]);
+  });
+
+  it("the saved draft equals the server's re-priced rebuild of the stored suggestion plus the person's corrections", async () => {
+    const edits = { customer: "Acme Engineering Ltd", lines: [keep(0, { quantity: 50 }), keep(1, { description: "Spacer, M6", finish: "passivate" })] };
+    expect((await decide(post({ requestId: REQ, decision: "approved", edits }))).status).toBe(200);
+    // planDraft run independently on the same stored row and edits, with this company's engine, gives exactly what was saved.
+    const { planDraft, readStoredSuggestion } = await import("@/lib/ai-helper/approve");
+    const plan = await planDraft(readStoredSuggestion(STORED)!, edits, {
+      price: async (lines) => lines.map((l) => (l.partNumber === "BR-100" ? 12.5 : null)), customerKnown: async () => true,
+    });
+    expect(savedLines()).toEqual(plan.lines.map((l) => [l.description, l.quantity, l.unitPrice, l.partNumber, l.pricedBy === "costing" ? "costing_engine" : "manual"]));
+    expect(savedLines()).toEqual([
+      ["Bracket · Material: 6082-T6 aluminium · Finish: clear anodise · Required by 2026-12-04", 50, 12.5, "BR-100", "costing_engine"],
+      ["Spacer, M6 · Material: 303 stainless · Finish: passivate", 4, 0, null, "manual"],
     ]);
+    expect(createArgs()!.p_header.total_value).toBe(750);
+  });
+
+  it("a suggestion not waiting for a decision, or not an RFQ: not found, nothing created", async () => {
+    for (const over of [{ status: "approved" }, { status: "rejected" }, { feature: "roundup" }, { output: { kind: "roundup" } }]) {
+      db.requests = [{ id: REQ, organization_id: ORG, feature: "rfq", status: "suggested", output: STORED, ...over }];
+      db.rpcs = [];
+      expect((await decide(post({ requestId: REQ, decision: "approved" }))).status).toBe(404);
+      expect(fns()).toEqual(["ai_helper_status"]);
+    }
   });
 });
 
@@ -381,7 +499,7 @@ describe("never-do list (source)", () => {
     for (const f of files) expect(source(f), f).not.toMatch(/supabase-admin|createSupabaseAdminClient|SERVICE_ROLE/);
   });
 
-  it("no direct table write; only its own functions, plus create_with_lines in the Approve path alone", () => {
+  it("no direct table write; only its own functions, plus next_doc_number and create_with_lines in the Approve path alone", () => {
     for (const f of files) {
       expect(source(f), f).not.toMatch(/\.from\([^;]*\.(insert|update|upsert|delete)\(/);
       // The mock holds them on purpose: they are the steered answer the route must drop.
@@ -391,8 +509,14 @@ describe("never-do list (source)", () => {
     const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_settle", "ai_helper_decide"]);
     for (const call of rpcs) {
       const [file, fn] = call.split(":");
-      expect(allowed.has(fn) || (fn === "create_with_lines" && file === path.join("lib", "ai-helper", "approve.ts")), call).toBe(true);
+      expect(allowed.has(fn) || (["next_doc_number", "create_with_lines"].includes(fn) && file === path.join("lib", "ai-helper", "approve.ts")), call).toBe(true);
     }
+  });
+
+  it("the panel never builds or prices the draft itself: Approve sends the request id and corrections only, no price", () => {
+    const panel = source(path.join("components", "ai-helper", "rfq-panel.tsx"));
+    expect(panel).not.toMatch(/create_with_lines|createDraftQuote|next_doc_number|allocateNumber|unitPrice|unit_price|\.rpc\(/);
+    expect(panel).toMatch(/JSON\.stringify\(\{ requestId, decision: "approved", edits \}\)/);
   });
 
   it("the model is given no tools", () => {

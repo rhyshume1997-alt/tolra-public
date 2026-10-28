@@ -2,8 +2,9 @@
  * The AI admin helper, end to end against the local stack (mock provider: no model, no network; synthetic RFQs only).
  *   - Company switch off: no AI UI (no dashboard link, no RFQ box) and the routes refuse.
  *   - An admin switches it on in Settings, sets a cap and the company's own key: only "set" and the last four come back.
- *   - Office: paste an RFQ -> a suggestion with "Needs human review" flags -> prices typed -> Approve creates a DRAFT quote and an
- *     ai_helper_approved audit row; nothing else is sent or issued.
+ *   - Office: paste an RFQ -> a suggestion with "Needs human review" flags -> Approve: the server rebuilds the DRAFT quote from the
+ *     stored suggestion and prices it (no engine here: £0.00, flagged); an ai_helper_approved audit row; nothing else is sent or issued.
+ *     A tampered Approve body (a price, an extra line, a quote id) is refused and saves nothing.
  *   - Workshop and viewer refused; model down and cap reached each give a clear message and change nothing; a malicious RFQ changes
  *     nothing; company beta can't see alpha's settings, key, ledger or suggestions.
  */
@@ -93,19 +94,24 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
   const line2 = draft.getByTestId("ai-rfq-line-2");
   await expect(line1.getByRole("textbox", { name: "Line 1 description" })).toHaveValue("Bracket");
   await expect(line1.getByRole("textbox", { name: "Line 1 quantity" })).toHaveValue("25");
-  // No price from the AI: blank and flagged (the costing engine is not configured here).
-  await expect(line1.getByRole("textbox", { name: "Line 1 unit price" })).toHaveValue("");
+  // No price from the AI and no price box: the costing engine is not configured here, so no price and flagged.
+  await expect(line1.getByRole("textbox", { name: "Line 1 unit price" })).toHaveCount(0);
+  await expect(draft.getByTestId("ai-rfq-line-1-price")).toContainText("No price yet");
   await expect(line1).toContainText("Needs human review: price");
   await expect(line2).toContainText("Needs human review: finish");
   await expect(line2).toContainText("Needs human review: due date");
   await expect(draft).not.toContainText("Needs human review: customer");
-  // Approve is refused until every price is filled.
-  await draft.getByRole("button", { name: "Approve and create draft quote" }).click();
-  await expect(page.getByTestId("ai-rfq-panel").getByRole("alert")).toContainText("fill in the description, quantity and price");
+  // A tampered Approve body is refused by the server and saves nothing (a price, an extra line, a quote id).
+  const requestId = (await requests(org))[0].id;
+  const keep = { index: 0, description: "Bracket", partNumber: "BR-100", material: null, finish: null, dueDate: null, quantity: 25 };
+  for (const data of [
+    { requestId, decision: "approved", lines: [{ description: "Bracket", quantity: 25, unitPrice: 0.01 }] },
+    { requestId, decision: "approved", edits: { customer, lines: [{ ...keep, unitPrice: 0.01 }] } },
+    { requestId, decision: "approved", edits: { customer, lines: [keep, { ...keep, index: 5 }] } },
+    { requestId, decision: "approved", quoteId: "44444444-4444-4444-8444-444444444444" },
+  ]) expect((await page.request.post("/api/ai-helper/rfq/decision", { data })).status()).toBe(400);
   expect(await count("quotes", org)).toBe(quotesBefore);
-  await line1.getByRole("textbox", { name: "Line 1 unit price" }).fill("12.50");
-  await line2.getByRole("textbox", { name: "Line 2 unit price" }).fill("3");
-  await expect(line1).not.toContainText("Needs human review: price");
+  expect((await requests(org))[0].status).toBe("suggested");
   await draft.getByRole("button", { name: "Approve and create draft quote" }).click();
   await expect(page.getByTestId("ai-rfq-created")).toContainText(/Draft quote QUO-\d+ created/);
 
@@ -114,11 +120,10 @@ test("office: RFQ email -> suggestion with Needs human review -> Approve creates
   expect(quotes![0]).toMatchObject({ status: "draft", customer, sent_at: null });
   const { data: lines } = await adminClient().from("quote_line_items").select("description, quantity, unit_price, part_number").eq("quote_id", quotes![0].id).order("position");
   expect(lines!.map((l) => [l.description, Number(l.quantity), Number(l.unit_price), l.part_number])).toEqual([
-    ["Bracket · Material: 6082-T6 aluminium · Finish: clear anodise · Required by 2026-12-04", 25, 12.5, "BR-100"],
-    ["Spacer · Material: 303 stainless", 4, 3, null],
+    ["Bracket · Material: 6082-T6 aluminium · Finish: clear anodise · Required by 2026-12-04", 25, 0, "BR-100"],
+    ["Spacer · Material: 303 stainless", 4, 0, null],
   ]);
-  // The panel shows the draft as soon as it exists, then records the decision (one more request): wait for that to land.
-  await expect.poll(async () => (await requests(org))[0]?.status).toBe("approved");
+  // The server created the draft and recorded the decision in the same request.
   const [request] = await requests(org);
   expect(request).toMatchObject({ feature: "rfq", status: "approved", result_quote_id: quotes![0].id });
   const approved = (await auditRows(org, "ai_helper_approved")).map((row) => ({ entity_id: row.entity_id, actor_user_id: row.actor_user_id, metadata: row.metadata }));
@@ -169,7 +174,8 @@ test("a malicious RFQ changes nothing: plain text, flagged, no price, nothing is
   await page.getByRole("button", { name: "Read email" }).click();
   const draft = page.getByRole("region", { name: "Suggested draft" });
   await expect(page.getByTestId("ai-rfq-suspicious")).toBeVisible();
-  await expect(draft.getByRole("textbox", { name: "Line 1 unit price" })).toHaveValue("");
+  await expect(draft.getByRole("textbox", { name: "Line 1 unit price" })).toHaveCount(0);
+  await expect(draft.getByTestId("ai-rfq-line-1-price")).toContainText("No price yet");
   await expect(draft.getByRole("textbox", { name: "Line 1 quantity" })).toHaveValue("");
   await expect(draft).toContainText("Needs human review: customer");
   await draft.getByRole("button", { name: "Reject" }).click();
