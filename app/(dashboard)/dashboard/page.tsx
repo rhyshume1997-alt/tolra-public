@@ -37,6 +37,8 @@ import { useColumnVisibility } from "@/lib/org-settings";
 
 const DASH = "—";
 const DAY_MS = 86_400_000;
+/** The last day of the "due within 7 days" window the queries use (today to today + 7, today included), e.g. "Wed 4 Nov". */
+const dueByLabel = () => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/London" }).format(new Date(Date.now() + 7 * DAY_MS));
 
 type AttentionItem = { key: string; title: string; detail: string; href: string; icon: React.ElementType };
 
@@ -353,7 +355,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
     office
       ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]
       : ["money-owed", <KpiCard key="money-owed" label="Money owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}${overdueOwed ? `, ${gbp(overdueOwed, 0)} overdue` : ""}` : "Unpaid invoices"} hint="Green: nothing overdue. Red: money is past its due date." icon={AlertCircle} href="/invoices" light={lights.moneyOwed(d?.moneyOwed ?? null, overdueOwed)} valueClass="text-red-600" />],
-    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due in the next 7 days${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} late` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Due in the next 7 days: required or due date from today to 7 days on. Late: not finished and past its required date. Amber: something due within 7 days. Red: something late." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
+    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due by ${dueByLabel()}${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} late` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Due by: a required or due date from today (included) to that day. Late: not finished and past its required date, the Job Board's Late. Amber: something due within 7 days. Red: something late." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
     ["open-quotes", <KpiCard key="open-quotes" label="Open quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light="none" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
@@ -401,7 +403,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
             { key: "not-started", label: "Not started", value: d.jobsStatus.notStarted, colour: "var(--muted-foreground)" },
             { key: "running", label: "Running", value: d.jobsStatus.running, colour: "var(--brand-accent)" },
             { key: "waiting", label: "Waiting for inspection", value: d.jobsStatus.waiting, light: "amber" },
-            { key: "overdue", label: "Late, not finished", value: d.jobsStatus.overdue, light: "red" },
+            { key: "overdue", label: "Late", value: d.jobsStatus.overdue, light: "red" },
           ]} empty="No open jobs." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
         </Panel> : null}
         {isVisible("on-time-delivery") ? <Panel title="Finished on time" meta={lastOnTime !== null ? <span className="inline-flex items-center gap-2"><LightDot light={lights.percent(lastOnTime, 95, 85)} />{lastOnTime}% latest month</span> : undefined}>
@@ -500,7 +502,7 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
   const d = data;
   const kpis: Array<[string, React.ReactNode]> = [
     ["jobs-running", <KpiCard key="jobs-running" label="Jobs running" value={num(d?.running, loading)} subtext="Started, not finished" hint="Started, not finished (rework included)" icon={Layers} href="/jobs" />],
-    ["due-this-week", <KpiCard key="due-this-week" label="Due in 7 days" value={num(d?.dueThisWeek, loading)} subtext="Not finished, due from today" hint="Jobs not finished with a required or due date from today to 7 days on" icon={Clock} href="/jobs" />],
+    ["due-this-week", <KpiCard key="due-this-week" label="Due within 7 days" value={num(d?.dueThisWeek, loading)} subtext={`Today to ${dueByLabel()}`} hint="Jobs not finished with a required or due date from today (included) to 7 days on" icon={Clock} href="/jobs" />],
     ["delivery-notes", <KpiCard key="delivery-notes" label="Delivery notes" value={num(d?.deliveryNotes, loading)} subtext="Awaiting signature" icon={FileText} href="/delivery-notes" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));

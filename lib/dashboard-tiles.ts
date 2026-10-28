@@ -30,7 +30,7 @@ export const DASHBOARD_TILES: DashboardTile[] = [
   { key: "top-customers", label: "Top customers (admin)", roles: ["admin"] },
   { key: "team-week", label: "Team this week (admin)", roles: ["admin"] },
   { key: "jobs-running", label: "Jobs running (workshop)", roles: ["workshop"] },
-  { key: "due-this-week", label: "Due in 7 days (workshop)", roles: ["workshop"] },
+  { key: "due-this-week", label: "Due within 7 days (workshop)", roles: ["workshop"] },
   { key: "delivery-notes", label: "Delivery notes (workshop)", roles: ["workshop"] },
   { key: "my-jobs", label: "My jobs (workshop)", roles: ["workshop"] },
   { key: "needs-attention", label: "Needs your attention", roles: ["admin", "office", "workshop"] },
