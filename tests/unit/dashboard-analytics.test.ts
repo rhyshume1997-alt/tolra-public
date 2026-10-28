@@ -124,6 +124,31 @@ describe("late jobs agree across the Dashboard and the Job Board", () => {
     expect(status.overdue).toBe(board);
   });
 
+  it("a job required today is not late; it is due soon", () => {
+    expect(jobsByStatus([{ started_at: null, date_required: TODAY }], TODAY)).toMatchObject({ overdue: 0, dueSoon: 1 });
+  });
+
+  it("no required date but a past due date: late, by the older due date", () => {
+    expect(jobsByStatus([{ started_at: null, date_required: null, due_date: "2026-10-27" }], TODAY)).toMatchObject({ overdue: 1, dueSoon: 0 });
+  });
+
+  it("unfinished jobs past their date count as late whether not started, running or in rework without a finish", () => {
+    const late = [
+      { started_at: null, date_required: "2026-10-27" },
+      { started_at: "2026-10-01T08:00:00Z", date_required: "2026-10-27" },
+      { started_at: "2026-10-01T08:00:00Z", stage: "rework", date_required: "2026-10-27" },
+    ];
+    expect(jobsByStatus(late, TODAY)).toEqual({ notStarted: 1, running: 2, waiting: 0, overdue: 3, dueSoon: 0 });
+  });
+
+  it("a job put back to rework after a failed inspection keeps its finish time: the tile, the Job Board and the panel all leave it out of late", () => {
+    // fail_job_inspection (037) sets stage rework and clears the inspection but keeps finished_at; the tile (finished_at is null)
+    // and jobStatus (a finished job keeps its stored status) do the same, so the three still agree. Changing that is a rule change.
+    const job = { started_at: "2026-10-01T08:00:00Z", finished_at: "2026-10-20T10:00:00Z", stage: "rework", date_required: "2026-10-25" };
+    expect(jobsByStatus([job], TODAY)).toEqual({ notStarted: 0, running: 1, waiting: 0, overdue: 0, dueSoon: 0 });
+    expect(jobStatus({ ...job, status: "on_track" }, TODAY)).toBe("on_track");
+  });
+
   it("the status rows add up to the open jobs, the Dashboard's Open jobs tile", () => {
     const status = jobsByStatus(jobs, TODAY);
     expect(status.notStarted + status.running + status.waiting).toBe(jobs.filter((job) => isOpenJob(job)).length);
