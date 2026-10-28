@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { VatRateSelect } from "@/components/vat-controls";
 import { VatTotals } from "@/components/vat-totals";
 import { auditEvent } from "@/lib/audit";
-import { type DraftForm, type DraftLine, type DraftVatSettings, type LineBalance, type StoredLine, balanceText, buildDraftReplace, draftFormFrom, draftTotals, overBalanceProblem } from "@/lib/draft-invoice-edit";
+import { type DraftForm, type DraftLine, type DraftVatSettings, type LineBalance, type StoredLine, balanceText, buildDraftReplace, draftFormFrom, draftTotals, lineRowsLocked, linesWithLoadedLinks, overBalanceProblem, removeDraftLine } from "@/lib/draft-invoice-edit";
 import { missingDbObject } from "@/lib/db-features";
 import { friendlyError } from "@/lib/friendly-error";
 import { DELIVERY_ADDRESS_MAX, INVOICE_NOTE_MAX } from "@/lib/invoice-fields";
@@ -92,7 +92,7 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
       if (cancelled) return;
       setLinks(loaded);
       if (loaded.state === "ready") {
-        setForm((current) => ({ ...current, lines: current.lines.map((line, i) => (loaded.byIndex[i] ? { ...line, orderLine: loaded.byIndex[i] ?? undefined } : line)) }));
+        setForm((current) => ({ ...current, lines: linesWithLoadedLinks(current.lines, loaded.byIndex) }));
       }
     }, (error) => {
       if (cancelled) return;
@@ -102,16 +102,18 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
     return () => { cancelled = true; };
   }, [open, invoice, lines]);
   const balances = links.state === "ready" ? links.balances : undefined;
+  /** 099: no line added or removed until the order links are read (they are put on the lines by position). */
+  const rowsLocked = lineRowsLocked(links.state);
   const overProblem = overBalanceProblem(form.lines, balances);
   /** 099: lines of the draft's orders despatched and not invoiced, not already on the form: "Add" puts the rest on this draft. */
   const addable = links.state === "ready" ? links.addable.filter((a) => !form.lines.some((line) => line.orderLine === a.orderLine)) : [];
-  const addOrderLine = (a: Addable) => setForm((current) => ({ ...current, lines: [...current.lines, { description: a.description, qty: String(a.balance.available), unit: a.unitPrice.toFixed(2), vat: a.vat, orderLine: a.orderLine }] }));
+  const addOrderLine = (a: Addable) => !rowsLocked && setForm((current) => ({ ...current, lines: [...current.lines, { description: a.description, qty: String(a.balance.available), unit: a.unitPrice.toFixed(2), vat: a.vat, orderLine: a.orderLine }] }));
 
   const totals = draftTotals(form, vat);
   const setLine = (index: number, patch: Partial<DraftLine>) => setForm((current) => ({ ...current, lines: current.lines.map((line, i) => (i === index ? { ...line, ...patch } : line)) }));
-  const removeLine = (index: number) => setForm((current) => ({ ...current, lines: current.lines.filter((_, i) => i !== index) }));
-  const addLine = () => setForm((current) => ({ ...current, lines: [...current.lines, { description: "", qty: "1", unit: "", vat: defaultVat }] }));
-  const addTextLine = () => setForm((current) => ({ ...current, lines: [...current.lines, { description: "", qty: "0", unit: "0.00", vat: defaultVat, text: true }] }));
+  const removeLine = (index: number) => setForm((current) => ({ ...current, lines: removeDraftLine(current.lines, index, links.state) }));
+  const addLine = () => !rowsLocked && setForm((current) => ({ ...current, lines: [...current.lines, { description: "", qty: "1", unit: "", vat: defaultVat }] }));
+  const addTextLine = () => !rowsLocked && setForm((current) => ({ ...current, lines: [...current.lines, { description: "", qty: "0", unit: "0.00", vat: defaultVat, text: true }] }));
 
   async function save() {
     if (links.state === "loading") { toast.error("Still reading what has been despatched for this draft. Try again in a moment."); return; }
@@ -158,7 +160,7 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
             {form.lines.map((line, index) => line.text ? (
               <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border border-dashed p-2 sm:grid-cols-[1fr_auto] sm:items-end">
                 <label className="space-y-1"><span className="text-xs text-slate-600">Text only (£0, not counted in the totals)</span><Input aria-label={`Line ${index + 1} text`} value={line.description} onChange={(e) => setLine(index, { description: e.target.value })} /></label>
-                <Button type="button" variant="ghost" size="sm" aria-label={`Remove line ${index + 1}`} disabled={form.lines.length === 1} onClick={() => removeLine(index)}><Trash2 className="size-4" /></Button>
+                <Button type="button" variant="ghost" size="sm" aria-label={`Remove line ${index + 1}`} disabled={rowsLocked || form.lines.length === 1} onClick={() => removeLine(index)}><Trash2 className="size-4" /></Button>
               </div>
             ) : (
               <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border p-2 sm:grid-cols-[1fr_5rem_6rem_6rem_auto] sm:items-end">
@@ -166,7 +168,7 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
                 <label className="space-y-1"><span className="text-xs text-slate-600">Qty</span><Input aria-label={`Line ${index + 1} quantity`} inputMode="decimal" value={line.qty} onChange={(e) => setLine(index, { qty: e.target.value })} /></label>
                 <label className="space-y-1"><span className="text-xs text-slate-600">Unit price</span><Input aria-label={`Line ${index + 1} unit price`} inputMode="decimal" value={line.unit} onChange={(e) => setLine(index, { unit: e.target.value })} /></label>
                 {vat.registered && vat.vatEnabled ? <VatRateSelect value={line.vat} onChange={(choice) => setLine(index, { vat: choice })} label={`Line ${index + 1} VAT rate`} /> : <span />}
-                <Button type="button" variant="ghost" size="sm" aria-label={`Remove line ${index + 1}`} disabled={form.lines.length === 1} onClick={() => removeLine(index)}><Trash2 className="size-4" /></Button>
+                <Button type="button" variant="ghost" size="sm" aria-label={`Remove line ${index + 1}`} disabled={rowsLocked || form.lines.length === 1} onClick={() => removeLine(index)}><Trash2 className="size-4" /></Button>
                 {line.orderLine && balances?.get(line.orderLine) ? (
                   <p className="text-xs text-slate-600 sm:col-span-5" data-testid={`line-balance-${index}`}>{balanceText(balances.get(line.orderLine)!)}</p>
                 ) : null}
@@ -178,15 +180,15 @@ export function DraftInvoiceEditor({ invoice, lines, vat, defaultVat, textLines 
                 {addable.map((a) => (
                   <div key={a.orderLine} className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span>{a.description}: {a.balance.available} ({balanceText(a.balance)})</span>
-                    <Button type="button" variant="outline" size="sm" aria-label={`Add ${a.description}`} onClick={() => addOrderLine(a)}><Plus className="size-4" /> Add</Button>
+                    <Button type="button" variant="outline" size="sm" aria-label={`Add ${a.description}`} disabled={rowsLocked} onClick={() => addOrderLine(a)}><Plus className="size-4" /> Add</Button>
                   </div>
                 ))}
               </div>
             ) : null}
             {overProblem ? <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-2 text-sm text-red-800" data-testid="over-balance">{overProblem}</p> : null}
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={addLine}><Plus className="size-4" /> Add line</Button>
-              {textLines ? <Button type="button" variant="outline" size="sm" onClick={addTextLine}><Plus className="size-4" /> Add text line</Button> : null}
+              <Button type="button" variant="outline" size="sm" disabled={rowsLocked} onClick={addLine}><Plus className="size-4" /> Add line</Button>
+              {textLines ? <Button type="button" variant="outline" size="sm" disabled={rowsLocked} onClick={addTextLine}><Plus className="size-4" /> Add text line</Button> : null}
             </div>
           </div>
           {form.invoiceNote !== undefined ? (
