@@ -31,5 +31,22 @@ describe("late jobs agree across Today, the Dashboard and the Job Board", () => 
     expect(board).toEqual(["a", "b", "c"]);
     expect(dashboard).toBe(3);
     expect(today.count).toBe(3);
+    expect(today.items.map((item) => item.key)).toEqual(expect.arrayContaining(["jl-a", "jl-b", "jl-c"]));
+  });
+
+  it("agree job by job, including the edge cases: finished but not inspected, and late on due_date with a later date_required", () => {
+    const lateIn = (job: (typeof jobs)[number]) => ({
+      today: buildAttention({ ...empty, lateJobs: [job].filter((row) => !row.finished_at) }, "admin", TODAY).find((s) => s.id === "jobs-late")!.count === 1,
+      dashboard: jobsByStatus([job].filter(isOpenJob), TODAY).overdue === 1,
+      board: jobStatus({ ...job, status: "on_track" }, TODAY) === "overdue",
+    });
+    for (const job of jobs) {
+      const late = ["a", "b", "c"].includes(job.id);
+      expect(lateIn(job), job.id).toEqual({ today: late, dashboard: late, board: late });
+    }
+    // d: finished, waiting for inspection, required date passed: late in none of the three.
+    expect(lateIn(jobs.find((job) => job.id === "d")!)).toEqual({ today: false, dashboard: false, board: false });
+    // f: due_date passed but date_required is later: date_required wins, late in none of the three.
+    expect(lateIn(jobs.find((job) => job.id === "f")!)).toEqual({ today: false, dashboard: false, board: false });
   });
 });

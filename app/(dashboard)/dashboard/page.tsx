@@ -16,7 +16,7 @@ import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutco
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fmtDate, fmtDateTime, toDateInput } from "@/lib/dates";
+import { dueWindow, fmtDate, fmtDateTime, fmtDueBy, toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { attentionState } from "@/lib/attention";
 import type { AttentionRole } from "@/lib/attention-items";
@@ -37,8 +37,6 @@ import { useColumnVisibility } from "@/lib/org-settings";
 
 const DASH = "—";
 const DAY_MS = 86_400_000;
-/** The last day of the "due within 7 days" window the queries use (today to today + 7, today included), e.g. "Wed 4 Nov". */
-const dueByLabel = () => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/London" }).format(new Date(Date.now() + 7 * DAY_MS));
 
 type AttentionItem = { key: string; title: string; detail: string; href: string; icon: React.ElementType };
 
@@ -51,6 +49,8 @@ type AdminData = {
   /** Open jobs: Not started + Running + Waiting for inspection (Complete not counted), as the Job Board's Open jobs tile. */
   openJobs: number | null;
   dueThisWeek: number | null;
+  /** The last day of the window dueThisWeek was counted over (YYYY-MM-DD), so the label shows the date the count used. */
+  dueBy: string;
   revenue: Array<{ month: string; revenue: number }> | null;
   thisMonthRevenue: number | null;
   quotesSentThisMonth: number | null;
@@ -77,6 +77,8 @@ type WorkshopData = {
   /** Running: started and not finished, or in rework (the Job Board's Running). */
   running: number | null;
   dueThisWeek: number | null;
+  /** As AdminData.dueBy. */
+  dueBy: string;
   deliveryNotes: number | null;
   priorityJobs: Array<{ id: string; jobNo: string; description: string; stage: string; status: string }> | null;
   bookings: Array<{ id: string; machine: string; jobNo: string; start: string }> | null;
@@ -131,8 +133,8 @@ const unpaid = (row: any) => invoiceLifecycle(row.status) === "collectible" && !
 const owedOn = (row: any) => owed(row);
 
 async function loadAdminData(office: boolean): Promise<AdminData> {
-  const today = toDateInput(new Date());
-  const weekEnd = toDateInput(new Date(Date.now() + 7 * DAY_MS));
+  // The due-within-7-days window, in UK calendar days (lib/dates dueWindow). Its end goes back as `dueBy` for the label.
+  const { today, end: weekEnd } = dueWindow();
   const months = lastSixMonths();
   const sinceIso = `${months[0].key}-01`;
   const monthStart = `${months[5].key}-01`;
@@ -243,6 +245,7 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
     rfqsToQuote: rfqs ? rfqs.outstanding : null,
     openJobs: jobsOpen.count,
     dueThisWeek: dueWeek.count,
+    dueBy: weekEnd,
     revenue,
     thisMonthRevenue,
     quotesSentThisMonth: quoteRows.data ? sentSince(quoteRows.data, monthStart) : null,
@@ -265,8 +268,8 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
 }
 
 async function loadWorkshopData(userId?: string | null): Promise<WorkshopData> {
-  const today = toDateInput(new Date());
-  const weekEnd = toDateInput(new Date(Date.now() + 7 * DAY_MS));
+  // The due-within-7-days window, in UK calendar days (lib/dates dueWindow). Its end goes back as `dueBy` for the label.
+  const { today, end: weekEnd } = dueWindow();
   const now = new Date();
   const monday = new Date(now);
   monday.setHours(0, 0, 0, 0);
@@ -291,6 +294,7 @@ async function loadWorkshopData(userId?: string | null): Promise<WorkshopData> {
   return {
     running: running.count,
     dueThisWeek: dueWeek.count,
+    dueBy: weekEnd,
     deliveryNotes: notes.count,
     priorityJobs: priority.data ? priority.data.map((row) => ({ id: String(row.id), jobNo: row.job_no || "", description: row.description || "", stage: row.stage || "", status: row.status || "" })) : null,
     bookings: bookings.data ? bookings.data.map((row) => ({ id: String(row.id), machine: names.get(String(row.machine_id)) || "Machine", jobNo: row.job_no || "", start: row.start_at })) : null,
@@ -355,7 +359,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
     office
       ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]
       : ["money-owed", <KpiCard key="money-owed" label="Money owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}${overdueOwed ? `, ${gbp(overdueOwed, 0)} overdue` : ""}` : "Unpaid invoices"} hint="Green: nothing overdue. Red: money is past its due date." icon={AlertCircle} href="/invoices" light={lights.moneyOwed(d?.moneyOwed ?? null, overdueOwed)} valueClass="text-red-600" />],
-    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due by ${dueByLabel()}${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} late` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Due by: a required or due date from today (included) to that day. Late: not finished and past its required date, the Job Board's Late. Amber: something due within 7 days. Red: something late." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
+    ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due by ${fmtDueBy(d.dueBy)}${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} late` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Due by: a required or due date from today (included) to that day. Late: not finished and past its required date, the Job Board's Late. Amber: something due within 7 days. Red: something late." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
     ["open-quotes", <KpiCard key="open-quotes" label="Open quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light="none" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
@@ -502,7 +506,7 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
   const d = data;
   const kpis: Array<[string, React.ReactNode]> = [
     ["jobs-running", <KpiCard key="jobs-running" label="Jobs running" value={num(d?.running, loading)} subtext="Started, not finished" hint="Started, not finished (rework included)" icon={Layers} href="/jobs" />],
-    ["due-this-week", <KpiCard key="due-this-week" label="Due within 7 days" value={num(d?.dueThisWeek, loading)} subtext={`Today to ${dueByLabel()}`} hint="Jobs not finished with a required or due date from today (included) to 7 days on" icon={Clock} href="/jobs" />],
+    ["due-this-week", <KpiCard key="due-this-week" label="Due within 7 days" value={num(d?.dueThisWeek, loading)} subtext={d ? `Today to ${fmtDueBy(d.dueBy)}` : "Today and the next 7 days"} hint="Jobs not finished with a required or due date from today (included) to 7 days on" icon={Clock} href="/jobs" />],
     ["delivery-notes", <KpiCard key="delivery-notes" label="Delivery notes" value={num(d?.deliveryNotes, loading)} subtext="Awaiting signature" icon={FileText} href="/delivery-notes" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));

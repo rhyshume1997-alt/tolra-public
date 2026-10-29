@@ -89,7 +89,8 @@ describe("customer pickers", () => {
     const picker = readFileSync("components/customer-select.tsx", "utf8");
     // The saved list less archived customers (100): fetchPickerCustomers reads fetchCustomers, never document names.
     expect(picker).toContain("loadPickerNames(fetchPickerCustomers)");
-    const lib = readFileSync("lib/customers.ts", "utf8");
+    // Line endings normalised, so the "\n}\n" slice also finds the function's end in a Windows (CRLF) checkout.
+    const lib = readFileSync("lib/customers.ts", "utf8").replace(/\r\n/g, "\n");
     const fn = lib.slice(lib.indexOf("export async function fetchPickerCustomers"), lib.indexOf("\n}\n", lib.indexOf("export async function fetchPickerCustomers")));
     expect(fn).toContain("await fetchCustomers()");
     expect(fn).not.toMatch(/fetchKnownCustomers|readDocumentCustomerNames/);
