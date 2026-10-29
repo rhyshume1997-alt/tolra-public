@@ -47,11 +47,20 @@ describe("dashboard display: one definition", () => {
     expect(workshop.indexOf('isVisible("needs-attention")')).toBeLessThan(workshop.indexOf("showPriority ? <Card>"));
     expect(workshop.indexOf("showPriority ? <Card>")).toBeLessThan(workshop.indexOf("showSchedule ? <Card>"));
     expect(dashboardTileKeysFor("workshop").slice(-2)).toEqual(["priority-jobs", "workshop-schedule"]);
-    // Admin render: KPIs, then the chart, then the stat row, then Needs attention and Quote pipeline.
+    // Office render: KPIs, then the chart, then the stat row, then Needs attention and Quote pipeline.
     const render = page.slice(page.indexOf("{shownKpis.length ? <section", page.indexOf("function AdminDashboard")), page.indexOf("function MaybeLink"));
-    const at = ["shownKpis.length", 'isVisible("revenue-trend")', "stats.length ?", "showAttention ? <AttentionList", "showPipeline ? <MaybeLink"].map((m) => render.indexOf(m));
+    const at = ["shownKpis.length", 'isVisible("revenue-trend")', "stats.length ?", "showAttention ? <AttentionList", "showPipeline ? pipelinePanel"].map((m) => render.indexOf(m));
     at.forEach((p) => expect(p).toBeGreaterThan(-1));
     expect(at).toEqual([...at].sort((x, y) => x - y));
+  });
+
+  it("the owner's Overview runs Today, Money, Work, Machines, People, and Today keeps the full Needs attention list", () => {
+    const owner = page.slice(page.indexOf("if (!office) {", page.indexOf("function AdminDashboard")), page.indexOf("{shownKpis.length ? <section", page.indexOf("function AdminDashboard")));
+    const at = ['id="today"', 'id="money"', 'id="work"', 'id="machines"', 'id="people"'].map((m) => owner.indexOf(m));
+    at.forEach((p) => expect(p).toBeGreaterThan(-1));
+    expect(at).toEqual([...at].sort((x, y) => x - y));
+    expect(owner).toContain('<AttentionList role="admin" preloaded={attention}');
+    expect(owner).toContain('isVisible("leaks")');
   });
 
   it("the page heading is never behind a visibility check", () => {
