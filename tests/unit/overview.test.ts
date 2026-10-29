@@ -51,6 +51,17 @@ describe("owner overview leaks", () => {
     expect(leaks.find((l) => l.id === "rfqs-to-quote")?.count).toBeNull();
   });
 
+  it("when the whole list can't be read, every leak from it says so and none is dropped", () => {
+    const leaks = leaksFrom(null, { rfqsToQuote: 2, overdueOwed: 0, money }, true);
+    expect(leaks.map((l) => l.id)).toEqual(["quotes-no-decision", "rfqs-to-quote", "jobs-late", "jobs-inspection", "invoices-overdue"]);
+    for (const l of leaks.filter((x) => x.id !== "rfqs-to-quote")) {
+      expect(l.count, l.id).toBeNull();
+      expect(l.failed, l.id).toBe(true);
+      expect(l.detail, l.id).toBe("Couldn't load this.");
+    }
+    expect(leaks.find((l) => l.id === "rfqs-to-quote")?.count).toBe(2);
+  });
+
   it("while the list loads every count is a dash; a rule this role doesn't have is left out", () => {
     expect(leaksFrom(null, { rfqsToQuote: null, overdueOwed: null, money }).every((l) => l.count === null)).toBe(true);
     const noMoney = leaksFrom(sections.filter((s) => s.id !== "invoices-overdue"), { rfqsToQuote: 1, overdueOwed: 0, money });

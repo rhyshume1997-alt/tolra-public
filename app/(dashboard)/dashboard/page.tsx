@@ -448,7 +448,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
       machinePanels.length && "machines",
       isVisible("team-week") && "people",
     ].filter((s): s is string => typeof s === "string");
-    const leaks = leaksFrom(attention.error ? [] : attention.data, { rfqsToQuote: loading ? null : d?.rfqsToQuote ?? null, overdueOwed: loading ? null : overdueOwed, money: (v) => gbp(v, 0) });
+    const leaks = leaksFrom(attention.data, { rfqsToQuote: loading ? null : d?.rfqsToQuote ?? null, overdueOwed: loading ? null : overdueOwed, money: (v) => gbp(v, 0) }, attention.error !== null);
     const tileRow = (tiles: React.ReactNode[]) => tiles.length ? <div className={`grid gap-4 ${statGridClass(tiles.length)}`}>{tiles}</div> : null;
     const panelGrid = (panels: React.ReactNode[]) => panels.length ? <div className={`grid gap-4 ${rowCols(Math.min(panels.length, 3))}`}>{panels.map((p, i) => <div key={i} className="contents">{p}</div>)}</div> : null;
     return (

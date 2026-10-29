@@ -32,7 +32,9 @@ type Figures = {
 
 const fromSection = (sections: AttentionSection[] | null, id: AttentionRuleId) => sections?.find((s) => s.id === id) ?? null;
 
-function sectionLeak(sections: AttentionSection[] | null, id: AttentionRuleId, label: string, action: string, empty: string, alarm?: string): Leak | null {
+function sectionLeak(sections: AttentionSection[] | null, id: AttentionRuleId, label: string, action: string, empty: string, alarm?: string, listFailed = false): Leak | null {
+  // The whole list couldn't be read: every leak that comes from it says so (never dropped, never 0).
+  if (listFailed) return { id, label, count: null, detail: "Couldn't load this.", action, href: "#", failed: true };
   const sec = fromSection(sections, id);
   if (sections && !sec) return null; // not one of this role's rules
   const count = sec && !sec.failed ? sec.count : null;
@@ -51,11 +53,11 @@ function sectionLeak(sections: AttentionSection[] | null, id: AttentionRuleId, l
 
 /**
  * The five leaks, in the order an owner reads them: work not yet won, work late, work not checked, money not in.
- * `sections` is the admin's Needs attention result (null while it loads).
+ * `sections` is the admin's Needs attention result (null while it loads); `listFailed` is true when that read failed.
  */
-export function leaksFrom(sections: AttentionSection[] | null, figures: Figures): Leak[] {
+export function leaksFrom(sections: AttentionSection[] | null, figures: Figures, listFailed = false): Leak[] {
   const leaks: Array<Leak | null> = [
-    sectionLeak(sections, "quotes-no-decision", "Quotes with no reply", "Chase them", "Every sent quote has an answer."),
+    sectionLeak(sections, "quotes-no-decision", "Quotes with no reply", "Chase them", "Every sent quote has an answer.", undefined, listFailed),
     {
       id: "rfqs-to-quote",
       label: "Enquiries not quoted",
@@ -65,10 +67,10 @@ export function leaksFrom(sections: AttentionSection[] | null, figures: Figures)
       href: "/rfq",
       failed: false,
     },
-    sectionLeak(sections, "jobs-late", "Jobs running late", "See why", "Nothing is late.", "Late"),
-    sectionLeak(sections, "jobs-inspection", "Waiting to be checked", "Open inspection", "Nothing waiting for inspection."),
+    sectionLeak(sections, "jobs-late", "Jobs running late", "See why", "Nothing is late.", "Late", listFailed),
+    sectionLeak(sections, "jobs-inspection", "Waiting to be checked", "Open inspection", "Nothing waiting for inspection.", undefined, listFailed),
     (() => {
-      const leak = sectionLeak(sections, "invoices-overdue", "Money overdue", "Chase payment", "Nothing overdue.", "Overdue");
+      const leak = sectionLeak(sections, "invoices-overdue", "Money overdue", "Chase payment", "Nothing overdue.", "Overdue", listFailed);
       if (leak && figures.overdueOwed !== null && figures.overdueOwed > 0) leak.extra = figures.money(figures.overdueOwed);
       return leak;
     })(),
