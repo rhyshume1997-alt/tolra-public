@@ -10,10 +10,15 @@
  *   - Reset to default brings every column back.
  * The page never scrolls sideways, and a table's own scroll container reaches its last header.
  * Offered views: the switcher is hidden on phones (390 = the stacked cards every page shows), and Table is offered above 1024px only.
+ * Runs in its own company (createSoloTenant): the Columns choice is saved per company (organization_settings.hidden_columns), so
+ * in a shared tenant it hid columns other specs were reading (forms.spec's new PO supplier, run 40950779615), and another spec's
+ * Columns save could write back an older copy over this one's (the PO Status column back after a reload, same run).
  */
+import { randomUUID } from "node:crypto";
+
 import { expect, test, type Page } from "@playwright/test";
 
-import { adminClient } from "../support/fixtures";
+import { adminClient, createSoloTenant } from "../support/fixtures";
 import { COLUMN_TABLES, type TableDef } from "@/lib/org-settings";
 import { resetColumns, setColumnTicks, signIn, world } from "./helpers";
 
@@ -137,7 +142,8 @@ test.describe.configure({ mode: "serial" });
 let page: Page;
 
 test.beforeAll(async ({ browser }) => {
-  const org = w.tenants.alpha.id;
+  const solo = await createSoloTenant(w.runId, `colsubset-${randomUUID().slice(0, 6)}`);
+  const org = solo.id;
   const tag = w.runId.slice(0, 6);
   for (const table of TABLES) {
     const seed = SEED[table.key]?.(org, tag);
@@ -146,7 +152,7 @@ test.beforeAll(async ({ browser }) => {
     expect((await adminClient().from(name).insert(row)).error, `seed ${table.key}`).toBeNull();
   }
   page = await browser.newPage();
-  await signIn(page, w.tenants.alpha.users.admin);
+  await signIn(page, solo.admin);
 });
 
 test.afterAll(async () => { await page.close(); });
