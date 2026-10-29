@@ -113,7 +113,7 @@ export function OfflineBanner() {
           {waitingPhotos.map((item) => {
             const op = item.op as PhotoOp;
             return (
-              <li key={item.id} className="rounded border border-amber-300 bg-white p-2">
+              <li key={item.id} className="rounded-none border border-amber-300 bg-white p-2">
                 <p><strong>{op.jobNo || "Job"}</strong>: photo{op.note ? ` "${op.note}"` : ""} waiting to upload ({Math.round(op.byteSize / 1024)} KB).</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   <Button size="sm" variant="outline" onClick={() => void exportPhoto(op)}>Export</Button>
@@ -127,7 +127,7 @@ export function OfflineBanner() {
       {open && issues ? (
         <ul className="mt-2 space-y-2">
           {status.conflicts.map((item) => (
-            <li key={item.id} className="rounded border border-amber-300 bg-white p-2">
+            <li key={item.id} className="rounded-none border border-amber-300 bg-white p-2">
               <p data-offline-conflict={item.op.kind}><strong>{item.op.jobNo || "Job"}</strong>{item.op.kind === "signoff" ? " (signature)" : ""}: {item.reason}</p>
               <div className="mt-1 flex flex-wrap gap-2">
                 {item.op.kind === "worksheet" ? <Button size="sm" variant="outline" onClick={() => void applyMine(item.id, item.op as { jobId: string; worksheet: Record<string, unknown> }, item.server)}>Apply my version</Button> : null}
@@ -136,7 +136,7 @@ export function OfflineBanner() {
             </li>
           ))}
           {status.rejected.map((item) => (
-            <li key={item.id} className="rounded border border-red-300 bg-white p-2">
+            <li key={item.id} className="rounded-none border border-red-300 bg-white p-2">
               <p><strong>{item.op.jobNo || "Job"}</strong> ({label(item.op)}): not saved. {item.reason}</p>
               {item.op.kind === "photo" ? (
                 <div className="mt-1 flex flex-wrap gap-2">

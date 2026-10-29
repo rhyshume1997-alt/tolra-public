@@ -191,7 +191,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <div className="min-w-0">
             {/* The company first; the product is a small credit. */}
             {companyPending ? (
-              <div aria-hidden="true" className="space-y-2"><div className="h-4 w-28 animate-pulse rounded bg-brand-ink/15" /><div className="h-2.5 w-12 animate-pulse rounded bg-brand-ink/10" /></div>
+              <div aria-hidden="true" className="space-y-2"><div className="h-4 w-28 animate-pulse rounded-none bg-brand-ink/15" /><div className="h-2.5 w-12 animate-pulse rounded-none bg-brand-ink/10" /></div>
             ) : (
               <>
                 <p className="truncate text-[0.95rem] font-semibold leading-tight tracking-tight">{company?.name ?? PRODUCT.name}</p>

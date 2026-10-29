@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Clock, FileText, Layers } from "lucide-react";
 import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, SplitBar } from "@/components/dashboard-charts";
+import { TeamWeek } from "@/components/team-week";
 import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, topCustomers, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
 
 import { Badge } from "@/components/ui/badge";
@@ -326,7 +327,7 @@ function getGreeting(name?: string | null) {
 }
 
 /** A traffic light as a tile's dot tone (components/stat-tile). */
-const LIGHT_TONE: Record<Light, "good" | "warn" | "bad" | "neutral"> = { green: "good", amber: "warn", red: "bad", none: "neutral" };
+const LIGHT_TONE: Record<Light, "good" | "warn" | "bad" | "info" | "neutral"> = { green: "good", amber: "warn", red: "bad", blue: "info", none: "neutral" };
 
 function KpiCard({ label, value, subtext, hint, href, accent = "border-l-blue-500", light, valueClass }: { label: string; value: string; subtext: string; hint?: string; icon?: React.ElementType; href?: string; accent?: string; light?: Light; valueClass?: string }) {
   const tone = light ? LIGHT_TONE[light] : toneFromAccent(accent);
@@ -350,18 +351,18 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const overdueOwed = d?.owedByAge ? d.owedByAge.filter((b) => b.key !== "not_due").reduce((sum, b) => sum + b.value, 0) : null;
   const kpis: Array<[string, React.ReactNode]> = [
     office
-      ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to Quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]
-      : ["money-owed", <KpiCard key="money-owed" label="Money Owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}${overdueOwed ? `, ${gbp(overdueOwed, 0)} overdue` : ""}` : "Unpaid invoices"} hint="Green: nothing overdue. Red: money is past its due date." icon={AlertCircle} href="/invoices" light={lights.moneyOwed(d?.moneyOwed ?? null, overdueOwed)} valueClass="text-red-600" />],
+      ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]
+      : ["money-owed", <KpiCard key="money-owed" label="Money owed" value={money(d?.moneyOwed, loading)} subtext={d?.unpaidInvoices != null ? `Across ${d.unpaidInvoices} invoice${d.unpaidInvoices === 1 ? "" : "s"}${overdueOwed ? `, ${gbp(overdueOwed, 0)} overdue` : ""}` : "Unpaid invoices"} hint="Green: nothing overdue. Red: money is past its due date." icon={AlertCircle} href="/invoices" light={lights.moneyOwed(d?.moneyOwed ?? null, overdueOwed)} valueClass="text-red-600" />],
     ["open-jobs", <KpiCard key="open-jobs" label="Open jobs" value={num(d?.openJobs, loading)} subtext={d?.dueThisWeek != null ? `${d.dueThisWeek} due this week${d.jobsStatus?.overdue ? `, ${d.jobsStatus.overdue} overdue` : ""}` : "Not started, running or waiting"} hint="Not started + Running + Waiting for inspection. Complete jobs are not counted. Green: on time. Amber: due within a week. Red: overdue." icon={Layers} href="/jobs" light={lights.openJobs(d?.jobsStatus ?? null)} />],
-    ["open-quotes", <KpiCard key="open-quotes" label="Open Quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light={d?.openQuotes ? "green" : "none"} />],
+    ["open-quotes", <KpiCard key="open-quotes" label="Open quotes" value={num(d?.openQuotes, loading)} subtext={d?.pipelineValue != null ? `${gbp(d.pipelineValue, 0)} awaiting reply` : "Sent, awaiting reply"} icon={FileText} href="/quotes" light="none" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
   const lastOnTime = d?.onTime ? [...d.onTime].reverse().find((m) => m.percent !== null)?.percent ?? null : null;
   const stats = ([
-    ["this-month-revenue", "This Month Revenue", money(d?.thisMonthRevenue, loading), "Payments received this month", "/invoices", "none"],
-    ["quotes-sent", "Quotes Sent", num(d?.quotesSentThisMonth, loading), "Sent this month", "/quotes", "none"],
-    ["jobs-late-on-time", "Jobs Late / On Time", d && d.lateJobs !== null && d.onTimeJobs !== null ? `${d.lateJobs} / ${d.onTimeJobs}` : DASH, "Jobs not finished, by required date", "/jobs", d && d.lateJobs !== null ? (d.lateJobs ? "red" : "green") : "none"],
-    ["avg-days-to-pay", "Avg Days to Pay", d?.avgDaysToPay != null ? `${Math.round(d.avgDaysToPay)} days` : DASH, "Invoice date to final payment", "/invoices", lights.daysToPay(d?.avgDaysToPay ?? null)],
+    ["this-month-revenue", "This month's revenue", money(d?.thisMonthRevenue, loading), "Payments received this month", "/invoices", "none"],
+    ["quotes-sent", "Quotes sent", num(d?.quotesSentThisMonth, loading), "Sent this month", "/quotes", "none"],
+    ["jobs-late-on-time", "Jobs late / on time", d && d.lateJobs !== null && d.onTimeJobs !== null ? `${d.lateJobs} / ${d.onTimeJobs}` : DASH, "Jobs not finished, by required date", "/jobs", d && d.lateJobs !== null ? (d.lateJobs ? "red" : "green") : "none"],
+    ["avg-days-to-pay", "Average days to pay", d?.avgDaysToPay != null ? `${Math.round(d.avgDaysToPay)} days` : DASH, "Invoice date to final payment", "/invoices", lights.daysToPay(d?.avgDaysToPay ?? null)],
   ] as Array<[string, string, string, string, string, Light]>).filter(([key]) => isVisible(key));
   const showAttention = isVisible("needs-attention");
   const showPipeline = isVisible("quote-pipeline");
@@ -381,7 +382,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
           {d?.revenue ? <RevenueLine data={d.revenue} /> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
         </Panel> : null}
         {!office && isVisible("money-by-age") ? <Panel title="Money owed by age" meta={d?.moneyOwed != null ? gbp(d.moneyOwed, 0) : undefined} href={canOpen("/invoices") ? "/invoices" : undefined}>
-          {d?.owedByAge ? <div className="space-y-3"><SplitBar parts={d.owedByAge} /><ul className="divide-y divide-line/70">{d.owedByAge.map((b) => <li key={b.key} className="flex items-center gap-2 py-2 text-sm"><LightDot light={b.value > 0 ? b.light : "none"} /><span className="text-ink">{b.label}</span><span className="ml-auto font-semibold tabular-nums text-ink">{gbp(b.value, 0)}</span></li>)}</ul></div> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+          {d?.owedByAge && !d.owedByAge.some((b) => b.value > 0) ? <p className="py-6 text-center text-sm text-muted-foreground">Nothing owed.</p> : d?.owedByAge ? <div className="space-y-3"><SplitBar parts={d.owedByAge} /><ul className="divide-y divide-line/70">{d.owedByAge.map((b) => <li key={b.key} className="flex items-center gap-2 py-2 text-sm"><LightDot light={b.value > 0 ? b.light : "none"} /><span className="text-ink">{b.label}</span><span className="ml-auto font-semibold tabular-nums text-ink">{gbp(b.value, 0)}</span></li>)}</ul></div> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
         </Panel> : null}
         {isVisible("quote-outcomes") ? <Panel title="Quotes, last 90 days" meta={d?.quotes90?.winRate != null ? `Win rate ${d.quotes90.winRate}%` : undefined} href={canOpen("/quotes") ? "/quotes" : undefined}>
           {d?.quotes90 ? <BarList rows={d.quotes90.outcomes.map((o) => ({ key: o.key, label: o.label, value: o.count, light: o.key === "accepted" ? "green" as const : o.key === "expired" ? "amber" as const : o.key === "rejected" ? "none" as const : undefined, colour: o.key === "sent" ? "var(--brand-accent)" : undefined }))} empty="No quotes sent in the last 90 days." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
@@ -428,9 +429,11 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
         </Panel> : null}
       </section> : null}
 
+      {!office && isVisible("team-week") ? <TeamWeek /> : null}
+
       {showAttention || showPipeline ? <section className="grid gap-6 xl:grid-cols-3">
         {showAttention ? <AttentionList role={office ? "office" : "admin"} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide={!showPipeline} /> : null}
-        {showPipeline ? <MaybeLink href="/quotes" allowed={canOpen("/quotes")} className={showAttention ? undefined : "xl:col-span-3"}><Card className={`h-full transition ${canOpen("/quotes") ? "cursor-pointer hover:bg-slate-50" : ""}`}><CardHeader><CardTitle>Quote Pipeline</CardTitle></CardHeader><CardContent className="grid auto-rows-fr grid-cols-2 gap-3">{([["RFQs outstanding", pipe?.rfqs], ["Quotes awaiting reply", pipe?.quoted], ["Accepted", pipe?.accepted], ...(office ? [] : [["Invoices paid", pipe?.paid]])] as Array<[string, number | null | undefined]>).map(([label, value]) => (
+        {showPipeline ? <MaybeLink href="/quotes" allowed={canOpen("/quotes")} className={showAttention ? undefined : "xl:col-span-3"}><Card className={`h-full transition ${canOpen("/quotes") ? "cursor-pointer hover:bg-slate-50" : ""}`}><CardHeader><CardTitle>Quote pipeline</CardTitle></CardHeader><CardContent className="grid auto-rows-fr grid-cols-2 gap-3">{([["RFQs outstanding", pipe?.rfqs], ["Quotes awaiting reply", pipe?.quoted], ["Accepted", pipe?.accepted], ...(office ? [] : [["Invoices paid", pipe?.paid]])] as Array<[string, number | null | undefined]>).map(([label, value]) => (
           <div key={label} className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg bg-canvas p-3 text-ink"><span className="text-sm leading-tight text-muted-foreground">{label}</span><span className="text-2xl font-semibold leading-none tabular-nums">{num(value, loading)}</span></div>
         ))}</CardContent></Card></MaybeLink> : null}
       </section> : null}
@@ -456,7 +459,7 @@ function AttentionList({ role, extra = [], extraFailed = false, extraLoading = f
   const state = attentionState(total, anyFailed);
   return (
     <Card className={`shadow-sm ${wide ? "xl:col-span-3" : "xl:col-span-2"}`} data-testid="needs-attention">
-      <CardHeader><CardTitle>Needs Your Attention</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Needs your attention</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         {loading || extraLoading ? <p className="text-sm text-slate-500">Loading...</p> : null}
         {error ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><p>Needs attention couldn&apos;t be loaded. Don&apos;t treat it as all clear.</p><Button variant="outline" onClick={retry}>Retry</Button></div> : null}
@@ -495,9 +498,9 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
   const { isVisible } = useColumnVisibility("dashboard");
   const d = data;
   const kpis: Array<[string, React.ReactNode]> = [
-    ["jobs-running", <KpiCard key="jobs-running" label="Jobs Running" value={num(d?.running, loading)} subtext="Started, not finished" hint="Started, not finished (rework included)" icon={Layers} href="/jobs" />],
-    ["due-this-week", <KpiCard key="due-this-week" label="Due This Week" value={num(d?.dueThisWeek, loading)} subtext="By required date" hint="Not started or Running, by required date" icon={Clock} href="/jobs" />],
-    ["delivery-notes", <KpiCard key="delivery-notes" label="Delivery Notes" value={num(d?.deliveryNotes, loading)} subtext="Awaiting signature" icon={FileText} href="/delivery-notes" />],
+    ["jobs-running", <KpiCard key="jobs-running" label="Jobs running" value={num(d?.running, loading)} subtext="Started, not finished" hint="Started, not finished (rework included)" icon={Layers} href="/jobs" />],
+    ["due-this-week", <KpiCard key="due-this-week" label="Due this week" value={num(d?.dueThisWeek, loading)} subtext="By required date" hint="Not started or Running, by required date" icon={Clock} href="/jobs" />],
+    ["delivery-notes", <KpiCard key="delivery-notes" label="Delivery notes" value={num(d?.deliveryNotes, loading)} subtext="Awaiting signature" icon={FileText} href="/delivery-notes" />],
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
   const showPriority = isVisible("priority-jobs");

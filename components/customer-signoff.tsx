@@ -52,7 +52,7 @@ export function CustomerSignOffRecord({ row, people, currentVersion }: { row: Si
   const capturer = people?.[row.signed_by] ?? null;
   const moved = row.shown_worksheet_version != null && row.shown_worksheet_version !== row.worksheet_version;
   return (
-    <li className="grid gap-1 rounded border border-slate-300 p-2 text-xs" data-customer-signoff={row.id}>
+    <li className="grid gap-1 rounded-none border border-slate-300 p-2 text-xs" data-customer-signoff={row.id}>
       <p className="text-sm"><strong>{customerLine(row)}</strong> signed off this job.</p>
       {row.statement ? <p className="italic">&ldquo;{row.statement}&rdquo;</p> : null}
       <div>{row.signature_kind === "drawn" ? <SignatureImage path={row.signature_data} className="h-14 w-44" /> : <span className="font-serif text-lg italic">{row.signature_data}</span>}</div>
@@ -189,7 +189,7 @@ export function CustomerSignOff({ jobId, jobNo = "", version, dirty = false, dem
         {pending.length ? (
           <ul className="grid gap-1 text-xs" aria-label="Customer signatures on this device">
             {pending.map((item) => (
-              <li key={item.id} className={`flex flex-wrap items-center gap-2 rounded border p-1 ${item.status === "waiting" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50"}`} data-customer-signoff-pending={item.status}>
+              <li key={item.id} className={`flex flex-wrap items-center gap-2 rounded-none border p-1 ${item.status === "waiting" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50"}`} data-customer-signoff-pending={item.status}>
                 {item.op.signatureKind === "drawn" ? <SignatureImage path={item.op.signatureData} className="h-8 w-24" /> : <span className="font-serif italic">{item.op.signatureData}</span>}
                 <span>{item.op.signerName}{item.op.role === "customer" ? `, ${formatSignedAt(item.op.customer.deviceSignedAt)}` : ""}</span>
                 {item.status === "waiting"
@@ -214,7 +214,7 @@ export function CustomerSignOff({ jobId, jobNo = "", version, dirty = false, dem
                 <Input aria-label="Customer company" value={company} maxLength={200} autoComplete="off" className={target} onChange={(event) => setCompany(event.target.value)} />
               </label>
             </div>
-            <p className="rounded border border-slate-400 bg-slate-50 p-2 text-sm font-medium" data-customer-signoff-statement>{CUSTOMER_SIGNOFF_STATEMENT}</p>
+            <p className="rounded-none border border-slate-400 bg-slate-50 p-2 text-sm font-medium" data-customer-signoff-statement>{CUSTOMER_SIGNOFF_STATEMENT}</p>
             <SignaturePad key={padKey} onChange={setSignature} typedDefault={name} large={large} disabled={busy} />
             <label className="grid gap-1 text-xs font-bold uppercase">Comment (optional)
               <textarea aria-label="Customer comment" value={comment} maxLength={1000} rows={2} className="rounded-md border border-input bg-transparent px-3 py-2 text-sm normal-case" onChange={(event) => setComment(event.target.value)} />

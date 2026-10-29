@@ -40,9 +40,26 @@ describe("readArchivedCustomerIds", () => {
     expect(calls[0]).toBe("record_archive_state record_id record_table=customers state=archived 0");
   });
 
-  it("a failed read throws (the picker then offers every saved customer)", async () => {
-    const client = { from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ range: async () => ({ data: null, error: { message: "down" } }) }) }) }) }) }) } as unknown as ArchivedCustomerReader;
-    await expect(readArchivedCustomerIds(client)).rejects.toBeTruthy();
+  const answering = (answer: { data: unknown; error: unknown }) =>
+    ({ from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ order: () => ({ range: async () => answer }) }) }) }) }) }) as unknown as ArchivedCustomerReader;
+
+  it("a failed read throws (the picker then offers no customer), never an empty set", async () => {
+    await expect(readArchivedCustomerIds(answering({ data: null, error: { message: "down" } }))).rejects.toBeTruthy();
+  });
+
+  it("no data and no error throws too: an unread archive list is never taken as 'nothing archived' (fail closed)", async () => {
+    await expect(readArchivedCustomerIds(answering({ data: null, error: null }))).rejects.toThrow();
+    await expect(readArchivedCustomerIds(answering({ data: undefined, error: null }))).rejects.toThrow();
+  });
+
+  it("an empty answer is a real 'nothing archived'", async () => {
+    expect([...(await readArchivedCustomerIds(answering({ data: [], error: null })))]).toEqual([]);
+  });
+
+  it("end to end: when the archive list can't be read the picker gets no names, archived or not", async () => {
+    const saved = [{ id: "a", name: "Acme Ltd", contactName: "", email: "", phone: "", address: "", notes: "" }, { id: "z", name: "Archived Co", contactName: "", email: "", phone: "", address: "", notes: "" }];
+    const load = async () => withoutArchived(saved, await readArchivedCustomerIds(answering({ data: null, error: null })));
+    expect(await loadPickerNames(load)).toEqual({ names: [], failed: true });
   });
 });
 

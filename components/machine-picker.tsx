@@ -102,8 +102,8 @@ export function MachinePicker({ jobNo, jobId, machines, inUse, paused, pick, onC
                 <input type="checkbox" className="mt-0.5 size-5 shrink-0 accent-[var(--brand)]" aria-label={`${running ? "Add" : "Start on"} ${machine.name}`} checked={checked || mine} disabled={blocked} onChange={() => toggle(machine.id)} />
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2 font-semibold">{machine.name}
-                    {machine.planned ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{machine.booked ? "Booked" : "Planned"}</span> : null}
-                    {mine ? <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800">Running this job</span> : null}
+                    {machine.planned ? <span className="rounded-none bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{machine.booked ? "Booked" : "Planned"}</span> : null}
+                    {mine ? <span className="rounded-none bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-800">Running this job</span> : null}
                   </span>
                   {taken && live ? <span data-testid="picker-in-use" className="block text-xs font-medium text-red-700 dark:text-red-400">In use: {live.job_no}, {live.operator_name ?? "—"} since {fmtDateTime(live.started_at)}{isAdmin ? " (admin: take over with a reason)" : ""}</span> : null}
                   {!taken && pausedOther ? <span data-testid="picker-paused" className="block text-xs font-medium text-amber-800 dark:text-amber-300">{pausedChoiceText(pausedOther)} (check with them first)</span> : null}

@@ -8,9 +8,9 @@ import { gbp } from "@/lib/money";
 import { COLOUR_TOKENS } from "@/lib/status-colours";
 import type { Light } from "@/lib/dashboard-analytics";
 
-/** John's traffic lights take their colours from the one status map (lib/status-colours): green, yellow (amber) and red. */
-export const LIGHT_COLOUR: Record<Light, string> = { green: COLOUR_TOKENS.green.light, amber: COLOUR_TOKENS.yellow.light, red: COLOUR_TOKENS.red.light, none: COLOUR_TOKENS.grey.light };
-const LIGHT_WORD: Record<Light, string> = { green: "On track", amber: "Watch", red: "Act now", none: "" };
+/** John's traffic lights take their colours from the one status map (lib/status-colours): green, yellow (amber), red and blue. */
+export const LIGHT_COLOUR: Record<Light, string> = { green: COLOUR_TOKENS.green.light, amber: COLOUR_TOKENS.yellow.light, red: COLOUR_TOKENS.red.light, blue: COLOUR_TOKENS.blue.light, none: COLOUR_TOKENS.grey.light };
+const LIGHT_WORD: Record<Light, string> = { green: "Done", amber: "Watch", red: "Act now", blue: "In progress", none: "" };
 
 export function LightDot({ light, className }: { light: Light; className?: string }) {
   return <span className={cn("inline-block size-2.5 shrink-0", className)} style={{ background: LIGHT_COLOUR[light] }} role={light === "none" ? undefined : "img"} aria-label={LIGHT_WORD[light] || undefined} aria-hidden={light === "none" ? true : undefined} />;

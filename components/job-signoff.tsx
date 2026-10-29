@@ -208,7 +208,7 @@ export function JobSignOff({ jobId, jobNo = "", version, dirty = false, demo = f
       {pending.length ? (
         <ul className="grid gap-1 text-xs" aria-label="Signatures on this device">
           {pending.map((item) => (
-            <li key={item.id} className={`flex flex-wrap items-center gap-2 rounded border p-1 ${item.status === "waiting" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50"}`} data-signoff-pending={item.status}>
+            <li key={item.id} className={`flex flex-wrap items-center gap-2 rounded-none border p-1 ${item.status === "waiting" ? "border-amber-300 bg-amber-50" : "border-red-300 bg-red-50"}`} data-signoff-pending={item.status}>
               {item.op.signatureKind === "drawn" ? <SignatureImage path={item.op.signatureData} className="h-8 w-24" /> : <span className="font-serif italic">{item.op.signatureData}</span>}
               <span>{item.op.role !== "primary" ? `${kindLabel(item.op.role)} co-signature: ` : ""}{item.op.initials} ({item.op.signerName}), {formatSignedOn(item.op.signedOn)}, revision {item.op.expectedVersion}</span>
               {item.status === "waiting"

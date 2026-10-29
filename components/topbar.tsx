@@ -78,7 +78,7 @@ export function Topbar() {
             <ArrowLeft className="size-[18px]" strokeWidth={1.75} />
           </Button>
         ) : null}
-        {pending ? <div data-testid="title-pending" aria-hidden="true" className="h-3 w-28 animate-pulse rounded bg-muted-foreground/15" /> : <p className="label-mono truncate text-muted-foreground">{title}</p>}
+        {pending ? <div data-testid="title-pending" aria-hidden="true" className="h-3 w-28 animate-pulse rounded-none bg-muted-foreground/15" /> : <p className="label-mono truncate text-muted-foreground">{title}</p>}
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">

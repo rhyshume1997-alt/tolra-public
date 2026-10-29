@@ -220,12 +220,12 @@ function ApproveDialog({ person, name, week, onCancel, onApprove }: { person: Pe
         {person.dayFlags?.days.some((d) => DAY_FLAG_KEYS.some((k) => d.flags[k])) ? (
           <div className="text-sm" data-testid="approve-day-flags"><div className="font-medium">Day ticks</div><DayFlagsCell flags={person.dayFlags} /></div>
         ) : null}
-        {w.flags.length ? <p className="rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">Check first: {w.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}.</p> : null}
-        <p className="rounded border border-slate-300 bg-slate-50 p-2 text-sm text-slate-700" data-testid="approve-sync-warning">
+        {w.flags.length ? <p className="rounded-none border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">Check first: {w.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}.</p> : null}
+        <p className="rounded-none border border-slate-300 bg-slate-50 p-2 text-sm text-slate-700" data-testid="approve-sync-warning">
           Anything still waiting to sync on a phone or tablet is not in these figures. Before approving, check each device used this week shows no &lsquo;waiting to sync&rsquo; (open Weekly hours on it with signal).
         </p>
         {waiting > 0 ? (
-          <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" data-testid="approve-pending-here">
+          <div className="space-y-2 rounded-none border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" data-testid="approve-pending-here">
             <p>This device has {waiting} clock or job time item{waiting === 1 ? "" : "s"} for {name} this week still waiting to sync, so not in these figures. Sync them first (open Weekly hours with signal), or confirm below.</p>
             <label className="flex items-start gap-2"><input type="checkbox" className="mt-1" checked={confirmedPending} onChange={(e) => setConfirmedPending(e.target.checked)} /> <span>Approve without them</span></label>
           </div>

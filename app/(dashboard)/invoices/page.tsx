@@ -804,7 +804,7 @@ export default function InvoicesPage() {
     if (!invoice) return;
     if (saving) return;
     const amount = Number(payAmount);
-    // Exact pennies: what is typed must be pounds and at most two decimals; nothing is rounded for the person.
+    // Exact pennies: what is typed must be pounds and at most two decimals; nothing is rounded-none for the person.
     const problem = !/^\d+(\.\d{1,2})?$/.test(payAmount.trim()) ? "Enter the amount in pounds and pence (two decimal places at most)." : paymentAmountProblem(amount, balanceDue(invoice.amount, invoice.amountPaid, invoice.credited, invoice.refunded)) ?? paymentDateProblem(payDate, today);
     if (problem) { setPayError(problem); return; }
     setPayError(null);

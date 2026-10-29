@@ -127,7 +127,7 @@ export function JobPhotos({ jobId, jobNo }: { jobId: string; jobNo: string }) {
       {photos.length ? (
         <ul aria-label="Uploaded photos" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {photos.map((photo) => (
-            <li key={photo.id} data-testid="job-photo" className="space-y-1 rounded border border-slate-200 p-2">
+            <li key={photo.id} data-testid="job-photo" className="space-y-1 rounded-none border border-slate-200 p-2">
               <PhotoThumb photo={photo} />
               {photo.note ? <p className="text-xs">{photo.note}</p> : null}
               <p className="text-xs text-slate-600">Added by {personName(people, photo.created_by)} · {fmtDateTime(photo.created_at)}</p>
@@ -178,7 +178,7 @@ function PhotoThumb({ photo }: { photo: JobPhoto }) {
   const alt = photo.note ? `Photo: ${photo.note}` : "Job photo";
   if (failed) {
     return (
-      <div data-testid="photo-unavailable" className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded bg-slate-100 text-xs text-slate-700">
+      <div data-testid="photo-unavailable" className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-none bg-slate-100 text-xs text-slate-700">
         <span>Couldn&apos;t load this photo.</span>
         <Button type="button" variant="outline" className={TARGET} onClick={retry}>Retry</Button>
       </div>
@@ -187,7 +187,7 @@ function PhotoThumb({ photo }: { photo: JobPhoto }) {
   return (
     <a href={photoUrl(photo)} target="_blank" rel="noopener" className="block">
       {/* eslint-disable-next-line @next/next/no-img-element -- served by our own route after the person's row read */}
-      <img src={photoUrl(photo, attempt)} alt={alt} loading="lazy" className="h-40 w-full rounded object-cover" onError={onError} />
+      <img src={photoUrl(photo, attempt)} alt={alt} loading="lazy" className="h-40 w-full rounded-none object-cover" onError={onError} />
     </a>
   );
 }
@@ -202,11 +202,11 @@ function PendingTile({ item }: { item: PendingPhoto }) {
     return () => URL.revokeObjectURL(next);
   }, [item.blob]);
   return (
-    <li data-testid="pending-photo" data-status={item.status} className="space-y-1 rounded border border-amber-300 bg-amber-50 p-2">
+    <li data-testid="pending-photo" data-status={item.status} className="space-y-1 rounded-none border border-amber-300 bg-amber-50 p-2">
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element -- the bytes are on this device, not a URL
-        <img src={url} alt={item.op.note ? `Photo: ${item.op.note}` : "Job photo"} className="h-40 w-full rounded object-cover" />
-      ) : <div className="flex h-40 items-center justify-center rounded bg-amber-100 text-xs text-amber-900">No preview</div>}
+        <img src={url} alt={item.op.note ? `Photo: ${item.op.note}` : "Job photo"} className="h-40 w-full rounded-none object-cover" />
+      ) : <div className="flex h-40 items-center justify-center rounded-none bg-amber-100 text-xs text-amber-900">No preview</div>}
       {item.op.note ? <p className="text-xs">{item.op.note}</p> : null}
       <p className="text-xs text-amber-900">{item.status === "waiting" ? "Waiting to upload" : `Not uploaded: ${item.reason ?? "refused"}. See the offline notice above to retry, export or discard it.`}</p>
     </li>
