@@ -36,7 +36,12 @@ let betaOrder: string;
 let betaJob: string;
 let n = 0;
 
-const START = "2026-11-02T08:00:00Z";
+// Fixed days for the bookings these tests make by hand. Converting an order books each machine at its next free slot from the
+// current time (061), so a day in the next week or two can already be taken by this file's own earlier conversions when the
+// suite runs late in the week (Thu 29 Oct 2026: run 40906079117, machine_clash on Mon 2 Nov). These are far enough ahead that no
+// auto-booking reaches them; a start only has to be between 2000 and 2100 (042/043). Mon 7 and Tue 8 January 2030.
+const START = "2030-01-07T08:00:00Z";
+const NEXT_DAY = "2030-01-08T08:00:00Z";
 const LINES = [{ description: "Flange 80mm", quantity: 12, unit_price: 150, vat_pct: 20 }, { description: "Spacer", quantity: 4, unit_price: 2.5, vat_pct: 0 }];
 
 /** An order for the alpha company: with a two-line quote whose net equals the order (two order lines), or plain (one summary line). */
@@ -315,11 +320,11 @@ describe("editing the machines on the job", () => {
     expect(after.map((r) => [r.machine_id, Number(r.estimated_hours), r.position])).toEqual([[mill, 4, 0], [lathe, 2, 1]]);
     const { data: booking } = await adminClient().from("machine_bookings").select("machine_id, job_id, job_no, start_at, estimated_hours, status").eq("id", after[1].booking_id!).single();
     expect(booking).toMatchObject({ machine_id: lathe, job_id: jobId, job_no: jobNo, estimated_hours: 2, status: "booked" });
-    expect(new Date(booking!.start_at).toISOString()).toBe("2026-11-02T08:00:00.000Z");
+    expect(new Date(booking!.start_at).toISOString()).toBe(new Date(START).toISOString());
     // Booking the mill too, then moving the lathe's booking by giving a new start; then removing the lathe takes its booking away.
-    expect((await setJob(as[role], jobId, [{ machine_id: mill, hours: 4, start_at: START }, { machine_id: lathe, hours: 2.5, start_at: "2026-11-03T08:00:00Z" }])).error).toBeNull();
+    expect((await setJob(as[role], jobId, [{ machine_id: mill, hours: 4, start_at: START }, { machine_id: lathe, hours: 2.5, start_at: NEXT_DAY }])).error).toBeNull();
     const moved = await adminClient().from("machine_bookings").select("id, machine_id, start_at, estimated_hours").eq("job_id", jobId).order("machine_id");
-    expect(moved.data!.map((b) => [b.machine_id, new Date(b.start_at).toISOString(), Number(b.estimated_hours)]).sort()).toEqual([[lathe, "2026-11-03T08:00:00.000Z", 2.5], [mill, "2026-11-02T08:00:00.000Z", 4]].sort());
+    expect(moved.data!.map((b) => [b.machine_id, new Date(b.start_at).toISOString(), Number(b.estimated_hours)]).sort()).toEqual([[lathe, new Date(NEXT_DAY).toISOString(), 2.5], [mill, new Date(START).toISOString(), 4]].sort());
     expect((await setJob(as[role], jobId, [{ machine_id: mill, hours: 4 }])).error).toBeNull();
     expect((await jobPlan(jobId)).map((r) => [r.machine_id, Number(r.estimated_hours)])).toEqual([[mill, 4]]);
     expect((await adminClient().from("machine_bookings").select("machine_id").eq("job_id", jobId)).data).toEqual([{ machine_id: mill }]);
