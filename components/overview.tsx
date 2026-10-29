@@ -59,6 +59,8 @@ export function OverviewLeaks({ leaks }: { leaks: Leak[] }) {
   return (
     <div className="grid border border-line bg-surface sm:grid-cols-2 lg:grid-cols-5" data-testid="overview-leaks">
       {leaks.map((leak) => {
+        // A leak whose read failed has nowhere honest to go, so it isn't a link
+        const linkable = !leak.failed && leak.href !== "#" && canOpen(leak.href);
         const body = (
           <>
             <span className="flex items-center justify-between gap-2 text-sm font-semibold text-ink">
@@ -70,11 +72,11 @@ export function OverviewLeaks({ leaks }: { leaks: Leak[] }) {
               {leak.extra ? <span className="ml-2 text-base font-semibold tracking-normal text-ink/75">{leak.extra}</span> : null}
             </span>
             <span className="text-[0.8125rem] text-muted-foreground">{leak.detail}</span>
-            {canOpen(leak.href) ? <span className="text-[0.8125rem] font-semibold text-brand-accent">{leak.action}</span> : null}
+            {linkable ? <span className="text-[0.8125rem] font-semibold text-brand-accent">{leak.action}</span> : null}
           </>
         );
         const cls = "flex min-w-0 flex-col gap-1.5 border-line p-4 sm:[&:not(:last-child)]:border-r max-sm:[&:not(:last-child)]:border-b";
-        return canOpen(leak.href)
+        return linkable
           ? <Link key={leak.id} href={leak.href} className={`${cls} transition hover:bg-canvas`} data-testid={`leak-${leak.id}`}>{body}</Link>
           : <div key={leak.id} className={cls} data-testid={`leak-${leak.id}`}>{body}</div>;
       })}
