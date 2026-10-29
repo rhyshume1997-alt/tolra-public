@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { AttentionSection } from "@/lib/attention-items";
@@ -70,5 +72,11 @@ describe("owner overview leaks", () => {
 
   it("the sections run Today, Money, Work, Machines, People", () => {
     expect(OVERVIEW_SECTIONS.map((s) => s.id)).toEqual(["today", "money", "work", "machines", "people"]);
+  });
+
+  it("the jump bar sticks at the app top bar's height, so it sits below the bar and not under it", () => {
+    const read = (file: string) => readFileSync(path.resolve(__dirname, "../..", file), "utf8");
+    expect(read("components/topbar.tsx")).toMatch(/<header className="sticky top-0 z-30 [^"]*\bh-16\b/);
+    expect(read("components/overview.tsx")).toMatch(/aria-label="Jump to" className="sticky top-16 /);
   });
 });

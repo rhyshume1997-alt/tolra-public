@@ -27,7 +27,8 @@ export function OverviewJump({ present }: { present: string[] }) {
   const links = OVERVIEW_SECTIONS.filter((s) => present.includes(s.id));
   if (links.length < 2) return null;
   return (
-    <nav aria-label="Jump to" className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-1 border-b border-line bg-canvas/95 px-1 py-2 backdrop-blur" data-testid="overview-jump">
+    // Sticks just below the app's top bar (components/topbar: sticky top-0, h-16), not under it.
+    <nav aria-label="Jump to" className="sticky top-16 z-10 -mx-1 flex flex-wrap items-center gap-1 border-b border-line bg-canvas/95 px-1 py-2 backdrop-blur" data-testid="overview-jump">
       {links.map((s) => (
         <a key={s.id} href={`#${s.id}`} aria-current={current === s.id ? "true" : undefined}
           className={`px-3 py-1.5 text-sm font-semibold transition ${current === s.id ? "bg-surface text-ink ring-1 ring-line" : "text-muted-foreground hover:bg-surface hover:text-ink"}`}>
@@ -42,7 +43,7 @@ export function OverviewJump({ present }: { present: string[] }) {
 export function OverviewSection({ id, title, sub, href, linkLabel, children }: { id: string; title: string; sub: string; href?: string; linkLabel?: string; children: React.ReactNode }) {
   const canOpen = useCanOpen();
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-16 space-y-4" data-testid={`overview-${id}`}>
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-40 space-y-4" data-testid={`overview-${id}`}>
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id={`${id}-title`} className="text-lg font-semibold text-ink">{title}</h2>
         <p className="text-sm text-muted-foreground">{sub}</p>
