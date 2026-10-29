@@ -25,6 +25,23 @@ export function calendarDate(value: unknown): string {
   return toDateInput(value);
 }
 
+/**
+ * The "due within 7 days" window: today and the day 7 calendar days on, both in UK time. Calendar days, not 7 x 24 hours,
+ * so the end date is right across the clock changes (7 x 24 hours from 23:30 on the Saturday before the clocks go forward is
+ * already the Sunday after the window).
+ */
+export function dueWindow(now = new Date()) {
+  const today = toDateInput(now);
+  const [y, m, d] = today.split("-").map(Number);
+  return { today, end: new Date(Date.UTC(y, m - 1, d + 7)).toISOString().slice(0, 10) };
+}
+
+/** A YYYY-MM-DD date as "Wed 4 Nov". */
+export function fmtDueBy(date: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
+}
+
 export function fmtDate(value?: string | Date | null) {
   if (!value) return "";
   const d = value instanceof Date ? value : new Date(value);

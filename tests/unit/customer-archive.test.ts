@@ -77,7 +77,8 @@ describe("the picker fails closed (Q35)", () => {
   });
 
   it("fetchPickerCustomers lets an archive read failure through (no fallback to every customer)", () => {
-    const lib = readFileSync("lib/customers.ts", "utf8");
+    // Line endings normalised, so the "\n}\n" slice also finds the function's end in a Windows (CRLF) checkout.
+    const lib = readFileSync("lib/customers.ts", "utf8").replace(/\r\n/g, "\n");
     const start = lib.indexOf("export async function fetchPickerCustomers");
     const fn = lib.slice(start, lib.indexOf("\n}\n", start));
     expect(fn).toContain("await readArchivedCustomerIds(");
