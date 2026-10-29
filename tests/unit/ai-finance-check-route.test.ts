@@ -282,8 +282,12 @@ describe("never-do list (static)", () => {
 
   it("calls no model: no AI SDK, no key, no provider wired", () => {
     for (const f of files) expect(source(f), f).not.toMatch(/@anthropic-ai|openai|@ai-sdk|AI_API_KEY|fetch\("https?:/);
+    // The SDK is in package.json for the separate AI admin helper (lib/ai-helper); the only file anywhere that imports it is that
+    // helper's provider, so the finance check still reaches no model.
     const pkg = readFileSync(path.join(root, "package.json"), "utf8");
-    expect(pkg).not.toMatch(/"@anthropic-ai\/|"openai"|"ai":/);
+    expect(pkg).not.toMatch(/"openai"|"ai":/);
+    const all = ["app", "lib", "components"].flatMap((dir) => walk(dir));
+    expect(all.filter((f) => /from "@anthropic-ai\//.test(source(f)))).toEqual([path.join("lib", "ai-helper", "anthropic.ts")]);
   });
 
   it("reads no env var but the flag", () => {

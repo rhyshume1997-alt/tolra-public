@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { defineConfig } from "@playwright/test";
 
 import { E2E_BLOCKED_LOG, E2E_MFA_PORT, E2E_MOCK_PORT } from "./tests/e2e/paths";
@@ -43,6 +45,11 @@ function serverEnv(): Record<string, string> | null {
     TENANT_ROOT_DOMAIN: "",
     NODE_OPTIONS: "--require ./tests/support/no-network.cjs",
     E2E_BLOCKED_LOG,
+    // The AI admin helper: on for this server, with the deterministic mock provider (no model, no network). Each company's own
+    // switches still start off. The encryption key for the company API keys is made fresh for each run (a test value, never stored).
+    AI_HELPER_ENABLED: "true",
+    AI_HELPER_PROVIDER: "mock",
+    INTEGRATIONS_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
   };
 }
 

@@ -1076,6 +1076,41 @@ async function expect100(db: Client, present: boolean) {
     "100 082's customers_in_use_guard unchanged").toBe(true);
 }
 
+const IS_101 = (file: string) => file.endsWith("_ai_helper.sql");
+
+/**
+ * What 101 changes (working number; the AI admin helper): four new tables (settings, secrets, usage, requests), RLS on, SELECT only for
+ * the signed-in role on three and nothing on the secrets table; six signed-in-only definer functions and two internal helpers. It
+ * replaces no existing object: after a failed run none of it exists, and 095's audit_event_allowed and write_audit bodies are unchanged.
+ */
+async function expect101(db: Client, present: boolean) {
+  const q = async (text: string, params: unknown[] = []) => (await db.query<{ v: boolean }>(text, params)).rows[0].v;
+  const tables = ["public.ai_helper_settings", "public.ai_helper_secrets", "public.ai_helper_usage", "public.ai_helper_requests"];
+  for (const table of tables) expect(await q("select to_regclass($1) is not null as v", [table]), `101 ${table} present = ${present}`).toBe(present);
+  const api = ["public.ai_helper_status()", "public.ai_helper_save_settings(boolean,boolean,integer)", "public.ai_helper_set_key(text,text)",
+    "public.ai_helper_reserve(text,integer,text,integer)", "public.ai_helper_settle(uuid,text,text,integer,text,jsonb)", "public.ai_helper_decide(uuid,text,uuid)"];
+  const internal = ["public._ai_helper_audit(uuid,text,text,text,jsonb)", "public._ai_helper_caller(text[])"];
+  for (const sig of [...api, ...internal]) expect(await q("select to_regprocedure($1) is not null as v", [sig]), `101 ${sig} present = ${present}`).toBe(present);
+  if (present) {
+    for (const table of tables) {
+      expect(await q("select c.relrowsecurity and not has_table_privilege('anon', c.oid, 'SELECT') and not has_table_privilege('authenticated', c.oid, 'INSERT,UPDATE,DELETE') as v from pg_class c where c.oid = $1::regclass", [table]),
+        `101 ${table}: RLS on, no write grant`).toBe(true);
+    }
+    expect(await q("select not has_table_privilege('authenticated', 'public.ai_helper_secrets', 'SELECT') as v"), "101 secrets: no read grant").toBe(true);
+    for (const sig of api) {
+      expect(await q("select p.prosecdef and has_function_privilege('authenticated', p.oid, 'EXECUTE') and not has_function_privilege('anon', p.oid, 'EXECUTE') as v from pg_proc p where p.oid = to_regprocedure($1)", [sig]),
+        `101 ${sig}: definer, signed-in only`).toBe(true);
+    }
+    for (const sig of internal) {
+      expect(await q("select not has_function_privilege('authenticated', to_regprocedure($1), 'EXECUTE') and not has_function_privilege('anon', to_regprocedure($1), 'EXECUTE') as v", [sig]),
+        `101 ${sig}: internal`).toBe(true);
+    }
+  }
+  const md5 = async (sig: string) => (await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = to_regprocedure($1)", [sig])).rows[0]?.v;
+  expect(await md5("public.audit_event_allowed(text,text)"), "101 leaves 095's audit_event_allowed").toBe("7e8d396511ddb056daa61953bfccd12b");
+  expect(await md5("public.write_audit(text,text,text,jsonb,jsonb,jsonb,text,text)"), "101 leaves 095's write_audit").toBe("a6531bb5559ae9936387729bb91071a0");
+}
+
 /**
  * What 078 changes, part A (clock-in addresses; torn down and re-applied with the time files): attendance_event_network_ips (RLS on, read
  * only, NOT audited), the purge (admin RPC signed-in only, retention and purge helpers internal), 075's check trigger writing the address
@@ -1579,6 +1614,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_095(last)) await expect095(db, false);
       if (IS_099(last)) await expect099(db, false);
       if (IS_100(last)) await expect100(db, false);
+      if (IS_101(last)) await expect101(db, false);
       // Twice: a failure late in the file (its last section still to come) and one midway.
       for (const where of ["late", "middle"] as const) {
         const plan = injectionPlan(sql(path.join(MIGRATIONS, last)), where);
@@ -1646,6 +1682,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
         if (IS_095(last)) await expect095(db, false);
         if (IS_099(last)) await expect099(db, false);
         if (IS_100(last)) await expect100(db, false);
+        if (IS_101(last)) await expect101(db, false);
         checked.push({ where, chosen });
       }
       // A clean run of the same file then applies normally. When the newest file is 033 or 034 it is the one whose effect on the CRLF bodies is checked here.
@@ -1708,6 +1745,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_095(last)) await expect095(db, true);
       if (IS_099(last)) await expect099(db, true);
       if (IS_100(last)) await expect100(db, true);
+      if (IS_101(last)) await expect101(db, true);
       expect(await structure(db)).not.toEqual(structureBefore);
       await db.query("notify pgrst, 'reload schema'");
       await db.query("notify pgrst, 'reload config'");
@@ -1758,6 +1796,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_095(newest)) await expect095(db, true);
       if (IS_099(newest)) await expect099(db, true);
       if (IS_100(newest)) await expect100(db, true);
+      if (IS_101(newest)) await expect101(db, true);
     });
   });
 

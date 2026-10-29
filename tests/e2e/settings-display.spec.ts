@@ -4,12 +4,17 @@
  */
 import { expect, test } from "@playwright/test";
 
+import { adminClient } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 
 for (const width of [1280, 768, 390]) {
   test(`Settings > Display: untick, reload, reset one screen; no sideways scroll at ${width} px`, async ({ page }) => {
+    // Its own customer, so the cards have a row to show whichever specs ran before this one on the same database (CI shards).
+    const w = world();
+    const { error } = await adminClient().from("customers").insert({ organization_id: w.tenants.alpha.id, name: `Display ${w.runId.slice(0, 6)} ${width}`, phone: "0123 456700" });
+    expect(error).toBeNull();
     await page.setViewportSize({ width, height: 900 });
-    await signIn(page, world().tenants.alpha.users.admin);
+    await signIn(page, w.tenants.alpha.users.admin);
     await page.goto("/settings");
     const card = page.getByTestId("display-screen-customers");
     const phone = card.getByRole("checkbox", { name: "Phone" });
@@ -50,9 +55,14 @@ for (const width of [1280, 768, 390]) {
       if (width < 768) await expect(page.locator('table[data-view="cards"] td[data-label="Phone"]').first()).toBeVisible();
       else await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toBeVisible();
     } finally {
+      // Put every column back before the next spec on this database: the reset only acts once the settings have loaded and it
+      // saves in the background, so wait for the page, then confirm the saved state after a reload.
       await page.goto("/settings");
-      const resetBtn = page.getByRole("button", { name: "Reset all to default" });
-      await resetBtn.click();
+      await expect(page.getByTestId("display-settings")).toBeVisible();
+      await expect(count).toHaveText(/of 5 shown/);
+      await page.getByRole("button", { name: "Reset all to default" }).click();
+      await expect(count).toHaveText("5 of 5 shown");
+      await expect.poll(async () => { await page.reload(); return count.textContent(); }, { timeout: 20_000 }).toBe("5 of 5 shown");
     }
   });
 }

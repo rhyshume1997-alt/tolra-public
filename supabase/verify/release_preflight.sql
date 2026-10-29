@@ -114,7 +114,9 @@ markers(migration, present) AS (
     ('099 part despatch invoice quantity', EXISTS (SELECT 1 FROM col WHERE table_name = 'invoice_line_items' AND column_name = 'sales_order_line_id')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_finish_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8c4d3694cec4ac679916f916afc41985')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305')),
-    ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf'))
+    ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
+    ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -318,6 +320,10 @@ checks(n, check_name, value, expected) AS (
               FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state'), 'missing')
     || ' / guard ' || CASE WHEN EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'customers_in_use_guard') THEN 'present' ELSE 'missing' END,
     '028 / guard present before 100, 100 / guard present after (other or missing: stop, 100 refuses to replace it)'
+  UNION ALL SELECT 44, '101 needs: assert_privileged_aal, _session_membership, support_readonly_guard and the audit log (033, 036)',
+    (to_regprocedure('public.assert_privileged_aal()') IS NOT NULL AND to_regprocedure('public._session_membership()') IS NOT NULL
+     AND to_regprocedure('public.support_readonly_guard()') IS NOT NULL AND to_regclass('security_audit.audit_log') IS NOT NULL)::TEXT,
+    'true (101 replaces no existing object; its tables are new)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

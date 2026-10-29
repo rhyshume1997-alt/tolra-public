@@ -1,6 +1,7 @@
 import { AiFeaturesProvider } from "@/components/ai-features";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { aiFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
+import { aiHelperEnabled } from "@/lib/ai-helper/flag";
 import { type ShellBrand, shellBrandFrom } from "@/lib/brand-pending";
 import { createSupabaseServerClient } from "@/lib/server/auth";
 
@@ -37,7 +38,7 @@ export default async function DashboardLayout({
   return (
     <DashboardShell company={await readCompany()}>
       {/* AI features this server has on: plain booleans only (the env var stays on the server). All off by default. */}
-      <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled() }}>{children}</AiFeaturesProvider>
+      <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled(), aiHelper: aiHelperEnabled() }}>{children}</AiFeaturesProvider>
     </DashboardShell>
   );
 }
