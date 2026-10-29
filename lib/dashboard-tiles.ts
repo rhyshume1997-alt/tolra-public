@@ -9,8 +9,12 @@ export type DashboardRole = "admin" | "office" | "workshop";
 
 export type DashboardTile = { key: string; label: string; roles: DashboardRole[] };
 
-/** Rendered order within each role's view (the order here is the order on the page). */
+/**
+ * Rendered order within the office and workshop views (the order here is the order on the page). The admin's Overview groups the
+ * same tiles into its sections (Today, Money, Work, Machines, People: lib/overview), so its order follows the sections.
+ */
 export const DASHBOARD_TILES: DashboardTile[] = [
+  { key: "leaks", label: "Leaks along the top (admin)", roles: ["admin"] },
   { key: "money-owed", label: "Money owed (admin)", roles: ["admin"] },
   { key: "rfqs-to-quote", label: "RFQs to quote (office)", roles: ["office"] },
   { key: "open-jobs", label: "Open jobs", roles: ["admin", "office"] },

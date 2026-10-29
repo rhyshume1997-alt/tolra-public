@@ -12,6 +12,8 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Clock, FileText, Layers } from "lucide-react";
 import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, SplitBar } from "@/components/dashboard-charts";
 import { TeamWeek } from "@/components/team-week";
+import { OverviewJump, OverviewLeaks, OverviewSection } from "@/components/overview";
+import { leaksFrom } from "@/lib/overview";
 import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, topCustomers, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dueWindow, fmtDate, fmtDateTime, fmtDueBy, toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { attentionState } from "@/lib/attention";
-import type { AttentionRole } from "@/lib/attention-items";
+import type { AttentionRole, AttentionSection } from "@/lib/attention-items";
 import { loadAttention } from "@/lib/attention-load";
 import { gbp, toPence } from "@/lib/money";
 import { awaitingApproval } from "@/lib/approval-queue";
@@ -303,7 +305,9 @@ async function loadWorkshopData(userId?: string | null): Promise<WorkshopData> {
   };
 }
 
-function useLoaded<T>(loader: () => Promise<T>) {
+type Loaded<T> = { data: T | null; loading: boolean; error: string | null; retry: () => void };
+
+function useLoaded<T>(loader: () => Promise<T>): Loaded<T> {
   const [state, setState] = useState<{ data: T | null; loading: boolean; error: string | null }>({ data: null, loading: true, error: null });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -350,6 +354,9 @@ function ErrorCard({ message, onRetry }: { message: string; onRetry: () => void 
 function AdminDashboard({ office = false }: { office?: boolean }) {
   const loader = useCallback(() => loadAdminData(office), [office]);
   const { data, loading, error, retry } = useLoaded(loader);
+  // The owner's Overview reads Needs attention once, for both the leaks row and the list (the office card loads its own).
+  const attentionLoader = useCallback((): Promise<AttentionSection[] | null> => (office ? Promise.resolve(null) : supabase ? loadAttention(supabase, "admin") : Promise.reject(new Error("Supabase is not configured."))), [office]);
+  const attention = useLoaded(attentionLoader);
   const d = data;
   const revenueTotal = d?.revenue ? d.revenue.reduce((sum, row) => sum + row.revenue, 0) : null;
   const pipe = d?.pipeline;
@@ -379,71 +386,129 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const loadRow = [isVisible("machine-load"), isVisible("work-due"), !office && isVisible("top-customers")].filter(Boolean).length;
   const rowCols = (n: number) => (["", "", "lg:grid-cols-2", "lg:grid-cols-3"][n] ?? "");
 
+  // Each panel is built once; the office view and the owner's Overview arrange them differently.
+  const revenuePanel = (className?: string) => <Panel title="Revenue, last 6 months" meta={revenueTotal !== null ? `${gbp(revenueTotal, 0)} received` : undefined} href={canOpen("/invoices") ? "/invoices" : undefined} className={className}>
+    {d?.revenue ? <RevenueLine data={d.revenue} /> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const owedPanel = <Panel title="Money owed by age" meta={d?.moneyOwed != null ? gbp(d.moneyOwed, 0) : undefined} href={canOpen("/invoices") ? "/invoices" : undefined}>
+    {d?.owedByAge && !d.owedByAge.some((b) => b.value > 0) ? <p className="py-6 text-center text-sm text-muted-foreground">Nothing owed.</p> : d?.owedByAge ? <div className="space-y-3"><SplitBar parts={d.owedByAge} /><ul className="divide-y divide-line/70">{d.owedByAge.map((b) => <li key={b.key} className="flex items-center gap-2 py-2 text-sm"><LightDot light={b.value > 0 ? b.light : "none"} /><span className="text-ink">{b.label}</span><span className="ml-auto font-semibold tabular-nums text-ink">{gbp(b.value, 0)}</span></li>)}</ul></div> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const quotesPanel = <Panel title="Quotes, last 90 days" meta={d?.quotes90?.winRate != null ? `Win rate ${d.quotes90.winRate}%` : undefined} href={canOpen("/quotes") ? "/quotes" : undefined}>
+    {d?.quotes90 ? <BarList rows={d.quotes90.outcomes.map((o) => ({ key: o.key, label: o.label, value: o.count, light: o.key === "accepted" ? "green" as const : o.key === "expired" ? "amber" as const : o.key === "rejected" ? "none" as const : undefined, colour: o.key === "sent" ? "var(--brand-accent)" : undefined }))} empty="No quotes sent in the last 90 days." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const statTiles = (keys: string[]) => stats.filter(([key]) => keys.includes(key)).map(([key, label, value, sub, href, light]) => (
+    <StatTile key={key} label={label} value={value} sub={sub} href={canOpen(href) ? href : undefined} tone={LIGHT_TONE[light]} valueClassName="text-2xl" />
+  ));
+  const jobsStatusPanel = <Panel title="Open jobs by status" meta={d?.jobsStatus ? `${d.jobsStatus.notStarted + d.jobsStatus.running + d.jobsStatus.waiting} open` : undefined} href={canOpen("/jobs") ? "/jobs" : undefined}>
+    {d?.jobsStatus ? <BarList rows={[
+      { key: "not-started", label: "Not started", value: d.jobsStatus.notStarted, colour: "var(--muted-foreground)" },
+      { key: "running", label: "Running", value: d.jobsStatus.running, colour: "var(--brand-accent)" },
+      { key: "waiting", label: "Waiting for inspection", value: d.jobsStatus.waiting, light: "amber" },
+      { key: "overdue", label: "Late", value: d.jobsStatus.overdue, light: "red" },
+    ]} empty="No open jobs." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const onTimePanel = <Panel title="Finished on time" meta={lastOnTime !== null ? <span className="inline-flex items-center gap-2"><LightDot light={lights.percent(lastOnTime, 95, 85)} />{lastOnTime}% latest month</span> : undefined}>
+    {d?.onTime ? <PercentLine data={d.onTime} target={95} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+    <p className="mt-2 text-[0.8125rem] text-muted-foreground">Finished jobs only: finished on or before their required date. Jobs with no date are left out.</p>
+  </Panel>;
+  const rftPanel = <Panel title="Right first time" meta="Last 6 months">
+    {d?.rft ? (d.rft.percent === null ? <p className="py-6 text-center text-sm text-muted-foreground">No inspections in the last 6 months.</p> : (
+      <div className="flex h-full flex-col justify-center gap-2 py-2">
+        <div className="flex items-center gap-3"><LightDot light={lights.percent(d.rft.percent, 95, 85)} className="size-3" /><span className="text-[2.5rem] font-semibold leading-none tabular-nums text-ink">{d.rft.percent}%</span></div>
+        <span className="text-sm text-muted-foreground">{d.rft.jobs} job{d.rft.jobs === 1 ? "" : "s"} inspected, {d.rft.failedFirst} failed first inspection</span>
+      </div>
+    )) : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const machinePanel = <Panel title="Machine load this week" meta="Booked hours of available" href={canOpen("/schedule") ? "/schedule" : undefined}>
+    {d?.machines ? <BarList rows={d.machines.map((m) => ({ key: m.id, label: m.name, value: m.percent, light: m.percent > 100 ? "red" as const : m.percent >= 85 ? "amber" as const : "green" as const }))} format={(v) => `${v}%`} empty="No machines booked this week." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const workDuePanel = <Panel title="Work coming due" meta="Next 14 days" href={canOpen("/jobs") ? "/jobs" : undefined}>
+    {d?.workDue ? <DueColumns data={d.workDue} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const customersPanel = <Panel title="Top customers" meta="Paid, last 6 months">
+    {d?.customers ? <BarList rows={d.customers.map((c) => ({ key: c.customer, label: c.customer, value: c.value }))} format={(v) => gbp(v, 0)} empty="No paid invoices in the last 6 months." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  </Panel>;
+  const pipelinePanel = (className?: string) => <MaybeLink href="/quotes" allowed={canOpen("/quotes")} className={className}><Card className={`h-full transition ${canOpen("/quotes") ? "cursor-pointer hover:bg-slate-50" : ""}`}><CardHeader><CardTitle>Quote pipeline</CardTitle></CardHeader><CardContent className="grid auto-rows-fr grid-cols-2 gap-3">{([["RFQs outstanding", pipe?.rfqs], ["Quotes awaiting reply", pipe?.quoted], ["Accepted", pipe?.accepted], ...(office ? [] : [["Invoices paid", pipe?.paid]])] as Array<[string, number | null | undefined]>).map(([label, value]) => (
+    <div key={label} className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg bg-canvas p-3 text-ink"><span className="text-sm leading-tight text-muted-foreground">{label}</span><span className="text-2xl font-semibold leading-none tabular-nums">{num(value, loading)}</span></div>
+  ))}</CardContent></Card></MaybeLink>;
+
+  if (!office) {
+    // The owner's Overview: what needs you today first, then how the business is doing, section by section (lib/overview).
+    const showLeaks = isVisible("leaks");
+    const kpiTile = (key: string) => shownKpis.filter(([k]) => k === key).map(([, tile]) => tile);
+    const moneyTiles = [...kpiTile("money-owed"), ...statTiles(["this-month-revenue", "avg-days-to-pay"])];
+    const moneyPanels = [isVisible("revenue-trend") && revenuePanel(), isVisible("money-by-age") && owedPanel, isVisible("top-customers") && customersPanel].filter(Boolean);
+    const workTiles = [...kpiTile("open-jobs"), ...kpiTile("open-quotes"), ...statTiles(["quotes-sent", "jobs-late-on-time"])];
+    const workPanels = [isVisible("quote-outcomes") && quotesPanel, isVisible("jobs-by-status") && jobsStatusPanel, isVisible("on-time-delivery") && onTimePanel, isVisible("right-first-time") && rftPanel, isVisible("work-due") && workDuePanel, showPipeline && pipelinePanel()].filter(Boolean);
+    const machinePanels = [isVisible("machine-load") && machinePanel].filter(Boolean);
+    const present = [
+      (showLeaks || showAttention) && "today",
+      (moneyTiles.length || moneyPanels.length) && "money",
+      (workTiles.length || workPanels.length) && "work",
+      machinePanels.length && "machines",
+      isVisible("team-week") && "people",
+    ].filter((s): s is string => typeof s === "string");
+    const leaks = leaksFrom(attention.data, { rfqsToQuote: loading ? null : d?.rfqsToQuote ?? null, overdueOwed: loading ? null : overdueOwed, money: (v) => gbp(v, 0) }, attention.error !== null);
+    const tileRow = (tiles: React.ReactNode[]) => tiles.length ? <div className={`grid gap-4 ${statGridClass(tiles.length)}`}>{tiles}</div> : null;
+    const panelGrid = (panels: React.ReactNode[]) => panels.length ? <div className={`grid gap-4 ${rowCols(Math.min(panels.length, 3))}`}>{panels.map((p, i) => <div key={i} className="contents">{p}</div>)}</div> : null;
+    return (
+      <>
+        {error ? <ErrorCard message={error} onRetry={retry} /> : null}
+        <OverviewJump present={present} />
+        {present.includes("today") ? <OverviewSection id="today" title="Today" sub="Where work and money are slipping, and what needs doing">
+          {showLeaks ? <OverviewLeaks leaks={leaks} /> : null}
+          {showAttention ? <div className="grid gap-6 xl:grid-cols-3"><AttentionList role="admin" preloaded={attention} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide /></div> : null}
+        </OverviewSection> : null}
+        {present.includes("money") ? <OverviewSection id="money" title="Money" sub="What's coming in, from whom, and what's still owed" href="/invoices" linkLabel="Open invoicing">
+          {tileRow(moneyTiles)}
+          {panelGrid(moneyPanels)}
+        </OverviewSection> : null}
+        {present.includes("work") ? <OverviewSection id="work" title="Work" sub="Winning it, making it, and getting it out on time" href="/jobs" linkLabel="Open the Job Board">
+          {tileRow(workTiles)}
+          {panelGrid(workPanels)}
+        </OverviewSection> : null}
+        {present.includes("machines") ? <OverviewSection id="machines" title="Machines" sub="How busy each machine is this week" href="/schedule" linkLabel="Machine schedule">
+          {panelGrid(machinePanels)}
+        </OverviewSection> : null}
+        {present.includes("people") ? <OverviewSection id="people" title="People" sub="This week, from clock-ins · only admins see this" href="/time/week" linkLabel="Weekly hours">
+          <TeamWeek />
+        </OverviewSection> : null}
+      </>
+    );
+  }
+
   return (
     <>
       {error ? <ErrorCard message={error} onRetry={retry} /> : null}
       {shownKpis.length ? <section className={`grid gap-4 ${kpiGridClass(shownKpis.length)}`}>{shownKpis.map(([, tile]) => tile)}</section> : null}
 
       {topRow ? <section className={`grid gap-4 ${topRow === 3 ? "xl:grid-cols-4" : rowCols(topRow)}`}>
-        {!office && isVisible("revenue-trend") ? <Panel title="Revenue, last 6 months" meta={revenueTotal !== null ? `${gbp(revenueTotal, 0)} received` : undefined} href={canOpen("/invoices") ? "/invoices" : undefined} className={topRow === 3 ? "xl:col-span-2" : undefined}>
-          {d?.revenue ? <RevenueLine data={d.revenue} /> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
-        {!office && isVisible("money-by-age") ? <Panel title="Money owed by age" meta={d?.moneyOwed != null ? gbp(d.moneyOwed, 0) : undefined} href={canOpen("/invoices") ? "/invoices" : undefined}>
-          {d?.owedByAge && !d.owedByAge.some((b) => b.value > 0) ? <p className="py-6 text-center text-sm text-muted-foreground">Nothing owed.</p> : d?.owedByAge ? <div className="space-y-3"><SplitBar parts={d.owedByAge} /><ul className="divide-y divide-line/70">{d.owedByAge.map((b) => <li key={b.key} className="flex items-center gap-2 py-2 text-sm"><LightDot light={b.value > 0 ? b.light : "none"} /><span className="text-ink">{b.label}</span><span className="ml-auto font-semibold tabular-nums text-ink">{gbp(b.value, 0)}</span></li>)}</ul></div> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
-        {isVisible("quote-outcomes") ? <Panel title="Quotes, last 90 days" meta={d?.quotes90?.winRate != null ? `Win rate ${d.quotes90.winRate}%` : undefined} href={canOpen("/quotes") ? "/quotes" : undefined}>
-          {d?.quotes90 ? <BarList rows={d.quotes90.outcomes.map((o) => ({ key: o.key, label: o.label, value: o.count, light: o.key === "accepted" ? "green" as const : o.key === "expired" ? "amber" as const : o.key === "rejected" ? "none" as const : undefined, colour: o.key === "sent" ? "var(--brand-accent)" : undefined }))} empty="No quotes sent in the last 90 days." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
+        {!office && isVisible("revenue-trend") ? revenuePanel(topRow === 3 ? "xl:col-span-2" : undefined) : null}
+        {!office && isVisible("money-by-age") ? owedPanel : null}
+        {isVisible("quote-outcomes") ? quotesPanel : null}
       </section> : null}
 
       {!office && stats.length ? <section className={`grid gap-4 ${statGridClass(stats.length)}`}>
-        {stats.map(([key, label, value, sub, href, light]) => (
-          <StatTile key={key} label={label} value={value} sub={sub} href={canOpen(href) ? href : undefined} tone={LIGHT_TONE[light]} valueClassName="text-2xl" />
-        ))}
+        {statTiles(stats.map(([key]) => key))}
       </section> : null}
 
       {opsRow ? <section className={`grid gap-4 ${rowCols(opsRow)}`}>
-        {isVisible("jobs-by-status") ? <Panel title="Open jobs by status" meta={d?.jobsStatus ? `${d.jobsStatus.notStarted + d.jobsStatus.running + d.jobsStatus.waiting} open` : undefined} href={canOpen("/jobs") ? "/jobs" : undefined}>
-          {d?.jobsStatus ? <BarList rows={[
-            { key: "not-started", label: "Not started", value: d.jobsStatus.notStarted, colour: "var(--muted-foreground)" },
-            { key: "running", label: "Running", value: d.jobsStatus.running, colour: "var(--brand-accent)" },
-            { key: "waiting", label: "Waiting for inspection", value: d.jobsStatus.waiting, light: "amber" },
-            { key: "overdue", label: "Late", value: d.jobsStatus.overdue, light: "red" },
-          ]} empty="No open jobs." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
-        {isVisible("on-time-delivery") ? <Panel title="Finished on time" meta={lastOnTime !== null ? <span className="inline-flex items-center gap-2"><LightDot light={lights.percent(lastOnTime, 95, 85)} />{lastOnTime}% latest month</span> : undefined}>
-          {d?.onTime ? <PercentLine data={d.onTime} target={95} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
-          <p className="mt-2 text-[0.8125rem] text-muted-foreground">Finished jobs only: finished on or before their required date. Jobs with no date are left out.</p>
-        </Panel> : null}
-        {isVisible("right-first-time") ? <Panel title="Right first time" meta="Last 6 months">
-          {d?.rft ? (d.rft.percent === null ? <p className="py-6 text-center text-sm text-muted-foreground">No inspections in the last 6 months.</p> : (
-            <div className="flex h-full flex-col justify-center gap-2 py-2">
-              <div className="flex items-center gap-3"><LightDot light={lights.percent(d.rft.percent, 95, 85)} className="size-3" /><span className="text-[2.5rem] font-semibold leading-none tabular-nums text-ink">{d.rft.percent}%</span></div>
-              <span className="text-sm text-muted-foreground">{d.rft.jobs} job{d.rft.jobs === 1 ? "" : "s"} inspected, {d.rft.failedFirst} failed first inspection</span>
-            </div>
-          )) : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
+        {isVisible("jobs-by-status") ? jobsStatusPanel : null}
+        {isVisible("on-time-delivery") ? onTimePanel : null}
+        {isVisible("right-first-time") ? rftPanel : null}
       </section> : null}
 
       {loadRow ? <section className={`grid gap-4 ${rowCols(loadRow)}`}>
-        {isVisible("machine-load") ? <Panel title="Machine load this week" meta="Booked hours of available" href={canOpen("/schedule") ? "/schedule" : undefined}>
-          {d?.machines ? <BarList rows={d.machines.map((m) => ({ key: m.id, label: m.name, value: m.percent, light: m.percent > 100 ? "red" as const : m.percent >= 85 ? "amber" as const : "green" as const }))} format={(v) => `${v}%`} empty="No machines booked this week." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
-        {isVisible("work-due") ? <Panel title="Work coming due" meta="Next 14 days" href={canOpen("/jobs") ? "/jobs" : undefined}>
-          {d?.workDue ? <DueColumns data={d.workDue} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
-        {!office && isVisible("top-customers") ? <Panel title="Top customers" meta="Paid, last 6 months">
-          {d?.customers ? <BarList rows={d.customers.map((c) => ({ key: c.customer, label: c.customer, value: c.value }))} format={(v) => gbp(v, 0)} empty="No paid invoices in the last 6 months." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
-        </Panel> : null}
+        {isVisible("machine-load") ? machinePanel : null}
+        {isVisible("work-due") ? workDuePanel : null}
+        {!office && isVisible("top-customers") ? customersPanel : null}
       </section> : null}
 
       {!office && isVisible("team-week") ? <TeamWeek /> : null}
 
       {showAttention || showPipeline ? <section className="grid gap-6 xl:grid-cols-3">
         {showAttention ? <AttentionList role={office ? "office" : "admin"} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide={!showPipeline} /> : null}
-        {showPipeline ? <MaybeLink href="/quotes" allowed={canOpen("/quotes")} className={showAttention ? undefined : "xl:col-span-3"}><Card className={`h-full transition ${canOpen("/quotes") ? "cursor-pointer hover:bg-slate-50" : ""}`}><CardHeader><CardTitle>Quote pipeline</CardTitle></CardHeader><CardContent className="grid auto-rows-fr grid-cols-2 gap-3">{([["RFQs outstanding", pipe?.rfqs], ["Quotes awaiting reply", pipe?.quoted], ["Accepted", pipe?.accepted], ...(office ? [] : [["Invoices paid", pipe?.paid]])] as Array<[string, number | null | undefined]>).map(([label, value]) => (
-          <div key={label} className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg bg-canvas p-3 text-ink"><span className="text-sm leading-tight text-muted-foreground">{label}</span><span className="text-2xl font-semibold leading-none tabular-nums">{num(value, loading)}</span></div>
-        ))}</CardContent></Card></MaybeLink> : null}
+        {showPipeline ? pipelinePanel(showAttention ? undefined : "xl:col-span-3") : null}
       </section> : null}
     </>
   );
@@ -458,10 +523,12 @@ function MaybeLink({ href, allowed, children, className }: { href: string; allow
 }
 
 /** The "Needs attention" card (rules: lib/attention-items). It loads on its own, so it never blanks, or is blanked by, the rest of the dashboard. */
-function AttentionList({ role, extra = [], extraFailed = false, extraLoading = false, wide = false }: { role: AttentionRole; extra?: AttentionItem[]; extraFailed?: boolean; extraLoading?: boolean; wide?: boolean }) {
+function AttentionList({ role, extra = [], extraFailed = false, extraLoading = false, wide = false, preloaded }: { role: AttentionRole; extra?: AttentionItem[]; extraFailed?: boolean; extraLoading?: boolean; wide?: boolean; preloaded?: Loaded<AttentionSection[] | null> }) {
   const canOpen = useCanOpen();
-  const loader = useCallback(() => (supabase ? loadAttention(supabase, role) : Promise.reject(new Error("Supabase is not configured."))), [role]);
-  const { data: sections, loading, error, retry } = useLoaded(loader);
+  // The owner's Overview loads the list once for the leaks row and this card (preloaded); everyone else's card loads its own.
+  const loader = useCallback(() => (preloaded ? Promise.resolve([]) : supabase ? loadAttention(supabase, role) : Promise.reject(new Error("Supabase is not configured."))), [role, preloaded]);
+  const own = useLoaded(loader);
+  const { data: sections, loading, error, retry } = preloaded ?? own;
   const total = (sections ?? []).reduce((sum, s) => sum + s.count, 0) + extra.length;
   const anyFailed = extraFailed || (sections ?? []).some((s) => s.failed);
   const state = attentionState(total, anyFailed);
