@@ -43,7 +43,8 @@ export const MY_JOBS_LIMIT = 20;
 /** Unfinished jobs assigned to userId, soonest required/due date first (no date last). `today` (YYYY-MM-DD, UK) sets the due light. */
 export function myJobs(rows: MyJobInput[], userId: string | null | undefined, limit = MY_JOBS_LIMIT, today = toDateInput(new Date())): MyJob[] {
   if (!userId) return [];
-  const mine = rows.filter((row) => !row.finished_at && row.assigned_to === userId);
+  // A failed inspection sets stage = rework but leaves finished_at set (migration 037), so rework jobs stay on the list.
+  const mine = rows.filter((row) => (!row.finished_at || row.stage === "rework") && row.assigned_to === userId);
   mine.sort((a, b) => {
     const da = a.date_required || a.due_date || "";
     const db = b.date_required || b.due_date || "";

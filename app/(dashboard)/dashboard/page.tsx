@@ -292,7 +292,7 @@ async function loadWorkshopData(userId?: string | null): Promise<WorkshopData> {
   const names = new Map((machines.data ?? []).map((m) => [String(m.id), String(m.name ?? "")]));
   let mine: MyJob[] | null = null;
   if (userId) {
-    const mineRes = await q(supabase!.from("jobs").select("id, job_no, customer, description, quantity_required, stage, status, specification, date_required, due_date, started_at, finished_at, assigned_to").eq("assigned_to", userId).is("finished_at", null).order("date_required", { ascending: true, nullsFirst: false }).limit(200));
+    const mineRes = await q(supabase!.from("jobs").select("id, job_no, customer, description, quantity_required, stage, status, specification, date_required, due_date, started_at, finished_at, assigned_to").eq("assigned_to", userId).or("finished_at.is.null,stage.eq.rework").order("date_required", { ascending: true, nullsFirst: false }).limit(200));
     // Fetch a bounded larger set: DB order ignores due_date fallback, so myJobs sorts by effective date and caps display at 20.
     mine = mineRes.data ? myJobs(mineRes.data, userId) : null;
   }

@@ -14,6 +14,12 @@ describe("myJobs", () => {
   it("returns only unfinished jobs assigned to the user, soonest due first", () => {
     expect(myJobs(rows, "u1").map((j) => j.id)).toEqual(["3", "1", "5"]);
   });
+  it("keeps a job in rework although finished_at is set (a failed inspection leaves it set) and gives it the rework action", () => {
+    const [job] = myJobs([{ id: "rw", stage: "rework", finished_at: "2026-10-17T16:00:00Z", assigned_to: "u1" }], "u1", MY_JOBS_LIMIT, TODAY);
+    expect(job).toMatchObject({ id: "rw", stage: "rework", status: "running" });
+    expect(myJobAction(job, "workshop")).toEqual({ kind: "rework", label: "Open rework on the Job Board" });
+    expect(myJobs([{ id: "done", stage: "complete", finished_at: "2026-10-17T16:00:00Z", assigned_to: "u1" }], "u1")).toEqual([]);
+  });
   it("returns empty when there is no user", () => {
     expect(myJobs(rows, null)).toEqual([]);
     expect(myJobs(rows, undefined)).toEqual([]);
@@ -38,7 +44,7 @@ describe("myJobs", () => {
     const out = myJobs([
       { id: "a", assigned_to: "u1" },
       { id: "b", started_at: "2026-10-18T08:05:00Z", assigned_to: "u1" },
-      { id: "c", stage: "rework", assigned_to: "u1" },
+      { id: "c", stage: "rework", finished_at: "2026-10-17T16:00:00Z", assigned_to: "u1" },
     ], "u1", MY_JOBS_LIMIT, TODAY);
     expect(Object.fromEntries(out.map((j) => [j.id, j.status]))).toEqual({ a: "not_started", b: "running", c: "running" });
   });
