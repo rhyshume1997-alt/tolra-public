@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useCompanyProfile } from "@/lib/company";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
-import { fmtDate, nowIso } from "@/lib/dates";
+import { fmtDate } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { friendlyError } from "@/lib/friendly-error";
 import { gbp } from "@/lib/money";
@@ -37,7 +37,8 @@ import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
 import { useUser } from "@/lib/use-user";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
-import { type LinkedQuote, type RfqStage, linkedQuotes, matchesStatusFilter, rfqFigures, rfqSpec, rfqStage, rfqStageLabel, shouldMarkClarification, showsStatusBadge } from "@/lib/rfq-stage";
+import { logRfqClarification, rfqClarificationToast } from "@/lib/rfq-clarification";
+import { type LinkedQuote, type RfqStage, linkedQuotes, matchesStatusFilter, rfqFigures, rfqSpec, rfqStage, rfqStageLabel, showsStatusBadge } from "@/lib/rfq-stage";
 
 type RfqRow = {
   id: string;
@@ -284,33 +285,11 @@ export default function RfqPage() {
     await run(async () => {
       try {
         if (!supabase) throw new Error("Supabase is not configured.");
-        const organizationId = await getCurrentOrganizationId();
-        const { error } = await supabase.from("email_history").insert({
-          organization_id: organizationId,
-          to_email: rfq.email,
-          to_name: rfq.customer,
-          subject,
-          body,
-          status: "sent_manually",
-          related_to_type: "rfq",
-          related_to_id: rfq.id,
-          drafted_by: profile?.id ?? null,
-          sent_at: nowIso(),
-        });
-        if (error) throw error;
+        // One call (migration 110): the e-mail is logged and an outstanding RFQ moves to Awaiting clarification together, or neither.
+        const { status, moved } = await logRfqClarification(supabase, rfq.id, subject, body);
         setClarifying(null);
-        let moved = false;
-        // Second request (not one transaction; an RPC would need SQL): move an outstanding RFQ to Awaiting Clarification (never a quoted one back: the update only matches a New or Ready RFQ, so a quote made meanwhile isn't undone). The history row stays if this fails.
-        if (shouldMarkClarification(rfq, linked.get(rfq.id))) {
-          const { data: updated, error: statusError } = await supabase.from("rfqs").update({ status: "clarification" }).eq("id", rfq.id).in("status", ["new", "ready"]).select("id");
-          if (statusError || !updated?.length) {
-            toast.error("The email was recorded in email history, but the RFQ status didn't change to Clarification. Change it on the RFQ yourself or try again.");
-            return;
-          }
-          setRfqs((current) => current.map((row) => (row.id === rfq.id ? { ...row, status: "clarification" } : row)));
-          moved = true;
-        }
-        toast.success(moved ? "Logged as sent manually. The RFQ is now awaiting clarification." : "Logged as sent manually");
+        if (moved) setRfqs((current) => current.map((row) => (row.id === rfq.id ? { ...row, status: status as RfqRow["status"] } : row)));
+        toast.success(rfqClarificationToast(moved));
       } catch (err) {
         toast.error(friendlyError(err, "Couldn't log the email. Try again."));
       }

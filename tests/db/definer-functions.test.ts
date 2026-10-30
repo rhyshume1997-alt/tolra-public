@@ -307,6 +307,8 @@ function attempts(): Attempt[] {
     // 039: a company admin creating a company through the platform function is refused (and nothing is created; the slug is synthetic).
     ["public.platform_create_organization(p_name text, p_slug text, p_admin_email text)", () => alpha.rpc("platform_create_organization", { p_name: `${MARKER} Company`, p_slug: `t-${world.runId}-definer`, p_admin_email: "x@example.test" }), "refused"],
     // Record the caller's own work and ignore a foreign target: nothing of beta's is touched or returned.
+    // 110: the clarification is logged against the caller's own company's RFQ only; beta's RFQ is refused untouched.
+    ["public.log_rfq_clarification(p_rfq_id uuid, p_subject text, p_body text)", () => alpha.rpc("log_rfq_clarification", { p_rfq_id: beta.rfq, p_subject: "S", p_body: "B" }), "refused"],
     ["public.reserve_mail_send(p_kind text, p_key text, p_recipients text[], p_subject text, p_body text, p_rfq uuid)", () => alpha.rpc("reserve_mail_send", { p_kind: "send", p_key: randomBytes(32).toString("hex"), p_recipients: ["x@example.test"], p_subject: "S", p_body: "B", p_rfq: beta.rfq }), "nothing of beta's"],
     // 040: an admin marks stale photo reservations abandoned in their own company only (beta's fingerprint below is unchanged).
     ["public.abandon_stale_job_photos(p_hours integer)", () => alpha.rpc("abandon_stale_job_photos", { p_hours: 24 }), "nothing of beta's"],
