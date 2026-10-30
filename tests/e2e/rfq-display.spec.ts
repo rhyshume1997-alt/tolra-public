@@ -119,6 +119,12 @@ test("Outstanding -> Quoted still works with Stage hidden (checked via the Quote
   await page.getByRole("button", { name: /^Quoted \(/ }).click();
   await expect(stageCard()).toHaveCount(1); // in the Quoted list
   await expect(stageCard().locator('[data-rfq-field="stage"]')).toHaveCount(0);
-  await stageCard().getByRole("link", { name: `Open ${quote.quote_ref}` }).click();
-  await expect(page).toHaveURL(new RegExp(`quote=${quote.id}`));
+  // The link names the quote. The Quotes page reads ?quote=<id> once its list has loaded, opens that quote and
+  // tidies the address back to /quotes (app/(dashboard)/quotes/page.tsx), so the ?quote= address is only there for a
+  // moment: check the link's target, then that the right quote opened, not the address after the page has used it.
+  const open = stageCard().getByRole("link", { name: `Open ${quote.quote_ref}` });
+  await expect(open).toHaveAttribute("href", `/quotes?quote=${quote.id}`);
+  await open.click();
+  await expect(page.getByRole("dialog", { name: `${quote.quote_ref} quote details` })).toBeVisible();
+  await expect(page).toHaveURL(/\/quotes$/);
 });
