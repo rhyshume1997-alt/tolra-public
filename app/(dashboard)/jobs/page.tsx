@@ -762,8 +762,12 @@ export default function JobsPage() {
   const [releaseFor, setReleaseFor] = useState<WorkshopJob | null>(null);
   const releaseOffered = (job: WorkshopJob) => earlyReleaseOffered(job, activeRole);
   const releaseButton = (job: WorkshopJob, card = false) => (releaseOffered(job)
-    ? <Button size={card ? undefined : "sm"} variant="outline" className={secondaryTouch} disabled={saving} title="Let it go out before it passes inspection (admin, with a reason)" onClick={() => setReleaseFor(job)}><FastForward className="size-4" /> Release early</Button>
+    ? <Button size={card ? undefined : "sm"} variant="outline" className={rowTouch} disabled={saving} title="Let it go out before it passes inspection (admin, with a reason)" onClick={() => setReleaseFor(job)}><FastForward className="size-4" /> Release early</Button>
     : null);
+  /** Archive / Unarchive (components/phase-filter, shared by every list): wrapped so its button is a 48px row target here only. */
+  const archiveButton = (job: WorkshopJob) => (
+    <span className="contents [&_button]:min-h-12"><ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /></span>
+  );
   const reworkNote = (job: WorkshopJob) => {
     const live = liveRework(job);
     return live ? `${REWORK_STATUS_LABELS[live.status]}: ${quantityText(live, job.quantity_required)}. ${live.reason}` : "";
@@ -1183,10 +1187,13 @@ export default function JobsPage() {
 
   // Touch sizes (coarse pointer): the workshop works with gloves, so Start / Finish are at least 64px high and every
   // other control at least 48px; everyone else keeps the standard 44px that Button gives on a coarse pointer.
+  // A job's row, card and the selection bar go further: every control in them is at least 48px tall on any pointer (taller rows,
+  // easy to scan and to tap on a tablet), so primaryTouch, boxTouch and rowTouch carry min-h-12 too.
   const workshop = activeRole === "workshop";
-  const primaryTouch = workshop ? "pointer-coarse:h-16 pointer-coarse:min-w-16" : "";
-  const boxTouch = workshop ? "pointer-coarse:size-12" : undefined;
+  const primaryTouch = cn("min-h-12", workshop ? "pointer-coarse:h-16 pointer-coarse:min-w-16" : "");
+  const boxTouch = cn("min-h-12", workshop ? "pointer-coarse:size-12" : "");
   const secondaryTouch = workshop ? "pointer-coarse:h-12 pointer-coarse:min-w-12" : "";
+  const rowTouch = cn("min-h-12", secondaryTouch);
 
   /** Stacked card for one job: phones always, and the Cards view on larger screens. */
   const jobCard = (job: WorkshopJob, sheet = false) => {
@@ -1218,26 +1225,26 @@ export default function JobsPage() {
               <div className="flex flex-wrap gap-2">
                 {playButton(job, "default")}
                 {finish.shown ? <Button variant="finish" className={cn(primaryTouch, saving || !finish.enabled ? "opacity-50" : "")} aria-disabled={saving || !finish.enabled || undefined} title={finish.reason || "Finish"} onClick={() => (!finish.enabled ? toast.info(`${job.job_no}: ${finish.reason}`) : askFinish(job.id))}>{job.finished_at ? "Finished" : "Finish"}</Button> : null}
-                {isViewer || !inspectOffered || !job.finished_at || job.inspected_at || (inRework(job) && activeRole !== "admin") ? null : <Button variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setInspectJob(job)}><ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" /> Inspected</Button>}
-                {reopenOf(job).allowed ? <Button variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setReopenFor(job)}><RotateCcw className="size-4" /> Reopen</Button> : null}
+                {isViewer || !inspectOffered || !job.finished_at || job.inspected_at || (inRework(job) && activeRole !== "admin") ? null : <Button variant="outline" className={rowTouch} disabled={saving} onClick={() => setInspectJob(job)}><ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" /> Inspected</Button>}
+                {reopenOf(job).allowed ? <Button variant="outline" className={rowTouch} disabled={saving} onClick={() => setReopenFor(job)}><RotateCcw className="size-4" /> Reopen</Button> : null}
                 {releaseButton(job, true)}
-                {hasRework(job) ? <Button variant="outline" className={secondaryTouch} onClick={() => setReworkJob(job)}><Wrench className="size-4" /> Rework</Button> : null}
-                <Button variant="outline" className={secondaryTouch} onClick={() => setWorksheetJob(job)}>Worksheet</Button>
-                {isViewer ? null : <Button variant="outline" className={secondaryTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
-                <Button asChild variant="outline" className={secondaryTouch}><Link href={`/jobs/${job.id}/print`}>Print</Link></Button>
-                {canOfferJobDeliveryNote(activeRole, job) ? <Button variant="outline" className={secondaryTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
-                {canSend ? <Button onClick={() => openSend(job)} disabled={saving} className={cn("bg-brand text-brand-ink", secondaryTouch)}>Send</Button> : null}
-                {archive.canManage && job.inspected_at ? <ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /> : null}
+                {hasRework(job) ? <Button variant="outline" className={rowTouch} onClick={() => setReworkJob(job)}><Wrench className="size-4" /> Rework</Button> : null}
+                <Button variant="outline" className={rowTouch} onClick={() => setWorksheetJob(job)}>Worksheet</Button>
+                {isViewer ? null : <Button variant="outline" className={rowTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
+                <Button asChild variant="outline" className={rowTouch}><Link href={`/jobs/${job.id}/print`}>Print</Link></Button>
+                {canOfferJobDeliveryNote(activeRole, job) ? <Button variant="outline" className={rowTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
+                {canSend ? <Button onClick={() => openSend(job)} disabled={saving} className={cn("bg-brand text-brand-ink", rowTouch)}>Send</Button> : null}
+                {archive.canManage && job.inspected_at ? archiveButton(job) : null}
               </div>
             </CardContent>
     </Card>
     );
   };
 
-  /** A row action: an icon on a mouse, icon plus its word on a touch screen (the name is always there for screen readers). */
-  // Words beside the icon on touch screens and below lg (tablets with a mouse too); a disabled tap says why (aria-disabled + a toast).
+  /** A row action: icon plus its word on every screen, so no action is named only by a hover tooltip (the name is there for screen readers too). */
+  // A disabled tap (or Enter on it) says why: aria-disabled + a toast with the reason, not the hover title alone.
   const rowAction = ({ label: text, title, icon, variant = "outline", className, disabled, onClick, primary }: { label: string; title: string; icon: React.ReactNode; variant?: "start" | "finish" | "outline" | "default"; className?: string; disabled?: boolean; onClick: () => void; primary?: boolean }) => (
-    <Button size="sm" variant={variant} className={cn("w-8 px-0 pointer-coarse:w-auto pointer-coarse:px-3 max-lg:w-auto max-lg:px-3", disabled ? "opacity-50" : "", className, primary ? primaryTouch : secondaryTouch)} title={title} aria-label={text} aria-disabled={disabled || undefined} onClick={() => (disabled ? toast.info(title) : onClick())}>{icon}<span aria-hidden className="hidden pointer-coarse:inline max-lg:inline">{text}</span></Button>
+    <Button size="sm" variant={variant} className={cn("px-3", disabled ? "opacity-50" : "", className, primary ? primaryTouch : rowTouch)} title={title} aria-label={text} aria-disabled={disabled || undefined} onClick={() => (disabled ? toast.info(title) : onClick())}>{icon}<span aria-hidden>{text}</span></Button>
   );
   /** Play (green outline) or Pause (solid amber) for one job (plan 2.1). Words always shown; "Starting..." while the server answers. */
   const playButton = (job: WorkshopJob, size: "sm" | "default" = "sm") => {
@@ -1263,7 +1270,7 @@ export default function JobsPage() {
     const from = relatedFrom.get(job.id) ?? [];
     if (!to && !from.length) return null;
     const link = (target: WorkshopJob) => (
-      <button key={target.id} type="button" className={cn("font-mono font-semibold text-brand underline underline-offset-2 pointer-coarse:min-h-11 pointer-coarse:px-2", workshop ? "pointer-coarse:min-h-12" : "")} onClick={() => goToJob(target.id)}>{target.job_no}</button>
+      <button key={target.id} type="button" className="min-h-12 font-mono font-semibold text-brand underline underline-offset-2 pointer-coarse:px-2" onClick={() => goToJob(target.id)}>{target.job_no}</button>
     );
     return (
       <span data-testid="related-links" className="flex flex-wrap items-center gap-x-1 font-sans text-xs font-normal text-slate-600 dark:text-slate-300">
@@ -1299,7 +1306,7 @@ export default function JobsPage() {
     const picker = (running: boolean) => (
       <MachinePicker jobNo={job.job_no} jobId={job.id} machines={pickerMachines(job)} inUse={live.byMachine} paused={pausedByMachine} pick={pickOf(job)} role={activeRole} disabled={saving} loadFailed={machinesLoadError} loading={!machinesLoaded} canAddMachine={canAddMachine}
         running={running} sheet={sheet} active={sheet === isPhone} open={pickerFor === job.id} onOpenChange={(open) => setPickerFor(open ? job.id : null)}
-        onChange={(pick) => setPick(job, pick)} onAdd={(ids) => play(job, { machines: ids, bench: false })} onStart={(chosen) => play(job, chosen)} touch={workshop ? "pointer-coarse:min-h-12" : undefined}
+        onChange={(pick) => setPick(job, pick)} onAdd={(ids) => play(job, { machines: ids, bench: false })} onStart={(chosen) => play(job, chosen)} touch="min-h-12"
         stage={stageAfterStart(job.stage, "machining") ? { value: stages.get(job.id) ?? DEFAULT_START_STAGE, fromSetup: job.stage === "setup", onChange: (next) => setStages((current) => new Map(current).set(job.id, next)) } : null} />
     );
     return (
@@ -1310,7 +1317,7 @@ export default function JobsPage() {
               <span key={row.run_id} className="inline-flex flex-wrap items-center gap-1" data-stale={isStale(row) ? "true" : undefined}>
                 <span className="rounded-none bg-red-100 px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-red-800 dark:bg-red-900/40 dark:text-red-200">In use</span>
                 <span className="font-normal text-slate-700 dark:text-slate-200">{row.machine_name}, since {fmtDateTime(row.started_at)}{isStale(row) ? " (no Finish or Pause for 12 h+)" : ""}</span>
-                {activeRole === "admin" ? <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", secondaryTouch)} aria-label={`Release ${row.machine_name}`} title="Free this machine (the run ends now; recorded)" disabled={saving} onClick={() => { setReleaseReason(""); setReleaseRow(row); }}><Unlock className="size-3.5" /> Release</Button> : null}
+                {activeRole === "admin" ? <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", rowTouch)} aria-label={`Release ${row.machine_name}`} title="Free this machine (the run ends now; recorded)" disabled={saving} onClick={() => { setReleaseReason(""); setReleaseRow(row); }}><Unlock className="size-3.5" /> Release</Button> : null}
               </span>
             ))}
           </span>
@@ -1359,15 +1366,15 @@ export default function JobsPage() {
       <span data-testid="job-assignee" className="flex flex-wrap items-center gap-1 font-sans text-xs font-normal text-slate-600 dark:text-slate-300">
         {name ? <>Assigned to <span className="font-semibold text-ink" data-testid="job-operator">{name}</span></> : <span className="text-slate-400" data-testid="job-operator">Unassigned</span>}
         {canPick ? (
-          <select aria-label={`Assign ${job.job_no}`} className={cn("ml-1 max-w-full rounded-none border border-slate-300 bg-white px-1 py-0.5 text-xs dark:bg-slate-900", workshop ? "pointer-coarse:min-h-12" : "pointer-coarse:min-h-11")} value={job.assigned_to ?? ""} disabled={saving} onChange={(event) => assignJob(job, event.target.value || null)}>
+          <select aria-label={`Assign ${job.job_no}`} className="ml-1 min-h-12 max-w-full rounded-none border border-slate-300 bg-white px-1 py-0.5 text-xs dark:bg-slate-900" value={job.assigned_to ?? ""} disabled={saving} onChange={(event) => assignJob(job, event.target.value || null)}>
             <option value="">Unassigned</option>
             {assignable.map((person) => <option key={person.user_id} value={person.user_id}>{person.display_name}</option>)}
           </select>
         ) : null}
         {activeRole === "workshop" && me && !job.inspected_at ? (
           job.assigned_to === me
-            ? <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", secondaryTouch)} disabled={saving} onClick={() => assignJob(job, null)}>Hand back</Button>
-            : <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", secondaryTouch)} disabled={saving} onClick={() => assignJob(job, me)}>Take this job</Button>
+            ? <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", rowTouch)} disabled={saving} onClick={() => assignJob(job, null)}>Hand back</Button>
+            : <Button size="sm" variant="outline" className={cn("h-7 px-2 text-xs", rowTouch)} disabled={saving} onClick={() => assignJob(job, me)}>Take this job</Button>
         ) : null}
         {runners.length ? <span data-testid="on-it-now" className="block w-full">On it now: {runners.join(", ")}</span> : null}
         {pausedBy ? <span data-testid="paused-by" className="block w-full">{pausedBy}</span> : null}
@@ -1418,7 +1425,7 @@ export default function JobsPage() {
       <TableCell className="font-mono font-semibold whitespace-normal"><span className="flex flex-wrap items-center gap-1">{job.job_no}{job.is_internal ? <InternalBadge /> : null}</span>{relatedLinks(job)}</TableCell>
     ),
     customer: (
-      <TableCell><span className="block truncate" title={job.customer}>{job.customer}</span></TableCell>
+      <TableCell className="whitespace-normal"><span className="block break-words">{job.customer}</span></TableCell>
     ),
     description: (
       <TableCell className="whitespace-normal"><span data-testid="job-description" className="block break-words">{boardDescription(job.description, job.specification)}</span></TableCell>
@@ -1458,16 +1465,16 @@ export default function JobsPage() {
       <TableCell className="whitespace-normal"><div className="flex flex-wrap items-center gap-2">
         {playButton(job)}
         {finishCheck(job, actionContext).shown ? <Button size="sm" variant="finish" className={cn(primaryTouch, saving || !finishCheck(job, actionContext).enabled ? "opacity-50" : "")} aria-disabled={saving || !finishCheck(job, actionContext).enabled || undefined} title={finishCheck(job, actionContext).reason || "Finish"} onClick={() => (!finishCheck(job, actionContext).enabled ? toast.info(`${job.job_no}: ${finishCheck(job, actionContext).reason}`) : askFinish(job.id))}>{job.finished_at ? "Finished" : "Finish"}</Button> : null}
-                {isViewer || !inspectOffered || !job.finished_at || job.inspected_at || (inRework(job) && activeRole !== "admin") ? null : <Button size="sm" variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setInspectJob(job)}><ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" /> Inspected</Button>}
-                {reopenOf(job).allowed ? <Button size="sm" variant="outline" className={secondaryTouch} disabled={saving} onClick={() => setReopenFor(job)}><RotateCcw className="size-4" /> Reopen</Button> : null}
+                {isViewer || !inspectOffered || !job.finished_at || job.inspected_at || (inRework(job) && activeRole !== "admin") ? null : <Button size="sm" variant="outline" className={rowTouch} disabled={saving} onClick={() => setInspectJob(job)}><ShieldCheck className="size-4 text-orange-600 dark:text-orange-400" /> Inspected</Button>}
+                {reopenOf(job).allowed ? <Button size="sm" variant="outline" className={rowTouch} disabled={saving} onClick={() => setReopenFor(job)}><RotateCcw className="size-4" /> Reopen</Button> : null}
         {releaseButton(job)}
-        {hasRework(job) ? <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setReworkJob(job)}><Wrench className="size-4" /> Rework</Button> : null}
-        <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setWorksheetJob(job)}><ClipboardList className="size-4" /> Worksheet</Button>
-        {isViewer ? null : <Button size="sm" variant="outline" className={secondaryTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
-        <Button asChild size="sm" variant="outline" className={secondaryTouch}><Link href={`/jobs/${job.id}/print`}><Printer className="size-4" /> Print</Link></Button>
-        {canOfferJobDeliveryNote(activeRole, job) ? <Button size="sm" variant="outline" className={secondaryTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
-        {canSend ? <Button size="sm" className={cn("bg-brand text-brand-ink", secondaryTouch)} disabled={saving} onClick={() => openSend(job)}><Mail className="size-4" /> Send</Button> : null}
-        {archive.canManage && job.inspected_at ? <ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /> : null}
+        {hasRework(job) ? <Button size="sm" variant="outline" className={rowTouch} onClick={() => setReworkJob(job)}><Wrench className="size-4" /> Rework</Button> : null}
+        <Button size="sm" variant="outline" className={rowTouch} onClick={() => setWorksheetJob(job)}><ClipboardList className="size-4" /> Worksheet</Button>
+        {isViewer ? null : <Button size="sm" variant="outline" className={rowTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
+        <Button asChild size="sm" variant="outline" className={rowTouch}><Link href={`/jobs/${job.id}/print`}><Printer className="size-4" /> Print</Link></Button>
+        {canOfferJobDeliveryNote(activeRole, job) ? <Button size="sm" variant="outline" className={rowTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
+        {canSend ? <Button size="sm" className={cn("bg-brand text-brand-ink", rowTouch)} disabled={saving} onClick={() => openSend(job)}><Mail className="size-4" /> Send</Button> : null}
+        {archive.canManage && job.inspected_at ? archiveButton(job) : null}
       </div></TableCell>
     ),
   });
@@ -1476,7 +1483,7 @@ export default function JobsPage() {
       <TableCell className="font-mono font-semibold whitespace-normal"><span data-testid="job-no-cell" className="flex min-w-0 flex-wrap items-center gap-x-1"><span className="min-w-0 [overflow-wrap:anywhere]" title={job.job_no}>{job.job_no}</span>{job.is_internal ? <InternalBadge /> : null}</span>{relatedLinks(job)}</TableCell>
     ),
     customer: (
-      <TableCell><span className="block truncate" title={job.customer}>{job.customer}</span></TableCell>
+      <TableCell className="whitespace-normal"><span className="block break-words">{job.customer}</span></TableCell>
     ),
     description: (
       <TableCell className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{boardDescription(job.description, job.specification)}</span></TableCell>
@@ -1522,7 +1529,7 @@ export default function JobsPage() {
           {hasRework(job) ? rowAction({ label: "Rework", title: inRework(job) ? "Rework: open the failed inspection's rework" : "Rework history", icon: <Wrench className="size-4" />, onClick: () => setReworkJob(job) }) : null}
           {rowAction({ label: "Worksheet", title: "Worksheet", icon: <ClipboardList className="size-4" />, onClick: () => setWorksheetJob(job) })}
           {isViewer ? null : rowAction({ label: "Machines", title: "Machines and hours", icon: <Cog className="size-4" />, onClick: () => setMachineJob(job) })}
-          <Button asChild size="sm" variant="outline" className={cn("w-8 px-0 pointer-coarse:w-auto pointer-coarse:px-3", secondaryTouch)} title="Print"><Link href={`/jobs/${job.id}/print`} aria-label="Print"><Printer className="size-4" /><span aria-hidden className="hidden pointer-coarse:inline">Print</span></Link></Button>
+          <Button asChild size="sm" variant="outline" className={cn("px-3", rowTouch)}><Link href={`/jobs/${job.id}/print`} aria-label="Print"><Printer className="size-4" /><span aria-hidden>Print</span></Link></Button>
           {canOfferJobDeliveryNote(activeRole, job) ? rowAction({ label: "Delivery note", title: "Make a delivery note from this job", icon: <Truck className="size-4" />, onClick: () => setDeliveryNoteJob(job) }) : null}
           {canSend ? rowAction({ label: "Send", title: "Send to workshop", icon: <Mail className="size-4" />, variant: "default", className: "bg-brand text-brand-ink", disabled: saving, onClick: () => openSend(job) }) : null}
         </div>
@@ -1553,9 +1560,10 @@ export default function JobsPage() {
         <StatTile label="Open jobs" value={stat(openCount)} tone="neutral" className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub="Not started, running or waiting" hint="Not started + Running + Waiting for inspection. Complete jobs are not counted." active={show === "active" && !statusTile} onClick={() => { setStatusTile(null); setShow("active"); }} />
         {([
           ["not_started", "neutral", "No work yet", "Open: no work started yet"],
-          ["running", "info", "In progress", "Open: started, not finished (rework included)"],
+          // Each sub says on screen what the tile's hover hint says (rework included, not archived), so the hint adds nothing hidden.
+          ["running", "info", "In progress, rework included", "Open: started, not finished (rework included)"],
           ["waiting_for_inspection", "warn", "Finished, not passed", "Open: finished, not yet passed"],
-          ["complete", "good", "Passed inspection", "Passed inspection; not archived"],
+          ["complete", "good", "Passed, not archived", "Passed inspection; not archived"],
         ] as const).map(([status, tone, sub, hint]) => (
           <StatTile key={status} label={JOB_STATUS_LABELS[status]} value={stat(statusCount(status))} tone={tone} className={tileCompact} valueClassName={tileValueCompact} labelClassName={BOARD_KPI_LABEL} sub={sub} hint={hint} active={statusTile === status} onClick={() => pickStatus(status)} />
         ))}
@@ -1591,8 +1599,9 @@ export default function JobsPage() {
       </BoardFilterRow>
       {listFilter ? <ListFilterNotice label={JOB_FILTER_LABELS[listFilter] ?? listFilter} onClear={clearListFilter} /> : null}
       <FilterBar variant="board" label="Due" groupLabel="Due (Not started and Running jobs)" note="Not started and Running jobs only" activeValues={[...statusFilters]} options={[{ label: "All", value: "all" }, ...DUE_CHIPS.map((chip) => ({ label: `${chip.label} (${stat(dueCount(chip.value))})`, value: chip.value }))]} onChange={setStatusFilters} />
-      <BoardFilterRow label="Tag">
-        <button type="button" aria-pressed={reworkOnly} title="Running jobs put back after a failed inspection (or for replacements)" onClick={toggleRework}
+      {/* What the tag means is written beside the chip (note), not left to a hover title. */}
+      <BoardFilterRow label="Tag" note="Running jobs put back after a failed inspection (or for replacements)">
+        <button type="button" aria-pressed={reworkOnly} onClick={toggleRework}
           className={cn("inline-flex h-8 items-center gap-1.5 rounded-none border px-3.5 text-[0.82rem] transition pointer-coarse:min-h-11", reworkOnly ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink/70 hover:border-ink/25 hover:text-ink")}>
           <span aria-hidden className={cn("size-2 rounded-none", COLOUR_CLASSES.purple.dot)} />{`Rework (${stat(reworkCount)})`}
         </button>
@@ -1600,12 +1609,15 @@ export default function JobsPage() {
       <FilterBar variant="board" label="Stage" activeValues={[...stageFilters]} defaultActive={[]} options={JOB_STAGES.map((stage) => ({ label: STAGE_LABELS[stage], value: stage }))} onChange={setStageFilters} />
       </div>
 
+      {/* With a job ticked, the selection bar sticks just below the app's top bar (components/topbar: sticky top-0, h-16) while the
+          board scrolls, in the brand navy with light text. Its padding is there unticked too, so ticking a job moves nothing. */}
+      <div data-testid="selection-bar" data-selected={selectedIds.length ? "true" : undefined} className={cn("-mx-2 p-2", selectedIds.length ? "sticky top-16 z-20 bg-brand text-brand-ink [&_[role=status]]:text-brand-ink" : "")}>
       <ListToolbar
         visibleCount={visible.length}
         selectedCount={selectedIds.length}
         disableEmptyButtons
-        buttonClassName={secondaryTouch}
-        statusText={<span data-testid="selection-summary"><strong className="font-semibold text-ink">{selectedIds.length} selected</strong>{` of ${visible.length} filtered job${visible.length === 1 ? "" : "s"}.`}</span>}
+        buttonClassName={rowTouch}
+        statusText={<span data-testid="selection-summary"><strong className={cn("font-semibold", selectedIds.length ? "" : "text-ink")}>{selectedIds.length} selected</strong>{` of ${visible.length} filtered job${visible.length === 1 ? "" : "s"}.`}</span>}
         onSelectAll={() => setSelectedIds(visible.map((job) => job.id))}
         onClear={() => setSelectedIds([])}
         onPrint={printWorkshopPack}
@@ -1619,11 +1631,16 @@ export default function JobsPage() {
         actions={isViewer ? null : (
           <>
             <Button disabled={saving || !selectedIds.length || Boolean(finishBlocked)} className={primaryTouch} title={selectedIds.length ? finishBlocked ?? undefined : "Select at least one job first"} variant="finish" onClick={() => setBulkKind("finish")}>{`Finish Selected (${selectedIds.length})`}</Button>
+            {/* A disabled button shows no title on a tap: why Finish Selected can't be used is written beside it. */}
+            {selectedIds.length && finishBlocked ? <span data-testid="finish-blocked" className="text-sm">{`${finishBlocked}.`}</span> : null}
           </>
         )}
       />
+      </div>
       <p className="text-sm text-slate-600 dark:text-slate-300">
         {hiddenSelected ? `${hiddenSelected} selected job${hiddenSelected === 1 ? " isn't" : "s aren't"} shown by the current filters. Print, export, Start and Finish apply to everything selected.` : "Print, export, Start and Finish apply to the selected jobs only."}
+        {/* The Export menu's scope, on screen as well as in its items' hover titles. */}
+        {` ${scopeTitle}.`}
       </p>
 
       {!loading && !loadError && !jobs.length ? (
@@ -1667,7 +1684,7 @@ export default function JobsPage() {
                   <TableHead className="w-8 pointer-coarse:w-14"><span className="sr-only">Details</span></TableHead>
                   {/* The same fields in the same order as the Table and the Cards (columns parity), from the one shared list. */}
                   {jobColumns.map((column) => column.key === "actions"
-                    ? <TableHead key={column.key} className={isViewer ? "w-24 pointer-coarse:w-28" : "w-40 pointer-coarse:w-[22rem] max-lg:w-[22rem]"}><span className="sr-only">Actions</span></TableHead>
+                    ? <TableHead key={column.key} className={isViewer ? "w-40" : "w-[22rem]"}><span className="sr-only">Actions</span></TableHead>
                     : <TableHead key={column.key} className={column.listWidth}>{column.label}</TableHead>)}
                 </TableRow>
               </TableHeader>
@@ -1681,7 +1698,7 @@ export default function JobsPage() {
                     <Fragment key={`${section.key}-${job.id}`}>
                       <TableRow data-job-id={job.id} data-highlighted={highlightId === job.id ? "true" : undefined} className={highlight(job)}>
                         <TableCell><SelectBox boxClassName={boxTouch} aria-label={`Select ${job.job_no}`} checked={selectedSet.has(job.id)} onChange={() => toggleSelected(job.id)} /></TableCell>
-                        <TableCell className="px-0"><Button size="icon-sm" variant="ghost" className={workshop ? "pointer-coarse:size-12" : undefined} aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} details for ${job.job_no}`} onClick={() => setExpandedIds((current) => (open ? current.filter((id) => id !== job.id) : [...current, job.id]))}><ChevronRight className={`size-4 transition-transform ${open ? "rotate-90" : ""}`} /></Button></TableCell>
+                        <TableCell className="px-0"><Button size="icon-sm" variant="ghost" className={cn("min-h-12", workshop ? "pointer-coarse:size-12" : "")} aria-expanded={open} aria-label={`${open ? "Hide" : "Show"} details for ${job.job_no}`} onClick={() => setExpandedIds((current) => (open ? current.filter((id) => id !== job.id) : [...current, job.id]))}><ChevronRight className={`size-4 transition-transform ${open ? "rotate-90" : ""}`} /></Button></TableCell>
                         {jobColumns.map((column) => <Fragment key={column.key}>{listCells[column.key]}</Fragment>)}
                       </TableRow>
                       {open ? (
@@ -1691,7 +1708,7 @@ export default function JobsPage() {
                             <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
                               <div><dt className="field-label inline">Progress: </dt><dd className="inline">{statusOf(job)}</dd></div>
                               {releaseOffered(job) ? <div>{releaseButton(job)}</div> : null}
-                              {archive.canManage && job.inspected_at ? <div><ArchiveButton id={job.id} phase={showOf(job) === "archived" ? "archived" : "done"} manual={archive.manual.get(job.id)} onSet={archive.setState} /></div> : null}
+                              {archive.canManage && job.inspected_at ? <div>{archiveButton(job)}</div> : null}
                             </dl>
                           </TableCell>
                         </TableRow>
