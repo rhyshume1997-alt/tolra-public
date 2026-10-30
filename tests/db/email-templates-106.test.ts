@@ -4,8 +4,10 @@
  *   - email_templates: office and admin of the company write (insert, update, delete); every member reads; another company sees and
  *     changes nothing; updated_by is stamped from the session; a row never moves company; the eight keys only; a one-line subject.
  *   - An admin without the second step (company requires it) is refused by the admin_mfa guard; a support session can't write.
- *   - ai_helper_settings.finance_check_enabled is off by default; only an admin changes it (ai_helper_set_finance_check, audited);
- *     nobody signed in updates the table directly.
+ *   - ai_helper_settings.finance_check_enabled is off by default; only an admin changes it (ai_helper_set_finance_check, audited; an
+ *     admin without the second step is refused when the company requires it); nobody signed in updates the table directly.
+ *   - E8 send ledger: a retry with the same key writes no second history row (sent or drafted); a failed send is tried again on the
+ *     same row; only office/admin of the company as themselves, or the service role; the ledger is unreadable; 200 per hour.
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), as the 101 suite does. The same checks as
  * tests/scripts/email_templates_106_proof.sql (which runs with psql on a stand-in copy).
@@ -101,7 +103,7 @@ afterAll(async () => {
   await withDb(async (db) => {
     await db.query("begin");
     await db.query("set local session_replication_role = replica");
-    for (const t of ["public.email_templates", "public.ai_helper_settings", "security_audit.audit_log", "public.organization_members", "public.user_profiles"]) {
+    for (const t of ["security_audit.company_email_sends", "public.email_history", "public.email_templates", "public.ai_helper_settings", "security_audit.audit_log", "public.organization_members", "public.user_profiles"]) {
       await db.query(`delete from ${t} where organization_id = any($1)`, [orgs]);
     }
     await db.query("delete from security_audit.session_company where user_id = any($1)", [people]);
@@ -159,5 +161,65 @@ describe("106: the finance check's per-company switch", () => {
     await expect(as(A.office, (db) => db.query("select public.ai_helper_set_finance_check(false)"))).rejects.toMatchObject({ code: "42501" });
     await expect(as(A.support, (db) => db.query("select public.ai_helper_set_finance_check(false)"))).rejects.toMatchObject({ code: "42501" });
     await expect(count(A.admin, "update public.ai_helper_settings set finance_check_enabled = false")).rejects.toMatchObject({ code: "42501" });
+    A.admin.aal = "aal1";
+    await expect(as(A.admin, (db) => db.query("select public.ai_helper_set_finance_check(false)"))).rejects.toMatchObject({ code: "42501", hint: "mfa_required" });
+    A.admin.aal = "aal2";
+  });
+});
+
+type Reservation = { send_id: string; history_id: string; status: string; replay: boolean };
+const reserve = (p: Person | null, org: string, key: string, mode = "sending", related = "invoice", record = "rec-1") => {
+  const text = "select public.reserve_company_email($1, $2, $3, 'c@example.test', 'Invoice 1', 'Body', $4, $5, $6) as v";
+  const params = [org, p?.id ?? null, key, related, record, mode];
+  if (p) return as(p, async (db) => (await db.query<{ v: Reservation }>(text, params)).rows[0].v);
+  return withDb(async (db) => {
+    await db.query("begin");
+    await db.query("set local role service_role");
+    const v = (await db.query<{ v: Reservation }>(text, params)).rows[0].v;
+    await db.query("commit");
+    return v;
+  });
+};
+const complete = (p: Person, org: string, send: string, outcome: string) =>
+  as(p, (db) => db.query("select public.complete_company_email($1, $2, $3, $4)", [org, p.id, send, outcome]));
+
+describe("106 (E8): the company mailer's send ledger", () => {
+  it("a retry with the same key is a replay: one history row; a failed send is tried again on the same row; accepted is recorded", async () => {
+    const key = "a".repeat(64);
+    const first = await reserve(A.office, orgA, key);
+    expect(first).toMatchObject({ replay: false, status: "sending" });
+    expect(await reserve(A.office, orgA, key)).toMatchObject({ replay: true, status: "sending", history_id: first.history_id });
+    expect(await sql("select 1 from public.email_history where organization_id = $1 and related_to_id = 'rec-1'", [orgA])).toHaveLength(1);
+    await complete(A.office, orgA, first.send_id, "failed");
+    expect(await reserve(A.office, orgA, key)).toMatchObject({ replay: false, history_id: first.history_id });
+    await complete(A.office, orgA, first.send_id, "accepted");
+    expect(await sql("select status from public.email_history where id = $1 and sent_at is not null", [first.history_id])).toEqual([{ status: "sent_via_system" }]);
+    expect(await reserve(A.office, orgA, key)).toMatchObject({ replay: true, status: "accepted" });
+    await expect(complete(A.office, orgA, first.send_id, "accepted")).rejects.toMatchObject({ code: "P0002" });
+  });
+
+  it("a retried draft writes no second draft", async () => {
+    const key = "b".repeat(64);
+    await reserve(A.office, orgA, key, "drafted", "quote", "rec-2");
+    expect(await reserve(A.office, orgA, key, "drafted", "quote", "rec-2")).toMatchObject({ replay: true, status: "drafted" });
+    expect(await sql("select 1 from public.email_history where organization_id = $1 and related_to_id = 'rec-2'", [orgA])).toHaveLength(1);
+  });
+
+  it("only office/admin of the company as themselves; support, workshop, other companies and aal1 admins refused; ledger unreadable", async () => {
+    const key = "c".repeat(64);
+    await expect(reserve(B.office, orgA, key)).rejects.toMatchObject({ code: "42501" });
+    await expect(reserve(A.workshop, orgA, key)).rejects.toMatchObject({ code: "42501" });
+    await expect(reserve(A.support, orgA, key)).rejects.toMatchObject({ code: "42501" });
+    A.admin.aal = "aal1";
+    await expect(reserve(A.admin, orgA, key)).rejects.toMatchObject({ code: "42501" });
+    A.admin.aal = "aal2";
+    await expect(as(A.office, (db) => db.query("select public.reserve_company_email($1, $2, $3, 'c@example.test', 'S', 'B', 'general', null, 'sending')", [orgA, A.admin.id, key]))).rejects.toMatchObject({ code: "42501" });
+    await expect(as(A.office, (db) => db.query("select count(*) from security_audit.company_email_sends"))).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("the service role reserves a system send (no person) for the company it names", async () => {
+    const r = await reserve(null, orgB, "e".repeat(64), "sending", "invoice", "rec-3");
+    expect(r).toMatchObject({ replay: false, status: "sending" });
+    expect(await sql("select drafted_by from public.email_history where id = $1 and organization_id = $2", [r.history_id, orgB])).toEqual([{ drafted_by: null }]);
   });
 });

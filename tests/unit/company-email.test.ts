@@ -22,27 +22,50 @@ import { mockOutbox } from "@/lib/email/providers/mock";
 import { resendProvider } from "@/lib/email/providers/resend";
 import type { EmailProvider, OutgoingEmail, ProviderResult } from "@/lib/email/providers/types";
 import {
-  type CompanyEmailInput, HOURLY_COMPANY_LIMIT, UNKNOWN_OUTCOME_MESSAGE, checkInput, cleanAddress, onRecipientAllowlist, relatedType, selectProvider, sendCompanyEmail, stripHeader,
+  type CompanyEmailInput, MOCK_REFUSED_MESSAGE, UNKNOWN_OUTCOME_MESSAGE, checkInput, cleanAddress, ledgerKey, onRecipientAllowlist, relatedType, selectProvider,
+  sendCompanyEmail, stripHeader, unfilledPlaceholders,
 } from "@/lib/email/send-company-email";
 import { getDelegatedAccessToken } from "@/lib/integrations/microsoft/token-source";
 
 type Row = Record<string, unknown>;
 
 /** email_history stand-in: insert/select id/single, update/eq/eq, and the hourly count. */
-function historyDb(opts: { insertError?: { code: string } | null; count?: number } = {}) {
-  const state = { inserted: [] as Row[], updates: [] as Array<{ patch: Row; filters: Array<[string, unknown]> }>, countFilters: [] as unknown[] };
+type Ledger = { id: string; key: string; history: string; status: string };
+/**
+ * email_history and 106's ledger stand-in. The ledger functions behave as reserve_company_email / complete_company_email do (a key seen
+ * before is a replay unless it failed; complete only from 'sending'); `ledger: "missing"` answers as PostgREST does before 106.
+ */
+function historyDb(opts: { insertError?: { code: string } | null; ledger?: "missing"; reserveError?: { code: string } } = {}) {
+  const state = { inserted: [] as Row[], updates: [] as Array<{ patch: Row; filters: Array<[string, unknown]> }>,
+    ledger: [] as Ledger[], history: new Map<string, string>(), rpcs: [] as Array<{ fn: string; args: Row }> };
   const db = {
+    rpc: async (fn: string, args: Row) => {
+      state.rpcs.push({ fn, args });
+      if (opts.ledger === "missing") return { data: null, error: { code: "PGRST202", message: `Could not find the function public.${fn}` } };
+      if (fn === "reserve_company_email") {
+        if (opts.reserveError) return { data: null, error: opts.reserveError };
+        const mode = String(args.p_mode);
+        const prior = state.ledger.find((l) => l.key === args.p_key);
+        if (prior && prior.status !== "failed") return { data: { send_id: prior.id, history_id: prior.history, status: prior.status, replay: true }, error: null };
+        if (prior) { prior.status = mode; state.history.set(prior.history, mode); return { data: { send_id: prior.id, history_id: prior.history, status: mode, replay: false }, error: null }; }
+        const history = `h-${state.history.size + 1}`;
+        state.history.set(history, mode);
+        const row = { id: `s-${state.ledger.length + 1}`, key: String(args.p_key), history, status: mode };
+        state.ledger.push(row);
+        return { data: { send_id: row.id, history_id: history, status: mode, replay: false }, error: null };
+      }
+      if (fn === "complete_company_email") {
+        const row = state.ledger.find((l) => l.id === args.p_send && l.status === "sending");
+        if (!row) return { data: null, error: { code: "P0002" } };
+        row.status = String(args.p_outcome);
+        state.history.set(row.history, row.status === "accepted" ? "sent_via_system" : row.status);
+        return { data: null, error: null };
+      }
+      throw new Error(`unexpected rpc ${fn}`);
+    },
     from: (table: string) => {
       if (table !== "email_history") throw new Error(`unexpected table ${table}`);
       return {
-        select: (_cols: string, options?: { count?: string; head?: boolean }) => {
-          const chain = {
-            eq: (...a: unknown[]) => { state.countFilters.push(["eq", ...a]); return chain; },
-            in: (...a: unknown[]) => { state.countFilters.push(["in", ...a]); return chain; },
-            gte: (...a: unknown[]) => { state.countFilters.push(["gte", ...a]); return Promise.resolve({ count: options?.head ? opts.count ?? 0 : null, error: null }); },
-          };
-          return chain;
-        },
         insert: (row: Row) => {
           state.inserted.push(row);
           return { select: () => ({ single: async () => (opts.insertError ? { data: null, error: opts.insertError } : { data: { id: `h-${state.inserted.length}` }, error: null }) }) };
@@ -74,86 +97,171 @@ afterEach(() => { vi.restoreAllMocks(); mockOutbox.length = 0; });
 describe("provider selection", () => {
   const noToken = async () => null;
   it("Microsoft when the company has a delegated token, before Resend", async () => {
-    const p = await selectProvider("org-1", { env: RESEND_ENV, getToken: async () => "tok" });
-    expect(p?.name).toBe("microsoft");
+    expect(await selectProvider("org-1", { env: RESEND_ENV, getToken: async () => "tok" })).toMatchObject({ name: "microsoft" });
   });
   it("Resend only with both RESEND_API_KEY and EMAIL_FROM; otherwise none", async () => {
-    expect((await selectProvider("org-1", { env: RESEND_ENV, getToken: noToken }))?.name).toBe("resend");
+    expect(await selectProvider("org-1", { env: RESEND_ENV, getToken: noToken })).toMatchObject({ name: "resend" });
     expect(await selectProvider("org-1", { env: { RESEND_API_KEY: "re_test" }, getToken: noToken })).toBeNull();
     expect(await selectProvider("org-1", { env: { EMAIL_FROM: "a@b.test" }, getToken: noToken })).toBeNull();
     expect(await selectProvider("org-1", { env: {}, getToken: noToken })).toBeNull();
   });
   it("a token lookup that throws is no token (next provider)", async () => {
-    expect((await selectProvider("org-1", { env: RESEND_ENV, getToken: async () => { throw new Error("db down"); } }))?.name).toBe("resend");
+    expect(await selectProvider("org-1", { env: RESEND_ENV, getToken: async () => { throw new Error("db down"); } })).toMatchObject({ name: "resend" });
   });
-  it("EMAIL_PROVIDER=mock off Vercel only; on any Vercel deployment it is ignored", async () => {
-    expect((await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock" }, getToken: noToken }))?.name).toBe("mock");
-    expect(await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock", VERCEL_ENV: "preview" }, getToken: noToken })).toBeNull();
-    expect((await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock", VERCEL_ENV: "production", ...RESEND_ENV }, getToken: noToken }))?.name).toBe("resend");
+  it("EMAIL_PROVIDER=mock off Vercel only; on any Vercel deployment it is refused (never a silent fall-through to Resend)", async () => {
+    expect(await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock" }, getToken: noToken })).toMatchObject({ name: "mock" });
+    expect(await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock", VERCEL_ENV: "preview" }, getToken: noToken })).toBe("refused");
+    expect(await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock", VERCEL_ENV: "production", ...RESEND_ENV }, getToken: noToken })).toBe("refused");
   });
   it("the Microsoft token source is a stub (null) until the connect unit lands", async () => {
     expect(await getDelegatedAccessToken("org-1")).toBeNull();
   });
 });
 
-describe("drafted fallback and history", () => {
-  it("no provider: one 'drafted' history row, nothing sent, mode drafted", async () => {
+describe("the send ledger (106): drafts, sends and retries", () => {
+  const env = (extra: Record<string, string> = {}) => ({ ...RESEND_ENV, ...extra });
+  const go = (db: never, provider: EmailProvider | null, input: CompanyEmailInput = base, extraEnv: Record<string, string> = {}) =>
+    sendCompanyEmail(input, { db, env: provider ? env(extraEnv) : { ...extraEnv }, getToken: async () => null, providers: provider ? { resend: () => provider } : undefined });
+
+  it("no provider: reserved as a draft (one history row), nothing sent", async () => {
     const { db, state } = historyDb();
-    const result = await sendCompanyEmail(base, { db, env: {}, getToken: async () => null });
-    expect(result).toEqual({ ok: true, mode: "drafted", provider: "none", historyId: "h-1" });
-    expect(state.inserted).toEqual([{ organization_id: "org-1", to_email: "customer@example.com", subject: "Invoice I-1", body: "Hello", status: "drafted", related_to_type: "invoice", related_to_id: "rec-1", drafted_by: "u-1" }]);
-    expect(state.updates).toEqual([]);
+    expect(await go(db, null)).toEqual({ ok: true, mode: "drafted", provider: "none", historyId: "h-1" });
+    expect(state.rpcs).toHaveLength(1);
+    expect(state.rpcs[0]).toMatchObject({ fn: "reserve_company_email", args: { p_org: "org-1", p_user: "u-1", p_to: "customer@example.com", p_subject: "Invoice I-1", p_body: "Hello", p_related_type: "invoice", p_related_id: "rec-1", p_mode: "drafted" } });
+    expect(String(state.rpcs[0].args.p_key)).toMatch(/^[0-9a-f]{64}$/);
   });
-  it("no provider and the draft can't be saved: no_provider", async () => {
-    const { db } = historyDb({ insertError: { code: "42501" } });
-    expect(await sendCompanyEmail(base, { db, env: {}, getToken: async () => null })).toMatchObject({ ok: false, code: "no_provider" });
-    expect(await sendCompanyEmail(base, { db: null, env: {}, getToken: async () => null })).toMatchObject({ ok: false, code: "no_provider" });
-  });
-  it("sent: 'sending' row first, then sent_via_system with sent_at, scoped by id and company", async () => {
+
+  it("sent: reserved 'sending', then completed 'accepted'; the Resend key is the ledger key", async () => {
     const { db, state } = historyDb();
     const { provider, sent } = fakeProvider();
-    const result = await sendCompanyEmail({ ...base, idempotencyKey: "key-12345678" }, { db, env: RESEND_ENV, getToken: async () => null, providers: { resend: () => provider } });
-    expect(result).toEqual({ ok: true, mode: "sent", provider: "resend", providerMessageId: "re_1", historyId: "h-1" });
-    expect(state.inserted[0].status).toBe("sending");
-    expect(state.updates[0].patch.status).toBe("sent_via_system");
-    expect(typeof state.updates[0].patch.sent_at).toBe("string");
-    expect(state.updates[0].filters).toEqual([["id", "h-1"], ["organization_id", "org-1"]]);
-    expect(sent[0].idempotencyKey).toBe("company-email/org-1/key-12345678");
+    expect(await go(db, provider, { ...base, idempotencyKey: "invoice:rec-1:send-1" })).toEqual({ ok: true, mode: "sent", provider: "resend", providerMessageId: "re_1", historyId: "h-1" });
+    expect(state.rpcs.map((r) => r.fn)).toEqual(["reserve_company_email", "complete_company_email"]);
+    expect(state.rpcs[1].args).toEqual({ p_org: "org-1", p_user: "u-1", p_send: "s-1", p_outcome: "accepted" });
+    expect(state.history.get("h-1")).toBe("sent_via_system");
+    expect(sent[0].idempotencyKey).toBe(`company-email/${state.rpcs[0].args.p_key}`);
   });
-  it("the history row can't be written: nothing is sent", async () => {
-    const { db } = historyDb({ insertError: { code: "42501" } });
-    const { provider } = fakeProvider();
-    expect(await sendCompanyEmail(base, { db, env: RESEND_ENV, getToken: async () => null, providers: { resend: () => provider } })).toMatchObject({ ok: false, code: "provider_error" });
-    expect(provider.send).not.toHaveBeenCalled();
+
+  it("a retry with the same key never sends twice or writes a second row, whatever the provider", async () => {
+    for (const name of ["resend", "microsoft"] as const) {
+      const { db, state } = historyDb();
+      const { provider } = fakeProvider();
+      provider.name = name;
+      const input = { ...base, idempotencyKey: "invoice:rec-1:send-1" };
+      expect(await go(db, provider, input)).toMatchObject({ ok: true, mode: "sent" });
+      expect(await go(db, provider, input)).toMatchObject({ ok: true, mode: "sent", historyId: "h-1" });
+      expect(provider.send).toHaveBeenCalledTimes(1);
+      expect(state.history.size).toBe(1);
+    }
   });
-  it("refused -> failed; no trustworthy answer -> unknown (never retried); provider 429 -> rate_limited", async () => {
-    for (const [result, status, code, error] of [
+
+  it("a retried draft is the same draft; a send still under way or unknown is never sent again", async () => {
+    const draft = historyDb();
+    const input = { ...base, idempotencyKey: "invoice:rec-1:send-2" };
+    await go(draft.db, null, input);
+    expect(await go(draft.db, null, input)).toEqual({ ok: true, mode: "drafted", provider: "none", historyId: "h-1" });
+    expect(draft.state.history.size).toBe(1);
+    for (const outcome of ["unknown", "hang"] as const) {
+      const { db, state } = historyDb();
+      const { provider } = fakeProvider({ outcome: outcome === "hang" ? "accepted" : "unknown" });
+      if (outcome === "hang") state.ledger.push({ id: "s-9", key: ledgerKey(input), history: "h-9", status: "sending" });
+      else await go(db, provider, input);
+      const again = await go(db, provider, input);
+      expect(again).toMatchObject({ ok: false, code: "provider_error" });
+      expect(provider.send).toHaveBeenCalledTimes(outcome === "hang" ? 0 : 1);
+    }
+  });
+
+  it("a definite refusal may be tried again with the same key (same history row)", async () => {
+    const { db, state } = historyDb();
+    const refused = fakeProvider({ outcome: "failed" });
+    const input = { ...base, idempotencyKey: "invoice:rec-1:send-3" };
+    expect(await go(db, refused.provider, input)).toMatchObject({ ok: false, code: "provider_error" });
+    expect(state.history.get("h-1")).toBe("failed");
+    const ok = fakeProvider();
+    expect(await go(db, ok.provider, input)).toMatchObject({ ok: true, mode: "sent", historyId: "h-1" });
+    expect(state.history.size).toBe(1);
+  });
+
+  it("refused -> failed; no trustworthy answer -> unknown; provider 429 -> rate_limited; Graph's 3 MB -> its own message", async () => {
+    for (const [result, ledger, code, error] of [
       [{ outcome: "failed" }, "failed", "provider_error", undefined],
       [{ outcome: "unknown" }, "unknown", "provider_error", UNKNOWN_OUTCOME_MESSAGE],
       [{ outcome: "failed", rateLimited: true }, "failed", "rate_limited", undefined],
+      [{ outcome: "failed", detail: "attachment_too_large" }, "failed", "invalid", "The PDF is too large for your Microsoft 365 mailbox (3 MB at most). Use Open in my mail app instead."],
     ] as const) {
       const { db, state } = historyDb();
       const { provider } = fakeProvider(result);
-      const answer = await sendCompanyEmail(base, { db, env: RESEND_ENV, getToken: async () => null, providers: { resend: () => provider } });
+      const answer = await go(db, provider);
       expect(answer).toMatchObject({ ok: false, code });
       if (error) expect(answer).toMatchObject({ error });
-      expect(state.updates[0].patch).toEqual({ status });
-      expect(provider.send).toHaveBeenCalledTimes(1);
+      expect(state.ledger[0].status).toBe(ledger);
     }
   });
-  it("the company's hourly ceiling: refused before any row or send", async () => {
-    const { db, state } = historyDb({ count: HOURLY_COMPANY_LIMIT });
-    const { provider } = fakeProvider();
-    expect(await sendCompanyEmail(base, { db, env: RESEND_ENV, getToken: async () => null, providers: { resend: () => provider } })).toMatchObject({ ok: false, code: "rate_limited" });
-    expect(state.inserted).toEqual([]);
-    expect(provider.send).not.toHaveBeenCalled();
-    expect(state.countFilters).toContainEqual(["eq", "organization_id", "org-1"]);
+
+  it("the ledger refuses: the hourly ceiling (PT429), not allowed (42501), anything else: nothing is sent", async () => {
+    for (const [reserveError, code] of [[{ code: "PT429" }, "rate_limited"], [{ code: "42501" }, "invalid"], [{ code: "XX000" }, "provider_error"]] as const) {
+      const { db } = historyDb({ reserveError });
+      const { provider } = fakeProvider();
+      expect(await go(db, provider)).toMatchObject({ ok: false, code });
+      expect(provider.send).not.toHaveBeenCalled();
+    }
+    const { db } = historyDb({ reserveError: { code: "XX000" } });
+    expect(await go(db, null)).toMatchObject({ ok: false, code: "no_provider" });
   });
-  it("the mock provider (tests only) keeps the e-mail and sends nothing", async () => {
+
+  it("the ledger key: same company, kind, document and caller key give the same key; anything else (or no key) a new one", () => {
+    const input = { ...base, idempotencyKey: "invoice-reminder:inv-1:2026-W45" };
+    expect(ledgerKey(input)).toBe(ledgerKey({ ...input }));
+    expect(ledgerKey(input)).not.toBe(ledgerKey({ ...input, recordId: "rec-2" }));
+    expect(ledgerKey(input)).not.toBe(ledgerKey({ ...input, organizationId: "org-2" }));
+    expect(ledgerKey(input)).not.toBe(ledgerKey({ ...input, kind: "invoice_reminder" }));
+    expect(ledgerKey(base)).not.toBe(ledgerKey(base));
+    expect(checkInput(input, {})).toHaveProperty("email");
+    expect(checkInput({ ...base, idempotencyKey: "bad key with spaces" }, {})).toMatchObject({ code: "invalid" });
+    expect(checkInput({ ...base, idempotencyKey: "short" }, {})).toMatchObject({ code: "invalid" });
+  });
+
+  it("before 106 is applied: written straight to email_history (sent or drafted), as before", async () => {
+    const { db, state } = historyDb({ ledger: "missing" });
+    const { provider } = fakeProvider();
+    expect(await go(db, provider)).toEqual({ ok: true, mode: "sent", provider: "resend", providerMessageId: "re_1", historyId: "h-1" });
+    expect(state.inserted[0]).toMatchObject({ status: "sending", organization_id: "org-1", drafted_by: "u-1" });
+    expect(state.updates[0].patch.status).toBe("sent_via_system");
+    expect(state.updates[0].filters).toEqual([["id", "h-1"], ["organization_id", "org-1"]]);
+    const drafted = historyDb({ ledger: "missing" });
+    expect(await go(drafted.db, null)).toMatchObject({ ok: true, mode: "drafted" });
+    expect(drafted.state.inserted[0].status).toBe("drafted");
+    const broken = historyDb({ ledger: "missing", insertError: { code: "42501" } });
+    const p2 = fakeProvider();
+    expect(await go(broken.db, p2.provider)).toMatchObject({ ok: false, code: "provider_error" });
+    expect(p2.provider.send).not.toHaveBeenCalled();
+  });
+
+  it("no database client: nothing sent", async () => {
+    expect(await sendCompanyEmail(base, { db: null, env: {}, getToken: async () => null })).toMatchObject({ ok: false, code: "no_provider" });
+  });
+
+  it("EMAIL_PROVIDER=mock: tests only, keeps the e-mail; on any Vercel deployment the send fails with a fixed error", async () => {
     const { db } = historyDb();
     expect(await sendCompanyEmail(base, { db, env: { EMAIL_PROVIDER: "mock" }, getToken: async () => null })).toMatchObject({ ok: true, mode: "sent", provider: "mock" });
     expect(mockOutbox).toHaveLength(1);
+    for (const VERCEL_ENV of ["preview", "production"]) {
+      const fresh = historyDb();
+      expect(await sendCompanyEmail(base, { db: fresh.db, env: { EMAIL_PROVIDER: "mock", VERCEL_ENV, ...RESEND_ENV, EMAIL_RECIPIENT_DOMAINS: "example.com" }, getToken: async () => null }))
+        .toEqual({ ok: false, error: MOCK_REFUSED_MESSAGE, code: "no_provider" });
+      expect(fresh.state.rpcs).toEqual([]);
+    }
   });
+
+  it("an unfilled known placeholder (e.g. {{greeting}}) never reaches anyone; the person's own {{text}} passes", async () => {
+    const { db, state } = historyDb();
+    expect(await go(db, null, { ...base, text: "{{greeting}},\n\nInvoice I-1 is overdue." })).toMatchObject({ ok: false, code: "invalid" });
+    expect(await go(db, null, { ...base, subject: "Invoice {{ document_number }}" })).toMatchObject({ ok: false, code: "invalid" });
+    expect(state.rpcs).toEqual([]);
+    expect(unfilledPlaceholders("{{greeting}} {{payment_note}} {{my_own}}")).toEqual(["greeting", "payment_note"]);
+    expect(await go(db, null, { ...base, text: "Use the code {{my_own}}" })).toMatchObject({ ok: true });
+  });
+
   it("related_to_type fits email_history's check", () => {
     expect(relatedType("invoice_reminder")).toBe("invoice");
     expect(relatedType("timesheet")).toBe("general");
@@ -185,6 +293,7 @@ describe("allowlist on previews", () => {
     const { db, state } = historyDb();
     const { provider } = fakeProvider();
     expect(await sendCompanyEmail(base, { db, env: { ...RESEND_ENV, ...preview("other.test") }, getToken: async () => null, providers: { resend: () => provider } })).toMatchObject({ ok: false, code: "recipient_refused" });
+    expect(state.rpcs).toEqual([]);
     expect(state.inserted).toEqual([]);
     expect(provider.send).not.toHaveBeenCalled();
   });
@@ -208,7 +317,7 @@ describe("header stripping and input checks", () => {
     expect(checkInput({ ...base, subject: "\r\n" }, {})).toMatchObject({ code: "invalid" });
     expect(checkInput({ ...base, text: "  " }, {})).toMatchObject({ code: "invalid" });
     expect(checkInput({ ...base, to: Array.from({ length: 11 }, (_, i) => `p${i}@example.com`) }, {})).toMatchObject({ code: "invalid" });
-    expect(checkInput({ ...base, attachments: [{ filename: "a.pdf", content: new Uint8Array(3 * 1024 * 1024 + 1), contentType: "application/pdf" }] }, {})).toMatchObject({ code: "invalid" });
+    expect(checkInput({ ...base, attachments: [{ filename: "a.pdf", content: new Uint8Array(5 * 1024 * 1024 + 1), contentType: "application/pdf" }] }, {})).toMatchObject({ code: "invalid" });
     const out = checkInput({ ...base, to: ["a@example.com", "A@example.com"], cc: ["a@example.com", "b@example.com"] }, {});
     expect(out).toMatchObject({ email: { to: ["a@example.com"], cc: ["b@example.com"] } });
   });
@@ -229,6 +338,11 @@ describe("providers", () => {
     expect(await microsoftProvider("tok", respond(409) as never).send(email)).toMatchObject({ outcome: "unknown" });
     expect(await microsoftProvider("tok", respond(500) as never).send(email)).toMatchObject({ outcome: "unknown" });
     expect(await microsoftProvider("tok", (async () => { throw new TypeError("fetch failed"); }) as never).send(email)).toMatchObject({ outcome: "unknown" });
+    // Over Graph's 3 MB inline limit: refused before any request.
+    const never = vi.fn();
+    const big = { ...email, attachments: [{ filename: "x.pdf", content: Buffer.alloc(3 * 1024 * 1024 + 1), contentType: "application/pdf" }] };
+    expect(await microsoftProvider("tok", never as never).send(big)).toEqual({ outcome: "failed", detail: "attachment_too_large" });
+    expect(never).not.toHaveBeenCalled();
   });
   it("Resend: from, to, cc, attachments and the idempotency key; its 429 is rate limited", async () => {
     const send = vi.fn(async () => ({ data: { id: "re_9" }, error: null }));

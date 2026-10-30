@@ -1,4 +1,4 @@
--- Migration 106 (company e-mail templates and the finance check's per-company switch). Read only: every row should be TRUE (8).
+-- Migration 106 (company e-mail templates, the finance check's per-company switch, the company mailer's send ledger). Read only: every row should be TRUE (10).
 WITH p AS (
   SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'email_templates'
 )
@@ -37,4 +37,19 @@ UNION ALL SELECT 'set_finance_check_definer_signed_in_only',
             WHERE p.oid = to_regprocedure('public.ai_helper_set_finance_check(boolean)')), FALSE)
   AND CASE WHEN to_regprocedure('public.ai_helper_set_finance_check(boolean)') IS NULL THEN FALSE ELSE
     has_function_privilege('authenticated', 'public.ai_helper_set_finance_check(boolean)', 'EXECUTE')
-    AND NOT has_function_privilege('anon', 'public.ai_helper_set_finance_check(boolean)', 'EXECUTE') END;
+    AND NOT has_function_privilege('anon', 'public.ai_helper_set_finance_check(boolean)', 'EXECUTE') END
+-- E8: the send ledger exists, one row per company and key, reachable by nobody but its two functions.
+UNION ALL SELECT 'company_email_ledger_closed',
+  to_regclass('security_audit.company_email_sends') IS NOT NULL
+  AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('security_audit.company_email_sends') AND conname = 'company_email_sends_one_per_key')
+  AND CASE WHEN to_regclass('security_audit.company_email_sends') IS NULL THEN FALSE ELSE
+    NOT has_table_privilege('authenticated', 'security_audit.company_email_sends', 'SELECT') AND NOT has_table_privilege('service_role', 'security_audit.company_email_sends', 'SELECT') END
+-- E8: reserve and complete are definer, pinned, for signed-in users and the service role only; the caller check callable by no one.
+UNION ALL SELECT 'company_email_functions',
+  coalesce((SELECT count(*) = 2 AND bool_and(p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public']) FROM pg_proc p
+            WHERE p.oid IN (to_regprocedure('public.reserve_company_email(uuid,uuid,text,text,text,text,text,text,text)'), to_regprocedure('public.complete_company_email(uuid,uuid,uuid,text)'))), FALSE)
+  AND CASE WHEN to_regprocedure('public.reserve_company_email(uuid,uuid,text,text,text,text,text,text,text)') IS NULL OR to_regprocedure('public._company_email_caller(uuid,uuid)') IS NULL THEN FALSE ELSE
+    has_function_privilege('authenticated', 'public.reserve_company_email(uuid,uuid,text,text,text,text,text,text,text)', 'EXECUTE')
+    AND has_function_privilege('service_role', 'public.complete_company_email(uuid,uuid,uuid,text)', 'EXECUTE')
+    AND NOT has_function_privilege('anon', 'public.reserve_company_email(uuid,uuid,text,text,text,text,text,text,text)', 'EXECUTE')
+    AND NOT has_function_privilege('authenticated', 'public._company_email_caller(uuid,uuid)', 'EXECUTE') END;

@@ -105,7 +105,7 @@ export function SendEmailDialog({ request, onClose }: { request: SendEmailReques
       let attachment: { filename: string; content_base64: string } | undefined;
       if (attach && request.pdf) {
         const blob = await request.pdf.build();
-        if (blob.size > 3 * 1024 * 1024) throw new Error("The PDF is larger than 3 MB, too large to attach. Use Open in my mail app instead.");
+        if (blob.size > 5 * 1024 * 1024) throw new Error("The PDF is larger than 5 MB, too large to attach. Use Open in my mail app instead.");
         attachment = { filename: request.pdf.filename, content_base64: await toBase64(blob) };
       }
       const response = await fetch("/api/email/send", {

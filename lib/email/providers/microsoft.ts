@@ -35,6 +35,8 @@ export function microsoftProvider(accessToken: string, fetchImpl: typeof fetch =
   return {
     name: "microsoft",
     async send(email: OutgoingEmail): Promise<ProviderResult> {
+      // Larger files need an upload session: refused before anything is sent.
+      if (email.attachments.reduce((sum, a) => sum + a.content.length, 0) > GRAPH_INLINE_ATTACHMENT_LIMIT) return { outcome: "failed", detail: "attachment_too_large" };
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {

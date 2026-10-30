@@ -16,6 +16,11 @@
  },
  {
   "kind": "function",
+  "object": "public._company_email_caller(p_org uuid, p_user uuid)",
+  "detail": "invoker search_path=pg_catalog, public 0331859360b98338419133698caf9479"
+ },
+ {
+  "kind": "function",
   "object": "public._ensure_member(p_user uuid, p_email text, p_org uuid, p_role text)",
   "detail": "definer search_path=pg_catalog, public 02962ef8cd29fc7dcb8a59ae0e0468dc"
  },
@@ -293,6 +298,11 @@
   "kind": "function",
   "object": "public.company_people()",
   "detail": "definer search_path=pg_catalog, public 955357228d87d29eaa462af8ece27806"
+ },
+ {
+  "kind": "function",
+  "object": "public.complete_company_email(p_org uuid, p_user uuid, p_send uuid, p_outcome text)",
+  "detail": "definer search_path=pg_catalog, public fdb59509bbd221bb2895d37f070d0bef"
  },
  {
   "kind": "function",
@@ -1446,6 +1456,11 @@
  },
  {
   "kind": "function",
+  "object": "public.reserve_company_email(p_org uuid, p_user uuid, p_key text, p_to text, p_subject text, p_body text, p_related_type text, p_related_id text, p_mode text)",
+  "detail": "definer search_path=pg_catalog, public ace58de117122ee2ffafff90db5c2c53"
+ },
+ {
+  "kind": "function",
   "object": "public.reserve_job_email(p_job uuid, p_recipient text, p_subject text, p_body text, p_key text, p_mode text)",
   "detail": "definer search_path=pg_catalog, public 7f49f1a9ac83b4721649b38279c330f7"
  },
@@ -1861,6 +1876,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public._company_email_caller(p_org uuid, p_user uuid)",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
   "object": "public._ensure_member(p_user uuid, p_email text, p_org uuid, p_role text)",
   "detail": "service_role"
  },
@@ -2137,6 +2157,11 @@
  {
   "kind": "function-grant",
   "object": "public.company_people()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.complete_company_email(p_org uuid, p_user uuid, p_send uuid, p_outcome text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -3288,6 +3313,11 @@
   "kind": "function-grant",
   "object": "public.reseed_doc_counters()",
   "detail": ""
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.reserve_company_email(p_org uuid, p_user uuid, p_key text, p_to text, p_subject text, p_body text, p_related_type text, p_related_id text, p_mode text)",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",
@@ -5087,6 +5117,11 @@
  {
   "kind": "rls",
   "object": "security_audit.audit_log",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "security_audit.company_email_sends",
   "detail": "enabled"
  },
  {
@@ -7363,6 +7398,16 @@
   "kind": "trigger",
   "object": "security_audit.audit_log :: support_read_only",
   "detail": "O 80b1964f3c9fab57badcf38cf1bf917c"
+ },
+ {
+  "kind": "trigger",
+  "object": "security_audit.company_email_sends :: admin_mfa",
+  "detail": "O 572a0b13053d6f4003c27bf69fdba748"
+ },
+ {
+  "kind": "trigger",
+  "object": "security_audit.company_email_sends :: support_read_only",
+  "detail": "O d6d816e5ddce4374ebc29bc82d7a4359"
  },
  {
   "kind": "trigger",

@@ -25,6 +25,7 @@ DECLARE
   a_admin UUID := gen_random_uuid(); a_office UUID := gen_random_uuid(); a_workshop UUID := gen_random_uuid(); b_office UUID := gen_random_uuid();
   s_admin UUID := gen_random_uuid(); s_office UUID := gen_random_uuid(); s_workshop UUID := gen_random_uuid(); s_b UUID := gen_random_uuid();
   a_support UUID := gen_random_uuid(); s_support UUID := gen_random_uuid(); v_grant UUID := gen_random_uuid();
+  v_j JSONB; v_j2 JSONB; v_key TEXT := repeat('a', 64); v_key2 TEXT := repeat('b', 64);
   n INT; v_by UUID; v_ok BOOLEAN; v_state TEXT;
   r RECORD;
 BEGIN
@@ -164,6 +165,90 @@ BEGIN
     UPDATE public.ai_helper_settings SET finance_check_enabled = FALSE;
     RAISE EXCEPTION 'FAIL direct update allowed';
   EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS no direct UPDATE on ai_helper_settings';
+  END;
+  -- 7b. Company A requires the second step: its admin at aal1 can't change the finance check switch.
+  PERFORM pg_temp.be(a_admin, s_admin, 'aal1');
+  BEGIN
+    PERFORM public.ai_helper_set_finance_check(FALSE);
+    RAISE EXCEPTION 'FAIL admin at aal1 changed the switch';
+  EXCEPTION WHEN insufficient_privilege THEN GET STACKED DIAGNOSTICS v_state = PG_EXCEPTION_HINT; RAISE NOTICE 'PASS admin at aal1 cannot change the finance check switch (hint %)', v_state;
+  END;
+
+  -- 8. (E8) The send ledger: a retry with the same key writes no second history row; a failed one is tried again on the same row.
+  PERFORM pg_temp.be(a_office, s_office, 'aal1');
+  v_j := public.reserve_company_email(org_a, a_office, v_key, 'c@example.test', 'Invoice 1', 'Body', 'invoice', 'rec-1', 'sending');
+  v_j2 := public.reserve_company_email(org_a, a_office, v_key, 'c@example.test', 'Invoice 1', 'Body', 'invoice', 'rec-1', 'sending');
+  IF (v_j ->> 'replay')::BOOLEAN OR NOT (v_j2 ->> 'replay')::BOOLEAN OR v_j ->> 'history_id' <> v_j2 ->> 'history_id' OR v_j2 ->> 'status' <> 'sending' THEN
+    RAISE EXCEPTION 'FAIL retry not a replay: % %', v_j, v_j2;
+  END IF;
+  SELECT count(*) INTO n FROM public.email_history WHERE organization_id = org_a AND related_to_id = 'rec-1';
+  IF n <> 1 THEN RAISE EXCEPTION 'FAIL % history rows for one key', n; END IF;
+  RAISE NOTICE 'PASS a retry with the same key is a replay: one history row, nothing new reserved';
+  PERFORM public.complete_company_email(org_a, a_office, (v_j ->> 'send_id')::UUID, 'failed');
+  v_j2 := public.reserve_company_email(org_a, a_office, v_key, 'c@example.test', 'Invoice 1', 'Body', 'invoice', 'rec-1', 'sending');
+  IF (v_j2 ->> 'replay')::BOOLEAN OR v_j2 ->> 'history_id' <> v_j ->> 'history_id' THEN RAISE EXCEPTION 'FAIL failed send not retried on the same row: %', v_j2; END IF;
+  PERFORM public.complete_company_email(org_a, a_office, (v_j ->> 'send_id')::UUID, 'accepted');
+  PERFORM pg_temp.me();
+  SELECT count(*) INTO n FROM public.email_history WHERE id = (v_j ->> 'history_id')::UUID AND status = 'sent_via_system' AND sent_at IS NOT NULL;
+  IF n <> 1 THEN RAISE EXCEPTION 'FAIL accepted not recorded'; END IF;
+  RAISE NOTICE 'PASS a failed send is tried again on the same history row; accepted is recorded as sent_via_system';
+  PERFORM pg_temp.be(a_office, s_office, 'aal1');
+  v_j2 := public.reserve_company_email(org_a, a_office, v_key, 'c@example.test', 'Invoice 1', 'Body', 'invoice', 'rec-1', 'sending');
+  IF NOT (v_j2 ->> 'replay')::BOOLEAN OR v_j2 ->> 'status' <> 'accepted' THEN RAISE EXCEPTION 'FAIL sent e-mail not a replay: %', v_j2; END IF;
+  BEGIN
+    PERFORM public.complete_company_email(org_a, a_office, (v_j ->> 'send_id')::UUID, 'accepted');
+    RAISE EXCEPTION 'FAIL completed twice';
+  EXCEPTION WHEN no_data_found THEN RAISE NOTICE 'PASS an accepted e-mail replays as accepted and can''t be completed again';
+  END;
+  -- A draft (no provider) is reserved too: its retry writes no second draft.
+  v_j := public.reserve_company_email(org_a, a_office, v_key2, 'c@example.test', 'Quote 1', 'Body', 'quote', 'rec-2', 'drafted');
+  v_j2 := public.reserve_company_email(org_a, a_office, v_key2, 'c@example.test', 'Quote 1', 'Body', 'quote', 'rec-2', 'drafted');
+  IF NOT (v_j2 ->> 'replay')::BOOLEAN OR v_j2 ->> 'status' <> 'drafted' THEN RAISE EXCEPTION 'FAIL draft retry: %', v_j2; END IF;
+  SELECT count(*) INTO n FROM public.email_history WHERE organization_id = org_a AND related_to_id = 'rec-2' AND status = 'drafted';
+  IF n <> 1 THEN RAISE EXCEPTION 'FAIL % drafts', n; END IF;
+  RAISE NOTICE 'PASS a retried draft writes no second draft';
+
+  -- Who may reserve: not another company's office, not workshop, not a support session, not an aal1 admin (MFA required), not
+  -- someone else's user id, not anon; the ledger itself can't be read by anyone signed in.
+  FOR r IN SELECT * FROM (VALUES ('other company', b_office, s_b, 'aal1', b_office), ('workshop', a_workshop, s_workshop, 'aal1', a_workshop),
+                                 ('support', a_support, s_support, 'aal2', a_support), ('admin aal1', a_admin, s_admin, 'aal1', a_admin),
+                                 ('as another person', a_office, s_office, 'aal1', a_admin)) v(label, u, s, aal, claimed) LOOP
+    PERFORM pg_temp.be(r.u, r.s, r.aal);
+    BEGIN
+      PERFORM public.reserve_company_email(org_a, r.claimed, repeat('c', 64), 'c@example.test', 'S', 'B', 'general', NULL, 'sending');
+      RAISE EXCEPTION 'FAIL % reserved', r.label;
+    EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS % refused', r.label;
+    END;
+  END LOOP;
+  PERFORM pg_temp.be(a_office, s_office, 'aal1');
+  BEGIN
+    PERFORM count(*) FROM security_audit.company_email_sends;
+    RAISE EXCEPTION 'FAIL ledger readable';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS the ledger is not readable by a signed-in user';
+  END;
+  PERFORM pg_temp.me();
+  PERFORM set_config('role', 'anon', true);
+  BEGIN
+    PERFORM public.reserve_company_email(org_a, NULL, repeat('d', 64), 'c@example.test', 'S', 'B', 'general', NULL, 'sending');
+    RAISE EXCEPTION 'FAIL anon reserved';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS anon refused';
+  END;
+  -- The service role (a schedule): no person; its own company only by parameter.
+  PERFORM set_config('role', 'service_role', true);
+  v_j := public.reserve_company_email(org_b, NULL, repeat('e', 64), 'c@example.test', 'Reminder', 'B', 'invoice', 'rec-3', 'sending');
+  PERFORM public.complete_company_email(org_b, NULL, (v_j ->> 'send_id')::UUID, 'unknown');
+  PERFORM pg_temp.me();
+  SELECT count(*) INTO n FROM public.email_history WHERE id = (v_j ->> 'history_id')::UUID AND organization_id = org_b AND drafted_by IS NULL AND status = 'unknown';
+  IF n <> 1 THEN RAISE EXCEPTION 'FAIL service role send not recorded'; END IF;
+  RAISE NOTICE 'PASS the service role reserves and completes a system send (no person)';
+  -- The company's hourly ceiling (200 sends).
+  INSERT INTO security_audit.company_email_sends (organization_id, idempotency_key, history_id, status)
+    SELECT org_b, lpad(to_hex(g), 64, 'f'), gen_random_uuid(), 'accepted' FROM generate_series(1, 199) g;
+  PERFORM set_config('role', 'service_role', true);
+  BEGIN
+    PERFORM public.reserve_company_email(org_b, NULL, repeat('9', 64), 'c@example.test', 'S', 'B', 'general', NULL, 'sending');
+    RAISE EXCEPTION 'FAIL past the hourly ceiling';
+  EXCEPTION WHEN SQLSTATE 'PT429' THEN RAISE NOTICE 'PASS the 201st send in an hour is refused (PT429)';
   END;
   PERFORM pg_temp.me();
 END

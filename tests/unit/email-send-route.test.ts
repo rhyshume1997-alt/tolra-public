@@ -55,7 +55,7 @@ describe("POST /api/email/send", () => {
     mailer.calls = []; mailer.answer = { ok: true, mode: "sent", provider: "resend", historyId: "h-1" };
     db.reads = [];
     db.tables = {
-      invoices: [{ id: DOC, organization_id: ORG, customer: "Customer Ltd" }],
+      invoices: [{ id: DOC, organization_id: ORG, customer: "Customer Ltd", invoice_ref: "INV-0042" }],
       quotes: [{ id: DOC, organization_id: "other-org", customer: "Customer Ltd" }],
       customers: [{ organization_id: ORG, name: "Customer Ltd", email: "Acc@Customer.test" }],
       suppliers: [], delivery_notes: [], purchase_orders: [],
@@ -107,13 +107,21 @@ describe("POST /api/email/send", () => {
     expect(mailer.calls).toEqual([]);
   });
 
-  it("bad input is 400: unknown kind, CR/LF address, not a PDF", async () => {
+  it("bad input is refused: unknown kind, CR/LF address, not a PDF, another document's PDF, over 5 MB", async () => {
     expect((await post({ ...valid, kind: "alert" })).status).toBe(400);
     expect((await post({ ...valid, to: ["acc@customer.test\r\nBcc: x@evil.test"] })).status).toBe(400);
-    expect((await post({ ...valid, attachment: { filename: "i.pdf", content_base64: Buffer.from("<html>not a pdf</html>").toString("base64") } })).status).toBe(400);
+    expect((await post({ ...valid, attachment: { filename: "invoice-INV-0042.pdf", content_base64: Buffer.from("<html>not a pdf</html>").toString("base64") } })).status).toBe(400);
+    // The uploaded PDF must carry this document's own number (it is built in the browser).
+    const wrong = await post({ ...valid, attachment: { filename: "invoice-INV-0043.pdf", content_base64: Buffer.from("%PDF-1.7 body").toString("base64") } });
+    expect(wrong.status).toBe(400);
+    expect((await wrong.json()).error).toBe("The attachment isn't this document's PDF.");
+    // At most 5 MB.
+    const big = Buffer.concat([Buffer.from("%PDF-1.7"), Buffer.alloc(5 * 1024 * 1024)]);
+    expect((await post({ ...valid, attachment: { filename: "invoice-INV-0042.pdf", content_base64: big.toString("base64") } })).status).toBe(413);
     expect(mailer.calls).toEqual([]);
-    expect((await post({ ...valid, attachment: { filename: "i.pdf", content_base64: Buffer.from("%PDF-1.7 body").toString("base64") } })).status).toBe(200);
-    expect(mailer.calls[0].input.attachments).toEqual([{ filename: "i.pdf", content: Buffer.from("%PDF-1.7 body"), contentType: "application/pdf" }]);
+    expect((await post({ ...valid, idempotency_key: "invoice:INV-0042:a1b2c3d4", attachment: { filename: "invoice-INV-0042.pdf", content_base64: Buffer.from("%PDF-1.7 body").toString("base64") } })).status).toBe(200);
+    expect(mailer.calls[0].input.attachments).toEqual([{ filename: "invoice-INV-0042.pdf", content: Buffer.from("%PDF-1.7 body"), contentType: "application/pdf" }]);
+    expect(mailer.calls[0].input.idempotencyKey).toBe("invoice:INV-0042:a1b2c3d4");
   });
 
   it("maps the mailer's answers: drafted 200, refused/limited/no provider/provider error with their codes", async () => {
@@ -128,3 +136,14 @@ describe("POST /api/email/send", () => {
   });
 });
 
+
+describe("the uploaded PDF's file name", async () => {
+  const { fileNameMatches } = await import("@/lib/email/attachment-check");
+  it("must carry the document's own number, however it is punctuated", () => {
+    expect(fileNameMatches("quote-Q-1042.pdf", ["Q-1042"])).toBe(true);
+    expect(fileNameMatches("quote-Q-1042-v2.pdf", ["Q 1042"])).toBe(true);
+    expect(fileNameMatches("purchase-order-PO-0007.pdf", [null, "PO-0007"])).toBe(true);
+    expect(fileNameMatches("quote-Q-1043.pdf", ["Q-1042"])).toBe(false);
+    expect(fileNameMatches("anything.pdf", [null, ""])).toBe(false);
+  });
+});
