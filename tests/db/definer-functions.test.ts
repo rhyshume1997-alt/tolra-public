@@ -316,12 +316,15 @@ function attempts(): Attempt[] {
     ["public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)", () => alpha.rpc("record_inbound_email", { p_graph_message_id: `AAA-${randomUUID()}`, p_internet_message_id: null, p_from_address: "a@example.test", p_from_name: null, p_subject: `Re: ${MARKER}`, p_received_at: day, p_body_preview: "", p_body_text: "" }), "nothing of beta's"],
     ["public.save_mail_poll_state(p_next_link text, p_checkpoint timestamp with time zone)", () => alpha.rpc("save_mail_poll_state", { p_next_link: null, p_checkpoint: day }), "nothing of beta's"],
     // 101: the AI helper. Settings and key change the caller's own company only; reserve answers from the caller's company (alpha's
-    // features are off, so it refuses); settle and decide pointed at beta's suggestion refuse.
+    // features are off, so it refuses); decide pointed at beta's suggestion refuses. Settle is the service role's only from 102 (no
+    // longer callable by a signed-in user, so not listed here; tests/db/security-guards-102.test.ts).
     ["public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)", () => alpha.rpc("ai_helper_save_settings", { p_roundup: false, p_rfq: false, p_cap_pence: 0 }), "nothing of beta's"],
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
-    ["public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)", () => alpha.rpc("ai_helper_settle", { p_request: beta.aiRequest, p_status: "failed", p_failure: "invalid", p_cost_pence: 0, p_model: null, p_output: null }), "refused"],
     ["public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)", () => alpha.rpc("ai_helper_decide", { p_request: beta.aiRequest, p_decision: "rejected", p_quote: null }), "refused"],
+    // 102: whether a profile is one the caller may change: asked about beta's person, FALSE (nothing of beta's is revealed or touched).
+    ["public.admin_may_edit_profile(p_user uuid)", () => alpha.rpc("admin_may_edit_profile", { p_user: world.tenants.beta.users.office.id }), "nothing of beta's"],
+    ["public.admin_may_read_profile(p_user uuid)", () => alpha.rpc("admin_may_read_profile", { p_user: world.tenants.beta.users.office.id }), "nothing of beta's"],
     ["public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)", () => alpha.rpc("write_audit", { p_action: "UPDATE", p_entity_table: "jobs", p_entity_id: beta.job, p_old: null, p_new: null, p_metadata: {}, p_ip: null, p_user_agent: null }), "nothing of beta's"],
   ];
 }
@@ -364,6 +367,9 @@ describe("pointed at the other company's records, each function refuses or touch
     expect((await alpha.rpc("job_file_quote_reference_ok", { p_org: world.tenants.beta.id, p_kind: "customer_po", p_path: beta.attachmentPath, p_source: beta.attachment })).data).toBe(false);
     // 093: beta's person reads as protected from alpha (fail closed; no answer that tells beta's logins apart).
     expect((await alpha.rpc("admin_login_is_protected", { p_user: world.tenants.beta.users.office.id })).data).toBe(true);
+    // 102: beta's person is never one alpha's admin may change.
+    expect((await alpha.rpc("admin_may_edit_profile", { p_user: world.tenants.beta.users.office.id })).data).toBe(false);
+    expect((await alpha.rpc("admin_may_read_profile", { p_user: world.tenants.beta.users.office.id })).data).toBe(false);
     expect(await betaFingerprint()).toEqual(before);
   });
 
