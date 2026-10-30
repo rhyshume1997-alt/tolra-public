@@ -144,7 +144,8 @@ export function wholeFloor(reads: FloorReads, today: string, now = new Date()): 
   const count = (state: FloorState) => rows.filter((r) => r.state === state).length;
   const withJob = rows.filter((r) => r.job);
   const late = detailsFailed && withJob.length ? null : withJob.filter((r) => r.job!.late).length;
-  return { failed: false, rows, counts: { running: count("running"), paused: count("paused"), idle: count("idle"), late }, benchFailed, detailsFailed, nextFailed };
+  // Without the bench read, jobs worked on the bench are missing, so Running and Late are unknown (a dash), not short.
+  return { failed: false, rows, counts: { running: benchFailed ? null : count("running"), paused: count("paused"), idle: count("idle"), late: benchFailed ? null : late }, benchFailed, detailsFailed, nextFailed };
 }
 
 const TZ = "Europe/London";

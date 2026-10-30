@@ -131,6 +131,12 @@ describe("whole floor: fails closed", () => {
     expect(floor.rows.map((r) => r.place)).toEqual(["Haas VF-2", "Lathe", "Mill"]);
   });
 
+  it("the bench read failed: Running and Late are dashes (bench jobs are missing), Paused and Idle are still counted", () => {
+    const floor = wholeFloor(reads({ bench: null }), TODAY, NOW);
+    expect(floor.counts).toEqual({ running: null, paused: 1, idle: 1, late: null });
+    expect(Object.values(floor.counts).map(countText)).toEqual(["—", "1", "1", "—"]);
+  });
+
   it("an empty floor that was read is 0, not a dash", () => {
     const floor = wholeFloor(reads({ machines: [], inUse: [], paused: [], bench: [], jobs: [], bookings: [] }), TODAY, NOW);
     expect(floor.failed).toBe(false);
