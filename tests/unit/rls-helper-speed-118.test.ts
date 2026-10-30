@@ -57,6 +57,8 @@ describe("118 rls helper speed (supabase/release)", () => {
   it("guard requires 116's body (or 118's); self-check, verify and preflight name them; the rollback puts back 116's text exactly", () => {
     expect(m118()).toContain(`v_member NOT IN ('${M116}', '${M118}')`);
     expect(m118()).not.toContain(`'${M036}'`);
+    // 116 can be re-run after 118 (the run sheet and the rehearsal re-run every file in order): its guard accepts 118's body too.
+    expect(read("supabase/migrations/116_ban_ends_session.sql")).toContain(`v_member NOT IN ('${M036}', '${M116}', '${M118}')`);
     expect(read("supabase/verify/rls_helper_speed_118.sql")).toContain(`body = '${M118}'`);
     const preflight = read("supabase/verify/release_preflight.sql");
     expect(preflight).toContain(`('118 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\\s', '', 'g')) = '${M118}'))`);
