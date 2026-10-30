@@ -42,9 +42,6 @@ export function weekLabel(weekStart: string): string {
 /** The ISO week number of the week starting Monday `weekStart` ("2026-W43" gives 43). */
 export const weekNumber = (weekStart: string) => Number(isoWeekKey(weekStart).slice(-2));
 
-/** Minutes as decimal hours to 2 places without trailing zeros: 1395 gives "23.25", 180 gives "3". */
-export const decimalHours = (minutes: number) => String(Number((Math.max(0, minutes) / 60).toFixed(2)));
-
 export type PersonHours = { userId: string; paidMinutes: number; clockedMinutes: number };
 
 /** Each person's paid and clocked minutes for the week starting Monday `weekStart`; people with no time are left out. */
@@ -123,7 +120,7 @@ export async function runTimesheets(admin: SupabaseClient, schedule: EmailSchedu
     try {
       const name = names.get(person.userId) ?? "Unknown";
       const mail = renderTimesheet({
-        personName: name, week: `${weekNumber(weekStart)} (${weekLabel(weekStart)})`, hours: decimalHours(person.paidMinutes),
+        personName: name, week: `${weekNumber(weekStart)} (${weekLabel(weekStart)})`, hours: person.paidMinutes / 60,
         companyName, link: site ? `${site}/time` : "",
       }, override);
       const sent = await deps.send({

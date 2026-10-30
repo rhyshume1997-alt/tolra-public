@@ -1,7 +1,7 @@
 // replaced at merge: E11 owns lib/email/templates/defaults.ts (every default text, renderTemplate, the vars builders). This shim carries only
 // what the e-mail schedules use (the invoice_reminder and timesheet texts and their vars builders), with E11's exact signatures and result
 // shape ({ subject, text, html }), so the schedules compile and are testable on this branch. The schedules reach it only through
-// lib/email/schedules/render.ts. If E11's file lacks a name below at merge time, the missing one moves there (E8 adds timesheetVars).
+// lib/email/schedules/render.ts. If E11's file lacks a name below at merge time, the missing one moves there (same signatures as E8's timesheetVars).
 export type TemplateKey = "invoice_reminder" | "timesheet" | (string & {});
 export type TemplateVars = Partial<Record<string, string>>;
 export type TemplateText = { subject: string; body: string };
@@ -55,7 +55,8 @@ export function invoiceReminderVars(input: {
   };
 }
 
-/** The weekly timesheet e-mail's values. Hours already formatted (decimal hours, "37.5"). */
-export function timesheetVars(input: { personName: string; week: string; hours: string; companyName: string; link?: string }): TemplateVars {
-  return { person_name: input.personName, week: input.week, hours: input.hours, company_name: input.companyName, link: input.link ?? "" };
+/** The weekly timesheet e-mail's values (scheduled timesheets). Hours as a number are written with at most two decimals. */
+export function timesheetVars(input: { week: string | number; hours: number | string; companyName: string; personName?: string | null; link?: string | null }): TemplateVars {
+  const hours = typeof input.hours === "number" ? String(Math.round(input.hours * 100) / 100) : input.hours;
+  return { week: String(input.week), hours, company_name: input.companyName, person_name: input.personName?.trim() || "", link: input.link?.trim() || "" };
 }
