@@ -49,7 +49,7 @@ describe("111 dashboard figures", () => {
     const admin = await signedInClient(world.tenants.alpha.users.admin);
     const work = await admin.rpc("dashboard_work_figures", WORK_ARGS);
     expect(work.error).toBeNull();
-    expect(Object.keys(work.data as object).sort()).toEqual(["due_days", "drafts", "finished_by_month", "jobs", "machines", "quotes", "quotes_90", "quotes_sent_this_month", "rfqs_outstanding", "right_first_time"]);
+    expect(Object.keys(work.data as object).sort()).toEqual(["drafts", "due_days", "finished_by_month", "jobs", "machines", "quotes", "quotes_90", "quotes_sent_this_month", "rfqs_outstanding", "right_first_time"]);
     const money = await admin.rpc("dashboard_money_figures", MONEY_ARGS);
     expect(money.error).toBeNull();
     expect(Object.keys(money.data as object).sort()).toEqual(["days_to_pay", "owed_by_age", "owed_pence", "paid_count", "received_by_month", "to_confirm", "top_customers", "unpaid_count"]);
