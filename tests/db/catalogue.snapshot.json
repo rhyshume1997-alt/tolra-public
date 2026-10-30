@@ -4511,6 +4511,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.timesheet_sends :: timesheet_sends office select",
+  "detail": "PERMISSIVE SELECT authenticated 1cbd867efcfe2dd1b1130687385ea3a6"
+ },
+ {
+  "kind": "policy",
   "object": "public.user_profiles :: Admins insert org profiles",
   "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
  },
@@ -5091,6 +5096,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.timesheet_sends",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.user_profiles",
   "detail": "enabled"
  },
@@ -5487,6 +5497,11 @@
  {
   "kind": "table-grant",
   "object": "public.time_week_approvals :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.timesheet_sends :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -7698,6 +7713,11 @@
   "kind": "unique-index",
   "object": "public.time_sync_rejections :: time_sync_rejections_one_per_key",
   "detail": "0a1e329b404a50aeda531eb58d295fdc"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.timesheet_sends :: timesheet_sends_schedule_id_period_key_user_id_key",
+  "detail": "a715c65d42976d3647065fe13eb3116d"
  },
  {
   "kind": "unique-index",

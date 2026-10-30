@@ -76,10 +76,14 @@ export async function finishRun(admin: SupabaseClient, scheduleId: string, perio
   if (error) throw new StoreError("finish run", error.code);
 }
 
-/** Notes a finished period on the schedule; a "once" schedule that ran cleanly switches itself off. */
+/**
+ * Notes a clean run on the schedule (last_run_at); a "once" schedule that ran cleanly switches itself off. A run that ended in an error
+ * notes nothing, so "last run" never claims a run that did not finish (the run's own record, email_schedule_runs, holds the error).
+ */
 export async function noteScheduleRan(admin: SupabaseClient, schedule: Pick<EmailScheduleRow, "id" | "frequency">, now: Date, succeeded: boolean): Promise<void> {
+  if (!succeeded) return;
   const patch: Record<string, unknown> = { last_run_at: now.toISOString() };
-  if (succeeded && schedule.frequency === "once") patch.enabled = false;
+  if (schedule.frequency === "once") patch.enabled = false;
   const { error } = await admin.from("email_schedules").update(patch).eq("id", schedule.id);
   if (error) throw new StoreError("note schedule", error.code);
 }

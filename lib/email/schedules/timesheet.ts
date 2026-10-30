@@ -75,14 +75,15 @@ async function personNames(admin: Pick<SupabaseClient, "from">, ids: string[]): 
   return out;
 }
 
-export type TimesheetDeps = { send: typeof sendCompanyEmail };
+export type TimesheetDeps = { send: typeof sendCompanyEmail; deadline?: number; clock?: () => number };
 
 /**
- * Sends one period of timesheet e-mails: one per person, to every recipient. Not retried automatically (a second try could e-mail the
- * people already sent): a failure is recorded on the run and the next period goes ahead as normal.
+ * Sends one period of timesheet e-mails: one per person, to every recipient. A person is claimed in timesheet_sends BEFORE their e-mail is
+ * sent and the claim is given back if the send fails, so a period that is tried again (after a failure, a crash or the time limit) e-mails
+ * only the people not yet sent, never the same person twice.
  */
 export async function runTimesheets(admin: SupabaseClient, schedule: EmailScheduleRow, occurrence: Occurrence, now: Date, deps: TimesheetDeps = { send: sendCompanyEmail }): Promise<ExecResult> {
-  const result: ExecResult = { sent: 0, drafted: 0, skipped: 0, failed: 0, error: null, retryable: false };
+  const result: ExecResult = { sent: 0, drafted: 0, skipped: 0, failed: 0, error: null, retryable: true };
   const org = schedule.organization_id;
   const weekStart = previousWeekStart(localDate(occurrence.at, schedule.timezone ?? "Europe/London"));
   const to = (schedule.recipients ?? []).filter(looksLikeEmail);
@@ -96,8 +97,22 @@ export async function runTimesheets(admin: SupabaseClient, schedule: EmailSchedu
   const [names, companyName, override] = await Promise.all([personNames(admin, people.map((p) => p.userId)), loadCompanyName(admin, org), loadTemplateOverride(admin, org, "timesheet")]);
   const site = (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
   const failureCodes = new Set<string>();
+  const clock = deps.clock ?? Date.now;
+  let stoppedEarly = false;
 
   for (const person of people) {
+    if (deps.deadline !== undefined && clock() > deps.deadline) {
+      stoppedEarly = true;
+      break;
+    }
+    const claim = await admin.from("timesheet_sends").upsert({ schedule_id: schedule.id, period_key: occurrence.periodKey, user_id: person.userId },
+      { onConflict: "schedule_id,period_key,user_id", ignoreDuplicates: true }).select("user_id");
+    if (claim.error) throw new StoreError("claim timesheet", claim.error.code);
+    if ((claim.data ?? []).length === 0) {
+      result.skipped += 1; // already e-mailed in this period
+      continue;
+    }
+    const release = () => admin.from("timesheet_sends").delete().eq("schedule_id", schedule.id).eq("period_key", occurrence.periodKey).eq("user_id", person.userId);
     try {
       const name = names.get(person.userId) ?? "Unknown";
       const mail = renderScheduleEmail("timesheet", {
@@ -112,14 +127,20 @@ export async function runTimesheets(admin: SupabaseClient, schedule: EmailSchedu
         result.sent += 1;
         if (sent.mode === "drafted") result.drafted += 1;
       } else {
+        await release();
         result.failed += 1;
         failureCodes.add(sent.code);
       }
     } catch {
+      await Promise.resolve(release()).catch(() => undefined);
       result.failed += 1;
       failureCodes.add("unexpected");
     }
   }
-  if (result.failed) result.error = `${result.failed} timesheet e-mail${result.failed === 1 ? "" : "s"} not sent (${[...failureCodes].sort().join(", ")})`;
+  const problems = [
+    result.failed ? `${result.failed} timesheet e-mail${result.failed === 1 ? "" : "s"} not sent (${[...failureCodes].sort().join(", ")})` : "",
+    stoppedEarly ? "stopped at the time limit; the rest goes on the next try" : "",
+  ].filter(Boolean);
+  result.error = problems.length ? problems.join("; ") : null;
   return result;
 }

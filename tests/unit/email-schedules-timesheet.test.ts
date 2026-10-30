@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { type EmailScheduleRow } from "@/lib/email/schedules/store";
+import { type EmailScheduleRow, RETRY_AFTER_MS, claimRun } from "@/lib/email/schedules/store";
 import { adminEmails, loadPeopleHours, previousWeekStart, runTimesheets, scopedToCompany, weekLabel } from "@/lib/email/schedules/timesheet";
 import { dueOccurrence } from "@/lib/email/schedules/due";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
@@ -110,7 +110,7 @@ describe("running a period of timesheet e-mails", () => {
 
   it("sends one e-mail per person who worked, each to every admin, for the right week", async () => {
     const out = await runTimesheets(db as never, schedule, occurrence, now, { send });
-    expect(out).toMatchObject({ sent: 2, failed: 0, error: null, retryable: false });
+    expect(out).toMatchObject({ sent: 2, failed: 0, error: null, retryable: true });
     expect(send).toHaveBeenCalledTimes(2);
     const [first, second] = send.mock.calls.map((c) => c[0]);
     expect(first).toMatchObject({ organizationId: ORG, kind: "timesheet", to: ["boss@jnr.test", "second@jnr.test"], recordType: "timesheet", recordId: `${A}:2026-10-19` });
@@ -140,10 +140,71 @@ describe("running a period of timesheet e-mails", () => {
     expect(await runTimesheets(db as never, schedule, occurrence, now, { send })).toMatchObject({ sent: 0, failed: 0, error: null });
   });
 
-  it("a failure is counted by code, never with an address, and is not retried automatically", async () => {
+  it("a failure is counted by code, never with an address, and its claim is given back so a retry sends just that person", async () => {
     send.mockResolvedValueOnce({ ok: false, error: "boss@jnr.test refused", code: "recipient_refused" });
     const out = await runTimesheets(db as never, schedule, occurrence, now, { send });
-    expect(out).toMatchObject({ sent: 1, failed: 1, retryable: false, error: "1 timesheet e-mail not sent (recipient_refused)" });
+    expect(out).toMatchObject({ sent: 1, failed: 1, retryable: true, error: "1 timesheet e-mail not sent (recipient_refused)" });
     expect(out.error).not.toContain("jnr.test");
+    expect(db.rows("timesheet_sends").map((r) => r.user_id)).toEqual([B]); // A's claim was given back
+    const again = await runTimesheets(db as never, schedule, occurrence, now, { send });
+    expect(again).toMatchObject({ sent: 1, skipped: 1, failed: 0, error: null });
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(send.mock.calls[2][0].recordId).toBe(`${A}:2026-10-19`);
+    expect(db.rows("timesheet_sends").map((r) => r.user_id).sort()).toEqual([A, B]);
+  });
+
+  it("a sender that throws is counted, the claim is given back, and the other people are still e-mailed", async () => {
+    send.mockRejectedValueOnce(new Error("boom: boss@jnr.test"));
+    const out = await runTimesheets(db as never, schedule, occurrence, now, { send });
+    expect(out).toMatchObject({ sent: 1, failed: 1, error: "1 timesheet e-mail not sent (unexpected)" });
+    expect(db.rows("timesheet_sends").map((r) => r.user_id)).toEqual([B]);
+  });
+
+  it("running the same period twice e-mails each person once", async () => {
+    await runTimesheets(db as never, schedule, occurrence, now, { send });
+    const second = await runTimesheets(db as never, schedule, occurrence, now, { send });
+    expect(second).toMatchObject({ sent: 0, skipped: 2, failed: 0, error: null });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("a period retaken after a crash (the run left 'running', 10+ minutes old) e-mails only the people not yet sent", async () => {
+    // First attempt: claims the run, e-mails A, then the process dies before B (A's record exists, B's does not, the run still says running).
+    expect(await claimRun(db as never, schedule.id, occurrence.periodKey, now)).toBe("claimed");
+    db.rows("timesheet_sends").push({ schedule_id: schedule.id, period_key: occurrence.periodKey, user_id: A });
+    const later = new Date(now.getTime() + RETRY_AFTER_MS + 60_000);
+    expect(await claimRun(db as never, schedule.id, occurrence.periodKey, later)).toBe("claimed"); // the retake is kept
+    const out = await runTimesheets(db as never, schedule, occurrence, later, { send });
+    expect(out).toMatchObject({ sent: 1, skipped: 1 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].recordId).toBe(`${B}:2026-10-19`);
+    // And a further retake sends nobody.
+    const third = await runTimesheets(db as never, schedule, occurrence, later, { send });
+    expect(third).toMatchObject({ sent: 0, skipped: 2 });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("another period or another schedule is its own claim", async () => {
+    await runTimesheets(db as never, schedule, occurrence, now, { send });
+    await runTimesheets(db as never, schedule, { at: occurrence.at, periodKey: "another-period" }, now, { send }); // same hours, a different period key
+    await runTimesheets(db as never, { ...schedule, id: "sch-other" }, occurrence, now, { send });
+    expect(send).toHaveBeenCalledTimes(6);
+  });
+
+  it("stops at the time limit like the reminders do, says so, and the next try carries on with the rest", async () => {
+    let t = 0;
+    const clock = () => (t += 1000); // each person costs a second; the limit allows the first only
+    const out = await runTimesheets(db as never, schedule, occurrence, now, { send, deadline: 1500, clock });
+    expect(out).toMatchObject({ sent: 1, error: "stopped at the time limit; the rest goes on the next try", retryable: true });
+    expect(send).toHaveBeenCalledTimes(1);
+    const rest = await runTimesheets(db as never, schedule, occurrence, now, { send });
+    expect(rest).toMatchObject({ sent: 1, skipped: 1, error: null });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("a deadline already passed sends nobody and claims nobody", async () => {
+    const out = await runTimesheets(db as never, schedule, occurrence, now, { send, deadline: 1, clock: () => 2 });
+    expect(out.sent).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+    expect(db.rows("timesheet_sends")).toHaveLength(0);
   });
 });
