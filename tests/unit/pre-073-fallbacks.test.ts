@@ -213,7 +213,7 @@ describe("the customer's mobile before and after 073", () => {
     const { client, asked } = reader([{ data: [ROW], error: null }]);
     const [customer] = await readCustomers(client, false);
     expect(customer.mobile).toBeUndefined();
-    expect(asked).toEqual(["id, name, contact_name, email, phone, address, notes"]);
+    expect(asked).toEqual(["id, name, contact_name, email, phone, address, notes, updated_at"]);
   });
 
   it("if the column is missing anyway: the list still loads (without the mobile, which stays unread)", async () => {
@@ -222,7 +222,7 @@ describe("the customer's mobile before and after 073", () => {
       const [customer] = await readCustomers(client);
       expect(customer).toMatchObject({ name: "Acme", phone: "01482 000000" });
       expect(customer.mobile).toBeUndefined();
-      expect(asked).toEqual(["id, name, contact_name, email, phone, address, notes, mobile", "id, name, contact_name, email, phone, address, notes"]);
+      expect(asked).toEqual(["id, name, contact_name, email, phone, address, notes, updated_at, mobile", "id, name, contact_name, email, phone, address, notes, updated_at"]);
     }
   });
 
