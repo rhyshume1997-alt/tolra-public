@@ -3,6 +3,7 @@
 import { Building2, Plus, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { AppCredentialsCard } from "@/components/platform/app-credentials-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -209,6 +210,8 @@ export default function PlatformPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <AppCredentialsCard />
 
         <Button variant="ghost" className="mt-6 min-h-11 w-fit text-slate-500" onClick={() => void signOut()}>Sign out</Button>
       </div>

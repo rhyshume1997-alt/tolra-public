@@ -121,6 +121,8 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'finance_check_enabled')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_set_finance_check')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reserve_company_email')),
+    ('107 integrations connect',          to_regclass('public.integration_app_credentials') IS NOT NULL AND to_regclass('public.integration_connect_invites') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'integration_invite_redeem')),
     ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
                                           AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
     ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
@@ -339,6 +341,10 @@ checks(n, check_name, value, expected) AS (
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing'),
     '081 before and after 113 (other or missing: stop and report)'
+  UNION ALL SELECT 47, '107 needs: the integrations layer (084) and is_platform_admin / assert_platform_aal (036)',
+    (to_regclass('public.integration_connections') IS NOT NULL AND to_regprocedure('public.integration_oauth_consume(uuid,uuid,text,text)') IS NOT NULL
+     AND to_regprocedure('public.is_platform_admin()') IS NOT NULL AND to_regprocedure('public.assert_platform_aal()') IS NOT NULL)::TEXT,
+    'true (107 replaces no existing function; it widens three provider checks to add microsoft and adds two tables)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
