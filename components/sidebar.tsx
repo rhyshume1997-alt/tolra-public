@@ -17,6 +17,7 @@ import { useAiFeatures } from "@/components/ai-features";
 import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
 import { passwordProblem } from "@/lib/password";
 import { awaitingApproval } from "@/lib/approval-queue";
+import { usePendingReopenCount } from "@/components/reopen-approvals";
 import { supabase } from "@/lib/supabase";
 import { isCompanyPending } from "@/lib/brand-pending";
 import { useShellCompany } from "@/lib/company";
@@ -90,6 +91,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   // Until the company is known the header shows a neutral placeholder, never the product name in the company's place (lib/brand-pending).
   const companyPending = isCompanyPending(company, companyLoading);
   const [approvalCount, setApprovalCount] = useState<number | null>(null);
+  // 113: reopens waiting for an admin's sign-off count towards the Approval Queue badge (admin and office, who see the queue).
+  const reopenCount = usePendingReopenCount(hasAnyRole(["admin", "office"]));
   const [logoFailed, setLogoFailed] = useState(false);
   const [switching, setSwitching] = useState(false);
   const currentOrg = organizations.find((org) => org.is_current);
@@ -233,7 +236,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  const badge = item.href === "/approval" && approvalCount ? approvalCount.toString() : null;
+                  const queued = (approvalCount ?? 0) + reopenCount;
+                  const badge = item.href === "/approval" && queued ? queued.toString() : null;
                   return (
                     <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>

@@ -753,10 +753,10 @@ export default function JobsPage() {
   /** Reopen (081): who may, with a reason; the server checks again (and refuses once it has gone out or been invoiced). */
   const [reopenFor, setReopenFor] = useState<WorkshopJob | null>(null);
   const reopenOf = (job: WorkshopJob) => reopenCheck(job, { role: activeRole, me: profile?.id });
-  function onReopened(job: WorkshopJob) {
+  function onReopened(job: WorkshopJob, message?: string) {
     setJobs((current) => current.map((item) => (item.id === job.id ? { ...item, finished_at: "", finished_by: undefined, inspected_at: "", inspected_by: "", stage: ["inspection", "complete"].includes(item.stage) ? "machining" : item.stage } : item)));
     setReopenFor(null);
-    toast.success(`${job.job_no} reopened: back to ${JOB_STATUS_LABELS[jobStatusOf({ ...job, finished_at: "", inspected_at: "" })]}`);
+    toast.success(message ?? `${job.job_no} reopened: back to ${JOB_STATUS_LABELS[jobStatusOf({ ...job, finished_at: "", inspected_at: "" })]}`);
   }
   /** An admin's early release (081), from the job's details: with a reason; the server checks again and records it. */
   const [releaseFor, setReleaseFor] = useState<WorkshopJob | null>(null);
@@ -1840,7 +1840,7 @@ export default function JobsPage() {
 
       <ReworkDialog job={reworkJob} role={activeRole} onClose={() => setReworkJob(null)} onChanged={() => setAttempt((n) => n + 1)} />
 
-      <ReopenJobDialog job={reopenFor} onClose={() => setReopenFor(null)} onReopened={(job) => onReopened(job as WorkshopJob)} />
+      <ReopenJobDialog job={reopenFor} onClose={() => setReopenFor(null)} onReopened={(job, message) => onReopened(job as WorkshopJob, message)} onWaiting={(_job, message) => { setReopenFor(null); toast.info(message); }} />
       <ReleaseEarlyDialog job={releaseFor} onClose={() => setReleaseFor(null)} onReleased={(message) => { setReleaseFor(null); toast.success(message); }} />
       <InspectionDialog job={inspectJob} isAdmin={activeRole === "admin"} onClose={() => setInspectJob(null)} onRecorded={(done) => inspectJob && onInspected(inspectJob, done)} />
 
