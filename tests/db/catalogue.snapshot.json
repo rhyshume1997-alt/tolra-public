@@ -821,6 +821,11 @@
  },
  {
   "kind": "function",
+  "object": "public.invoices_write_off_guard()",
+  "detail": "invoker search_path=pg_catalog, public 007241e5212c2823a57826109194d158"
+ },
+ {
+  "kind": "function",
   "object": "public.is_api_role()",
   "detail": "invoker search_path=pg_catalog 2fc74dfec6391ceb4ff49402a8613e2f"
  },
@@ -1476,6 +1481,11 @@
  },
  {
   "kind": "function",
+  "object": "public.reverse_write_off(p_invoice_id uuid, p_reason text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit cf0d85b41f73f82072d6ff6bc90a14a8"
+ },
+ {
+  "kind": "function",
   "object": "public.revise_quote(p_quote uuid)",
   "detail": "definer search_path=pg_catalog, public 542e94a9a6bb80a0613172f623736b4f"
  },
@@ -1758,6 +1768,11 @@
   "kind": "function",
   "object": "public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)",
   "detail": "definer search_path=pg_catalog, public, security_audit 52b82a9a15d88c28e457e2f631970499"
+ },
+ {
+  "kind": "function",
+  "object": "public.write_off_invoice(p_invoice_id uuid, p_reason text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 6b00d8115959280b2da46a84b253f9bc"
  },
  {
   "kind": "function",
@@ -2661,6 +2676,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.invoices_write_off_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.is_api_role()",
   "detail": "anon,authenticated,service_role,PUBLIC"
  },
@@ -3316,6 +3336,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.reverse_write_off(p_invoice_id uuid, p_reason text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.revise_quote(p_quote uuid)",
   "detail": "authenticated,service_role"
  },
@@ -3597,6 +3622,11 @@
  {
   "kind": "function-grant",
   "object": "public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.write_off_invoice(p_invoice_id uuid, p_reason text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -6173,6 +6203,11 @@
   "kind": "trigger",
   "object": "public.invoices :: invoices_void_guard",
   "detail": "O 8e996bb5ae1dbc5b7ef261ef351adac0"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoices :: invoices_write_off_guard",
+  "detail": "O 857177c1d8906c00390aab2c1bf58bec"
  },
  {
   "kind": "trigger",

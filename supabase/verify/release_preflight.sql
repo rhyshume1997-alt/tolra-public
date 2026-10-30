@@ -117,6 +117,9 @@ markers(migration, present) AS (
     ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
+    ('105 invoice write-off',             EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_off_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'c7449f4564711533d43a1aa252eddfdf')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reverse_write_off' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4750ac042335694164b634edca559f23')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = 'public.invoices'::regclass)),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert'))
 ),
@@ -326,6 +329,12 @@ checks(n, check_name, value, expected) AS (
     (to_regprocedure('public.assert_privileged_aal()') IS NOT NULL AND to_regprocedure('public._session_membership()') IS NOT NULL
      AND to_regprocedure('public.support_readonly_guard()') IS NOT NULL AND to_regclass('security_audit.audit_log') IS NOT NULL)::TEXT,
     'true (101 replaces no existing object; its tables are new)'
+  UNION ALL SELECT 45, '105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)',
+    CASE WHEN NOT EXISTS (SELECT 1 FROM col WHERE table_name = 'invoices' AND column_name = 'status') THEN 'n/a'
+         ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(*) || ' / ' || count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM security_audit.audit_log a
+                WHERE a.action = 'WRITE_OFF_INVOICE' AND a.entity_table = 'invoices' AND a.entity_id = i.id::TEXT)) AS n
+                FROM public.invoices i WHERE lower(regexp_replace(coalesce(i.status, ''), '[^[:alpha:]]', '', 'g')) = 'writtenoff'$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
+    'informational, the same before and after 105 (105 changes no invoice): report both figures; from 105 a write-off is made only with Write off'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
