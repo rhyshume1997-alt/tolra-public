@@ -17,6 +17,7 @@ import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FINANCE_CHECK_ROLES } from "@/lib/ai/finance-check/request";
+import { EMAIL_SEND_ROLES } from "@/lib/email/send-company-email";
 import { AUTOMATIC_SEND_ROLES, CONNECT_ROLES, MANUAL_SEND_ROLES, MAPPING_ROLES } from "@/lib/integrations/xero/policy";
 
 // ---- Part 1: the table, read from the source ----------------------------------------------------------------------------------
@@ -28,6 +29,7 @@ const ROLE_CONSTANTS: Record<string, { module: string; roles: readonly string[] 
   MAPPING_ROLES: { module: "@/lib/integrations/xero/policy", roles: MAPPING_ROLES },
   MANUAL_SEND_ROLES: { module: "@/lib/integrations/xero/policy", roles: MANUAL_SEND_ROLES },
   AUTOMATIC_SEND_ROLES: { module: "@/lib/integrations/xero/policy", roles: AUTOMATIC_SEND_ROLES },
+  EMAIL_SEND_ROLES: { module: "@/lib/email/send-company-email", roles: EMAIL_SEND_ROLES },
 };
 const GUARDS: Record<string, string> = {
   requireProfile: "@/lib/server/auth",
@@ -53,6 +55,7 @@ const EXPECTED: Record<string, Row> = {
   "admin/users/companies:POST": r("admin", "switch", "refused"),
   "admin/users/mfa-reset:POST": r("admin", "always", "refused"),
   "admin/users/password:POST": r("admin", "always", "refused"),
+  "admin/users/reset-link:POST": r("admin", "always", "refused"),
   "admin/users/sign-in:GET": r("admin", "switch", "refused"),
   "admin/users/sign-in:POST": r("admin", "always", "refused"),
   "ai/finance-check:POST": r("admin,office", "switch", "refused"),
@@ -68,16 +71,40 @@ const EXPECTED: Record<string, Row> = {
   "costing/[...path]:GET": r("admin,office", "switch", "db"),
   "costing/[...path]:POST": r("admin,office", "switch", "db"),
   "costing/status:GET": r("admin,office", "switch", "db"),
+  "cron/daily:GET": r("cron", "-", "-"),
+  "cron/email-schedules:GET": r("cron", "-", "-"),
   "cron/ip-purge:GET": r("cron", "-", "-"),
+  "cron/xero-sweep:GET": r("cron", "-", "-"),
+  "email/send:POST": r("admin,office", "switch", "refused"),
   "favicon:GET": r("public", "-", "-"),
   "health:GET": r("public", "-", "-"),
+  // Platform owner only (the app's own Xero/Microsoft keys): requirePlatformOwner, aal2 always.
+  "integrations/app-credentials:DELETE": r("platform owner", "always", "-"),
+  "integrations/app-credentials:GET": r("platform owner", "always", "-"),
+  "integrations/app-credentials:POST": r("platform owner", "always", "-"),
+  "integrations/invite:DELETE": r("admin", "switch", "refused"),
+  "integrations/invite:POST": r("admin", "switch", "refused"),
+  // The accountant's one-use connect link (no sign-in; see api-route-guards PUBLIC_ROUTES for why each is safe).
+  "integrations/invite/[token]:GET": r("public", "-", "-"),
+  "integrations/invite/[token]:POST": r("public", "-", "-"),
+  "integrations/invite/callback:GET": r("public", "-", "-"),
+  "integrations/microsoft/callback:GET": r("admin", "switch", "refused"),
+  "integrations/microsoft/connect:POST": r("admin", "switch", "refused"),
+  "integrations/microsoft/disconnect:POST": r("admin", "switch", "refused"),
+  "integrations/microsoft/test:POST": r("admin", "switch", "refused"),
+  // Only whether the company's connections are set up; no secret is returned.
+  "integrations/status:GET": r("admin", "switch", "db"),
   "integrations/xero/after-issue:POST": r("admin,office", "switch", "refused"),
+  "integrations/xero/batch:POST": r("admin", "switch", "refused"),
   "integrations/xero/callback:GET": r("admin", "switch", "refused"),
   "integrations/xero/connect:POST": r("admin", "switch", "refused"),
   "integrations/xero/disconnect:POST": r("admin", "switch", "refused"),
   "integrations/xero/mappings:GET": r("admin", "switch", "refused"),
   "integrations/xero/mappings:POST": r("admin", "switch", "refused"),
   "integrations/xero/send:POST": r("admin", "switch", "refused"),
+  // The accountant's summary (a read of the documents' totals; no token or secret): office as well as admin, by design (#47 E3).
+  "integrations/xero/summary:GET": r("admin,office", "switch", "refused"),
+  "integrations/xero/test:POST": r("admin", "switch", "refused"),
   "job-photos/[id]:GET": r("admin,office,workshop", "switch", "db"),
   // Mail: a read-only support session is stopped by the database before Microsoft is called (reserve_mail_send / record_inbound_email
   // / save_mail_poll_state write tables with the support_read_only trigger); an elevated one has write access by design.
@@ -89,6 +116,9 @@ const EXPECTED: Record<string, Row> = {
   "mail/status:GET": r("admin", "switch", "db"),
   "my-company-logos:GET": r("self", "-", "-"),
   "platform/organizations:POST": r("platform owner", "always", "-"),
+  // D30-5 (Rhys): staff, workshop included, may tick "notify the admin" on a reopen they asked for. This only e-mails the company's
+  // admins about the caller's own pending request of their own company, made in the last 15 minutes; it reopens nothing.
+  "reopen-requests/notify:POST": r("admin,office,workshop", "switch", "db"),
   "report-error:POST": r("signed-in", "switch", "db"),
   "send-job:POST": r("admin,office", "switch", "db"),
   "send-job/resolve:POST": r("admin", "switch", "db"),
@@ -107,6 +137,8 @@ function readRoute(route: string, source: string): Record<string, Row | string> 
   const file = ts.createSourceFile(`${route}.ts`, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const imported = new Map<string, string>();
   const topLevel = new Map<string, Fn>();
+  /** Same-file `const X = ["admin", ...]` role lists (xero/summary's SUMMARY_ROLES). */
+  const localRoles = new Map<string, string[]>();
   const handlers = new Map<string, Fn>();
   for (const s of file.statements) {
     if (ts.isImportDeclaration(s) && ts.isStringLiteral(s.moduleSpecifier) && s.importClause?.namedBindings && ts.isNamedImports(s.importClause.namedBindings)) {
@@ -119,6 +151,10 @@ function readRoute(route: string, source: string): Record<string, Row | string> 
     }
     if (ts.isVariableStatement(s)) {
       for (const d of s.declarationList.declarations) {
+        const init = d.initializer && ts.isAsExpression(d.initializer) ? d.initializer.expression : d.initializer;
+        if ((s.declarationList.flags & ts.NodeFlags.Const) && ts.isIdentifier(d.name) && init && ts.isArrayLiteralExpression(init) && init.elements.every(ts.isStringLiteral)) {
+          localRoles.set(d.name.text, init.elements.map((e) => (e as ts.StringLiteral).text));
+        }
         if (ts.isIdentifier(d.name) && d.initializer && (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer))) {
           topLevel.set(d.name.text, d.initializer);
           if (exported && METHODS.has(d.name.text)) handlers.set(d.name.text, d.initializer);
@@ -188,7 +224,8 @@ function readRoute(route: string, source: string): Record<string, Row | string> 
         }
         return [`<unresolved ${e.getText()}>`];
       });
-    } else roles = [`<unresolved ${arg.getText()}>`];
+    } else if (ts.isIdentifier(arg) && localRoles.has(arg.text)) roles = [...localRoles.get(arg.text)!];
+    else roles = [`<unresolved ${arg.getText()}>`];
     out[key] = r(typeof roles === "string" ? roles : roles.join(","), inlineAal2 ? "always" : "switch", supportRefused ? "refused" : "db");
   }
   return out;
@@ -218,11 +255,14 @@ describe("API route x role table (read from the source)", () => {
     const officeOnlyOrAbove = Object.entries(EXPECTED).filter(([, row]) => !["signed-in", "public", "self", "cron", "platform owner"].includes(row.who));
     for (const [key, row] of officeOnlyOrAbove) {
       expect([key, rolesOf(row).includes("viewer")]).toEqual([key, false]);
-      if (key.startsWith("admin/") || key.startsWith("mail/") || key.startsWith("integrations/xero/") && !key.includes("after-issue")) {
+      // Office also reaches the Xero after-issue send and the read-only accountant's summary (#47).
+      if (key.startsWith("admin/") || key.startsWith("mail/") || key.startsWith("integrations/xero/") && !key.includes("after-issue") && key !== "integrations/xero/summary:GET") {
         expect([key, row.who]).toEqual([key, "admin"]);
       }
     }
-    expect(officeOnlyOrAbove.filter(([, row]) => row.who.includes("workshop")).map(([key]) => key)).toEqual(["job-photos/[id]:GET"]);
+    // The one exception besides job photos is D30-5 (Rhys): workshop staff tick "notify the admin" on their own pending reopen request
+    // (reopen-requests/notify only e-mails the admins; the reopen itself waits for an admin's approval).
+    expect(officeOnlyOrAbove.filter(([, row]) => row.who.includes("workshop")).map(([key]) => key)).toEqual(["job-photos/[id]:GET", "reopen-requests/notify:POST"]);
   });
 
   it("the shared guards: admin-users guard() asks for admin and refuses support; mailGuard asks for admin", () => {
@@ -285,7 +325,8 @@ vi.mock("@supabase/ssr", () => ({
     },
   }),
 }));
-const createSupabaseAdminClient = vi.fn(() => null);
+// Hoisted: EMAIL_SEND_ROLES is imported from the mailer at the top, which loads supabase-admin before this line would run.
+const { createSupabaseAdminClient } = vi.hoisted(() => ({ createSupabaseAdminClient: vi.fn(() => null) }));
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient }));
 
 const PERSONAS: Record<string, Persona> = {
@@ -301,14 +342,17 @@ const rolesOf = (persona: Persona) => [persona.role, persona.secondary].filter(B
 const UUID = "11111111-1111-4111-8111-111111111111";
 const requestFor = (route: string, method: string) => {
   const url = new URL(`https://app.test/api/${route.replace("[id]", UUID).replace("[...path]", "calculate")}`);
-  if (route === "integrations/xero/callback") { url.searchParams.set("code", "c"); url.searchParams.set("state", "s"); }
+  if (route === "integrations/xero/callback" || route === "integrations/microsoft/callback") { url.searchParams.set("code", "c"); url.searchParams.set("state", "s"); }
   return new Request(url, method === "GET" ? { method } : { method, body: "{}", headers: { "content-type": "application/json" } });
 };
 const contextFor = (route: string) => (route.includes("[id]") ? { params: Promise.resolve({ id: UUID }) } : route.includes("[...path]") ? { params: Promise.resolve({ path: ["calculate"] }) } : undefined);
 
-/** A refusal: 403 (or the Xero callback's redirect back to the page with "forbidden"). */
-const refused = (response: Response) =>
-  response.status === 403 || (response.status === 303 && new URL(response.headers.get("location") ?? "https://x/").searchParams.get("xero") === "forbidden");
+/** A refusal: 403 (or the Xero / Microsoft callback's redirect back to the page with "forbidden"). */
+const refused = (response: Response) => {
+  if (response.status === 403) return true;
+  const back = new URL(response.headers.get("location") ?? "https://x/").searchParams;
+  return response.status === 303 && (back.get("xero") === "forbidden" || back.get("microsoft") === "forbidden");
+};
 
 const guardedRows = Object.entries(EXPECTED).filter(([, row]) => !["public", "self", "cron", "signed-in"].includes(row.who));
 
