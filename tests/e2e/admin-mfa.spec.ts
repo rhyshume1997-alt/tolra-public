@@ -13,7 +13,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { totpCode } from "../support/totp";
-import { asSeparateDevice, signIn, world } from "./helpers";
+import { aal2Admin, asSeparateDevice, world } from "./helpers";
 import { E2E_MFA_PORT } from "./paths";
 
 const w = world();
@@ -92,7 +92,9 @@ test("office staff are never asked for a code", async ({ page }) => {
 });
 
 test("onboarding with the switch off: a new admin is announced, shown as not set up, and sent to set up at first sign-in", async ({ page, browser }) => {
-  await signIn(page, w.tenants.alpha.users.admin);
+  // Creating a user needs the second step (audit Z1): an admin who has passed it, which can take up to one 30-second code window.
+  test.setTimeout(150_000);
+  await aal2Admin(page);
   await page.goto("/admin/users");
   await expect(page.getByTestId("admin-mfa-rule")).toBeVisible();
 
