@@ -116,7 +116,10 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305')),
     ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
+    ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reopen_record')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'decide_reopen_request'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -324,6 +327,10 @@ checks(n, check_name, value, expected) AS (
     (to_regprocedure('public.assert_privileged_aal()') IS NOT NULL AND to_regprocedure('public._session_membership()') IS NOT NULL
      AND to_regprocedure('public.support_readonly_guard()') IS NOT NULL AND to_regclass('security_audit.audit_log') IS NOT NULL)::TEXT,
     'true (101 replaces no existing object; its tables are new)'
+  UNION ALL SELECT 45, '113 needs: public.reopen_job is 081''s (113 calls it for every reopen and replaces nothing)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing'),
+    '081 before and after 113 (other or missing: stop and report)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

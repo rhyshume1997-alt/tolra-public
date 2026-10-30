@@ -1,7 +1,7 @@
 /**
  * The job flow in the browser (migration 081): the workshop finishes a job made from a sales order (since 099 Finish drafts only what has
  * been despatched, so nothing here; the job's draft is then made by hand, no number),
- * reopens its own Finish with a reason, finishes it again, and is told it can't inspect its own work; the office inspects it with the
+ * reopens its own Finish with a reason (113: confirmed, with the "No admin available" tick box), finishes it again, and is told it can't inspect its own work; the office inspects it with the
  * acceptance criteria and the measured result, and it is Complete; the draft then reads "Ready to issue". Fixed far dates only.
  */
 import { randomUUID } from "node:crypto";
@@ -56,9 +56,19 @@ test("finish, reopen with a reason, finish again; the finisher can't inspect; th
   await reopen.getByRole("button", { name: "Reopen job" }).click();
   await expect(reopen.getByRole("alert")).toContainText("at least 10 characters");
   await reopen.getByLabel(/^Reason/).fill("Finished by mistake, still deburring");
+  // 113 (D30-5): the confirmation names the job and its invoice (a draft here), then who signs it off: no admin is about, so the tick
+  // box reopens it now and leaves the admin a request to approve or reject later.
   await reopen.getByRole("button", { name: "Reopen job" }).click();
-  await expect(page.getByText(`${no} reopened: back to Running`)).toBeVisible();
+  await expect(reopen.getByRole("alert")).toContainText("Tick the confirmation first");
+  await reopen.getByRole("checkbox", { name: `I am reopening ${no}; its draft invoice stays a draft and is not issued.` }).check();
+  await reopen.getByRole("checkbox", { name: /^No admin available: reopen now and notify the admin/ }).check();
+  await reopen.getByRole("button", { name: "Reopen now and notify the admin" }).click();
+  await expect(page.getByText(`${no} reopened. The admin has been told`)).toBeVisible();
   expect(await stored()).toMatchObject({ finished_at: null, stage: "machining" });
+  const signOff = (await service.from("reopen_requests").select("approval_mode, status, reason, reopened_at, notified_at").eq("record_id", job!.id)).data!;
+  expect(signOff).toMatchObject([{ approval_mode: "tick_box_notify", status: "pending", reason: "Finished by mistake, still deburring" }]);
+  expect(signOff[0].reopened_at).not.toBeNull();
+  expect(signOff[0].notified_at).not.toBeNull();
   const flow = (await service.from("job_flow_events").select("kind, reason").eq("job_id", job!.id).order("seq")).data!;
   expect(flow).toEqual([{ kind: "finish", reason: null }, { kind: "reopen", reason: "Finished by mistake, still deburring" }]);
 
