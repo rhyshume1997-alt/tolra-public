@@ -48,7 +48,8 @@ function urlRef(url) {
 
 /**
  * [{ status: "pass" | "fail" | "manual", ok, check, detail }] for an environment, the expected test ref and the refs that must never appear.
- * productionEnv (optional, parsed): only to prove the Preview's integrations key (migration 084, Xero) is not Production's.
+ * productionEnv (optional, parsed): to prove the Preview's integrations key (migration 084, Xero) is not Production's, and that
+ * Production sets NEXT_PUBLIC_SITE_URL (password reset e-mails are refused there without it).
  * @param {Record<string, string>} env
  * @param {string | undefined} testRef
  * @param {string[]} protectedRefs
@@ -81,6 +82,12 @@ export function previewChecks(env, testRef, protectedRefs, productionEnv = null)
   if (env.INTEGRATIONS_ENCRYPTION_KEY) {
     if (!productionEnv) manual("INTEGRATIONS_ENCRYPTION_KEY is not Production's", "pass --production-env <file> to compare, or compare the two values by hand and record it");
     else add(env.INTEGRATIONS_ENCRYPTION_KEY !== productionEnv.INTEGRATIONS_ENCRYPTION_KEY, "INTEGRATIONS_ENCRYPTION_KEY is not Production's", env.INTEGRATIONS_ENCRYPTION_KEY === productionEnv.INTEGRATIONS_ENCRYPTION_KEY ? "the same value: set a different key in Preview" : "different");
+  }
+  // S1/C8: in Production the reset e-mail's link comes only from NEXT_PUBLIC_SITE_URL (lib/auth-links.ts); unset, no reset e-mail is sent.
+  if (productionEnv) {
+    let prodSite = false;
+    try { prodSite = Boolean(productionEnv.NEXT_PUBLIC_SITE_URL && new URL(productionEnv.NEXT_PUBLIC_SITE_URL).hostname); } catch { prodSite = false; }
+    add(prodSite, "Production NEXT_PUBLIC_SITE_URL is set (auth e-mail links come only from it)", productionEnv.NEXT_PUBLIC_SITE_URL || "unset");
   }
   return results;
 }
