@@ -40,7 +40,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export function XeroBatchCard() {
   const today = new Date().toISOString().slice(0, 10);
-  const [from, setFrom] = useState(defaultFrom(null, today));
+  const [from, setFrom] = useState(defaultFrom(today));
   const [to, setTo] = useState(today);
   const [mode, setMode] = useState<BatchMode>("unsent");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -49,16 +49,16 @@ export function XeroBatchCard() {
   const [note, setNote] = useState<string | null>(null);
   const stop = useRef(false);
   const [connectedOn, setConnectedOn] = useState<string | null>(null);
-  const [includeBefore, setIncludeBefore] = useState(false);
+  const [includeBefore, setIncludeBefore] = useState(true);
 
-  // The default From is the day Xero was connected: earlier documents may already be in Xero, so they need the tick box below.
+  // Documents issued before the connection day are offered with the tick box below, which starts ticked (Rhys, 30 Oct). The server still needs the flag the page sends.
   useEffect(() => {
     let alive = true;
     void (async () => {
       try {
         const res = await fetch("/api/integrations/xero/batch", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "info" }) });
         const info = (await res.json().catch(() => ({}))) as { connectedOn?: string | null };
-        if (alive && res.ok && info.connectedOn) { setConnectedOn(info.connectedOn); setFrom(defaultFrom(info.connectedOn, new Date().toISOString().slice(0, 10))); }
+        if (alive && res.ok && info.connectedOn) setConnectedOn(info.connectedOn);
       } catch { /* the card still works without the default */ }
     })();
     return () => { alive = false; };
