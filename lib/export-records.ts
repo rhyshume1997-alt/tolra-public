@@ -7,6 +7,7 @@ import { auditEvent } from "@/lib/audit";
 import type { AuditTable } from "@/lib/audit-contract";
 import { openPrintPack } from "@/lib/print-pack";
 import { CompanyProfileMissingError, requireCompanyProfile } from "@/lib/company";
+import { PDF_OFFLINE_MESSAGE, pdfCodeUnreachable } from "@/lib/download-pdf";
 import { esc } from "@/lib/html";
 import { friendlyError } from "@/lib/friendly-error";
 import { toDateInput } from "@/lib/dates";
@@ -94,7 +95,7 @@ export async function exportRows(format: "word" | "pdf" | "print", filename: str
       URL.revokeObjectURL(url);
       toast.success("PDF export downloaded");
     } catch (error) {
-      toast.error(error instanceof CompanyProfileMissingError ? error.message : friendlyError(error, "Failed to export PDF. Try again."));
+      toast.error(error instanceof CompanyProfileMissingError ? error.message : pdfCodeUnreachable(error) ? PDF_OFFLINE_MESSAGE : friendlyError(error, "Failed to export PDF. Try again."));
     }
     return;
   }
