@@ -120,6 +120,13 @@ describe("manifest", () => {
     expect(csv).toHaveLength(m.entries.length + 2);
   });
 
+  it("manifest.csv cells can't run as spreadsheet formulas (audit S3), and plain values are unchanged", () => {
+    const entry = { path: "=HYPERLINK(\"http://x.example\",\"a\").pdf", sourcePath: "+cmd.pdf", size: 12, sha256: "ab", exportedAt: "2026-10-14", recordType: "attachments", status: "ok" };
+    const csv = manifestCsv({ entries: [entry, { ...entry, path: "docs/a, b.pdf", sourcePath: "@x.pdf" }] } as never).split("\n");
+    expect(csv[1]).toBe('"\'=HYPERLINK(""http://x.example"",""a"").pdf",\'+cmd.pdf,12,ab,2026-10-14,attachments,ok');
+    expect(csv[2]).toBe('"docs/a, b.pdf",\'@x.pdf,12,ab,2026-10-14,attachments,ok');
+  });
+
   it("is deterministic and ignores file modification times", () => {
     const a = makeArchive();
     const first = buildManifest({ archiveDir: a.archive, exportedAt: "2026-10-14" });

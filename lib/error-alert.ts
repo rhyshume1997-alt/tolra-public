@@ -6,6 +6,8 @@
  * addresses. The message is passed through redact() first.
  */
 
+import { headerText } from "@/lib/mail-header";
+
 /** At most one e-mail per fingerprint per hour, and this many a day (the database enforces the same: claim_error_alert). */
 export const ALERT_PER_FINGERPRINT_MS = 60 * 60 * 1000;
 export const ALERT_MAX_PER_DAY = 20;
@@ -38,7 +40,8 @@ export function redact(message: unknown): string {
 
 /** A route path with ids and query removed (/jobs/<uuid>/print?x=1 -> /jobs/[id]/print), for the alert and the fingerprint. */
 export function safeRoute(path: unknown): string {
-  const raw = typeof path === "string" ? path.split(/[?#]/)[0] : "";
+  // One line: the route goes into the alert's subject header, and a browser report's path is the caller's text.
+  const raw = typeof path === "string" ? headerText(path.split(/[?#]/)[0]) : "";
   const cleaned = raw
     .replace(UUID, "[id]")
     .replace(EMAIL, "[email]")
