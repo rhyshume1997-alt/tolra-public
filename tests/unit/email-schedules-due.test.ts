@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  type ScheduleTiming, CATCH_UP_MS, describeInstant, dueOccurrence, isDue, isoWeekKey, latestOccurrence, localDate, localInstant, mondayOf, nextRun, parseTimeOfDay, safeZone,
+  type ScheduleTiming, CATCH_UP_MS, DAILY_PASS_UTC_HOUR, describeInstant, dueOccurrence, isDue, isoWeekKey, latestOccurrence, localDate, localInstant, mondayOf, nextDailyPassAtOrAfter, nextRun, parseTimeOfDay, safeZone,
 } from "@/lib/email/schedules/due";
 
 const at = (iso: string) => new Date(iso);
@@ -47,7 +47,7 @@ describe("daily schedules and the clock change on 25 Oct 2026", () => {
   });
 
   it("a new period starts at the scheduled minute, not a minute before (isDue stays true for the catch-up window; the key says which period)", () => {
-    expect(dueOccurrence(daily(), at("2026-10-25T07:59:59Z"))).toBeNull(); // 07:59 GMT: Sunday's 08:00 hasn't come, and Saturday's was 24 h 59 min ago (the day is 25 h long)
+    expect(dueOccurrence(daily(), at("2026-10-25T07:59:59Z"))?.periodKey).toBe("2026-10-24"); // 07:59 GMT: Sunday's 08:00 hasn't come; Saturday's (24 h 59 min ago, the day is 25 h long) is still the one to send
     expect(dueOccurrence(daily(), at("2026-10-25T08:00:00Z"))?.periodKey).toBe("2026-10-25");
     expect(dueOccurrence(daily(), at("2026-10-24T06:59:59Z"))?.periodKey).toBe("2026-10-23"); // 07:59 BST
     expect(dueOccurrence(daily(), at("2026-10-24T07:00:00Z"))?.periodKey).toBe("2026-10-24");
@@ -100,13 +100,14 @@ describe("weekly schedules", () => {
     expect(iso(nextRun(weekly(0), at("2026-10-11T12:00:00Z")))).toBe("2026-10-18T08:00:00.000Z");
   });
 
-  it("is due on its weekday only (and the day after, within 24 h), with the ISO week as the key", () => {
+  it("is due from its weekday and time until the catch-up window ends (48 h), with the ISO week as the key", () => {
     const s = weekly(1, "09:00");
     expect(dueOccurrence(s, at("2026-10-26T09:00:00Z"))?.periodKey).toBe("2026-W44");
     expect(isDue(s, at("2026-10-26T08:59:59Z"))).toBe(false);
     expect(isDue(s, at("2026-10-27T08:00:00Z"))).toBe(true); // 23 h late: still sent
-    expect(isDue(s, at("2026-10-27T10:00:00Z"))).toBe(false); // 25 h late: skipped, not sent a day late
-    expect(isDue(s, at("2026-10-28T09:00:00Z"))).toBe(false);
+    expect(isDue(s, at("2026-10-27T10:00:00Z"))).toBe(true); // 25 h late: a once-a-day pass that ran a little later than the day before still sends it
+    expect(isDue(s, at("2026-10-28T09:00:00Z"))).toBe(true); // exactly 48 h
+    expect(isDue(s, at("2026-10-28T09:00:01Z"))).toBe(false); // older than that: skipped, not sent days late
   });
 
   it("a weekly schedule without a weekday is never due and never has a next run", () => {
@@ -119,11 +120,11 @@ describe("weekly schedules", () => {
 
 describe("once", () => {
   const s = once("2026-11-03T14:30:00.000Z");
-  it("is due from the moment, within 24 h, and its key is the moment", () => {
+  it("is due from the moment, within 48 h, and its key is the moment", () => {
     expect(isDue(s, at("2026-11-03T14:29:59Z"))).toBe(false);
     expect(dueOccurrence(s, at("2026-11-03T14:30:00Z"))?.periodKey).toBe("2026-11-03T14:30:00.000Z");
-    expect(isDue(s, at("2026-11-04T14:30:00Z"))).toBe(true);
-    expect(isDue(s, at("2026-11-04T14:30:01Z"))).toBe(false);
+    expect(isDue(s, at("2026-11-05T14:30:00Z"))).toBe(true);
+    expect(isDue(s, at("2026-11-05T14:30:01Z"))).toBe(false);
   });
   it("has a next run only while it is ahead", () => {
     expect(iso(nextRun(s, at("2026-11-01T00:00:00Z")))).toBe("2026-11-03T14:30:00.000Z");
@@ -154,8 +155,71 @@ describe("off, changed-after, and bad data", () => {
     expect(isDue(once("not a date"), at("2026-11-03T14:30:00Z"))).toBe(false);
   });
 
-  it("the catch-up window is 24 hours", () => {
-    expect(CATCH_UP_MS).toBe(24 * 3_600_000);
+  it("the catch-up window is 48 hours: wider than the gap between two once-a-day passes (up to ~25 h, Vercel Hobby starts a cron anywhere in its hour) so one missed pass is still caught", () => {
+    expect(CATCH_UP_MS).toBe(48 * 3_600_000);
+    expect(CATCH_UP_MS).toBeGreaterThan(25 * 3_600_000);
+  });
+});
+
+describe("a once-a-day pass (Vercel Hobby): a chosen time that has passed is sent at the next pass, once", () => {
+  // The pass runs at 05:00 UTC every day (vercel.json "0 5 * * *"); Vercel Hobby may start it anywhere in that hour.
+  const passes = (days: string[], minute = 0) => days.map((d) => at(`${d}T05:${String(minute).padStart(2, "0")}:00Z`));
+  /** The period keys that would be sent over these passes (a key is sent the first time it is due; the database refuses the second). */
+  const sent = (s: ScheduleTiming, times: Date[]) => {
+    const keys: Array<[string, string]> = [];
+    const seen = new Set<string>();
+    for (const t of times) {
+      const key = dueOccurrence(s, t)?.periodKey;
+      if (key && !seen.has(key)) { seen.add(key); keys.push([t.toISOString(), key]); }
+    }
+    return keys;
+  };
+
+  it("a daily 08:00 reminder goes out at the next 05:00 pass (21 h late), every day, never twice", () => {
+    const days = ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"];
+    expect(sent(daily("08:00"), [...passes(days), ...passes(days, 59), ...passes(days)])).toEqual([
+      ["2026-10-26T05:00:00.000Z", "2026-10-25"], ["2026-10-27T05:00:00.000Z", "2026-10-26"], ["2026-10-28T05:00:00.000Z", "2026-10-27"], ["2026-10-29T05:00:00.000Z", "2026-10-28"],
+    ]);
+  });
+
+  it("a time before the pass (04:00) goes out at the same day's pass", () => {
+    expect(sent(daily("04:00"), passes(["2026-11-02", "2026-11-03"]))).toEqual([["2026-11-02T05:00:00.000Z", "2026-11-02"], ["2026-11-03T05:00:00.000Z", "2026-11-03"]]);
+  });
+
+  it("a time just after the pass (05:01) waits for the next pass; if Vercel starts a pass late (05:59) only the newest slot goes, never two at once", () => {
+    expect(sent(daily("05:01"), [at("2026-11-02T05:00:00Z"), at("2026-11-03T05:00:00Z")])).toEqual([["2026-11-02T05:00:00.000Z", "2026-11-01"], ["2026-11-03T05:00:00.000Z", "2026-11-02"]]);
+    expect(sent(daily("05:01"), [at("2026-11-02T05:00:00Z"), at("2026-11-03T05:59:00Z")])).toEqual([["2026-11-02T05:00:00.000Z", "2026-11-01"], ["2026-11-03T05:59:00.000Z", "2026-11-03"]]);
+  });
+
+  it("never before it was saved: saved at 14:00 on the 26th, the 08:00 slot of the 26th is not sent; the 27th's goes at the 28th's pass", () => {
+    const saved = daily("08:00", { updated_at: "2026-10-26T14:00:00Z" });
+    expect(sent(saved, passes(["2026-10-27", "2026-10-28", "2026-10-29"]))).toEqual([["2026-10-28T05:00:00.000Z", "2026-10-27"], ["2026-10-29T05:00:00.000Z", "2026-10-28"]]);
+    // Saved at 06:00 on the 26th, before that day's 08:00: the 26th's slot is the first, sent at the 27th's pass.
+    expect(sent(daily("08:00", { updated_at: "2026-10-26T06:00:00Z" }), passes(["2026-10-26", "2026-10-27"]))).toEqual([["2026-10-27T05:00:00.000Z", "2026-10-26"]]);
+  });
+
+  it("weekly Monday 09:00 goes out at Tuesday's pass, once, and the passes between send nothing", () => {
+    const week = ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03"];
+    expect(sent(weekly(1, "09:00"), passes(week))).toEqual([["2026-10-27T05:00:00.000Z", "2026-W44"], ["2026-11-03T05:00:00.000Z", "2026-W45"]]);
+  });
+
+  it("a once-only moment goes out at the next pass, once", () => {
+    expect(sent(once("2026-11-03T14:30:00.000Z"), passes(["2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06"]))).toEqual([["2026-11-04T05:00:00.000Z", "2026-11-03T14:30:00.000Z"]]);
+  });
+
+  it("one missed pass is caught by the next", () => {
+    expect(sent(daily("08:00"), [at("2026-10-29T05:00:00Z")])).toEqual([["2026-10-29T05:00:00.000Z", "2026-10-28"]]);
+  });
+
+  it("works the same in summer (BST): a daily 08:00 (07:00 UTC) goes out at the next 05:00 UTC pass", () => {
+    expect(sent(daily("08:00"), passes(["2027-07-06", "2027-07-07"]))).toEqual([["2027-07-06T05:00:00.000Z", "2027-07-05"], ["2027-07-07T05:00:00.000Z", "2027-07-06"]]);
+  });
+
+  it("the pass that first sends an occurrence is the first 05:00 UTC at or after it", () => {
+    expect(iso(nextDailyPassAtOrAfter(at("2026-10-26T07:00:00Z")))).toBe("2026-10-27T05:00:00.000Z");
+    expect(iso(nextDailyPassAtOrAfter(at("2026-10-26T04:59:00Z")))).toBe("2026-10-26T05:00:00.000Z");
+    expect(iso(nextDailyPassAtOrAfter(at("2026-10-26T05:00:00Z")))).toBe("2026-10-26T05:00:00.000Z");
+    expect(DAILY_PASS_UTC_HOUR).toBe(5);
   });
 });
 

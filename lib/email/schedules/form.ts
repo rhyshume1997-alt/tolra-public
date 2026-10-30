@@ -1,8 +1,15 @@
 // Settings > Email schedules: the pure part. The form's values to an email_schedules row (and back), the "Next run" line, and the
 // friendly words for what can go wrong. The card (components/email-schedules/settings-card.tsx) only draws these.
 import {
-  type EmailScheduleFrequency, type EmailScheduleKind, type ScheduleTiming, DEFAULT_TIME_ZONE, describeInstant, localDate, localInstant, nextRun, parseTimeOfDay, safeZone, weekdayName,
+  type EmailScheduleFrequency, type EmailScheduleKind, type ScheduleTiming, DEFAULT_TIME_ZONE, describeInstant, localDate, localInstant, nextDailyPassAtOrAfter, nextRun, parseTimeOfDay, safeZone, weekdayName,
 } from "@/lib/email/schedules/due";
+
+/**
+ * Production is on Vercel Hobby: one daily pass (vercel.json "0 5 * * *" runs app/api/cron/daily). On Pro, switch the cron to
+ * every 15 minutes (see app/api/cron/daily/route.ts) and set this to true: schedules then send at their chosen time.
+ */
+export const EXACT_TIME_SENDING = false;
+export const DAILY_RUN_NOTE = "Sent at the next daily run (about 05:00 UK) after the chosen time; exact-time sending needs the Pro plan.";
 
 export const SCHEDULE_NOT_AVAILABLE = "Not available until database update 108 is applied";
 
@@ -93,14 +100,15 @@ export function patchFromForm(kind: EmailScheduleKind, form: ScheduleForm, now: 
   return { ok: true, patch: { enabled: form.enabled, frequency: form.frequency, weekday: form.frequency === "weekly" ? form.weekday : null, time_of_day: hhmm, run_at, timezone: safeZone(zone), recipients } };
 }
 
-/** The "Next run: ..." line, worked out by the same nextRun the cron uses (it does not look at what is saved, only at the form). */
+/** The "Next run: ..." line, worked out by the same nextRun the cron uses (it does not look at what is saved, only at the form). With the daily pass it also says when that run is actually sent. */
 export function nextRunLine(kind: EmailScheduleKind, form: ScheduleForm, now: Date, zone: string = DEFAULT_TIME_ZONE): string {
   if (!form.enabled) return "Off: nothing will be sent.";
   const made = patchFromForm(kind, { ...form, enabled: true }, new Date(0), zone);
   if (!made.ok) return made.error;
   const next = nextRun({ ...made.patch, enabled: true }, now);
   if (!next) return form.frequency === "once" ? "That date and time have passed: nothing will be sent." : "No run is coming up.";
-  return `Next run: ${describeInstant(next, zone)}`;
+  if (EXACT_TIME_SENDING) return `Next run: ${describeInstant(next, zone)}`;
+  return `Chosen time: ${describeInstant(next, zone)}. Sent at the next daily run after it: ${describeInstant(nextDailyPassAtOrAfter(next), zone)}.`;
 }
 
 /** A line saying what the schedule does, for the card ("Every Monday at 09:30"). */

@@ -3,9 +3,12 @@
 //
 // A schedule is "daily at a time", "weekly on a weekday at a time" or "once at a moment" in a time zone (Europe/London unless the row says
 // otherwise). Rules the cron relies on:
-//   - The occurrence is the most recent scheduled moment at or before `now`. It is DUE when it is within CATCH_UP_MS (a cron call that is
-//     late or missed still sends, but not a day later) and not before the schedule was last changed (`updated_at`): switching a daily 8am
-//     schedule on at 2pm waits for tomorrow instead of sending at once.
+//   - The occurrence is the most recent scheduled moment at or before `now`. It is DUE when it is within CATCH_UP_MS and not before the
+//     schedule was last changed (`updated_at`): switching a daily 8am schedule on at 2pm waits for tomorrow instead of sending at once.
+//   - The cron may run only once a day (Vercel Hobby: DAILY_PASS_UTC_HOUR). An occurrence whose time has passed since the last pass is
+//     simply the latest occurrence at the next pass, so it is sent then (a daily 08:00 reminder at the next 05:00 pass, about 21 hours
+//     late) and never skipped; the period key and the database's one run per key keep it from going out twice. The catch-up window is
+//     wide enough for a once-a-day pass that Vercel starts anywhere in its hour, and for one missed pass.
 //   - Each occurrence has a period key (daily: the local date; weekly: the ISO week of the local date; once: the moment). The database
 //     holds one run per schedule per key, so an occurrence is never sent twice however often the cron calls.
 //   - Clocks changing: a local time that does not exist (01:30 on the last Sunday of March in London) happens an hour later; a local time
@@ -15,8 +18,10 @@ export type EmailScheduleKind = "invoice_reminder" | "timesheet";
 export type EmailScheduleFrequency = "daily" | "weekly" | "once";
 
 export const DEFAULT_TIME_ZONE = "Europe/London";
-/** An occurrence older than this is skipped, not sent late. */
-export const CATCH_UP_MS = 24 * 3_600_000;
+/** An occurrence older than this is skipped, not sent late: two days, so a once-a-day pass (up to ~25 h apart) never misses one, nor does a single missed pass. */
+export const CATCH_UP_MS = 48 * 3_600_000;
+/** The daily pass runs at this hour UTC (vercel.json "0 5 * * *": 05:00 UK in winter, 06:00 in summer). */
+export const DAILY_PASS_UTC_HOUR = 5;
 
 /** The fields of an email_schedules row that decide when it runs. `weekday`: 0 = Sunday ... 6 = Saturday. `time_of_day`: "08:00" or "08:00:00". */
 export type ScheduleTiming = {
@@ -206,6 +211,12 @@ export function nextRun(s: ScheduleTiming, now: Date): Date | null {
     if (occ && occ.at.getTime() > now.getTime()) return occ.at;
   }
   return null;
+}
+
+/** When a once-a-day pass first sends an occurrence at `at`: the first pass (DAILY_PASS_UTC_HOUR:00 UTC) at or after it. */
+export function nextDailyPassAtOrAfter(at: Date, passHourUtc: number = DAILY_PASS_UTC_HOUR): Date {
+  const pass = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate(), passHourUtc, 0, 0));
+  return pass.getTime() < at.getTime() ? new Date(pass.getTime() + 86_400_000) : pass;
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

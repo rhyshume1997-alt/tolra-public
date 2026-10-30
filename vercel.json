@@ -2,7 +2,6 @@
   "regions": ["lhr1"],
   "crons": [
     { "path": "/api/cron/ip-purge", "schedule": "17 3 * * *" },
-    { "path": "/api/cron/email-schedules", "schedule": "*/15 * * * *" },
-    { "path": "/api/cron/xero-sweep", "schedule": "41 4 * * *" }
+    { "path": "/api/cron/daily", "schedule": "0 5 * * *" }
   ]
 }

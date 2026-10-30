@@ -132,12 +132,14 @@ describe("GET /api/cron/ip-purge: failures and what is never shown", () => {
 });
 
 describe("vercel.json", () => {
-  it("lists exactly the three cron routes: the daily purge, the daily Xero sweep and the e-mail schedules every 15 minutes", async () => {
+  it("lists exactly two crons (Vercel Hobby allows two, each at most once a day): the daily purge and the daily pass", async () => {
     const { readFileSync } = await import("node:fs");
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
-    expect(config.crons.map((c) => c.path).sort()).toEqual(["/api/cron/email-schedules", "/api/cron/ip-purge", "/api/cron/xero-sweep"]);
-    expect(config.crons.find((c) => c.path === "/api/cron/email-schedules")?.schedule).toBe("*/15 * * * *");
-    expect(config.crons.find((c) => c.path === "/api/cron/xero-sweep")?.schedule).toMatch(/^\d{1,2} \d{1,2} \* \* \*$/);
+    expect(config.crons.map((c) => c.path).sort()).toEqual(["/api/cron/daily", "/api/cron/ip-purge"]);
+    // Hobby: five fields, a fixed minute and hour, every day. Anything more frequent would make the whole deploy invalid.
+    for (const c of config.crons) expect(c.schedule).toMatch(/^\d{1,2} \d{1,2} \* \* \*$/);
+    expect(config.crons.find((c) => c.path === "/api/cron/daily")?.schedule).toBe("0 5 * * *");
+    expect(config.crons.some((c) => /email-schedules|xero-sweep/.test(c.path))).toBe(false);
   });
 
   it("runs the purge route once a day", async () => {

@@ -11,12 +11,12 @@ import { sendCompanyEmail } from "@/lib/email/send-company-email";
 /** One cron call stops sending after this long (the route's maxDuration is 60 s); what is left goes on the next try. */
 export const RUN_BUDGET_MS = 45_000;
 
-export function liveRunnerDeps(admin: SupabaseClient, startedAt = Date.now()): RunnerDeps {
+export function liveRunnerDeps(admin: SupabaseClient, startedAt = Date.now(), budgetMs = RUN_BUDGET_MS): RunnerDeps {
   return {
     list: () => listEnabledSchedules(admin),
     claim: (id, key, now) => claimRun(admin, id, key, now),
     execute: (schedule, occurrence, now) => schedule.kind === "invoice_reminder"
-      ? runInvoiceReminders(admin, schedule, occurrence, now, { send: sendCompanyEmail, deadline: startedAt + RUN_BUDGET_MS })
+      ? runInvoiceReminders(admin, schedule, occurrence, now, { send: sendCompanyEmail, deadline: startedAt + budgetMs })
       : runTimesheets(admin, schedule, occurrence, now, { send: sendCompanyEmail }),
     finish: (id, key, result) => finishRun(admin, id, key, result),
     note: (schedule, now, succeeded) => noteScheduleRan(admin, schedule, now, succeeded),

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { weekdayName } from "@/lib/email/schedules/due";
 import {
-  type ScheduleForm, FREQUENCY_LABEL, SCHEDULE_LABELS, SCHEDULE_NOT_AVAILABLE, defaultForm, formFromRow, nextRunLine, patchFromForm, scheduleErrorMessage,
+  type ScheduleForm, DAILY_RUN_NOTE, EXACT_TIME_SENDING, FREQUENCY_LABEL, SCHEDULE_LABELS, SCHEDULE_NOT_AVAILABLE, defaultForm, formFromRow, nextRunLine, patchFromForm, scheduleErrorMessage,
 } from "@/lib/email/schedules/form";
 import type { EmailScheduleFrequency, EmailScheduleKind } from "@/lib/email/schedules/due";
 import { supabase } from "@/lib/supabase";
@@ -162,7 +162,7 @@ export function EmailSchedulesCard() {
         {state.phase === "error" ? <p className="text-red-600" role="alert">{state.message}</p> : null}
         {state.phase === "ready" ? (
           <>
-            <p className="text-slate-500">Set when Tolra sends reminders and timesheets for you. All times are UK time. Nothing is sent until you turn a schedule on{activeRole === "admin" ? "" : "; only an admin can change them"}.</p>
+            <p className="text-slate-500">Set when Tolra sends reminders and timesheets for you. All times are UK time. {EXACT_TIME_SENDING ? "" : DAILY_RUN_NOTE} Nothing is sent until you turn a schedule on{activeRole === "admin" ? "" : "; only an admin can change them"}.</p>
             {KINDS.map((kind) => <ScheduleEditor key={kind} kind={kind} initial={state.forms[kind]} zone={state.zone} canEdit={activeRole === "admin"} organizationId={state.organizationId} />)}
           </>
         ) : null}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultForm, formFromRow, nextRunLine, parseRecipients, patchFromForm, scheduleErrorMessage, SCHEDULE_NOT_AVAILABLE } from "@/lib/email/schedules/form";
+import { DAILY_RUN_NOTE, EXACT_TIME_SENDING, defaultForm, formFromRow, nextRunLine, parseRecipients, patchFromForm, scheduleErrorMessage, SCHEDULE_NOT_AVAILABLE } from "@/lib/email/schedules/form";
 
 const NOW = new Date("2026-10-23T12:00:00Z");
 
@@ -56,10 +56,17 @@ describe("Settings > Email schedules: the form", () => {
 
   it("the Next run line comes from the same nextRun the cron uses", () => {
     expect(nextRunLine("invoice_reminder", defaultForm("invoice_reminder"), NOW)).toBe("Off: nothing will be sent.");
-    expect(nextRunLine("invoice_reminder", { ...defaultForm("invoice_reminder"), enabled: true }, NOW)).toBe("Next run: Sat 24 Oct 2026 at 08:00 (BST)");
-    expect(nextRunLine("timesheet", { ...defaultForm("timesheet"), enabled: true, weekday: 1, time: "09:30" }, NOW)).toBe("Next run: Mon 26 Oct 2026 at 09:30 (GMT)");
+    expect(nextRunLine("invoice_reminder", { ...defaultForm("invoice_reminder"), enabled: true }, NOW)).toBe("Chosen time: Sat 24 Oct 2026 at 08:00 (BST). Sent at the next daily run after it: Sun 25 Oct 2026 at 05:00 (GMT).");
+    expect(nextRunLine("timesheet", { ...defaultForm("timesheet"), enabled: true, weekday: 1, time: "09:30" }, NOW)).toBe("Chosen time: Mon 26 Oct 2026 at 09:30 (GMT). Sent at the next daily run after it: Tue 27 Oct 2026 at 05:00 (GMT).");
+    // In summer the daily run (05:00 UTC) is 06:00 UK time, and the line says so.
+    expect(nextRunLine("invoice_reminder", { ...defaultForm("invoice_reminder"), enabled: true }, new Date("2027-07-05T12:00:00Z"))).toBe("Chosen time: Tue 6 Jul 2027 at 08:00 (BST). Sent at the next daily run after it: Wed 7 Jul 2027 at 06:00 (BST).");
     expect(nextRunLine("invoice_reminder", { ...defaultForm("invoice_reminder"), enabled: true, frequency: "once", onceDate: "2026-10-01" }, NOW)).toBe("That date and time have passed: nothing will be sent.");
     expect(nextRunLine("invoice_reminder", { ...defaultForm("invoice_reminder"), enabled: true, time: "" }, NOW)).toBe("Choose a time of day.");
+  });
+
+  it("says plainly that sending waits for the daily run (Hobby), until exact-time sending is switched on (Pro)", () => {
+    expect(EXACT_TIME_SENDING).toBe(false);
+    expect(DAILY_RUN_NOTE).toBe("Sent at the next daily run (about 05:00 UK) after the chosen time; exact-time sending needs the Pro plan.");
   });
 
   it("says friendly things, never the database's words", () => {
