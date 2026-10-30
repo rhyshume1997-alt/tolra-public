@@ -20,6 +20,7 @@ import { loadCompanyPeople } from "@/lib/company-people";
 import { friendlyError } from "@/lib/friendly-error";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { NeedsDatabaseUpdate } from "@/components/time/needs-update";
+import { PayrollExport } from "@/components/time/payroll-export";
 import { SyncRejectionsNotice } from "@/components/time/sync-rejections-notice";
 import { NetworkUnverifiedNotice } from "@/components/time/network-unverified-notice";
 import { useColumnVisibility } from "@/lib/org-settings";
@@ -135,6 +136,7 @@ export function WeekReview() {
           <ColumnToggle tableKey="hours" />
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("csv")}>Export CSV</Button>
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("xlsx")}>Export Excel</Button>
+          {seesEveryone ? <PayrollExport week={week} names={names} /> : null}
           <Button asChild variant="outline" size="sm"><Link href={`/time/week/print?week=${week}${only ? `&user=${only}` : !seesEveryone && me ? `&user=${me}` : ""}`}><Printer className="size-4" /> Print</Link></Button>
         </div>
       </div>
