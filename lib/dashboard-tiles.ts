@@ -41,6 +41,7 @@ export const DASHBOARD_TILES: DashboardTile[] = [
   { key: "quote-pipeline", label: "Quote pipeline", roles: ["admin", "office"] },
   { key: "priority-jobs", label: "Priority jobs (workshop)", roles: ["workshop"] },
   { key: "workshop-schedule", label: "Workshop schedule this week (workshop)", roles: ["workshop"] },
+  { key: "whole-floor", label: "Whole floor (workshop)", roles: ["workshop"] },
 ];
 
 export const dashboardTileKeysFor = (role: DashboardRole) => DASHBOARD_TILES.filter((tile) => tile.roles.includes(role)).map((tile) => tile.key);

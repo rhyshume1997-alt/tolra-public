@@ -37,6 +37,7 @@ import { useCanOpen } from "@/lib/use-destinations";
 import { ColumnToggle } from "@/components/column-toggle";
 import { dashboardTileKeysFor, kpiGridClass, statGridClass } from "@/lib/dashboard-tiles";
 import { useColumnVisibility } from "@/lib/org-settings";
+import { WholeFloor } from "@/components/workshop/whole-floor";
 
 const DASH = "—";
 const DAY_MS = 86_400_000;
@@ -612,6 +613,7 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
           {(d?.bookings ?? []).map((row) => <MaybeLink href="/schedule" allowed={canOpen("/schedule")} key={row.id} className="block rounded-lg bg-slate-50 p-3">{fmtDateTime(row.start)}: {row.machine} - {row.jobNo}</MaybeLink>)}
         </CardContent></Card> : null}
       </section> : null}
+      {isVisible("whole-floor") ? <WholeFloor /> : null}
     </>
   );
 }
