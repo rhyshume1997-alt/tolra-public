@@ -3,9 +3,12 @@
  * pair in the URL to replace the browser's session, so a link someone else sent could swap a signed-in person into another account.
  * Now only invite and recovery links are read, and another account already signed in is asked about, never swapped silently.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { confirmQuestion, linkDecision, readSetPasswordLink } from "@/lib/set-password-link";
+vi.mock("server-only", () => ({}));
+
+import { confirmQuestion, linkDecision, needsSecondStep, readSetPasswordLink, recentLinkSignIn, setPasswordView } from "@/lib/set-password-link";
+import { recentLinkSignIn as serverRule } from "@/lib/server/password-setup";
 
 const jwt = (claims: Record<string, unknown>) => `x.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
 const ALICE = { id: "11111111-1111-4111-8111-111111111111", email: "alice@example.test" };
@@ -78,5 +81,35 @@ describe("linkDecision: never a silent swap", () => {
     if (anonymous === "refused" || !anonymous) throw new Error("fixture");
     expect(linkDecision(anonymous, ALICE)).toMatchObject({ action: "confirm", linkFor: null });
     expect(linkDecision(malloryLink, { id: "x", email: null })).toMatchObject({ action: "confirm", signedInAs: "another account" });
+  });
+});
+
+describe("setPasswordView: the form only when the server takes a password without the current one", () => {
+  const t = 1_800_000_000;
+  const password = [{ method: "password", timestamp: t - 60 }];
+  it("a link just used, a temporary password, or a link sign-in within the hour: the form", () => {
+    expect(setPasswordView({ linkUsed: true, required: false, methods: password, nowSeconds: t })).toBe("form");
+    expect(setPasswordView({ linkUsed: false, required: true, methods: password, nowSeconds: t })).toBe("form");
+    // ?code= (supabase-js's own exchange), or coming back after /mfa: the session's amr still says recovery.
+    expect(setPasswordView({ linkUsed: false, required: false, methods: [{ method: "recovery", timestamp: t - 600 }, { method: "totp", timestamp: t - 60 }], nowSeconds: t })).toBe("form");
+  });
+  it("simply signed in (no link, no temporary password), or a link sign-in over an hour ago: pointed to Account Settings", () => {
+    expect(setPasswordView({ linkUsed: false, required: false, methods: password, nowSeconds: t })).toBe("use-account-settings");
+    expect(setPasswordView({ linkUsed: false, required: false, methods: [{ method: "recovery", timestamp: t - 7200 }], nowSeconds: t })).toBe("use-account-settings");
+    expect(setPasswordView({ linkUsed: false, required: false, methods: undefined, nowSeconds: t })).toBe("use-account-settings");
+  });
+  it("the page and the server use the same link rule", () => {
+    expect(serverRule).toBe(recentLinkSignIn);
+  });
+});
+
+describe("needsSecondStep: the /mfa link shows only for the server's mfa_required refusal", () => {
+  it("403 mfa_required: yes; any other refusal: no", () => {
+    expect(needsSecondStep(403, { code: "mfa_required" })).toBe(true);
+    expect(needsSecondStep(403, { code: "password_change_required" })).toBe(false);
+    expect(needsSecondStep(403, {})).toBe(false);
+    expect(needsSecondStep(400, { code: "mfa_required" })).toBe(false);
+    expect(needsSecondStep(undefined, undefined)).toBe(false);
+    expect(needsSecondStep(null, null)).toBe(false);
   });
 });

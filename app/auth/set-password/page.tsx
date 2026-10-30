@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PASSWORD_RULES, passwordProblem } from "@/lib/password";
-import { type LinkDecision, type SetPasswordLink, confirmQuestion, linkDecision, readSetPasswordLink } from "@/lib/set-password-link";
+import { type LinkDecision, type SetPasswordLink, confirmQuestion, linkDecision, needsSecondStep, readSetPasswordLink, setPasswordView } from "@/lib/set-password-link";
 import { supabase } from "@/lib/supabase";
 import { PRODUCT } from "@/lib/product";
 
@@ -19,8 +19,10 @@ import { PRODUCT } from "@/lib/product";
 // ?required=1: no link at all. The person signed in with a password an admin set, and must choose their own first
 // (the middleware sends every page here until they do).
 // Only invite and reset links are used, and a link never silently replaces another account signed in here (lib/set-password-link.ts).
+// Someone simply signed in (no link, no temporary password) is pointed to Change password in Account Settings instead: the
+// server needs their current password, which this page doesn't ask for.
 
-type Stage = "checking" | "confirm" | "ready" | "invalid" | "saving";
+type Stage = "checking" | "confirm" | "ready" | "invalid" | "saving" | "signed-in";
 
 type Checked = { error: string } | { link: SetPasswordLink | null; decision: LinkDecision | null };
 
@@ -70,9 +72,11 @@ export default function SetPasswordPage() {
   const [partial, setPartial] = useState(false);
   // Another account is signed in here: the link waits (in memory) until the person chooses.
   const [pending, setPending] = useState<{ link: SetPasswordLink; decision: Extract<LinkDecision, { action: "confirm" }> } | null>(null);
+  // An admin's session must pass the second step before the server takes the password (REQUIRE_ADMIN_MFA on).
+  const [secondStep, setSecondStep] = useState(false);
 
-  /** Uses the link and shows the form, or says why it can't. */
-  async function establish(link: SetPasswordLink | null, cancelled: () => boolean = () => false) {
+  /** Uses the link and shows the form (or, for someone simply signed in, where to change it), or says why it can't. */
+  async function establish(link: SetPasswordLink | null, isRequired: boolean, cancelled: () => boolean = () => false) {
     const error = await applyLink(link);
     if (cancelled()) return;
     if (error) {
@@ -81,14 +85,22 @@ export default function SetPasswordPage() {
       return;
     }
     const { data } = await supabase!.auth.getUser();
+    const { data: assurance } = await supabase!.auth.mfa.getAuthenticatorAssuranceLevel();
+    // The temporary-password requirement itself, not only ?required=1 (gone from the address after a reload).
+    const { data: own } = data.user
+      ? await supabase!.from("user_profiles").select("must_change_password").eq("id", data.user.id).maybeSingle<{ must_change_password: boolean | null }>()
+      : { data: null };
     if (cancelled()) return;
     setEmail(data.user?.email ?? "");
-    setStage("ready");
+    const mustChange = isRequired || own?.must_change_password === true;
+    if (mustChange) setRequired(true);
+    setStage(setPasswordView({ linkUsed: link !== null, required: mustChange, methods: assurance?.currentAuthenticationMethods }) === "form" ? "ready" : "signed-in");
   }
 
   useEffect(() => {
     let cancelled = false;
-    setRequired(new URLSearchParams(window.location.search).get("required") === "1");
+    const isRequired = new URLSearchParams(window.location.search).get("required") === "1";
+    setRequired(isRequired);
     void checkLink().then(async (checked) => {
       if (cancelled) return;
       if ("error" in checked) {
@@ -101,7 +113,7 @@ export default function SetPasswordPage() {
         setStage("confirm");
         return;
       }
-      await establish(checked.link, () => cancelled);
+      await establish(checked.link, isRequired, () => cancelled);
     });
     return () => { cancelled = true; };
   }, []);
@@ -111,7 +123,7 @@ export default function SetPasswordPage() {
     if (!pending) return;
     setStage("checking");
     await supabase?.auth.signOut({ scope: "local" });
-    await establish(pending.link);
+    await establish(pending.link, required);
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -131,10 +143,11 @@ export default function SetPasswordPage() {
     setStage("saving");
     setMessage(null);
     const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => null);
-    const result = (await response?.json().catch(() => ({}))) as { ok?: boolean; error?: string; partial?: boolean } | undefined;
+    const result = (await response?.json().catch(() => ({}))) as { ok?: boolean; error?: string; partial?: boolean; code?: string } | undefined;
     if (!response?.ok || !result?.ok) {
       setMessage(result?.error || "Couldn't save your password. Try again.");
       setPartial(Boolean(result?.partial));
+      setSecondStep(needsSecondStep(response?.status, result));
       setStage("ready");
       return;
     }
@@ -154,6 +167,12 @@ export default function SetPasswordPage() {
             <div data-testid="link-other-account" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{confirmQuestion(pending.decision)}</div>
             <Button className="h-12 w-full bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => void continueWithLink()}>Sign out and continue</Button>
             <Button variant="outline" className="h-12 w-full" onClick={() => router.replace("/dashboard")}>Stay signed in as {pending.decision.signedInAs}</Button>
+          </div>
+        ) : null}
+        {stage === "signed-in" ? (
+          <div className="mt-6 space-y-4 text-center">
+            <p data-testid="use-account-settings" className="text-sm text-slate-600">You&apos;re already signed in{email ? ` as ${email}` : ""}. To change your password, open Account Settings (the settings button next to your name in the menu) and use Change password.</p>
+            <Button className="bg-brand text-brand-ink" onClick={() => router.replace("/dashboard")}>Go to the dashboard</Button>
           </div>
         ) : null}
         {stage === "invalid" ? (
@@ -176,6 +195,12 @@ export default function SetPasswordPage() {
             </label>
             <p className="text-xs text-slate-500">{PASSWORD_RULES}</p>
             {message ? <div aria-live="polite" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{message}</div> : null}
+            {/* /mfa always continues to the dashboard, so it opens in a new tab and this page (and its session) stays here. */}
+            {secondStep ? (
+              <p data-testid="set-password-mfa" className="text-center text-sm text-slate-600">
+                <a href="/mfa" target="_blank" rel="noopener" className="font-medium text-brand underline">Enter your authenticator code</a> (opens in a new tab), then come back here and save again.
+              </p>
+            ) : null}
             {partial ? (
               <Button type="button" disabled={stage === "saving"} onClick={() => void submit({ finish: true })} className="h-12 w-full bg-brand text-brand-ink hover:bg-brand-hover">
                 {stage === "saving" ? "Finishing..." : "Finish set-up"}

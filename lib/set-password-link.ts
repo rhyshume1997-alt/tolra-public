@@ -69,6 +69,41 @@ export function linkDecision(link: SetPasswordLink, current: { id: string; email
   return { action: "confirm", signedInAs: current.email || "another account", linkFor: link.kind === "tokens" ? link.email : null };
 }
 
+/** How a reset or invite link shows in a session's amr: "recovery" / "invite" (a PKCE link), "otp" (verified link), "magiclink". */
+const LINK_METHODS = new Set(["recovery", "invite", "otp", "magiclink"]);
+/** How long after following the link the person may choose a password without their current one. */
+export const LINK_SIGN_IN_MAX_AGE_S = 60 * 60;
+
+/**
+ * True when an e-mail link (a password reset or an invite) signed this session in within the last hour (`methods`: the session's
+ * amr, as getAuthenticatorAssuranceLevel returns it): the link proved who it is, so choosing a new password needs no current one
+ * (audit Z7/C9; the server's rule, app/api/auth/change-password). A session signed in with a password, an older link session, or
+ * entries without a time do not count.
+ */
+export function recentLinkSignIn(methods: unknown, nowSeconds = Date.now() / 1000): boolean {
+  if (!Array.isArray(methods)) return false;
+  return methods.some((entry) => {
+    const { method, timestamp } = (entry ?? {}) as { method?: unknown; timestamp?: unknown };
+    return typeof method === "string" && LINK_METHODS.has(method) && typeof timestamp === "number"
+      && timestamp <= nowSeconds + 60 && nowSeconds - timestamp <= LINK_SIGN_IN_MAX_AGE_S;
+  });
+}
+
+/**
+ * What the page shows once a session exists. The form only when the server will take a new password without the current one: a
+ * link was just used, the person must replace a temporary password (?required=1), or a link signed this session in within the
+ * hour. Anyone else signed in normally is pointed to Change password in Account Settings, which asks for the current password.
+ */
+export function setPasswordView(input: { linkUsed: boolean; required: boolean; methods: unknown; nowSeconds?: number }): "form" | "use-account-settings" {
+  if (input.linkUsed || input.required || recentLinkSignIn(input.methods, input.nowSeconds)) return "form";
+  return "use-account-settings";
+}
+
+/** True when the server refused a new password because an admin's session must pass the second step first (mfa_required). */
+export function needsSecondStep(status: number | null | undefined, body: { code?: unknown } | null | undefined): boolean {
+  return status === 403 && body?.code === "mfa_required";
+}
+
 /** The question shown for a "confirm" decision. */
 export function confirmQuestion(decision: Extract<LinkDecision, { action: "confirm" }>): string {
   return decision.linkFor
