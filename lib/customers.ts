@@ -22,6 +22,11 @@ export type CustomerRecord = {
    * pass). undefined: not read (the database has no such column yet), so it is never sent on save.
    */
   traceableDefault?: boolean;
+  /**
+   * The row's version as read (customers.updated_at, moved by the database on every change, 037). A save of a record read with it
+   * changes the row only if nobody has changed it since (optimistic concurrency); undefined (a new customer): no check.
+   */
+  updatedAt?: string;
 };
 
 type CustomerDbRow = {
@@ -33,13 +38,17 @@ type CustomerDbRow = {
   address: string | null;
   notes: string | null;
   mobile?: string | null;
+  updated_at?: string | null;
 };
 
-const CUSTOMER_COLUMNS = "id, name, contact_name, email, phone, address, notes";
+const CUSTOMER_COLUMNS = "id, name, contact_name, email, phone, address, notes, updated_at";
 /** With migration 073's mobile. Before 073 a read with it fails as a missing column, and the customers are read without it. */
 const CUSTOMER_COLUMNS_073 = `${CUSTOMER_COLUMNS}, mobile`;
 
 export const TRACEABLE_NEEDS_UPDATE = "Traceable can't be saved yet: the database update that adds it hasn't been applied. Nothing was changed.";
+
+/** A save of a customer someone else changed after it was read (E6): nothing is written; the form reloads the list. */
+export const CUSTOMER_CHANGED = "Someone else changed this customer while you were editing, so nothing was saved. The list has been reloaded: open the customer again and make your change.";
 
 export const MOBILE_NEEDS_UPDATE = "The mobile number can't be saved yet: the database update that adds it hasn't been applied. Nothing was changed.";
 
@@ -71,6 +80,7 @@ function toCustomerRecord(row: CustomerDbRow): CustomerRecord {
     address: row.address || "",
     notes: row.notes || "",
     ...(Object.prototype.hasOwnProperty.call(row, "mobile") ? { mobile: row.mobile || "" } : {}),
+    ...(row.updated_at ? { updatedAt: row.updated_at } : {}),
   };
 }
 
@@ -248,16 +258,32 @@ export async function fetchKnownCustomers(): Promise<{ customers: KnownCustomer[
   return { customers: mergeKnownCustomers(saved, names), documentNamesTruncated: truncated };
 }
 
-export async function saveCustomer(customer: CustomerRecord): Promise<CustomerRecord> {
-  if (!supabase) throw new Error("Supabase is not configured.");
+/** The writes saveCustomer makes (an injected client keeps it testable). */
+type CustomerQuery = PromiseLike<{ data: unknown; error: { code?: string; message?: string; hint?: string } | null }>;
+type CustomerSelected = { single: () => CustomerQuery; maybeSingle: () => CustomerQuery };
+export type CustomerWriter = {
+  from: (table: "customers") => {
+    insert: (row: Record<string, unknown>) => { select: (columns: string) => CustomerSelected };
+    update: (row: Record<string, unknown>) => { eq: (column: string, value: string) => { eq: (column: string, value: string) => { select: (columns: string) => CustomerSelected }; select: (columns: string) => CustomerSelected } };
+  };
+};
+
+export async function saveCustomer(customer: CustomerRecord, client: CustomerWriter | null = supabase as unknown as CustomerWriter | null): Promise<CustomerRecord> {
+  if (!client) throw new Error("Supabase is not configured.");
   parseOrThrow(customerSchema, { name: customer.name, email: customer.email.trim(), phone: customer.phone, mobile: customer.mobile });
   const organizationId = await getCurrentOrganizationId();
   const payload = customerPayload(customer, organizationId);
   const columns = customer.mobile === undefined ? CUSTOMER_COLUMNS : CUSTOMER_COLUMNS_073;
-  const query = customer.id
-    ? supabase.from("customers").update(payload).eq("id", customer.id)
-    : supabase.from("customers").insert(payload);
-  const { data, error } = await query.select(columns).single();
+  // A record read with its version is changed only if the row still has that version (two people editing the same customer: the
+  // second save is refused, never written over the first). No row back then means someone changed it in between.
+  const byId = customer.id ? client.from("customers").update(payload).eq("id", customer.id) : null;
+  const query = !byId
+    ? client.from("customers").insert(payload).select(columns).single()
+    : customer.updatedAt
+      ? byId.eq("updated_at", customer.updatedAt).select(columns).maybeSingle()
+      : byId.select(columns).single();
+  const { data, error } = await query;
+  if (!error && !data && byId && customer.updatedAt) throw new ValidationError(CUSTOMER_CHANGED);
   if (error) {
     if (customer.traceableDefault !== undefined && missingDbObject(error) && /traceable/i.test(error.message ?? "")) throw new ValidationError(TRACEABLE_NEEDS_UPDATE);
     if (customer.mobile !== undefined && missingDbObject(error)) throw new ValidationError(MOBILE_NEEDS_UPDATE);

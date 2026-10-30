@@ -436,6 +436,16 @@
  },
  {
   "kind": "function",
+  "object": "public.dashboard_money_figures(p_today date, p_since date)",
+  "detail": "invoker search_path=pg_catalog, public 34b4b71d6f727048d30b00000380f0ba"
+ },
+ {
+  "kind": "function",
+  "object": "public.dashboard_work_figures(p_today date, p_week_end date, p_since date, p_month_start date, p_quotes_since date, p_week_start timestamp with time zone, p_week_stop timestamp with time zone, p_now timestamp with time zone)",
+  "detail": "invoker search_path=pg_catalog, public dd8e3a951b15562739918e12c82f6f49"
+ },
+ {
+  "kind": "function",
   "object": "public.decide_reopen_request(p_request uuid, p_decision text, p_note text)",
   "detail": "definer search_path=pg_catalog, public 178c9c92260635662757582c7b9fa841"
  },
@@ -2438,6 +2448,16 @@
   "kind": "function-grant",
   "object": "public.customers_in_use_guard()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_money_figures(p_today date, p_since date)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_work_figures(p_today date, p_week_end date, p_since date, p_month_start date, p_quotes_since date, p_week_start timestamp with time zone, p_week_stop timestamp with time zone, p_now timestamp with time zone)",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",

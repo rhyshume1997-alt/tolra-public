@@ -131,6 +131,8 @@ markers(migration, present) AS (
     ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'user_preferences' AND column_name = 'date_format')),
     ('110 rfq clarification in one step',  EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_rfq_clarification')),
+    ('111 dashboard figures',            EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'dashboard_work_figures' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8d4725ea13d23d27ae0be5cbfbfd012d')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'dashboard_money_figures' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'd57a0bd65b8669a48e171dbe49bd95ab')),
     ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reopen_record')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'decide_reopen_request')),
@@ -376,6 +378,10 @@ checks(n, check_name, value, expected) AS (
                 WHERE a.action = 'WRITE_OFF_INVOICE' AND a.entity_table = 'invoices' AND a.entity_id = i.id::TEXT)) AS n
                 FROM public.invoices i WHERE lower(regexp_replace(coalesce(i.status, ''), '[^[:alpha:]]', '', 'g')) = 'writtenoff'$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
     'informational, the same before and after 105 (105 changes no invoice): report both figures; from 105 a write-off is made only with Write off'
+  UNION ALL SELECT 50, '111 needs: the columns its functions read (032 invoice_payments, 034 credited_amount, 068 quotes.version, 081 jobs.inspected_at)',
+    (EXISTS (SELECT 1 FROM col WHERE table_name = 'invoice_payments' AND column_name = 'paid_on') AND EXISTS (SELECT 1 FROM col WHERE table_name = 'invoices' AND column_name = 'credited_amount')
+     AND EXISTS (SELECT 1 FROM col WHERE table_name = 'quotes' AND column_name = 'version') AND EXISTS (SELECT 1 FROM col WHERE table_name = 'jobs' AND column_name = 'inspected_at'))::TEXT,
+    'true (111 replaces no existing object; its two functions are new and read only)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
