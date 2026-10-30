@@ -656,6 +656,21 @@
  },
  {
   "kind": "function",
+  "object": "public.integration_app_credentials_list()",
+  "detail": "definer search_path=pg_catalog, public 296f73b3cabdcac50446675fc2c929eb"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_app_credentials_remove(p_provider text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 8adabe6fdb1482df10a44bd405849809"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_app_credentials_save(p_provider text, p_client_id text, p_secret_enc text, p_secret_last4 text, p_redirect_uri text, p_key_version integer)",
+  "detail": "definer search_path=pg_catalog, public, security_audit d58feac89a9d0fb6f9bcd981868dc92f"
+ },
+ {
+  "kind": "function",
   "object": "public.integration_carriage_vat_key(p_taxed boolean, p_carriage_vat boolean, p_standard_rate numeric)",
   "detail": "invoker search_path=pg_catalog 6c7b3cbc1ed2e79316f3cde0be1d6bd6"
  },
@@ -676,6 +691,11 @@
  },
  {
   "kind": "function",
+  "object": "public.integration_disconnect_revoke(p_provider text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit e923f10d3c5604ce62c993b4e6d8b5be"
+ },
+ {
+  "kind": "function",
   "object": "public.integration_document(p_org uuid, p_doc_type text, p_doc_id uuid)",
   "detail": "definer search_path=pg_catalog, public a07eaaea367529f46cd1403b164aabe5"
  },
@@ -683,6 +703,31 @@
   "kind": "function",
   "object": "public.integration_enqueue()",
   "detail": "definer search_path=pg_catalog, public b7a6644c128ea053c6e8e5f6548a8463"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invite_create(p_provider text, p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit f7a377b9cbc6e8967fa1337e6ab36738"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invite_peek(p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public 929aabcee5cb8787e1dd4e360b90801b"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invite_redeem(p_token_hash text, p_state_hash text, p_verifier_enc text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit f1e7cf43675a8f6530359072ae418129"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invite_revoke(p_invite uuid)",
+  "detail": "definer search_path=pg_catalog, public, security_audit f97533e39fe91e7a60138192e136d31b"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invites_open(p_provider text)",
+  "detail": "definer search_path=pg_catalog, public 89861fccda66c564e6bdfe93039b9182"
  },
  {
   "kind": "function",
@@ -698,6 +743,16 @@
   "kind": "function",
   "object": "public.integration_oauth_consume(p_org uuid, p_user uuid, p_provider text, p_state_hash text)",
   "detail": "definer search_path=pg_catalog, public 84e86ecc0092c471804db4f067576531"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_oauth_consume_invite(p_provider text, p_state_hash text)",
+  "detail": "definer search_path=pg_catalog, public c1b7c9bde8d5a2e4ba44e5ab085f55dc"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)",
+  "detail": "definer search_path=pg_catalog, public 4ee36581e711352a9de91a134e97171b"
  },
  {
   "kind": "function",
@@ -718,6 +773,11 @@
   "kind": "function",
   "object": "public.integration_retry_send(p_send uuid)",
   "detail": "definer search_path=pg_catalog, public, security_audit a4639737f346b6a8e9abf25ea784da2a"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_sends_accounting_only()",
+  "detail": "invoker search_path=pg_catalog, public 99a68b40560d4017889455bcd9b3c3ab"
  },
  {
   "kind": "function",
@@ -2491,6 +2551,21 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.integration_app_credentials_list()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_app_credentials_remove(p_provider text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_app_credentials_save(p_provider text, p_client_id text, p_secret_enc text, p_secret_last4 text, p_redirect_uri text, p_key_version integer)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.integration_carriage_vat_key(p_taxed boolean, p_carriage_vat boolean, p_standard_rate numeric)",
   "detail": "service_role"
  },
@@ -2511,6 +2586,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.integration_disconnect_revoke(p_provider text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.integration_document(p_org uuid, p_doc_type text, p_doc_id uuid)",
   "detail": "service_role"
  },
@@ -2518,6 +2598,31 @@
   "kind": "function-grant",
   "object": "public.integration_enqueue()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invite_create(p_provider text, p_token_hash text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invite_peek(p_token_hash text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invite_redeem(p_token_hash text, p_state_hash text, p_verifier_enc text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invite_revoke(p_invite uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invites_open(p_provider text)",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",
@@ -2533,6 +2638,16 @@
   "kind": "function-grant",
   "object": "public.integration_oauth_consume(p_org uuid, p_user uuid, p_provider text, p_state_hash text)",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_oauth_consume_invite(p_provider text, p_state_hash text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",
@@ -2553,6 +2668,11 @@
   "kind": "function-grant",
   "object": "public.integration_retry_send(p_send uuid)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_sends_accounting_only()",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -4761,6 +4881,16 @@
  },
  {
   "kind": "rls",
+  "object": "public.integration_app_credentials",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.integration_connect_invites",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.integration_connections",
   "detail": "enabled"
  },
@@ -5921,6 +6051,26 @@
  },
  {
   "kind": "trigger",
+  "object": "public.integration_app_credentials :: admin_mfa",
+  "detail": "O 55edf7ad261c237031342bc1792dfc84"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_app_credentials :: support_read_only",
+  "detail": "O 00cc063c427944289ef68658905130ed"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_connect_invites :: admin_mfa",
+  "detail": "O 22520de9e3e458150fbdb3cf82dad44a"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_connect_invites :: support_read_only",
+  "detail": "O 8baa07c503c4ecc9798b69daa3e4beee"
+ },
+ {
+  "kind": "trigger",
   "object": "public.integration_connections :: admin_mfa",
   "detail": "O 31956dd4d24e20ceddcb81b944513586"
  },
@@ -5983,6 +6133,11 @@
   "kind": "trigger",
   "object": "public.integration_secrets :: support_read_only",
   "detail": "O 49b9d3b2d4d960750cf71324b159f29d"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_sends :: aa_integration_sends_accounting_only",
+  "detail": "O f43b125c8219bc1f9b2e758ce286e0ae"
  },
  {
   "kind": "trigger",
@@ -7388,6 +7543,11 @@
   "kind": "unique-index",
   "object": "public.inbound_emails :: inbound_emails_organization_id_graph_message_id_key",
   "detail": "6d9751829f157bc36eaaf87e427664fc"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.integration_connect_invites :: integration_connect_invites_token_key",
+  "detail": "16b5c572081ddc1abb8d93290bad5792"
  },
  {
   "kind": "unique-index",
