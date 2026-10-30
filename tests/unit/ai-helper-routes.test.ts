@@ -33,6 +33,10 @@ const STORED = { kind: "rfq", customer: "Acme Engineering Ltd", customer_known: 
 const db = vi.hoisted(() => ({
   rpcs: [] as Array<{ fn: string; args: Record<string, unknown> }>,
   reads: [] as string[],
+  /** What ai_helper_set_finance_check answers (null = it works). */
+  financeError: null as null | { code: string },
+  /** What ai_helper_save_settings answers as an error (null = it works). */
+  saveError: null as null | { code: string },
   status: { roundup_enabled: true, rfq_enabled: true } as Record<string, unknown>,
   reserve: null as null | ((args: Record<string, unknown>) => { data: unknown; error: unknown }),
   customers: ["Acme Engineering Ltd"],
@@ -77,6 +81,8 @@ const supabase = {
   rpc: async (fn: string, args: Record<string, unknown>) => {
     db.rpcs.push({ fn, args });
     if (fn === "ai_helper_status") return { data: db.status, error: null };
+    if (fn === "ai_helper_set_finance_check") return { data: null, error: db.financeError };
+    if (fn === "ai_helper_save_settings" && db.saveError) return { data: null, error: db.saveError };
     if (fn === "ai_helper_reserve") return db.reserve!(args);
     if (fn === "next_doc_number") return { data: "QUO-0100", error: null };
     if (fn === "create_with_lines") return { data: NEW_QUOTE, error: null };
@@ -132,7 +138,7 @@ beforeEach(() => {
   process.env.AI_HELPER_PROVIDER = "mock";
   delete process.env.VERCEL_ENV;
   process.env.INTEGRATIONS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
-  db.rpcs = []; db.reads = []; db.status = { roundup_enabled: true, rfq_enabled: true };
+  db.rpcs = []; db.reads = []; db.financeError = null; db.saveError = null; db.status = { roundup_enabled: true, rfq_enabled: true };
   db.requests = [
     { id: REQ, organization_id: ORG, feature: "rfq", status: "suggested", output: STORED },
     { id: OTHER_REQ, organization_id: OTHER_ORG, feature: "rfq", status: "suggested", output: STORED },
@@ -194,6 +200,7 @@ describe("switches and roles", () => {
     for (const off of [{ roundup_enabled: false, rfq_enabled: false }, null]) {
       db.status = off as Record<string, unknown>;
       db.rpcs = [];
+      db.reads = [];
       auth.role = "admin";
       expect((await rfq(post({ text: GOOD_RFQ }))).status).toBe(404);
       expect((await roundup(post({ period: "daily" }))).status).toBe(404);
@@ -478,6 +485,46 @@ describe("settings and key", () => {
     expect(db.rpcs).toEqual([{ fn: "ai_helper_save_settings", args: { p_roundup: true, p_rfq: false, p_cap_pence: 2000 } }]);
   });
 
+  it("the finance check's switch is optional: sent, it goes second, to its own function; a database without that function still saves the other switches and says what the finance check really is", async () => {
+    const res = await settings(post({ roundupEnabled: true, rfqEnabled: true, financeCheckEnabled: true, monthlyCapPence: 500 }));
+    expect(res.status).toBe(200);
+    expect(db.rpcs).toEqual([
+      { fn: "ai_helper_save_settings", args: { p_roundup: true, p_rfq: true, p_cap_pence: 500 } },
+      { fn: "ai_helper_set_finance_check", args: { p_enabled: true } },
+    ]);
+    expect(await res.json()).toMatchObject({ finance_check_available: true, finance_check_enabled: false });
+    // Not a boolean, or an unknown field: refused.
+    expect((await settings(post({ roundupEnabled: true, rfqEnabled: true, financeCheckEnabled: "yes", monthlyCapPence: 500 }))).status).toBe(400);
+    expect((await settings(post({ roundupEnabled: true, rfqEnabled: true, financeAll: true, monthlyCapPence: 500 }))).status).toBe(400);
+  });
+
+  it("order: round-up/RFQ/cap are saved first and the finance switch second; a refused save never touches the finance switch", async () => {
+    await settings(post({ roundupEnabled: true, rfqEnabled: false, financeCheckEnabled: true, monthlyCapPence: 500 }));
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_save_settings", "ai_helper_set_finance_check"]);
+    db.rpcs = [];
+    db.saveError = { code: "42501" };
+    expect((await settings(post({ roundupEnabled: true, rfqEnabled: false, financeCheckEnabled: true, monthlyCapPence: 500 }))).status).toBe(403);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_save_settings"]);
+  });
+
+  it("a failing finance write still returns the saved settings plus a warning (no such function, or any refusal)", async () => {
+    for (const code of ["42883", "42501"]) {
+      db.financeError = { code };
+      const res = await settings(post({ roundupEnabled: true, rfqEnabled: false, financeCheckEnabled: true, monthlyCapPence: 500 }));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toMatchObject({ key_set: true, finance_check_enabled: false });
+      expect(String(body.warning)).toMatch(/^Saved, but the finance check/);
+    }
+    db.financeError = null;
+    expect((await (await settings(post({ roundupEnabled: true, rfqEnabled: false, financeCheckEnabled: true, monthlyCapPence: 500 }))).json()).warning).toBeUndefined();
+  });
+
+  it("the status carries the company's finance-check switch and whether the database can hold it", async () => {
+    auth.role = "office";
+    expect(await (await status()).json()).toMatchObject({ roundup_enabled: true, finance_check_available: true, finance_check_enabled: false });
+  });
+
   it("the key is encrypted for this company before it reaches the database, never returned, never logged", async () => {
     const key = "sk-ant-api03-SYNTHETIC-test-key-WXYZ";
     const res = await keyPost(post({ key }));
@@ -517,7 +564,7 @@ describe("never-do list (source)", () => {
       if (f !== path.join("lib", "ai-helper", "mock.ts")) expect(source(f), f).not.toMatch(/issue_invoice|issue_credit_note|replace_draft|void_invoice|record_payment|send_quote|mark_paid/);
     }
     const rpcs = files.flatMap((f) => [...source(f).matchAll(/\.rpc\("([a-z_]+)"/g)].map((m) => `${f}:${m[1]}`));
-    const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_settle", "ai_helper_decide"]);
+    const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_finance_check", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_settle", "ai_helper_decide"]);
     for (const call of rpcs) {
       const [file, fn] = call.split(":");
       expect(allowed.has(fn) || (["next_doc_number", "create_with_lines"].includes(fn) && file === path.join("lib", "ai-helper", "approve.ts")), call).toBe(true);

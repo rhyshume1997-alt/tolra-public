@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { writeAiAudit } from "@/lib/ai/finance-check/audit";
 import { runFinanceCheck } from "@/lib/ai/finance-check/check";
 import { LoadError, loadFinanceCheckInput, sessionReader } from "@/lib/ai/finance-check/load";
+import { FINANCE_CHECK_COMPANY_OFF, companyFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
 import { FINANCE_CHECK_ROLES, checkRequestSchema } from "@/lib/ai/finance-check/request";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -12,7 +13,8 @@ const NOT_AVAILABLE = "Check not available";
  * Tolra AI agent 1, the pre-issue finance check (SUGGEST ONLY). POST { kind, id } for one draft invoice, purchase order or credit
  * note: reads it and its linked records as the caller (their JWT and RLS, their company; never the service role), runs the
  * deterministic checks and returns suggestions. Writes nothing but the two audit events. Off (404) unless AI_FINANCE_CHECK_ENABLED is
- * exactly "true" (lib/ai/finance-check/flag.ts), decided before any other work.
+ * exactly "true" (lib/ai/finance-check/flag.ts), decided before any other work. Also refused (403, code company_off) when the company's own switch
+ * (ai_helper_settings.finance_check_enabled, set in the AI section) is off or the database has no such column yet.
  */
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
@@ -21,6 +23,8 @@ export async function POST(request: Request) {
   if (isErrorResponse(auth)) return auth;
   // A support session (the platform owner inside a company) never runs an agent (spec rule 9), as on the Xero routes.
   if (auth.session?.support) return jsonError("Support access can't run the finance check.", 403);
+  // The company's own switch (an admin sets it in the AI section). Off, or not readable (no column yet): refused before any read or audit.
+  if (!(await companyFinanceCheckEnabled(auth.supabase, auth.profile.organization_id))) return NextResponse.json(FINANCE_CHECK_COMPANY_OFF, { status: 403 });
 
   const json = await readJson(request, 4 * 1024);
   if (!json.ok) return json.response;
