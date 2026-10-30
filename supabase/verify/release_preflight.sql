@@ -118,7 +118,7 @@ markers(migration, present) AS (
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
     ('114 clock-in network lock',         to_regclass('public.clock_in_network_locks') IS NOT NULL AND to_regclass('public.clock_in_network_unverified') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'clock_in_network_lock' AND tgrelid = 'public.attendance_events'::regclass))
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'clock_in_network_lock' AND tgrelid = to_regclass('public.attendance_events')))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
