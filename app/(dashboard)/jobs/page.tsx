@@ -182,6 +182,17 @@ const inRework = (job: JobState) => isInRework(job);
  */
 type DueLight = (typeof DUE_CHIPS)[number]["value"];
 const DUE_LABEL = Object.fromEntries(DUE_CHIPS.map((chip) => [chip.value, chip.label])) as Record<DueLight, string>;
+
+/**
+ * The selection bar on a phone (below sm): the shared toolbar (components/list-toolbar) laid out in three columns, its buttons'
+ * words wrapping inside them (each at least 48px tall, taller if its words need three lines; the workshop's Finish Selected keeps
+ * its 64px on a touch screen), and the reason Finish Selected is off on a row of its own.
+ */
+const SELECTION_BAR_PHONE = [
+  "max-sm:[&_[role=toolbar]]:grid max-sm:[&_[role=toolbar]]:grid-cols-3 max-sm:[&_[role=toolbar]]:items-center",
+  "max-sm:[&_[role=toolbar]>button]:h-auto max-sm:[&_[role=toolbar]>button]:px-2 max-sm:[&_[role=toolbar]>button]:py-1 max-sm:[&_[role=toolbar]>button]:text-center max-sm:[&_[role=toolbar]>button]:leading-tight max-sm:[&_[role=toolbar]>button]:whitespace-normal",
+  "max-sm:[&_[data-testid=finish-blocked]]:col-span-full",
+].join(" ");
 const inDueScope = (job: JobState) => { const status = jobStatusOf(job); return status === "not_started" || status === "running"; };
 function dueLightOf(job: JobState): DueLight | null {
   if (!inDueScope(job)) return null;
@@ -1610,8 +1621,10 @@ export default function JobsPage() {
       </div>
 
       {/* With a job ticked, the selection bar sticks just below the app's top bar (components/topbar: sticky top-0, h-16) while the
-          board scrolls, in the brand navy with light text. Its padding is there unticked too, so ticking a job moves nothing. */}
-      <div data-testid="selection-bar" data-selected={selectedIds.length ? "true" : undefined} className={cn("-mx-2 p-2", selectedIds.length ? "sticky top-16 z-20 bg-brand text-brand-ink [&_[role=status]]:text-brand-ink" : "")}>
+          board scrolls, in the brand navy with light text. Its padding is there unticked too, so ticking a job moves nothing.
+          On a phone (below sm) the toolbar is three columns, ticked or not, so the bar is two rows of 48px controls instead of
+          four wrapped lines: the same buttons in the same order, their words wrapping inside them. */}
+      <div data-testid="selection-bar" data-selected={selectedIds.length ? "true" : undefined} className={cn("-mx-2 p-2", SELECTION_BAR_PHONE, selectedIds.length ? "sticky top-16 z-20 bg-brand text-brand-ink [&_[role=status]]:text-brand-ink" : "")}>
       <ListToolbar
         visibleCount={visible.length}
         selectedCount={selectedIds.length}
@@ -1630,7 +1643,7 @@ export default function JobsPage() {
         ]}
         actions={isViewer ? null : (
           <>
-            <Button disabled={saving || !selectedIds.length || Boolean(finishBlocked)} className={primaryTouch} title={selectedIds.length ? finishBlocked ?? undefined : "Select at least one job first"} variant="finish" onClick={() => setBulkKind("finish")}>{`Finish Selected (${selectedIds.length})`}</Button>
+            <Button disabled={saving || !selectedIds.length || Boolean(finishBlocked)} className={cn(primaryTouch, workshop ? "pointer-coarse:min-h-16" : "")} title={selectedIds.length ? finishBlocked ?? undefined : "Select at least one job first"} variant="finish" onClick={() => setBulkKind("finish")}>{`Finish Selected (${selectedIds.length})`}</Button>
             {/* A disabled button shows no title on a tap: why Finish Selected can't be used is written beside it. */}
             {selectedIds.length && finishBlocked ? <span data-testid="finish-blocked" className="text-sm">{`${finishBlocked}.`}</span> : null}
           </>

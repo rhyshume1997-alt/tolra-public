@@ -5,7 +5,8 @@
  *   * every control in a job's row or card, and the header tick box, is at least 48px tall: a mouse at 1280, a touch tablet at 820, a
  *     touch phone at 390 (cards);
  *   * with a job ticked, the selection bar stays in view after scrolling to the bottom, sits just below the app's top bar (not under it)
- *     and reads light on the brand navy (contrast at least 4.5:1); unticked it is not sticky;
+ *     and reads light on the brand navy (contrast at least 4.5:1); unticked it is not sticky; on a 390 phone its controls sit in two
+ *     rows (three columns), each still 48px+;
  *   * the page never scrolls sideways at 390, 768 and 1280, with or without a selection;
  *   * screenshots at 1280 and 820 (touch), the board as it opens and with a selection scrolled down, saved to
  *     test-results/job-board-redesign-screenshots (CI's integration-evidence artifact).
@@ -185,6 +186,16 @@ for (const width of [1280, 768, 390]) {
     await expect(page.locator(`[data-job-id="${ids[J.measure]}"]:visible`)).toBeVisible();
     expect(await scrollsSideways(page), `${width}: the page scrolls sideways`).toBe(false);
     await expectStickyBar(page, `${width}`);
+    if (width === 390) {
+      // Compact on a phone: the bar's controls sit in two rows (three columns), not four wrapped lines, and every one is still 48px+.
+      const bar = page.getByTestId("selection-bar");
+      const rows = await bar.evaluate((el) => Array.from(el.querySelectorAll("button"))
+        .map((b) => b.getBoundingClientRect()).filter((r) => r.height > 0).map((r) => r.top + r.height / 2).sort((a, b) => a - b)
+        .filter((mid, i, mids) => i === 0 || mid - mids[i - 1] > 10).length);
+      expect(rows, "390: rows of controls in the selection bar").toBeLessThanOrEqual(2);
+      expect((await bar.boundingBox())!.height, "390: the selection bar's height").toBeLessThanOrEqual(180);
+      expect(await shortTargets(page, '[data-testid="selection-bar"]'), "390: selection bar controls under 48px").toEqual([]);
+    }
   });
 }
 
