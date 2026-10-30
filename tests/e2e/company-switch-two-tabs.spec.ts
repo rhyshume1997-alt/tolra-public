@@ -74,6 +74,16 @@ async function officeInOneCompany() {
   return { person, company };
 }
 
+/**
+ * Answers the role-view page. Someone with one role only passes through it: /select-role shows its buttons for an instant and then
+ * replaces itself with /dashboard (app/select-role/page.tsx, roleOptions.length <= 1), so a click would race that redirect and find
+ * the button detached. Only an admin (three views) stays on the page and must click.
+ */
+async function chooseView(page: Page, person: Person) {
+  if (person.role === "admin") await page.getByRole("button", { name: "Continue as Admin" }).click();
+  await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+}
+
 /** Signs in through the form, picks `company` on the chooser and lands on the dashboard. */
 async function signInAndChoose(page: Page, person: Person, company: Company) {
   await asSeparateDevice(page);
@@ -84,18 +94,14 @@ async function signInAndChoose(page: Page, person: Person, company: Company) {
   await page.waitForURL(/\/choose-company/, { timeout: 45_000 });
   await page.getByRole("button", { name: `Open ${company.name}` }).click();
   await page.waitForURL(/\/(select-role|dashboard)/, { timeout: 30_000 });
-  if (page.url().includes("/select-role")) {
-    await page.getByRole("button", { name: person.role === "admin" ? "Continue as Admin" : "Continue as Office" }).click();
-    await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
-  }
+  if (page.url().includes("/select-role")) await chooseView(page, person);
 }
 
 /** Opens a page in this tab; an admin or two-role person is asked for the role view first, so answer it. */
 async function openPage(page: Page, path: string, person: Person) {
   await page.goto(path);
   if (page.url().includes("/select-role")) {
-    await page.getByRole("button", { name: person.role === "admin" ? "Continue as Admin" : "Continue as Office" }).click();
-    await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+    await chooseView(page, person);
     await page.goto(path);
   }
 }
