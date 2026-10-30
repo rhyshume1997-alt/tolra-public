@@ -143,7 +143,7 @@ export function WholeFloor() {
   return (
     <Card data-testid="whole-floor" aria-labelledby="whole-floor-title">
       <CardHeader className="gap-2">
-        <CardTitle id="whole-floor-title" className="text-lg">Whole floor</CardTitle>
+        <CardTitle id="whole-floor-title">Whole floor</CardTitle>
         <p className="text-sm text-muted-foreground">Every machine right now, and anything on the bench. Read-only.</p>
         <ul className="flex flex-wrap gap-x-6 gap-y-2 pt-1" aria-label="On the floor now" data-testid="floor-summary">
           {summary.map(([word, value]) => (
@@ -155,9 +155,9 @@ export function WholeFloor() {
         </ul>
       </CardHeader>
       <CardContent className="px-0">
-        {loading && !floor ? <p className="px-4 py-4 text-base text-muted-foreground">Loading…</p> : null}
+        {loading && !floor ? <p className="flex min-h-16 items-center border-y border-line px-4 text-base text-muted-foreground">Loading…</p> : null}
         {failed ? (
-          <div role="alert" className="mx-4 flex flex-wrap items-center justify-between gap-3 border border-line bg-canvas p-4" data-testid="floor-failed">
+          <div role="alert" className="mx-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-canvas p-4" data-testid="floor-failed">
             <p className="min-w-0 flex-1 basis-60 text-base text-ink">Couldn&apos;t load who is on what. Don&apos;t treat the floor as idle.</p>
             {retryButton}
           </div>
@@ -165,7 +165,7 @@ export function WholeFloor() {
         {floor && !floor.failed ? (
           <>
             {floor.detailsFailed || floor.nextFailed || floor.benchFailed ? (
-              <div role="alert" className="mx-4 mb-2 flex flex-wrap items-center justify-between gap-3 border border-line bg-canvas p-4" data-testid="floor-partial">
+              <div role="alert" className="mx-4 mb-2 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-canvas p-4" data-testid="floor-partial">
                 <p className="min-w-0 flex-1 basis-60 text-base text-ink">
                   {[floor.detailsFailed && "Job details couldn't be loaded.", floor.nextFailed && "What's booked next couldn't be loaded.", floor.benchFailed && "Who is on the bench couldn't be loaded."].filter(Boolean).join(" ")} Dashes show what&apos;s missing.
                 </p>

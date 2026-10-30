@@ -26,7 +26,7 @@ export function MyJobs({ jobs, role, canOpenJobs }: { jobs: MyJob[]; role: strin
     <Card data-testid="my-jobs">
       <CardHeader className="flex flex-wrap items-baseline justify-between gap-2">
         <CardTitle>My jobs</CardTitle>
-        <p className="text-sm text-slate-600">{jobs.length} job{jobs.length === 1 ? "" : "s"}</p>
+        <p className="text-sm text-muted-foreground">{jobs.length} job{jobs.length === 1 ? "" : "s"}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {jobs.map((job) => <MyJobCard key={job.id} job={job} role={role} canOpenJobs={canOpenJobs} />)}
@@ -42,7 +42,7 @@ function MyJobCard({ job, role, canOpenJobs }: { job: MyJob; role: string | null
   const what = [job.customer, job.description, job.quantity != null ? `qty ${job.quantity}` : ""].filter(Boolean).join(" · ");
   const href = jobHref(job);
   return (
-    <article data-testid="my-job" data-job-id={job.id} aria-label={job.jobNo} className="min-w-0 space-y-4 rounded-lg border border-line bg-surface p-4 sm:p-5">
+    <article data-testid="my-job" data-job-id={job.id} aria-label={job.jobNo} className="min-w-0 space-y-4 rounded-lg border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="min-w-0 font-mono text-2xl font-semibold break-all text-ink">{job.jobNo}</p>
         {/* Status, rework and due light: each a badge with its word, never colour alone. */}
@@ -54,8 +54,8 @@ function MyJobCard({ job, role, canOpenJobs }: { job: MyJob; role: string | null
       </div>
       {what ? <p className="text-base break-words text-ink">{what}</p> : null}
       <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-        {stageOf(job.stage) ? <div><dt className="inline text-slate-600">Stage </dt><dd className="inline font-semibold text-ink">{stageLabel(job.stage)}</dd></div> : null}
-        <div><dt className="inline text-slate-600">Due </dt><dd className="inline font-semibold text-ink">{job.due ? fmtDate(job.due) : DUE_WORD.no_due_date}</dd></div>
+        {stageOf(job.stage) ? <div><dt className="inline text-muted-foreground">Stage </dt><dd className="inline font-semibold text-ink">{stageLabel(job.stage)}</dd></div> : null}
+        <div><dt className="inline text-muted-foreground">Due </dt><dd className="inline font-semibold text-ink">{job.due ? fmtDate(job.due) : DUE_WORD.no_due_date}</dd></div>
       </dl>
       {job.notes ? (
         <div data-testid="my-job-notes" className="border-l-4 border-brand bg-brand-soft px-4 py-3 text-ink">
