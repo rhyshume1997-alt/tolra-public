@@ -1,7 +1,7 @@
 -- =====================================================================================================
 -- 109: The date format as a per-person setting (Rhys, Wed 21 Oct 2026): each login chooses the order (DD/MM/YYYY, MM/DD/YYYY or
 -- the ISO YYYY-MM-DD) and how the month is shown (number 10, short Oct, full October). The app formats every date on screen and on
--- what that person prints with it (lib/dates.ts); spreadsheet exports and the database are unchanged. App-side only otherwise.
+-- what that person prints with it (lib/dates.ts); the accountant spreadsheet exports now print ISO dates (as Rhys asked); the database is unchanged. App-side only otherwise.
 --
 -- WHAT CHANGES. One new table, public.user_preferences: one row per login (user_id, the auth user), with one checked column,
 -- date_format, one of nine values '<order>-<month>' (order dmy / mdy / ymd, month number / short / full; default 'dmy-number',
