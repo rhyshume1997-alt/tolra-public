@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { AttentionSection } from "@/lib/attention-items";
-import { leaksFrom, OVERVIEW_SECTIONS } from "@/lib/overview";
+import { attentionSummary, fleetLoad, leaksFrom, OVERVIEW_SECTIONS, revenueVsLastMonth } from "@/lib/overview";
 
 const sec = (id: AttentionSection["id"], count: number, detail = "", failed = false): AttentionSection => ({
   id,
@@ -78,5 +78,59 @@ describe("owner overview leaks", () => {
     const read = (file: string) => readFileSync(path.resolve(__dirname, "../..", file), "utf8");
     expect(read("components/topbar.tsx")).toMatch(/<header className="sticky top-0 z-30 [^"]*\bh-16\b/);
     expect(read("components/overview.tsx")).toMatch(/aria-label="Jump to" className="sticky top-16 /);
+  });
+});
+
+describe("owner overview figures", () => {
+  const sections = [
+    sec("quotes-expired", 1),
+    sec("quotes-no-decision", 6),
+    sec("jobs-late", 2),
+    sec("jobs-inspection", 3),
+    sec("invoices-overdue", 2),
+  ];
+
+  it("Today counts the whole Needs attention list plus the Dashboard's own items, and the late or overdue among them", () => {
+    const summary = attentionSummary(sections, { count: 1, failed: false });
+    expect(summary).toEqual({ total: 15, urgent: 4, detail: "15 things need you, 4 of them late or overdue", failed: false });
+    expect(attentionSummary([sec("jobs-inspection", 1)], { count: 0, failed: false }).detail).toBe("1 thing needs you, none late or overdue");
+    expect(attentionSummary([sec("jobs-late", 0)], { count: 0, failed: false })).toMatchObject({ total: 0, urgent: 0, detail: "Nothing needs you right now." });
+  });
+
+  it("Today is a dash while loading, and says so when any part of the list failed", () => {
+    expect(attentionSummary(null, { count: 0, failed: false })).toEqual({ total: null, urgent: null, detail: "Loading…", failed: false });
+    expect(attentionSummary(sections, { count: null, failed: false })).toMatchObject({ total: null, detail: "Loading…" });
+    for (const failed of [
+      attentionSummary(null, { count: 0, failed: false }, true),
+      attentionSummary([...sections, sec("pos-late", 0, "", true)], { count: 0, failed: false }),
+      attentionSummary(sections, { count: 0, failed: true }),
+      attentionSummary(sections, { count: null, failed: true }),
+    ]) expect(failed).toEqual({ total: null, urgent: null, detail: "Couldn't load this.", failed: true });
+  });
+
+  const months = (values: number[]) => ["May", "Jun", "Jul", "Aug", "Sep", "Oct"].map((month, i) => ({ month, revenue: values[i] }));
+
+  it("this month's revenue so far is compared with all of last month, from the Revenue panel's last two points", () => {
+    expect(revenueVsLastMonth(months([1, 2, 3, 4, 16290, 18244]), false, money)).toEqual({ previous: 16290, change: 12, detail: "So far 12% above Sep (£16,290)", failed: false });
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, 2000, 500]), false, money)).toMatchObject({ change: -75, detail: "So far 75% below Sep (£2,000)" });
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, 1000, 1000]), false, money).detail).toBe("So far level with Sep (£1,000)");
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, 0, 500]), false, money)).toEqual({ previous: 0, change: null, detail: "Nothing received in Sep", failed: false });
+  });
+
+  it("the revenue comparison is a dash while loading and says so when the payments read failed", () => {
+    expect(revenueVsLastMonth(null, true, money)).toEqual({ previous: null, change: null, detail: "Loading…", failed: false });
+    expect(revenueVsLastMonth(null, false, money)).toEqual({ previous: null, change: null, detail: "Couldn't load this.", failed: true });
+  });
+
+  it("all machines together: hours booked of hours available, and the free hours an overbooked machine can't lend", () => {
+    const fleet = fleetLoad([{ booked: 46, available: 40 }, { booked: 10, available: 40 }, { booked: 0, available: 20 }], false);
+    expect(fleet).toEqual({ percent: 56, free: 50, detail: "56% of available hours booked · 50h free", failed: false });
+    expect(fleetLoad([{ booked: 0, available: 40 }], false)).toMatchObject({ percent: 0, free: 40 });
+    expect(fleetLoad([], false)).toEqual({ percent: null, free: null, detail: "No machine hours set up.", failed: false });
+  });
+
+  it("the machine figure is a dash while loading and says so when the machines or bookings read failed", () => {
+    expect(fleetLoad(null, true)).toEqual({ percent: null, free: null, detail: "Loading…", failed: false });
+    expect(fleetLoad(null, false)).toEqual({ percent: null, free: null, detail: "Couldn't load this.", failed: true });
   });
 });

@@ -13,7 +13,7 @@ import { AlertCircle, Clock, FileText, Layers } from "lucide-react";
 import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, SplitBar } from "@/components/dashboard-charts";
 import { TeamWeek } from "@/components/team-week";
 import { OverviewJump, OverviewLeaks, OverviewSection } from "@/components/overview";
-import { leaksFrom } from "@/lib/overview";
+import { attentionSummary, fleetLoad, leaksFrom, revenueVsLastMonth } from "@/lib/overview";
 import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, topCustomers, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
 
 import { Badge } from "@/components/ui/badge";
@@ -372,8 +372,11 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   ];
   const shownKpis = kpis.filter(([key]) => isVisible(key));
   const lastOnTime = d?.onTime ? [...d.onTime].reverse().find((m) => m.percent !== null)?.percent ?? null : null;
+  // This month so far against last month, and all machines together: from the same rows as the Revenue and Machine load panels (lib/overview).
+  const revenueCompare = revenueVsLastMonth(d?.revenue ?? null, loading, (v) => gbp(v, 0));
+  const fleet = fleetLoad(d?.machines ?? null, loading);
   const stats = ([
-    ["this-month-revenue", "This month's revenue", money(d?.thisMonthRevenue, loading), "Payments received this month", "/invoices", "none"],
+    ["this-month-revenue", "This month's revenue", money(d?.thisMonthRevenue, loading), revenueCompare.detail, "/invoices", "none"],
     ["quotes-sent", "Quotes sent", num(d?.quotesSentThisMonth, loading), "Sent this month", "/quotes", "none"],
     ["jobs-late-on-time", "Jobs late / on time", d && d.lateJobs !== null && d.onTimeJobs !== null ? `${d.lateJobs} / ${d.onTimeJobs}` : DASH, "Jobs not finished, by required date", "/jobs", d && d.lateJobs !== null ? (d.lateJobs ? "red" : "green") : "none"],
     ["avg-days-to-pay", "Average days to pay", d?.avgDaysToPay != null ? `${Math.round(d.avgDaysToPay)} days` : DASH, "Invoice date to final payment", "/invoices", lights.daysToPay(d?.avgDaysToPay ?? null)],
@@ -419,7 +422,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
       </div>
     )) : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
   </Panel>;
-  const machinePanel = <Panel title="Machine load this week" meta="Booked hours of available" href={canOpen("/schedule") ? "/schedule" : undefined}>
+  const machinePanel = <Panel title="Machine load this week" meta={<span data-testid="machine-load-overall" title={fleet.percent === null ? fleet.detail : undefined}>{fleet.percent === null ? DASH : fleet.detail}</span>} href={canOpen("/schedule") ? "/schedule" : undefined}>
     {d?.machines ? <BarList rows={d.machines.map((m) => ({ key: m.id, label: m.name, value: m.percent, light: m.percent > 100 ? "red" as const : m.percent >= 85 ? "amber" as const : "green" as const }))} format={(v) => `${v}%`} empty="No machines booked this week." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
   </Panel>;
   const workDuePanel = <Panel title="Work coming due" meta="Next 14 days" href={canOpen("/jobs") ? "/jobs" : undefined}>
@@ -449,13 +452,15 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
       isVisible("team-week") && "people",
     ].filter((s): s is string => typeof s === "string");
     const leaks = leaksFrom(attention.data, { rfqsToQuote: loading ? null : d?.rfqsToQuote ?? null, overdueOwed: loading ? null : overdueOwed, money: (v) => gbp(v, 0) }, attention.error !== null);
+    // The Today figure counts the Needs attention card's list: its sections plus the Dashboard's own items (d.attention).
+    const summary = attentionSummary(attention.data, loading ? { count: null, failed: false } : d ? { count: d.attention.length, failed: d.attentionFailed } : { count: null, failed: true }, attention.error !== null);
     const tileRow = (tiles: React.ReactNode[]) => tiles.length ? <div className={`grid gap-4 ${statGridClass(tiles.length)}`}>{tiles}</div> : null;
     const panelGrid = (panels: React.ReactNode[]) => panels.length ? <div className={`grid gap-4 ${rowCols(Math.min(panels.length, 3))}`}>{panels.map((p, i) => <div key={i} className="contents">{p}</div>)}</div> : null;
     return (
       <>
         {error ? <ErrorCard message={error} onRetry={retry} /> : null}
         <OverviewJump present={present} />
-        {present.includes("today") ? <OverviewSection id="today" title="Today" sub="Where work and money are slipping, and what needs doing">
+        {present.includes("today") ? <OverviewSection id="today" title="Today" figure={summary.total === null ? `${DASH} ${summary.detail}` : summary.detail} sub="Where work and money are slipping, and what needs doing">
           {showLeaks ? <OverviewLeaks leaks={leaks} /> : null}
           {showAttention ? <div className="grid gap-6 xl:grid-cols-3"><AttentionList role="admin" preloaded={attention} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide /></div> : null}
         </OverviewSection> : null}
