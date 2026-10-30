@@ -22,6 +22,8 @@ BEGIN
 END
 $$;
 
+-- -----------------------------------------------------------------------------------------------------
+-- 1. The table (one row per e-mail sent for a browser report) and the function that claims from it.
 CREATE TABLE IF NOT EXISTS security_audit.browser_error_alerts (
   id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   fingerprint TEXT NOT NULL CHECK (fingerprint ~ '^[0-9a-f]{12,64}$'),
@@ -67,5 +69,8 @@ BEGIN
   RETURN TRUE;
 END
 $$;
+
+-- -----------------------------------------------------------------------------------------------------
+-- 2. Who may call it: service_role only. (These breaks also give the upgrade rehearsal its mid-file failure point after the function.)
 REVOKE ALL ON FUNCTION public.claim_browser_error_alert(TEXT, UUID, UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_browser_error_alert(TEXT, UUID, UUID) TO service_role;
