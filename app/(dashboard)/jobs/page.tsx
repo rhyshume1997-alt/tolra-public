@@ -69,6 +69,7 @@ import { type InspectionRecord, type RecordedInspection, inspectedActionOffered,
 import { JOB_STAGES, JOB_STATUS_LABELS, type JobStatusKey, STAGE_LABELS, confirmedFinishers, earlyReleaseOffered, finishesLeftQueue, flowBadge, jobStatusOf, reopenCheck, reworkTag, stageLabel, stageOf } from "@/lib/job-flow";
 import { ReopenJobDialog } from "@/components/reopen-job-dialog";
 import { REWORK_STATUS_LABELS, type ReworkRecord, loadReworks, quantityText } from "@/lib/rework";
+import { NO_PARTS, loadPartsDone, partsText, requiredParts, type PartsTotals } from "@/lib/job-parts";
 import { ValidationError } from "@/lib/validation/schemas";
 import { supabase } from "@/lib/supabase";
 import { useSaving } from "@/lib/use-saving";
@@ -744,6 +745,18 @@ export default function JobsPage() {
   const [reworkJob, setReworkJob] = useState<WorkshopJob | null>(null);
   const liveRework = useCallback((job: WorkshopJob) => reworks.find((item) => item.job_id === job.id && item.status !== "closed"), [reworks]);
   const hasRework = useCallback((job: WorkshopJob) => inRework(job) || reworks.some((item) => item.job_id === job.id), [reworks]);
+  // Parts logged against each unfinished job's quantity (migration 118): "12 of 50 parts" in the job's details. Shown only when the database
+  // says it has 118 and has a count for the job (lib/job-parts, fail closed); a failed read shows nothing, never "0 of".
+  const [parts, setParts] = useState<PartsTotals>(NO_PARTS);
+  const partsJobKey = useMemo(() => jobs.filter((job) => (!job.finished_at || inRework(job)) && requiredParts(job.quantity_required) !== null).slice(0, 300).map((job) => job.id).join(","), [jobs]);
+  useEffect(() => {
+    if (!supabase || DEMO_MODE || !partsJobKey) return;
+    let active = true;
+    void loadPartsDone(supabase, partsJobKey.split(",")).then((answer) => { if (active) setParts(answer); });
+    return () => { active = false; };
+  }, [partsJobKey, attempt]);
+  // The board's details mention parts only once some are logged (a job nobody has counted on stays as it was); My jobs and Whole floor show "0 of M".
+  const partsLine = (job: WorkshopJob) => ((parts.done.get(job.id) ?? 0) > 0 ? partsText(parts, job.id, job.quantity_required) : null);
   useEffect(() => {
     if (!supabase || DEMO_MODE) return;
     let active = true;
@@ -1233,6 +1246,7 @@ export default function JobsPage() {
                 {fieldOn("started") ? <div className="min-w-0"><dt className="label-mono field-caption">Started</dt><dd className="break-words text-xs">{job.started_at ? fmtDateTime(job.started_at) : "Not started"}</dd></div> : null}
                 {fieldOn("finished") ? <div className="min-w-0"><dt className="label-mono field-caption">Finished</dt><dd className="break-words text-xs">{job.finished_at ? fmtDateTime(job.finished_at) : "Not finished"}</dd></div> : null}
                 {fieldOn("inspection") ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Inspection</dt><dd className="break-words text-xs">{job.finished_at ? inspectionNote(job) : "Not finished"}</dd></div> : null}
+                {partsLine(job) ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Parts logged</dt><dd className="break-words text-xs font-semibold tabular-nums" data-testid="job-parts">{partsLine(job)}</dd></div> : null}
                 {reworkNote(job) ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Rework</dt><dd className="break-words text-xs">{reworkNote(job)}</dd></div> : null}
               </dl>
               {relatedLinks(job)}
@@ -1723,6 +1737,7 @@ export default function JobsPage() {
                           <TableCell colSpan={jobColumns.length + 1} className="whitespace-normal text-xs text-slate-600 dark:text-slate-300">
                             <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
                               <div><dt className="field-label inline">Progress: </dt><dd className="inline">{statusOf(job)}</dd></div>
+                              {partsLine(job) ? <div><dt className="field-label inline">Parts logged: </dt><dd className="inline font-semibold tabular-nums" data-testid="job-parts">{partsLine(job)}</dd></div> : null}
                               {releaseOffered(job) ? <div>{releaseButton(job)}</div> : null}
                               {archive.canManage && job.inspected_at ? <div>{archiveButton(job)}</div> : null}
                             </dl>

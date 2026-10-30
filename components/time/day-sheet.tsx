@@ -27,7 +27,7 @@ import { executeClockOp, executeLabourOp, syncNow } from "@/lib/offline/sync";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
 import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
-import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, dayTotals, hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
+import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, clockStateOf, dayTotals,hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
 import { useUser } from "@/lib/use-user";
 
@@ -142,9 +142,8 @@ export function DaySheet() {
     return map;
   }, [merged, jobs]);
 
-  const lastSession = day?.sessions.filter((s) => s.start !== null).at(-1) ?? null;
-  const clockedIn = Boolean(lastSession && lastSession.end === null && lastSession.flags.includes("open"));
-  const onBreak = clockedIn && Boolean(lastSession?.events.at(-1)?.action === "break_start");
+  // The one clocked-in rule (lib/time-sheet clockStateOf), shared with the Whole floor's clocked-in count.
+  const { clockedIn, onBreak, since: clockedInSince } = clockStateOf(day?.sessions ?? []);
   const openJobs = day?.jobs.filter((j) => j.open) ?? [];
 
   async function send(op: ClockOp | LabourOp, label: string) {
@@ -261,7 +260,7 @@ export function DaySheet() {
           <CardContent className="flex flex-wrap items-center gap-3 pt-6">
             <Clock className="size-5 text-brand-accent" />
             <span className="font-medium" data-testid="clock-state">
-              {clockedIn ? `Clocked in since ${clockTime(lastSession?.start ?? null, date)}${onBreak ? " · on a break" : ""}` : "Not clocked in"}
+              {clockedIn ? `Clocked in since ${clockTime(clockedInSince, date)}${onBreak ? " · on a break" : ""}` : "Not clocked in"}
             </span>
             <div className="ml-auto flex flex-wrap gap-2">
               {clockedIn ? (
