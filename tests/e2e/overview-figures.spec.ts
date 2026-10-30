@@ -1,7 +1,7 @@
 /**
  * The owner's Overview figures in a fresh company, so each count is exact: the Today figure (everything on Needs attention, and the
- * late or overdue among it), this month's money received against last month, and all machines' load this week. The rules themselves:
- * tests/unit/overview.test.ts.
+ * late among it), this month's money invoiced and received against last month, and all machines' load this week. The rules
+ * themselves: tests/unit/overview.test.ts and tests/unit/overview-metrics.test.ts.
  */
 import { expect, test } from "@playwright/test";
 
@@ -45,7 +45,14 @@ test("the Overview's figures count the seeded rows exactly", async ({ page }) =>
   await ok(db.from("invoice_payments").insert({ organization_id: org, invoice_id: invoice!.id, amount: 1500, paid_on: london(0) }));
 
   await signIn(page, solo.admin);
-  await expect(page.getByTestId("overview-today-figure")).toHaveText("2 things need you, 1 of them late or overdue");
+  await expect(page.getByTestId("overview-today-figure")).toHaveText("2 things need you, 1 late");
+  // Both things are on the leak tiles, so nothing else is listed under them: the figure matches what is on screen.
+  await expect(page.getByTestId("overview-others")).toContainText("Nothing else needs you.");
+  // Revenue shows invoiced ex VAT by default: £2,500 invoiced last month, nothing yet this month.
+  await expect(page.getByTestId("revenue-basis-invoiced")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("overview-money").getByText(`So far 100% below ${lastMonthLabel} (£2,500)`)).toBeVisible();
+  // Received is the other choice: £1,000 received last month, £1,500 so far this month.
+  await page.getByTestId("revenue-basis-received").click();
   await expect(page.getByTestId("overview-money").getByText(`So far 50% above ${lastMonthLabel} (£1,000)`)).toBeVisible();
   await expect(page.getByTestId("machine-load-overall")).toHaveText("25% of available hours booked · 30h free");
 
