@@ -138,12 +138,40 @@ BEGIN
   INSERT INTO proof VALUES ('same invoice next period allowed', true);
 END $$;
 
+-- 5b. One timesheet e-mail per person per schedule per period; the server alone writes them; a company reads only its own.
+INSERT INTO public.email_schedules (id, organization_id, kind, frequency, weekday) VALUES ('d0000000-0000-0000-0000-0000000000d1', 'a0000000-0000-0000-0000-00000000000a', 'timesheet', 'weekly', 1) ON CONFLICT DO NOTHING;
+INSERT INTO public.timesheet_sends (schedule_id, period_key, user_id) SELECT id, '2026-W44', 'a3000000-0000-0000-0000-000000000003' FROM public.email_schedules WHERE kind = 'timesheet';
+DO $$
+DECLARE n BIGINT;
+BEGIN
+  BEGIN
+    INSERT INTO public.timesheet_sends (schedule_id, period_key, user_id) SELECT id, '2026-W44', 'a3000000-0000-0000-0000-000000000003' FROM public.email_schedules WHERE kind = 'timesheet';
+    INSERT INTO proof VALUES ('same person+schedule+period twice refused', false);
+  EXCEPTION WHEN unique_violation THEN
+    INSERT INTO proof VALUES ('same person+schedule+period twice refused', true);
+  END;
+  INSERT INTO public.timesheet_sends (schedule_id, period_key, user_id) SELECT id, '2026-W44', 'a2000000-0000-0000-0000-000000000002' FROM public.email_schedules WHERE kind = 'timesheet';
+  INSERT INTO proof VALUES ('another person, same period allowed', true);
+  INSERT INTO public.timesheet_sends (schedule_id, period_key, user_id) SELECT id, '2026-W45', 'a3000000-0000-0000-0000-000000000003' FROM public.email_schedules WHERE kind = 'timesheet';
+  INSERT INTO proof VALUES ('same person, next period allowed', true);
+  INSERT INTO public.timesheet_sends (schedule_id, period_key, user_id) SELECT id, '2026-W44', 'a3000000-0000-0000-0000-000000000003' FROM public.email_schedules WHERE kind = 'timesheet'
+    ON CONFLICT (schedule_id, period_key, user_id) DO NOTHING;
+  GET DIAGNOSTICS n = ROW_COUNT;
+  INSERT INTO proof VALUES ('ON CONFLICT DO NOTHING claims nothing for a person already sent', n = 0);
+END $$;
+INSERT INTO proof SELECT 'office reads timesheet sends', (r.n = 3) FROM pg_temp.try_as('a2000000-0000-0000-0000-000000000002', $q$SELECT 1 FROM public.timesheet_sends$q$) r;
+INSERT INTO proof SELECT 'workshop reads no timesheet sends', (r.n = 0) FROM pg_temp.try_as('a3000000-0000-0000-0000-000000000003', $q$SELECT 1 FROM public.timesheet_sends$q$) r;
+INSERT INTO proof SELECT 'other company reads no timesheet sends', (r.n = 0) FROM pg_temp.try_as('b1000000-0000-0000-0000-000000000001', $q$SELECT 1 FROM public.timesheet_sends$q$) r;
+INSERT INTO proof SELECT 'admin cannot write timesheet sends (42501)', (r.err LIKE '42501%') FROM pg_temp.try_as('a1000000-0000-0000-0000-000000000001', $q$DELETE FROM public.timesheet_sends$q$) r;
+INSERT INTO proof SELECT 'admin cannot insert timesheet sends (42501)', (r.err LIKE '42501%') FROM pg_temp.try_as('a1000000-0000-0000-0000-000000000001',
+  $q$INSERT INTO public.timesheet_sends (schedule_id, period_key, user_id) SELECT id, 'x', gen_random_uuid() FROM public.email_schedules WHERE kind = 'timesheet'$q$) r;
+
 -- 6. Deleting a schedule removes its runs and sends (cascade); deleting the company's invoice removes its send records.
 DELETE FROM public.email_schedules WHERE kind = 'timesheet';
-INSERT INTO proof SELECT 'cascade removes runs', NOT EXISTS (SELECT 1 FROM public.email_schedule_runs);
+INSERT INTO proof SELECT 'cascade removes runs and timesheet sends', NOT EXISTS (SELECT 1 FROM public.email_schedule_runs) AND NOT EXISTS (SELECT 1 FROM public.timesheet_sends);
 DELETE FROM public.invoices WHERE id = 'c0000000-0000-0000-0000-0000000000c1';
 INSERT INTO proof SELECT 'cascade removes sends with the invoice', NOT EXISTS (SELECT 1 FROM public.invoice_reminder_sends);
 
-SELECT CASE WHEN ok THEN 'PASS' ELSE 'FAIL' END AS result, name FROM proof ORDER BY ok, name;
-SELECT CASE WHEN bool_and(ok) THEN 'ALL PASS (' || count(*) || ')' ELSE 'SOME FAILED' END AS summary FROM proof;
+SELECT CASE WHEN coalesce(ok, false) THEN 'PASS' ELSE 'FAIL' END AS result, name FROM proof ORDER BY coalesce(ok, false), name;
+SELECT CASE WHEN bool_and(coalesce(ok, false)) THEN 'ALL PASS (' || count(*) || ')' ELSE 'SOME FAILED' END AS summary FROM proof;
 ROLLBACK;

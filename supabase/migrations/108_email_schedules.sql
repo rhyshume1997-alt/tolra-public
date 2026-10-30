@@ -1,20 +1,22 @@
 -- =====================================================================================================
 -- 108: e-mail schedules (E12 invoice reminders, E13 timesheet e-mails). Per company, per kind ('invoice_reminder', 'timesheet'): on or
 -- off, daily / weekly (a weekday) / once (a date and time), a time of day, the time zone (Europe/London by default) and, for timesheets,
--- who gets them. The cron route app/api/cron/email-schedules (CRON_SECRET, every 15 minutes) finds what is due and sends through
--- lib/email/send-company-email.ts. EVERY SCHEDULE STARTS OFF: this file inserts no row, so nothing is sent until an admin turns one on.
+-- who gets them. The cron (CRON_SECRET) finds what is due and sends through lib/email/send-company-email.ts: today once a day
+-- (app/api/cron/daily, vercel.json, Vercel Hobby); on Pro, app/api/cron/email-schedules every 15 minutes. EVERY SCHEDULE STARTS OFF: this file inserts no row, so nothing is sent until an admin turns one on.
 -- Needs 000 (organizations, current_user_organization_id, has_org_role) and 033/036 (require_admin_mfa_guard, support_readonly_guard).
 -- NUMBERING: 108 (106 = mailer and templates, 107 = integrations connect). Touches none of their objects, nor any existing object.
 -- Safe to run again.
 --
--- WHAT IT ADDS. Three tables, one trigger function; no existing table, row, function, policy or grant changes.
+-- WHAT IT ADDS. Four tables, one trigger function; no existing table, row, function, policy or grant changes.
 --   a. public.email_schedules: one row per company per kind. Everyone in the company can read it; only an admin can write it.
 --   b. public.email_schedule_runs: one row per schedule per period (period_key: the day, the ISO week or the once-time), claimed BEFORE
 --      anything is sent, so two overlapping cron calls never send the same period twice. Written by the server only (service role);
 --      admin and office can read it.
 --   c. public.invoice_reminder_sends: one row per invoice per schedule per period, so an invoice is reminded at most once per period.
 --      Written by the server only; admin and office can read it.
---   d. public.email_schedules_guard(): row trigger on (a): checks the time zone and the recipients, and stamps updated_at / updated_by
+--   d. public.timesheet_sends: one row per schedule per period per person, claimed BEFORE that person's timesheet e-mail is sent and given
+--      back if the send fails, so a period that is retaken after a crash e-mails only the people not yet sent. Written by the server only.
+--   e. public.email_schedules_guard(): row trigger on (a): checks the time zone and the recipients, and stamps updated_at / updated_by
 --      (not when only last_run_at changed: that is the server noting a run).
 -- Rollback: supabase/release/108_email_schedules.rollback.sql (only with Rhys's approval).
 -- =====================================================================================================
@@ -56,6 +58,13 @@ CREATE TABLE IF NOT EXISTS public.invoice_reminder_sends (
   period_key  TEXT NOT NULL CHECK (length(period_key) BETWEEN 1 AND 64),
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (invoice_id, schedule_id, period_key)
+);
+CREATE TABLE IF NOT EXISTS public.timesheet_sends (
+  schedule_id UUID NOT NULL REFERENCES public.email_schedules(id) ON DELETE CASCADE,
+  period_key  TEXT NOT NULL CHECK (length(period_key) BETWEEN 1 AND 64),
+  user_id     UUID NOT NULL,                                            -- the person whose week was e-mailed (no foreign key: the record outlives a login)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (schedule_id, period_key, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_invoice_reminder_sends_schedule ON public.invoice_reminder_sends (schedule_id, period_key);
 
@@ -100,10 +109,11 @@ DROP TRIGGER IF EXISTS email_schedules_guard ON public.email_schedules;
 CREATE TRIGGER email_schedules_guard BEFORE INSERT OR UPDATE ON public.email_schedules FOR EACH ROW EXECUTE FUNCTION public.email_schedules_guard();
 
 -- -----------------------------------------------------------------------------------------------------
--- 3. Row security. Schedules: the company reads, an admin writes. Runs and sends: admin and office read; only the server writes.
+-- 3. Row security. Schedules: the company reads, an admin writes. Runs and sends (reminders, timesheets): admin and office read; only the server writes.
 ALTER TABLE public.email_schedules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.email_schedule_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoice_reminder_sends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.timesheet_sends ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "email_schedules member select" ON public.email_schedules;
 CREATE POLICY "email_schedules member select" ON public.email_schedules FOR SELECT TO authenticated
@@ -128,9 +138,14 @@ CREATE POLICY "invoice_reminder_sends office select" ON public.invoice_reminder_
   USING (EXISTS (SELECT 1 FROM public.email_schedules s WHERE s.id = schedule_id AND s.organization_id = public.current_user_organization_id())
          AND public.has_org_role(ARRAY['admin', 'office']));
 
-REVOKE ALL ON public.email_schedules, public.email_schedule_runs, public.invoice_reminder_sends FROM PUBLIC, anon, authenticated;
+DROP POLICY IF EXISTS "timesheet_sends office select" ON public.timesheet_sends;
+CREATE POLICY "timesheet_sends office select" ON public.timesheet_sends FOR SELECT TO authenticated
+  USING (EXISTS (SELECT 1 FROM public.email_schedules s WHERE s.id = schedule_id AND s.organization_id = public.current_user_organization_id())
+         AND public.has_org_role(ARRAY['admin', 'office']));
+
+REVOKE ALL ON public.email_schedules, public.email_schedule_runs, public.invoice_reminder_sends, public.timesheet_sends FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.email_schedules TO authenticated;
-GRANT SELECT ON public.email_schedule_runs, public.invoice_reminder_sends TO authenticated;
+GRANT SELECT ON public.email_schedule_runs, public.invoice_reminder_sends, public.timesheet_sends TO authenticated;
 
 -- A support session can't change a schedule; an admin who needs the second step must have it (the same guards as every settings table).
 DROP TRIGGER IF EXISTS support_read_only ON public.email_schedules;

@@ -61,13 +61,14 @@ describe("claiming a period: the database is the lock", () => {
     expect(await claimRun(db as never, "s1", "k", new Date(NOW.getTime() + RETRY_AFTER_MS + 1000))).toBe("claimed");
   });
 
-  it("a once schedule that ran cleanly switches itself off; a failed one stays on; daily stays on", async () => {
-    const d = new FakeDb({ email_schedules: [{ id: "o", enabled: true }, { id: "d", enabled: true }, { id: "f", enabled: true }] });
+  it("a clean run notes last_run_at (a once schedule also switches itself off); a failed run notes nothing, so 'last run' never claims a run that failed", async () => {
+    const d = new FakeDb({ email_schedules: [{ id: "o", enabled: true }, { id: "d", enabled: true }, { id: "f", enabled: true }, { id: "g", enabled: true }] });
     await noteScheduleRan(d as never, { id: "o", frequency: "once" }, NOW, true);
     await noteScheduleRan(d as never, { id: "d", frequency: "daily" }, NOW, true);
     await noteScheduleRan(d as never, { id: "f", frequency: "once" }, NOW, false);
+    await noteScheduleRan(d as never, { id: "g", frequency: "daily" }, NOW, false);
     expect(d.rows("email_schedules")).toEqual([
-      { id: "o", enabled: false, last_run_at: NOW.toISOString() }, { id: "d", enabled: true, last_run_at: NOW.toISOString() }, { id: "f", enabled: true, last_run_at: NOW.toISOString() },
+      { id: "o", enabled: false, last_run_at: NOW.toISOString() }, { id: "d", enabled: true, last_run_at: NOW.toISOString() }, { id: "f", enabled: true }, { id: "g", enabled: true },
     ]);
   });
 });
