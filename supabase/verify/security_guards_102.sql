@@ -12,7 +12,7 @@ WITH fn AS (
 -- Z4: organization_settings_guard_nav is 058's plus the archive_after_months check (admin only); definer, pinned, still on the table.
 SELECT 'org_settings_guard_archive_admin_only' AS check_name,
   coalesce((SELECT body = '99579bb09f2fcf9458103b3128af20c8' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public'] FROM fn WHERE proname = 'organization_settings_guard_nav'), FALSE)
-  AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.organization_settings'::regclass AND tgname = 'organization_settings_guard_nav' AND tgenabled = 'O')
+  AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.organization_settings'::regclass AND tgname = 'organization_settings_guard_nav' AND tgenabled = 'O') AS ok
 -- Z3: an admin updates only their own company's people (not support, no other company, not protected; switched off too).
 UNION ALL SELECT 'admin_update_policy_own_people_only',
   EXISTS (SELECT 1 FROM pol WHERE policyname = 'Admins update org members' AND cmd = 'UPDATE' AND roles = '{authenticated}'

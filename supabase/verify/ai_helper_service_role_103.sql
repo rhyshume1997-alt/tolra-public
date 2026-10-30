@@ -9,7 +9,7 @@ WITH fn AS (
 SELECT 'reserve_returns_no_key' AS check_name,
   coalesce((SELECT body = 'c75e470a73e4d0e7508a27125f6f9e9c' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
                    AND has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')
-            FROM fn WHERE proname = 'ai_helper_reserve'), FALSE)
+            FROM fn WHERE proname = 'ai_helper_reserve'), FALSE) AS ok
 -- S3: ai_helper_settle is 103's and callable by the service role only (not authenticated, anon or PUBLIC).
 UNION ALL SELECT 'settle_service_role_only',
   coalesce((SELECT body = 'ca5166191666584107491f95ccce4702' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
