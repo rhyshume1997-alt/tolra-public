@@ -28,9 +28,11 @@ const card = (page: import("@playwright/test").Page) => page.locator('[data-slot
  * background (lib/org-settings.ts enqueue -> persistChange: look up the company, re-read the row, then upsert), so a reload
  * straight after the redraw can cut that save off. Wait on this before a reload that must show the saved choice.
  */
-const savedHidden = async () => {
-  const { data } = await adminClient().from("organization_settings").select("hidden_columns").eq("organization_id", solo.id).maybeSingle();
-  return ((data?.hidden_columns as Record<string, string[]> | null)?.rfq ?? []).includes("received");
+const savedHidden = async (): Promise<"hidden" | "shown" | "missing"> => {
+  const { data, error } = await adminClient().from("organization_settings").select("hidden_columns").eq("organization_id", solo.id).maybeSingle();
+  if (error) throw new Error(`organization_settings read failed: ${error.message}`);
+  if (!data) return "missing";
+  return ((data.hidden_columns as Record<string, string[]> | null)?.rfq ?? []).includes("received") ? "hidden" : "shown";
 };
 
 for (const width of [1280, 390]) {
@@ -55,7 +57,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole("menuitemcheckbox", { name: "Actions" })).toBeDisabled();
     await page.keyboard.press("Escape");
 
-    await expect.poll(savedHidden, { timeout: 15_000 }).toBe(true);
+    await expect.poll(savedHidden, { timeout: 15_000 }).toBe("hidden");
     await page.reload();
     await expect(card(page)).toContainText("Outstanding");
     await expect(card(page)).not.toContainText("Received:");
@@ -67,7 +69,8 @@ for (const width of [1280, 390]) {
     await page.keyboard.press("Escape");
     await expect(card(page)).toContainText("Received:");
     // The save runs after the screen updates: wait until it has reached the database, then reload to show it was kept.
-    await expect.poll(savedHidden, { timeout: 15_000 }).toBe(false);
+    // The row must exist and say Received is shown again: a missing row is not a pass.
+    await expect.poll(savedHidden, { timeout: 15_000 }).toBe("shown");
     await page.reload();
     await expect(card(page)).toContainText("Received:");
   });
