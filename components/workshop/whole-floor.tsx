@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,8 +119,12 @@ function Row({ row, floor, now }: { row: FloorRow; floor: Floor; now: Date }) {
 
 export function WholeFloor() {
   const [state, setState] = useState<{ floor: Floor | null; loading: boolean; now: Date }>({ floor: null, loading: true, now: new Date() });
+  // The timer, coming back to the tab and Retry can overlap: only the newest read is shown, an older one finishing late is dropped.
+  const latest = useRef(0);
   const load = useCallback(async () => {
+    const request = ++latest.current;
     const floor = await loadFloor().catch((err) => { console.error(err); return FLOOR_FAILED; });
+    if (request !== latest.current) return;
     setState({ floor, loading: false, now: new Date() });
   }, []);
   const retry = useCallback(() => { setState((s) => ({ ...s, loading: true })); void load(); }, [load]);
