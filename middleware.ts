@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
 import { MFA_ENROL_PARAM, adminMfaRequired, holdsAdmin, shouldCheckEnrolment } from "@/lib/mfa-policy";
 import { accessEndedCookie } from "@/lib/offline/access";
 import { companyStepRoute, parseSessionInfo } from "@/lib/session-info";
@@ -29,6 +30,8 @@ const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/delivery-notes", ["admin", "office", "workshop"]],
   // Time and pay (050 to 052): the person's own sheet for workshop; everyone's for admin and office (the database decides what each sees).
   ["/time", ["admin", "office", "workshop"]],
+  // The AI helper: office and admin only, as its API routes and the database (101).
+  ["/ai-helper", [...AI_HELPER_ROLES]],
 ];
 
 /** Pages that work from the device's offline copy when Supabase can't be reached (Job Board, worksheets, schedule, pack, job sheet). */
