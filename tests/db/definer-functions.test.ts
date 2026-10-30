@@ -319,6 +319,9 @@ function attempts(): Attempt[] {
     // features are off, so it refuses); settle and decide pointed at beta's suggestion refuse.
     ["public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)", () => alpha.rpc("ai_helper_save_settings", { p_roundup: false, p_rfq: false, p_cap_pence: 0 }), "nothing of beta's"],
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
+    // 105: writing off, and reversing a write-off, go through functions that re-check the company; beta's invoice is refused untouched.
+    ["public.write_off_invoice(p_invoice_id uuid, p_reason text)", () => alpha.rpc("write_off_invoice", { p_invoice_id: beta.invoice, p_reason: "cross-company attempt" }), "refused"],
+    ["public.reverse_write_off(p_invoice_id uuid, p_reason text)", () => alpha.rpc("reverse_write_off", { p_invoice_id: beta.invoice, p_reason: "cross-company attempt" }), "refused"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
     ["public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)", () => alpha.rpc("ai_helper_settle", { p_request: beta.aiRequest, p_status: "failed", p_failure: "invalid", p_cost_pence: 0, p_model: null, p_output: null }), "refused"],
     ["public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)", () => alpha.rpc("ai_helper_decide", { p_request: beta.aiRequest, p_decision: "rejected", p_quote: null }), "refused"],
