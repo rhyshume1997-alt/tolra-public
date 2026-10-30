@@ -7,8 +7,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { generatePassword } from "@/lib/password";
 
 import { adminClient, signedInClient } from "../support/fixtures";
-import { enrolTotp, totpCode } from "../support/totp";
-import { asSeparateDevice, signIn, world } from "./helpers";
+import { aal2Admin, signIn, world } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -41,30 +40,6 @@ const patch = (request: APIRequestContext, baseURL: string, data: Record<string,
 const signInAccess = (request: APIRequestContext, baseURL: string, data: { user_id: string; enabled: boolean }) =>
   request.post("/api/admin/users/sign-in", { headers: { origin: baseURL }, data });
 
-/**
- * A new admin of alpha who has passed the second step in the browser (aal2): Disable sign-in always needs it, even on this server
- * (REQUIRE_ADMIN_MFA off). Their authenticator is enrolled through the Auth API; the code is entered on /mfa.
- */
-async function aal2AdminOfAlpha(page: Page) {
-  const person = await login(["alpha"], "admin");
-  const { secret } = await enrolTotp(await signedInClient(person));
-  // A fresh 30-second window, so the code entered below is not the one used to enrol.
-  const used = totpCode(secret);
-  while (totpCode(secret) === used) await page.waitForTimeout(1000);
-  await asSeparateDevice(page);
-  await page.goto("/login");
-  await page.getByLabel("Username or email").fill(person.email);
-  await page.getByLabel("Password", { exact: true }).fill(person.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/(select-role|dashboard|mfa)/, { timeout: 45_000 });
-  await page.goto("/mfa");
-  await expect(page.getByRole("heading", { name: "Enter your code" })).toBeVisible();
-  await page.getByLabel("6-digit code").fill(totpCode(secret));
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.waitForURL(/\/(dashboard|select-role)/, { timeout: 30_000 });
-  return page.request;
-}
-
 async function banState(id: string) {
   const { data } = await adminClient().auth.admin.getUserById(id);
   const user = data.user as { banned_until?: string | null; app_metadata?: Record<string, unknown> };
@@ -93,7 +68,11 @@ test("a shared login's username can't be changed by one company; a company-only 
 
 test("an alpha-only admin can't attach a beta-only login (by e-mail, with or without a username): 403, no membership", async ({ page, baseURL }) => {
   const other = await login(["beta"]);
-  const request = await adminOf(page, "alpha");
+  // Adding a login always needs the second step (audit Z1): a password-only admin session is refused first.
+  const aal1 = await (await adminOf(page, "alpha")).post("/api/admin/users", { headers: { origin: baseURL! }, data: { email: other.email, full_name: "Other", role: "office" } });
+  expect(aal1.status()).toBe(403);
+  expect(await aal1.json()).toMatchObject({ code: "mfa_required" });
+  const request = await aal2Admin(page);
   const withName = await request.post("/api/admin/users", { headers: { origin: baseURL! }, data: { email: other.email, full_name: "Other", role: "office", username: `taken${w.runId}` } });
   expect(withName.status()).toBe(403);
   const plain = await request.post("/api/admin/users", { headers: { origin: baseURL! }, data: { email: other.email, full_name: "Other", role: "office" } });
@@ -105,7 +84,7 @@ test("an alpha-only admin can't attach a beta-only login (by e-mail, with or wit
 
 test("a company admin can't set a shared login's password (unchanged behaviour; at aal2, which Set password always needs from 093)", async ({ page, baseURL }) => {
   const shared = await login(["alpha", "beta"]);
-  const request = await aal2AdminOfAlpha(page);
+  const request = await aal2Admin(page);
   const response = await request.post("/api/admin/users/password", { headers: { origin: baseURL! }, data: { user_id: shared.id, password: generatePassword(14), must_change_password: false } });
   expect(response.status()).toBe(409);
 });
@@ -166,14 +145,14 @@ test("Disable sign-in needs the second step, and is refused for a login that als
   expect(await banState(sole.id)).toEqual({ banned: false, marker: null });
 
   await page.context().clearCookies();
-  const request = await aal2AdminOfAlpha(page);
+  const request = await aal2Admin(page);
   expect((await signInAccess(request, baseURL!, { user_id: shared.id, enabled: false })).status()).toBe(409);
   expect(await banState(shared.id)).toEqual({ banned: false, marker: null });
 });
 
 test("Disable sign-in (a leaver whose only company is alpha): the app's marked ban, membership kept; Enable lifts it", async ({ page, baseURL }) => {
   const leaver = await login(["alpha"]);
-  const request = await aal2AdminOfAlpha(page);
+  const request = await aal2Admin(page);
   const off = await signInAccess(request, baseURL!, { user_id: leaver.id, enabled: false });
   expect(off.status()).toBe(200);
   expect(await banState(leaver.id)).toEqual({ banned: true, marker: true });
@@ -189,7 +168,7 @@ test("Disable sign-in (a leaver whose only company is alpha): the app's marked b
 test("a platform ban is never turned into an app ban by Disable sign-in, and survives Enable sign-in and Reactivate", async ({ page, baseURL }) => {
   const person = await login(["alpha"]);
   expect((await adminClient().auth.admin.updateUserById(person.id, { ban_duration: "876000h" })).error).toBeNull();
-  const request = await aal2AdminOfAlpha(page);
+  const request = await aal2Admin(page);
   expect((await signInAccess(request, baseURL!, { user_id: person.id, enabled: false })).status()).toBe(409);
   expect(await banState(person.id)).toEqual({ banned: true, marker: null });
   expect((await signInAccess(request, baseURL!, { user_id: person.id, enabled: true })).status()).toBe(409);
