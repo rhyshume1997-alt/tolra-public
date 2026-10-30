@@ -51,7 +51,8 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "auth/change-password:POST": "Self-authenticates inline (auth.getUser() before any write); every write is to the caller's own login (user.id).",
   "my-company-logos:GET": "Self-authenticates inline (auth.getUser()); the service role reads only the companies my_organizations() returns AS THE CALLER.",
   // 107 (E2): the accountant's Xero connect link, opened signed out. Each grants exactly one company's Xero Connect and nothing else.
-  "integrations/invite/[token]:GET": "The accountant's one-use Xero connect link: only an unused, unexpired link's SHA-256 (integration_invite_redeem, service role, used up at once, its admin still an admin) starts a Connect for that one company; a bad link gets a fixed page.",
+  "integrations/invite/[token]:GET": "The accountant's one-use Xero connect link's page: rate limited; only an open link's company name (integration_invite_peek, service role) and a Continue button. Nothing is used up; a bad link gets a fixed page.",
+  "integrations/invite/[token]:POST": "The connect link's Continue button: same origin, rate limited; only an open link (integration_invite_redeem, service role, used up at once, its admin still an admin) starts that one company's Xero Connect.",
   "integrations/invite/callback:GET": "Xero's return for a connect link: only a state a link started in the last 10 minutes (integration_oauth_consume_invite: single use, invite states only) completes that link's company, as its admin; a fixed page, nothing else.",
 };
 
@@ -252,7 +253,7 @@ describe("every app/api route handler guards itself (middleware lets /api/ throu
   it("the routes that use the service role on a company's behalf, or send e-mail, are guarded, not public", () => {
     for (const key of ["admin/alert-test:POST", "send-job:POST", "mail/send:POST", "cron/ip-purge:GET", "job-photos/[id]:GET", "integrations/xero/send:POST", "integrations/xero/after-issue:POST", "integrations/xero/callback:GET",
       "integrations/xero/disconnect:POST", "integrations/xero/test:POST", "integrations/microsoft/connect:POST", "integrations/microsoft/callback:GET",
-      "integrations/microsoft/disconnect:POST", "integrations/microsoft/test:POST", "integrations/invite:POST", "integrations/status:GET",
+      "integrations/microsoft/disconnect:POST", "integrations/microsoft/test:POST", "integrations/invite:POST", "integrations/invite:DELETE", "integrations/status:GET",
       "integrations/app-credentials:GET", "integrations/app-credentials:POST", "integrations/app-credentials:DELETE", "admin/users:POST", "admin/users:PATCH", "admin/users/sign-in:GET", "admin/users/sign-in:POST",
       "admin/users/password:POST", "admin/users/mfa-reset:POST", "admin/users/companies:POST", "platform/organizations:POST"]) {
       expect(PUBLIC_ROUTES[key]).toBeUndefined();

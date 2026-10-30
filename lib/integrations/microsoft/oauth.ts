@@ -7,10 +7,10 @@ import type { AppCredentials } from "@/lib/integrations/app-credentials";
 // secret server-side only. A company's admin (or whoever owns the mailbox) signs in at Microsoft and consents; Tolra then sends and
 // reads mail AS that mailbox. One Tolra app registration (multi-tenant: "Accounts in any organizational directory") serves every company.
 // The tenant segment is "organizations" (work or school accounts only) unless MS_TENANT_ID names one directory. Scopes: offline_access
-// (refresh tokens), Mail.Send, Mail.Read, User.Read. Errors carry a safe message only: never the secret, a token or a code.
+// (refresh tokens), Mail.Send, User.Read (nothing reads mail: Tolra only sends). Errors carry a safe message only: never the secret, a token or a code.
 
 export const MICROSOFT_LOGIN = "https://login.microsoftonline.com";
-export const MICROSOFT_SCOPES = ["offline_access", "Mail.Send", "Mail.Read", "User.Read"] as const;
+export const MICROSOFT_SCOPES = ["offline_access", "Mail.Send", "User.Read"] as const;
 const TIMEOUT_MS = 15_000;
 
 export type MicrosoftConfig = { clientId: string; clientSecret: string; redirectUri: string; tenant: string };

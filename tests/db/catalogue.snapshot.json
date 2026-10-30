@@ -691,6 +691,11 @@
  },
  {
   "kind": "function",
+  "object": "public.integration_disconnect_revoke(p_provider text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit e923f10d3c5604ce62c993b4e6d8b5be"
+ },
+ {
+  "kind": "function",
   "object": "public.integration_document(p_org uuid, p_doc_type text, p_doc_id uuid)",
   "detail": "definer search_path=pg_catalog, public a07eaaea367529f46cd1403b164aabe5"
  },
@@ -702,12 +707,27 @@
  {
   "kind": "function",
   "object": "public.integration_invite_create(p_provider text, p_token_hash text)",
-  "detail": "definer search_path=pg_catalog, public, security_audit 48c2cac18bb75c8451ba5d70f1b05263"
+  "detail": "definer search_path=pg_catalog, public, security_audit f7a377b9cbc6e8967fa1337e6ab36738"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invite_peek(p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public 929aabcee5cb8787e1dd4e360b90801b"
  },
  {
   "kind": "function",
   "object": "public.integration_invite_redeem(p_token_hash text, p_state_hash text, p_verifier_enc text)",
-  "detail": "definer search_path=pg_catalog, public, security_audit a968cb7508005bd860ab9e14247aec9f"
+  "detail": "definer search_path=pg_catalog, public, security_audit f1e7cf43675a8f6530359072ae418129"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invite_revoke(p_invite uuid)",
+  "detail": "definer search_path=pg_catalog, public, security_audit f97533e39fe91e7a60138192e136d31b"
+ },
+ {
+  "kind": "function",
+  "object": "public.integration_invites_open(p_provider text)",
+  "detail": "definer search_path=pg_catalog, public 89861fccda66c564e6bdfe93039b9182"
  },
  {
   "kind": "function",
@@ -2566,6 +2586,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.integration_disconnect_revoke(p_provider text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.integration_document(p_org uuid, p_doc_type text, p_doc_id uuid)",
   "detail": "service_role"
  },
@@ -2581,8 +2606,23 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.integration_invite_peek(p_token_hash text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.integration_invite_redeem(p_token_hash text, p_state_hash text, p_verifier_enc text)",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invite_revoke(p_invite uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.integration_invites_open(p_provider text)",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",

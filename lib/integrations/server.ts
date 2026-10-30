@@ -188,6 +188,16 @@ async function linkedTenantIds(service: SupabaseClient): Promise<Set<string> | n
 }
 
 /**
+ * Disconnect as the signed-in admin, and cancel every open connect link (107's integration_disconnect_revoke, which calls 084's
+ * integration_disconnect). Before 107 is applied: 084's integration_disconnect alone, exactly as before.
+ */
+export async function disconnectAndRevoke(userClient: SupabaseClient, provider: "xero" | "microsoft"): Promise<void> {
+  let { error } = await userClient.rpc("integration_disconnect_revoke", { p_provider: provider });
+  if (error && (error.code === "PGRST202" || error.code === "42883")) ({ error } = await userClient.rpc("integration_disconnect", { p_provider: provider }));
+  if (error) throw new DbError(error.message, error.code, (error as { hint?: string }).hint);
+}
+
+/**
  * Disconnect: the token is taken under the lease first (server side), then the database disconnects as the signed-in admin (admin and
  * two-step checked there; the tokens are deleted), then this app's connection to that one organisation is removed at Xero (best effort).
  */
@@ -197,8 +207,7 @@ export async function disconnectCompany(userClient: SupabaseClient, service: Sup
   if (ready && conn && (conn as { status: string }).status !== "disconnected") {
     token = await engineDeps(serviceDb(service), ready).accessToken(org, "xero").catch(() => null);
   }
-  const { error } = await userClient.rpc("integration_disconnect", { p_provider: "xero" });
-  if (error) throw new DbError(error.message, error.code, (error as { hint?: string }).hint);
+  await disconnectAndRevoke(userClient, "xero");
   const connectionId = (conn as { external_connection_id: string | null } | null)?.external_connection_id;
   return { removedAtXero: token && connectionId ? await deleteConnection(token, connectionId) : false };
 }

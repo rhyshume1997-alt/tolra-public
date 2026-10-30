@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { databaseHas107, getAppCredentials } from "@/lib/integrations/app-credentials";
+import { databaseHas107, getAppCredentials, xeroEnvProblem } from "@/lib/integrations/app-credentials";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { isErrorResponse, requireProfile } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -23,7 +23,7 @@ export async function GET() {
   ]);
   return NextResponse.json({
     db107: has107 !== false,
-    xero: { configured: Boolean(xero) },
+    xero: xero ? { configured: true } : { configured: false, problem: xeroEnvProblem() },
     microsoft: { configured: Boolean(microsoft) },
   }, { headers: { "cache-control": "no-store" } });
 }

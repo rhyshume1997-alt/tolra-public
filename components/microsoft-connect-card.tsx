@@ -12,7 +12,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { NEEDS_107, cardStatusLabel, microsoftOutcomeMessage, notSetUpMessage, type IntegrationOverview } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 
-export type ConnectStatus = { db107: boolean; xero: { configured: boolean }; microsoft: { configured: boolean } };
+export type ConnectStatus = { db107: boolean; xero: { configured: boolean; problem?: string | null }; microsoft: { configured: boolean } };
 
 /** POST to one of the integration routes; the error's own words on failure. */
 export async function postIntegration(path: string): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false; error: string }> {

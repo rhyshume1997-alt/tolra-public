@@ -262,6 +262,9 @@ function attempts(): Attempt[] {
     // the app-level credentials are the platform owner's: a company admin is refused.
     ["public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)", () => alpha.rpc("integration_oauth_start", { p_provider: "microsoft", p_state_hash: randomBytes(32).toString("hex"), p_verifier_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}` }), "nothing of beta's"],
     ["public.integration_invite_create(p_provider text, p_token_hash text)", () => alpha.rpc("integration_invite_create", { p_provider: "xero", p_token_hash: randomBytes(32).toString("hex") }), "nothing of beta's"],
+    ["public.integration_invites_open(p_provider text)", () => alpha.rpc("integration_invites_open", { p_provider: "xero" }), "nothing of beta's"],
+    ["public.integration_invite_revoke(p_invite uuid)", () => alpha.rpc("integration_invite_revoke", { p_invite: randomUUID() }), "nothing of beta's"],
+    ["public.integration_disconnect_revoke(p_provider text)", () => alpha.rpc("integration_disconnect_revoke", { p_provider: "xero" }), "nothing of beta's"],
     ["public.integration_app_credentials_save(p_provider text, p_client_id text, p_secret_enc text, p_secret_last4 text, p_redirect_uri text, p_key_version integer)", () => alpha.rpc("integration_app_credentials_save", { p_provider: "xero", p_client_id: "cross", p_secret_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}`, p_secret_last4: "abcd", p_redirect_uri: null, p_key_version: 1 }), "refused"],
     ["public.integration_app_credentials_remove(p_provider text)", () => alpha.rpc("integration_app_credentials_remove", { p_provider: "xero" }), "refused"],
     ["public.integration_app_credentials_list()", () => alpha.rpc("integration_app_credentials_list"), "refused"],

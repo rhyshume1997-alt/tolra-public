@@ -8,10 +8,13 @@ import { inviteRedirectUri } from "@/lib/integrations/app-credentials";
 import { decryptSecret, encryptSecret } from "@/lib/integrations/crypto";
 import { type ConnectOutcome, DbError, completeConnect, serviceDb } from "@/lib/integrations/server";
 import { type XeroConfig, authorizeUrl, hashState, newAuthorisation } from "@/lib/integrations/xero/oauth";
+import { LimiterUnavailableError, clientIp, withinLimit } from "@/lib/server/login";
 
 // The accountant's connect link (E2; migration 107). An admin (two-step, own company, never support) makes a one-use link valid 24 hours;
-// only its SHA-256 is kept. The accountant opens it signed out: the server uses it up (integration_invite_redeem: unused, unexpired, and
-// the admin who made it still an admin) and sends them straight to Xero; Xero sends them back to /api/integrations/invite/callback,
+// only its SHA-256 is kept. The accountant opens it signed out: the GET only shows "Connect <company> to Xero" with one Continue button
+// (integration_invite_peek: nothing is used up, so a mail scanner or a chat preview opening the link never burns it). The button's POST
+// (same origin) uses it up (integration_invite_redeem: unused, not cancelled, unexpired, and the admin who made it still an admin) and
+// sends them straight to Xero; Xero sends them back to /api/integrations/invite/callback,
 // which completes the connection for THAT company only, as the admin who made the link (084's integration_store_connection checks
 // that person is still an active admin). The link grants nothing else: no Tolra session, no page, no data.
 
@@ -37,6 +40,26 @@ export const inviteVerifierContext = (stateHash: string) => ({ organizationId: `
 /** The Xero configuration for the accountant's Connect: the same app, the invite callback as redirect URI. */
 export function inviteConfig(config: XeroConfig): XeroConfig {
   return { ...config, redirectUri: inviteRedirectUri(config.redirectUri) };
+}
+
+/** The link's page: the company's name for an open link, or null (malformed, unknown, used, cancelled, expired). Nothing is used up. */
+export async function peekInvite(service: SupabaseClient, token: string): Promise<{ companyName: string } | null> {
+  if (!INVITE_TOKEN.test(token)) return null;
+  const out = await serviceDb(service).rpc<{ company_name?: unknown } | null>("integration_invite_peek", { p_token_hash: hashInviteToken(token) });
+  return out && typeof out.company_name === "string" ? { companyName: out.company_name } : null;
+}
+
+/** The public link routes' limit: 20 in 15 minutes per IP (the page, its Continue and Xero's return), as auth/reset does. */
+export const INVITE_RATE = { bucket: "integration_invite", windowSeconds: 15 * 60, max: 20 } as const;
+
+/** true when this IP may go on; false when over the limit OR the limiter can't be used (fails closed: the page says try again). */
+export async function inviteRateOk(service: SupabaseClient, request: Request): Promise<boolean> {
+  try {
+    return await withinLimit(service, INVITE_RATE.bucket, clientIp(request), INVITE_RATE.windowSeconds, INVITE_RATE.max);
+  } catch (err) {
+    if (err instanceof LimiterUnavailableError) return false;
+    throw err;
+  }
 }
 
 export type RedeemOutcome = { ok: true; url: string } | { ok: false; reason: "invalid" };
@@ -77,18 +100,37 @@ const PAGE: Record<string, { title: string; body: string }> = {
   tenant_in_use: { title: "Already connected elsewhere", body: "That Xero organisation is already connected to another company in Tolra." },
   disconnect_first: { title: "Another organisation is connected", body: "This company is connected to another Xero organisation. Its admin must disconnect it first." },
   not_configured: { title: "Not set up yet", body: "Xero is not set up in Tolra yet. Nothing was used up: try the same link later." },
+  busy: { title: "Try again shortly", body: "Too many attempts from here, or Tolra can't check right now. Wait a few minutes and open the link again; if it was already used, ask for a new one." },
   failed: { title: "That didn't work", body: "Connecting to Xero didn't work and nothing changed. Ask for a new link." },
 };
+
+const escapeHtml = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+function page(title: string, inner: string, status: number, extra: Record<string, string> = {}): Response {
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">`
+    + `<title>${title}</title><style>body{font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:48px 16px}main{max-width:520px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px}h1{font-size:22px;margin:0 0 12px}p{color:#475569;line-height:1.5}button{font:inherit;font-weight:600;background:#13b5ea;color:#fff;border:0;border-radius:8px;padding:12px 20px;cursor:pointer}</style></head>`
+    + `<body><main>${inner}</main></body></html>`;
+  return new Response(html, {
+    status,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "x-robots-tag": "noindex",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'self' https://login.xero.com", ...extra },
+  });
+}
 
 /** A fixed page for the accountant (no Tolra session, so no app page): fixed text by outcome only, nothing from the request. */
 export function invitePage(outcome: string, status = 200): Response {
   const p = PAGE[outcome] ?? PAGE.failed;
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">`
-    + `<title>${p.title}</title><style>body{font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:48px 16px}main{max-width:520px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px}h1{font-size:22px;margin:0 0 12px}p{color:#475569;line-height:1.5}</style></head>`
-    + `<body><main><h1>${p.title}</h1><p>${p.body}</p></main></body></html>`;
-  return new Response(html, {
-    status,
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "x-robots-tag": "noindex",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'" },
-  });
+  return page(p.title, `<h1>${p.title}</h1><p>${p.body}</p>`, status);
+}
+
+/**
+ * The link's page for an open link: "Connect <company> to Xero" and one Continue button. The button POSTs to the same address (same
+ * origin); only that uses the link up. The company's name is the only data on it (HTML-escaped).
+ */
+export function inviteConfirmPage(companyName: string): Response {
+  const name = escapeHtml(companyName);
+  return page(`Connect ${name} to Xero`,
+    `<h1>Connect ${name} to Xero</h1><p>You were sent this link to connect ${name}'s Tolra to its Xero organisation. Continue to sign in to Xero and choose that organisation.</p>`
+    + `<p>The link works once and expires 24 hours after it was made. It gives no access to Tolra.</p>`
+    + `<form method="post"><button type="submit">Continue to Xero</button></form>`, 200);
 }

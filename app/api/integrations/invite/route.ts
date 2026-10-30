@@ -32,3 +32,28 @@ export async function POST(request: Request) {
   const expiresAt = (data as { expires_at?: string } | null)?.expires_at ?? null;
   return NextResponse.json({ url: `${origin}/api/integrations/invite/${token}`, expiresAt }, { headers: { "cache-control": "no-store" } });
 }
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Cancel an open link: DELETE ?id=<invite id>. Admin only, two-step, own company, never a support session (the database checks all of
+ * it again: integration_invite_revoke). A link that is already used, cancelled, expired or another company's is left as it is (404).
+ */
+export async function DELETE(request: Request) {
+  if (!sameOrigin(request)) return forbiddenOrigin();
+  const auth = await requireProfile([...CONNECT_ROLES]);
+  if (isErrorResponse(auth)) return auth;
+  if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
+  const id = new URL(request.url).searchParams.get("id") ?? "";
+  if (!UUID.test(id)) return jsonError("Invalid request", 400);
+  const { data, error } = await auth.supabase.rpc("integration_invite_revoke", { p_invite: id });
+  if (error) {
+    const err = new DbError(error.message, error.code, (error as { hint?: string }).hint);
+    if (err.code === "PGRST202" || err.code === "42883") return jsonError("Not available until database update 107 is applied.", 503);
+    if (err.code === "42501") return jsonError(err.hint === "mfa_required" ? "Confirm your authenticator code first." : "Forbidden", 403);
+    console.error("[integrations] invite cancel failed:", err.code ?? "error");
+    return jsonError("Couldn't cancel the link. Try again.", 500);
+  }
+  if (data !== true) return jsonError("That link is no longer open.", 404);
+  return NextResponse.json({ ok: true });
+}

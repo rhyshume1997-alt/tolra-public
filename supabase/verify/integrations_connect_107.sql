@@ -6,11 +6,14 @@ WITH t AS (
 ), signed_in AS (
   SELECT p.oid, p.prosecdef, p.proconfig FROM pg_proc p
   WHERE p.oid IN (to_regprocedure('public.integration_oauth_start(text,text,text)'), to_regprocedure('public.integration_invite_create(text,text)'),
+                  to_regprocedure('public.integration_invites_open(text)'), to_regprocedure('public.integration_invite_revoke(uuid)'),
+                  to_regprocedure('public.integration_disconnect_revoke(text)'),
                   to_regprocedure('public.integration_app_credentials_save(text,text,text,text,text,integer)'),
                   to_regprocedure('public.integration_app_credentials_remove(text)'), to_regprocedure('public.integration_app_credentials_list()'))
 ), server_only AS (
   SELECT p.oid, p.prosecdef, p.proconfig FROM pg_proc p
-  WHERE p.oid IN (to_regprocedure('public.integration_invite_redeem(text,text,text)'), to_regprocedure('public.integration_oauth_consume_invite(text,text)'))
+  WHERE p.oid IN (to_regprocedure('public.integration_invite_peek(text)'), to_regprocedure('public.integration_invite_redeem(text,text,text)'),
+                  to_regprocedure('public.integration_oauth_consume_invite(text,text)'))
 )
 -- Both new tables exist with row level security on.
 SELECT 'two_tables_rls_on' AS check_name, (SELECT count(*) = 2 AND bool_and(relrowsecurity) FROM t) AS ok
@@ -35,6 +38,7 @@ UNION ALL SELECT 'invite_hash_unique_24h',
   AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname = 'integration_connect_invites_24h'
             AND pg_get_constraintdef(c.oid) LIKE '%24:00:00%')
   AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites' AND column_name = 'token')
+  AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites' AND column_name = 'revoked_at')
 -- An OAuth state may carry the invite it came from.
 UNION ALL SELECT 'oauth_state_via_invite',
   EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_oauth_states' AND column_name = 'via_invite')
@@ -50,13 +54,13 @@ UNION ALL SELECT 'send_log_accounting_only',
   EXISTS (SELECT 1 FROM pg_trigger g WHERE NOT g.tgisinternal AND g.tgname = 'aa_integration_sends_accounting_only' AND g.tgrelid = to_regclass('public.integration_sends')
             AND g.tgfoid = to_regprocedure('public.integration_sends_accounting_only()') AND g.tgenabled = 'O')
   AND NOT has_function_privilege('authenticated', 'public.integration_sends_accounting_only()', 'EXECUTE')
--- The five signed-in functions: definer, pinned search_path, signed-in only.
+-- The eight signed-in functions: definer, pinned search_path, signed-in only.
 UNION ALL SELECT 'signed_in_functions',
-  (SELECT count(*) = 5 AND bool_and(prosecdef AND proconfig IS NOT NULL AND has_function_privilege('authenticated', oid, 'EXECUTE')
+  (SELECT count(*) = 8 AND bool_and(prosecdef AND proconfig IS NOT NULL AND has_function_privilege('authenticated', oid, 'EXECUTE')
                                     AND NOT has_function_privilege('anon', oid, 'EXECUTE')) FROM signed_in)
--- The two server functions: the service role only.
+-- The three server functions: the service role only.
 UNION ALL SELECT 'server_functions_service_role_only',
-  (SELECT count(*) = 2 AND bool_and(prosecdef AND proconfig IS NOT NULL AND has_function_privilege('service_role', oid, 'EXECUTE')
+  (SELECT count(*) = 3 AND bool_and(prosecdef AND proconfig IS NOT NULL AND has_function_privilege('service_role', oid, 'EXECUTE')
                                     AND NOT has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')) FROM server_only)
 -- No secret, token or token hash in the audit log.
 UNION ALL SELECT 'no_secret_in_audit_log',
