@@ -30,7 +30,8 @@ function fakeSupabase() {
     from: (table: string) => {
       if (table !== "organization_settings") throw new Error(`unexpected table ${table}`);
       return {
-        select: () => ({ maybeSingle: async () => ({ data: db.settings, error: null }) }),
+        // saveCompanyProfile (P1, #52, now on main) reads the stored row with .eq() before it saves; the load reads it without.
+        select: () => { const q = { eq: () => q, maybeSingle: async () => ({ data: db.settings, error: null }) }; return q; },
         upsert: async (row: { organization_id: string; company_profile: unknown }) => { db.settings = { organization_id: row.organization_id, company_profile: row.company_profile }; return { error: null }; },
       };
     },
