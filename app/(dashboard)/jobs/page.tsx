@@ -177,7 +177,7 @@ type JobState = { started_at?: string; finished_at?: string; inspected_at?: stri
 /** A failed inspection holds the job in the rework stage (migration 037) until the rework is finished and it is inspected again. */
 const inRework = (job: JobState) => isInRework(job);
 /**
- * The due-date light (On time, At risk, Overdue, No due date): for Not started and Running jobs only, the jobs the due-date chips
+ * The due-date light (On time, At risk, Late, No due date): for Not started and Running jobs only, the jobs the due-date chips
  * count. A job waiting for inspection or Complete shows its status alone. Always shown with its word, never colour alone.
  */
 type DueLight = (typeof DUE_CHIPS)[number]["value"];

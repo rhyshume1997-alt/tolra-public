@@ -26,7 +26,7 @@ describe("MyJobs render", () => {
     const html = render("workshop");
     expect(html.match(/data-testid="my-job-notes"/g)).toHaveLength(1);
     expect(html).toContain("Deburr all edges");
-    for (const word of ["Running", "Not started", "Overdue", "No due date"]) expect(html).toContain(`>${word}<`);
+    for (const word of ["Running", "Not started", "Late", "No due date"]) expect(html).toContain(`>${word}<`);
     expect(html).toContain("Severn Valve Co · Valve body · qty 4");
   });
   it("a viewer gets View only; without the Job Board, no actions", () => {

@@ -108,7 +108,7 @@ test("tablet: my jobs only, one big main action each, Pause on the running job, 
     const running = card(page, J.running);
     await expect(running).toContainText("Severn Valve Co · Valve body · qty 4");
     await expect(running).toContainText("Running");
-    await expect(running.getByTestId("my-job-due")).toHaveText("Overdue");
+    await expect(running.getByTestId("my-job-due")).toHaveText("Late");
     await expect(running.getByTestId("my-job-notes")).toContainText(SPEC);
     await expect(running.getByTestId("my-job-action")).toHaveText("Finish on the Job Board");
     await expect(running.getByTestId("my-job-action")).toHaveAttribute("data-kind", "finish");
