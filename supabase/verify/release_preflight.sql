@@ -123,7 +123,9 @@ markers(migration, present) AS (
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
     ('116 ban ends session',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'session_is_active' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'b9c4e5c7147e1c7893b4e586dae0be2e'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'b9c4e5c7147e1c7893b4e586dae0be2e')),
+    ('117 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

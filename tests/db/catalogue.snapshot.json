@@ -466,6 +466,11 @@
  },
  {
   "kind": "function",
+  "object": "public.email_history_drafted_by_lock()",
+  "detail": "invoker search_path=pg_catalog, public 4e93481a734ae35b9990176705c5f6a9"
+ },
+ {
+  "kind": "function",
   "object": "public.enforce_same_org_parent()",
   "detail": "definer search_path=pg_catalog, public 186478aa8abb0ca095942fed9991d955"
  },
@@ -2318,6 +2323,11 @@
   "kind": "function-grant",
   "object": "public.draft_invoice_order_lines(p_invoice uuid)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.email_history_drafted_by_lock()",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -5853,6 +5863,11 @@
   "kind": "trigger",
   "object": "public.email_history :: admin_mfa",
   "detail": "O 667db89418b31d3e2b1faa3a4c0a4151"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_history :: email_history_drafted_by_lock",
+  "detail": "O cd1f5e1a693199327bf2613ee9ebb2c3"
  },
  {
   "kind": "trigger",
