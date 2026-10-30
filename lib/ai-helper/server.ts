@@ -32,11 +32,11 @@ export type RunOutcome<T> =
 export function outcomeMessage(outcome: Exclude<RunOutcome<unknown>, { kind: "ok" }>): { status: number; error: string; code: string } {
   switch (outcome.kind) {
     case "off": return { status: 404, error: "The AI helper is off for this company.", code: "off" };
-    case "cap": return { status: 429, error: "This company's AI limit for the month has been reached, so nothing was sent to the AI. An admin can raise the limit in Settings.", code: "cap" };
-    case "no_key": return { status: 409, error: "No AI key is set for this company. An admin can add the company's own key in Settings.", code: "no_key" };
+    case "cap": return { status: 429, error: "This company's AI limit for the month has been reached, so nothing was sent to the AI. An admin can raise the limit in the AI section.", code: "cap" };
+    case "no_key": return { status: 409, error: "No AI key is set for this company. An admin can add the company's own key in the AI section.", code: "no_key" };
     case "failed":
-      if (outcome.detail === "auth") return { status: 503, error: "The AI service refused this company's key. An admin can check it in Settings. Nothing was changed.", code: "key_refused" };
-      if (outcome.detail === "key") return { status: 503, error: "The company's AI key can't be read on this server. An admin can enter it again in Settings. Nothing was changed.", code: "key_unreadable" };
+      if (outcome.detail === "auth") return { status: 503, error: "The AI service refused this company's key. An admin can check it in the AI section. Nothing was changed.", code: "key_refused" };
+      if (outcome.detail === "key") return { status: 503, error: "The company's AI key can't be read on this server. An admin can enter it again in the AI section. Nothing was changed.", code: "key_unreadable" };
       if (outcome.failure === "refused") return { status: 422, error: "The AI declined to read this. Nothing was changed: fill the quote in by hand.", code: "refused" };
       if (outcome.failure === "invalid") return { status: 502, error: "The AI's answer could not be used. Nothing was changed: try again or fill the quote in by hand.", code: "invalid" };
       return { status: 503, error: "The AI service is not answering right now. Nothing was changed: try again later or carry on by hand.", code: "model_down" };

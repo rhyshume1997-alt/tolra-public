@@ -291,6 +291,11 @@
  },
  {
   "kind": "function",
+  "object": "public.claim_browser_error_alert(p_fingerprint text, p_user_id uuid, p_company_id uuid)",
+  "detail": "definer search_path=pg_catalog, public 00053d82b565602c80da5d40088d5f75"
+ },
+ {
+  "kind": "function",
   "object": "public.claim_error_alert(p_fingerprint text)",
   "detail": "definer search_path=pg_catalog, public d8394e6048895f82fb7aa79c0f8b4ab9"
  },
@@ -2133,6 +2138,11 @@
   "kind": "function-grant",
   "object": "public.check_request_session()",
   "detail": "anon,authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.claim_browser_error_alert(p_fingerprint text, p_user_id uuid, p_company_id uuid)",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -5063,6 +5073,11 @@
   "kind": "rls",
   "object": "security_audit.audit_log",
   "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "security_audit.browser_error_alerts",
+  "detail": "DISABLED"
  },
  {
   "kind": "rls",

@@ -22,6 +22,7 @@ import {
 } from "@/lib/machine-schedule";
 import { onReconnect, prereqOutcome } from "@/lib/offline/reconnect";
 import { isNetworkError } from "@/lib/offline/store";
+import { confirmPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +122,8 @@ export function NewJobDialog({ open, role, jobs, onClose, onCreated }: {
     if (typeof navigator !== "undefined" && navigator.onLine === false) { setOffline(true); return; }
     setSaving(true);
     try {
+      // create_job files the job in the session's company: refused if another tab switched it since this page opened (S5).
+      await confirmPageCompany(supabase);
       const { data, error } = await supabase.rpc("create_job", {
         p_customer: customer.trim() || null,
         p_description: description.trim(),
