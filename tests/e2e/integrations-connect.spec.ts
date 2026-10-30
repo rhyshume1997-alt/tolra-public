@@ -387,8 +387,13 @@ test("7. the accountant's link: the page only shows, Continue uses it once and g
   await page.goto("/admin/integrations");
   const panel = page.getByTestId("xero-invite");
   const makeLink = async () => {
+    // The card keeps showing the previous link until the new one arrives, so wait for the shown link to CHANGE: reading it straight
+    // after the click would hand back the last link (already used up) as the new one.
+    const field = panel.getByTestId("xero-invite-url");
+    const before = (await field.count()) ? await field.inputValue() : null;
     await panel.getByRole("button", { name: "Send the accountant a connect link" }).click();
-    const url = await panel.getByTestId("xero-invite-url").inputValue();
+    await expect.poll(async () => ((await field.count()) ? await field.inputValue() : null), { message: "the card shows the new link" }).not.toBe(before);
+    const url = await field.inputValue();
     const parsed = INVITE_URL.exec(url);
     expect(parsed, url).not.toBeNull();
     expect(parsed![1]).toBe(origin); // built on the site address, not on a request header
