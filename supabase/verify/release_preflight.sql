@@ -78,7 +78,7 @@ markers(migration, present) AS (
     ('076 data import',                    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'import_undo') AND to_regclass('public.import_runs') IS NOT NULL AND EXISTS (SELECT 1 FROM fn WHERE proname = 'invoice_issue_lock' AND prosrc LIKE '%quoteflow.data_import_undo%')),
     ('077 audit hash index lookup',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'set_audit_hash' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '5f4b0bcedcdf8a8c044e2e78a88a7221')),
     ('078 ip retention, CRD numbers',     EXISTS (SELECT 1 FROM fn WHERE proname = 'purge_site_network_ips') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'next_doc_number' AND prosrc LIKE '%''CRD''%') AND to_regclass('public.attendance_event_network_ips') IS NOT NULL),
-    -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.
+    -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.,
     ('079 import under pg-safeupdate',    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data_run' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('f7c672e961be898619c046d76458680e', '0a2fec5746b0b1262cb2af6fe792bd7c'))),
     ('080 activity labels, job work',     EXISTS (SELECT 1 FROM fn WHERE proname = 'convert_sales_order' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'dc8165549871bd15047765ac4fba811e')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'activity_label' AND prosrc LIKE '%credit_ref%')),
@@ -117,6 +117,8 @@ markers(migration, present) AS (
     ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
+    ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
+                                          AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert'))
 ),

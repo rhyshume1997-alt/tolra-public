@@ -466,6 +466,11 @@
  },
  {
   "kind": "function",
+  "object": "public.email_schedules_guard()",
+  "detail": "invoker search_path=pg_catalog, public ac0fe8d7031b149a7a96be86db673e0f"
+ },
+ {
+  "kind": "function",
   "object": "public.enforce_same_org_parent()",
   "detail": "definer search_path=pg_catalog, public 186478aa8abb0ca095942fed9991d955"
  },
@@ -2306,6 +2311,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.email_schedules_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.enforce_same_org_parent()",
   "detail": "authenticated,service_role"
  },
@@ -3876,6 +3886,31 @@
  },
  {
   "kind": "policy",
+  "object": "public.email_schedule_runs :: email_schedule_runs office select",
+  "detail": "PERMISSIVE SELECT authenticated e92b788d951ce740d4157661bda75d07"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_schedules :: email_schedules admin delete",
+  "detail": "PERMISSIVE DELETE authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_schedules :: email_schedules admin insert",
+  "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_schedules :: email_schedules admin update",
+  "detail": "PERMISSIVE UPDATE authenticated 5eb5430fefd11f45e3c5379a209e0b41"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_schedules :: email_schedules member select",
+  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+ },
+ {
+  "kind": "policy",
   "object": "public.import_batches :: import_batches admin select",
   "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
  },
@@ -3998,6 +4033,11 @@
   "kind": "policy",
   "object": "public.invoice_queue_events :: invoice_queue_events section access",
   "detail": "RESTRICTIVE ALL authenticated eb0d63dd1bea9b313749b918e5e7ecc4"
+ },
+ {
+  "kind": "policy",
+  "object": "public.invoice_reminder_sends :: invoice_reminder_sends office select",
+  "detail": "PERMISSIVE SELECT authenticated 95e4fec10d794513d1f5379683dc1be2"
  },
  {
   "kind": "policy",
@@ -4481,6 +4521,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.timesheet_sends :: timesheet_sends office select",
+  "detail": "PERMISSIVE SELECT authenticated 1cbd867efcfe2dd1b1130687385ea3a6"
+ },
+ {
+  "kind": "policy",
   "object": "public.user_profiles :: Admins insert org profiles",
   "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
  },
@@ -4736,6 +4781,16 @@
  },
  {
   "kind": "rls",
+  "object": "public.email_schedule_runs",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.email_schedules",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.import_batches",
   "detail": "enabled"
  },
@@ -4827,6 +4882,11 @@
  {
   "kind": "rls",
   "object": "public.invoice_queue_events",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.invoice_reminder_sends",
   "detail": "enabled"
  },
  {
@@ -5046,6 +5106,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.timesheet_sends",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.user_profiles",
   "detail": "enabled"
  },
@@ -5171,6 +5236,16 @@
  },
  {
   "kind": "table-grant",
+  "object": "public.email_schedule_runs :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.email_schedules :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
   "object": "public.import_batches :: authenticated",
   "detail": "SELECT"
  },
@@ -5242,6 +5317,11 @@
  {
   "kind": "table-grant",
   "object": "public.invoice_queue_events :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.invoice_reminder_sends :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -5432,6 +5512,11 @@
  {
   "kind": "table-grant",
   "object": "public.time_week_approvals :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.timesheet_sends :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -5828,6 +5913,21 @@
   "kind": "trigger",
   "object": "public.email_history :: support_read_only",
   "detail": "O be149aa91037cab484651f6b0c9f0ce4"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_schedules :: admin_mfa",
+  "detail": "O 6d7c1d3ce3889dab9f73647e3aa1ff6a"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_schedules :: email_schedules_guard",
+  "detail": "O 99fc61999c42acce37f28a6e84e91112"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_schedules :: support_read_only",
+  "detail": "O 26f48eb1aaa8076768b39e8b3e4eb448"
  },
  {
   "kind": "trigger",
@@ -7386,6 +7486,16 @@
  },
  {
   "kind": "unique-index",
+  "object": "public.email_schedule_runs :: email_schedule_runs_schedule_id_period_key_key",
+  "detail": "2f4251c75d2dd094d13c0fda03814be5"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.email_schedules :: email_schedules_organization_id_kind_key",
+  "detail": "4fddfcca9208d361c311afe1bbaf6157"
+ },
+ {
+  "kind": "unique-index",
   "object": "public.import_batches :: import_batches_one_per_key",
   "detail": "bcbf0cd3d9753960523369db0856df69"
  },
@@ -7453,6 +7563,11 @@
   "kind": "unique-index",
   "object": "public.invoice_payments :: invoice_payments_reverses_payment_id_key",
   "detail": "8723bf5b3275ca28a070c287e859f92b"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.invoice_reminder_sends :: invoice_reminder_sends_invoice_id_schedule_id_period_key_key",
+  "detail": "cd8fb0c7cbb3696221e7a85b3df0e27e"
  },
  {
   "kind": "unique-index",
@@ -7613,6 +7728,11 @@
   "kind": "unique-index",
   "object": "public.time_sync_rejections :: time_sync_rejections_one_per_key",
   "detail": "0a1e329b404a50aeda531eb58d295fdc"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.timesheet_sends :: timesheet_sends_schedule_id_period_key_user_id_key",
+  "detail": "a715c65d42976d3647065fe13eb3116d"
  },
  {
   "kind": "unique-index",
