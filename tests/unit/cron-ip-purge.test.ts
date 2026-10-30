@@ -132,9 +132,17 @@ describe("GET /api/cron/ip-purge: failures and what is never shown", () => {
 });
 
 describe("vercel.json", () => {
+  it("lists exactly the three cron routes: the daily purge, the daily Xero sweep and the e-mail schedules every 15 minutes", async () => {
+    const { readFileSync } = await import("node:fs");
+    const config = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
+    expect(config.crons.map((c) => c.path).sort()).toEqual(["/api/cron/email-schedules", "/api/cron/ip-purge", "/api/cron/xero-sweep"]);
+    expect(config.crons.find((c) => c.path === "/api/cron/email-schedules")?.schedule).toBe("*/15 * * * *");
+    expect(config.crons.find((c) => c.path === "/api/cron/xero-sweep")?.schedule).toMatch(/^\d{1,2} \d{1,2} \* \* \*$/);
+  });
+
   it("runs the purge route once a day", async () => {
     const { readFileSync } = await import("node:fs");
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
-    expect(config.crons).toEqual([{ path: "/api/cron/ip-purge", schedule: expect.stringMatching(/^\d{1,2} \d{1,2} \* \* \*$/) }]);
+    expect(config.crons.filter((c) => c.path === "/api/cron/ip-purge")).toEqual([{ path: "/api/cron/ip-purge", schedule: expect.stringMatching(/^\d{1,2} \d{1,2} \* \* \*$/) }]);
   });
 });
