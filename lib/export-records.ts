@@ -2,9 +2,7 @@
 
 import { toast } from "sonner";
 import { createElement } from "react";
-import { pdf } from "@react-pdf/renderer";
 
-import { BaseDocumentPDF } from "@/components/pdf/BaseDocumentPDF";
 import { auditEvent } from "@/lib/audit";
 import type { AuditTable } from "@/lib/audit-contract";
 import { openPrintPack } from "@/lib/print-pack";
@@ -64,6 +62,8 @@ export async function exportRows(format: "word" | "pdf" | "print", filename: str
   if (format === "pdf") {
     try {
       const company = await requireCompanyProfile();
+      // The PDF renderer is loaded on the first PDF export, not with the page.
+      const [{ pdf }, { BaseDocumentPDF }] = await Promise.all([import("@react-pdf/renderer"), import("@/components/pdf/BaseDocumentPDF")]);
       const pdfElement = createElement(BaseDocumentPDF, {
         data: {
           title: filename,

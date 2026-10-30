@@ -2,7 +2,7 @@
 
 import type { AuditTable } from "@/lib/audit-contract";
 import type { ReactElement } from "react";
-import { type DocumentProps, pdf } from "@react-pdf/renderer";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { toast } from "sonner";
 
 import { auditEvent } from "@/lib/audit";
@@ -29,6 +29,8 @@ export async function downloadPdf(
 ): Promise<boolean> {
   try {
     const element = typeof source === "function" ? await source() : source;
+    // Loaded on the first PDF, not with the page (it is the largest library in the app).
+    const { pdf } = await import("@react-pdf/renderer");
     // Every caller's element renders a <Document> (React 19 types no longer infer that from ReactElement).
     const blob = await pdf(element as ReactElement<DocumentProps>).toBlob();
     const url = URL.createObjectURL(blob);

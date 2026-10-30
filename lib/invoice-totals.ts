@@ -9,7 +9,8 @@
  * follow the current profile too. The details panel, the totals check and the PDF all take the company from
  * invoiceIssuer, so they can't disagree.
  */
-import { type PdfLineItem, resolvePdfTotals } from "@/components/pdf/BaseDocumentPDF";
+import type { PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
+import { resolvePdfTotals } from "@/components/pdf/pdf-totals";
 import type { CompanyProfile } from "@/lib/company";
 import { issuedCompany } from "@/lib/document-snapshot";
 import { invoiceStatus } from "@/lib/receivables";

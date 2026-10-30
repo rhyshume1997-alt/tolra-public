@@ -27,7 +27,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { DeliveryNotePDF } from "@/components/pdf/DeliveryNotePDF";
 import { CertPack } from "@/components/cert-pack";
 import { DocumentAttachments } from "@/components/document-attachments";
 import { DeliveryNoteInvoiceLink } from "@/components/delivery-note-invoice-link";
@@ -444,6 +443,8 @@ export default function DeliveryNotesPage() {
       const shipDate = note.shipDate || note.date;
       // The job's customer sign-off (072), when it has one; none (or 072 not applied) leaves the note as it was.
       const customerSignOff = supabase && !note.demo ? await deliveryNoteCustomerSignOff(supabase, note.id) : undefined;
+      // The PDF code is loaded when a PDF is made, not with the page.
+      const { DeliveryNotePDF } = await import("@/components/pdf/DeliveryNotePDF");
       return (
         <DeliveryNotePDF
           data={{
