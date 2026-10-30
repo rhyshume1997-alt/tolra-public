@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { jsonError, readJson } from "@/lib/server/auth";
-import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAdminEnrolment } from "@/lib/server/admin-users";
-import { becomesAdmin } from "@/lib/mfa-policy";
+import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAal2, requireAdminEnrolment } from "@/lib/server/admin-users";
+import { becomesAdmin, changesAdmin } from "@/lib/mfa-policy";
 import { companyAccessErrorMessage, mayAddExistingLogin, OTHER_COMPANY_LOGIN, PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
 import { PRODUCT } from "@/lib/product";
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
@@ -31,6 +31,7 @@ import { DISPLAY_NAME_MAX, normaliseDisplayName } from "@/lib/display-name";
 //            least one active company: last_company comes back as the same sentence as per-company access, plus the next step).
 //            Reactivating lifts only the app's own marked sign-in ban; nothing here bans anyone (a leaver whose only company this
 //            is: Disable sign-in, ./sign-in/route.ts).
+// POST, and a PATCH that gives or takes admin, need the caller's second step (aal2) always (audit Z1, lib/mfa-policy.ts changesAdmin).
 // Passwords never reach a log or the audit trail. Set someone's password later: ./password/route.ts.
 
 const ROLES = ["admin", "office", "workshop", "viewer"] as const;
@@ -142,7 +143,8 @@ async function findUserIdByEmail(admin: AdminContext["admin"], email: string): P
 }
 
 export async function POST(request: Request) {
-  const ctx = await guard(request);
+  // Creates a login (any role, admin too) or hands an existing one to this company: the second step always (audit Z1).
+  const ctx = await guard(request, { aal2: true });
   if (ctx instanceof NextResponse) return ctx;
   const { auth, admin } = ctx;
   const orgId = auth.profile.organization_id;
@@ -340,6 +342,11 @@ export async function PATCH(request: Request) {
     .eq("organization_id", orgId)
     .maybeSingle();
   if (!before) return jsonError("User not found", 404);
+  // Giving or taking admin (role, second role, or reactivating an admin) needs the second step always, like creating a user (audit Z1).
+  if (changesAdmin(before, { role, secondary_role, active })) {
+    const refused = await requireAal2(auth);
+    if (refused) return refused;
+  }
 
   // 093: a platform owner's login, or one with any support membership (here or anywhere, window open or over), is never changed from
   // here, except a change that only switches its access to this company off (Revoke support access, Deactivate): active false and

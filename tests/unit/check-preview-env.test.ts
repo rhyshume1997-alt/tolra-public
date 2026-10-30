@@ -49,6 +49,16 @@ describe("check-preview-env", () => {
     expect(previewChecks(withKey, "testrefaaaa", ["prodrefbbbb"], { INTEGRATIONS_ENCRYPTION_KEY: "cHJldmlldy1rZXk=" }).find((r: { check: string }) => r.check === check)).toMatchObject({ status: "fail" });
   });
 
+  it("S1/C8: with the production file, an unset (or invalid) Production NEXT_PUBLIC_SITE_URL is a FAIL; without it, no line", () => {
+    const check = "Production NEXT_PUBLIC_SITE_URL is set (auth e-mail links come only from it)";
+    const line = (production: Record<string, string> | null) => previewChecks(good, "testrefaaaa", ["prodrefbbbb"], production).find((r: { check: string }) => r.check === check);
+    expect(line(null)).toBeUndefined();
+    expect(line({})).toMatchObject({ status: "fail", detail: "unset" });
+    expect(line({ NEXT_PUBLIC_SITE_URL: "" })).toMatchObject({ status: "fail" });
+    expect(line({ NEXT_PUBLIC_SITE_URL: "not a url" })).toMatchObject({ status: "fail" });
+    expect(line({ NEXT_PUBLIC_SITE_URL: "https://app.tolra.co.uk" })).toMatchObject({ status: "pass" });
+  });
+
   it("reads the format vercel env pull writes", () => {
     expect(parseEnv('# Created by Vercel CLI\nNEXT_PUBLIC_SUPABASE_URL="https://testrefaaaa.supabase.co"\nRESEND_API_KEY=""\n')).toEqual({ NEXT_PUBLIC_SUPABASE_URL: "https://testrefaaaa.supabase.co", RESEND_API_KEY: "" });
   });

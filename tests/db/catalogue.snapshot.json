@@ -86,6 +86,16 @@
  },
  {
   "kind": "function",
+  "object": "public.admin_may_edit_profile(p_user uuid)",
+  "detail": "definer search_path=pg_catalog, public 2acff21275a163dcb34537ebe85a586f"
+ },
+ {
+  "kind": "function",
+  "object": "public.admin_may_read_profile(p_user uuid)",
+  "detail": "definer search_path=pg_catalog, public 7324e89214a7c90ab4d049da04d8b357"
+ },
+ {
+  "kind": "function",
   "object": "public.admin_mfa_overview()",
   "detail": "definer search_path=pg_catalog, public 5c7e165d86d4c762111988ce29eb8ade"
  },
@@ -102,7 +112,7 @@
  {
   "kind": "function",
   "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
-  "detail": "definer search_path=pg_catalog, public 695bbafdbd9a7d727ab75b97ee8e7b4f"
+  "detail": "definer search_path=pg_catalog, public 012e00f0b0e1c85b4319e4a00c529d39"
  },
  {
   "kind": "function",
@@ -117,7 +127,7 @@
  {
   "kind": "function",
   "object": "public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)",
-  "detail": "definer search_path=pg_catalog, public 95a849aa7b6caea4d6c19d23e344913e"
+  "detail": "definer search_path=pg_catalog, public 43633f7f5e88ca0d9259128d8ad6ce8a"
  },
  {
   "kind": "function",
@@ -1247,7 +1257,7 @@
  {
   "kind": "function",
   "object": "public.organization_settings_guard_nav()",
-  "detail": "definer search_path=pg_catalog, public b54e8ef0cc72eb33975590b19a4deadf"
+  "detail": "definer search_path=pg_catalog, public a22fc25f905b8b00c60d10196c88c617"
  },
  {
   "kind": "function",
@@ -1772,7 +1782,7 @@
  {
   "kind": "function",
   "object": "public.user_profiles_guard()",
-  "detail": "definer search_path=pg_catalog, public 660aee364ebf360ae68bbefb5ff0a503"
+  "detail": "definer search_path=pg_catalog, public 2a9b1c70e61c8a4411928f71da9c1dbb"
  },
  {
   "kind": "function",
@@ -1956,6 +1966,16 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.admin_may_edit_profile(p_user uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.admin_may_read_profile(p_user uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.admin_mfa_overview()",
   "detail": "authenticated,service_role"
  },
@@ -1987,7 +2007,7 @@
  {
   "kind": "function-grant",
   "object": "public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)",
-  "detail": "authenticated,service_role"
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -4587,12 +4607,12 @@
  {
   "kind": "policy",
   "object": "public.user_profiles :: Admins read org members",
-  "detail": "PERMISSIVE SELECT authenticated 07a9520e16ddfc3b1da2b2023ebca1a8"
+  "detail": "PERMISSIVE SELECT authenticated 0693267feac222b3331bdd16d90d7457"
  },
  {
   "kind": "policy",
   "object": "public.user_profiles :: Admins update org members",
-  "detail": "PERMISSIVE UPDATE authenticated 74d2b913540c22e73fd27b02477f901e"
+  "detail": "PERMISSIVE UPDATE authenticated 89014acfdda3643ef036e8113e82347d"
  },
  {
   "kind": "policy",

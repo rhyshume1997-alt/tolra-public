@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import type { Role, SyntheticUser, SyntheticWorld } from "../support/fixtures";
 import { E2E_WORLD_FILE } from "./paths";
@@ -54,6 +54,46 @@ export async function signIn(page: Page, user: SyntheticUser) {
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
   }
   await expect(page).toHaveURL(/\/dashboard/);
+}
+
+let aal2Count = 0;
+
+/**
+ * A new admin of `tenant` who has passed the second step in the browser (aal2), on this page. Creating a user and giving or taking
+ * admin (audit Z1), Set password, Reset two-step sign-in (093, audit item 4) and Disable sign-in always need it, even on this server
+ * (REQUIRE_ADMIN_MFA off). The authenticator is enrolled through the Auth API; the code is entered on /mfa. An earlier sign-in on the
+ * page is dropped first, or /login would send the browser straight back to the dashboard. Returns the page's request context.
+ */
+export async function aal2Admin(page: Page, tenant: "alpha" | "beta" = "alpha") {
+  const { adminClient, signedInClient } = await import("../support/fixtures");
+  const { enrolTotp, totpCode } = await import("../support/totp");
+  const { generatePassword } = await import("@/lib/password");
+  aal2Count += 1;
+  // The worker index keeps e-mails unique when a test runs again in a new worker (a retry), where the count restarts at 0.
+  const email = `aal2admin${aal2Count}-${test.info().workerIndex}.${world().runId}@example.test`;
+  const password = generatePassword(14);
+  const admin = adminClient();
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error || !data.user) throw new Error(error?.message);
+  const { error: addError } = await admin.rpc("add_member", { p_org: world().tenants[tenant].id, p_email: email, p_role: "admin" });
+  if (addError) throw new Error(addError.message);
+  const { secret } = await enrolTotp(await signedInClient({ email, password }));
+  // A fresh 30-second window, so the code entered below is not the one used to enrol.
+  const used = totpCode(secret);
+  while (totpCode(secret) === used) await page.waitForTimeout(1000);
+  await page.context().clearCookies();
+  await asSeparateDevice(page);
+  await page.goto("/login");
+  await page.getByLabel("Username or email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL(/\/(select-role|dashboard|mfa)/, { timeout: 45_000 });
+  await page.goto("/mfa");
+  await expect(page.getByRole("heading", { name: "Enter your code" })).toBeVisible();
+  await page.getByLabel("6-digit code").fill(totpCode(secret));
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.waitForURL(/\/(dashboard|select-role)/, { timeout: 30_000 });
+  return page.request;
 }
 
 /**
