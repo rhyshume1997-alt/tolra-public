@@ -114,7 +114,7 @@ export type RevenueCompare = { previous: number | null; change: number | null; d
 /**
  * This month's money received so far against all of last month: the last two points of the Revenue panel (the Dashboard's six months
  * from invoice_payments, by the date received), so the tile, the line and this comparison are one read. `change` is null when last
- * month had nothing to compare with.
+ * month had nothing to compare with (nothing received, or netted below zero).
  */
 export function revenueVsLastMonth(revenue: Array<{ month: string; revenue: number }> | null, loading: boolean, money: (value: number) => string): RevenueCompare {
   if (loading) return { previous: null, change: null, detail: LOADING, failed: false };
@@ -122,7 +122,10 @@ export function revenueVsLastMonth(revenue: Array<{ month: string; revenue: numb
   const { revenue: current } = revenue[revenue.length - 1];
   const { month, revenue: previous } = revenue[revenue.length - 2];
   if (previous === 0) return { previous, change: null, detail: `Nothing received in ${month}`, failed: false };
-  const change = Math.round(((current - previous) / previous) * 100);
+  // Reversals are negative payment rows, so a month can net below zero; a percentage of that would flip its sign.
+  if (previous < 0) return { previous, change: null, detail: `${month} netted below zero`, failed: false };
+  let change = Math.round(((current - previous) / previous) * 100);
+  if (change === -100 && current > 0) change = -99; // something was received, so never "100% below"
   const detail = change === 0 ? `So far level with ${month} (${money(previous)})` : `So far ${Math.abs(change)}% ${change > 0 ? "above" : "below"} ${month} (${money(previous)})`;
   return { previous, change, detail, failed: false };
 }
@@ -139,7 +142,8 @@ export function fleetLoad(machines: Array<{ booked: number; available: number }>
   if (!machines) return { percent: null, free: null, detail: FAILED, failed: true };
   const available = machines.reduce((sum, m) => sum + m.available, 0);
   if (available <= 0) return { percent: null, free: null, detail: "No machine hours set up.", failed: false };
-  const booked = machines.reduce((sum, m) => sum + m.booked, 0);
+  // A machine with no working days has no hours to book against, so its bookings stay out of the figure (as on its bar).
+  const booked = machines.reduce((sum, m) => sum + (m.available > 0 ? m.booked : 0), 0);
   const percent = Math.round((booked / available) * 100);
   const free = Math.round(machines.reduce((sum, m) => sum + Math.max(0, m.available - m.booked), 0));
   return { percent, free, detail: `${percent}% of available hours booked · ${free}h free`, failed: false };

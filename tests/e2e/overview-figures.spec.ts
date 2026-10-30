@@ -10,6 +10,9 @@ import { signIn, world } from "./helpers";
 
 const w = world();
 
+// The app's Revenue months follow the browser's own month, so the browser runs on London time like the dates below.
+test.use({ timezoneId: "Europe/London" });
+
 const london = (offsetDays: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + offsetDays * 86_400_000));
 // Noon UTC on a London date, so "N days" is the same at any hour (see attention.spec.ts).
 const stamp = (offsetDays: number) => new Date(Date.parse(`${london(0)}T12:00:00Z`) + offsetDays * 86_400_000).toISOString();
@@ -33,8 +36,8 @@ test("the Overview's figures count the seeded rows exactly", async ({ page }) =>
   await ok(db.from("machine_bookings").insert({ organization_id: org, machine_id: machine!.id, job_id: job!.id, job_no: "J-BOOKED", description: "Booked", start_at: monday.toISOString(), estimated_hours: 10 }));
 
   // £1,000 received last month and £1,500 so far this month: 50% above last month.
-  const now = new Date();
-  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+  const [year, month] = london(0).split("-").map(Number);
+  const lastMonth = new Date(Date.UTC(year, month - 2, 15, 12));
   const lastMonthKey = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit" }).format(lastMonth);
   const lastMonthLabel = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "Europe/London" }).format(lastMonth);
   const { data: invoice } = await db.from("invoices").insert({ organization_id: org, invoice_ref: "INV-FIGURES", customer: "Acme", status: "sent", total: 2500, subtotal: 2500, vat: 0, vat_enabled: false, invoice_date: `${lastMonthKey}-10` }).select("id").single();

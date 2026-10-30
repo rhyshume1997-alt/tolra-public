@@ -117,6 +117,13 @@ describe("owner overview figures", () => {
     expect(revenueVsLastMonth(months([0, 0, 0, 0, 0, 500]), false, money)).toEqual({ previous: 0, change: null, detail: "Nothing received in Sep", failed: false });
   });
 
+  it("a last month that netted below zero (reversals) is not compared with, and a tiny amount is never '100% below'", () => {
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, -100, 500]), false, money)).toEqual({ previous: -100, change: null, detail: "Sep netted below zero", failed: false });
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, -100, 0]), false, money).detail).toBe("Sep netted below zero");
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, 100000, 1]), false, money)).toMatchObject({ change: -99, detail: "So far 99% below Sep (£100,000)" });
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, 100000, 0]), false, money)).toMatchObject({ change: -100, detail: "So far 100% below Sep (£100,000)" });
+  });
+
   it("the revenue comparison is a dash while loading and says so when the payments read failed", () => {
     expect(revenueVsLastMonth(null, true, money)).toEqual({ previous: null, change: null, detail: "Loading…", failed: false });
     expect(revenueVsLastMonth(null, false, money)).toEqual({ previous: null, change: null, detail: "Couldn't load this.", failed: true });
@@ -127,6 +134,11 @@ describe("owner overview figures", () => {
     expect(fleet).toEqual({ percent: 56, free: 50, detail: "56% of available hours booked · 50h free", failed: false });
     expect(fleetLoad([{ booked: 0, available: 40 }], false)).toMatchObject({ percent: 0, free: 40 });
     expect(fleetLoad([], false)).toEqual({ percent: null, free: null, detail: "No machine hours set up.", failed: false });
+  });
+
+  it("a machine with no working days adds no booked hours, so the fleet agrees with the bars", () => {
+    expect(fleetLoad([{ booked: 10, available: 40 }, { booked: 30, available: 0 }], false)).toEqual({ percent: 25, free: 30, detail: "25% of available hours booked · 30h free", failed: false });
+    expect(fleetLoad([{ booked: 30, available: 0 }], false)).toEqual({ percent: null, free: null, detail: "No machine hours set up.", failed: false });
   });
 
   it("the machine figure is a dash while loading and says so when the machines or bookings read failed", () => {
