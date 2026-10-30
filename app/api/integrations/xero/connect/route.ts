@@ -13,6 +13,10 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
+  // Support access (the platform owner inside a company, read-only or elevated) never connects Xero (Rhys, Wed 21 Oct: Xero is an
+  // admin's), refused before any Xero or database call, as on disconnect, mappings and send. The database's support_read_only trigger
+  // stops only a read-only session; an elevated one would otherwise get through.
+  if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
   const ready = xeroReady();
   if (!ready) return jsonError("Xero is not set up on this server yet.", 503);
   try {
