@@ -15,6 +15,7 @@ import { type BankDetails, EMPTY_BANK_DETAILS, parseBankDetails } from "@/lib/ba
 import { companyLogoUrl, isHexColour } from "@/lib/branding";
 import type { ShellBrand } from "@/lib/brand-pending";
 import { DEMO_MODE } from "@/lib/demo";
+import { type PrintLayout, parsePrintLayout, withStoredPrintLayout } from "@/lib/print-layout";
 import { supabase } from "@/lib/supabase";
 
 export type CompanyProfile = {
@@ -78,6 +79,9 @@ export type CompanyProfile = {
    *  Optional: a profile saved before per-day hours has none, and every work day then uses workStart..workEnd. Whenever it is saved,
    *  workStart/workEnd/workDays are saved with it (the earliest start, the latest end, the worked days) so older readers keep working. */
   workHoursByDay?: Record<number, DayHours>;
+  /** The job worksheet print layout an admin chose (Settings > Print layout; lib/print-layout). Absent: never chosen, so the company's
+   *  default applies. saveCompanyProfile keeps whatever the stored row holds, even while the rest of the profile is incomplete. */
+  printLayout?: PrintLayout;
 };
 
 /** One day's working hours ("HH:MM"; an end of "24:00" is midnight). */
@@ -263,6 +267,7 @@ export function parseCompanyProfile(value: unknown): CompanyProfile | null {
     bankDetails: parseBankDetails(v.bankDetails),
     showCreditsInBalance: v.showCreditsInBalance === true,
     ...parseWorkingHours(v),
+    ...(parsePrintLayout(v.printLayout) ? { printLayout: parsePrintLayout(v.printLayout) as PrintLayout } : {}),
   };
   const complete = REQUIRED.every((k) => (Array.isArray(profile[k]) ? (profile[k] as string[]).length > 0 : Boolean(profile[k])))
     // A VAT-registered company must print its VAT number.
@@ -313,12 +318,18 @@ export async function loadOrgLogo(organizationId: string | null | undefined, pat
   }
 }
 
-/** Writes the organisation's company profile (never the resolved logo image or its URL) and reloads it. */
+/**
+ * Writes the organisation's company profile (never the resolved logo image or its URL) and reloads it. The print layout is saved on
+ * its own (Settings > Print layout, lib/print-layout) and is kept from the stored row, which can hold it even while the rest of the
+ * profile is incomplete (parseCompanyProfile null): this save merges it back rather than replacing it.
+ */
 export async function saveCompanyProfile(organizationId: string, next: Omit<CompanyProfile, "logoSrc">) {
   if (!supabase) throw new Error("Supabase is not configured.");
+  const { data: stored, error: readError } = await supabase.from("organization_settings").select("company_profile").eq("organization_id", organizationId).maybeSingle();
+  if (readError) throw readError;
   const { error } = await supabase
     .from("organization_settings")
-    .upsert({ organization_id: organizationId, company_profile: next, updated_at: new Date().toISOString() }, { onConflict: "organization_id" });
+    .upsert({ organization_id: organizationId, company_profile: withStoredPrintLayout(next, (stored as { company_profile?: unknown } | null)?.company_profile), updated_at: new Date().toISOString() }, { onConflict: "organization_id" });
   if (error) throw error;
   await loadCompanyProfile(true);
 }

@@ -42,11 +42,13 @@ describe("dashboard display: one definition", () => {
     };
     group("function AdminDashboard", ["open-jobs", "open-quotes"]);
     group("const stats = ", ["this-month-revenue", "quotes-sent", "jobs-late-on-time", "avg-days-to-pay"]);
-    group("function WorkshopDashboard", ["jobs-running", "due-this-week", "delivery-notes", "my-jobs", "needs-attention"]);
+    group("function WorkshopDashboard", ["jobs-running", "due-this-week", "delivery-notes", "my-jobs", "needs-attention", "whole-floor"]);
     const workshop = page.slice(page.indexOf("function WorkshopDashboard"), page.indexOf("function ApprovalLink"));
     expect(workshop.indexOf('isVisible("needs-attention")')).toBeLessThan(workshop.indexOf("showPriority ? <Card>"));
     expect(workshop.indexOf("showPriority ? <Card>")).toBeLessThan(workshop.indexOf("showSchedule ? <Card>"));
-    expect(dashboardTileKeysFor("workshop").slice(-2)).toEqual(["priority-jobs", "workshop-schedule"]);
+    // Whole floor comes last, after the Priority jobs and schedule cards.
+    expect(workshop.indexOf("showSchedule ? <Card>")).toBeLessThan(workshop.indexOf('isVisible("whole-floor")'));
+    expect(dashboardTileKeysFor("workshop").slice(-3)).toEqual(["priority-jobs", "workshop-schedule", "whole-floor"]);
     // Office render: KPIs, then the chart, then the stat row, then Needs attention and Quote pipeline.
     const render = page.slice(page.indexOf("{shownKpis.length ? <section", page.indexOf("function AdminDashboard")), page.indexOf("function MaybeLink"));
     const at = ["shownKpis.length", 'isVisible("revenue-trend")', "stats.length ?", "showAttention ? <AttentionList", "showPipeline ? pipelinePanel"].map((m) => render.indexOf(m));

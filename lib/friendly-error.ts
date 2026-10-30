@@ -2,6 +2,8 @@
  * Turns an error into a message that is safe to show users. Raw database
  * messages reveal table/column/policy names, so they are logged, not shown.
  */
+import { COMPANY_CHANGED_MESSAGE } from "@/lib/page-company";
+
 const KNOWN: Record<string, string> = {
   "23505": "That number or name is already in use. Refresh and try again.",
   "23503": "This record is linked to something that no longer exists.",
@@ -59,6 +61,8 @@ const KNOWN_HINTS: Record<string, string> = {
   sales_order_converted: "Converted to a job: change the job, not the order.",
   // 091: a draft invoice gets its number and leaves draft only through Issue invoice.
   invoice_issue_direct: "A draft invoice is issued with Issue invoice, which gives it the next number. Its number and status can't be set by editing it.",
+  // S5: another tab switched the session's company since this page opened (lib/page-company.ts): nothing was saved.
+  company_changed: COMPANY_CHANGED_MESSAGE,
 };
 
 export function friendlyError(err: unknown, fallback = "Something went wrong. Try again.") {

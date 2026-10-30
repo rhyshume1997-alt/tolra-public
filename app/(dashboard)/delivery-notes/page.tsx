@@ -49,6 +49,7 @@ import { esc } from "@/lib/html";
 import { deliveryNoteNumberForInvoice } from "@/lib/numbering";
 import { openPrintPack } from "@/lib/print-pack";
 import { useColumnVisibility } from "@/lib/org-settings";
+import { confirmPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { JobPicker } from "@/components/job-picker";
 import { type PickerJob, jobSurvivesCustomerChange } from "@/lib/job-picker";
@@ -477,6 +478,9 @@ export default function DeliveryNotesPage() {
           notes: String(form.get("notes") || ""),
           items: String(form.get("items") || "").split("\n").map((line) => line.trim()).filter(Boolean).map(parseItemLine),
         });
+        // next_doc_number and create_with_lines file it in the session's company: refused if another tab switched it since this page
+        // opened (S5).
+        await confirmPageCompany(supabase);
         let ref: string;
         if (input.invoiceRef) {
           try {

@@ -16,6 +16,8 @@ import { ColumnToggle } from "@/components/column-toggle";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
 import { useViewMode } from "@/lib/view-mode";
+import { CompactInvoiceList } from "@/components/invoices/compact-invoice-list";
+import { useCompactList } from "@/lib/compact-list-pref";
 import { RoleGate } from "@/components/role-gate";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
@@ -91,6 +93,7 @@ import { companyVat, fromVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
 import { VatTotals } from "@/components/vat-totals";
 import { useColumnVisibility } from "@/lib/org-settings";
+import { confirmPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { JobPicker } from "@/components/job-picker";
 import { type PickerJob, invoiceFieldsFromJob, jobSurvivesCustomerChange } from "@/lib/job-picker";
@@ -276,6 +279,7 @@ export default function InvoicesPage() {
   const { isVisible } = useColumnVisibility("invoices");
   // Cards / List / Table, remembered per person (lib/view-mode; styles in app/globals.css [data-view]).
   const [view, setView] = useViewMode("invoices", "table");
+  const [compact, setCompact] = useCompactList("invoices");
   const { profile: company } = useCompanyProfile();
   const vat = companyVat(company);
   const { saving, run } = useSaving();
@@ -698,6 +702,8 @@ export default function InvoicesPage() {
         const totals = documentTotals(input.lines.map((l, i) => ({ quantity: l.quantity, unitPrice: l.unitPrice, ...lineVats[i] })), input.carriage,
           { vatEnabled: vatOn, carriageVat: true, standardRate: profile.defaultVatRate });
         // A draft: no number yet. Issuing gives it the next INV number (issue_invoice, migration 027).
+        // create_with_lines files it in the session's company: refused if another tab switched it since this page opened (S5).
+        await confirmPageCompany(supabase);
         const { data: newId, error } = await supabase.rpc("create_with_lines", {
           p_parent: "invoices",
           p_header: {
@@ -1199,7 +1205,7 @@ export default function InvoicesPage() {
             <Send className="size-4" /> Chase All Overdue
           </Button>
           <Button variant="outline" onClick={() => setFromNotesOpen(true)}>Invoice from Delivery Notes</Button>
-          <ColumnToggle tableKey="invoices" /><ViewSwitcher value={view} onChange={setView} />
+          <ColumnToggle tableKey="invoices" /><Button type="button" variant="outline" size="sm" className="min-h-9" aria-pressed={compact} onClick={() => setCompact(!compact)}>Compact list</Button><ViewSwitcher value={view} onChange={setView} />
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New invoice</Button>
@@ -1363,6 +1369,8 @@ export default function InvoicesPage() {
           hintTestId={invoices.length ? undefined : "empty-hint"}
           action={invoices.length ? <Button variant="outline" onClick={() => setFilters(new Set(["all"]))}>Show all</Button> : <Button className="bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => setOpen(true)}><Plus className="size-4" /> New invoice</Button>}
         />
+      ) : compact ? (
+        <CompactInvoiceList rows={visibleInvoices} onOpen={setViewingInvoice} />
       ) : (
         <Card>
           <CardContent className="p-0">

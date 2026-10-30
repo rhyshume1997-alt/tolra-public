@@ -197,6 +197,40 @@ describe("error alert budget (claim_error_alert)", () => {
   });
 });
 
+describe("browser error alert budget (claim_browser_error_alert, 115)", () => {
+  const person = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const company = (n: number) => `00000000-0000-4000-8000-${String(1000 + n).padStart(12, "0")}`;
+  const fp = (n: number) => n.toString(16).padStart(12, "0");
+  const browser = (f: number, u: number, c: number | null) => adminClient().rpc("claim_browser_error_alert", { p_fingerprint: fp(f), p_user_id: person(u), p_company_id: c === null ? null : company(c) });
+  const server = (f: number) => adminClient().rpc("claim_error_alert", { p_fingerprint: fp(f) });
+  const clear = () => withDb((db) => db.query("delete from security_audit.browser_error_alerts; delete from security_audit.error_alerts"));
+
+  it("5 a day per person, 10 per company, 20 in all, once per fingerprint per hour; resets the next day; only the service role can ask", async () => {
+    await clear();
+    for (let i = 1; i <= 5; i += 1) expect((await browser(i, 1, 1)).data).toBe(true);
+    expect((await browser(6, 1, 1)).data).toBe(false);
+    expect((await browser(1, 2, 1)).data).toBe(false); // same error within the hour, whoever posts it
+    for (let i = 7; i <= 11; i += 1) expect((await browser(i, 2, 1)).data).toBe(true);
+    expect((await browser(12, 3, 1)).data).toBe(false); // company 1 has had 10
+    expect((await browser(13, 4, 2)).data).toBe(true); // another company
+    await withDb((db) => db.query("update security_audit.browser_error_alerts set claimed_at = now() - interval '25 hours'"));
+    expect((await browser(14, 1, 1)).data).toBe(true); // next day
+    // Browser claims never use the server's 20, and the server's 20 never stops a browser claim.
+    await clear();
+    for (let u = 1; u <= 4; u += 1) for (let i = 1; i <= 5; i += 1) expect((await browser(u * 10 + i, u, u)).data).toBe(true);
+    expect((await browser(99, 5, 5)).data).toBe(false);
+    for (let i = 1; i <= 20; i += 1) expect((await server(500 + i)).data).toBe(true);
+    expect((await server(600)).data).toBe(false);
+    await clear();
+    expect((await browser(1, 1, 1)).data).toBe(true);
+    // Nobody else can ask; bad input is refused.
+    expect((await clients.get("admin")!.rpc("claim_browser_error_alert", { p_fingerprint: fp(1), p_user_id: person(1), p_company_id: null })).error).not.toBeNull();
+    expect((await adminClient().rpc("claim_browser_error_alert", { p_fingerprint: "not-a-hash", p_user_id: person(1), p_company_id: null })).error).toMatchObject({ code: "22023" });
+    expect((await withDb((db) => db.query("select column_name from information_schema.columns where table_schema = 'security_audit' and table_name = 'browser_error_alerts' order by 1"))).rows.map((r) => r.column_name)).toEqual(["claimed_at", "company_id", "fingerprint", "id", "user_id"]);
+    await clear();
+  });
+});
+
 describe("payments of another company never reach the year-end export's input", () => {
   it("a second company's payments (and invoices) are invisible to the first company's admin, whichever way they ask", async () => {
     const betaAdmin = await signedInClient(world.tenants.beta.users.admin);

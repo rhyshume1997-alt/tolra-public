@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { writeAiAudit } from "@/lib/ai/finance-check/audit";
 import { documentVisible, sessionReader } from "@/lib/ai/finance-check/load";
+import { FINANCE_CHECK_COMPANY_OFF, companyFinanceCheckEnabled } from "@/lib/ai/finance-check/flag";
 import { FINANCE_CHECK_ROLES, decisionRequestSchema } from "@/lib/ai/finance-check/request";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
   const auth = await requireProfile([...FINANCE_CHECK_ROLES]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't run the finance check.", 403);
+  // The company's own switch (an admin sets it in the AI section). Off, or not readable (no column yet): refused before any read or audit.
+  if (!(await companyFinanceCheckEnabled(auth.supabase, auth.profile.organization_id))) return NextResponse.json(FINANCE_CHECK_COMPANY_OFF, { status: 403 });
 
   const json = await readJson(request, 4 * 1024);
   if (!json.ok) return json.response;
