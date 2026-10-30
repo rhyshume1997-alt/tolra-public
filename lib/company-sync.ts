@@ -33,6 +33,16 @@ export function companyChangedElsewhere(liveOrgId: string | null | undefined, no
   return !!liveOrgId && !!now.organization_id && !!now.role && now.organization_id !== liveOrgId;
 }
 
+/**
+ * Another tab switched company (and did not remove this person from this one): the server answers for another company AND this
+ * tab's company is still among the person's active organisations (my_organizations). If it is not, the person was removed from
+ * it and the server fell back to their only other company (036 _session_membership): that is not a switch to follow, the access
+ * rules end this tab's access (decideAccess "moved").
+ */
+export function followsCompanySwitch(liveOrgId: string | null | undefined, now: { organization_id: string | null; role: string | null }, activeOrganizations: Array<{ organization_id: string }>): boolean {
+  return companyChangedElsewhere(liveOrgId, now) && activeOrganizations.some((org) => org.organization_id === liveOrgId);
+}
+
 type StorageTarget = {
   addEventListener: (type: "storage", listener: (event: StorageEvent) => void) => void;
   removeEventListener: (type: "storage", listener: (event: StorageEvent) => void) => void;

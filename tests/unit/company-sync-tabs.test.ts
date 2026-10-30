@@ -138,6 +138,32 @@ describe("company switched in another tab", () => {
   });
 });
 
+describe("removed from this tab's company while the server falls back to another one", () => {
+  it("removed from X with one other active company Y: not a switch to follow; access ends (moved) and the device copy is suspended", async () => {
+    const a = await openTab("A");
+    const { decideAccess } = await import("@/lib/access-recheck");
+    const { suspendOfflineAccess } = await import("@/lib/offline/scope");
+    // 036 _session_membership: the chosen company X is no longer usable, so the session falls back to the only other one, Y.
+    const now = { organization_id: "org-y", role: "office" };
+    const stillActive = [{ organization_id: "org-y" }]; // my_organizations: X is gone
+    expect(a.sync.companyChangedElsewhere("org-x", now)).toBe(true);
+    expect(a.sync.followsCompanySwitch("org-x", now, stillActive)).toBe(false);
+    // What use-user then does: decideAccess says end/"moved", endAccess suspends this person's offline access on the device.
+    expect(decideAccess({ role: "office", secondary_role: null, organization_id: "org-x" }, { signedIn: true, profile: { active: true, organization_id: "org-y" }, membership: null })).toEqual({ kind: "end", reason: "moved" });
+    expect(a.access.offlineAccessBlocked("u-removed")).toBe(false);
+    suspendOfflineAccess("u-removed");
+    expect(a.access.offlineAccessBlocked("u-removed")).toBe(true);
+  });
+
+  it("a real switch (X still among the active companies) is followed", async () => {
+    const a = await openTab("A");
+    const both = [{ organization_id: "org-x" }, { organization_id: "org-y" }];
+    expect(a.sync.followsCompanySwitch("org-x", { organization_id: "org-y", role: "office" }, both)).toBe(true);
+    expect(a.sync.followsCompanySwitch("org-x", { organization_id: "org-x", role: "office" }, both)).toBe(false);
+    expect(a.sync.followsCompanySwitch("org-x", { organization_id: "org-y", role: "office" }, [])).toBe(false);
+  });
+});
+
 describe("sign-out in another tab", () => {
   it("tab A signing out asks tab B to check at once, and a tab with no signed-in person ignores signals", async () => {
     const a = await openTab("A");
