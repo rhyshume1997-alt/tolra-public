@@ -37,7 +37,7 @@
  {
   "kind": "function",
   "object": "public._session_membership()",
-  "detail": "definer search_path=pg_catalog, public d73a1ed9f36cf3fe8a744405ba2beaec"
+  "detail": "definer search_path=pg_catalog, public a0bd0d916688d8ea245620149bd64bc5"
  },
  {
   "kind": "function",
