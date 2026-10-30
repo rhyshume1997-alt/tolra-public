@@ -91,6 +91,7 @@ import { companyVat, fromVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
 import { VatTotals } from "@/components/vat-totals";
 import { useColumnVisibility } from "@/lib/org-settings";
+import { confirmPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { JobPicker } from "@/components/job-picker";
 import { type PickerJob, invoiceFieldsFromJob, jobSurvivesCustomerChange } from "@/lib/job-picker";
@@ -698,6 +699,8 @@ export default function InvoicesPage() {
         const totals = documentTotals(input.lines.map((l, i) => ({ quantity: l.quantity, unitPrice: l.unitPrice, ...lineVats[i] })), input.carriage,
           { vatEnabled: vatOn, carriageVat: true, standardRate: profile.defaultVatRate });
         // A draft: no number yet. Issuing gives it the next INV number (issue_invoice, migration 027).
+        // create_with_lines files it in the session's company: refused if another tab switched it since this page opened (S5).
+        await confirmPageCompany(supabase);
         const { data: newId, error } = await supabase.rpc("create_with_lines", {
           p_parent: "invoices",
           p_header: {
