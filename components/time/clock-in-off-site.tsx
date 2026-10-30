@@ -47,9 +47,14 @@ export function useClockInOffSite() {
 export function ClockInOffSiteToggle({ userId, name, state }: { userId: string; name: string; state: ReturnType<typeof useClockInOffSite> }) {
   if (!state.available || !state.allowed) return null;
   return (
-    <label className="mt-1 flex w-fit items-center gap-1.5 text-xs text-slate-600" data-testid="clock-in-off-site" title="While clock-in is locked to the workshop network (Settings), only people ticked here can clock in from another network.">
-      <input type="checkbox" checked={state.allowed.has(userId)} disabled={state.saving === userId} onChange={(e) => void state.set(userId, name, e.target.checked)} />
-      Can clock in off site (while the network lock is on)
-    </label>
+    <div className="mt-1">
+      <label className="flex w-fit items-center gap-1.5 text-xs text-slate-600" data-testid="clock-in-off-site" title="While clock-in is locked to the workshop network (Settings), only people ticked here can clock in from another network.">
+        <input type="checkbox" checked={state.allowed.has(userId)} disabled={state.saving === userId} onChange={(e) => void state.set(userId, name, e.target.checked)} />
+        Can clock in off site (while the network lock is on)
+      </label>
+      <p className="text-[11px] text-slate-500" data-testid="clock-in-off-site-note">
+        A worker who forgets to clock out cannot clock out from home while locked; the office corrects it or an admin marks them off-site.
+      </p>
+    </div>
   );
 }
