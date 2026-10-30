@@ -59,6 +59,11 @@ const KNOWN_HINTS: Record<string, string> = {
   sales_order_converted: "Converted to a job: change the job, not the order.",
   // 091: a draft invoice gets its number and leaves draft only through Issue invoice.
   invoice_issue_direct: "A draft invoice is issued with Issue invoice, which gives it the next number. Its number and status can't be set by editing it.",
+  // 110: logging an RFQ clarification e-mail (the e-mail and the RFQ's status in one step).
+  rfq_not_allowed: "Only admin and office staff can log RFQ e-mails.",
+  rfq_not_found: "That RFQ couldn't be found. Refresh the page and try again.",
+  rfq_no_email: "This RFQ has no email address. Add one before sending.",
+  rfq_email_subject: "The e-mail needs a subject.",
 };
 
 export function friendlyError(err: unknown, fallback = "Something went wrong. Try again.") {

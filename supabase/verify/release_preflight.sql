@@ -118,7 +118,8 @@ markers(migration, present) AS (
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
     ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'user_preferences' AND column_name = 'date_format'))
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'user_preferences' AND column_name = 'date_format')),
+    ('110 rfq clarification in one step',  EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_rfq_clarification'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
