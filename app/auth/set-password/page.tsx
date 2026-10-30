@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PASSWORD_RULES, passwordProblem } from "@/lib/password";
+import { type LinkDecision, type SetPasswordLink, confirmQuestion, linkDecision, readSetPasswordLink } from "@/lib/set-password-link";
 import { supabase } from "@/lib/supabase";
 import { PRODUCT } from "@/lib/product";
 
@@ -18,30 +18,38 @@ import { PRODUCT } from "@/lib/product";
 // Once a session exists the user chooses a password, and is then sent into the app.
 // ?required=1: no link at all. The person signed in with a password an admin set, and must choose their own first
 // (the middleware sends every page here until they do).
+// Only invite and reset links are used, and a link never silently replaces another account signed in here (lib/set-password-link.ts).
 
-type Stage = "checking" | "ready" | "invalid" | "saving";
+type Stage = "checking" | "confirm" | "ready" | "invalid" | "saving";
 
-const OTP_TYPES: EmailOtpType[] = ["invite", "recovery", "signup", "magiclink", "email"];
+type Checked = { error: string } | { link: SetPasswordLink | null; decision: LinkDecision | null };
 
-async function establishSession(): Promise<string | null> {
-  if (!supabase) return "Supabase is not configured.";
+/** Reads and judges the link before anything is verified: its own error, a refused type, or who is signed in here already. */
+async function checkLink(): Promise<Checked> {
+  if (!supabase) return { error: "Supabase is not configured." };
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(window.location.search);
 
   const linkError = hash.get("error_description") || query.get("error_description");
-  if (linkError) return linkError.replace(/\+/g, " ");
+  if (linkError) return { error: linkError.replace(/\+/g, " ") };
 
-  const tokenHash = query.get("token_hash");
-  const type = query.get("type") as EmailOtpType | null;
-  if (tokenHash && type && OTP_TYPES.includes(type)) {
-    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  const link = readSetPasswordLink(window.location.search, window.location.hash);
+  if (link === "refused") return { error: "This link can't be used to choose a password. Use the newest invite or password reset email." };
+  if (!link) return { link: null, decision: null };
+  // Never leave tokens in the address bar or browser history: from here the link is kept in memory only.
+  window.history.replaceState(null, "", window.location.pathname);
+  const { data } = await supabase.auth.getUser();
+  return { link, decision: linkDecision(link, data.user ? { id: data.user.id, email: data.user.email ?? null } : null) };
+}
+
+/** Uses the link (replacing this browser's session), then checks that a session exists. */
+async function applyLink(link: SetPasswordLink | null): Promise<string | null> {
+  if (!supabase) return "Supabase is not configured.";
+  if (link?.kind === "otp") {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: link.tokenHash, type: link.type });
     if (error) return error.message;
-  }
-
-  const accessToken = hash.get("access_token");
-  const refreshToken = hash.get("refresh_token");
-  if (accessToken && refreshToken) {
-    const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+  } else if (link?.kind === "tokens") {
+    const { error } = await supabase.auth.setSession({ access_token: link.accessToken, refresh_token: link.refreshToken });
     if (error) return error.message;
   }
 
@@ -60,24 +68,51 @@ export default function SetPasswordPage() {
   const [email, setEmail] = useState("");
   const [required, setRequired] = useState(false);
   const [partial, setPartial] = useState(false);
+  // Another account is signed in here: the link waits (in memory) until the person chooses.
+  const [pending, setPending] = useState<{ link: SetPasswordLink; decision: Extract<LinkDecision, { action: "confirm" }> } | null>(null);
+
+  /** Uses the link and shows the form, or says why it can't. */
+  async function establish(link: SetPasswordLink | null, cancelled: () => boolean = () => false) {
+    const error = await applyLink(link);
+    if (cancelled()) return;
+    if (error) {
+      setMessage(error);
+      setStage("invalid");
+      return;
+    }
+    const { data } = await supabase!.auth.getUser();
+    if (cancelled()) return;
+    setEmail(data.user?.email ?? "");
+    setStage("ready");
+  }
 
   useEffect(() => {
     let cancelled = false;
     setRequired(new URLSearchParams(window.location.search).get("required") === "1");
-    void establishSession().then(async (error) => {
+    void checkLink().then(async (checked) => {
       if (cancelled) return;
-      if (error) {
-        setMessage(error);
+      if ("error" in checked) {
+        setMessage(checked.error);
         setStage("invalid");
         return;
       }
-      const { data } = await supabase!.auth.getUser();
-      if (cancelled) return;
-      setEmail(data.user?.email ?? "");
-      setStage("ready");
+      if (checked.link && checked.decision?.action === "confirm") {
+        setPending({ link: checked.link, decision: checked.decision });
+        setStage("confirm");
+        return;
+      }
+      await establish(checked.link, () => cancelled);
     });
     return () => { cancelled = true; };
   }, []);
+
+  /** "Sign out and continue": this browser's session ends first, then the link is used. */
+  async function continueWithLink() {
+    if (!pending) return;
+    setStage("checking");
+    await supabase?.auth.signOut({ scope: "local" });
+    await establish(pending.link);
+  }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,6 +149,13 @@ export default function SetPasswordPage() {
         <h1 className="text-center text-2xl font-bold text-slate-950">Choose your password</h1>
         {required && stage !== "invalid" ? <p className="mt-2 text-center text-sm text-slate-600">Your administrator set a temporary password for you. Choose your own to continue.</p> : null}
         {stage === "checking" ? <p className="mt-6 text-center text-slate-500">Checking your link…</p> : null}
+        {stage === "confirm" && pending ? (
+          <div className="mt-6 space-y-4 text-center">
+            <div data-testid="link-other-account" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{confirmQuestion(pending.decision)}</div>
+            <Button className="h-12 w-full bg-brand text-brand-ink hover:bg-brand-hover" onClick={() => void continueWithLink()}>Sign out and continue</Button>
+            <Button variant="outline" className="h-12 w-full" onClick={() => router.replace("/dashboard")}>Stay signed in as {pending.decision.signedInAs}</Button>
+          </div>
+        ) : null}
         {stage === "invalid" ? (
           <div className="mt-6 space-y-4 text-center">
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{message}</div>
