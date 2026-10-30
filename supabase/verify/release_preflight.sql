@@ -121,7 +121,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reverse_write_off' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4750ac042335694164b634edca559f23')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = 'public.invoices'::regclass)),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
+    ('116 ban ends session',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'session_is_active' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'b9c4e5c7147e1c7893b4e586dae0be2e'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -329,7 +331,20 @@ checks(n, check_name, value, expected) AS (
     (to_regprocedure('public.assert_privileged_aal()') IS NOT NULL AND to_regprocedure('public._session_membership()') IS NOT NULL
      AND to_regprocedure('public.support_readonly_guard()') IS NOT NULL AND to_regclass('security_audit.audit_log') IS NOT NULL)::TEXT,
     'true (101 replaces no existing object; its tables are new)'
-  UNION ALL SELECT 45, '105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)',
+  UNION ALL SELECT 45, '116 needs: public.session_is_active is 017''s and _session_membership 036''s (or already 116''s); may read auth.users.banned_until',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '19fe21959a87cd880feb0fb0190980eb' THEN '017' WHEN 'af6457cae4d8b89cd34b5963574fbe58' THEN '116' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'session_is_active'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'a15c6833cefc4b752ceafce0a10730b2' THEN '036' WHEN 'b9c4e5c7147e1c7893b4e586dae0be2e' THEN '116' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = '_session_membership'), 'missing')
+    || ' / ' || CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until')
+                     THEN has_column_privilege(current_user, 'auth.users', 'banned_until', 'SELECT')::TEXT ELSE 'no banned_until column' END,
+    '017 / 036 / true before 116, 116 / 116 / true after (other: stop, 116 refuses to replace it)'
+  UNION ALL SELECT 46, '116 (informational): logins banned now that still hold an active membership (their open tokens stop working when 116 is applied)',
+    CASE WHEN NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until') THEN 'n/a'
+         ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(DISTINCT u.id) AS n FROM auth.users u JOIN public.organization_members m ON m.user_id = u.id
+                WHERE u.banned_until > now() AND m.active$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
+    'informational: report the figure (116 changes no row; those people already cannot sign in)'
+  UNION ALL SELECT 47, '105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)',
     CASE WHEN NOT EXISTS (SELECT 1 FROM col WHERE table_name = 'invoices' AND column_name = 'status') THEN 'n/a'
          ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(*) || ' / ' || count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM security_audit.audit_log a
                 WHERE a.action = 'WRITE_OFF_INVOICE' AND a.entity_table = 'invoices' AND a.entity_id = i.id::TEXT)) AS n

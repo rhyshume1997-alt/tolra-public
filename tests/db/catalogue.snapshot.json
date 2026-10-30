@@ -22,7 +22,7 @@
  {
   "kind": "function",
   "object": "public._session_membership()",
-  "detail": "definer search_path=pg_catalog, public 2205176822ae681e8934cdb69384f264"
+  "detail": "definer search_path=pg_catalog, public d73a1ed9f36cf3fe8a744405ba2beaec"
  },
  {
   "kind": "function",
@@ -1527,7 +1527,7 @@
  {
   "kind": "function",
   "object": "public.session_is_active()",
-  "detail": "definer search_path=pg_catalog, public 2a5914bba9f7998ee97f24d97118bb8e"
+  "detail": "definer search_path=pg_catalog, public 6d8fe540779491dd5f40ef63fecf4336"
  },
  {
   "kind": "function",
