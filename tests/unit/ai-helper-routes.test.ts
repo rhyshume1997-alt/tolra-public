@@ -9,7 +9,8 @@
  *   - Approve: the server rebuilds the draft from the STORED suggestion and prices it from the caller's company's own records; a
  *     tampered body (a price, an extra line, a quote id, another company's item or suggestion) can't change what is saved.
  *   - The key is encrypted before it reaches the database, never returned and never logged.
- *   - No service role, no direct table write, only the expected functions, only the expected env vars, in every helper file.
+ *   - The service role only in lib/ai-helper/server.ts, only after a reservation passed, only to read the company's key and to settle
+ *     (migration 102); no direct table write, only the expected functions, only the expected env vars, in every helper file.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -102,7 +103,46 @@ vi.mock("@/lib/server/auth", () => ({
     return { supabase, user: { id: "u-1" }, profile: { id: "u-1", organization_id: ORG, role: auth.role, secondary_role: null }, session: { support: auth.support } };
   }),
 }));
-vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => { throw new Error("service role used"); } }));
+/**
+ * The service role (migration 102): used by lib/ai-helper/server.ts only, after a reservation passed, to read this company's key and to
+ * settle. Its calls go into the same db.rpcs list (so the order status, reserve, settle is checked across both clients) and its own
+ * reads and created count; `configured: false` stands for SUPABASE_SERVICE_ROLE_KEY missing.
+ */
+const service = vi.hoisted(() => ({
+  configured: true,
+  created: 0,
+  reads: [] as Array<{ table: string; cols: string; filters: Array<[string, unknown]> }>,
+  rpcs: [] as string[],
+  keyEnc: null as string | null,
+  settle: null as null | ((args: Record<string, unknown>) => { data: unknown; error: unknown }),
+}));
+vi.mock("@/lib/server/supabase-admin", () => ({
+  createSupabaseAdminClient: () => {
+    if (!service.configured) return null;
+    service.created += 1;
+    return {
+      from: (table: string) => {
+        const read = { table, cols: "", filters: [] as Array<[string, unknown]> };
+        const q = {
+          select: (cols: string) => { read.cols = cols; return q; },
+          eq: (c: string, v: unknown) => { read.filters.push([c, v]); return q; },
+          maybeSingle: async () => {
+            service.reads.push(read);
+            const own = table === "ai_helper_secrets" && read.filters.some(([c, v]) => c === "organization_id" && v === ORG);
+            return { data: own && service.keyEnc ? { api_key_enc: service.keyEnc } : null, error: null };
+          },
+        };
+        return q;
+      },
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        db.rpcs.push({ fn, args });
+        service.rpcs.push(fn);
+        if (fn === "ai_helper_settle" && service.settle) return service.settle(args);
+        return { data: null, error: null };
+      },
+    };
+  },
+}));
 
 const model = vi.hoisted(() => ({ calls: 0 }));
 vi.mock("@/lib/ai-helper/mock", async (original) => {
@@ -140,7 +180,10 @@ beforeEach(() => {
   db.profile = { vatRegistered: true, defaultVatRate: 20 };
   engine.orgs = [];
   engine.parts = { [ORG]: [{ id: 7, part_number: "BR-100", unit: 12.5 }], [OTHER_ORG]: [{ id: 9, part_number: "BETA-1", unit: 0.01 }, { id: 10, part_number: "BR-100", unit: 0.01 }] };
-  db.reserve = () => ({ data: { ok: true, request_id: REQ, key_enc: encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" }) }, error: null });
+  // 102: reserve answers { ok, request_id } only; the key is read by the server with the service role.
+  db.reserve = () => ({ data: { ok: true, request_id: REQ }, error: null });
+  service.configured = true; service.created = 0; service.reads = []; service.rpcs = []; service.settle = null;
+  service.keyEnc = encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" });
   auth.role = "office"; auth.support = false; auth.calls = 0; auth.roles = [];
   model.calls = 0;
   attention.roles = []; attention.sections = [];
@@ -295,12 +338,69 @@ describe("RFQ email to draft quote", () => {
   });
 
   it("a key that can't be decrypted on this server: not available, settled as failed, no model call", async () => {
-    db.reserve = () => ({ data: { ok: true, request_id: REQ, key_enc: encryptSecret("sk-ant-x", { organizationId: "another-company", provider: "anthropic", purpose: "api_key" }) }, error: null });
+    service.keyEnc = encryptSecret("sk-ant-x", { organizationId: "another-company", provider: "anthropic", purpose: "api_key" });
     const res = await rfq(post({ text: GOOD_RFQ }));
     expect(res.status).toBe(503);
     expect((await res.json()).code).toBe("key_unreadable");
     expect(model.calls).toBe(0);
     expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable" });
+  });
+
+  it("102: the key is read with the service role, for the caller's company only, after the reservation passed; settle is the service role's", async () => {
+    const res = await rfq(post({ text: GOOD_RFQ }));
+    expect(res.status).toBe(200);
+    expect(service.reads).toEqual([{ table: "ai_helper_secrets", cols: "api_key_enc", filters: [["organization_id", ORG]] }]);
+    expect(service.rpcs).toEqual(["ai_helper_settle"]);
+    // The person's own session reserved; it never settled and never read the key.
+    expect(db.rpcs.filter((r) => r.fn === "ai_helper_reserve")).toHaveLength(1);
+    expect(db.reads.filter((r) => r.startsWith("ai_helper_secrets"))).toEqual([]);
+  });
+
+  it("102: a key in the reserve answer (an old database) is ignored; the stored key is what is used", async () => {
+    db.reserve = () => ({ data: { ok: true, request_id: REQ, key_enc: encryptSecret("sk-ant-x", { organizationId: "another-company", provider: "anthropic", purpose: "api_key" }) }, error: null });
+    expect((await rfq(post({ text: GOOD_RFQ }))).status).toBe(200);
+    expect(service.reads).toHaveLength(1);
+  });
+
+  it("102: no stored key (removed after the reservation): not available, settled as failed, no model call", async () => {
+    service.keyEnc = null;
+    const res = await rfq(post({ text: GOOD_RFQ }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe("key_unreadable");
+    expect(model.calls).toBe(0);
+    expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable" });
+  });
+
+  it("102: refused, off, cap or no key at reserve: the service role reads nothing and settles nothing", async () => {
+    for (const answer of [{ data: { ok: false, reason: "cap", request_id: REQ }, error: null }, { data: { ok: false, reason: "no_key", request_id: REQ }, error: null },
+      { data: null, error: { code: "42501", hint: "ai_helper_off" } }, { data: null, error: { code: "42501" } }]) {
+      db.reserve = () => answer;
+      await rfq(post({ text: GOOD_RFQ }));
+    }
+    expect(service.reads).toEqual([]);
+    expect(service.rpcs).toEqual([]);
+    expect(model.calls).toBe(0);
+  });
+
+  it("102: without the service role configured, nothing is reserved and no model is called", async () => {
+    service.configured = false;
+    const res = await rfq(post({ text: GOOD_RFQ }));
+    expect(res.status).toBe(503);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_status"]);
+    expect(model.calls).toBe(0);
+  });
+
+  it("102: workshop, viewer and support sessions never reach the service role", async () => {
+    for (const role of ["workshop", "viewer"]) {
+      auth.role = role;
+      await rfq(post({ text: GOOD_RFQ }));
+      await roundup(post({ period: "daily" }));
+    }
+    auth.role = "office";
+    auth.support = true;
+    await rfq(post({ text: GOOD_RFQ }));
+    await roundup(post({ period: "daily" }));
+    expect(service.created).toBe(0);
   });
 
   it("a malicious RFQ changes nothing: only the validated suggestion comes back, flagged, and only status/reserve/settle run", async () => {
@@ -315,10 +415,8 @@ describe("RFQ email to draft quote", () => {
   });
 
   it("a suggestion whose settle (and audit row) fails is not shown", async () => {
-    const original = supabase.rpc;
-    supabase.rpc = async (fn, args) => (fn === "ai_helper_settle" ? { data: null, error: { code: "42501" } } : original(fn, args));
+    service.settle = () => ({ data: null, error: { code: "42501" } });
     const res = await rfq(post({ text: GOOD_RFQ }));
-    supabase.rpc = original;
     expect(res.status).toBe(503);
     expect(await res.json()).not.toHaveProperty("suggestion");
   });
@@ -506,8 +604,15 @@ const source = (f: string) => readFileSync(path.join(root, f), "utf8");
 describe("never-do list (source)", () => {
   it("finds the files", () => expect(files.length).toBeGreaterThanOrEqual(20));
 
-  it("never uses the service role", () => {
-    for (const f of files) expect(source(f), f).not.toMatch(/supabase-admin|createSupabaseAdminClient|SERVICE_ROLE/);
+  it("uses the service role in lib/ai-helper/server.ts only, and there only to read the key table and to settle (102)", () => {
+    const server = path.join("lib", "ai-helper", "server.ts");
+    for (const f of files) if (f !== server) expect(source(f), f).not.toMatch(/supabase-admin|createSupabaseAdminClient|SERVICE_ROLE/);
+    const text = source(server);
+    expect(text).not.toMatch(/SERVICE_ROLE/);
+    expect([...text.matchAll(/\bservice\.(\w+)\(("[a-z_]+")?/g)].map((m) => `${m[1]}(${m[2] ?? ""})`).sort()).toEqual(['from("ai_helper_secrets")', 'rpc("ai_helper_settle")']);
+    // The person's own session reserves; it never settles.
+    expect(text).toMatch(/input\.supabase\.rpc\("ai_helper_reserve"/);
+    expect(text).not.toMatch(/input\.supabase\.rpc\("ai_helper_settle"/);
   });
 
   it("no direct table write; only its own functions, plus next_doc_number and create_with_lines in the Approve path alone", () => {
