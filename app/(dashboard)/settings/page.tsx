@@ -30,6 +30,7 @@ import { WEEKDAY_OPTIONS } from "@/lib/machine-schedule";
 import { BREAK_MINUTES, LUNCH_MINUTES, MIN_DAY_HOURS, formatHoursMinutes, paidDay, paidWeek } from "@/lib/working-hours";
 import { TimeSettingsCard } from "@/components/time/time-settings-card";
 import { SiteNetworkCard } from "@/components/time/site-network-card";
+import { ClockInLockCard } from "@/components/time/clock-in-lock-card";
 
 const navSections = Array.from(new Set(NAV_TOGGLES.map((item) => item.section)));
 
@@ -644,6 +645,7 @@ export default function SettingsPage() {
         <AutoConvertCard />
         <TimeSettingsCard />
         <SiteNetworkCard />
+        <ClockInLockCard />
         <CustomerSignOffCard />
         <PrintLayoutCard />
         <YearEndExportCard />

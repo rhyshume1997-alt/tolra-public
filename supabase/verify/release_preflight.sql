@@ -131,6 +131,8 @@ markers(migration, present) AS (
     ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reopen_record')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'decide_reopen_request')),
+    ('114 clock-in network lock',         to_regclass('public.clock_in_network_locks') IS NOT NULL AND to_regclass('public.clock_in_network_unverified') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'clock_in_network_lock' AND tgrelid = to_regclass('public.attendance_events'))),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
     ('116 ban ends session',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'session_is_active' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')

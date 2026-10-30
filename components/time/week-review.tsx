@@ -21,6 +21,7 @@ import { friendlyError } from "@/lib/friendly-error";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { NeedsDatabaseUpdate } from "@/components/time/needs-update";
 import { SyncRejectionsNotice } from "@/components/time/sync-rejections-notice";
+import { NetworkUnverifiedNotice } from "@/components/time/network-unverified-notice";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { newClientOpId } from "@/lib/machine-runs";
@@ -137,6 +138,7 @@ export function WeekReview() {
         </div>
       </div>
       <SyncRejectionsNotice enabled={seesEveryone} nameOf={(id) => names[id] ?? UNKNOWN} />
+      <NetworkUnverifiedNotice enabled={seesEveryone} week={week} nameOf={(id) => names[id] ?? UNKNOWN} />
       {error ? <div className="flex items-center justify-between rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"><span>{error}</span><Button variant="outline" size="sm" onClick={() => void load()}>Retry</Button></div> : null}
       {people === null && !error ? <p className="text-sm text-slate-500">Loading…</p> : null}
       {people ? (
