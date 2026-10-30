@@ -235,7 +235,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const badge = item.href === "/approval" && approvalCount ? approvalCount.toString() : null;
                   return (
-                    <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
+                    <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>
                       {badge ? <span className="flex min-w-5 items-center justify-center bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">{badge}</span> : null}
                     </Link>
