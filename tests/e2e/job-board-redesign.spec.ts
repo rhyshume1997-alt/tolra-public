@@ -2,6 +2,8 @@
  * Job Board redesign (taller rows, a sticky selection bar, nothing hover-only), in the browser:
  *
  *   * Start (bench), Inspected (a failed inspection) and Rework still work from the redesigned rows;
+ *   * a Started job is Finished from its row (the "Finish job" confirm): the status chip goes from Running to Waiting for inspection,
+ *     and the Finish button (and the chip's cell) are at least 48px tall;
  *   * every control in a job's row or card, and the header tick box, is at least 48px tall: a mouse at 1280, a touch tablet at 820, a
  *     touch phone at 390 (cards);
  *   * with a job ticked, the selection bar stays in view after scrolling to the bottom, sits just below the app's top bar (not under it)
@@ -20,7 +22,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { VIEWPORTS, deviceContext } from "../support/ui-pr1-screenshots";
 import { adminClient, createSoloTenant, type SyntheticUser } from "../support/fixtures";
-import { pauseControl, pickMachines, playControl, signIn, world } from "./helpers";
+import { confirmFinish, pauseControl, pickMachines, playControl, signIn, world } from "./helpers";
 
 const w = world();
 let org = "";
@@ -49,6 +51,7 @@ test.beforeAll(async () => {
   org = solo.id;
   soloAdmin = solo.admin;
   J.start = `J-RD-START-${w.runId}`;
+  J.finish = `J-RD-FINISH-${w.runId}`;
   J.inspect = `J-RD-INSPECT-${w.runId}`;
   J.measure = `J-RD-MEASURE-${w.runId}`;
   // Enough rows that the board scrolls well past the selection bar's own place at every width.
@@ -146,6 +149,38 @@ test("Start, Inspected and Rework still work from the redesigned rows", async ({
   const rework = page.getByRole("dialog", { name: `Rework: ${J.inspect}` });
   await expect(rework).toContainText("Waiting for the workshop");
   await expect(rework).toContainText("Re-bore and re-measure");
+});
+
+test("a running job is Finished from the redesigned row: Running becomes Waiting for inspection", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await signIn(page, soloAdmin);
+  await page.goto("/jobs");
+  const finish = row(page, J.finish);
+  const status = finish.getByTestId("job-status").first();
+  await expect(status).toContainText("Not started");
+
+  // Start on the bench: Play becomes Pause, and the status chip says Running.
+  await pickMachines(page, finish, J.finish, { bench: true });
+  await playControl(finish, J.finish).click();
+  await expect(page.getByText(`${J.finish} started on the bench.`)).toBeVisible();
+  await expect(pauseControl(finish, J.finish)).toBeVisible();
+  // The Start is settled only once its refresh is back; until then another change is refused ("Wait for the last change to finish.").
+  await expect(pauseControl(finish, J.finish)).not.toHaveAttribute("aria-busy", "true");
+  await expect(status).toContainText("Running");
+  await expect(status).not.toContainText("Waiting for inspection");
+
+  // The Finish button, and the status chip's cell, are at least 48px tall on the redesigned row.
+  const finishButton = finish.getByRole("button", { name: "Finish", exact: true });
+  await expect(finishButton).toBeVisible();
+  expect((await finishButton.boundingBox())!.height, "the row's Finish button height").toBeGreaterThanOrEqual(47.5);
+  expect((await status.locator("xpath=ancestor::td[1]").boundingBox())!.height, "the status chip's cell height").toBeGreaterThanOrEqual(47.5);
+
+  // Finish asks first ("Finish job"); once confirmed the chip reads Waiting for inspection, not Running, and the finish is recorded.
+  await confirmFinish(page, finishButton);
+  await expect(page.getByText("Job finished: Waiting for inspection")).toBeVisible();
+  await expect(status).toContainText("Waiting for inspection");
+  await expect(status).not.toContainText("Running");
+  expect((await adminClient().from("jobs").select("finished_at, inspected_at").eq("id", ids[J.finish]).single()).data).toMatchObject({ inspected_at: null, finished_at: expect.any(String) });
 });
 
 test("every row control is at least 48px tall: mouse at 1280, touch tablet at 820, touch phone cards at 390", async ({ page, browser }) => {
