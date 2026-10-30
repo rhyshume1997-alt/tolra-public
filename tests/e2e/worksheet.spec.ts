@@ -65,8 +65,8 @@ test("an unfinished job past its required date shows Late; due today doesn't", a
   await newJob(today, { date_required: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date()), status: "on_track" });
   await signIn(page, w.tenants.beta.users.workshop);
   await page.goto("/jobs");
-  await expect(page.getByRole("row").filter({ hasText: late })).toContainText(/\bLate\b/);
-  await expect(page.getByRole("row").filter({ hasText: today })).not.toContainText(/\bLate\b/);
+  await expect(page.getByRole("row").filter({ hasText: late })).toContainText(/Late/);
+  await expect(page.getByRole("row").filter({ hasText: today })).not.toContainText(/Late/);
 });
 
 test("workshop pack: the selected jobs print together on one worksheet sheet", async ({ page }) => {
