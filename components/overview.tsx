@@ -46,7 +46,7 @@ export function OverviewSection({ id, title, figure, sub, href, linkLabel, child
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-40 space-y-4" data-testid={`overview-${id}`}>
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id={`${id}-title`} className="text-lg font-semibold text-ink">{title}</h2>
-        {figure ? <p className="text-sm font-semibold tabular-nums text-ink" data-testid={`overview-${id}-figure`}>{figure}</p> : null}
+        {figure ? <p className="text-sm font-semibold tabular-nums text-ink max-sm:basis-full" data-testid={`overview-${id}-figure`}>{figure}</p> : null}
         <p className="text-sm text-muted-foreground">{sub}</p>
         {href && linkLabel && canOpen(href) ? <Link href={href} className="ml-auto text-sm font-semibold text-brand-accent hover:underline">{linkLabel}</Link> : null}
       </header>

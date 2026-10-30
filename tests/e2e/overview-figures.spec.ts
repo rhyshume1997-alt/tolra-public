@@ -45,4 +45,12 @@ test("the Overview's figures count the seeded rows exactly", async ({ page }) =>
   await expect(page.getByTestId("overview-today-figure")).toHaveText("2 things need you, 1 of them late or overdue");
   await expect(page.getByTestId("overview-money").getByText(`So far 50% above ${lastMonthLabel} (£1,000)`)).toBeVisible();
   await expect(page.getByTestId("machine-load-overall")).toHaveText("25% of available hours booked · 30h free");
+
+  // On a phone the Today figure has a line of its own under the heading, loading or loaded, so it never jumps when the count arrives.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(async () => {
+    const title = (await page.locator("#today-title").boundingBox())!;
+    const figure = (await page.getByTestId("overview-today-figure").boundingBox())!;
+    return figure.y >= title.y + title.height - 1;
+  }, { message: "390: the Today figure sits on its own line under the heading" }).toBe(true);
 });
