@@ -21,13 +21,22 @@ type Role = "admin" | "office" | "workshop";
 type Tenant = "alpha" | "beta";
 let seq = 0;
 
-/** Statements as a signed-in member (authenticated), in one transaction, committed. `requireMfa` sets the company's admin MFA rule for this transaction only. */
+/**
+ * Statements as a signed-in member (authenticated), in one transaction, committed. `requireMfa` sets the company's admin MFA rule for
+ * this transaction only (rolled back): 065 refuses the rule while an active admin has no verified authenticator (23514
+ * admins_not_enrolled), so the company's admin is first given a verified TOTP factor (a row in auth.mfa_factors, as the Auth service
+ * writes it), in the same transaction. The token's aal still decides: aal1 is refused, aal2 passes.
+ */
 async function inSession<T>(role: Role, fn: (db: Client) => Promise<T>, opts: { tenant?: Tenant; aal?: "aal1" | "aal2"; requireMfa?: boolean } = {}): Promise<T> {
   const tenant = world.tenants[opts.tenant ?? "alpha"];
   return withDb(async (db) => {
     await db.query("begin");
     try {
-      if (opts.requireMfa) await db.query("update public.organizations set require_admin_mfa = true where id = $1", [tenant.id]);
+      if (opts.requireMfa) {
+        await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values ($1, $2, $3, 'totp', 'verified', now(), now())",
+          [randomUUID(), tenant.users.admin.id, `wo105-${randomUUID().slice(0, 6)}`]);
+        await db.query("update public.organizations set require_admin_mfa = true where id = $1", [tenant.id]);
+      }
       await db.query("set local role authenticated");
       await db.query("select set_config('request.jwt.claims', $1, true)",
         [JSON.stringify({ sub: tenant.users[role].id, role: "authenticated", aud: "authenticated", session_id: randomUUID(), aal: opts.aal ?? "aal2" })]);
