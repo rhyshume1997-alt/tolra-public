@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   // Support access (the platform owner inside a company) holds an admin membership but never changes or reads through this company's Xero:
   // refused before any Xero or database call, as on the Admin > Users routes. The database's connect functions exclude support too.
   if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
-  const ready = xeroReady();
+  const ready = await xeroReady();
   const service = createSupabaseAdminClient();
   if (!ready || !service) return NextResponse.json({ skipped: "not_configured" });
   try {

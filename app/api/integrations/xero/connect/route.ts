@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
-  const ready = xeroReady();
+  const ready = await xeroReady();
   if (!ready) return jsonError("Xero is not set up on this server yet.", 503);
   try {
     return NextResponse.json({ url: await beginConnect(auth.supabase, auth.profile.organization_id, ready) });
