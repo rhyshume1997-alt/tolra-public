@@ -7,7 +7,7 @@ import { ActivityPanel } from "@/components/activity-panel";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Download, Eye, Lock, Paperclip, Plus, Send, Trash2, Upload } from "lucide-react";
+import { Download, Eye, Lock, Mail, Paperclip, Plus, Send, Trash2, Upload } from "lucide-react";
 
 import { CostingLinePicker } from "@/components/costing-line-picker";
 import { CustomerSelect } from "@/components/customer-select";
@@ -42,7 +42,8 @@ import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice
 import { QUOTE_FILTER_LABELS, quoteLegend, quoteMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, nowIso, toDateInput } from "@/lib/dates";
 import { type ExpiredQuoteAction, type ExpiredQuoteCheck, expiredQuoteAuditEvent, expiredQuoteCheck } from "@/lib/quote-expiry";
-import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
+import { downloadPdf, openMailDraft, pdfBlob, pdfErrorMessage } from "@/lib/download-pdf";
+import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
 import { renderTemplate } from "@/lib/email/templates/defaults";
 import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
@@ -324,6 +325,7 @@ export default function QuotesPage() {
   const router = useRouter();
   // A prepared e-mail waiting for "I've sent it": opening a draft or downloading the PDF doesn't prove it went.
   const [sendConfirm, setSendConfirm] = useState<QuoteRow | null>(null);
+  const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
   // Asked before anything is prepared (go-live polish 19e): "Send QUO-0005 to buyer@acme.example?", with the date it will be valid until.
   const [sendAsk, setSendAsk] = useState<{ quote: QuoteRow; email: string | null; validUntil: string | null } | null>(null);
   // Asked before Send or Mark accepted on a quote past its valid-until date (lib/quote-expiry): Cancel does nothing, the action goes on as normal.
@@ -772,8 +774,11 @@ export default function QuotesPage() {
     setDecision({ quote, outcome: "accepted" });
   }
 
-  /** Opens an email draft to the customer and downloads the PDF to attach. Recording it as sent is a separate step. */
-  async function sendQuote(quote: QuoteRow, validUntil: string | null = null) {
+  /**
+   * Opens an email draft to the customer and downloads the PDF to attach ("Yes, send"; recording it as sent is a separate step), or,
+   * with `oneClick` ("Email it now"), the send dialog: sent from here with the PDF attached, and recorded as sent once it has gone.
+   */
+  async function sendQuote(quote: QuoteRow, validUntil: string | null = null, oneClick = false) {
     await run(async () => {
       try {
         const profile = await requireCompanyProfile();
@@ -798,12 +803,28 @@ export default function QuotesPage() {
         const element = await buildQuotePdf(quote, items, profile);
         const customer = await resolveCustomer(quote.customer);
         if (!customer?.email) toast.info(`No email address on file for ${quote.customer}. Add one on the Customers page, or type it into the email.`);
-        const email = renderTemplate("quote", { document_number: quote.ref, company_name: profile.name, customer_name: quote.customer, total: currency(quote.value) }, await loadTemplateOverride(supabase, "quote"));
-        openMailDraft(customer?.email ?? "", email.subject, email.text);
-        const ok = await downloadPdf(element, pdfName(quote), { entityTable: "quotes", entityId: quote.ref }, { silent: true });
-        if (!ok) return;
-        toast.success("PDF downloaded \u2014 attach it to the email that just opened");
-        setSendConfirm(quote);
+        const ready = quote;
+        // The old way (also the "Open in my mail app" link): the person's own mail app, the PDF downloaded to attach, then "has it gone?".
+        const mailApp = async (subject: string, body: string) => {
+          openMailDraft(customer?.email ?? "", subject, body);
+          const ok = await downloadPdf(element, pdfName(ready), { entityTable: "quotes", entityId: ready.ref }, { silent: true });
+          if (!ok) return;
+          toast.success("PDF downloaded \u2014 attach it to the email that just opened");
+          setSendConfirm(ready);
+        };
+        const vars = { document_number: ready.ref, company_name: profile.name, customer_name: ready.customer, total: currency(ready.value) };
+        if (!oneClick || !ready.id || DEMO_MODE) {
+          const email = renderTemplate("quote", vars, await loadTemplateOverride(supabase, "quote"));
+          await mailApp(email.subject, email.text);
+          return;
+        }
+        // One-click send (E8): the dialog sends it with the PDF attached; once it has gone, the quote is recorded as sent.
+        setEmailRequest({
+          kind: "quote", recordId: ready.id, templateKey: "quote", to: customer?.email, vars,
+          pdf: { filename: pdfName(ready), build: () => pdfBlob(element) },
+          onOpenMailApp: (subject, body) => { setEmailRequest(null); void mailApp(subject, body); },
+          onSent: () => void confirmQuoteSent(ready),
+        });
       } catch (err) {
         toast.error(err instanceof ValidationError ? err.message : typeof err === "object" && err && "code" in err ? friendlyError(err, "Couldn't prepare the quote. Reload and try again.") : pdfErrorMessage(err));
       }
@@ -1216,12 +1237,14 @@ export default function QuotesPage() {
           <DialogHeader>
             <DialogTitle>{sendAsk ? `Send ${sendAsk.quote.ref} to ${sendAsk.email ?? sendAsk.quote.customer}?` : ""}</DialogTitle>
             <DialogDescription>
-              {sendAsk?.email ? "Your e-mail app opens addressed to them and the PDF downloads to attach." : `No e-mail address on file for ${sendAsk?.quote.customer ?? "this customer"}: your e-mail app opens for you to add one, and the PDF downloads to attach.`}
+              {sendAsk?.email ? "Yes, send: your e-mail app opens addressed to them and the PDF downloads to attach." : `No e-mail address on file for ${sendAsk?.quote.customer ?? "this customer"}: your e-mail app opens for you to add one, and the PDF downloads to attach.`}
+              {sendAsk?.quote.id && !DEMO_MODE ? " Email it now: sent from here with the PDF attached." : ""}
               {sendAsk?.validUntil ? ` It has no valid-until date, so it will be valid until ${fmtDate(sendAsk.validUntil)}.` : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setSendAsk(null)}>Cancel</Button>
+            {sendAsk?.quote.id && !DEMO_MODE ? <Button variant="outline" disabled={saving} onClick={() => { const ask = sendAsk; setSendAsk(null); if (ask) void sendQuote(ask.quote, ask.validUntil, true); }}><Mail className="size-4" /> Email it now</Button> : null}
             <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => { const ask = sendAsk; setSendAsk(null); if (ask) void sendQuote(ask.quote, ask.validUntil); }}>Yes, send</Button>
           </div>
         </DialogContent>
@@ -1238,6 +1261,7 @@ export default function QuotesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
       <Dialog open={Boolean(sendConfirm)} onOpenChange={(open) => !open && setSendConfirm(null)}>
         <DialogContent>
           <DialogHeader>

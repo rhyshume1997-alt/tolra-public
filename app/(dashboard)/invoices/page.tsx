@@ -53,7 +53,8 @@ import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice
 import { DRAFT_INVOICE_DAYS, DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
 import { draftInvoiceCounts, invoiceMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
-import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
+import { downloadPdf, openMailDraft, pdfBlob, pdfErrorMessage } from "@/lib/download-pdf";
+import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
 import { type TemplateVars, invoiceReminderVars, renderTemplate } from "@/lib/email/templates/defaults";
 import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
@@ -368,6 +369,7 @@ export default function InvoicesPage() {
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceRow | null>(null);
   // A prepared e-mail waiting for "I've sent it": opening a draft or downloading the PDF doesn't prove it went.
   const [sendConfirm, setSendConfirm] = useState<InvoiceRow | null>(null);
+  const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
   const [issueConfirm, setIssueConfirm] = useState<InvoiceRow | null>(null);
   /** The issue confirmation was opened from "Issue & send": send it to the customer straight after issuing. */
   const [issueThenSend, setIssueThenSend] = useState(false);
@@ -1084,20 +1086,37 @@ export default function InvoicesPage() {
     await downloadPdf(async () => buildInvoicePdf(invoice, await requireCompanyProfile()), `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference });
   }
 
-  /** Opens an email draft to the customer and downloads the PDF to attach. Recording it as sent is a separate step. */
-  async function sendInvoice(invoice: InvoiceRow) {
+  /**
+   * Opens an email draft to the customer and downloads the PDF to attach ("Send to Customer"; recording it as sent is a separate
+   * step), or, with `oneClick` ("Email now"), the send dialog: sent from here with the PDF attached, the sent date recorded once it has gone.
+   */
+  async function sendInvoice(invoice: InvoiceRow, oneClick = false) {
     await run(async () => {
       try {
         const profile = await requireCompanyProfile();
         const element = await buildInvoicePdf(invoice, profile);
         const customer = await resolveCustomer(invoice.customer);
         if (!customer?.email) toast.info(`No email address on file for ${invoice.customer}. Add one on the Customers page, or type it into the email.`);
-        const email = renderTemplate("invoice", invoiceEmailVars(invoice, profile.name), await loadTemplateOverride(supabase, "invoice"));
-        openMailDraft(customer?.email ?? "", email.subject, email.text);
-        const ok = await downloadPdf(element, `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference }, { silent: true });
-        if (!ok) return;
-        toast.success("PDF downloaded \u2014 attach it to the email that just opened");
-        setSendConfirm(invoice);
+        // The old way (also the "Open in my mail app" link): the person's own mail app, the PDF downloaded to attach, then "has it gone?".
+        const mailApp = async (subject: string, body: string) => {
+          openMailDraft(customer?.email ?? "", subject, body);
+          const ok = await downloadPdf(element, `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference }, { silent: true });
+          if (!ok) return;
+          toast.success("PDF downloaded \u2014 attach it to the email that just opened");
+          setSendConfirm(invoice);
+        };
+        if (!oneClick || !invoice.id || DEMO_MODE) {
+          const email = renderTemplate("invoice", invoiceEmailVars(invoice, profile.name), await loadTemplateOverride(supabase, "invoice"));
+          await mailApp(email.subject, email.text);
+          return;
+        }
+        // One-click send (E8): the dialog sends it with the PDF attached; once it has gone, the sent date is recorded.
+        setEmailRequest({
+          kind: "invoice", recordId: invoice.id, templateKey: "invoice", to: customer?.email, vars: invoiceEmailVars(invoice, profile.name),
+          pdf: { filename: `invoice-${invoice.reference}.pdf`, build: () => pdfBlob(element) },
+          onOpenMailApp: (subject, body) => { setEmailRequest(null); void mailApp(subject, body); },
+          onSent: () => void confirmInvoiceSent(invoice),
+        });
       } catch (err) {
         toast.error(err instanceof ValidationError ? err.message : pdfErrorMessage(err));
       }
@@ -1421,6 +1440,7 @@ export default function InvoicesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
       <Dialog open={Boolean(sendConfirm)} onOpenChange={(nextOpen) => !nextOpen && setSendConfirm(null)}>
         <DialogContent>
           <DialogHeader>
@@ -1656,6 +1676,7 @@ export default function InvoicesPage() {
                   <p className="mr-auto text-sm text-slate-600">{isVoid(viewingInvoice.rawStatus) ? "Void: not owed." : viewingInvoice.sentAt ? `Sent ${fmtDateTime(viewingInvoice.sentAt)}` : "Not recorded as sent yet"}</p>
                   {has073 && viewingInvoice.id && voidOffered(viewingInvoice) ? <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" disabled={saving} onClick={() => setVoidFor(viewingInvoice)}>Void Invoice</Button> : null}
                   <Button variant="outline" disabled={Boolean(viewProblem)} onClick={() => void downloadInvoicePdf(viewingInvoice)}>Download PDF</Button>
+                  {viewingInvoice.id && !DEMO_MODE && !isVoid(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice, true)}>Email now</Button> : null}
                   <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice)}>{saving ? "Sending…" : "Send to Customer"}</Button>
                 </div>
               )}

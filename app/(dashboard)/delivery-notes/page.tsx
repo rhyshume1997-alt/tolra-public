@@ -44,7 +44,8 @@ import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice
 import { deliveryNoteMatchesFilter } from "@/lib/list-filter";
 import { AWAITING_SIGNATURE_LABEL, AWAITING_SIGNATURE_STATUSES, countAwaitingSignature } from "@/lib/list-card-counts";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
-import { downloadPdf } from "@/lib/download-pdf";
+import { downloadPdf, pdfBlob } from "@/lib/download-pdf";
+import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
 import { friendlyError } from "@/lib/friendly-error";
 import { draftedInvoiceId, invoiceHref } from "@/lib/invoice-link";
 import { esc } from "@/lib/html";
@@ -128,6 +129,7 @@ export default function DeliveryNotesPage() {
   const [editing, setEditing] = useState<DeliveryNoteRow | null>(null);
   const [editDraft, setEditDraft] = useState({ customer: "", job: "", date: "", shipDate: "", taxDate: "", shipVia: "" });
   const [emailing, setEmailing] = useState<DeliveryNoteRow | null>(null);
+  const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
   const [signingIds, setSigningIds] = useState<string[]>([]);
   const [newOpen, setNewOpen] = useState(false);
   // Where a new note comes from (migration 034): a sales order, a job, or by hand with no order behind it.
@@ -437,29 +439,52 @@ export default function DeliveryNotesPage() {
   }
 
   async function downloadDeliveryNotePdf(note: DeliveryNoteRow) {
-    await downloadPdf(async () => {
-      const profile = await requireCompanyProfile();
-      const items = await fetchNoteItems(note);
-      if (!items.length) throw new ValidationError("This delivery note has no items, so there is nothing to print.");
-      const billTo = await resolveCustomerAddress(note.customer);
-      const shipDate = note.shipDate || note.date;
-      // The job's customer sign-off (072), when it has one; none (or 072 not applied) leaves the note as it was.
-      const customerSignOff = supabase && !note.demo ? await deliveryNoteCustomerSignOff(supabase, note.id) : undefined;
-      return (
-        <DeliveryNotePDF
-          data={{
-            number: note.ref,
-            taxDate: fmtDate(note.taxDate || shipDate),
-            shipDate: fmtDate(shipDate),
-            shipVia: note.shipVia,
-            billTo,
-            items,
-            customerSignOff,
-            company: profile,
-          }}
-        />
-      );
-    }, `delivery-note-${note.ref}.pdf`, { entityTable: "delivery_notes", entityId: note.ref });
+    await downloadPdf(() => buildDeliveryNotePdf(note), `delivery-note-${note.ref}.pdf`, { entityTable: "delivery_notes", entityId: note.ref });
+  }
+
+  /** One-click send (E8) from the e-mail editor: the PDF attached; once it has gone, the note's e-mailed time is stamped. */
+  function sendEmailNow(note: DeliveryNoteRow, subject: string, body: string) {
+    if (!company) return;
+    if (note.demo || !supabase) return void toast.error("Sending isn't available in the demo. Open it in your email client instead.");
+    setEmailing(null);
+    setEmailRequest({
+      kind: "delivery_note", recordId: note.id, templateKey: "delivery_note", to: note.email, vars: deliveryNoteEmailVars(note, company.name), initial: { subject, body },
+      pdf: { filename: `delivery-note-${note.ref}.pdf`, build: async () => pdfBlob(await buildDeliveryNotePdf(note)) },
+      onSent: () => void stampEmailed(note),
+    });
+  }
+
+  async function stampEmailed(note: DeliveryNoteRow) {
+    if (!supabase) return;
+    const sentAt = nowIso();
+    const { error } = await supabase.from("delivery_notes").update({ emailed_at: sentAt }).eq("id", note.id);
+    if (error) return void toast.info(`${note.ref} was sent, but its e-mailed time couldn't be recorded. It is in Email history.`);
+    setNotes((current) => current.map((row) => row.id === note.id ? { ...row, emailed_at: sentAt } : row));
+  }
+
+  /** The delivery note's PDF element (Download and the one-click send attach the same). */
+  async function buildDeliveryNotePdf(note: DeliveryNoteRow) {
+    const profile = await requireCompanyProfile();
+    const items = await fetchNoteItems(note);
+    if (!items.length) throw new ValidationError("This delivery note has no items, so there is nothing to print.");
+    const billTo = await resolveCustomerAddress(note.customer);
+    const shipDate = note.shipDate || note.date;
+    // The job's customer sign-off (072), when it has one; none (or 072 not applied) leaves the note as it was.
+    const customerSignOff = supabase && !note.demo ? await deliveryNoteCustomerSignOff(supabase, note.id) : undefined;
+    return (
+      <DeliveryNotePDF
+        data={{
+          number: note.ref,
+          taxDate: fmtDate(note.taxDate || shipDate),
+          shipDate: fmtDate(shipDate),
+          shipVia: note.shipVia,
+          billTo,
+          items,
+          customerSignOff,
+          company: profile,
+        }}
+      />
+    );
   }
 
   /** A note made by hand: with an invoice number it takes that number (INV-0456 -> DLN-0456), without one the next DLN number. */
@@ -650,12 +675,13 @@ export default function DeliveryNotesPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+        <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
         <Dialog open={Boolean(emailing) && canEmail} onOpenChange={(open) => !open && setEmailing(null)}>
           <DialogContent className="max-w-3xl">
-            <DialogHeader><DialogTitle>Email delivery note</DialogTitle><DialogDescription>Auto-send is disabled. Copy the text or open it in your email client, send it, then mark it as sent.</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle>Email delivery note</DialogTitle><DialogDescription>Send it from here with the PDF attached, or copy the text or open it in your email client, send it, then mark it as sent.</DialogDescription></DialogHeader>
             {emailing ? (
               company
-                ? <EmailDraft note={emailing} companyName={company.name} saving={saving} onCopy={copyEmail} onSent={markEmailSent} />
+                ? <EmailDraft note={emailing} companyName={company.name} saving={saving} onCopy={copyEmail} onSent={markEmailSent} onSendNow={sendEmailNow} />
                 : <p className="text-sm text-red-700">Company details aren&apos;t set up. Ask an admin to add them in Settings.</p>
             ) : null}
           </DialogContent>
@@ -670,7 +696,7 @@ function deliveryNoteEmailVars(note: DeliveryNoteRow, companyName: string): Temp
   return { document_number: note.ref, company_name: companyName, customer_name: note.customer, job: note.job || "No linked job", delivery_date: fmtDate(note.date), status: note.status };
 }
 
-function EmailDraft({ note, companyName, saving, onCopy, onSent }: { note: DeliveryNoteRow; companyName: string; saving: boolean; onCopy: (note: DeliveryNoteRow, subject: string, body: string) => Promise<void>; onSent: (note: DeliveryNoteRow, subject: string, body: string) => Promise<void> }) {
+function EmailDraft({ note, companyName, saving, onCopy, onSent, onSendNow }: { note: DeliveryNoteRow; companyName: string; saving: boolean; onCopy: (note: DeliveryNoteRow, subject: string, body: string) => Promise<void>; onSent: (note: DeliveryNoteRow, subject: string, body: string) => Promise<void>; onSendNow: (note: DeliveryNoteRow, subject: string, body: string) => void }) {
   const vars = deliveryNoteEmailVars(note, companyName);
   const [subject, setSubject] = useState(() => renderTemplate("delivery_note", vars).subject);
   const [draftBody, setDraftBody] = useState(() => renderTemplate("delivery_note", vars).text);
@@ -697,6 +723,7 @@ function EmailDraft({ note, companyName, saving, onCopy, onSent }: { note: Deliv
       <Input value={subject} onChange={(event) => { setEdited(true); setSubject(event.target.value); }} />
       <Textarea className="min-h-56" value={draftBody} onChange={(event) => { setEdited(true); setDraftBody(event.target.value); }} />
       <div className="flex flex-wrap gap-2">
+        <Button className="bg-brand text-brand-ink" disabled={saving} onClick={() => onSendNow(note, subject, draftBody)}>Send now</Button>
         <Button variant="outline" disabled={saving} onClick={() => void onCopy(note, subject, draftBody)}>Copy Email Body</Button>
         <Button asChild variant="outline"><a href={mailto}>Open in Email Client</a></Button>
         {confirming ? null : <Button className="bg-brand text-brand-ink" disabled={saving} onClick={() => setConfirming(true)}>Mark as Sent</Button>}
