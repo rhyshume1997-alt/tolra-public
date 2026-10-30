@@ -19,7 +19,7 @@ import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutco
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { dueWindow, fmtDate, fmtDateTime, fmtDueBy, toDateInput } from "@/lib/dates";
+import { dueWindow, fmtDate, fmtDateText, fmtDateTime, fmtDueBy, toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { attentionState } from "@/lib/attention";
 import type { AttentionRole, AttentionSection } from "@/lib/attention-items";
@@ -640,7 +640,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div><h1 className="page-title">Dashboard</h1><p className="mt-2 text-sm text-slate-500">{getGreeting(profile?.full_name)}. {new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" }).format(new Date())}</p></div>
+        <div><h1 className="page-title">Dashboard</h1><p className="mt-2 text-sm text-slate-500">{getGreeting(profile?.full_name)}. {fmtDateText(new Date(), { weekday: "long", year: true, numberAs: "full" })}</p></div>
         <div className="flex flex-wrap items-center gap-2">{role === "admin" || role === "office" ? <><AiHelperDashboardLink /><ApprovalLink /></> : null}<ColumnToggle tableKey="dashboard" keys={dashboardTileKeysFor(role === "office" ? "office" : role === "admin" ? "admin" : "workshop")} /></div>
       </section>
       {role === "workshop" || role === "viewer" ? <WorkshopDashboard role={role} /> : role === "office" ? <AdminDashboard office /> : <AdminDashboard />}

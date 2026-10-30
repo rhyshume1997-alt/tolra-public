@@ -28,15 +28,16 @@ import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
 import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
 import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, dayTotals, hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
+import { fmtDateText } from "@/lib/dates";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
 import { useUser } from "@/lib/use-user";
 
 const today = () => localDateOf(new Date());
 const VALID_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** "Mon 19 Oct 2026". */
+/** "Mon, 19 Oct 2026" (the person's date format, with the weekday). */
 export function dayHeading(date: string) {
-  return new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return fmtDateText(date, { weekday: "short", year: true });
 }
 /** "07:31", with BST/GMT on the two clock-change days (so a repeated hour is never ambiguous on screen). */
 export function clockTime(at: string | number | null | undefined, date?: string) {

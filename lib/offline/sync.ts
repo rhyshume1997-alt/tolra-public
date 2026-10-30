@@ -258,7 +258,7 @@ async function clockOutcome(op: ClockOp, client: Rpc, expectedOrg: string | null
   if (isServerTooOld(error)) return { status: "blocked", code: SERVER_UPGRADE_CODE, reason: TIME_UPGRADE_REASON };
   const hint = error.hint ?? "";
   if (hint === CLOCK_WRONG_COMPANY) return { status: "blocked", code: CLOCK_WRONG_COMPANY, reason: CLOCK_WRONG_COMPANY_REASON };
-  if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${clockLabel(op.action)} at ${new Date(op.at).toLocaleString("en-GB")} is more than 14 days old, so it wasn't recorded. Ask an admin to add it to your sheet.` };
+  if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${clockLabel(op.action)} at ${new Date(op.at).toLocaleString("en-GB", { timeZone: "Europe/London" })} is more than 14 days old, so it wasn't recorded. Ask an admin to add it to your sheet.` };
   if (hint === "client_op_reused" || hint === "not_allowed" || hint === "bad_action" || hint === "week_approved") return { status: "rejected", code: hint, reason: error.message };
   return { status: "rejected", code: "refused", reason: friendlyError(error, "The server refused this clock action.") };
 }
@@ -280,7 +280,7 @@ async function labourOutcome(op: LabourOp, client: Rpc): Promise<ReplayOutcome> 
   if (isServerTooOld(error)) return { status: "blocked", code: SERVER_UPGRADE_CODE, reason: TIME_UPGRADE_REASON };
   if (error.code === "P0002") return { status: "rejected", code: "job_gone", reason: `${op.jobNo}: this job no longer exists or you no longer have access to it.` };
   const hint = error.hint ?? "";
-  if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${op.jobNo}: ${op.action === "start" ? "Start" : "Stop"} at ${new Date(op.at).toLocaleString("en-GB")} is more than 14 days old, so it wasn't recorded. Add the time on your sheet with a reason, or ask an admin.` };
+  if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${op.jobNo}: ${op.action === "start" ? "Start" : "Stop"} at ${new Date(op.at).toLocaleString("en-GB", { timeZone: "Europe/London" })} is more than 14 days old, so it wasn't recorded. Add the time on your sheet with a reason, or ask an admin.` };
   if (hint === "client_op_reused" || hint === "not_allowed" || hint === "bad_action" || hint === "week_approved") return { status: "rejected", code: hint, reason: error.message };
   return { status: "rejected", code: "refused", reason: friendlyError(error, "The server refused this job time.") };
 }

@@ -4471,6 +4471,21 @@
  },
  {
   "kind": "policy",
+  "object": "public.user_preferences :: user_preferences own insert",
+  "detail": "PERMISSIVE INSERT authenticated ec39efbadcef1b2337f4737c907d2e5d"
+ },
+ {
+  "kind": "policy",
+  "object": "public.user_preferences :: user_preferences own select",
+  "detail": "PERMISSIVE SELECT authenticated a7d7eb18352aa8797d6f9c34aa194875"
+ },
+ {
+  "kind": "policy",
+  "object": "public.user_preferences :: user_preferences own update",
+  "detail": "PERMISSIVE UPDATE authenticated a100217ac3a8d3b7a6076e34239d0012"
+ },
+ {
+  "kind": "policy",
   "object": "public.user_profiles :: Admins insert org profiles",
   "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
  },
@@ -5036,6 +5051,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.user_preferences",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.user_profiles",
   "detail": "enabled"
  },
@@ -5418,6 +5438,11 @@
   "kind": "table-grant",
   "object": "public.time_week_approvals :: authenticated",
   "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.user_preferences :: authenticated",
+  "detail": "INSERT,SELECT,UPDATE"
  },
  {
   "kind": "table-grant",

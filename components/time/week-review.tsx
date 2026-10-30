@@ -27,6 +27,7 @@ import { newClientOpId } from "@/lib/machine-runs";
 import { DAY_FLAG_KEYS, DAY_FLAG_LABEL, type WeekDayFlags, flagTotalsSnapshot, flagsShort, saveDayFlags, shortDay } from "@/lib/time-day-flags";
 import { databaseHasTime, missingDbObject } from "@/lib/time-features";
 import { type TimeSettings, FLAG_TEXT, ROUNDING_NOTE, addDays, approvalSnapshot, hm, hmSigned, localDateOf, weekStartOf } from "@/lib/time-sheet";
+import { fmtDateTime } from "@/lib/dates";
 import { type PersonWeek, WEEK_STATE_TEXT, loadWeek } from "@/lib/time-week";
 import { useUser } from "@/lib/use-user";
 
@@ -172,7 +173,7 @@ export function WeekReview() {
                     {isVisible("check") ? <td className="px-2 py-2 text-xs text-amber-800">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
                     {isVisible("approval") ? <td className="px-2 py-2 text-xs" data-testid="week-state">
                       <span className={state === "approved" ? "text-emerald-700" : state === "changed_since_approval" ? "text-amber-700" : "text-slate-500"}>{WEEK_STATE_TEXT[state]}</span>
-                      {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {new Date(p.status.approved_at).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" })}</div> : null}
+                      {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {fmtDateTime(p.status.approved_at)}</div> : null}
                     </td> : null}
                     <td className="px-2 py-2 text-right">
                       {showFlags && p.dayFlags?.anySuggested && seesEveryone ? <Button size="sm" variant="outline" className="mr-1" onClick={() => void saveSuggested(p)} data-testid="save-suggested-ticks">Save suggested ticks</Button> : null}

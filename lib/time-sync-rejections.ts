@@ -12,6 +12,7 @@
  * The week review shows the notice only once the database has 075 (useDatabaseHas075).
  */
 import type { ClockOp, HeldEntry, LabourOp, OutboxOp, ReplayOutcome } from "@/lib/offline/outbox";
+import { fmtDateTimeText } from "@/lib/dates";
 
 /** The refusals reported to the office: the two a phone syncing late can meet. */
 export const REPORTED_CODES = ["week_approved", "time_too_old"] as const;
@@ -125,7 +126,7 @@ export function rejectionNotices(rows: TimeSyncRejection[], nameOf: (userId: str
 
 /** One refused action, for the details list: "Clock in, Tue 13 Oct 08:02 (week approved), J-1042, Phone". */
 export function rejectionLine(row: TimeSyncRejection): string {
-  const when = new Date(row.intended_at).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const when = fmtDateTimeText(row.intended_at, { weekday: "short" });
   return [`${ACTION_TEXT[row.action] ?? row.action}, ${when} (${CODE_TEXT[row.code] ?? row.code})`, row.job_label, row.device_label].filter(Boolean).join(", ");
 }
 

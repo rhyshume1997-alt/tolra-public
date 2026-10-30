@@ -1,4 +1,5 @@
 import { offlineAccessBlocked } from "@/lib/offline/access";
+import { fmtDate } from "@/lib/dates";
 
 /**
  * Offline store for the workshop (Job Board, worksheets, machine schedule, workshop pack).
@@ -405,7 +406,9 @@ export function lastSyncedLabel(syncedAt: string | null | undefined, now = new D
   const at = new Date(syncedAt);
   const time = at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   const sameDay = at.toDateString() === now.toDateString();
-  return `Offline - last synced ${sameDay ? time : `${at.toLocaleDateString("en-GB")} ${time}`}`;
+  // This device's calendar day, in the person's date format.
+  const day = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
+  return `Offline - last synced ${sameDay ? time : `${fmtDate(day)} ${time}`}`;
 }
 
 /**
