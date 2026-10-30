@@ -53,7 +53,11 @@ describe("a job with no due date is never on time", () => {
   });
 
   it("the dashboard counts dated jobs with the shared filter, and the Job Board uses the shared matcher", () => {
-    const dashboard = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8");
+    // The dashboard's browser-side reads moved verbatim to lib/dashboard-figures-legacy.ts (E6); with 111 the database counts them
+    // (unfinished, with date_required or due_date) and the same onTimeJobCount works out the on-time figure.
+    const dashboard = readFileSync("lib/dashboard-figures-legacy.ts", "utf8");
+    expect(readFileSync("lib/dashboard-figures.ts", "utf8")).toContain("onTimeJobCount(dated, late)");
+    expect(readFileSync("supabase/migrations/111_dashboard_figures.sql", "utf8")).toContain("'dated', count(*) FILTER (WHERE j.finished_at IS NULL AND (j.date_required IS NOT NULL OR j.due_date IS NOT NULL))");
     expect(HAS_REQUIRED_DATE_FILTER).toBe("date_required.not.is.null,due_date.not.is.null");
     expect(dashboard).toContain("q(activeJobs().or(HAS_REQUIRED_DATE_FILTER))");
     expect(dashboard).toContain("onTimeJobCount(datedJobsCount.count, lateJobsCount.count)");
