@@ -44,7 +44,7 @@ export function OnSiteOnlyToggle({ userId, name, state }: { userId: string; name
   if (!state.available || !state.flags) return null;
   const on = state.flags.has(userId);
   return (
-    <label className="mt-1 flex w-fit items-center gap-1.5 text-xs text-slate-600" data-testid="on-site-only" title="On site only: clock-ins from another network are flagged for the office (never refused) while the check is on in Settings.">
+    <label className="mt-1 flex w-fit items-center gap-1.5 text-xs text-slate-600" data-testid="on-site-only" title="On site only: while clock-in is locked to the workshop network (Settings), clock-ins from another network are refused; with the site network check on Flag they are flagged for the office.">
       <input type="checkbox" checked={on} disabled={state.saving === userId} onChange={(e) => void state.set(userId, name, e.target.checked)} />
       On site only
     </label>

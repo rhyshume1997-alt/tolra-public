@@ -286,6 +286,16 @@
  },
  {
   "kind": "function",
+  "object": "public.clock_in_network_lock_check()",
+  "detail": "definer search_path=pg_catalog, public 28c42553de885f8b8bca055b8a18fb60"
+ },
+ {
+  "kind": "function",
+  "object": "public.clock_in_network_unverified_record()",
+  "detail": "definer search_path=pg_catalog, public a3aad2755e64c6b659ca7da6b5237e11"
+ },
+ {
+  "kind": "function",
   "object": "public.company_people()",
   "detail": "definer search_path=pg_catalog, public 955357228d87d29eaa462af8ece27806"
  },
@@ -1066,6 +1076,11 @@
  },
  {
   "kind": "function",
+  "object": "public.lock_clock_in_network()",
+  "detail": "definer search_path=pg_catalog, public 033b8cc7cd2d8be785c197d904bfe2f0"
+ },
+ {
+  "kind": "function",
   "object": "public.log_delivery_note_email(p_note uuid, p_to text, p_subject text, p_body text, p_status text)",
   "detail": "invoker search_path=pg_catalog, public 74a207e3812c175e7d580b78b3721946"
  },
@@ -1731,6 +1746,11 @@
  },
  {
   "kind": "function",
+  "object": "public.unlock_clock_in_network()",
+  "detail": "definer search_path=pg_catalog, public f1a0bec3eab8b14a9900fd1f07be54a4"
+ },
+ {
+  "kind": "function",
   "object": "public.user_organization_id()",
   "detail": "definer search_path=pg_catalog, public 27bd62ee290e47f371c3dac1a4474511"
  },
@@ -2117,6 +2137,16 @@
  {
   "kind": "function-grant",
   "object": "public.claim_error_alert(p_fingerprint text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.clock_in_network_lock_check()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.clock_in_network_unverified_record()",
   "detail": "service_role"
  },
  {
@@ -2901,6 +2931,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.lock_clock_in_network()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.log_delivery_note_email(p_note uuid, p_to text, p_subject text, p_body text, p_status text)",
   "detail": "authenticated,service_role"
  },
@@ -3566,6 +3601,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.unlock_clock_in_network()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.user_organization_id()",
   "detail": "authenticated,service_role"
  },
@@ -3703,6 +3743,16 @@
   "kind": "policy",
   "object": "public.bank_holidays :: bank_holidays read",
   "detail": "PERMISSIVE SELECT authenticated eb28d87532d6edd9b635727493ef89f7"
+ },
+ {
+  "kind": "policy",
+  "object": "public.clock_in_network_locks :: clock_in_network_locks rbac select",
+  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
+  "object": "public.clock_in_network_unverified :: clock_in_network_unverified rbac select",
+  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
  },
  {
   "kind": "policy",
@@ -4681,6 +4731,16 @@
  },
  {
   "kind": "rls",
+  "object": "public.clock_in_network_locks",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.clock_in_network_unverified",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.credit_note_lines",
   "detail": "enabled"
  },
@@ -5116,6 +5176,16 @@
  },
  {
   "kind": "table-grant",
+  "object": "public.clock_in_network_locks :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.clock_in_network_unverified :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
   "object": "public.credit_note_lines :: authenticated",
   "detail": "DELETE,INSERT,SELECT,UPDATE"
  },
@@ -5531,6 +5601,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.attendance_events :: clock_in_network_lock",
+  "detail": "O 0616385380eb4fedfdb05e4aed46c8fc"
+ },
+ {
+  "kind": "trigger",
   "object": "public.attendance_events :: support_read_only",
   "detail": "O 72c204437d8a702daa29425993742d24"
  },
@@ -5541,8 +5616,48 @@
  },
  {
   "kind": "trigger",
+  "object": "public.attendance_events :: zz_clock_in_network_unverified",
+  "detail": "O fe8aba2a3d1b76c23b5eaab28e9b5dfe"
+ },
+ {
+  "kind": "trigger",
   "object": "public.attendance_events :: zz_same_org_supersedes",
   "detail": "O 63b267656cb29facf7e55a5aaa654171"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_locks :: admin_mfa",
+  "detail": "O cdd45939e1ffcdc96f59373350ceffd0"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_locks :: audit_clock_in_network_locks_changes",
+  "detail": "O 807b1e8905ac5449de19bd5fb5f76a85"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_locks :: support_read_only",
+  "detail": "O 2caf693d383aff3f25b54872e97d8e90"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_unverified :: admin_mfa",
+  "detail": "O 46c6376c4e90ee8e565c3c07f1d0a988"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_unverified :: audit_clock_in_network_unverified_changes",
+  "detail": "O 4d1b70b14e8c4c24a81dc1cd873d8614"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_unverified :: clock_in_network_unverified_immutable",
+  "detail": "O ede439972ab0e748956a91515c8ec681"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_unverified :: support_read_only",
+  "detail": "O a97c9349329c1267a3045ceb20bf7aea"
  },
  {
   "kind": "trigger",
@@ -7343,6 +7458,16 @@
   "kind": "unique-index",
   "object": "public.attendance_events :: attendance_events_one_replacement",
   "detail": "71950b7bdae68ac5a304790157f1d1dc"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.clock_in_network_locks :: clock_in_network_locks_id_key",
+  "detail": "8c99a2928039d1cb660f7bfc9847b545"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.clock_in_network_unverified :: clock_in_network_unverified_id_key",
+  "detail": "9fa66ddd38f27da21fcc8f6342d40332"
  },
  {
   "kind": "unique-index",

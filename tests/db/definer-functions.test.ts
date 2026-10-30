@@ -252,6 +252,9 @@ function attempts(): Attempt[] {
     ["public.resolve_time_sync_rejection(p_id uuid, p_note text DEFAULT NULL::text)", () => alpha.rpc("resolve_time_sync_rejection", { p_id: randomUUID(), p_note: "Cross-company attempt" }), "refused"],
     // 078: deleting kept clock-in addresses is the caller's company's only (there is no target to point at beta).
     ["public.purge_site_network_ips(p_all boolean DEFAULT false)", () => alpha.rpc("purge_site_network_ips", { p_all: true }), "nothing of beta's"],
+    // 114: the clock-in network lock is the caller's company's only (no target to point at beta).
+    ["public.lock_clock_in_network()", () => alpha.rpc("lock_clock_in_network"), "nothing of beta's"],
+    ["public.unlock_clock_in_network()", () => alpha.rpc("unlock_clock_in_network"), "nothing of beta's"],
     // 084: beta's send and beta's contact problem are not found in alpha; alpha (not connected) has nothing to disconnect; a Connect start
     // and a mapping are written for alpha only.
     ["public.integration_retry_send(p_send uuid)", () => alpha.rpc("integration_retry_send", { p_send: beta.integrationSend }), "refused"],

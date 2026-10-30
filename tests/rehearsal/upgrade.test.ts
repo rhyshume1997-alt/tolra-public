@@ -343,7 +343,9 @@ const F078 = later.find(IS_078);
  * re-applied last, after 051 (its guard accepts 051's bodies). Found by its own name (IS_092 below).
  */
 const F092 = later.find((file) => file.endsWith("_release_ends_session.sql"));
-const TIME_FILES_WITH_074 = [...TIME_FILES, ...(F074 ? [F074] : []), ...(F075 ? [F075] : []), ...(F078 ? [F078] : []), ...(F092 ? [F092] : [])];
+/** 114 (clock-in network lock) adds two triggers on attendance_events and a table referencing it: torn down first, re-applied last. */
+const F114 = later.find((file) => file.endsWith("_clock_in_network_lock.sql"));
+const TIME_FILES_WITH_074 = [...TIME_FILES, ...(F074 ? [F074] : []), ...(F075 ? [F075] : []), ...(F078 ? [F078] : []), ...(F092 ? [F092] : []), ...(F114 ? [F114] : [])];
 
 /** Every function 050 to 052 create, and whether the API roles may run it (all others internal: no API role). */
 const TIME_FUNCTIONS: Record<"050" | "051" | "052", { internal: string[]; callable: string[] }> = {
@@ -495,6 +497,12 @@ async function expect076(db: Client, present: boolean) {
 
 /** Removes 052, 051 and 050 (in that order) inside the caller's transaction, data included: only ever rolled back. */
 const TIME_TEARDOWN = [
+  // 114 first (its marks reference attendance_events; its triggers are on it; it needs 075).
+  "drop trigger if exists clock_in_network_lock on public.attendance_events",
+  "drop trigger if exists zz_clock_in_network_unverified on public.attendance_events",
+  ...["unlock_clock_in_network()", "lock_clock_in_network()", "clock_in_network_unverified_record()", "clock_in_network_lock_check()"].map((f) => `drop function if exists public.${f}`),
+  "drop table if exists public.clock_in_network_unverified",
+  "drop table if exists public.clock_in_network_locks",
   // 078's part A first (its address rows reference 075's check rows). Its part B (credit note numbers) stays: re-applying 078 replaces it
   // with the same text.
   "drop function if exists public.purge_site_network_ips(boolean)",
