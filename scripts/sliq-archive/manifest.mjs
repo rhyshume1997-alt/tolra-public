@@ -142,7 +142,14 @@ export function buildManifest({ archiveDir, exportedAt, map }) {
   };
 }
 
-const csvCell = (v) => (/[",\r\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+// The same formula guard as scripts/sliq-reconcile/csv.mjs and lib/html.ts (kept here: this tool imports only its own files):
+// text that starts with = + - @ tab or CR gets a leading apostrophe, so a file named "=HYPERLINK(...).pdf" can't run as a
+// formula when manifest.csv is opened; a plain number such as a size is left alone.
+const csvCell = (v) => {
+  const s = String(v);
+  const text = /^-?\d+(?:\.\d+)?$/.test(s) || !/^[=+\-@\t\r]/.test(s) ? s : `'${s}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
 
 /** A flat copy of the entries for opening in Excel. manifest.json stays the authoritative file. */
 export function manifestCsv(manifest) {

@@ -104,6 +104,14 @@ describe("POST /api/send-job", () => {
     expect(sends[0].options).toEqual({ idempotencyKey: "job-email/key-12345678" });
   });
 
+  it("the subject is one line: CR / LF never reach the provider or the ledger (audit S3)", async () => {
+    const response = await sendJob(post("/api/send-job", { ...request, subject: "Job sheet\r\nBcc: attacker@elsewhere.example" }));
+    expect(response.status).toBe(200);
+    expect(sends[0].payload.subject).toBe("Job sheet Bcc: attacker@elsewhere.example");
+    expect(rpcCalls.find((c) => c.name === "reserve_job_email")?.args.p_subject).toBe("Job sheet Bcc: attacker@elsewhere.example");
+    expect((await sendJob(post("/api/send-job", { ...request, subject: "\u0001\r\n" }))).status).toBe(400);
+  });
+
   it("a rejection by the provider (a 4xx with its own error): failed, retry allowed", async () => {
     providerAnswer = async () => ({ data: null, error: { name: "validation_error", statusCode: 422, message: "Invalid `to` field" } });
     const response = await sendJob(post("/api/send-job", request));
