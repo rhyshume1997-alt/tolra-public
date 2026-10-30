@@ -114,9 +114,11 @@ test("with Xero connected ten days ago: Preview from the connection day shows th
     await page.goto("/admin/integrations");
     await expect(card(page)).toBeVisible();
 
-    // The default From is the day Xero was connected, and the tick box names that day.
+    // The tick box names the connection day and starts ticked (Rhys, 30 Oct: earlier documents are offered, not blocked).
+    // From starts at 1 January; set the range to this run's documents.
     await expect(page.getByTestId("batch-include-before")).toContainText(connectedOn);
-    await expect(page.getByTestId("batch-from")).toHaveValue(connectedOn);
+    await expect(page.getByTestId("batch-include-before").getByRole("checkbox")).toBeChecked();
+    await page.getByTestId("batch-from").fill(connectedOn);
     await expect(page.getByTestId("batch-before-warning")).toHaveCount(0);
 
     await previewButton(page).click();
@@ -131,14 +133,8 @@ test("with Xero connected ten days ago: Preview from the connection day shows th
     await expect(page.getByTestId("batch-send")).toBeEnabled();
     await expect(page.getByTestId("batch-send")).toHaveText("Send 2");
 
-    // An earlier From, without the tick: a warning, and Preview is switched off.
+    // An earlier From, still ticked: no warning, and the earlier invoice is listed too.
     await page.getByTestId("batch-from").fill(london(-14));
-    await expect(page.getByTestId("batch-before-warning")).toContainText(`before Xero was connected`);
-    await expect(page.getByTestId("batch-before-warning")).toContainText(connectedOn);
-    await expect(previewButton(page)).toBeDisabled();
-
-    // With the tick, the warning goes and the earlier invoice is listed too.
-    await page.getByTestId("batch-include-before").getByRole("checkbox").check();
     await expect(page.getByTestId("batch-before-warning")).toHaveCount(0);
     await expect(previewButton(page)).toBeEnabled();
     await previewButton(page).click();
@@ -146,6 +142,12 @@ test("with Xero connected ten days ago: Preview from the connection day shows th
     await expect(preview.getByTestId("batch-row")).toHaveCount(3);
     await expect(preview.getByTestId("batch-row").nth(0)).toContainText(`Invoice ${refs.before}`);
     await expect(page.getByTestId("batch-send")).toHaveText("Send 3");
+
+    // Unticked, the earlier range gets a warning naming the connection day and Preview is switched off.
+    await page.getByTestId("batch-include-before").getByRole("checkbox").uncheck();
+    await expect(page.getByTestId("batch-before-warning")).toContainText(`before Xero was connected`);
+    await expect(page.getByTestId("batch-before-warning")).toContainText(connectedOn);
+    await expect(previewButton(page)).toBeDisabled();
   } finally {
     await db.from("integration_connections").delete().eq("organization_id", org).eq("provider", "xero");
   }
