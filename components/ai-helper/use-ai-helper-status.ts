@@ -18,6 +18,8 @@ export type AiHelperStatus = {
   /** The company's finance-check switch and whether the database can hold it (migration 106). Missing from an older answer = not available. */
   finance_check_enabled?: boolean;
   finance_check_available?: boolean;
+  /** Set by the settings route when the other settings were saved but the finance-check switch could not be changed. */
+  warning?: string;
 };
 
 /**

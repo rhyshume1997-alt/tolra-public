@@ -30,15 +30,6 @@ export async function POST(request: Request) {
   if (!json.ok) return json.response;
   const parsed = settingsSchema.safeParse(json.data);
   if (!parsed.success) return jsonError("Invalid request", 400);
-  // The finance check first. A database that cannot hold the switch yet is not an error: the other switches are still saved and the
-  // answer says what the finance check really is (finance_check_enabled stays false), so the page can tell the admin.
-  if (parsed.data.financeCheckEnabled !== undefined) {
-    const { error: financeError } = await auth.supabase.rpc("ai_helper_set_finance_check", { p_enabled: parsed.data.financeCheckEnabled });
-    if (financeError && !MISSING_FINANCE_SWITCH.has(financeError.code ?? "")) {
-      console.error("[ai-helper] finance check switch refused", financeError.code ?? "error");
-      return jsonError("The AI settings could not be saved.", financeError.code === "42501" ? 403 : 503);
-    }
-  }
   const { data, error } = await auth.supabase.rpc("ai_helper_save_settings", {
     p_roundup: parsed.data.roundupEnabled, p_rfq: parsed.data.rfqEnabled, p_cap_pence: parsed.data.monthlyCapPence,
   });
@@ -46,6 +37,19 @@ export async function POST(request: Request) {
     console.error("[ai-helper] settings refused", error.code ?? "error");
     return jsonError("The AI helper settings could not be saved.", error.code === "42501" ? 403 : 503);
   }
+  // The finance check second, so a refused save above never leaves it changed. If only this write fails the other settings ARE saved:
+  // the answer carries them plus a warning, and says what the finance check really is (a database without the switch yet, or a
+  // refusal, leaves finance_check_enabled as it was).
+  let warning: string | undefined;
+  if (parsed.data.financeCheckEnabled !== undefined) {
+    const { error: financeError } = await auth.supabase.rpc("ai_helper_set_finance_check", { p_enabled: parsed.data.financeCheckEnabled });
+    if (financeError) {
+      if (!MISSING_FINANCE_SWITCH.has(financeError.code ?? "")) console.error("[ai-helper] finance check switch refused", financeError.code ?? "error");
+      warning = MISSING_FINANCE_SWITCH.has(financeError.code ?? "")
+        ? "Saved, but the finance check could not be changed yet: the database has not been updated for it."
+        : "Saved, but the finance check switch could not be changed. Try again.";
+    }
+  }
   const finance = await readCompanyFinanceCheck(auth.supabase, auth.profile.organization_id);
-  return NextResponse.json({ ...(data as Record<string, unknown>), finance_check_enabled: finance.enabled, finance_check_available: finance.available });
+  return NextResponse.json({ ...(data as Record<string, unknown>), finance_check_enabled: finance.enabled, finance_check_available: finance.available, ...(warning ? { warning } : {}) });
 }

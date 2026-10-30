@@ -34,7 +34,7 @@ export function AiMasterCard({ status, onStatus }: { status: AiHelperStatus; onS
     try {
       const saved = await sendAiHelper("/api/ai-helper/settings", { method: "POST", body: JSON.stringify(settingsBody(next, status.monthly_cap_pence)) });
       onStatus(saved);
-      if (next.financeCheck === true && saved.finance_check_enabled !== true) toast.warning("Saved, but the finance check could not be switched on yet: the database has not been updated for it.");
+      if (saved.warning) toast.warning(saved.warning);
       else toast.success("AI settings saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save.");

@@ -42,8 +42,11 @@ test("switch off: no AI UI, and the routes refuse", async ({ page }) => {
   await signIn(page, w.tenants.alpha.users.office);
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("link", { name: "AI helper" })).toHaveCount(0);
-  await page.goto("/ai-helper");
+  // The server switch is on, so the AI menu item shows for office even though this company has AI off; the page then says it is off.
+  const aiItem = page.getByRole("link", { name: "AI", exact: true });
+  await expect(aiItem).toHaveCount(1);
+  await aiItem.click();
+  await expect(page).toHaveURL(/\/ai-helper/);
   await expect(page.getByTestId("ai-helper-off")).toBeVisible();
   await expect(page.getByRole("textbox", { name: "RFQ email text" })).toHaveCount(0);
   expect((await page.request.post("/api/ai-helper/rfq", { data: { text: rfqText("X") } })).status()).toBe(404);
@@ -166,7 +169,7 @@ test("workshop and viewer are refused", async ({ browser }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await signIn(page, user);
-    await expect(page.getByRole("link", { name: "AI helper" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "AI", exact: true })).toHaveCount(0);
     for (const [path, body] of [["/api/ai-helper/rfq", { text: rfqText("X") }], ["/api/ai-helper/roundup", { period: "daily" }]] as const) {
       expect((await page.request.post(path, { data: body })).status()).toBe(403);
     }
