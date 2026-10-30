@@ -24,15 +24,13 @@ async function setShown(page: Page, label: string, shown: boolean) {
 async function expectTilesAligned(page: Page) {
   const labels = page.locator("main p.label-mono");
   await expect(labels.first()).toBeVisible();
-  const n = await labels.count();
-  const rows: Array<{ top: number; height: number; valueTop: number; left: number; right: number; bottom: number }> = [];
-  for (let i = 0; i < n; i += 1) {
-    const label = labels.nth(i);
-    const lb = (await label.boundingBox())!;
-    const vb = (await label.locator("xpath=following-sibling::p[1]").boundingBox())!;
-    const tile = (await label.locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]").boundingBox())!;
-    rows.push({ top: Math.round(lb.y), height: Math.round(lb.height), valueTop: Math.round(vb.y - tile.y), left: tile.x, right: tile.x + tile.width, bottom: tile.y + tile.height });
-  }
+  // Every box in one call: measured one at a time, a re-render in between (the dashboard's data arriving) mixes two layouts.
+  const rows = await labels.evaluateAll((els) => els.map((label) => {
+    const lb = label.getBoundingClientRect();
+    const vb = label.nextElementSibling!.getBoundingClientRect();
+    const tile = label.closest("div[class*='rounded-xl']")!.getBoundingClientRect();
+    return { top: Math.round(lb.y), height: Math.round(lb.height), valueTop: Math.round(vb.y - tile.y), left: tile.x, right: tile.x + tile.width, bottom: tile.y + tile.height };
+  }));
   expect(new Set(rows.map((r) => r.height)).size, "equal heading box heights").toBe(1);
   for (const top of new Set(rows.map((r) => r.top))) {
     expect(new Set(rows.filter((r) => r.top === top).map((r) => r.valueTop)).size, `number tops level in the row at ${top}`).toBe(1);
@@ -57,6 +55,8 @@ for (const [name, size] of [["1280", { width: 1280, height: 900 }], ["390", { wi
     await page.setViewportSize(size);
     await signIn(page, w.tenants.alpha.users.admin);
     for (const { text } of HIDE) await expect(page.getByText(text, { exact: true }).first()).toBeVisible();
+    // Measure the settled page: nothing still Loading (Needs attention, the panels), so the tiles are not re-laid out mid-check.
+    await expect(page.locator("main").getByText(/Loading/)).toHaveCount(0);
     await expectTilesAligned(page);
 
     for (const { label } of HIDE) await setShown(page, label, false);
