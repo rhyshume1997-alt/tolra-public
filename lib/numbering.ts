@@ -14,6 +14,7 @@
  */
 
 import { supabase } from "@/lib/supabase";
+import { confirmPageCompany } from "@/lib/page-company";
 
 export const QUOTE_PREFIX = "QUO";
 export const INVOICE_PREFIX = "INV";
@@ -60,6 +61,8 @@ export function quoteNumberForJob(jobNo: string | null | undefined): string | nu
 /** Allocates the next number for a prefix ("QUO" | "INV" | "J" | "PO" | "SO") atomically in Postgres. Throws when it can't. */
 export async function allocateNumber(prefix: "QUO" | "INV" | "J" | "PO" | "SO"): Promise<string> {
   if (!supabase) throw new Error("Supabase is not configured.");
+  // S5: next_doc_number numbers for the SESSION's company; another tab may have switched it since this page opened.
+  await confirmPageCompany(supabase);
   const { data, error } = await supabase.rpc("next_doc_number", { p_prefix: prefix });
   if (error) throw error;
   if (typeof data !== "string" || !data) throw new Error("next_doc_number returned no number.");
