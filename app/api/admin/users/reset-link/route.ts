@@ -72,9 +72,16 @@ export async function POST(request: Request) {
     throw err;
   }
 
+  // setPasswordUrl returns string today and string | null once the site URL is required (security PR): both compile, null/empty is a
+  // configuration error and nothing is sent.
+  const redirectTo: string | null = setPasswordUrl(request.headers.get("origin") || new URL(request.url).origin);
+  if (!redirectTo) {
+    console.error("[admin/users/reset-link] no site URL configured; nothing sent");
+    return jsonError("Password reset e-mail is not configured", 500);
+  }
+
   const sender = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, flowType: "implicit" } });
-  const origin = request.headers.get("origin") || new URL(request.url).origin;
-  const { error } = await sender.auth.resetPasswordForEmail(email, { redirectTo: setPasswordUrl(origin) });
+  const { error } = await sender.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) {
     console.error("[admin/users/reset-link] reset email failed", error.status);
     return jsonError("The reset e-mail couldn't be sent. Try again shortly.", 502);

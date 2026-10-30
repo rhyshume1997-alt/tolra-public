@@ -29,6 +29,7 @@ const state = {
   limiterDown: false,
   resetCalls: [] as Array<{ email: string; options: { redirectTo?: string } }>,
   resetError: null as { status: number } | null,
+  redirect: "https://tolra.example/auth/set-password" as string | null,
   audited: [] as Array<{ action: string; entityId: string; newData: Record<string, unknown> }>,
 };
 
@@ -83,6 +84,7 @@ vi.mock("@/lib/server/login", async () => {
     },
   };
 });
+vi.mock("@/lib/auth-links", () => ({ setPasswordUrl: () => state.redirect }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
     auth: {
@@ -102,7 +104,7 @@ const send = (userId: unknown = USER) =>
 beforeEach(() => {
   Object.assign(state, {
     role: "admin", support: false, aal: "aal2", rpcMissing: false, limitCalls: [], limitDenied: null, limiterDown: false,
-    resetCalls: [], resetError: null, audited: [], owners: new Set<string>(),
+    resetCalls: [], resetError: null, redirect: "https://tolra.example/auth/set-password", audited: [], owners: new Set<string>(),
     memberships: [ordinary(ADMIN, ORG), ordinary(USER, ORG)],
     emails: { [USER]: EMAIL, [OTHER]: EMAIL },
   });
@@ -198,6 +200,14 @@ describe("sending", () => {
     expect(JSON.stringify(body)).not.toContain(EMAIL);
     expect(state.audited).toEqual([{ action: "PASSWORD_RESET_PREPARED", entityId: USER, newData: { via: "email" } }]);
     expect(JSON.stringify(state.audited)).not.toContain("example.com");
+  });
+
+  it("no site URL (setPasswordUrl null or empty): 500, nothing sent, nothing audited", async () => {
+    for (const value of [null, ""]) {
+      state.redirect = value;
+      expect((await send()).status).toBe(500);
+    }
+    untouched();
   });
 
   it("Auth refusing the e-mail is reported and nothing is audited", async () => {
