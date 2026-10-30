@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { type EmailScheduleRow, RETRY_AFTER_MS, claimRun } from "@/lib/email/schedules/store";
-import { adminEmails, loadPeopleHours, previousWeekStart, runTimesheets, scopedToCompany, weekLabel } from "@/lib/email/schedules/timesheet";
+import { scheduleEmailKey } from "@/lib/email/schedules/keys";
+import { adminEmails, decimalHours, weekNumber, loadPeopleHours, previousWeekStart, runTimesheets, scopedToCompany, weekLabel } from "@/lib/email/schedules/timesheet";
 import { dueOccurrence } from "@/lib/email/schedules/due";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
 import { DEFAULT_TIME_SETTINGS, type AttendanceEvent } from "@/lib/time-sheet";
@@ -65,6 +66,17 @@ describe("reading one company's hours", () => {
   });
 });
 
+describe("the numbers in the e-mail", () => {
+  it("decimal hours, no trailing zeros; the ISO week number of the week", () => {
+    expect(decimalHours(1395)).toBe("23.25");
+    expect(decimalHours(180)).toBe("3");
+    expect(decimalHours(0)).toBe("0");
+    expect(decimalHours(100)).toBe("1.67");
+    expect(weekNumber("2026-10-19")).toBe(43);
+    expect(weekNumber("2026-12-28")).toBe(53);
+  });
+});
+
 describe("the admins' e-mail addresses", () => {
   it("the company's active admins (by role or second role), not support, not expired, not other companies", async () => {
     const db = new FakeDb({
@@ -114,12 +126,14 @@ describe("running a period of timesheet e-mails", () => {
     expect(send).toHaveBeenCalledTimes(2);
     const [first, second] = send.mock.calls.map((c) => c[0]);
     expect(first).toMatchObject({ organizationId: ORG, kind: "timesheet", to: ["boss@jnr.test", "second@jnr.test"], recordType: "timesheet", recordId: `${A}:2026-10-19` });
-    expect(first.subject).toContain("Alex Ames");
-    expect(first.subject).toContain("Mon 19 Oct to Sun 25 Oct 2026");
-    expect(first.text).toContain("23:15 paid (25:30 clocked)");
-    expect(second.subject).toContain("b@jnr.test"); // no name: the e-mail address stands in
-    expect(second.text).toContain("3:00 paid");
-    expect(first.idempotencyKey).toBe(`timesheet:sch-2:${occurrence.periodKey}:${A}`);
+    expect(first.subject).toBe("Timesheet for week 43 (Mon 19 Oct to Sun 25 Oct 2026) from JNR Engineering");
+    expect(first.text).toContain("is ready: 23.25 hours recorded.");
+    expect(second.text).toContain("is ready: 3 hours recorded.");
+    expect(first.idempotencyKey).toBe(scheduleEmailKey("timesheet", "sch-2", occurrence.periodKey, A));
+    expect(first.idempotencyKey).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
+    expect(second.idempotencyKey).not.toBe(first.idempotencyKey);
+    expect(first.html).toContain("<br>");
+    for (const m of [first, second]) { expect(m.subject).not.toContain("{{"); expect(m.text).not.toContain("{{"); }
     expect(loadTimeData.mock.calls[0][1]).toMatchObject({ userId: null });
   });
 

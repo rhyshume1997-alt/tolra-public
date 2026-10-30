@@ -6,10 +6,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { type EmailScheduleRow, StoreError, loadCompanyName, loadTemplateOverride, readAll } from "@/lib/email/schedules/store";
 import { type Occurrence, localDate } from "@/lib/email/schedules/due";
-import { renderScheduleEmail } from "@/lib/email/schedules/render";
+import { scheduleEmailKey } from "@/lib/email/schedules/keys";
+import { renderInvoiceReminder } from "@/lib/email/schedules/render";
 import { sendCompanyEmail } from "@/lib/email/send-company-email";
 import { fmtDate } from "@/lib/dates";
-import { gbp } from "@/lib/money";
+import { fromPence, gbp, toPence } from "@/lib/money";
 import { balanceDue, daysPastDue, invoiceLifecycle } from "@/lib/receivables";
 
 export type ReminderInvoiceRow = {
@@ -100,17 +101,24 @@ export async function runInvoiceReminders(admin: SupabaseClient, schedule: Email
     }
     const release = () => admin.from("invoice_reminder_sends").delete().eq("invoice_id", invoice.id).eq("schedule_id", schedule.id).eq("period_key", occurrence.periodKey);
     try {
-      const mail = renderScheduleEmail("invoice_reminder", {
-        customer_name: customer?.contact_name?.trim() || invoice.customer,
-        document_number: invoice.invoice_ref ?? "",
-        total: gbp(invoice.balance, 2),
-        due_date: fmtDate(invoice.due_date),
-        company_name: companyName,
-        days_overdue: String(invoice.daysOverdue),
+      // "total" is what the invoice came to before receipts (balance + received), so "received X, leaving Y to pay" always adds up;
+      // credits and refunds change only the balance. The greeting, days ("5 days") and payment note come from E11's invoiceReminderVars.
+      const received = Number(invoice.amount_paid) || 0;
+      const mail = renderInvoiceReminder({
+        reference: invoice.invoice_ref ?? "",
+        total: gbp(fromPence(toPence(invoice.balance) + toPence(received)), 2),
+        dueDate: fmtDate(invoice.due_date),
+        daysOverdue: invoice.daysOverdue,
+        companyName,
+        customerName: invoice.customer,
+        contactName: customer?.contact_name,
+        amountPaid: received,
+        paidText: gbp(received, 2),
+        balanceText: gbp(invoice.balance, 2),
       }, override);
       const sent = await deps.send({
-        organizationId: org, userId: null, kind: "invoice_reminder", to, subject: mail.subject, text: mail.text,
-        recordType: "invoice", recordId: invoice.id, idempotencyKey: `invoice_reminder:${schedule.id}:${occurrence.periodKey}:${invoice.id}`,
+        organizationId: org, userId: null, kind: "invoice_reminder", to, subject: mail.subject, text: mail.text, html: mail.html,
+        recordType: "invoice", recordId: invoice.id, idempotencyKey: scheduleEmailKey("invoice_reminder", schedule.id, occurrence.periodKey, invoice.id),
       });
       if (sent.ok) {
         result.sent += 1;

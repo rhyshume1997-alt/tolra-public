@@ -5,12 +5,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { type EmailScheduleRow, StoreError, loadCompanyName, loadTemplateOverride } from "@/lib/email/schedules/store";
-import { type Occurrence, addDaysToDate, localDate, mondayOf } from "@/lib/email/schedules/due";
+import { type Occurrence, addDaysToDate, isoWeekKey, localDate, mondayOf } from "@/lib/email/schedules/due";
 import type { ExecResult } from "@/lib/email/schedules/reminders";
-import { renderScheduleEmail } from "@/lib/email/schedules/render";
+import { scheduleEmailKey } from "@/lib/email/schedules/keys";
+import { renderTimesheet } from "@/lib/email/schedules/render";
 import { sendCompanyEmail } from "@/lib/email/send-company-email";
 import { type TimeData, loadTimeData } from "@/lib/time-data";
-import { addDays, hm, startOfLocalDay, weekTotals } from "@/lib/time-sheet";
+import { addDays, startOfLocalDay, weekTotals } from "@/lib/time-sheet";
 
 /** Tables that hold a company's rows and must be read for one company only (the rest, bank holidays, are shared). */
 const COMPANY_TABLES = new Set(["attendance_events", "operator_sessions", "time_settings", "jobs"]);
@@ -37,6 +38,12 @@ export function weekLabel(weekStart: string): string {
   const day = (date: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short" }).format(d(date));
   return `${day(weekStart)} ${SHORT.format(d(weekStart))} to ${day(end)} ${SHORT.format(d(end))} ${end.slice(0, 4)}`;
 }
+
+/** The ISO week number of the week starting Monday `weekStart` ("2026-W43" gives 43). */
+export const weekNumber = (weekStart: string) => Number(isoWeekKey(weekStart).slice(-2));
+
+/** Minutes as decimal hours to 2 places without trailing zeros: 1395 gives "23.25", 180 gives "3". */
+export const decimalHours = (minutes: number) => String(Number((Math.max(0, minutes) / 60).toFixed(2)));
 
 export type PersonHours = { userId: string; paidMinutes: number; clockedMinutes: number };
 
@@ -115,13 +122,13 @@ export async function runTimesheets(admin: SupabaseClient, schedule: EmailSchedu
     const release = () => admin.from("timesheet_sends").delete().eq("schedule_id", schedule.id).eq("period_key", occurrence.periodKey).eq("user_id", person.userId);
     try {
       const name = names.get(person.userId) ?? "Unknown";
-      const mail = renderScheduleEmail("timesheet", {
-        person_name: name, week: weekLabel(weekStart), hours: `${hm(person.paidMinutes)} paid (${hm(person.clockedMinutes)} clocked)`,
-        company_name: companyName, link: site ? `${site}/time` : "",
+      const mail = renderTimesheet({
+        personName: name, week: `${weekNumber(weekStart)} (${weekLabel(weekStart)})`, hours: decimalHours(person.paidMinutes),
+        companyName, link: site ? `${site}/time` : "",
       }, override);
       const sent = await deps.send({
-        organizationId: org, userId: null, kind: "timesheet", to: recipients, subject: mail.subject, text: mail.text,
-        recordType: "timesheet", recordId: `${person.userId}:${weekStart}`, idempotencyKey: `timesheet:${schedule.id}:${occurrence.periodKey}:${person.userId}`,
+        organizationId: org, userId: null, kind: "timesheet", to: recipients, subject: mail.subject, text: mail.text, html: mail.html,
+        recordType: "timesheet", recordId: `${person.userId}:${weekStart}`, idempotencyKey: scheduleEmailKey("timesheet", schedule.id, occurrence.periodKey, person.userId),
       });
       if (sent.ok) {
         result.sent += 1;

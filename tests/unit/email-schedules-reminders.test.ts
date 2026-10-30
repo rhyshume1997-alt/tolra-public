@@ -6,7 +6,10 @@ import { type EmailScheduleRow } from "@/lib/email/schedules/store";
 import { type ReminderInvoiceRow, reminderCandidates, runInvoiceReminders } from "@/lib/email/schedules/reminders";
 import { dueOccurrence } from "@/lib/email/schedules/due";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
+import { scheduleEmailKey } from "@/lib/email/schedules/keys";
 import { FakeDb } from "../support/fake-db";
+
+const MAILER_KEY = /^[A-Za-z0-9_-]{8,100}$/; // lib/email/send-company-email.ts accepts only this
 
 const ORG = "org-a";
 const inv = (id: string, extra: Partial<ReminderInvoiceRow> = {}): ReminderInvoiceRow => ({
@@ -58,6 +61,23 @@ describe("which invoices get a reminder", () => {
   });
 });
 
+describe("idempotency keys fit the mailer", () => {
+  it("only [A-Za-z0-9_-], 8 to 100 characters, even for a 'once' period key (an ISO time) and long ids", () => {
+    const uuid = "8f14e45f-ceea-467a-9575-5c0a1f1b2c3d";
+    for (const key of [
+      scheduleEmailKey("invoice_reminder", uuid, "2026-11-03T14:30:00.000Z", uuid),
+      scheduleEmailKey("timesheet", uuid, "2026-W44", uuid),
+      scheduleEmailKey("invoice_reminder", "s", "k", "i"),
+    ]) expect(key).toMatch(MAILER_KEY);
+  });
+  it("the same input gives the same key; any part changing gives another; parts can't be shuffled into each other", () => {
+    expect(scheduleEmailKey("invoice_reminder", "a", "b", "c")).toBe(scheduleEmailKey("invoice_reminder", "a", "b", "c"));
+    const keys = new Set([scheduleEmailKey("invoice_reminder", "a", "b", "c"), scheduleEmailKey("invoice_reminder", "a", "b", "d"), scheduleEmailKey("invoice_reminder", "a", "x", "c"),
+      scheduleEmailKey("invoice_reminder", "x", "b", "c"), scheduleEmailKey("timesheet", "a", "b", "c"), scheduleEmailKey("invoice_reminder", "ab", "c"), scheduleEmailKey("invoice_reminder", "a", "bc")]);
+    expect(keys.size).toBe(7);
+  });
+});
+
 describe("running a period of reminders", () => {
   const schedule: EmailScheduleRow = {
     id: "sch-1", organization_id: ORG, kind: "invoice_reminder", enabled: true, frequency: "daily", weekday: null, time_of_day: "08:00", run_at: null,
@@ -96,12 +116,36 @@ describe("running a period of reminders", () => {
     expect(out).toMatchObject({ sent: 1, drafted: 0, skipped: 1, failed: 0, error: null, retryable: true });
     expect(send).toHaveBeenCalledTimes(1);
     const mail = send.mock.calls[0][0];
-    expect(mail).toMatchObject({ organizationId: ORG, kind: "invoice_reminder", to: ["pay@acme.test"], recordType: "invoice", recordId: "1", idempotencyKey: "invoice_reminder:sch-1:2026-10-26:1" });
-    expect(mail.subject).toContain("INV-1");
-    expect(mail.text).toContain("Pat");
-    expect(mail.text).toContain("£120.00");
-    expect(mail.text).toContain("25 days overdue");
-    expect(mail.text).toContain("JNR");
+    expect(mail).toMatchObject({ organizationId: ORG, kind: "invoice_reminder", to: ["pay@acme.test"], recordType: "invoice", recordId: "1", idempotencyKey: scheduleEmailKey("invoice_reminder", "sch-1", "2026-10-26", "1") });
+    expect(mail.subject).toBe("Overdue invoice INV-1 from JNR");
+    expect(mail.text).toBe("Hello Pat,\n\nOur records show invoice INV-1 for £120.00 was due on 01/10/2026 and is now 25 days overdue.\n\nPlease arrange payment, or let us know if there is a problem with the invoice.\n\nKind regards,\nJNR");
+    expect(mail.html).toContain("Hello Pat,<br>");
+  });
+
+  it("every placeholder of the default text is filled: no '{{' reaches a customer, whoever the contact is and whatever has been paid", async () => {
+    db.rows("customers").push({ organization_id: ORG, name: "Plain Ltd", email: "plain@x.test", contact_name: null });
+    db.rows("invoices").push({ organization_id: ORG, ...inv("5", { customer: "Plain Ltd", due_date: "2026-10-25", amount_paid: 20, credited_amount: 10 }) });
+    await run();
+    const mails = send.mock.calls.map((c) => c[0]);
+    expect(mails).toHaveLength(2);
+    for (const m of mails) {
+      expect(m.subject).not.toContain("{{");
+      expect(m.text).not.toContain("{{");
+      expect(m.html ?? "").not.toContain("{{");
+    }
+    const plain = mails.find((m) => m.recordId === "5")!;
+    expect(plain.text.startsWith("Hello,\n")).toBe(true); // no contact name: "Hello," not "Hello ,"
+    expect(plain.text).toContain("is now 1 day overdue."); // singular
+    // Received 20 and credited 10 on a 120 invoice: it came to 100 before receipts, 20 received, 90... balance = 120 - 20 - 10 = 90.
+    expect(plain.text).toContain("for £110.00 was due");
+    expect(plain.text).toContain("We have received £20.00, leaving £90.00 to pay.");
+  });
+
+  it("a one-day-late and a many-days-late invoice read right", async () => {
+    const out = await run();
+    expect(out.sent).toBe(1);
+    expect(send.mock.calls[0][0].text).toContain("25 days overdue");
+    expect(send.mock.calls[0][0].text).not.toContain("is now 25 overdue");
   });
 
   it("dedupe: the same period never sends the same invoice twice, however often it runs", async () => {
@@ -117,7 +161,8 @@ describe("running a period of reminders", () => {
     const tomorrow = new Date("2026-10-27T09:00:00Z");
     await runInvoiceReminders(db as never, schedule, dueOccurrence(schedule, tomorrow)!, tomorrow, { send });
     expect(send).toHaveBeenCalledTimes(2);
-    expect(send.mock.calls[1][0].idempotencyKey).toBe("invoice_reminder:sch-1:2026-10-27:1");
+    expect(send.mock.calls[1][0].idempotencyKey).toBe(scheduleEmailKey("invoice_reminder", "sch-1", "2026-10-27", "1"));
+    expect(send.mock.calls[1][0].idempotencyKey).not.toBe(send.mock.calls[0][0].idempotencyKey);
   });
 
   it("an invoice paid since the last period is not reminded", async () => {
@@ -170,7 +215,7 @@ describe("running a period of reminders", () => {
   it("uses the company's own wording when it has saved some, and the default otherwise", async () => {
     db.rows("email_templates").push({ organization_id: ORG, key: "invoice_reminder", subject: "Pay up {{document_number}}", body: "Dear {{customer_name}}, {{total}} please." });
     await run();
-    expect(send.mock.calls[0][0]).toMatchObject({ subject: "Pay up INV-1", text: "Dear Pat, £120.00 please." });
+    expect(send.mock.calls[0][0]).toMatchObject({ subject: "Pay up INV-1", text: "Dear Acme Ltd, £120.00 please." });
   });
 
   it("reads the right company only (a customer of the same name in another company is not used)", async () => {
