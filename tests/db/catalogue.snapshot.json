@@ -21,6 +21,16 @@
  },
  {
   "kind": "function",
+  "object": "public._reopen_audit(p_org uuid, p_action text, p_request uuid, p_metadata jsonb)",
+  "detail": "invoker search_path=pg_catalog, public 733656fd7b0e58525de1a2be13574122"
+ },
+ {
+  "kind": "function",
+  "object": "public._reopen_job_signed_off(p_job uuid, p_reason text)",
+  "detail": "invoker search_path=pg_catalog, public f711dce66ade05b968ca7d5595a1d9a0"
+ },
+ {
+  "kind": "function",
   "object": "public._session_membership()",
   "detail": "definer search_path=pg_catalog, public 2205176822ae681e8934cdb69384f264"
  },
@@ -393,6 +403,11 @@
   "kind": "function",
   "object": "public.customers_in_use_guard()",
   "detail": "definer search_path=pg_catalog, public 59b578994e9bd94e674deb0435b36ef9"
+ },
+ {
+  "kind": "function",
+  "object": "public.decide_reopen_request(p_request uuid, p_decision text, p_note text)",
+  "detail": "definer search_path=pg_catalog, public 178c9c92260635662757582c7b9fa841"
  },
  {
   "kind": "function",
@@ -1406,6 +1421,16 @@
  },
  {
   "kind": "function",
+  "object": "public.reopen_preview(p_record_type text, p_record_id uuid)",
+  "detail": "definer search_path=pg_catalog, public caa2c958034c56329c93059ed6b5e21c"
+ },
+ {
+  "kind": "function",
+  "object": "public.reopen_record(p_record_type text, p_record_id uuid, p_reason text, p_mode text)",
+  "detail": "definer search_path=pg_catalog, public c841091be2b71759f1e56d1a7bcc31f1"
+ },
+ {
+  "kind": "function",
   "object": "public.replace_draft_invoice(p_invoice uuid, p_expected_updated_at timestamp with time zone, p_header jsonb, p_lines jsonb)",
   "detail": "invoker search_path=pg_catalog, public 1c64d417fb36b8741d99397bdc9366ee"
  },
@@ -1856,6 +1881,16 @@
  },
  {
   "kind": "function-grant",
+  "object": "public._reopen_audit(p_org uuid, p_action text, p_request uuid, p_metadata jsonb)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public._reopen_job_signed_off(p_job uuid, p_reason text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public._session_membership()",
   "detail": "service_role"
  },
@@ -2228,6 +2263,11 @@
   "kind": "function-grant",
   "object": "public.customers_in_use_guard()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.decide_reopen_request(p_request uuid, p_decision text, p_note text)",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",
@@ -3237,6 +3277,16 @@
  {
   "kind": "function-grant",
   "object": "public.reopen_job(p_job uuid, p_reason text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.reopen_preview(p_record_type text, p_record_id uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.reopen_record(p_record_type text, p_record_id uuid, p_reason text, p_mode text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -4326,6 +4376,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.reopen_requests :: reopen_requests member select",
+  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+ },
+ {
+  "kind": "policy",
   "object": "public.rfqs :: rfqs rbac delete",
   "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
  },
@@ -4961,6 +5016,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.reopen_requests",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.rfqs",
   "detail": "enabled"
  },
@@ -5352,6 +5412,11 @@
  {
   "kind": "table-grant",
   "object": "public.record_archive_state :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.reopen_requests :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -6971,6 +7036,16 @@
  },
  {
   "kind": "trigger",
+  "object": "public.reopen_requests :: admin_mfa",
+  "detail": "O aa5b304391ded67d1e243a78538e3a76"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.reopen_requests :: support_read_only",
+  "detail": "O c91ceb80a19952f4b37d461b2bc290b9"
+ },
+ {
+  "kind": "trigger",
   "object": "public.rfqs :: aa_actor_keep",
   "detail": "O 83d559fa2a0319f58bc211293bb04df8"
  },
@@ -7553,6 +7628,11 @@
   "kind": "unique-index",
   "object": "public.quotes :: quotes_quote_ref_unique",
   "detail": "a6c57c5e11646a3a02e02ae82af9fb42"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.reopen_requests :: reopen_requests_one_waiting",
+  "detail": "65a81836fc07587459d12d3605959b0d"
  },
  {
   "kind": "unique-index",
