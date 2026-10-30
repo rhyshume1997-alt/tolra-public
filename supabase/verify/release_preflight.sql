@@ -116,7 +116,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305')),
     ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
+    ('114 clock-in network lock',         to_regclass('public.clock_in_network_locks') IS NOT NULL AND to_regclass('public.clock_in_network_unverified') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'clock_in_network_lock' AND tgrelid = to_regclass('public.attendance_events')))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
