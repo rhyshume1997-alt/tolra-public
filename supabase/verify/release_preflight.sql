@@ -116,7 +116,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'replace_draft_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '8e8e4cc70d1cd7ad4c3268c49e52f305')),
     ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
+    ('117 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
