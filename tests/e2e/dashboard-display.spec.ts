@@ -20,19 +20,38 @@ async function setShown(page: Page, label: string, shown: boolean) {
   await page.keyboard.press("Escape");
 }
 
-/** Heading boxes all the same height; number boxes level within a row of tiles; no tile overlaps another; the page does not scroll sideways. */
+type TileBox = { top: number; height: number; valueTop: number; left: number; right: number; bottom: number };
+
+/** Every tile's heading, number and box, read in one go in the page so all three come from the same layout (no shift between reads). */
+function measureTiles(page: Page): Promise<TileBox[]> {
+  return page.evaluate(async () => {
+    await document.fonts.ready;
+    return Array.from(document.querySelectorAll<HTMLElement>("main p.label-mono")).map((label) => {
+      let value = label.nextElementSibling;
+      while (value && value.tagName !== "P") value = value.nextElementSibling;
+      let tile = label.parentElement;
+      while (tile && !(tile.tagName === "DIV" && tile.className.includes("rounded-xl"))) tile = tile.parentElement;
+      const lb = label.getBoundingClientRect();
+      const vb = value!.getBoundingClientRect();
+      const tb = tile!.getBoundingClientRect();
+      return { top: Math.round(lb.y), height: Math.round(lb.height), valueTop: Math.round(vb.y - tb.y), left: tb.x, right: tb.x + tb.width, bottom: tb.y + tb.height };
+    });
+  });
+}
+
+/** Heading boxes all the same height; number boxes level within a row of tiles; no tile overlaps another; the page does not scroll sideways.
+ *  Measured once the page has settled: nothing in main still says Loading (the Today list and panels above the tiles grow when their data
+ *  arrives and push the tile rows down), fonts are ready, and two reads in a row give the same layout. */
 async function expectTilesAligned(page: Page) {
   const labels = page.locator("main p.label-mono");
   await expect(labels.first()).toBeVisible();
-  const n = await labels.count();
-  const rows: Array<{ top: number; height: number; valueTop: number; left: number; right: number; bottom: number }> = [];
-  for (let i = 0; i < n; i += 1) {
-    const label = labels.nth(i);
-    const lb = (await label.boundingBox())!;
-    const vb = (await label.locator("xpath=following-sibling::p[1]").boundingBox())!;
-    const tile = (await label.locator("xpath=ancestor::div[contains(@class,'rounded-xl')][1]").boundingBox())!;
-    rows.push({ top: Math.round(lb.y), height: Math.round(lb.height), valueTop: Math.round(vb.y - tile.y), left: tile.x, right: tile.x + tile.width, bottom: tile.y + tile.height });
-  }
+  await expect(page.locator("main").getByText(/^Loading(\.\.\.|…)$/)).toHaveCount(0);
+  let rows: TileBox[] = await measureTiles(page);
+  await expect.poll(async () => {
+    const before = JSON.stringify(rows);
+    rows = await measureTiles(page);
+    return JSON.stringify(rows) === before;
+  }, { message: "tile layout settled", intervals: [250] }).toBe(true);
   expect(new Set(rows.map((r) => r.height)).size, "equal heading box heights").toBe(1);
   for (const top of new Set(rows.map((r) => r.top))) {
     expect(new Set(rows.filter((r) => r.top === top).map((r) => r.valueTop)).size, `number tops level in the row at ${top}`).toBe(1);
