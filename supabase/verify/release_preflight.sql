@@ -128,6 +128,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'integration_invite_redeem')),
     ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
                                           AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
+    ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'user_preferences' AND column_name = 'date_format')),
+    ('110 rfq clarification in one step',  EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_rfq_clarification')),
     ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reopen_record')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'decide_reopen_request')),

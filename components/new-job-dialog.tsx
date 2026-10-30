@@ -18,8 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ukDateTime } from "@/lib/auto-booking";
 import { friendlyError } from "@/lib/friendly-error";
 import {
-  type Machine, type ScheduledBooking, defaultJobStart, fetchSchedule, formatDateTimeShort, planJobBookings, scheduleAll, toLocalInputValue,
+  type Machine, type ScheduledBooking, defaultJobStart, fetchSchedule, planJobBookings, scheduleAll, toLocalInputValue,
 } from "@/lib/machine-schedule";
+import { fmtDayDateTime } from "@/lib/dates";
 import { onReconnect, prereqOutcome } from "@/lib/offline/reconnect";
 import { isNetworkError } from "@/lib/offline/store";
 import { confirmPageCompany } from "@/lib/page-company";
@@ -219,7 +220,7 @@ export function NewJobDialog({ open, role, jobs, onClose, onCreated }: {
                     <Input aria-label={`Start on machine ${index + 1}`} type="datetime-local" className={touch} value={startOf(row)} onChange={(e) => setRow(row.key, { start: e.target.value, touched: true })} />
                   </label>
                   <Button type="button" variant="outline" className={touch} aria-label={`Remove machine ${index + 1}`} onClick={() => setRows((current) => current.filter((item) => item.key !== row.key))}><Trash2 className="size-4" /></Button>
-                  {booked && booked.hours > 0 ? <p className="text-xs text-slate-500 sm:col-span-4">Finishes about {formatDateTimeShort(booked.finish)}{booked.clashes.length ? <span className="font-semibold text-amber-700 dark:text-amber-400">{` - clashes with ${[...new Set(booked.clashes.map((c) => c.jobNo))].join(", ")}`}</span> : null}</p> : null}
+                  {booked && booked.hours > 0 ? <p className="text-xs text-slate-500 sm:col-span-4">Finishes about {fmtDayDateTime(booked.finish)}{booked.clashes.length ? <span className="font-semibold text-amber-700 dark:text-amber-400">{` - clashes with ${[...new Set(booked.clashes.map((c) => c.jobNo))].join(", ")}`}</span> : null}</p> : null}
                 </div>
               );
             })}

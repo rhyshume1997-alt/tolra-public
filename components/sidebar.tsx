@@ -30,6 +30,7 @@ import { useOfflineStatus } from "@/lib/offline/scope";
 import { connectionState, roleLabel } from "@/lib/shell-status";
 import { ConnectionDot } from "@/components/shell-status";
 import { DisplayNameForm } from "@/components/display-name";
+import { DateFormatSettings } from "@/components/date-format-settings";
 
 type NavItem = {
   href: string;
@@ -266,6 +267,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <div className="space-y-4 text-sm">
                 <div className="rounded-lg border bg-slate-50 p-4"><p className="font-semibold text-slate-950">{profile?.full_name || profile?.email || ""}</p><p className="text-slate-500">{roleLabel(profile?.role)}{company ? `, ${company.name}` : ""}</p><p className="mt-2 text-slate-600">{profile?.email}</p></div>
                 <div className="rounded-lg border p-4"><DisplayNameForm /></div>
+                <div className="rounded-lg border p-4"><DateFormatSettings /></div>
                 {canChooseView ? (
                   <Button variant="outline" className="w-full" onClick={() => { window.location.assign("/select-role"); }}>Choose admin, office, or workshop view</Button>
                 ) : profile?.secondary_role ? (
