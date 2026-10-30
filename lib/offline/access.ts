@@ -4,6 +4,16 @@ export const OFFLINE_ACCESS_PREFIX = "tolra-offline-access-ended:";
 const blockedHere = new Set<string>();
 const COOKIE_PREFIX = "tolra_offline_blocked_";
 const cookieName = (userId: string) => `${COOKIE_PREFIX}${encodeURIComponent(userId)}`;
+/**
+ * The document.cookie text for this device's lock mark (or, with clear, its removal). Same attributes as the server-set copy
+ * (accessEndedCookie): Path=/, SameSite=Strict, one year. Secure is added on https only: a Secure cookie cannot be set from
+ * http://localhost in development, where the lock must keep working.
+ */
+export function offlineBlockCookieString(userId: string, protocol: string | undefined, clear = false): string {
+  return `${cookieName(userId)}=${clear ? "" : "1"}; Path=/; Max-Age=${clear ? 0 : 31536000}; SameSite=Strict${protocol === "https:" ? "; Secure" : ""}`;
+}
+const pageProtocol = () => (typeof window === "undefined" ? undefined : window.location?.protocol);
+
 /** Asks every open tab to run its access recheck now (a fresh value each time, so each signal fires a storage event). */
 export const ACCESS_RECHECK_KEY = "tolra-access-recheck";
 
@@ -24,7 +34,7 @@ export function blockOfflineAccess(userId: string) {
   blockedHere.add(userId);
   if (typeof window === "undefined") return;
   try { window.localStorage.setItem(OFFLINE_ACCESS_PREFIX + userId, "1"); } catch { /* cookie and memory also block */ }
-  try { document.cookie = `${cookieName(userId)}=1; Path=/; Max-Age=31536000; SameSite=Strict`; } catch { /* memory still blocks */ }
+  try { document.cookie = offlineBlockCookieString(userId, pageProtocol()); } catch { /* memory still blocks */ }
   window.dispatchEvent?.(new CustomEvent(OFFLINE_ACCESS_EVENT, { detail: userId }));
 }
 
@@ -33,7 +43,7 @@ export function confirmOfflineAccess(userId: string) {
   if (typeof window !== "undefined") {
     try {
       window.localStorage.removeItem(OFFLINE_ACCESS_PREFIX + userId);
-      document.cookie = `${cookieName(userId)}=; Path=/; Max-Age=0; SameSite=Strict`;
+      document.cookie = offlineBlockCookieString(userId, pageProtocol(), true);
     } catch {
       return; // online work can continue; offline recovery waits until storage works
     }

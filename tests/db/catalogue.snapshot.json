@@ -37,7 +37,7 @@
  {
   "kind": "function",
   "object": "public._session_membership()",
-  "detail": "definer search_path=pg_catalog, public 2205176822ae681e8934cdb69384f264"
+  "detail": "definer search_path=pg_catalog, public d73a1ed9f36cf3fe8a744405ba2beaec"
  },
  {
   "kind": "function",
@@ -496,6 +496,11 @@
  },
  {
   "kind": "function",
+  "object": "public.email_history_drafted_by_lock()",
+  "detail": "invoker search_path=pg_catalog, public 4e93481a734ae35b9990176705c5f6a9"
+ },
+ {
+  "kind": "function",
   "object": "public.email_schedules_guard()",
   "detail": "invoker search_path=pg_catalog, public ac0fe8d7031b149a7a96be86db673e0f"
  },
@@ -918,6 +923,11 @@
   "kind": "function",
   "object": "public.invoices_void_guard()",
   "detail": "invoker search_path=pg_catalog, public e7d2e064a28c655ac8a2a4e90c31bf1f"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoices_write_off_guard()",
+  "detail": "invoker search_path=pg_catalog, public 007241e5212c2823a57826109194d158"
  },
  {
   "kind": "function",
@@ -1591,6 +1601,11 @@
  },
  {
   "kind": "function",
+  "object": "public.reverse_write_off(p_invoice_id uuid, p_reason text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit cf0d85b41f73f82072d6ff6bc90a14a8"
+ },
+ {
+  "kind": "function",
   "object": "public.revise_quote(p_quote uuid)",
   "detail": "definer search_path=pg_catalog, public 542e94a9a6bb80a0613172f623736b4f"
  },
@@ -1632,7 +1647,7 @@
  {
   "kind": "function",
   "object": "public.session_is_active()",
-  "detail": "definer search_path=pg_catalog, public 2a5914bba9f7998ee97f24d97118bb8e"
+  "detail": "definer search_path=pg_catalog, public 6d8fe540779491dd5f40ef63fecf4336"
  },
  {
   "kind": "function",
@@ -1873,6 +1888,11 @@
   "kind": "function",
   "object": "public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)",
   "detail": "definer search_path=pg_catalog, public, security_audit 52b82a9a15d88c28e457e2f631970499"
+ },
+ {
+  "kind": "function",
+  "object": "public.write_off_invoice(p_invoice_id uuid, p_reason text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 6b00d8115959280b2da46a84b253f9bc"
  },
  {
   "kind": "function",
@@ -2451,6 +2471,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.email_history_drafted_by_lock()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.email_schedules_guard()",
   "detail": "service_role"
  },
@@ -2872,6 +2897,11 @@
  {
   "kind": "function-grant",
   "object": "public.invoices_void_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.invoices_write_off_guard()",
   "detail": "service_role"
  },
  {
@@ -3546,6 +3576,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.reverse_write_off(p_invoice_id uuid, p_reason text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.revise_quote(p_quote uuid)",
   "detail": "authenticated,service_role"
  },
@@ -3827,6 +3862,11 @@
  {
   "kind": "function-grant",
   "object": "public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.write_off_invoice(p_invoice_id uuid, p_reason text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -6191,6 +6231,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.email_history :: email_history_drafted_by_lock",
+  "detail": "O cd1f5e1a693199327bf2613ee9ebb2c3"
+ },
+ {
+  "kind": "trigger",
   "object": "public.email_history :: support_read_only",
   "detail": "O be149aa91037cab484651f6b0c9f0ce4"
  },
@@ -6598,6 +6643,11 @@
   "kind": "trigger",
   "object": "public.invoices :: invoices_void_guard",
   "detail": "O 8e996bb5ae1dbc5b7ef261ef351adac0"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoices :: invoices_write_off_guard",
+  "detail": "O 857177c1d8906c00390aab2c1bf58bec"
  },
  {
   "kind": "trigger",

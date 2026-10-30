@@ -74,8 +74,10 @@ import { DraftInvoiceEditor } from "@/components/draft-invoice-editor";
 import { useDatabaseHas067 } from "@/lib/use-database-has-067";
 import { useDatabaseHas073 } from "@/lib/use-database-has-073";
 import { VoidInvoiceDialog } from "@/components/void-invoice-dialog";
+import { WriteOffInvoiceDialog } from "@/components/write-off-invoice-dialog";
 import { chipsForPhase } from "@/lib/invoice-phase-filters";
 import { isVoid, voidOffered } from "@/lib/invoice-void";
+import { type WriteOffMode, isWrittenOff, writeOffOffered } from "@/lib/invoice-write-off";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
 import { InvoiceFromDeliveryNotes } from "@/components/invoice-from-delivery-notes";
 import { deliveryNotesPrintedLine, fetchInvoiceNotes, type InvoiceNote } from "@/lib/invoice-delivery-notes";
@@ -355,6 +357,8 @@ export default function InvoicesPage() {
   const has073 = useDatabaseHas073() === true;
   /** The invoice being voided (asks for the reason). */
   const [voidFor, setVoidFor] = useState<InvoiceRow | null>(null);
+  /** The invoice being written off, or whose write-off is being reversed (migration 105; asks for the reason). */
+  const [writeOffFor, setWriteOffFor] = useState<{ invoice: InvoiceRow; mode: WriteOffMode } | null>(null);
   const isAdmin = hasRole("admin");
   /** "Issue & send" on a draft: admin and office (workshop and viewer never issue or send). */
   const canIssueAndSend = isAdmin || hasRole("office");
@@ -1681,8 +1685,10 @@ export default function InvoicesPage() {
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <p className="mr-auto text-sm text-slate-600">{isVoid(viewingInvoice.rawStatus) ? "Void: not owed." : viewingInvoice.sentAt ? `Sent ${fmtDateTime(viewingInvoice.sentAt)}` : "Not recorded as sent yet"}</p>
+                  <p className="mr-auto text-sm text-slate-600">{isVoid(viewingInvoice.rawStatus) ? "Void: not owed." : isWrittenOff(viewingInvoice.rawStatus) ? "Written off: not owed." : viewingInvoice.sentAt ? `Sent ${fmtDateTime(viewingInvoice.sentAt)}` : "Not recorded as sent yet"}</p>
                   {has073 && viewingInvoice.id && voidOffered(viewingInvoice) ? <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" disabled={saving} onClick={() => setVoidFor(viewingInvoice)}>Void Invoice</Button> : null}
+                  {canIssueAndSend && viewingInvoice.id && writeOffOffered(viewingInvoice) ? <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" disabled={saving} onClick={() => setWriteOffFor({ invoice: viewingInvoice, mode: "write_off" })}>Write off</Button> : null}
+                  {canIssueAndSend && viewingInvoice.id && isWrittenOff(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving} onClick={() => setWriteOffFor({ invoice: viewingInvoice, mode: "reverse" })}>Reverse write-off</Button> : null}
                   <Button variant="outline" disabled={Boolean(viewProblem)} onClick={() => void downloadInvoicePdf(viewingInvoice)}>Download PDF</Button>
                   {viewingInvoice.id && !DEMO_MODE && !isVoid(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice, true)}>Email now</Button> : null}
                   <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice)}>{saving ? "Sending…" : "Send to Customer"}</Button>
@@ -1697,6 +1703,15 @@ export default function InvoicesPage() {
           invoice={{ id: voidFor.id, reference: voidFor.reference, customer: voidFor.customer }}
           onClose={() => setVoidFor(null)}
           onVoided={() => { const voidedId = voidFor.id ?? null; setVoidFor(null); void loadInvoices().then((loaded) => { if (loaded) setReopenId(voidedId); else setViewingInvoice(null); }); }}
+        />
+      ) : null}
+      {writeOffFor?.invoice.id ? (
+        <WriteOffInvoiceDialog
+          open
+          mode={writeOffFor.mode}
+          invoice={{ id: writeOffFor.invoice.id, reference: writeOffFor.invoice.reference, customer: writeOffFor.invoice.customer }}
+          onClose={() => setWriteOffFor(null)}
+          onDone={() => { const doneId = writeOffFor.invoice.id ?? null; setWriteOffFor(null); void loadInvoices().then((loaded) => { if (loaded) setReopenId(doneId); else setViewingInvoice(null); }); }}
         />
       ) : null}
       <ConfirmDialog

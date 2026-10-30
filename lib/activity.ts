@@ -299,6 +299,8 @@ const ACTION_LABELS: Record<string, string> = {
   CONFIRM_PAYMENTS: "Payments confirmed",
   APPLY_CREDIT: "Credit applied",
   VOID_INVOICE: "Invoice voided",
+  WRITE_OFF_INVOICE: "Invoice written off",
+  REVERSE_WRITE_OFF: "Write-off reversed",
   RESEND: "Sent again",
   REVISE: "Revised as a new version",
   REOPEN: "Reopened",
@@ -460,7 +462,8 @@ export function describeEntry(entry: ActivityEntry, names: PeopleMap = {}): { ti
     return { title: label, details: lines };
   }
   // Migration 073: the reason given when the invoice was voided.
-  if (entry.action === "VOID_INVOICE") {
+  // Migration 105: the reason given when the invoice was written off, or its write-off reversed.
+  if (entry.action === "VOID_INVOICE" || entry.action === "WRITE_OFF_INVOICE" || entry.action === "REVERSE_WRITE_OFF") {
     return { title: label, details: typeof meta.reason === "string" && meta.reason ? [`Reason: ${meta.reason}`] : [] };
   }
   if (entry.action === "RESEND") {

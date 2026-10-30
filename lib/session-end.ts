@@ -1,8 +1,9 @@
 /**
  * What a server refusal says about the sign-in. Migration 017's request check (check_request_session) raises SQLSTATE 28000
- * "Your session has ended. Sign in again." ONLY when the token's session no longer exists or has passed its not_after (a
- * sign-out elsewhere, a password change, a revocation, a timeout). It is never raised for a disabled or removed person: those
- * are found by the access recheck (lib/access-recheck.ts), which reads the profile and membership while the session is valid.
+ * "Your session has ended. Sign in again." when the token's session no longer exists or has passed its not_after (a
+ * sign-out elsewhere, a password change, a revocation, a timeout), and, from migration 116, when the login is banned (Admin >
+ * Users "Disable sign-in"). A person who is disabled or removed in the app only (profile or membership) does not get it: that is
+ * found by the access recheck (lib/access-recheck.ts), which reads the profile and membership while the session is valid.
  *
  *  - "session-ended": the session ended. The device is treated as offline: the queue and copies STAY, filed under the same person
  *    and company (lib/offline/scope), and are sent once that person signs in again. Anything with 28000 that cannot be told
