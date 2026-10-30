@@ -1,4 +1,4 @@
-// Every API route guards itself. middleware.ts lets every /api/ path through untouched (`if (isAsset || isApi || isPwaFile)`, before getUser), so a route
+// Every API route guards itself. middleware.ts lets every /api/ path through after getUser (`if (isApi) return response;`, before any page gate), so a route
 // handler with no guard of its own is open to the internet. This test reads every app/api/**/route.ts and, for each exported handler
 // (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS), requires a guard statement at the TOP LEVEL of the handler, before anything else that
 // matters, or that the route is on PUBLIC_ROUTES below with the reason it is safe without one. A guard statement is one of:

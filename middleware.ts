@@ -52,10 +52,11 @@ export async function middleware(request: NextRequest) {
 
   // Installable-app files: needed before sign-in (installing from the sign-in page, the offline page).
   const isPwaFile = path === "/manifest.webmanifest" || path === "/offline.html" || path === "/sw.js";
-  // Files, the API (each route checks the caller itself) and the installable-app files never depended on who is signed in: they
-  // return here, before the auth server and the database are asked anything (phone lag: getUser, user_profiles and my_session ran
-  // first, in series, for every one of them).
-  if (isAsset || isApi || isPwaFile) return NextResponse.next({ request });
+  // Files and the installable-app files never depended on who is signed in: they return here, before the auth server and the
+  // database are asked anything (phone lag: getUser, user_profiles and my_session ran first, in series, for every one of them).
+  // The API does not: its getUser below refreshes an expiring session and writes the new cookies on the response (the routes'
+  // own clients are read-only and would use up the refresh token without saving the new one).
+  if (isAsset || isPwaFile) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -94,6 +95,8 @@ export async function middleware(request: NextRequest) {
   const isSetPassword = path === "/auth/set-password";
 
   if (isConfigurationError) return response;
+  // Each route checks the caller itself; the middleware only refreshed the session cookies above.
+  if (isApi) return response;
   if (isSetPassword) return response;
   if (!data.user && isLogin && request.nextUrl.searchParams.get("expired") !== "1" && expiredSignInRedirect({
     hasAuthCookie: hasSessionCookie,

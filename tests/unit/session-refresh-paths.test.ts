@@ -1,8 +1,9 @@
 /**
- * Review condition (phone lag, fix 3): the middleware no longer runs on /api, so it no longer refreshes the auth cookies on an API
- * request. What still refreshes them:
- *  - every page request (navigations, reloads, a Link's prefetch) still runs the middleware's getUser through a server client whose
- *    setAll writes refreshed cookies onto the request and the response, redirects included;
+ * Review condition (phone lag, fix 3): what refreshes the auth cookies.
+ *  - every page request (navigations, reloads, a Link's prefetch) and every /api request runs the middleware's getUser through a
+ *    server client whose setAll writes refreshed cookies onto the request and the response, redirects included. For /api this
+ *    matters: the routes' own clients are read-only (lib/server/auth.ts), so a refresh there would use up the refresh token and
+ *    drop the new one;
  *  - the browser's own client (lib/supabase.ts, @supabase/ssr createBrowserClient) is created with autoRefreshToken on, so it
  *    refreshes its tokens itself and writes them to the same cookies.
  * The browser client below is the real one (real @supabase/ssr and auth-js) built in a stubbed browser; it makes no request.
@@ -95,12 +96,32 @@ describe("page requests still refresh the auth cookies in the middleware", () =>
     for (const cookie of REFRESHED) expect(response.cookies.get(cookie.name)?.value).toBe(cookie.value);
   });
 
-  it("/api requests do not run the middleware's client at all (each route checks the caller itself)", async () => {
+  it.each(["/api/audit", "/api/report-error", "/api/mail/status"])("%s with an expired session: getUser refreshes it and the new cookies go back on the response, like a page", async (path) => {
+    server.refreshOnGetUser = REFRESHED;
+    const response = await visit(path);
+    expect(server.clients).toBe(1);
+    expect(server.calls).toEqual(["getUser"]); // then on to the route: no page gate
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    for (const cookie of REFRESHED) expect(response.cookies.get(cookie.name)?.value).toBe(cookie.value);
+  });
+
+  it("the route sees the refreshed session too: the cookies are written onto the request passed on", async () => {
     server.refreshOnGetUser = REFRESHED;
     const response = await visit("/api/audit");
+    // NextResponse.next({ request }) forwards the rewritten request cookies to the route as x-middleware-request-cookie.
+    const forwarded = response.headers.get("x-middleware-request-cookie") ?? "";
+    for (const cookie of REFRESHED) expect(forwarded).toContain(`${cookie.name}=${cookie.value}`);
+  });
+
+  it("files and the installable-app files do not run the middleware's client at all", async () => {
+    server.refreshOnGetUser = REFRESHED;
+    for (const path of ["/logo.png", "/manifest.webmanifest", "/sw.js", "/offline.html"]) {
+      const response = await visit(path);
+      expect(response.cookies.get(REFRESHED[0].name)).toBeUndefined();
+    }
     expect(server.clients).toBe(0);
     expect(server.calls).toEqual([]);
-    expect(response.cookies.get(REFRESHED[0].name)).toBeUndefined();
   });
 });
 

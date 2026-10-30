@@ -1,6 +1,8 @@
 /**
- * Phone lag (fix 3): files, /api routes (each guards itself: api-route-guards.test.ts) and the installable-app files return from the
- * middleware before the auth server or the database is asked anything; every page still goes through getUser and its gates.
+ * Phone lag (fix 3): files and the installable-app files return from the middleware before the auth server or the database is
+ * asked anything. /api routes (each guards itself: api-route-guards.test.ts) are as on main 1939755: the middleware's client runs
+ * getUser (it refreshes an expiring session and writes the cookies on the response) and then returns, with no page gate. Every page
+ * still goes through getUser and its gates.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -63,10 +65,10 @@ const visit = async (path: string, headers: Record<string, string> = {}) => {
 const SKIPPED = [
   "/_next/static/chunks/main.js", "/logo.png", "/icons/apple-touch-icon.png", "/fonts/inter.woff2", "/styles.css", "/robots.txt", "/sw.js",
   "/manifest.webmanifest", "/offline.html",
-  "/api/pwa-icon", "/api/favicon", "/api/auth/signin", "/api/health", "/api/jobs/x",
 ];
+const API = ["/api/pwa-icon", "/api/favicon", "/api/auth/signin", "/api/health", "/api/jobs/x", "/api/audit"];
 
-describe("asset, /api and installable-app paths skip auth entirely", () => {
+describe("asset and installable-app paths skip auth entirely", () => {
   for (const path of SKIPPED) {
     it(path, async () => {
       for (const user of [null, { id: "u-1" }]) {
@@ -80,11 +82,31 @@ describe("asset, /api and installable-app paths skip auth entirely", () => {
     });
   }
 
+  it("/api is not skipped before the client: see below", () => {
+    expect(SKIPPED.some((path) => path.startsWith("/api/"))).toBe(false);
+  });
+
   it("a Link prefetch of a page is still a page: it is checked", async () => {
     const { location } = await visit("/jobs?_rsc=1", { "next-router-prefetch": "1" });
     expect(location).toBe("/login");
     expect(server.calls).toEqual(["getUser"]);
   });
+});
+
+describe("/api paths run getUser only (refreshing the session cookies), then pass to the route with no page gate", () => {
+  for (const path of API) {
+    it(path, async () => {
+      for (const user of [null, { id: "u-1" }]) {
+        server.user = user;
+        server.calls.length = 0;
+        const { location, response } = await visit(path, { cookie: "sb-abc-auth-token=session" });
+        expect(location).toBeNull(); // signed out is not sent to /login: the route answers for itself
+        expect(response.headers.get("x-middleware-next")).toBe("1");
+        expect(server.calls).toEqual(["getUser"]); // no user_profiles, no my_session
+      }
+      expect(server.clients).toBe(2);
+    });
+  }
 });
 
 describe("pages still require a signed-in, active person with the right role (gates unchanged)", () => {
