@@ -81,6 +81,8 @@ export function ClockInLockCard() {
     ? clockInLockDecision({ lockedNetwork: lock.network, savedNetworks: saved, source: "clock", deviceAt: null, receivedAt: new Date(), ip: here.ip, offSiteAllowed: false })
     : null;
   const lockedBy = lock?.locked_by ? names[lock.locked_by] ?? UNKNOWN : UNKNOWN;
+  /** One Lock captures one address family; a dual-stack network may reach Tolra in the other one too. */
+  const lockFamily = lock?.network.includes(":") ? "IPv6" : "IPv4";
   return (
     <Card data-testid="clock-in-lock-card">
       <CardHeader><CardTitle className="flex items-center gap-2"><Lock className="size-5 text-brand-accent" /> Clock-in network lock</CardTitle></CardHeader>
@@ -107,7 +109,11 @@ export function ClockInLockCard() {
           lock ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
               <span data-testid="clock-in-lock-state">
-                Locked to <span className="font-mono">{lock.network}</span> since {fmtDateTime(lock.locked_at)} by {lockedBy}.
+                Locked to <span className="font-mono">{lock.network}</span> ({lockFamily}) since {fmtDateTime(lock.locked_at)} by {lockedBy}.
+                <span className="mt-1 block text-xs text-slate-500" data-testid="clock-in-lock-family">
+                  Locked to {lock.network} ({lockFamily}). If your broadband also uses the other kind of address, add it under Site network
+                  above, or press Re-capture from a device on that address.
+                </span>
               </span>
               <span className="flex gap-2">
                 <Button size="sm" variant="outline" disabled={busy || !canCapture} data-testid="clock-in-lock-recapture" onClick={() => setConfirm("lock")}>Re-capture</Button>
