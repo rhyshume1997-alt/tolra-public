@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
+import { EmailTemplatesCard } from "@/components/email/email-templates-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -711,6 +712,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         <WorkshopEmailCard />
+        <EmailTemplatesCard />
       </div>
     </RoleGate>
   );

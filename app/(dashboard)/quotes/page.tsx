@@ -43,6 +43,8 @@ import { QUOTE_FILTER_LABELS, quoteLegend, quoteMatchesFilter } from "@/lib/list
 import { fmtDate, nowIso, toDateInput } from "@/lib/dates";
 import { type ExpiredQuoteAction, type ExpiredQuoteCheck, expiredQuoteAuditEvent, expiredQuoteCheck } from "@/lib/quote-expiry";
 import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
+import { renderTemplate } from "@/lib/email/templates/defaults";
+import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { QUOTE_COLUMNS } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
@@ -796,11 +798,8 @@ export default function QuotesPage() {
         const element = await buildQuotePdf(quote, items, profile);
         const customer = await resolveCustomer(quote.customer);
         if (!customer?.email) toast.info(`No email address on file for ${quote.customer}. Add one on the Customers page, or type it into the email.`);
-        openMailDraft(
-          customer?.email ?? "",
-          `Quote ${quote.ref} from ${profile.name}`,
-          `Hello,\n\nPlease find our quote ${quote.ref} attached as a PDF.\n\nKind regards,\n${profile.name}`,
-        );
+        const email = renderTemplate("quote", { document_number: quote.ref, company_name: profile.name, customer_name: quote.customer, total: currency(quote.value) }, await loadTemplateOverride(supabase, "quote"));
+        openMailDraft(customer?.email ?? "", email.subject, email.text);
         const ok = await downloadPdf(element, pdfName(quote), { entityTable: "quotes", entityId: quote.ref }, { silent: true });
         if (!ok) return;
         toast.success("PDF downloaded \u2014 attach it to the email that just opened");

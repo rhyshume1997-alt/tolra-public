@@ -54,6 +54,8 @@ import { DRAFT_INVOICE_DAYS, DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-it
 import { draftInvoiceCounts, invoiceMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
+import { type TemplateVars, invoiceReminderVars, renderTemplate } from "@/lib/email/templates/defaults";
+import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { INVOICE_COLUMNS, PAYMENT_COLUMNS, paymentExportRows } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
@@ -176,6 +178,11 @@ type InvoiceRow = InvoiceBase & {
 };
 
 const currency = (value: number) => gbp(value, 2);
+
+/** The invoice e-mail's values (Settings > Email templates; lib/email/templates). */
+function invoiceEmailVars(invoice: InvoiceRow, companyName: string): TemplateVars {
+  return { document_number: invoice.reference, company_name: companyName, customer_name: invoice.customer, total: currency(invoice.amount), due_date: invoice.dueDate ? fmtDate(invoice.dueDate) : "" };
+}
 
 /** Whether a payment with this request id exists on the invoice (and the invoice's figures if so); `error` when it can't be asked. */
 async function findPaymentOutcome(invoiceId: string, requestId: string): Promise<{ outcome: PaymentOutcome | null; error: unknown }> {
@@ -994,16 +1001,23 @@ export default function InvoicesPage() {
         const alreadyDrafted = new Set((existing ?? []).map((row) => String(row.related_to_id)));
         let noEmail = 0;
         const drafts = [];
+        // The company's own reminder text (Settings > Email templates), or the default when none is saved or 106 isn't applied.
+        const override = await loadTemplateOverride(supabase, "invoice_reminder");
         for (const invoice of withIds) {
           if (alreadyDrafted.has(invoice.id as string)) continue;
           const customer = findCustomer(customers, invoice.customer);
           if (!customer?.email) { noEmail += 1; continue; }
+          const email = renderTemplate("invoice_reminder", invoiceReminderVars({
+            reference: invoice.reference, total: currency(invoice.amount), dueDate: fmtDate(invoice.dueDate), daysOverdue: invoice.daysOverdue,
+            companyName: profile.name, customerName: customer.name, contactName: customer.contactName,
+            amountPaid: invoice.amountPaid, paidText: currency(invoice.amountPaid), balanceText: currency(invoice.balance),
+          }), override);
           drafts.push({
             organization_id: organizationId,
             to_email: customer.email,
             to_name: customer.contactName || customer.name,
-            subject: `Overdue invoice ${invoice.reference} from ${profile.name}`,
-            body: `Hello${customer.contactName ? ` ${customer.contactName}` : ""},\n\nOur records show invoice ${invoice.reference} for ${currency(invoice.amount)} was due on ${fmtDate(invoice.dueDate)} and is now ${invoice.daysOverdue} day${invoice.daysOverdue === 1 ? "" : "s"} overdue.${invoice.amountPaid > 0 ? ` We have received ${currency(invoice.amountPaid)}, leaving ${currency(invoice.balance)} to pay.` : ""}\n\nPlease arrange payment, or let us know if there is a problem with the invoice.\n\nKind regards,\n${profile.name}`,
+            subject: email.subject,
+            body: email.text,
             status: "drafted",
             related_to_type: "invoice",
             related_to_id: invoice.id,
@@ -1078,11 +1092,8 @@ export default function InvoicesPage() {
         const element = await buildInvoicePdf(invoice, profile);
         const customer = await resolveCustomer(invoice.customer);
         if (!customer?.email) toast.info(`No email address on file for ${invoice.customer}. Add one on the Customers page, or type it into the email.`);
-        openMailDraft(
-          customer?.email ?? "",
-          `Invoice ${invoice.reference} from ${profile.name}`,
-          `Hello,\n\nPlease find our invoice ${invoice.reference} attached as a PDF.\n\nKind regards,\n${profile.name}`,
-        );
+        const email = renderTemplate("invoice", invoiceEmailVars(invoice, profile.name), await loadTemplateOverride(supabase, "invoice"));
+        openMailDraft(customer?.email ?? "", email.subject, email.text);
         const ok = await downloadPdf(element, `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference }, { silent: true });
         if (!ok) return;
         toast.success("PDF downloaded \u2014 attach it to the email that just opened");

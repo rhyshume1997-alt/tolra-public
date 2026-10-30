@@ -34,6 +34,8 @@ import { DeliveryNoteInvoiceLink } from "@/components/delivery-note-invoice-link
 import { DespatchFromOrder } from "@/components/despatch-from-order";
 import { CustomerSelect } from "@/components/customer-select";
 import { auditEvent } from "@/lib/audit";
+import { type TemplateVars, renderTemplate } from "@/lib/email/templates/defaults";
+import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
 import { deliveryNoteCustomerSignOff } from "@/lib/customer-signoff-print";
@@ -663,27 +665,37 @@ export default function DeliveryNotesPage() {
   );
 }
 
+/** The delivery note e-mail's values (Settings > Email templates; lib/email/templates). */
+function deliveryNoteEmailVars(note: DeliveryNoteRow, companyName: string): TemplateVars {
+  return { document_number: note.ref, company_name: companyName, customer_name: note.customer, job: note.job || "No linked job", delivery_date: fmtDate(note.date), status: note.status };
+}
+
 function EmailDraft({ note, companyName, saving, onCopy, onSent }: { note: DeliveryNoteRow; companyName: string; saving: boolean; onCopy: (note: DeliveryNoteRow, subject: string, body: string) => Promise<void>; onSent: (note: DeliveryNoteRow, subject: string, body: string) => Promise<void> }) {
-  const [subject, setSubject] = useState(`Delivery Note ${note.ref} from ${companyName}`);
-  const [draftBody, setDraftBody] = useState(`Hi Team,
-
-Please find delivery note ${note.ref} from ${companyName}.
-
-Customer: ${note.customer}
-Job: ${note.job || "No linked job"}
-Delivery date: ${fmtDate(note.date)}
-Status: ${note.status}
-
-Best regards,
-${companyName}`);
+  const vars = deliveryNoteEmailVars(note, companyName);
+  const [subject, setSubject] = useState(() => renderTemplate("delivery_note", vars).subject);
+  const [draftBody, setDraftBody] = useState(() => renderTemplate("delivery_note", vars).text);
+  const [edited, setEdited] = useState(false);
+  // The company's own text (Settings > Email templates) replaces the default once loaded, unless the person has started editing.
+  useEffect(() => {
+    let live = true;
+    void loadTemplateOverride(supabase, "delivery_note").then((override) => {
+      if (!live || !override || edited) return;
+      const email = renderTemplate("delivery_note", deliveryNoteEmailVars(note, companyName), override);
+      setSubject(email.subject);
+      setDraftBody(email.text);
+    });
+    return () => { live = false; };
+    // Loaded once per opened note; `edited` is read at answer time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.ref, companyName]);
   const [confirming, setConfirming] = useState(false);
   const mailto = `mailto:${encodeURIComponent(note.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draftBody)}`;
 
   return (
     <div className="grid gap-3">
       <Input value={note.email} readOnly placeholder="No email address on file for this customer" />
-      <Input value={subject} onChange={(event) => setSubject(event.target.value)} />
-      <Textarea className="min-h-56" value={draftBody} onChange={(event) => setDraftBody(event.target.value)} />
+      <Input value={subject} onChange={(event) => { setEdited(true); setSubject(event.target.value); }} />
+      <Textarea className="min-h-56" value={draftBody} onChange={(event) => { setEdited(true); setDraftBody(event.target.value); }} />
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" disabled={saving} onClick={() => void onCopy(note, subject, draftBody)}>Copy Email Body</Button>
         <Button asChild variant="outline"><a href={mailto}>Open in Email Client</a></Button>
