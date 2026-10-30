@@ -12,7 +12,8 @@ import { type JobWorksheet, formatDateGB, signOffState } from "@/lib/job-workshe
 /**
  * The Basic print layout (P1 print pack, D30-4; lib/print-layout): a plain job sheet for any company. The same data and loaders as the
  * JNR sheet (components/job-worksheet-print.tsx, components/job-worksheet-pack-print.tsx) and the same props; no JNR fields or
- * wording (no material cert / heat-cast, machines, part checklist or JNR instructions), no colour fills. Sign-offs print exactly what
+ * wording (no machines, part checklist or JNR instructions), no colour fills. A traceable job (082) also prints its material cert no.
+ * and heat/cast no. in a small Traceability block; any other job does not. Sign-offs print exactly what
  * is recorded, with the same wording and data-signoff markers as the JNR sheet: never a sign-off it could not read.
  */
 
@@ -53,7 +54,15 @@ function Slot({ label, children, width = "min-w-[45mm]" }: { label: string; chil
   return <span className="flex items-end gap-1.5"><strong className="text-[10px] uppercase">{label}:</strong><span className={`${width} border-b border-black px-1`}>{children ?? BLANK}</span></span>;
 }
 
-export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], customerPos = [] }: { worksheet: JobWorksheet; jobNo: string; drawings?: string[]; customerPos?: string[] }) {
+/** A pack row for the Basic pack: the JNR pack's row plus whether the job is traceable (jobs.traceable, 082). */
+export type BasicPackSheet = PackSheet & { traceable?: boolean };
+
+/** Traceable (082): marked traceable, or a material cert no. or heat/cast no. already recorded. */
+export function isTraceable(ws: Pick<JobWorksheet, "material_cert_no" | "heat_cast_no">, traceable?: boolean) {
+  return traceable === true || Boolean(ws.material_cert_no.trim() || ws.heat_cast_no.trim());
+}
+
+export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], customerPos = [], traceable }: { worksheet: JobWorksheet; jobNo: string; drawings?: string[]; customerPos?: string[]; /** jobs.traceable (082). */ traceable?: boolean }) {
   const number = jobNo || ws.job_no;
   const signOff = usePrintedSignOffs([number])?.get(number) ?? null;
   const legacyBox = signOffState(ws);
@@ -78,6 +87,16 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
           <Field label="Quantity" value={ws.quantity_required} />
         </div>
       </div>
+
+      {isTraceable(ws, traceable) ? (
+        <div className="mt-2" data-traceability="">
+          <Heading>Traceability</Heading>
+          <div className="grid grid-cols-2 border border-t-0 border-b-0 border-black">
+            <div className="border-r border-black"><Field label="Material cert no." value={ws.material_cert_no} /></div>
+            <div><Field label="Heat/cast no." value={ws.heat_cast_no} /></div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-2"><Heading>Description</Heading><div className="border border-t-0 border-black px-2 py-1 text-[12px] break-words whitespace-pre-wrap" style={{ minHeight: "24mm" }}>{ws.description}</div></div>
 
@@ -163,7 +182,7 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
   );
 }
 
-export function BasicWorksheetPackPrint({ sheets }: { sheets: PackSheet[] }) {
+export function BasicWorksheetPackPrint({ sheets }: { sheets: BasicPackSheet[] }) {
   const { profile: company } = useCompanyProfile();
   const signOffs = usePrintedSignOffs(sheets.map((sheet) => sheet.worksheet.job_no));
   const drawings = sheets.filter((sheet) => sheet.drawings.length);
@@ -188,12 +207,15 @@ export function BasicWorksheetPackPrint({ sheets }: { sheets: PackSheet[] }) {
           </tr>
         </thead>
         <tbody>
-          {sheets.map(({ id, worksheet: ws }) => {
+          {sheets.map(({ id, worksheet: ws, traceable }) => {
             const state = signOffs === null ? null : signOffs.get(ws.job_no) ?? { status: "none" as const };
             const legacy = packLegacyText(ws, signOffs);
             return (
               <tr key={id} className="align-top" style={{ breakInside: "avoid" }}>
-                <td className={`${td} font-mono font-bold`}>{ws.job_no}</td>
+                <td className={td}>
+                  <p className="font-mono font-bold">{ws.job_no}</p>
+                  {isTraceable(ws, traceable) ? <div className="mt-0.5 text-[8.5px]" data-traceability=""><p>Cert: {ws.material_cert_no}</p><p>Heat/cast: {ws.heat_cast_no}</p></div> : null}
+                </td>
                 <td className={td}>{ws.customer}</td>
                 <td className={td}>{ws.customer_po}</td>
                 <td className={`${td} whitespace-pre-wrap`}>{ws.description}</td>

@@ -36,6 +36,7 @@ async function demoJobInfo(id: string): Promise<DemoJob> {
 export default function JobSheetPrintPage() {
   const { id } = useParams<{ id: string }>();
   const [worksheet, setWorksheet] = useState<JobWorksheet | null>(null);
+  const [traceable, setTraceable] = useState(false);
   const [drawings, setDrawings] = useState<string[]>([]);
   const [customerPos, setCustomerPos] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,7 @@ export default function JobSheetPrintPage() {
       return;
     }
     setWorksheet(loaded.worksheet);
+    setTraceable(loaded.row?.traceable === true);
     const stored = loaded.demo ? null : await listDrawings(id);
     setDrawings(stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : demo.drawings);
     setCustomerPos(loaded.demo ? [] : (await listCustomerPos(id).catch(() => [])).map((file) => file.file_name));
@@ -87,7 +89,7 @@ export default function JobSheetPrintPage() {
           <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button>
         </div>
       ) : worksheet && layout ? (
-        <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} />
+        <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} traceable={traceable} />
       ) : (
         <p className="text-sm text-slate-500">Loading worksheet...</p>
       )}

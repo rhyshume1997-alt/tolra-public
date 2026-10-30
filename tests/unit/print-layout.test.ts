@@ -201,16 +201,42 @@ describe("Basic layout", () => {
     expect(renderToStaticMarkup(createElement(BasicWorksheetPackPrint, { sheets: PACK }))).toMatchSnapshot();
   });
 
-  it("prints the same job data, an operations and notes area and sign-off boxes, with no JNR fields or wording", () => {
-    const html = single(FULL_SHEET, { drawings: ["DWG-42.pdf (Rev B)"] });
+  it("prints the same job data, an operations and notes area and sign-off boxes, with no JNR fields or wording (a job that isn't traceable)", () => {
+    const plain = { ...FULL_SHEET, material_cert_no: "", heat_cast_no: "" };
+    const html = single(plain, { drawings: ["DWG-42.pdf (Rev B)"] });
     const words = text(html);
     for (const value of ["Acme Fabrication Ltd", "JOB SHEET", "J-0101", "Bracket Co", "PO-77", "01/10/2026", "15/10/2026", "DWG-42", "20", "Machine 20 brackets", "Operations", "Notes", "Checked by", "Signed off", "Rita Hale", "Customer sign-off"]) expect(words).toContain(value);
     for (const pattern of JNR_WORDING.filter((p) => p.source !== "Machine")) expect(words).not.toMatch(pattern);
     // The JNR-only values never print on the Basic sheet.
-    for (const value of ["MC-9", "H-123", "DR-5", "QUO-0101", "Haas VF-2", "O1001", "6082-T6", "MetalCo", "Tool broke", "Use a softer jaw"]) expect(words).not.toContain(value);
-    const pack = text(renderToStaticMarkup(createElement(BasicWorksheetPackPrint, { sheets: PACK })));
+    for (const value of ["DR-5", "QUO-0101", "Haas VF-2", "O1001", "6082-T6", "MetalCo", "Tool broke", "Use a softer jaw"]) expect(words).not.toContain(value);
+    const plainPack = PACK.map((sheet) => ({ ...sheet, worksheet: { ...sheet.worksheet, material_cert_no: "", heat_cast_no: "" } }));
+    const pack = text(renderToStaticMarkup(createElement(BasicWorksheetPackPrint, { sheets: plainPack })));
     for (const pattern of JNR_WORDING.filter((p) => p.source !== "Machine")) expect(pack).not.toMatch(pattern); // "Machine 20 brackets" is the job's own description
     for (const value of ["JOB SHEETS", "J-0101", "J-0102", "J-0103", "Bracket Co", "Plate Ltd", "Shaft plc", "Operations / notes"]) expect(pack).toContain(value);
+  });
+
+  it("a traceable job prints its material cert no. and heat/cast no. in a Traceability block; any other job prints none (082)", () => {
+    const plain = { ...FULL_SHEET, material_cert_no: "", heat_cast_no: "" };
+    // Traceable by its numbers (FULL_SHEET has MC-9 and H-123).
+    const numbered = single(FULL_SHEET);
+    expect(numbered).toContain("data-traceability");
+    expect(text(numbered)).toMatch(/Traceability Material cert no\. MC-9 Heat\/cast no\. H-123/);
+    // Marked traceable with nothing recorded yet: the block prints with blank cells to write in.
+    const marked = single(plain, { traceable: true });
+    expect(text(marked)).toMatch(/Traceability Material cert no\. Heat\/cast no\./);
+    // Not traceable and no numbers: no block.
+    for (const html of [single(plain), single(plain, { traceable: false })]) {
+      expect(html).not.toContain("data-traceability");
+      expect(text(html)).not.toMatch(/Traceability|Material cert|Heat\/cast/i);
+    }
+    // The pack: only the traceable rows carry the numbers.
+    const pack = renderToStaticMarkup(createElement(BasicWorksheetPackPrint, { sheets: [PACK[0], { ...PACK[1], traceable: true }, PACK[2]] }));
+    expect(pack.match(/data-traceability/g)).toHaveLength(2);
+    expect(text(pack)).toContain("Cert: MC-9 Heat/cast: H-123");
+    expect(renderToStaticMarkup(createElement(BasicWorksheetPackPrint, { sheets: [PACK[1], PACK[2]] }))).not.toContain("data-traceability");
+    // The switch passes the flag to Basic only; the JNR sheet is the unchanged component.
+    expect(renderToStaticMarkup(createElement(WorksheetInLayout, { layout: "basic", worksheet: plain, jobNo: plain.job_no, traceable: true }))).toContain("data-traceability");
+    expect(renderToStaticMarkup(createElement(WorksheetInLayout, { layout: "jnr", worksheet: plain, jobNo: plain.job_no, traceable: true }))).toBe(renderToStaticMarkup(createElement(JobWorksheetPrint, { worksheet: plain, jobNo: plain.job_no })));
   });
 
   it("prints the recorded sign-off with the same wording and markers as the JNR sheet, and never claims one it couldn't read", () => {

@@ -1,7 +1,7 @@
 "use client";
 
-import { BasicWorksheetPackPrint, BasicWorksheetPrint } from "@/components/job-worksheet-basic-print";
-import { JobWorksheetPackPrint, type PackSheet } from "@/components/job-worksheet-pack-print";
+import { type BasicPackSheet, BasicWorksheetPackPrint, BasicWorksheetPrint } from "@/components/job-worksheet-basic-print";
+import { JobWorksheetPackPrint } from "@/components/job-worksheet-pack-print";
 import { JobWorksheetPrint } from "@/components/job-worksheet-print";
 import type { JobWorksheet } from "@/lib/job-worksheet";
 import { type CompanyPrintLayout, type PrintLayout, PRINT_LAYOUT_OPTIONS, parsePrintLayout, printLayoutLabel } from "@/lib/print-layout";
@@ -28,14 +28,14 @@ export function PrintLayoutPicker({ company, value, onChange }: { company: Compa
   );
 }
 
-type SheetProps = { worksheet: JobWorksheet; jobNo: string; drawings?: string[]; customerPos?: string[] };
+type SheetProps = { worksheet: JobWorksheet; jobNo: string; drawings?: string[]; customerPos?: string[]; /** jobs.traceable (082): Basic only. */ traceable?: boolean };
 
-/** One job's worksheet in the chosen layout. The JNR sheet is the existing component, untouched. */
-export function WorksheetInLayout({ layout, ...props }: SheetProps & { layout: PrintLayout }) {
-  return layout === "basic" ? <BasicWorksheetPrint {...props} /> : <JobWorksheetPrint {...props} />;
+/** One job's worksheet in the chosen layout. The JNR sheet is the existing component, untouched (it always prints the numbers). */
+export function WorksheetInLayout({ layout, traceable, ...props }: SheetProps & { layout: PrintLayout }) {
+  return layout === "basic" ? <BasicWorksheetPrint {...props} traceable={traceable} /> : <JobWorksheetPrint {...props} />;
 }
 
 /** The workshop pack in the chosen layout. */
-export function WorksheetPackInLayout({ layout, sheets }: { layout: PrintLayout; sheets: PackSheet[] }) {
+export function WorksheetPackInLayout({ layout, sheets }: { layout: PrintLayout; sheets: BasicPackSheet[] }) {
   return layout === "basic" ? <BasicWorksheetPackPrint sheets={sheets} /> : <JobWorksheetPackPrint sheets={sheets} />;
 }

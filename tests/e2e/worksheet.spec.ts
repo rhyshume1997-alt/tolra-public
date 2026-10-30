@@ -80,7 +80,8 @@ test("workshop pack: the selected jobs print together on one worksheet sheet", a
   await expect(pack.locator('[data-print-layout="basic"]')).toHaveCount(1);
   await expect(pack.getByText("JOB SHEETS", { exact: true })).toHaveCount(1);
   for (const jobNo of jobs) await expect(pack.getByText(jobNo, { exact: true })).toBeVisible();
-  await expect(pack.getByText(`HEAT-${jobs[0]}`)).toHaveCount(0);
+  // Each job has a heat/cast no., so it is traceable (082) and Basic prints its traceability numbers.
+  for (const jobNo of jobs) await expect(pack.locator("[data-traceability]").filter({ hasText: `HEAT-${jobNo}` })).toHaveCount(1);
   await expect(pack.getByLabel("Print layout")).toHaveValue("");
   await pack.getByLabel("Print layout").selectOption("jnr");
   await expect(pack.locator('[data-print-layout="basic"]')).toHaveCount(0);

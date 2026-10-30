@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Printer } from "lucide-react";
 
-import type { PackSheet } from "@/components/job-worksheet-pack-print";
+import type { BasicPackSheet } from "@/components/job-worksheet-basic-print";
 import { PrintLayoutPicker, WorksheetPackInLayout } from "@/components/print-layout-picker";
 import { Button } from "@/components/ui/button";
 import { listDrawings, loadWorksheet } from "@/lib/job-worksheet";
@@ -14,7 +14,7 @@ import { type PrintLayout, chosenPrintLayout, useCompanyPrintLayout } from "@/li
 function WorkshopPack() {
   const ids = (useSearchParams().get("ids") || "").split(",").filter(Boolean);
   const key = ids.join(",");
-  const [sheets, setSheets] = useState<PackSheet[] | null>(null);
+  const [sheets, setSheets] = useState<BasicPackSheet[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   // The company's layout (Settings > Print layout), unless the person picks the other one for this print.
@@ -30,14 +30,14 @@ function WorkshopPack() {
       const result = await loadWorksheet({ id, job_no: "", customer: "", description: "" });
       if (result.error !== undefined) return { id, error: result.error };
       const stored = result.demo ? null : await listDrawings(id);
-      return { id, worksheet: result.worksheet, drawings: stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : [] };
+      return { id, worksheet: result.worksheet, traceable: result.row?.traceable === true, drawings: stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : [] };
     }));
     const failed = loaded.filter((sheet) => "error" in sheet).length;
     if (failed) {
       setError(`Couldn't load ${failed} of ${jobIds.length} worksheet${jobIds.length === 1 ? "" : "s"}. Retry.`);
       return;
     }
-    setSheets(loaded as PackSheet[]);
+    setSheets(loaded as BasicPackSheet[]);
   }, [key]);
 
   useEffect(() => {
