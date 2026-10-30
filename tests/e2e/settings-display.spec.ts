@@ -2,10 +2,13 @@
  * Settings > Display: untick, see it on the screen and after a reload, then reset. Customers > Phone is the example.
  * Synthetic data only (alpha tenant). The world is read inside the tests, never at import.
  */
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { adminClient } from "../support/fixtures";
 import { signIn, world } from "./helpers";
+
+/** The Display change's background save (lib/org-settings.ts: an upsert, POST): leaving the page before it is back aborts it. */
+const settingsSaved = (page: Page) => page.waitForResponse((r) => r.url().includes("/rest/v1/organization_settings") && ["POST", "PATCH"].includes(r.request().method()) && r.ok());
 
 for (const width of [1280, 768, 390]) {
   test(`Settings > Display: untick, reload, reset one screen; no sideways scroll at ${width} px`, async ({ page }) => {
@@ -22,9 +25,11 @@ for (const width of [1280, 768, 390]) {
     await expect(page.getByTestId("display-settings")).toBeVisible();
     await expect(count).toHaveText("5 of 5 shown");
     try {
+      const unticked = settingsSaved(page);
       await phone.uncheck();
       await expect(count).toHaveText("4 of 5 shown");
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      await unticked;
 
       await page.goto("/customers");
       if (width < 768) {
@@ -48,9 +53,11 @@ for (const width of [1280, 768, 390]) {
 
       await page.goto("/settings");
       await expect(phone).not.toBeChecked();
+      const reset = settingsSaved(page);
       await card.getByRole("button", { name: "Reset Customers to default" }).click();
       await expect(phone).toBeChecked();
       await expect(count).toHaveText("5 of 5 shown");
+      await reset;
       await page.goto("/customers");
       if (width < 768) await expect(page.locator('table[data-view="cards"] td[data-label="Phone"]').first()).toBeVisible();
       else await expect(page.getByRole("columnheader", { name: "Phone", exact: true })).toBeVisible();
