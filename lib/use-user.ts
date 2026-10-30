@@ -6,7 +6,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
 import { loadCompanyProfile, resetCompanyProfile } from "@/lib/company";
-import { companyChangedElsewhere, listenForTabSignals } from "@/lib/company-sync";
+import { companyChangedElsewhere, followsCompanySwitch, listenForTabSignals } from "@/lib/company-sync";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
 import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
 import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
@@ -277,14 +277,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
           // This page is switching company on purpose: the answer may already name the new one. No answer (no lock, no role
           // update, no offline-clock restart); the reload at /dashboard loads the person and company from the server again.
           if (organizationSwitchInProgress()) return;
-          if (companyChangedElsewhere(live.organization_id, now)) {
-            if (mounted) followCompanySwitch();
-            return;
-          }
           const member = now.organization_id === live.organization_id && now.role
             ? { role: now.role as UserRole, secondary_role: (now.secondary_role as UserRole | null) ?? null, active: true, hidden_sections: now.hidden_sections }
             : null;
           const profileNow = profileResult.data ? { active: (profileResult.data as { active: boolean }).active, organization_id: now.organization_id ?? live.organization_id } : null;
+          // Another tab switched company: follow it, but only if THIS tab's company is still one the person belongs to. The server also
+          // answers with another company when the person was removed from this one and has a single other (migration 036
+          // _session_membership falls back to it); that is a removal and goes through decideAccess below. A disabled profile ends too.
+          if (profileNow && profileNow.active !== false && companyChangedElsewhere(live.organization_id, now)) {
+            const orgs = await client.rpc("my_organizations");
+            // A failed read is not an answer: the next check decides.
+            if (orgs.error) return;
+            if (!mounted || accessEnded) return;
+            if (followsCompanySwitch(live.organization_id, now, (orgs.data ?? []) as Array<{ organization_id: string }>)) {
+              followCompanySwitch();
+              return;
+            }
+          }
           const decision = decideAccess(live, { signedIn: true, profile: profileNow, membership: member });
           if (!mounted || accessEnded) return;
           if (decision.kind === "end") {
