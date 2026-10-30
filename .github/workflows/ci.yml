@@ -5,8 +5,9 @@
 #   * The small "changes" job reads git diff (the pull request's merge base to its head, or the push's previous commit
 #     to its new one) and decides:
 #       - `web` is skipped when every changed file is under docs/ or is a *.md file.
-#       - `integration` (disposable Supabase, database suite, upgrade rehearsal, browser suite: the slow one) is also
-#         skipped when every changed file is under tests/live/ (the manual live-tenant checks, which no CI job runs).
+#       - `db` (disposable Supabase, database suite, upgrade rehearsal) and `browser` (the browser suite, split into
+#         4 shards that run in parallel, each on its own disposable Supabase) are also skipped when every changed file
+#         is under tests/live/ (the manual live-tenant checks, which no CI job runs).
 #   * Everything runs whenever it can't be sure: the first push of a branch, a force push whose old commit is gone, an
 #     empty or failed diff, or the "changes" job itself failing. Any other changed file (code, migrations, tests, this
 #     file) runs everything. supabase/applied-migrations.json and scripts/check-migrations.mjs are code, not docs (the
@@ -14,11 +15,11 @@
 #   * Once per commit, not twice: it runs on `push` only for main, and on `pull_request` for every branch. A feature
 #     branch with an open pull request is checked by the pull request run alone (a push to a branch without a pull
 #     request is not checked until one is opened). The "changes" job handles both events, as before.
-#   * `integration` is the slow one (about 22 minutes), so on a pull request it runs only once the PR carries the
+#   * `db` and `browser` are the slow ones, so on a pull request they run only once the PR carries the
 #     `ready` label: adding the label starts a run, and every later push to a labelled PR runs it too. It always runs
 #     on main and on a manual run (Actions > CI > Run workflow). The quick checks (`web`: typecheck, lint, unit tests,
 #     build) still run on every push. `ci-gate` (the one required check) stays red on a pull request
-#     whose code changed until integration has run and passed, so `ready` is required before merging.
+#     whose code changed until db and every browser shard have run and passed, so `ready` is required before merging.
 name: CI
 
 # Public repository: the workflow token is read-only for every job (no job writes to the repo, issues or checks).
@@ -46,7 +47,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Works out whether the slow `integration` job is needed (see the rules at the top). Only actions/checkout is used.
+  # Works out whether the slow `db` and `browser` jobs are needed (see the rules at the top). Only actions/checkout is used.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -127,15 +128,15 @@ jobs:
       - name: Dependency audit, all packages (report only)
         run: npm audit --audit-level=critical || true
 
-  # Database and browser suites against a disposable local Supabase (audit B1). Docker on the runner only: no
-  # hosted project, secret or production URL is involved, and the isolation guard refuses anything non-local.
-  integration:
+  # Database suite and browser suite, each against its own disposable local Supabase (audit B1). Docker on the runner
+  # only: no hosted project, secret or production URL is involved, and the isolation guard refuses anything non-local.
+  db:
     needs: changes
     # On a pull request, only with the `ready` label (see the top). Otherwise skipped (counts as passed) only when
-    # "changes" says so; if it failed or said anything else, run.
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
+    # "changes" says so; if it failed or said anything else, run. A targeted manual run (specs + skip_db) skips it.
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') && !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # Raised from 60 with Rhys's OK, 15 Oct 2026 (runs reached 58 min), and from 90 with Rhys's OK, 22 Oct 2026 (PR 1's run was cancelled at 90 min with 7 browser tests left). Flag it if runs approach 120; do not raise silently.
+    timeout-minutes: 60
     # The Supabase images come from ghcr.io (supabase/setup-cli@v1 sets it for CLI < 2.108.0). Anonymous pulls were
     # rate-limited on 26 Oct 2026 (HTTP 429, runs 40360101636 and 40367638716; public.ecr.aws then refused anonymous pulls
     # with "Data limit exceeded", run 40384629882), so this job signs in to ghcr.io with its own token, read-only.
@@ -199,25 +200,103 @@ jobs:
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
-        # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         run: npm run test:db
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
-        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         run: scripts/upgrade-rehearsal.sh 013
+      - name: Stop disposable Supabase
+        if: always()
+        run: npm run test:backend:stop
+
+  # The browser suite, in 4 shards (whole spec files, same order within a shard). Each shard starts a fresh disposable
+  # Supabase from the migrations (the same state the rehearsal leaves behind) and runs its own globalSetup.
+  browser:
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # The Supabase images come from ghcr.io (supabase/setup-cli@v1 sets it for CLI < 2.108.0). Anonymous pulls were
+    # rate-limited on 26 Oct 2026 (HTTP 429, runs 40360101636 and 40367638716; public.ecr.aws then refused anonymous pulls
+    # with "Data limit exceeded", run 40384629882), so this job signs in to ghcr.io with its own token, read-only.
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false  # every shard reports, so one red shard does not hide the others
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      # Linux hands out 32768-60999 as source ports for outgoing connections, and Supabase listens on 54320-54324, so an
+      # outgoing connection (npm ci, the cache, image pulls) could hold one first: "failed to bind host port ... address
+      # already in use" (26 Oct 2026, runs 40378990100 and 40319104185). Reserve 54320-54329 before anything else runs so the
+      # kernel never picks them; Supabase's own binds still work. Existing reservations are kept. Fails the job if the
+      # reservation does not take.
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import sys
+          s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+          reserved = set()
+          for part in filter(None, s.split(",")):
+              lo, _, hi = part.partition("-")
+              reserved.update(range(int(lo), int(hi or lo) + 1))
+          missing = [p for p in range(54320, 54330) if p not in reserved]
+          print("reserved ports now:", s)
+          sys.exit(f"not reserved: {missing}" if missing else 0)
+          PY
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The reservation stops new allocations but cannot free a port already held, so check the ports Supabase binds
+      # (api 54321, db 54322, mail 54324: supabase/config.toml) are free right before it starts, and name any that are not.
+      - name: Supabase ports are free
+        run: |
+          python3 - <<'PY'
+          import socket, sys
+          busy = []
+          for port in (54321, 54322, 54324):
+              s = socket.socket()
+              try:
+                  s.bind(("0.0.0.0", port))
+              except OSError as e:
+                  busy.append(f"{port}: {e}")
+              finally:
+                  s.close()
+          print("busy:", busy or "none")
+          sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+          PY
+      - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+        run: npm run test:backend
       - name: Build against the disposable backend
         run: |
           set -a; . ./.env.test.local; set +a
           NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Browser suite
-        # A manual run may name spec files (`specs`): only those run, in the same disposable stack. Empty = the whole suite.
+      - name: Browser suite (shard ${{ matrix.shard }}/4)
+        # A manual run may name spec files (`specs`): only those run, unsharded, on shard 1; shards 2-4 do nothing.
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.specs }}" ]; then
-            npx playwright test ${{ inputs.specs }}
+            if [ "${{ matrix.shard }}" = 1 ]; then
+              npx playwright test ${{ inputs.specs }}
+            else
+              echo "Targeted run: shard 1 runs the named specs; nothing to do on shard ${{ matrix.shard }}."
+            fi
           else
-            npm run test:e2e
+            npx playwright test --shard=${{ matrix.shard }}/4
           fi
         env:
           E2E_SKIP_BUILD: "1"
@@ -225,7 +304,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-evidence
+          name: integration-evidence-shard-${{ matrix.shard }}
           path: |
             test-results/
             !test-results/e2e-state/world.json
@@ -236,13 +315,13 @@ jobs:
 
   # The one check to require in branch protection. A skipped job counts as passed, so requiring the jobs above directly
   # would let a pull request merge with a job skipped for the wrong reason. This job always runs and passes only when
-  # web passed (or was skipped because only docs changed) and integration passed, or was skipped
+  # web passed (or was skipped because only docs changed) and db and all 4 browser shards passed, or were skipped
   # because only docs or tests/live changed. A code change without the `ready` label fails it: add `ready` to merge.
   ci-gate:
     # A targeted manual run (workflow_dispatch with `specs`) reports under another check name, so it can never stand in for the
     # required `ci-gate` on a commit: it is diagnostic only, and merge approval still needs the full pull-request run.
     name: ${{ (github.event_name == 'workflow_dispatch' && inputs.specs != '') && 'targeted-run (diagnostic, not a gate)' || 'ci-gate' }}
-    needs: [changes, web, integration]
+    needs: [changes, web, db, browser]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -254,10 +333,20 @@ jobs:
           CODE: ${{ needs.changes.outputs.code }}
           INTEGRATION_NEEDED: ${{ needs.changes.outputs.integration }}
           WEB: ${{ needs.web.result }}
-          INTEGRATION: ${{ needs.integration.result }}
+          DB: ${{ needs.db.result }}
+          BROWSER: ${{ needs.browser.result }}
+          TARGETED_NO_DB: ${{ github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true' }}
         run: |
+          # `browser` is the matrix result: success only when all 4 shards succeeded. Fold db and browser into one
+          # integration result: success only if both succeeded (or, on a targeted run with skip_db, browser alone);
+          # skipped only if both were skipped; anything else is a failure.
+          if [ "$DB" = success ] && [ "$BROWSER" = success ]; then INTEGRATION=success
+          elif [ "$DB" = skipped ] && [ "$BROWSER" = skipped ]; then INTEGRATION=skipped
+          elif [ "$TARGETED_NO_DB" = true ] && [ "$DB" = skipped ] && [ "$BROWSER" = success ]; then INTEGRATION=success
+          else INTEGRATION="failure (db=$DB browser=$BROWSER)"
+          fi
           echo "event=$EVENT ready=$READY changes=$CHANGES code=$CODE integration_needed=$INTEGRATION_NEEDED"
-          echo "web=$WEB integration=$INTEGRATION"
+          echo "web=$WEB db=$DB browser=$BROWSER integration=$INTEGRATION"
           fail=0
           docs_only=false; [ "$CHANGES" = success ] && [ "$CODE" = false ] && docs_only=true
           for job in "web:$WEB"; do

@@ -67,6 +67,24 @@ async function evidenceOnDevice(page: Page, keys: string[]) {
   }, keys);
 }
 
+/**
+ * The same evidence after access ended. A sync pass marks the outbox entry it is sending `inFlight: true` and removes the mark when
+ * the send settles (lib/offline/outbox.ts drain); if access ends mid-send the page leaves before that, and the kept record still
+ * carries the mark (the next pass claims it again). Only that transient mark is ignored, only on outbox entries: every id, op,
+ * blob key and byte must still match.
+ */
+async function evidenceAfterLock(page: Page, keys: string[]) {
+  const values = await evidenceOnDevice(page, keys);
+  return values.map((value, i) => keys[i].endsWith("|outbox") && Array.isArray(value)
+    ? value.map((entry: OutboxEntry) => {
+      if (entry?.inFlight !== true) return entry;
+      const kept = { ...entry };
+      delete kept.inFlight;
+      return kept;
+    })
+    : value);
+}
+
 for (const revoke of ["membership removed", "account disabled"] as const) {
   test(`${revoke}: two tabs lock without deleting pending/held photos or another scope`, async ({ page, context }) => {
     const user = await newOfficeLogin();
@@ -126,12 +144,12 @@ for (const revoke of ["membership removed", "account disabled"] as const) {
     await expect.poll(async () => { await focusPage(page); return page.url(); }, { timeout: 45_000, intervals: [1_000, 2_000, 5_000] }).toMatch(/\/login/);
     // Only the first tab receives focus. The other must lock through the shared revocation/auth signal.
     await expect(second).toHaveURL(/\/login/, { timeout: 30_000 });
-    await expect.poll(() => evidenceOnDevice(page, keys)).toEqual(expected);
+    await expect.poll(() => evidenceAfterLock(page, keys)).toEqual(expected);
     expect(await page.evaluate((id) => localStorage.getItem(`tolra-offline-access-ended:${id}`), user.id)).toBe("1");
     await page.reload();
     await page.goto("/jobs");
     await expect(page).toHaveURL(/\/login/);
-    await expect.poll(() => evidenceOnDevice(page, keys)).toEqual(expected);
+    await expect.poll(() => evidenceAfterLock(page, keys)).toEqual(expected);
   });
 }
 

@@ -134,7 +134,9 @@ test("removed from the company while offline with a queued change: access locks,
   expect(error).toBeNull();
   await page.unrouteAll({ behavior: "ignoreErrors" });
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-  await page.waitForURL(/\/login/, { timeout: 30_000 });
+  // Removed access ends in two steps: the shell's soft /login, then endAccess's own hard /login?disabled=1 (lib/use-user.ts). Reading
+  // the page between the two hits "Execution context was destroyed", so wait for the second, the final page, before reading it.
+  await page.waitForURL(/\/login\?disabled=1/, { timeout: 30_000 });
   await page.waitForLoadState("load"); // the redirect has settled before the page is read again
 
   // Locked: the access-ended mark is set for this person and the app does not open again.
