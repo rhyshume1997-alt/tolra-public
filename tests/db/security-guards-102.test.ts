@@ -3,18 +3,19 @@
  *
  *   - Z4: only an admin changes organization_settings.archive_after_months, directly through the API too (update and insert); office
  *     still writes the row's other choices; an admin changes it.
- *   - Z3: "Admins update org members" reaches only the admin's own people: an ACTIVE, NON-SUPPORT member of the session company with
- *     no membership anywhere else, and not a protected login (093). A platform owner's login (support row, or an ordinary membership),
- *     a login shared with another company and a switched-off member are not updated (no row). Their own profile stays theirs.
+ *   - Z3: "Admins update org members" reaches only the admin's own people: a NON-SUPPORT member of the session company (switched off
+ *     too) with no membership anywhere else, and not a protected login (093). A platform owner's login (support row, or an ordinary
+ *     membership) and a login shared with another company are not updated (no row). Their own profile stays theirs.
  *     "Admins read org members" no longer lists a protected login or a shared one (T2: no stale organization_id / organization).
  *   - The same through the API with the two synthetic companies (alpha, beta), a login shared by both and a platform owner.
  *   - T1: user_profiles_guard refuses another person's full_name, organization and workshop_email when they belong to another company,
  *     even where row security is bypassed; the person changes their own.
- *   - S2/S3: no signed-in user may execute ai_helper_settle (privilege and a real call); the service role settles, and the audit row
- *     names the person who asked; ai_helper_reserve's answer carries no key.
  *   - T3: the quote-attachments bucket is private, and the release makes it private again.
- *   - supabase/verify/security_guards_102.sql answers TRUE on every row; the rollback puts 058's, 012's, 007's and 101's objects back
- *     (inside a transaction that is rolled back) and the release then applies again cleanly, twice.
+ *   - supabase/verify/security_guards_102.sql answers TRUE on every row; the rollback puts 058's, 012's and 007's objects back (inside a
+ *     transaction that is rolled back) and the release then applies again cleanly, twice.
+ *   - Production's shape (095 and 100, without 099 or 101): with 103 and 101 rolled back (in a rolled-back transaction), 102's rollback
+ *     and release run cleanly, its verify is all TRUE, and 103 refuses to apply ("apply 101 first") with nothing kept.
+ * (S2/S3, migration 103: tests/db/ai-helper-service-role-103.test.ts.)
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), as the 093 and 101 suites do.
  */
@@ -38,8 +39,6 @@ const run = randomUUID().slice(0, 8);
 let counter = 0;
 type Person = { id: string; email: string; session?: string };
 const person = (name: string): Person => ({ id: randomUUID(), email: `${name}-${(counter += 1)}.${run}@example.test` });
-const KEY_ENC = "v1.aaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbb.cccccccccccc";
-const DIGEST = "c".repeat(64);
 
 async function makeOrg(db: Client, label: string) {
   const id = randomUUID();
@@ -79,23 +78,6 @@ async function as<T>(p: Person, fn: (db: Client) => Promise<T>, opts: { bypass?:
     try {
       if (!opts.bypass) await db.query("set local role authenticated");
       await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)", [claims(p), p.id]);
-      const result = await fn(db);
-      await db.query("commit");
-      return result;
-    } catch (error) {
-      await db.query("rollback");
-      throw error;
-    }
-  });
-}
-
-/** One call as the server's service role (no person), in its own transaction. */
-async function asService<T>(fn: (db: Client) => Promise<T>): Promise<T> {
-  return withDb(async (db) => {
-    await db.query("begin");
-    try {
-      await db.query("set local role service_role");
-      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: "service_role" })]);
       const result = await fn(db);
       await db.query("commit");
       return result;
@@ -206,8 +188,14 @@ describe("Z3: an admin updates only their own company's people", () => {
     expect(await profile(W.staff.id)).toMatchObject({ full_name: "Staff Renamed", workshop_email: "bench@example.test", mfa_required: true });
   });
 
-  it("never a platform owner (support row or ordinary membership), a shared login or a switched-off member: no row, nothing changed", async () => {
-    for (const target of [W.owner1, W.owner2, W.shared, W.inactive]) {
+  it("their own switched-off staff too (an admin still renames a former member who belongs to no other company)", async () => {
+    expect(await updated(W.aAdmin, W.inactive.id, "full_name", "Former Staff")).toBe(1);
+    expect(await updated(W.aAdmin, W.inactive.id, "workshop_email", "former@example.test")).toBe(1);
+    expect(await profile(W.inactive.id)).toMatchObject({ full_name: "Former Staff", workshop_email: "former@example.test" });
+  });
+
+  it("never a platform owner (support row or ordinary membership) or a shared login: no row, nothing changed", async () => {
+    for (const target of [W.owner1, W.owner2, W.shared]) {
       const before = await profile(target.id);
       for (const [set, value] of [["full_name", "Taken over"], ["workshop_email", "attacker@example.test"], ["organization", "Not theirs"], ["mfa_required", false]] as const) {
         expect(await updated(W.aAdmin, target.id, set, value), `${target.email} ${set}`).toBe(0);
@@ -234,7 +222,8 @@ describe("Z3: an admin updates only their own company's people", () => {
     const may = (p: Person, target: string | null) => as(p, async (db) => (await db.query<{ v: boolean }>("select public.admin_may_edit_profile($1) as v", [target])).rows[0].v);
     expect(await may(W.aAdmin, W.staff.id)).toBe(true);
     expect(await may(W.aAdmin, W.aOffice.id)).toBe(true);
-    for (const target of [W.owner1, W.owner2, W.shared, W.inactive, W.cAdmin]) expect(await may(W.aAdmin, target.id), target.email).toBe(false);
+    expect(await may(W.aAdmin, W.inactive.id)).toBe(true);
+    for (const target of [W.owner1, W.owner2, W.shared, W.cAdmin]) expect(await may(W.aAdmin, target.id), target.email).toBe(false);
     expect(await may(W.aAdmin, null)).toBe(false);
     expect(await may(W.aOffice, W.staff.id)).toBe(false);
     expect(await may(W.cAdmin, W.staff.id)).toBe(false);
@@ -282,55 +271,6 @@ describe("T1: the profile guard keeps a shared login's name and e-mail settings 
     expect((await profile(W.staff.id)).full_name).toBe("Staff Again");
     await as(W.shared, (db) => db.query("update public.user_profiles set full_name = 'Shared Again' where id = $1", [W.shared.id]), { bypass: true });
     expect((await profile(W.shared.id)).full_name).toBe("Shared Again");
-  });
-});
-
-describe("S2/S3: the AI helper key and settle", () => {
-  let request = "";
-  beforeAll(async () => {
-    await withDb(async (db) => {
-      await db.query("insert into public.ai_helper_settings (organization_id, rfq_enabled, monthly_cap_pence) values ($1, true, 500)", [W.A]);
-      await db.query("insert into public.ai_helper_secrets (organization_id, api_key_enc) values ($1, $2)", [W.A, KEY_ENC]);
-    });
-  });
-
-  it("reserve's answer carries no key", async () => {
-    const value = await as(W.aOffice, async (db) => (await db.query<{ v: Record<string, unknown> }>("select public.ai_helper_reserve('rfq', 5, $1, 10) as v", [DIGEST])).rows[0].v);
-    expect(value).toMatchObject({ ok: true });
-    expect(Object.keys(value).sort()).toEqual(["ok", "request_id"]);
-    expect(JSON.stringify(value)).not.toContain(KEY_ENC);
-    request = String(value.request_id);
-  });
-
-  it("no signed-in user may execute settle: not the requester, not an admin (privilege and a real call); nothing is settled", async () => {
-    const [grants] = await rows<{ anon: boolean; authed: boolean; service: boolean; pub: boolean }>(
-      "select has_function_privilege('anon', $1::regprocedure, 'EXECUTE') as anon, has_function_privilege('authenticated', $1::regprocedure, 'EXECUTE') as authed, " +
-      "has_function_privilege('service_role', $1::regprocedure, 'EXECUTE') as service, " +
-      "exists (select 1 from pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a where p.oid = $1::regprocedure and a.grantee = 0 and a.privilege_type = 'EXECUTE') as pub",
-      ["public.ai_helper_settle(uuid,text,text,integer,text,jsonb)"]);
-    expect(grants).toEqual({ anon: false, authed: false, service: true, pub: false });
-    for (const p of [W.aOffice, W.aAdmin]) {
-      expect(await errorOf(as(p, (db) => db.query("select public.ai_helper_settle($1, 'suggested', null, 0, 'made-up-model', '{\"kind\": \"rfq\", \"lines\": []}'::jsonb)", [request]))))
-        .toMatchObject({ code: "42501", message: expect.stringMatching(/^permission denied for function ai_helper_settle/) });
-    }
-    expect((await rows<{ status: string }>("select status from public.ai_helper_requests where id = $1", [request]))[0].status).toBe("reserved");
-    expect(await rows("select 1 from security_audit.audit_log where entity_id = $1 and action = 'ai_helper_suggested'", [request])).toEqual([]);
-  });
-
-  it("the service role settles once: actual cost to spent, the audit row names the person who asked; the key is readable by it", async () => {
-    await asService((db) => db.query("select public.ai_helper_settle($1, 'suggested', null, 3, 'claude-opus-5-5', '{\"kind\": \"rfq\", \"lines\": [{}]}'::jsonb)", [request]));
-    expect((await rows("select status, cost_pence, model from public.ai_helper_requests where id = $1", [request]))[0]).toEqual({ status: "suggested", cost_pence: 3, model: "claude-opus-5-5" });
-    expect((await rows<{ reserved_pence: number; spent_pence: number }>("select reserved_pence, spent_pence from public.ai_helper_usage where organization_id = $1", [W.A]))[0])
-      .toEqual({ reserved_pence: 0, spent_pence: 3 });
-    const audit = await rows<{ actor_user_id: string; actor_email: string; metadata: Record<string, unknown> }>(
-      "select actor_user_id, actor_email, metadata from security_audit.audit_log where entity_id = $1 and action = 'ai_helper_suggested'", [request]);
-    expect(audit).toEqual([{ actor_user_id: W.aOffice.id, actor_email: W.aOffice.email, metadata: { feature: "rfq", model: "claude-opus-5-5", cost_pence: 3, lines: 1, source: "ai_helper" } }]);
-    // Once only; a bad shape is refused.
-    expect(await errorOf(asService((db) => db.query("select public.ai_helper_settle($1, 'failed', 'invalid', 0, null, null)", [request])))).toMatchObject({ code: "42501" });
-    expect(await errorOf(asService((db) => db.query("select public.ai_helper_settle($1, 'suggested', 'invalid', 0, null, '{}'::jsonb)", [request])))).toMatchObject({ code: "22023" });
-    // The server reads the company's key with the service role; no signed-in user can.
-    expect(await asService(async (db) => (await db.query<{ k: string }>("select api_key_enc as k from public.ai_helper_secrets where organization_id = $1", [W.A])).rows)).toEqual([{ k: KEY_ENC }]);
-    expect(await errorOf(as(W.aAdmin, (db) => db.query("select api_key_enc from public.ai_helper_secrets")))).toMatchObject({ code: "42501" });
   });
 });
 
@@ -429,26 +369,6 @@ describe("two companies through the API (alpha, beta, a shared login, a platform
       .toEqual({ archive_after_months: 18 });
   });
 
-  it("no signed-in user can execute ai_helper_settle; reserve's answer carries no key", async () => {
-    await withDb(async (db) => {
-      await db.query("insert into public.ai_helper_settings (organization_id, rfq_enabled, monthly_cap_pence) values ($1, true, 100)", [world.tenants.alpha.id]);
-      await db.query("insert into public.ai_helper_secrets (organization_id, api_key_enc) values ($1, $2)", [world.tenants.alpha.id, KEY_ENC]);
-    });
-    const reserved = await c.alphaOffice.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "d".repeat(64), p_input_bytes: 1 });
-    expect(reserved.error).toBeNull();
-    expect(Object.keys(reserved.data as Record<string, unknown>).sort()).toEqual(["ok", "request_id"]);
-    expect(JSON.stringify(reserved.data)).not.toContain(KEY_ENC);
-    const id = (reserved.data as { request_id: string }).request_id;
-    for (const client of [c.alphaOffice, c.alphaAdmin, c.betaAdmin]) {
-      const settled = await client.rpc("ai_helper_settle", { p_request: id, p_status: "suggested", p_failure: null, p_cost_pence: 0, p_model: "made-up", p_output: { kind: "rfq", lines: [] } });
-      expect(settled.error).toMatchObject({ code: "42501" });
-    }
-    expect((await service().from("ai_helper_requests").select("status").eq("id", id).single()).data).toEqual({ status: "reserved" });
-    // The server's service role settles it.
-    expect((await service().rpc("ai_helper_settle", { p_request: id, p_status: "failed", p_failure: "unavailable", p_cost_pence: 0, p_model: null, p_output: null })).error).toBeNull();
-    expect((await service().from("ai_helper_requests").select("status").eq("id", id).single()).data).toEqual({ status: "failed" });
-  });
-
   it("the quote-attachments bucket is private", async () => {
     expect(await rows("select public from storage.buckets where id = 'quote-attachments'")).toEqual([{ public: false }]);
     const { data } = await service().storage.getBucket("quote-attachments");
@@ -457,30 +377,52 @@ describe("two companies through the API (alpha, beta, a shared login, a platform
 });
 
 describe("102 release files on the local stack", () => {
+  const verify = async (db: Client) => Object.fromEntries((await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/security_guards_102.sql"))).rows.map((r) => [r.check_name, r.ok]));
+  const allTrue = (checks: Record<string, boolean>) => Object.values(checks).every(Boolean);
+
   it("the verify script answers TRUE on every row", async () => {
     const result = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/security_guards_102.sql"))).rows);
-    expect(result).toHaveLength(10);
+    expect(result).toHaveLength(8);
     expect(result.filter((r) => !r.ok)).toEqual([]);
   });
 
-  it("the rollback puts 058's, 012's, 007's and 101's objects back; the release then applies again, twice (all rolled back)", async () => {
+  it("the rollback puts 058's, 012's and 007's objects back; the release then applies again, twice (all rolled back)", async () => {
     await withDb(async (db) => {
       await db.query("begin");
       try {
         await db.query(unwrapped(read("supabase/release/102_security_guards.rollback.sql")));
-        const after = Object.fromEntries((await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/security_guards_102.sql"))).rows.map((r) => [r.check_name, r.ok]));
-        expect(after).toMatchObject({ org_settings_guard_archive_admin_only: false, admin_update_policy_own_people_only: false, admin_may_edit_profile_signed_in_only: false,
-          admin_read_policy_own_people_only: false, admin_may_read_profile_signed_in_only: false, user_profiles_guard_is_102: false, reserve_returns_no_key: false,
-          settle_service_role_only: false, quote_attachments_private: true });
-        expect((await db.query("select has_function_privilege('authenticated', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') as v")).rows[0].v).toBe(true);
-        // 101's own verify still passes on the rolled-back database.
-        expect((await db.query<{ ok: boolean }>(read("supabase/verify/ai_helper_101.sql"))).rows.every((r) => r.ok)).toBe(true);
-        await db.query(unwrapped(read("supabase/release/102_security_guards.release.sql")));
-        expect((await db.query<{ ok: boolean }>(read("supabase/verify/security_guards_102.sql"))).rows.every((r) => r.ok)).toBe(true);
-        await db.query(unwrapped(read("supabase/release/102_security_guards.release.sql")));
-        expect((await db.query<{ ok: boolean }>(read("supabase/verify/security_guards_102.sql"))).rows.every((r) => r.ok)).toBe(true);
-        // 101's verify passes with 102 applied too.
-        expect((await db.query<{ ok: boolean }>(read("supabase/verify/ai_helper_101.sql"))).rows.every((r) => r.ok)).toBe(true);
+        expect(await verify(db)).toEqual({ org_settings_guard_archive_admin_only: false, admin_update_policy_own_people_only: false, admin_may_edit_profile_signed_in_only: false,
+          admin_read_policy_own_people_only: false, admin_may_read_profile_signed_in_only: false, user_profiles_update_policies_unchanged_otherwise: true,
+          user_profiles_guard_is_102: false, quote_attachments_private: true });
+        for (let i = 0; i < 2; i += 1) {
+          await db.query(unwrapped(read("supabase/release/102_security_guards.release.sql")));
+          expect(allTrue(await verify(db))).toBe(true);
+        }
+      } finally {
+        await db.query("rollback");
+      }
+    });
+  });
+
+  it("production's shape (095 + 100, no 099 or 101): 102 applies on its own and 103 refuses with nothing kept (all rolled back)", async () => {
+    // 102 names no 099 object (tests/unit/migration-102-independent.test.ts checks the text); here 101 (with 103 on top) is taken away.
+    await withDb(async (db) => {
+      await db.query("begin");
+      try {
+        await db.query(unwrapped(read("supabase/release/103_ai_helper_service_role.rollback.sql")));
+        await db.query(unwrapped(read("supabase/release/102_security_guards.rollback.sql")));
+        await db.query(unwrapped(read("supabase/release/101_ai_helper.rollback.sql")));
+        expect((await db.query("select to_regclass('public.ai_helper_requests') is null and to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') is null as v")).rows[0].v).toBe(true);
+        for (let i = 0; i < 2; i += 1) {
+          await db.query(unwrapped(read("supabase/release/102_security_guards.release.sql")));
+          expect(allTrue(await verify(db))).toBe(true);
+        }
+        await db.query("savepoint without_101");
+        const refused = await db.query(unwrapped(read("supabase/release/103_ai_helper_service_role.release.sql"))).then(() => null, (error: { message: string }) => error);
+        expect(refused?.message).toBe("103: the AI helper (101) is not applied; apply 101 first");
+        await db.query("rollback to savepoint without_101");
+        expect(allTrue(await verify(db))).toBe(true);
+        expect((await db.query("select to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') is null as v")).rows[0].v).toBe(true);
       } finally {
         await db.query("rollback");
       }

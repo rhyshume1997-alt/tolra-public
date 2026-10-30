@@ -1114,10 +1114,10 @@ async function expect101(db: Client, present: boolean) {
 const IS_102 = (file: string) => file.endsWith("_security_guards.sql");
 
 /**
- * What 102 changes (security guards): four bodies compared without whitespace (organization_settings_guard_nav 058's -> 102's,
- * user_profiles_guard 012's -> 102's, ai_helper_reserve and ai_helper_settle 101's -> 102's), the new admin_may_edit_profile and
- * admin_may_read_profile (definer, signed-in only), the two user_profiles admin policies (007's -> 102's), settle's grant (authenticated -> service role only) and the
- * quote-attachments bucket private (it was private before too, so that is checked both ways). After a failed run all of it is as before.
+ * What 102 changes (security guards): two bodies compared without whitespace (organization_settings_guard_nav 058's -> 102's,
+ * user_profiles_guard 012's -> 102's), the new admin_may_edit_profile and admin_may_read_profile (definer, signed-in only), the two
+ * user_profiles admin policies (007's -> 102's) and the quote-attachments bucket private (it was private before too, so that is checked
+ * both ways). It touches no 099 or 101 object. After a failed run all of it is as before.
  */
 async function expect102(db: Client, present: boolean) {
   const q = async (text: string, params: unknown[] = []) => (await db.query<{ v: boolean }>(text, params)).rows[0].v;
@@ -1126,15 +1126,9 @@ async function expect102(db: Client, present: boolean) {
     .toBe(present ? "99579bb09f2fcf9458103b3128af20c8" : "a3524f981c1f7b122d0935c837408d0d");
   expect(await md5("public.user_profiles_guard()"), `102 user_profiles_guard is ${present ? "102's" : "012's"}`)
     .toBe(present ? "986ea8500279eb9724eae987797281a7" : "4dd071f7e70fc10a633ad11f9f5c0180");
-  expect(await md5("public.ai_helper_reserve(text,integer,text,integer)"), `102 ai_helper_reserve is ${present ? "102's" : "101's"}`)
-    .toBe(present ? "c75e470a73e4d0e7508a27125f6f9e9c" : "8b9a4ec9293a5b6f0ddc8e505822c84f");
-  expect(await md5("public.ai_helper_settle(uuid,text,text,integer,text,jsonb)"), `102 ai_helper_settle is ${present ? "102's" : "101's"}`)
-    .toBe(present ? "ca5166191666584107491f95ccce4702" : "cd5ac6d43f9a5ade20815a82ed123717");
   for (const helper of ["admin_may_edit_profile", "admin_may_read_profile"]) {
     expect(await q("select to_regprocedure($1) is not null as v", [`public.${helper}(uuid)`]), `102 ${helper} present = ${present}`).toBe(present);
   }
-  expect(await q("select has_function_privilege('authenticated', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') as v"),
-    `102 settle callable by authenticated = ${!present}`).toBe(!present);
   expect(await q("select exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'user_profiles' and policyname = 'Admins update org members' and qual = 'admin_may_edit_profile(id)') as v"),
     `102 update policy is 102's = ${present}`).toBe(present);
   expect(await q("select exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'user_profiles' and policyname = 'Admins read org members' and qual = 'admin_may_read_profile(id)') as v"),
@@ -1144,10 +1138,29 @@ async function expect102(db: Client, present: boolean) {
       expect(await q("select p.prosecdef and has_function_privilege('authenticated', p.oid, 'EXECUTE') and not has_function_privilege('anon', p.oid, 'EXECUTE') as v from pg_proc p where p.oid = to_regprocedure($1)", [`public.${helper}(uuid)`]),
         `102 ${helper}: definer, signed-in only`).toBe(true);
     }
-    expect(await q("select has_function_privilege('service_role', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') and not has_function_privilege('anon', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') as v"),
-      "102 settle: service role only").toBe(true);
   }
   expect(await q("select not exists (select 1 from storage.buckets where id = 'quote-attachments' and public) as v"), "102 quote-attachments private").toBe(true);
+}
+
+const IS_103 = (file: string) => file.endsWith("_ai_helper_service_role.sql");
+
+/**
+ * What 103 changes (the AI helper's key and settle are the server's): ai_helper_reserve and ai_helper_settle bodies compared without
+ * whitespace (101's -> 103's) and settle's grant (authenticated -> service role only). After a failed run both bodies and the grant are
+ * 101's. 102's objects are untouched either way.
+ */
+async function expect103(db: Client, present: boolean) {
+  const q = async (text: string) => (await db.query<{ v: boolean }>(text)).rows[0].v;
+  const md5 = async (sig: string) => (await db.query<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = to_regprocedure($1)", [sig])).rows[0]?.v;
+  expect(await md5("public.ai_helper_reserve(text,integer,text,integer)"), `103 ai_helper_reserve is ${present ? "103's" : "101's"}`)
+    .toBe(present ? "c75e470a73e4d0e7508a27125f6f9e9c" : "8b9a4ec9293a5b6f0ddc8e505822c84f");
+  expect(await md5("public.ai_helper_settle(uuid,text,text,integer,text,jsonb)"), `103 ai_helper_settle is ${present ? "103's" : "101's"}`)
+    .toBe(present ? "ca5166191666584107491f95ccce4702" : "cd5ac6d43f9a5ade20815a82ed123717");
+  expect(await q("select has_function_privilege('authenticated', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') as v"),
+    `103 settle callable by authenticated = ${!present}`).toBe(!present);
+  expect(await q("select has_function_privilege('service_role', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') and not has_function_privilege('anon', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE') and not has_table_privilege('authenticated', 'public.ai_helper_secrets', 'SELECT') as v"),
+    "103 settle: service role (and no anon); key table closed to signed-in users").toBe(true);
+  expect(await md5("public.user_profiles_guard()"), "103 leaves 102's user_profiles_guard").toBe("986ea8500279eb9724eae987797281a7");
 }
 
 /**
@@ -1655,6 +1668,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_100(last)) await expect100(db, false);
       if (IS_101(last)) await expect101(db, false);
       if (IS_102(last)) await expect102(db, false);
+      if (IS_103(last)) await expect103(db, false);
       // Twice: a failure late in the file (its last section still to come) and one midway.
       for (const where of ["late", "middle"] as const) {
         const plan = injectionPlan(sql(path.join(MIGRATIONS, last)), where);
@@ -1724,6 +1738,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
         if (IS_100(last)) await expect100(db, false);
         if (IS_101(last)) await expect101(db, false);
         if (IS_102(last)) await expect102(db, false);
+        if (IS_103(last)) await expect103(db, false);
         checked.push({ where, chosen });
       }
       // A clean run of the same file then applies normally. When the newest file is 033 or 034 it is the one whose effect on the CRLF bodies is checked here.
@@ -1788,6 +1803,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_100(last)) await expect100(db, true);
       if (IS_101(last)) await expect101(db, true);
       if (IS_102(last)) await expect102(db, true);
+      if (IS_103(last)) await expect103(db, true);
       expect(await structure(db)).not.toEqual(structureBefore);
       await db.query("notify pgrst, 'reload schema'");
       await db.query("notify pgrst, 'reload config'");
@@ -1840,6 +1856,7 @@ describe.runIf(/^\d{3}$/.test(BASE))(`upgrade from ${BASE} with existing data`, 
       if (IS_100(newest)) await expect100(db, true);
       if (IS_101(newest)) await expect101(db, true);
       if (IS_102(newest)) await expect102(db, true);
+      if (IS_103(newest)) await expect103(db, true);
     });
   });
 

@@ -10,7 +10,7 @@
  *     tampered body (a price, an extra line, a quote id, another company's item or suggestion) can't change what is saved.
  *   - The key is encrypted before it reaches the database, never returned and never logged.
  *   - The service role only in lib/ai-helper/server.ts, only after a reservation passed, only to read the company's key and to settle
- *     (migration 102); no direct table write, only the expected functions, only the expected env vars, in every helper file.
+ *     (migration 103); no direct table write, only the expected functions, only the expected env vars, in every helper file.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -104,7 +104,7 @@ vi.mock("@/lib/server/auth", () => ({
   }),
 }));
 /**
- * The service role (migration 102): used by lib/ai-helper/server.ts only, after a reservation passed, to read this company's key and to
+ * The service role (migration 103): used by lib/ai-helper/server.ts only, after a reservation passed, to read this company's key and to
  * settle. Its calls go into the same db.rpcs list (so the order status, reserve, settle is checked across both clients) and its own
  * reads and created count; `configured: false` stands for SUPABASE_SERVICE_ROLE_KEY missing.
  */
@@ -180,7 +180,7 @@ beforeEach(() => {
   db.profile = { vatRegistered: true, defaultVatRate: 20 };
   engine.orgs = [];
   engine.parts = { [ORG]: [{ id: 7, part_number: "BR-100", unit: 12.5 }], [OTHER_ORG]: [{ id: 9, part_number: "BETA-1", unit: 0.01 }, { id: 10, part_number: "BR-100", unit: 0.01 }] };
-  // 102: reserve answers { ok, request_id } only; the key is read by the server with the service role.
+  // 103: reserve answers { ok, request_id } only; the key is read by the server with the service role.
   db.reserve = () => ({ data: { ok: true, request_id: REQ }, error: null });
   service.configured = true; service.created = 0; service.reads = []; service.rpcs = []; service.settle = null;
   service.keyEnc = encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" });
@@ -346,7 +346,7 @@ describe("RFQ email to draft quote", () => {
     expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable" });
   });
 
-  it("102: the key is read with the service role, for the caller's company only, after the reservation passed; settle is the service role's", async () => {
+  it("103: the key is read with the service role, for the caller's company only, after the reservation passed; settle is the service role's", async () => {
     const res = await rfq(post({ text: GOOD_RFQ }));
     expect(res.status).toBe(200);
     expect(service.reads).toEqual([{ table: "ai_helper_secrets", cols: "api_key_enc", filters: [["organization_id", ORG]] }]);
@@ -356,13 +356,13 @@ describe("RFQ email to draft quote", () => {
     expect(db.reads.filter((r) => r.startsWith("ai_helper_secrets"))).toEqual([]);
   });
 
-  it("102: a key in the reserve answer (an old database) is ignored; the stored key is what is used", async () => {
+  it("103: a key in the reserve answer (an old database) is ignored; the stored key is what is used", async () => {
     db.reserve = () => ({ data: { ok: true, request_id: REQ, key_enc: encryptSecret("sk-ant-x", { organizationId: "another-company", provider: "anthropic", purpose: "api_key" }) }, error: null });
     expect((await rfq(post({ text: GOOD_RFQ }))).status).toBe(200);
     expect(service.reads).toHaveLength(1);
   });
 
-  it("102: no stored key (removed after the reservation): not available, settled as failed, no model call", async () => {
+  it("103: no stored key (removed after the reservation): not available, settled as failed, no model call", async () => {
     service.keyEnc = null;
     const res = await rfq(post({ text: GOOD_RFQ }));
     expect(res.status).toBe(503);
@@ -371,7 +371,7 @@ describe("RFQ email to draft quote", () => {
     expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable" });
   });
 
-  it("102: refused, off, cap or no key at reserve: the service role reads nothing and settles nothing", async () => {
+  it("103: refused, off, cap or no key at reserve: the service role reads nothing and settles nothing", async () => {
     for (const answer of [{ data: { ok: false, reason: "cap", request_id: REQ }, error: null }, { data: { ok: false, reason: "no_key", request_id: REQ }, error: null },
       { data: null, error: { code: "42501", hint: "ai_helper_off" } }, { data: null, error: { code: "42501" } }]) {
       db.reserve = () => answer;
@@ -382,7 +382,7 @@ describe("RFQ email to draft quote", () => {
     expect(model.calls).toBe(0);
   });
 
-  it("102: without the service role configured, nothing is reserved and no model is called", async () => {
+  it("103: without the service role configured, nothing is reserved and no model is called", async () => {
     service.configured = false;
     const res = await rfq(post({ text: GOOD_RFQ }));
     expect(res.status).toBe(503);
@@ -390,7 +390,7 @@ describe("RFQ email to draft quote", () => {
     expect(model.calls).toBe(0);
   });
 
-  it("102: workshop, viewer and support sessions never reach the service role", async () => {
+  it("103: workshop, viewer and support sessions never reach the service role", async () => {
     for (const role of ["workshop", "viewer"]) {
       auth.role = role;
       await rfq(post({ text: GOOD_RFQ }));
@@ -604,7 +604,7 @@ const source = (f: string) => readFileSync(path.join(root, f), "utf8");
 describe("never-do list (source)", () => {
   it("finds the files", () => expect(files.length).toBeGreaterThanOrEqual(20));
 
-  it("uses the service role in lib/ai-helper/server.ts only, and there only to read the key table and to settle (102)", () => {
+  it("uses the service role in lib/ai-helper/server.ts only, and there only to read the key table and to settle (103)", () => {
     const server = path.join("lib", "ai-helper", "server.ts");
     for (const f of files) if (f !== server) expect(source(f), f).not.toMatch(/supabase-admin|createSupabaseAdminClient|SERVICE_ROLE/);
     const text = source(server);

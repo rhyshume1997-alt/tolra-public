@@ -77,7 +77,7 @@
  {
   "kind": "function",
   "object": "public.admin_may_edit_profile(p_user uuid)",
-  "detail": "definer search_path=pg_catalog, public 62ea75b1aa83d1411e13b0930b3004b3"
+  "detail": "definer search_path=pg_catalog, public 2acff21275a163dcb34537ebe85a586f"
  },
  {
   "kind": "function",

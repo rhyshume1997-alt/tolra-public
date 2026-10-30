@@ -316,8 +316,8 @@ function attempts(): Attempt[] {
     ["public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)", () => alpha.rpc("record_inbound_email", { p_graph_message_id: `AAA-${randomUUID()}`, p_internet_message_id: null, p_from_address: "a@example.test", p_from_name: null, p_subject: `Re: ${MARKER}`, p_received_at: day, p_body_preview: "", p_body_text: "" }), "nothing of beta's"],
     ["public.save_mail_poll_state(p_next_link text, p_checkpoint timestamp with time zone)", () => alpha.rpc("save_mail_poll_state", { p_next_link: null, p_checkpoint: day }), "nothing of beta's"],
     // 101: the AI helper. Settings and key change the caller's own company only; reserve answers from the caller's company (alpha's
-    // features are off, so it refuses); decide pointed at beta's suggestion refuses. Settle is the service role's only from 102 (no
-    // longer callable by a signed-in user, so not listed here; tests/db/security-guards-102.test.ts).
+    // features are off, so it refuses); decide pointed at beta's suggestion refuses. Settle is the service role's only from 103 (no
+    // longer callable by a signed-in user, so not listed here; tests/db/ai-helper-service-role-103.test.ts).
     ["public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)", () => alpha.rpc("ai_helper_save_settings", { p_roundup: false, p_rfq: false, p_cap_pence: 0 }), "nothing of beta's"],
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
