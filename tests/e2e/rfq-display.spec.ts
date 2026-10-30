@@ -23,6 +23,15 @@ test.beforeAll(async () => {
 });
 
 const card = (page: import("@playwright/test").Page) => page.locator('[data-slot="card"]', { hasText: customer() });
+/**
+ * The company's saved RFQ hidden list, read from the database. A Columns tick redraws the card at once and saves in the
+ * background (lib/org-settings.ts enqueue -> persistChange: look up the company, re-read the row, then upsert), so a reload
+ * straight after the redraw can cut that save off. Wait on this before a reload that must show the saved choice.
+ */
+const savedHidden = async () => {
+  const { data } = await adminClient().from("organization_settings").select("hidden_columns").eq("organization_id", solo.id).maybeSingle();
+  return ((data?.hidden_columns as Record<string, string[]> | null)?.rfq ?? []).includes("received");
+};
 
 for (const width of [1280, 390]) {
   test(`hide Received at ${width}: the card drops it, and it stays hidden after a reload`, async ({ page }) => {
@@ -46,6 +55,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole("menuitemcheckbox", { name: "Actions" })).toBeDisabled();
     await page.keyboard.press("Escape");
 
+    await expect.poll(savedHidden, { timeout: 15_000 }).toBe(true);
     await page.reload();
     await expect(card(page)).toContainText("Outstanding");
     await expect(card(page)).not.toContainText("Received:");
@@ -56,7 +66,8 @@ for (const width of [1280, 390]) {
     await page.getByRole("menuitemcheckbox", { name: "Received" }).click();
     await page.keyboard.press("Escape");
     await expect(card(page)).toContainText("Received:");
-    // The save runs after the screen updates; reload so the next test starts only once it has reached the database.
+    // The save runs after the screen updates: wait until it has reached the database, then reload to show it was kept.
+    await expect.poll(savedHidden, { timeout: 15_000 }).toBe(false);
     await page.reload();
     await expect(card(page)).toContainText("Received:");
   });
