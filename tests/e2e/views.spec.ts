@@ -125,7 +125,7 @@ test("Job Board: traffic light and progress on every job; Finish moves it to Ins
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto("/jobs");
   const row = (no: string) => page.getByRole("row").filter({ hasText: no });
-  await expect(row(late)).toContainText("Overdue");
+  await expect(row(late)).toContainText("Late");
   await expect(row(late)).toContainText("Not started");
   await expect(row(nodate)).toContainText("No due date");
 

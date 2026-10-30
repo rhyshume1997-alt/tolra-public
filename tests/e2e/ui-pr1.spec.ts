@@ -388,7 +388,7 @@ test("phone: cards select one by one, the count is right, bulk Finish names the 
   for (const job of many) expect((await jobsOf(job)).finished_at).toBeNull();
 
   // Selected jobs that a filter hides are dropped from the selection, so Finish acts on visible jobs only.
-  await page.getByRole("button", { name: /^Overdue \(\d+\)$/ }).tap();
+  await page.getByRole("button", { name: /^Late \(\d+\)$/ }).tap();
   await expect(summary).toContainText("0 selected of");
   await expect(page.getByRole("button", { name: /^Finish Selected/ })).toBeDisabled();
   await page.getByRole("button", { name: "All", exact: true }).first().tap();

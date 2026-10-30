@@ -58,15 +58,15 @@ test("someone else saved first: the save is refused, local edits stay, their dat
   await expect(sheet.getByLabel("Heat / Cast #")).toHaveValue("THEIRS");
 });
 
-test("an unfinished job past its required date shows Overdue; due today doesn't", async ({ page }) => {
+test("an unfinished job past its required date shows Late; due today doesn't", async ({ page }) => {
   const late = `J-LATE-${w.runId}`;
   const today = `J-TODAY-${w.runId}`;
   await newJob(late, { date_required: "2026-01-05", status: "on_track" });
   await newJob(today, { date_required: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date()), status: "on_track" });
   await signIn(page, w.tenants.beta.users.workshop);
   await page.goto("/jobs");
-  await expect(page.getByRole("row").filter({ hasText: late })).toContainText(/overdue/i);
-  await expect(page.getByRole("row").filter({ hasText: today })).not.toContainText(/overdue/i);
+  await expect(page.getByRole("row").filter({ hasText: late })).toContainText(/\bLate\b/);
+  await expect(page.getByRole("row").filter({ hasText: today })).not.toContainText(/\bLate\b/);
 });
 
 test("workshop pack: the selected jobs print together on one worksheet sheet", async ({ page }) => {

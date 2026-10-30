@@ -31,7 +31,7 @@ describe("a job with no due date is never on time", () => {
     expect(jobMatchesStatus({ status: "on_track", due_date: "2026-10-20" }, "at_risk")).toBe(false);
   });
 
-  it("an undated job counts only in No due date, never also At risk, Overdue or On time", () => {
+  it("an undated job counts only in No due date, never also At risk, Late or On time", () => {
     for (const status of ["on_track", "at_risk", "overdue"]) {
       const job = { status, date_required: null, due_date: "" };
       const chips = ["on_track", "at_risk", "overdue", "no_due_date"].filter((chip) => jobMatchesStatus(job, chip));
@@ -59,7 +59,7 @@ describe("a job with no due date is never on time", () => {
     expect(dashboard).toContain("onTimeJobCount(datedJobsCount.count, lateJobsCount.count)");
     expect(dashboard).not.toContain("jobsActive.count - lateJobsCount.count");
     const board = readFileSync("app/(dashboard)/jobs/page.tsx", "utf8");
-    // The due-date chips (On time, At risk, Overdue, No due date) count Not started and Running jobs with the shared matcher.
+    // The due-date chips (On time, At risk, Late, No due date) count Not started and Running jobs with the shared matcher.
     expect(board).toContain("dueScopeJobs.filter((job) => jobMatchesStatus(job, status)).length");
     expect(board).toContain("const dueScopeJobs = jobs.filter((job) => inDueScope(job));");
     expect(board).toContain("[...statusFilters].some((status) => jobMatchesStatus(job, status))");

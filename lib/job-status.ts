@@ -48,7 +48,7 @@ export function jobMatchesStatus(job: { status: string; date_required?: string |
 
 /** The due-date chips, in order, with their words (the same on the chips and on the badge beside a job's status). */
 export const DUE_CHIPS = [
-  { value: "on_track", label: "On time" }, { value: "at_risk", label: "At risk" }, { value: "overdue", label: "Overdue" }, { value: "no_due_date", label: "No due date" },
+  { value: "on_track", label: "On time" }, { value: "at_risk", label: "At risk" }, { value: "overdue", label: "Late" }, { value: "no_due_date", label: "No due date" },
 ] as const;
 
 /** Database filter (PostgREST or) for unfinished jobs that have a required date: the dashboard's "dated" jobs. */

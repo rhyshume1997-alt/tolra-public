@@ -40,7 +40,7 @@ test("1. Job Board: start and finish a job - it moves, with a traffic light; the
   await page.goto("/jobs");
   const row = (no: string) => page.getByRole("row").filter({ hasText: no });
   await expect(row(job)).toContainText("On time");
-  await expect(row(late)).toContainText("Overdue");
+  await expect(row(late)).toContainText("Late");
   await shot(page, "jobs-traffic-lights");
 
   await playJob(page, row(job), job, { bench: true });
