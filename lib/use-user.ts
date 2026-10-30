@@ -8,7 +8,7 @@ import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
 import { resetCompanyProfile } from "@/lib/company";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
 import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
-import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
+import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, createReturnAsk, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
 import { confirmedUser, invalidateConfirmedUser } from "@/lib/confirmed-user";
 import { OfflineIdentityExpiredError, offlineIdentityExpired } from "@/lib/offline/identity-age";
 import { pendingEntries, waitForReplayIdle } from "@/lib/offline/outbox";
@@ -23,6 +23,11 @@ import type { UserProfile, UserRole } from "@/types";
 
 const PROFILE_COLUMNS = "id, email, full_name, role, secondary_role, organization_id, organization, workshop_email, active";
 const ROLE_KEY = "active-role";
+
+/** Same sections in the same order (the recheck's answer compared with what is shown). */
+function sameSections(a: readonly string[], b: readonly string[]) {
+  return a.length === b.length && a.every((section, i) => section === b[i]);
+}
 
 function getAllowedRoles(profile: UserProfile): UserRole[] {
   if (profile.role === "admin") return ["admin", "office", "workshop"];
@@ -292,7 +297,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
             writeStoredRole(role);
             setActiveRoleState(role);
           }
-          setHiddenSections(hidden);
+          // The same page access as shown keeps the same array: no new context value, so no re-render of every useUser() page.
+          setHiddenSections((shown) => (sameSections(shown, hidden) ? shown : hidden));
           fullyConfirmedAt = passStartedAt;
           if (keepCopy) {
             confirmedAt = new Date().toISOString();
@@ -473,8 +479,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (recheck && !expiredLock) void recheck();
       else if (!loadingNow) void loadUser(); // locked or never loaded: load for real now the server is reachable
     };
-    const onFocus = () => void recheck?.();
-    const onVisible = () => { if (document.visibilityState === "visible") void recheck?.(); };
+    // Coming back to the app fires both: one recheck for the pair (lib/access-recheck.ts createReturnAsk).
+    const returnAsk = createReturnAsk();
+    const onFocus = () => { if (returnAsk("focus")) void recheck?.(); };
+    const onVisible = () => { if (document.visibilityState === "visible" && returnAsk("visible")) void recheck?.(); };
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);

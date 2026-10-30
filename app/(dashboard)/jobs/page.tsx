@@ -61,6 +61,7 @@ import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { DUE_CHIPS, formatAverageJobTime, hasRequiredDate, jobMatchesStatus, jobStatus, requiredDate } from "@/lib/job-status";
 import { DEMO_MODE } from "@/lib/demo";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
+import { warmPdfExport } from "@/lib/pdf-warm";
 import { JOB_COLUMNS } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
 import { friendlyError } from "@/lib/friendly-error";
@@ -494,6 +495,8 @@ export default function JobsPage() {
   // Average job time in hours or days, remembered on this device.
   const [timeUnit, setTimeUnit] = useState<"hours" | "days">("days");
   useEffect(() => { try { if (window.localStorage.getItem("job-time-unit") === "hours") setTimeUnit("hours"); } catch { /* not remembered */ } }, []);
+  // Export PDF must work with no signal: once the board has loaded, online and idle, fetch its code (lib/pdf-warm.ts).
+  useEffect(() => warmPdfExport(), []);
   const chooseTimeUnit = (unit: "hours" | "days") => { setTimeUnit(unit); try { window.localStorage.setItem("job-time-unit", unit); } catch { /* not remembered */ } };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sendJob, setSendJob] = useState<WorkshopJob | null>(null);
