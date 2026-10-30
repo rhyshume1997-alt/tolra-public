@@ -202,6 +202,12 @@ test("every row control is at least 48px tall: mouse at 1280, touch tablet at 82
     const touch = await context.newPage();
     await signIn(touch, soloAdmin);
     await touch.goto("/jobs");
+    if (viewport.name !== "phone") {
+      // A new context has its own storage, so the List chosen at 1280 is not remembered here: choose it again (the switcher shows
+      // above phone width), and measure only once the job rows are on screen (thead alone shows first).
+      await touch.getByRole("group", { name: "View" }).getByRole("button", { name: "List", exact: true }).click();
+      await expect(row(touch, J.measure)).toBeVisible();
+    }
     const scope = viewport.name === "phone"
       ? `[data-testid="job-card"][data-job-id="${ids[J.measure]}"], [data-testid="job-card"][data-job-id="${ids[J.start]}"]`
       : `tr[data-job-id="${ids[J.measure]}"], tr[data-job-id="${ids[J.start]}"], thead`;
