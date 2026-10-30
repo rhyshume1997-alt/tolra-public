@@ -29,6 +29,9 @@ test("date format: office changes it (live preview, saved), invoice dates follow
     await expect(details()).toContainText("06/04/2031");
 
     // Account Settings: the live preview follows the radio before anything is saved.
+    // The invoice details dialog is modal: close it before reaching the sidebar.
+    await page.keyboard.press("Escape");
+    await expect(details()).toBeHidden();
     await page.getByRole("button", { name: "Settings" }).first().click();
     const settings = page.getByRole("dialog", { name: "Account Settings" });
     const preview = settings.getByTestId("date-format-preview");
@@ -61,6 +64,9 @@ test("date format: office changes it (live preview, saved), invoice dates follow
     }
 
     // Back to DD/MM/YYYY.
+    // The invoice details dialog is modal: close it before reaching the sidebar.
+    await page.keyboard.press("Escape");
+    await expect(details()).toBeHidden();
     await page.getByRole("button", { name: "Settings" }).first().click();
     const again = page.getByRole("dialog", { name: "Account Settings" });
     await again.getByRole("radio", { name: /^DD\/MM\/YYYY/ }).check();
