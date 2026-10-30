@@ -36,12 +36,12 @@ const ok = async (p: PromiseLike<{ error: { message: string } | null }>) => expe
 
 test.beforeAll(async () => {
   const tag = w.runId.slice(0, 6);
-  const solo = await createSoloTenant(w.runId, "floor");
+  const solo = await createSoloTenant(w.runId, `floor${Date.now().toString(36)}`);
   org = solo.id;
   admin = solo.admin;
   // The company's workshop person (the e-mail carries the run id, so teardown removes them with the rest of the run).
   const db = adminClient();
-  const email = `workshop.floor.${w.runId}@${EMAIL_DOMAIN}`;
+  const email = `workshop.floor.${w.runId}.${Date.now().toString(36)}@${EMAIL_DOMAIN}`;
   const password = `Fl-${randomUUID()}`;
   const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "Lee Barker" } });
   expect(created.error).toBeNull();
