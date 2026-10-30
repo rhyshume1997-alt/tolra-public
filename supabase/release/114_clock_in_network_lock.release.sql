@@ -5,37 +5,44 @@ BEGIN;
 -- 114: lock clock-in to the workshop network (M27; Rhys, Fri 30 Oct: "an admin-only button that captures the current network IP and
 -- locks clock-in to it (only admin can change)"). G21 / B40 phase 2 (refuse), OFF by default: with no lock row (the default) every clock
 -- action, its answer and its audit rows are exactly as before 114. Needs 050 (attendance_events, time_company_lock) and 075 (the
--- request's address, site networks, the per-person On site only flag). Applied after 101; touches none of 076 to 101's objects.
+-- request's address, site networks, the admin guard). Applied after 101; touches none of 076 to 101's objects.
 -- NUMBERING: 114 is a working number (given by the orchestrator, 30 Oct). It replaces no existing object, so it can take any later
 -- number without a change to its text other than this header.
 --
--- WHAT IT ADDS. Two tables, four functions (two the app calls, two trigger functions), two triggers on attendance_events. Nothing
--- existing is replaced; 075's flag check (site_network_settings 'flag') keeps working beside it, unchanged.
+-- WHAT IT ADDS. Three tables, five functions (three the app calls, two trigger functions), two triggers on attendance_events. Nothing
+-- existing is replaced; 075's flag check (site_network_settings 'flag') and its per-person On site only flag keep working beside it,
+-- unchanged. THE LOCK COVERS EVERYONE (orchestrator decision, 30 Oct, from Rhys's wording): 075's On site only flag is NOT consulted;
+-- only the lock's own per-person exception (c) lets someone clock in off site while the lock is on.
 --   a. public.clock_in_network_locks: at most one row per company: the network clock-in is locked to (the address the admin's own
 --      request came from: /32 for IPv4, its /64 for IPv6, exactly as 075's "Use the network I'm on now"), who locked it and when. No row
 --      = unlocked. Read by the company's admin and office users.
---   b. public.clock_in_network_unverified: one row per clock action that the lock could NOT check: made while the company is locked, by
---      a person marked On site only (075's site_network_members), and either synced later (it reached the server more than 2 minutes
+--   b. public.clock_in_network_exemptions: per person, off_site_allowed (no row = FALSE: the lock applies to them). Consulted ONLY while
+--      the company is locked. Written only by set_clock_in_off_site_allowed (admin, two-step, audited); read by admin and office (and
+--      the person their own row). Admin > Users: "Can clock in off site (while the network lock is on)".
+--   c. public.clock_in_network_unverified: one row per clock action that the lock could NOT check: made while the company is locked, by
+--      a person not allowed off site (b), and either synced later (it reached the server more than 2 minutes
 --      after the device's time: queued offline; 075's rule) or with no client address on the request (not through the API gateway).
 --      Such an action is ACCEPTED (a clock action made offline can't prove where it was made, and is never lost) and marked
 --      network_unverified here, with a copy of its action and times so the week review can list it. Never changed or removed (050's
 --      immutability function). No address is kept. Read: the person their own; admin and office the company's.
---   c. lock_clock_in_network(): admin only (075's site_network_admin_org: assert_privileged_aal, then the admin role). The address comes
+--   d. lock_clock_in_network(): admin only (075's site_network_admin_org: assert_privileged_aal, then the admin role). The address comes
 --      from 075's request_client_ip(): PostgREST's request.headers, cf-connecting-ip ONLY, set by the server per request; the browser
 --      never sends an address and x-forwarded-for is ignored (its first hop is whatever the client wrote). Locks, or re-captures (the
 --      same call replaces the network with this request's). Refused when the address can't be seen (ip_unknown) or is private / local
 --      (075's site_network_parse: private_network). Audited (CLOCK_IN_NETWORK_LOCKED, and the row change).
---   d. unlock_clock_in_network(): admin only, the same guard. Removes the row. Audited (CLOCK_IN_NETWORK_UNLOCKED, and the row change).
---   e. clock_in_network_lock_check(), BEFORE INSERT on attendance_events, clock actions only (source 'clock': in, out, break start, break
+--   e. unlock_clock_in_network(): admin only, the same guard. Removes the row. Audited (CLOCK_IN_NETWORK_UNLOCKED, and the row change).
+--   f. clock_in_network_lock_check(), BEFORE INSERT on attendance_events, clock actions only (source 'clock': in, out, break start, break
 --      end; corrections are never checked, so an admin can always add time): REFUSES (42501, hint clock_in_network_locked, nothing is
---      recorded) a clock action when ALL of: the company has a lock row; the person is On site only (075: no row = can work off site,
---      never checked); the action is online (device time at most 2 minutes behind the server); the request has a client address; and
+--      recorded) a clock action when ALL of: the company has a lock row; the person is not allowed off site (b: the default, so
+--      everyone); the action is online (device time at most 2 minutes behind the server); the request has a client address; and
 --      that address is neither inside the locked network nor inside one of the company's saved site networks (075's list, so a second
 --      address family or a second site can be added there). The message names no address and avoids the words the app reads as a
 --      lost connection (lib/offline/store.ts isNetworkError), so the device holds it as refused instead of retrying it until it is
 --      2 minutes old.
---   f. clock_in_network_unverified_record(), AFTER INSERT (named zz_ to run after 050/075's own): writes the row of b. Never refuses: any
+--   g. clock_in_network_unverified_record(), AFTER INSERT (named zz_ to run after 050/075's own): writes the row of c. Never refuses: any
 --      error inside it is swallowed (the clock action stays recorded, without the mark), as 075's check does.
+--   h. set_clock_in_off_site_allowed(person, allowed): admin only, the same guard; the person must be a member of the admin's company.
+--      Audited (CLOCK_IN_OFF_SITE_ALLOWED_SET, and the row change).
 -- SPOOFING / LIMITS (as 075, header note 5): cf-connecting-ip is trustworthy only if every request reaches PostgREST through Cloudflare;
 -- prove it on the real project before pressing Lock (docs/RELEASE.md "075" pre-activation check). A device whose clock is set more than
 -- 2 minutes behind is treated as synced later: accepted and marked network_unverified (shown to the office), never silently trusted.
@@ -50,7 +57,7 @@ BEGIN
      OR to_regprocedure('public.attendance_events_immutable()') IS NULL THEN
     RAISE EXCEPTION '114 needs 050 (attendance_events) applied first';
   END IF;
-  IF to_regclass('public.site_network_members') IS NULL OR to_regprocedure('public.request_client_ip()') IS NULL
+  IF to_regprocedure('public.request_client_ip()') IS NULL
      OR to_regprocedure('public.site_network_parse(text)') IS NULL OR to_regprocedure('public.site_network_matches(uuid,inet)') IS NULL
      OR to_regprocedure('public.site_network_admin_org()') IS NULL THEN
     RAISE EXCEPTION '114 needs 075 (site network check) applied first';
@@ -73,6 +80,24 @@ CREATE POLICY "clock_in_network_locks rbac select" ON public.clock_in_network_lo
   USING (organization_id = public.current_user_organization_id() AND public.has_org_role(ARRAY['admin', 'office']));
 REVOKE ALL ON public.clock_in_network_locks FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.clock_in_network_locks TO authenticated;
+
+-- ---- 1b. Per person: may clock in off site while the lock is on (no row = FALSE) --------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.clock_in_network_exemptions (
+  organization_id  UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  id               UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  off_site_allowed BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_by       UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (organization_id, user_id)
+);
+ALTER TABLE public.clock_in_network_exemptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "clock_in_network_exemptions rbac select" ON public.clock_in_network_exemptions;
+CREATE POLICY "clock_in_network_exemptions rbac select" ON public.clock_in_network_exemptions FOR SELECT TO authenticated
+  USING (organization_id = public.current_user_organization_id()
+         AND ((user_id = auth.uid() AND public.has_org_role(ARRAY['admin', 'office', 'workshop'])) OR public.has_org_role(ARRAY['admin', 'office'])));
+REVOKE ALL ON public.clock_in_network_exemptions FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.clock_in_network_exemptions TO authenticated;
 
 -- ---- 2. Clock actions the lock could not check (accepted, marked network_unverified) ------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.clock_in_network_unverified (
@@ -105,7 +130,7 @@ DO $$
 DECLARE
   t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['clock_in_network_locks', 'clock_in_network_unverified'] LOOP
+  FOREACH t IN ARRAY ARRAY['clock_in_network_locks', 'clock_in_network_exemptions', 'clock_in_network_unverified'] LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I', 'audit_' || t || '_changes', t);
     EXECUTE format('CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change()', 'audit_' || t || '_changes', t);
     EXECUTE format('DROP TRIGGER IF EXISTS support_read_only ON public.%I', t);
@@ -117,8 +142,8 @@ END
 $$;
 
 -- ---- 3. The check, before each clock action is recorded --------------------------------------------------------------------------
--- Runs inside record_attendance_event (050), which holds the company's and the person's locks. Unlocked company, a person who can work
--- off site, a synced-later action or no client address: returns at once (the row goes in). Otherwise refuses an address outside both
+-- Runs inside record_attendance_event (050), which holds the company's and the person's locks. Unlocked company, a person allowed off
+-- site (1b), a synced-later action or no client address: returns at once (the row goes in). Otherwise refuses an address outside both
 -- the locked network and the saved site networks. Internal.
 CREATE OR REPLACE FUNCTION public.clock_in_network_lock_check()
 RETURNS TRIGGER
@@ -137,8 +162,8 @@ BEGIN
   IF v_net IS NULL THEN
     RETURN NEW;
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM public.site_network_members m
-                 WHERE m.organization_id = NEW.organization_id AND m.user_id = NEW.user_id AND m.on_site_only) THEN
+  IF EXISTS (SELECT 1 FROM public.clock_in_network_exemptions x
+             WHERE x.organization_id = NEW.organization_id AND x.user_id = NEW.user_id AND x.off_site_allowed) THEN
     RETURN NEW;
   END IF;
   IF NEW.device_at IS NOT NULL AND NEW.received_at - NEW.device_at > INTERVAL '2 minutes' THEN
@@ -179,8 +204,8 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.clock_in_network_locks l WHERE l.organization_id = NEW.organization_id) THEN
       RETURN NULL;
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM public.site_network_members m
-                   WHERE m.organization_id = NEW.organization_id AND m.user_id = NEW.user_id AND m.on_site_only) THEN
+    IF EXISTS (SELECT 1 FROM public.clock_in_network_exemptions x
+               WHERE x.organization_id = NEW.organization_id AND x.user_id = NEW.user_id AND x.off_site_allowed) THEN
       RETURN NULL;
     END IF;
     IF NEW.device_at IS NOT NULL AND NEW.received_at - NEW.device_at > INTERVAL '2 minutes' THEN
@@ -260,23 +285,59 @@ $$;
 REVOKE ALL ON FUNCTION public.unlock_clock_in_network() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.unlock_clock_in_network() TO authenticated;
 
+-- Per person: may clock in off site while the lock is on. Admin only; the person must be a member of the admin's company.
+CREATE OR REPLACE FUNCTION public.set_clock_in_off_site_allowed(p_user UUID, p_allowed BOOLEAN)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_org    UUID := public.site_network_admin_org();
+  v_before BOOLEAN;
+BEGIN
+  IF p_allowed IS NULL THEN
+    RAISE EXCEPTION 'Choose whether they can clock in off site.' USING ERRCODE = '22023', HINT = 'bad_value';
+  END IF;
+  IF p_user IS NULL OR NOT EXISTS (SELECT 1 FROM public.organization_members m WHERE m.organization_id = v_org AND m.user_id = p_user) THEN
+    RAISE EXCEPTION 'That person was not found in this company.' USING ERRCODE = 'P0002', HINT = 'person_missing';
+  END IF;
+  PERFORM public.time_company_lock(v_org);
+  SELECT x.off_site_allowed INTO v_before FROM public.clock_in_network_exemptions x WHERE x.organization_id = v_org AND x.user_id = p_user FOR UPDATE;
+  v_before := coalesce(v_before, FALSE);
+  IF v_before IS DISTINCT FROM p_allowed THEN
+    INSERT INTO public.clock_in_network_exemptions (organization_id, user_id, off_site_allowed, updated_by)
+    VALUES (v_org, p_user, p_allowed, auth.uid())
+    ON CONFLICT (organization_id, user_id) DO UPDATE SET off_site_allowed = EXCLUDED.off_site_allowed, updated_by = EXCLUDED.updated_by,
+                                                         updated_at = clock_timestamp();
+    PERFORM security_audit.log_named_event(v_org, 'CLOCK_IN_OFF_SITE_ALLOWED_SET', 'clock_in_network_exemptions', p_user::TEXT,
+      jsonb_build_object('user_id', p_user, 'before', v_before, 'after', p_allowed));
+  END IF;
+  RETURN jsonb_build_object('user_id', p_user, 'off_site_allowed', p_allowed, 'changed', v_before IS DISTINCT FROM p_allowed);
+END
+$$;
+REVOKE ALL ON FUNCTION public.set_clock_in_off_site_allowed(UUID, BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.set_clock_in_off_site_allowed(UUID, BOOLEAN) TO authenticated;
+
 -- ---- 6. Self-check before COMMIT --------------------------------------------------------------------------------------------------
 DO $$
 DECLARE
   v_fn TEXT;
 BEGIN
-  IF NOT (SELECT bool_and(c.relrowsecurity) AND count(*) = 2 FROM pg_class c
-          WHERE c.oid IN ('public.clock_in_network_locks'::regclass, 'public.clock_in_network_unverified'::regclass)) THEN
+  IF NOT (SELECT bool_and(c.relrowsecurity) AND count(*) = 3 FROM pg_class c
+          WHERE c.oid IN ('public.clock_in_network_locks'::regclass, 'public.clock_in_network_exemptions'::regclass, 'public.clock_in_network_unverified'::regclass)) THEN
     RAISE EXCEPTION '114: a table is missing or has row level security off';
   END IF;
   IF has_table_privilege('authenticated', 'public.clock_in_network_locks', 'INSERT') OR has_table_privilege('authenticated', 'public.clock_in_network_locks', 'UPDATE')
      OR has_table_privilege('authenticated', 'public.clock_in_network_locks', 'DELETE')
      OR has_table_privilege('authenticated', 'public.clock_in_network_unverified', 'INSERT') OR has_table_privilege('authenticated', 'public.clock_in_network_unverified', 'UPDATE')
      OR has_table_privilege('authenticated', 'public.clock_in_network_unverified', 'DELETE')
+     OR has_table_privilege('authenticated', 'public.clock_in_network_exemptions', 'INSERT') OR has_table_privilege('authenticated', 'public.clock_in_network_exemptions', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.clock_in_network_exemptions', 'DELETE') OR has_table_privilege('anon', 'public.clock_in_network_exemptions', 'SELECT')
      OR has_table_privilege('anon', 'public.clock_in_network_locks', 'SELECT') OR has_table_privilege('anon', 'public.clock_in_network_unverified', 'SELECT') THEN
     RAISE EXCEPTION '114: an API role can write a lock table, or anon can read one';
   END IF;
-  FOREACH v_fn IN ARRAY ARRAY['public.lock_clock_in_network()', 'public.unlock_clock_in_network()'] LOOP
+  FOREACH v_fn IN ARRAY ARRAY['public.lock_clock_in_network()', 'public.unlock_clock_in_network()', 'public.set_clock_in_off_site_allowed(uuid,boolean)'] LOOP
     IF NOT (SELECT p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'] FROM pg_proc p WHERE p.oid = to_regprocedure(v_fn))
        OR NOT has_function_privilege('authenticated', v_fn, 'EXECUTE') OR has_function_privilege('anon', v_fn, 'EXECUTE') THEN
       RAISE EXCEPTION '114: % is not definer, pinned and signed-in only', v_fn;

@@ -31,6 +31,7 @@ import { apiErrorFrom, describePartial, inspectorFlags, saveMemberEdit } from "@
 import { ADMIN_MFA_ONBOARDING_NOTICE, type AdminMfaOverview, adminMfaRuleMessage, adminMfaStatusLabel, becomesAdmin, holdsAdmin, parseAdminMfaOverview } from "@/lib/mfa-policy";
 import { disableSignInConfirm, identityActions, parseProtectedList, parseSignInList, type ProtectedState, SIGN_IN_CHECKING_LABEL, SIGN_IN_HELP, type SignInState, signInBadge, signInControls } from "@/lib/sign-in-access";
 import { OnSiteOnlyToggle, useOnSiteOnly } from "@/components/time/on-site-only";
+import { ClockInOffSiteToggle, useClockInOffSite } from "@/components/time/clock-in-off-site";
 import { AuthorisedInspectors } from "@/components/authorised-inspectors";
 import { databaseHas083 } from "@/lib/inspectors";
 import { type CompanyAccess, type CompanyChange, type CompanyDraft, type CompanyResult, draftCompanies, parseCompanyAccess, parseCompanyResults, planCompanyChanges, summariseCompanyResults } from "@/lib/company-access";
@@ -189,6 +190,8 @@ export default function UsersPage() {
   const [mfa, setMfa] = useState<AdminMfaOverview | null>(null);
   // 075: "On site only" per person (hidden until the database has 075).
   const onSite = useOnSiteOnly();
+  // 114: "Can clock in off site (while the network lock is on)" per person (hidden until the database has 114).
+  const offSite = useClockInOffSite();
   // 083: the authorised inspectors list (its own section, a reason for every change); null while asking.
   const [has083, setHas083] = useState<boolean | null>(null);
   useEffect(() => { let active = true; void databaseHas083().then((value) => { if (active) setHas083(value); }); return () => { active = false; }; }, []);
@@ -562,6 +565,7 @@ export default function UsersPage() {
                             : !user.lastLogin ? <Badge className="bg-slate-100 text-slate-700">Not signed in yet</Badge>
                             : <Badge className="bg-green-600 text-white">Active</Badge>}
                           {user.active && !user.support ? <OnSiteOnlyToggle userId={user.id} name={user.name} state={onSite} /> : null}
+                          {user.active && !user.support ? <ClockInOffSiteToggle userId={user.id} name={user.name} state={offSite} /> : null}
                         </TableCell>
                         <TableCell data-label="Last login" className="block text-sm md:table-cell md:whitespace-nowrap">{user.lastLogin ? fmtDateTime(user.lastLogin) : "Never"}</TableCell>
                         <TableCell data-actions className="block md:table-cell">

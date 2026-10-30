@@ -7,12 +7,12 @@ import { Lock } from "lucide-react";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type ClockInLock, clockInLockDecision, databaseHas114, loadClockInLock, lockClockIn, unlockClockIn } from "@/lib/clock-in-lock";
+import { type ClockInLock, clockInLockDecision, databaseHas114, loadClockInLock, loadOffSiteAllowed, lockClockIn, unlockClockIn } from "@/lib/clock-in-lock";
 import { loadCompanyPeople } from "@/lib/company-people";
 import { fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { UNKNOWN } from "@/lib/people";
-import { type RequestNetwork, loadOnSiteOnly, loadSiteNetworks, myRequestNetwork } from "@/lib/site-network";
+import { type RequestNetwork, loadSiteNetworks, myRequestNetwork } from "@/lib/site-network";
 import { supabase } from "@/lib/supabase";
 import { useDatabaseHas075 } from "@/lib/use-database-has-075";
 
@@ -30,7 +30,7 @@ export function ClockInLockCard() {
   const [loaded, setLoaded] = useState(false);
   const [here, setHere] = useState<RequestNetwork | null>(null);
   const [saved, setSaved] = useState<string[]>([]);
-  const [onSiteCount, setOnSiteCount] = useState<number | null>(null);
+  const [offSiteCount, setOffSiteCount] = useState<number | null>(null);
   const [names, setNames] = useState<Record<string, string | null>>({});
   const [confirm, setConfirm] = useState<"lock" | "unlock" | null>(null);
   const [busy, setBusy] = useState(false);
@@ -55,7 +55,7 @@ export function ClockInLockCard() {
     // Each of these only adds detail to the card: a failure leaves it out, never guesses it.
     setHere(await myRequestNetwork(supabase).catch(() => null));
     setSaved(await loadSiteNetworks(supabase).then((s) => s.networks.map((n) => n.network), () => []));
-    setOnSiteCount(await loadOnSiteOnly(supabase).then((s) => s.size, () => null));
+    setOffSiteCount(await loadOffSiteAllowed(supabase).then((s) => s.size, () => null));
     setNames((await loadCompanyPeople(supabase).catch(() => null)) ?? {});
   }, [has075, has114]);
   useEffect(() => { void load(); }, [load]);
@@ -78,7 +78,7 @@ export function ClockInLockCard() {
   const hereNetwork = here?.network ?? null;
   const canCapture = Boolean(here?.ip) && here?.private !== true;
   const fromHere = lock && here?.ip
-    ? clockInLockDecision({ lockedNetwork: lock.network, savedNetworks: saved, onSiteOnly: true, source: "clock", deviceAt: null, receivedAt: new Date(), ip: here.ip })
+    ? clockInLockDecision({ lockedNetwork: lock.network, savedNetworks: saved, source: "clock", deviceAt: null, receivedAt: new Date(), ip: here.ip, offSiteAllowed: false })
     : null;
   const lockedBy = lock?.locked_by ? names[lock.locked_by] ?? UNKNOWN : UNKNOWN;
   return (
@@ -86,23 +86,21 @@ export function ClockInLockCard() {
       <CardHeader><CardTitle className="flex items-center gap-2"><Lock className="size-5 text-brand-accent" /> Clock-in network lock</CardTitle></CardHeader>
       <CardContent className="space-y-4 text-sm">
         <p className="text-slate-600 dark:text-slate-300">
-          Lock clock-in to the network this device is on now (e.g. press it on John&apos;s office PC on the workshop Wi-Fi). While locked, people
-          marked <strong>On site only</strong> (Admin &gt; Users) can clock in, clock out and take breaks only from that network or a saved site
-          network above: <strong>from anywhere else it is refused</strong>. People who can work off site are never checked, and the office or an
-          admin can still add or correct time on the sheet. A clock action saved offline and synced later can&apos;t prove where it was made: it is
+          Lock clock-in to the network this device is on now (e.g. press it on John&apos;s office PC on the workshop Wi-Fi). Everyone clocks in
+          from this network unless an admin marks them as able to clock in off site (Admin &gt; Users: <strong>Can clock in off site</strong>).
+          While locked, clocking in, clocking out and breaks from anywhere other than this network or a saved site network above are{" "}
+          <strong>refused</strong>. The office or an admin can still add or correct time on the sheet. A clock action saved offline and synced later can&apos;t prove where it was made: it is
           kept and shown as &ldquo;network not checked&rdquo; in Weekly hours. If the broadband address changes, clock-ins are refused until you
           re-capture here: ask the provider for a fixed (static) address first.
         </p>
         {error ? <p className="text-red-700">{error}</p> : null}
-        {onSiteCount === 0 ? (
-          <p className="rounded-none border border-amber-300 bg-amber-50 p-2 text-amber-900" data-testid="clock-in-lock-nobody">
-            Nobody is marked On site only yet, so the lock refuses nobody. Mark people in Admin &gt; Users.
-          </p>
-        ) : onSiteCount ? <p className="text-slate-600">{onSiteCount === 1 ? "1 person is" : `${onSiteCount} people are`} marked On site only.</p> : null}
+        {offSiteCount ? (
+          <p className="text-slate-600" data-testid="clock-in-lock-off-site">{offSiteCount === 1 ? "1 person" : `${offSiteCount} people`} can clock in off site.</p>
+        ) : null}
         {here ? (
           <p className="rounded-none border p-2 text-slate-700" data-testid="clock-in-lock-here">
             This device reaches Tolra from <span className="font-mono">{here.ip ?? "an address Tolra can't see"}</span>
-            {fromHere ? (fromHere.decision === "refused" ? ": not the locked network (an On site only clock-in from here would be refused)." : ": clock-ins from here go in.") : "."}
+            {fromHere ? (fromHere.decision === "refused" ? ": not the locked network (a clock-in from here would be refused)." : ": clock-ins from here go in.") : "."}
           </p>
         ) : null}
         {loaded ? (
@@ -126,7 +124,7 @@ export function ClockInLockCard() {
         <ConfirmDialog
           open={confirm === "lock"}
           title={lock ? "Re-capture the clock-in network?" : "Lock clock-in to this network?"}
-          description={`Clock-in will be locked to ${hereNetwork ?? "this device's network"}${lock ? ` instead of ${lock.network}` : ""}. People marked On site only can then clock in only from it (or a saved site network). Only do this on the workshop network.`}
+          description={`Clock-in will be locked to ${hereNetwork ?? "this device's network"}${lock ? ` instead of ${lock.network}` : ""}. Everyone not marked as able to clock in off site can then clock in only from it (or a saved site network). Only do this on the workshop network.`}
           confirmLabel={lock ? "Re-capture" : "Lock"}
           busy={busy}
           onCancel={() => setConfirm(null)}

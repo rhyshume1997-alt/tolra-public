@@ -8,7 +8,8 @@
 \set QUIET 1
 \o /dev/null
 BEGIN;
--- Two companies. A: admin, office, w1 (On site only), w2 (can work off site). B: admin.
+-- Two companies. A: admin, office, w1 (the default: no exception), w2 (allowed off site while locked). B: admin.
+-- THE LOCK COVERS EVERYONE: only 114's own exception lets a person clock in off site; 075's On site only flag is not consulted.
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('11400000-0000-0000-0000-0000000000a0', 'Lock A', 't-lock114-a'), ('11400000-0000-0000-0000-0000000000b0', 'Lock B', 't-lock114-b');
 INSERT INTO auth.users (id, email) VALUES
@@ -70,16 +71,17 @@ GRANT EXECUTE ON FUNCTION pg_temp.clock(TEXT, TIMESTAMPTZ) TO authenticated;
 CREATE TEMP TABLE proof_ids (k TEXT PRIMARY KEY, id UUID);
 GRANT ALL ON proof_ids TO authenticated;
 
--- w1 is On site only (075's flag, set by the admin); w2 is not (can work off site). B's admin marks themself On site only too.
+-- 075's flag, the opposite way round to 114's, to show the lock ignores it: w1 "Can work off site" (075), w2 "On site only" (075).
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '203.0.113.7');
-SELECT public.set_member_on_site_only(gen_random_uuid(), '11400000-0000-0000-0000-00000000a004', TRUE);
-SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000b001', '203.0.113.7');
-SELECT public.set_member_on_site_only(gen_random_uuid(), '11400000-0000-0000-0000-00000000b001', TRUE);
+SELECT public.set_member_on_site_only(gen_random_uuid(), '11400000-0000-0000-0000-00000000a004', FALSE);
+SELECT public.set_member_on_site_only(gen_random_uuid(), '11400000-0000-0000-0000-00000000a005', TRUE);
 
--- 1. Default (unlocked): an On site only person clocks in from anywhere; nothing is marked.
+-- 1. Default (unlocked): nobody is refused, from anywhere; nothing is marked.
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a004', '198.51.100.9');
 INSERT INTO proof_ids VALUES ('unlocked', pg_temp.clock('in'));
-SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_unverified WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'unlocked')), '1 unlocked: clock in from another address recorded, nothing marked');
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a005', '198.51.100.9');
+INSERT INTO proof_ids VALUES ('unlocked2', pg_temp.clock('in'));
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_unverified WHERE event_id IN (SELECT id FROM proof_ids WHERE k IN ('unlocked', 'unlocked2'))), '1 unlocked: w1 and w2 clock in from another address, recorded, nothing marked');
 
 -- 2. Who may lock: not office, not workshop, not an admin before the second step (company requires it), not without an address, not a
 --    private address. The admin, two-step, from a public address: yes.
@@ -111,7 +113,28 @@ SELECT pg_temp.ok((SELECT count(*) = 1 FROM security_audit.audit_log WHERE organ
                    AND metadata ->> 'after' = '203.0.113.7/32'), '2i the lock is audited (CLOCK_IN_NETWORK_LOCKED)');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_locks WHERE organization_id = '11400000-0000-0000-0000-0000000000b0'), '2j company B stays unlocked');
 
--- 3. Locked: an On site only person online from another address is refused, nothing recorded; from the locked address, allowed.
+-- 2x. The per-person exception: admin only (two-step), a person of the admin's own company only, audited.
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a003', '203.0.113.7');
+SELECT pg_temp.expect_refused($$SELECT public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', TRUE)$$, '2k office sets an exception', 'admin_only');
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a005', '203.0.113.7');
+SELECT pg_temp.expect_refused($$SELECT public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', TRUE)$$, '2l workshop sets their own exception', 'admin_only');
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '203.0.113.7', 'aal1');
+SELECT pg_temp.expect_refused($$SELECT public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', TRUE)$$, '2m admin at aal1 (two-step required)', 'mfa_required');
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '203.0.113.7');
+SELECT pg_temp.expect_refused($$SELECT public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000b001', TRUE)$$, '2n company B''s person', 'person_missing');
+SELECT pg_temp.expect_refused($$SELECT public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', NULL)$$, '2o no value', 'bad_value');
+DO $$ DECLARE r JSONB; BEGIN
+  r := public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', TRUE);
+  PERFORM pg_temp.ok((r ->> 'off_site_allowed')::BOOLEAN AND (r ->> 'changed')::BOOLEAN, '2p admin allows w2 off site');
+  r := public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', TRUE);
+  PERFORM pg_temp.ok(NOT (r ->> 'changed')::BOOLEAN, '2q again: unchanged');
+END $$;
+RESET ROLE;
+SELECT pg_temp.ok((SELECT count(*) = 1 FROM security_audit.audit_log WHERE organization_id = '11400000-0000-0000-0000-0000000000a0' AND action = 'CLOCK_IN_OFF_SITE_ALLOWED_SET'),
+                  '2r the exception is audited once (CLOCK_IN_OFF_SITE_ALLOWED_SET)');
+
+-- 3. Locked: the default person (w1, though 075 says they can work off site) online from another address is refused, nothing
+--    recorded; from the locked address, allowed.
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a004', '198.51.100.9');
 SELECT pg_temp.expect_refused($$SELECT pg_temp.clock('in')$$, '3a w1 clock in from another address', 'clock_in_network_locked', 'Clock in from the workshop Wi-Fi%');
 SELECT pg_temp.expect_refused($$SELECT pg_temp.clock('out')$$, '3b w1 clock out from another address', 'clock_in_network_locked', 'Clock out from the workshop Wi-Fi%');
@@ -130,11 +153,12 @@ SELECT pg_temp.ok((SELECT count(*) = 3 FROM public.attendance_events WHERE user_
                   '3i only the unlocked, locked-address and mapped clock actions exist (refusals recorded nothing)');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_unverified WHERE user_id = '11400000-0000-0000-0000-00000000a004'), '3j checked online: nothing marked');
 
--- 4. Not checked: a person who can work off site; another company; a correction by the admin.
+-- 4. Not checked: a person allowed off site (even though 075 marks them On site only); another company; a correction by the admin.
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a005', '198.51.100.9');
-SELECT pg_temp.ok(pg_temp.clock('in') IS NOT NULL, '4a w2 (can work off site) from another address: recorded');
+SELECT pg_temp.ok(pg_temp.clock('in') IS NOT NULL, '4a w2 (allowed off site; 075 On site only) from another address: recorded');
+SELECT pg_temp.ok(pg_temp.clock('out', now() - interval '10 minutes') IS NOT NULL, '4a2 w2 synced later: recorded');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000b001', '198.51.100.9');
-SELECT pg_temp.ok(pg_temp.clock('in') IS NOT NULL, '4b company B''s On site only admin (B unlocked) from another address: recorded');
+SELECT pg_temp.ok(pg_temp.clock('in') IS NOT NULL, '4b company B''s admin (B unlocked) from another address: recorded');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '198.51.100.9');
 SELECT pg_temp.ok((public.correct_attendance_event(gen_random_uuid(), '11400000-0000-0000-0000-00000000a004', NULL, 'out', now() - interval '1 minute',
                   'Left early, forgot to clock out') ->> 'event_id') IS NOT NULL, '4c admin correction for w1 from another address: recorded (corrections never checked)');
@@ -156,20 +180,25 @@ SELECT pg_temp.expect_refused($$UPDATE public.clock_in_network_unverified SET re
                               '5c a mark is never changed', NULL);
 SELECT pg_temp.expect_refused($$DELETE FROM public.clock_in_network_unverified WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'noaddr')$$, '5d a mark is never removed', NULL);
 
--- 6. Reads and writes: office sees the lock and both marks; workshop w1 their own marks only and not the lock; w2 nothing; B nothing of A.
---    No API role writes either table directly.
+-- 6. Reads and writes: office sees the lock, the exception and both marks; workshop w1 their own marks only, not the lock, no exception;
+--    w2 their own exception and none of w1's marks; B nothing of A. No API role writes the tables directly.
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a003', '203.0.113.7');
 SELECT pg_temp.ok((SELECT count(*) = 1 FROM public.clock_in_network_locks) AND (SELECT count(*) = 2 FROM public.clock_in_network_unverified), '6a office: the lock and both marks');
+SELECT pg_temp.ok((SELECT count(*) = 1 FROM public.clock_in_network_exemptions), '6a2 office: the exception');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a004', '203.0.113.7');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_locks) AND (SELECT count(*) = 2 FROM public.clock_in_network_unverified), '6b w1: own marks, not the lock');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_exemptions), '6b2 w1: no exception rows');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a005', '203.0.113.7');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_unverified), '6c w2: none of w1''s marks');
+SELECT pg_temp.ok((SELECT count(*) = 1 FROM public.clock_in_network_exemptions WHERE user_id = '11400000-0000-0000-0000-00000000a005'), '6c2 w2: their own exception');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000b001', '203.0.113.7');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_locks) AND (SELECT count(*) = 0 FROM public.clock_in_network_unverified), '6d company B: nothing of A');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_exemptions), '6d2 company B: no exception of A');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '203.0.113.7');
 SELECT pg_temp.expect_refused($$INSERT INTO public.clock_in_network_locks (organization_id, network) VALUES ('11400000-0000-0000-0000-0000000000a0', '198.51.100.9/32')$$, '6e admin direct insert of a lock', NULL, '%permission denied%');
 SELECT pg_temp.expect_refused($$DELETE FROM public.clock_in_network_locks$$, '6f admin direct delete of the lock', NULL, '%permission denied%');
 SELECT pg_temp.expect_refused($$UPDATE public.clock_in_network_locks SET network = '198.51.100.9/32'$$, '6g admin direct update of the lock', NULL, '%permission denied%');
+SELECT pg_temp.expect_refused($$INSERT INTO public.clock_in_network_exemptions (organization_id, user_id, off_site_allowed) VALUES ('11400000-0000-0000-0000-0000000000a0', '11400000-0000-0000-0000-00000000a004', TRUE)$$, '6h admin direct insert of an exception', NULL, '%permission denied%');
 
 -- 7. A saved site network (075's list) is accepted too. Re-capture from IPv6: the /64, so other devices on that LAN pass.
 SELECT public.add_site_network(gen_random_uuid(), '192.0.2.0/24', 'Second site');
@@ -189,7 +218,11 @@ SELECT pg_temp.expect_refused($$SELECT pg_temp.clock('in')$$, '7e w1 from anothe
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a004', '203.0.113.7');
 SELECT pg_temp.expect_refused($$SELECT pg_temp.clock('in')$$, '7f w1 from the OLD address after re-capture', 'clock_in_network_locked');
 
--- 8. Unlock: admin only; then nothing is checked or marked again.
+-- 8. The exception withdrawn: w2 is refused like everyone. Then unlock: nobody is refused, nothing is marked.
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '198.51.100.9');
+SELECT pg_temp.ok(NOT (public.set_clock_in_off_site_allowed('11400000-0000-0000-0000-00000000a005', FALSE) ->> 'off_site_allowed')::BOOLEAN, '8- admin withdraws w2''s exception');
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a005', '198.51.100.9');
+SELECT pg_temp.expect_refused($$SELECT pg_temp.clock('in')$$, '8-- w2 without the exception, from another address', 'clock_in_network_locked');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a001', '198.51.100.9');
 DO $$ DECLARE r JSONB; BEGIN
   r := public.unlock_clock_in_network();
@@ -197,7 +230,10 @@ DO $$ DECLARE r JSONB; BEGIN
   r := public.unlock_clock_in_network();
   PERFORM pg_temp.ok(NOT (r ->> 'changed')::BOOLEAN, '8b unlock again: unchanged');
 END $$;
+SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a005', '198.51.100.9');
+SELECT pg_temp.ok(pg_temp.clock('in') IS NOT NULL, '8b2 after unlock: w2 (no exception) from another address: recorded');
 SELECT pg_temp.sign_in('11400000-0000-0000-0000-00000000a004', '198.51.100.9');
+SELECT pg_temp.ok(pg_temp.clock('out') IS NOT NULL, '8b3 after unlock: w1 from another address: recorded');
 INSERT INTO proof_ids VALUES ('after_unlock', pg_temp.clock('in', now() - interval '10 minutes'));
 RESET ROLE;
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_unverified WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'after_unlock')),

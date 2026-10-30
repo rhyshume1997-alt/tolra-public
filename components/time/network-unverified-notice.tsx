@@ -11,7 +11,7 @@ import { addDays, localDateOf, startOfLocalDay } from "@/lib/time-sheet";
 
 /**
  * Week review (114, M27): the week's clock actions the clock-in network lock could NOT check (made while clock-in was locked, by someone
- * On site only, and synced later from an offline queue, or with no network address seen). They were kept; this lists them per person so
+ * not allowed off site, and synced later from an offline queue, or with no network address seen). They were kept; this lists them per person so
  * the office can ask about them. Office and admin only (row rules: a person would see only their own); hidden until the database has 114,
  * and when there are none. A read error hides it; the week review itself is unaffected.
  */

@@ -7,7 +7,8 @@
  * x-forwarded-for). Every call here goes from the browser straight to Supabase, like 075's: "Lock clock-in to this network" therefore
  * locks to the network of the device pressing it, and the clock actions it is compared with travel the same way.
  *
- * Who is checked: people an admin marked "On site only" in Admin > Users (075's flag; the default is "Can work off site": never checked).
+ * Who is checked: EVERYONE (orchestrator decision, 30 Oct, from Rhys's wording), unless an admin marks them "Can clock in off site (while
+ * the network lock is on)" in Admin > Users (114's own exception, consulted only while locked; 075's On site only flag is not used).
  * Clock in, clock out, break start and break end made online from another address are refused; from the locked network (IPv4 address,
  * or its IPv6 /64) or a saved site network (Settings > Site network) they go in. A clock action queued offline and synced later, or one
  * with no client address, can't be checked: it is accepted and marked network_unverified, listed in the week review. Corrections by
@@ -27,7 +28,7 @@ export const CLOCK_IN_NETWORK_LOCKED = "clock_in_network_locked";
 export const SYNCED_LATER_MS = 2 * 60_000;
 
 export type LockDecision =
-  | { decision: "allowed"; why: "not_checked" | "unlocked" | "can_work_off_site" | "on_locked_network" | "on_saved_network" }
+  | { decision: "allowed"; why: "not_checked" | "unlocked" | "off_site_allowed" | "on_locked_network" | "on_saved_network" }
   | { decision: "unverified"; why: "synced_later" | "address_unknown" }
   | { decision: "refused"; why: "other_network" };
 
@@ -36,8 +37,8 @@ export type LockDecisionInput = {
   lockedNetwork: string | null;
   /** 075's site networks (also accepted). */
   savedNetworks: string[];
-  /** 075's On site only flag for the person. */
-  onSiteOnly: boolean;
+  /** 114's per-person exception: may clock in off site while the lock is on (default false). */
+  offSiteAllowed: boolean;
   /** "clock" (the person's own action) or "correction" (office / admin: never checked). */
   source: "clock" | "correction";
   /** The device's time of the action (null: "now") and when the server got it. */
@@ -51,7 +52,7 @@ export type LockDecisionInput = {
 export function clockInLockDecision(input: LockDecisionInput): LockDecision {
   if (input.source !== "clock") return { decision: "allowed", why: "not_checked" };
   if (!input.lockedNetwork) return { decision: "allowed", why: "unlocked" };
-  if (!input.onSiteOnly) return { decision: "allowed", why: "can_work_off_site" };
+  if (input.offSiteAllowed) return { decision: "allowed", why: "off_site_allowed" };
   if (input.deviceAt && input.receivedAt.getTime() - input.deviceAt.getTime() > SYNCED_LATER_MS) return { decision: "unverified", why: "synced_later" };
   if (!parseIp(input.ip)) return { decision: "unverified", why: "address_unknown" };
   if (onSavedNetwork(input.ip, [input.lockedNetwork])) return { decision: "allowed", why: "on_locked_network" };
@@ -114,6 +115,18 @@ export const lockClockIn = (client: Db) =>
   call<{ locked: true; network: string; locked_by: string | null; locked_at: string; changed: boolean; recaptured: boolean }>(client, "lock_clock_in_network");
 /** Admin, two-step: unlock. */
 export const unlockClockIn = (client: Db) => call<{ locked: false; changed: boolean }>(client, "unlock_clock_in_network");
+/** Admin, two-step: whether a person may clock in off site while the lock is on. */
+export async function setOffSiteAllowed(client: Db, userId: string, allowed: boolean) {
+  const { data, error } = await client.rpc("set_clock_in_off_site_allowed", { p_user: userId, p_allowed: allowed });
+  if (error) throw error;
+  return data as { user_id: string; off_site_allowed: boolean; changed: boolean };
+}
+/** Who may clock in off site while the lock is on (admin and office see the company's). Throws on a read error. */
+export async function loadOffSiteAllowed(client: Db): Promise<Set<string>> {
+  const { data, error } = await client.from("clock_in_network_exemptions").select("user_id").eq("off_site_allowed", true);
+  if (error) throw error;
+  return new Set(((data ?? []) as { user_id: string }[]).map((r) => r.user_id));
+}
 
 /** The week's clock actions the lock could not check, [from, to). Admin and office see the company's; a person their own. Throws on error. */
 export async function loadUnverifiedClockActions(client: Db, from: Date, to: Date): Promise<UnverifiedClockAction[]> {

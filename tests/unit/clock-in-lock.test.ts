@@ -1,7 +1,7 @@
 /**
  * Clock-in network lock (migration 114, M27), the app side:
  *   * clockInLockDecision (the Settings card's "would a clock-in from here go in?") mirrors the database's check: unlocked / locked,
- *     On site only / can work off site, same / other address, IPv4, IPv6 /64, IPv4-mapped, a saved site network, synced later (more
+ *     the default person (refused) / a person allowed off site, same / other address, IPv4, IPv6 /64, IPv4-mapped, a saved site network, synced later (more
  *     than 2 minutes behind), no or unreadable address, and corrections never checked. The database side is proved by
  *     tests/scripts/clock-in-network-lock-114.proof.sql (tests/db/clock-in-network-lock-114.test.ts in CI).
  *   * the address the lock compares is the request's as the SERVER saw it: the migration reads only 075's request_client_ip()
@@ -21,22 +21,24 @@ import { executeClockOp } from "@/lib/offline/sync";
 const MIGRATION = readFileSync(path.resolve(__dirname, "../../supabase/migrations/114_clock_in_network_lock.sql"), "utf8");
 const now = new Date("2026-10-30T08:00:00Z");
 const base: LockDecisionInput = {
-  lockedNetwork: "203.0.113.7/32", savedNetworks: [], onSiteOnly: true, source: "clock", deviceAt: null, receivedAt: now, ip: "203.0.113.7",
+  lockedNetwork: "203.0.113.7/32", savedNetworks: [], offSiteAllowed: false, source: "clock", deviceAt: null, receivedAt: now, ip: "203.0.113.7",
 };
 const decide = (over: Partial<LockDecisionInput>) => clockInLockDecision({ ...base, ...over });
 const secondsAgo = (s: number) => new Date(now.getTime() - s * 1000);
 
 describe("clockInLockDecision mirrors the database", () => {
-  it("unlocked: everything goes in", () => {
+  it("unlocked: nobody is refused, exception or not", () => {
     expect(decide({ lockedNetwork: null, ip: "198.51.100.9" })).toEqual({ decision: "allowed", why: "unlocked" });
+    expect(decide({ lockedNetwork: null, ip: "198.51.100.9", offSiteAllowed: true })).toEqual({ decision: "allowed", why: "unlocked" });
   });
-  it("locked, On site only: the locked address goes in, another is refused", () => {
+  it("locked, the default person (no exception): the locked address goes in, another is refused", () => {
     expect(decide({})).toEqual({ decision: "allowed", why: "on_locked_network" });
     expect(decide({ ip: "198.51.100.9" })).toEqual({ decision: "refused", why: "other_network" });
     expect(decide({ ip: "203.0.113.8" })).toEqual({ decision: "refused", why: "other_network" });
   });
-  it("locked, can work off site: never checked", () => {
-    expect(decide({ onSiteOnly: false, ip: "198.51.100.9" })).toEqual({ decision: "allowed", why: "can_work_off_site" });
+  it("locked, a person allowed off site: not checked", () => {
+    expect(decide({ offSiteAllowed: true, ip: "198.51.100.9" })).toEqual({ decision: "allowed", why: "off_site_allowed" });
+    expect(decide({ offSiteAllowed: true, ip: null, deviceAt: secondsAgo(600) })).toEqual({ decision: "allowed", why: "off_site_allowed" });
   });
   it("a correction by the office or an admin is never checked", () => {
     expect(decide({ source: "correction", ip: "198.51.100.9" })).toEqual({ decision: "allowed", why: "not_checked" });
@@ -81,11 +83,19 @@ describe("the migration: where the address comes from, and who may lock", () => 
     expect(body("lock_clock_in_network")).toContain("public.request_client_ip()");
     expect(body("clock_in_network_lock_check")).toContain("public.request_client_ip()");
   });
-  it("lock and unlock are admin only, with the two-step check (075's site_network_admin_org)", () => {
+  it("lock, unlock and the off-site exception are admin only, with the two-step check (075's site_network_admin_org)", () => {
     for (const fn of ["lock_clock_in_network", "unlock_clock_in_network"]) {
       expect(body(fn)).toMatch(/v_org\s+UUID := public\.site_network_admin_org\(\);/);
       expect(MIGRATION).toContain(`REVOKE ALL ON FUNCTION public.${fn}() FROM PUBLIC, anon;`);
     }
+    const setException = MIGRATION.match(/CREATE OR REPLACE FUNCTION public\.set_clock_in_off_site_allowed\([\s\S]*?\n\$\$;/)?.[0] ?? "";
+    expect(setException).toMatch(/v_org\s+UUID := public\.site_network_admin_org\(\);/);
+    expect(MIGRATION).toContain("REVOKE ALL ON FUNCTION public.set_clock_in_off_site_allowed(UUID, BOOLEAN) FROM PUBLIC, anon;");
+  });
+  it("the lock covers everyone: the check consults only 114's exception, never 075's On site only flag", () => {
+    expect(body("clock_in_network_lock_check")).not.toMatch(/site_network_members|on_site_only/);
+    expect(body("clock_in_network_lock_check")).toMatch(/IF EXISTS \(SELECT 1 FROM public\.clock_in_network_exemptions x[\s\S]*?x\.off_site_allowed\) THEN\s+RETURN NEW;/);
+    expect(MIGRATION).toMatch(/off_site_allowed BOOLEAN NOT NULL DEFAULT FALSE/);
   });
 });
 

@@ -2,9 +2,10 @@
  * Clock-in network lock (migration 114, M27): runs the SQL proof tests/scripts/clock-in-network-lock-114.proof.sql on the disposable
  * database, as one transaction that it rolls back itself. The proof signs in as PostgREST would (role authenticated, the JWT claims,
  * request.headers with cf-connecting-ip) and covers: unlocked by default; lock and unlock admin only, two-step, from the request's own
- * address only (never x-forwarded-for, never a private one); an On site only person's clock in, clock out, break start and break end
- * from another address refused with nothing recorded; the locked address, its IPv6 /64 and a saved site network allowed; a person who
- * can work off site, another company and an admin correction never checked; synced-later and address-less actions accepted and marked
+ * address only (never x-forwarded-for, never a private one); the lock covers everyone: a default person's clock in, clock out, break
+ * start and break end from another address refused with nothing recorded (075's On site only flag ignored); the locked address, its
+ * IPv6 /64 and a saved site network allowed; the per-person off-site exception (admin only, two-step, own company) lets that person
+ * through only while locked; another company and an admin correction never checked; synced-later and address-less actions accepted and marked
  * network_unverified (immutable); who reads what; re-capture; unlock. Each check raises on failure; every one must print PASS.
  */
 import { readFileSync } from "node:fs";

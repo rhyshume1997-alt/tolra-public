@@ -287,12 +287,12 @@
  {
   "kind": "function",
   "object": "public.clock_in_network_lock_check()",
-  "detail": "definer search_path=pg_catalog, public 28c42553de885f8b8bca055b8a18fb60"
+  "detail": "definer search_path=pg_catalog, public 913c130162a616c71618c62cd3d3a15d"
  },
  {
   "kind": "function",
   "object": "public.clock_in_network_unverified_record()",
-  "detail": "definer search_path=pg_catalog, public a3aad2755e64c6b659ca7da6b5237e11"
+  "detail": "definer search_path=pg_catalog, public e5b1338262be6e8533e313d6c6f85f4e"
  },
  {
   "kind": "function",
@@ -1548,6 +1548,11 @@
   "kind": "function",
   "object": "public.set_auto_convert_sales_orders(p_on boolean)",
   "detail": "definer search_path=pg_catalog, public 84587a0b7363afae9bcd5e7c5d8629a1"
+ },
+ {
+  "kind": "function",
+  "object": "public.set_clock_in_off_site_allowed(p_user uuid, p_allowed boolean)",
+  "detail": "definer search_path=pg_catalog, public 20f9a02b859736b84d6e27773cd1752e"
  },
  {
   "kind": "function",
@@ -3406,6 +3411,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.set_clock_in_off_site_allowed(p_user uuid, p_allowed boolean)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.set_customer_signoff_enabled(p_on boolean)",
   "detail": "authenticated,service_role"
  },
@@ -3743,6 +3753,11 @@
   "kind": "policy",
   "object": "public.bank_holidays :: bank_holidays read",
   "detail": "PERMISSIVE SELECT authenticated eb28d87532d6edd9b635727493ef89f7"
+ },
+ {
+  "kind": "policy",
+  "object": "public.clock_in_network_exemptions :: clock_in_network_exemptions rbac select",
+  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
  },
  {
   "kind": "policy",
@@ -4731,6 +4746,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.clock_in_network_exemptions",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.clock_in_network_locks",
   "detail": "enabled"
  },
@@ -5172,6 +5192,11 @@
  {
   "kind": "table-grant",
   "object": "public.bank_holidays :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.clock_in_network_exemptions :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -5623,6 +5648,21 @@
   "kind": "trigger",
   "object": "public.attendance_events :: zz_same_org_supersedes",
   "detail": "O 63b267656cb29facf7e55a5aaa654171"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_exemptions :: admin_mfa",
+  "detail": "O 8916d1b7160c9ea23d4fbdfdff13e6ee"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_exemptions :: audit_clock_in_network_exemptions_changes",
+  "detail": "O 84b8e4b1311434b9bd6341161ca737bf"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_exemptions :: support_read_only",
+  "detail": "O 014a995c421f66bfce355deec5b364ca"
  },
  {
   "kind": "trigger",
@@ -7458,6 +7498,11 @@
   "kind": "unique-index",
   "object": "public.attendance_events :: attendance_events_one_replacement",
   "detail": "71950b7bdae68ac5a304790157f1d1dc"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.clock_in_network_exemptions :: clock_in_network_exemptions_id_key",
+  "detail": "880c140ad0485ce5854b5bba2b1980e0"
  },
  {
   "kind": "unique-index",

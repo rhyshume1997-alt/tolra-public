@@ -500,8 +500,9 @@ const TIME_TEARDOWN = [
   // 114 first (its marks reference attendance_events; its triggers are on it; it needs 075).
   "drop trigger if exists clock_in_network_lock on public.attendance_events",
   "drop trigger if exists zz_clock_in_network_unverified on public.attendance_events",
-  ...["unlock_clock_in_network()", "lock_clock_in_network()", "clock_in_network_unverified_record()", "clock_in_network_lock_check()"].map((f) => `drop function if exists public.${f}`),
+  ...["set_clock_in_off_site_allowed(uuid,boolean)", "unlock_clock_in_network()", "lock_clock_in_network()", "clock_in_network_unverified_record()", "clock_in_network_lock_check()"].map((f) => `drop function if exists public.${f}`),
   "drop table if exists public.clock_in_network_unverified",
+  "drop table if exists public.clock_in_network_exemptions",
   "drop table if exists public.clock_in_network_locks",
   // 078's part A first (its address rows reference 075's check rows). Its part B (credit note numbers) stays: re-applying 078 replaces it
   // with the same text.
