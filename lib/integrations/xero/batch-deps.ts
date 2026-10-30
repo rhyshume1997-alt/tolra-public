@@ -52,6 +52,18 @@ export function batchDeps(opts: { user: SupabaseClient; service: SupabaseClient;
       const { error } = await user.rpc("integration_retry_send", { p_send: sendId });
       if (error) throw new Error(error.message);
     },
+    async loadSendById(id) {
+      const { data, error } = await service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero").eq("id", id).maybeSingle();
+      if (error) throw new Error(error.message);
+      return data ? toBatchSend(data as Parameters<typeof toBatchSend>[0]) : null;
+    },
+    async dueQueue() {
+      // The engine's claim order (084 integration_claim_next): pending, due, oldest first. A short head is enough.
+      const { data, error } = await service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero")
+        .eq("status", "pending").lte("next_attempt_at", new Date().toISOString()).order("created_at").order("id").limit(10);
+      if (error) throw new Error(error.message);
+      return ((data ?? []) as Array<Parameters<typeof toBatchSend>[0]>).map(toBatchSend);
+    },
     run: (only) => sendQueued(service, org, ready, { maxDocuments: 1, budgetMs: 15_000, ...(only ? { only } : {}) }),
     now: () => Date.now(),
   };

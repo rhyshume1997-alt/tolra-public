@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  type BatchDoc, type BatchSend, SUMMARY_COLUMNS, chunkAction, creditDocument, invoiceDocument, isIssuedForXero, londonDate, pauseSeconds, parseRange,
+  type BatchDoc, type BatchSend, SUMMARY_COLUMNS, chunkAction, creditDocument, defaultFrom, startsBeforeConnection, invoiceDocument, isIssuedForXero, londonDate, pauseSeconds, parseRange,
   selectBatch, summaryFileName, summaryRows,
 } from "@/lib/integrations/xero/batch";
 import { toCsv } from "@/lib/spreadsheet";
@@ -145,5 +145,18 @@ describe("the summary", () => {
     expect(summaryFileName("Marpet Engineering Ltd", range, "csv")).toBe("Xero-summary-Marpet-Engineering-Ltd-2026-10-01-to-2026-10-31.csv");
     expect(summaryFileName('../"evil\r\n/co', range, "xlsx")).toBe("Xero-summary-evilco-2026-10-01-to-2026-10-31.xlsx");
     expect(summaryFileName(null, range, "csv")).toContain("-company-");
+  });
+});
+
+describe("the pre-connection default", () => {
+  it("From defaults to the day Xero was connected, else 1 January", () => {
+    expect(defaultFrom("2026-10-12", "2026-10-30")).toBe("2026-10-12");
+    expect(defaultFrom(null, "2026-10-30")).toBe("2026-01-01");
+    expect(defaultFrom("garbage", "2026-10-30")).toBe("2026-01-01");
+  });
+  it("an earlier From needs the tick; the connection day itself does not", () => {
+    expect(startsBeforeConnection("2026-10-11", "2026-10-12")).toBe(true);
+    expect(startsBeforeConnection("2026-10-12", "2026-10-12")).toBe(false);
+    expect(startsBeforeConnection("2020-01-01", null)).toBe(false);
   });
 });

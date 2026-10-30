@@ -42,6 +42,8 @@ function world(docs: BatchDoc[], sends: BatchSend[], opts: { imported?: string[]
       else summary.blocked = "unmapped";
       return summary;
     },
+    dueQueue: async () => [...table.values()].filter((r) => r.status === "pending" && (!r.nextAttemptAt || Date.parse(r.nextAttemptAt) <= NOW)).map((r) => ({ ...r })),
+    loadSendById: async (id) => { const r = [...table.values()].find((x) => x.id === id); return r ? { ...r } : null; },
     now: () => NOW,
   };
   return { deps, table, log };
@@ -144,5 +146,73 @@ describe("Xero's rate limit and other stops", () => {
     const out = await runBatchChunk(w.deps, items("a", "b"), "unsent");
     expect(out.stopped?.reason).toBe("time");
     expect(out.remaining).toEqual(items("b"));
+  });
+});
+
+describe("the batch only ever sends what it listed", () => {
+  // A document queued earlier (waiting for an admin's Send now, or held back), OUTSIDE this batch's range, is the engine's oldest due row.
+  const outOfRange = () => doc("z", { date: "2025-01-15" });
+  const waiting = () => row("z", "pending", { attempts: 2, nextAttemptAt: "2026-10-30T11:00:00Z" });
+
+  it("a held-back document behind an out-of-range pending row is left queued; the out-of-range row is not touched", async () => {
+    const w = world([outOfRange(), doc("a")], [waiting(), row("a", "pending", { attempts: 2, nextAttemptAt: "2026-10-30T11:30:00Z" })]);
+    const out = await runBatchChunk(w.deps, items("a"), "unsent");
+    expect(w.log.runs).toEqual([]);
+    expect(w.log.pushed).toEqual([]);
+    expect(w.table.get("z")!.status).toBe("pending");
+    expect(out.results).toEqual([expect.objectContaining({ docId: "a", outcome: "waiting", detail: expect.stringMatching(/queued ahead/) })]);
+  });
+
+  it("failed-only: a failed document is queued again but not run while another is ahead of it; the other is not sent", async () => {
+    const w = world([outOfRange(), doc("f")], [waiting(), row("f", "failed")]);
+    const out = await runBatchChunk(w.deps, items("f"), "failed_only");
+    expect(w.log.retried).toEqual(["f"]);
+    expect(w.log.pushed).toEqual([]);
+    expect(w.table.get("z")!.status).toBe("pending");
+    expect(out.results[0]).toMatchObject({ docId: "f", outcome: "waiting" });
+  });
+
+  it("when the batch's document is the oldest due row it runs, and nothing else is sent", async () => {
+    const w = world([outOfRange(), doc("a")], [row("a", "pending", { attempts: 2, nextAttemptAt: "2026-10-30T11:30:00Z" }), waiting()]);
+    const out = await runBatchChunk(w.deps, items("a"), "unsent");
+    expect(w.log.pushed).toEqual(["a"]);
+    expect(w.table.get("z")!.status).toBe("pending");
+    expect(out.results.map((r) => r.docId)).toEqual(["a"]);
+  });
+
+  it("if the engine still sends another row (a race), the extra send is reported, not silent", async () => {
+    const w = world([outOfRange(), doc("a")], [row("a", "pending", { attempts: 2, nextAttemptAt: "2026-10-30T11:30:00Z" }), waiting()]);
+    const run = w.deps.run;
+    w.deps.run = async (only) => {
+      const summary = await run(only);
+      const z = w.table.get("z")!;
+      z.status = "sent"; z.attempts += 1; z.externalId = "xz";
+      return summary;
+    };
+    const out = await runBatchChunk(w.deps, items("a"), "unsent");
+    expect(out.results.map((r) => [r.docId, r.outcome])).toEqual([["z", "sent"], ["a", "sent"]]);
+    expect(out.results[0].detail).toMatch(/Also processed from the waiting queue/);
+  });
+});
+
+describe("documents issued before Xero was connected", () => {
+  const options = { connectedOn: "2026-10-01" };
+  it("with no row they are left, not queued and not sent, unless the box is ticked", async () => {
+    const w = world([doc("old", { date: "2026-09-30" }), doc("new", { date: "2026-10-01" })], []);
+    const out = await runBatchChunk(w.deps, items("old", "new"), "unsent", options);
+    expect(w.log.enqueued).toEqual(["new"]);
+    expect(w.log.pushed).toEqual(["new"]);
+    expect(out.results[0]).toMatchObject({ docId: "old", outcome: "left", detail: expect.stringMatching(/before Xero was connected/) });
+  });
+  it("with the box ticked they go through the engine like any other", async () => {
+    const w = world([doc("old", { date: "2026-09-30" })], []);
+    const out = await runBatchChunk(w.deps, items("old"), "unsent", { ...options, includeBefore: true });
+    expect(w.log.pushed).toEqual(["old"]);
+    expect(out.results[0].outcome).toBe("sent");
+  });
+  it("a connection day that is unknown restricts nothing", async () => {
+    const w = world([doc("old", { date: "2020-01-01" })], []);
+    await runBatchChunk(w.deps, items("old"), "unsent", { connectedOn: null });
+    expect(w.log.pushed).toEqual(["old"]);
   });
 });

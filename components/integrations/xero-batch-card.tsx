@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { BATCH_CHUNK, type BatchDocType, type BatchMode, type ItemResult } from "@/lib/integrations/xero/batch";
+import { BATCH_CHUNK, type BatchDocType, type BatchMode, type ItemResult, defaultFrom, startsBeforeConnection } from "@/lib/integrations/xero/batch";
 
 type PreviewItem = { docType: BatchDocType; id: string; ref: string | null; customer: string; date: string; total: number | null; state: string };
 type Preview = {
@@ -40,7 +40,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export function XeroBatchCard() {
   const today = new Date().toISOString().slice(0, 10);
-  const [from, setFrom] = useState(`${today.slice(0, 4)}-01-01`);
+  const [from, setFrom] = useState(defaultFrom(null, today));
   const [to, setTo] = useState(today);
   const [mode, setMode] = useState<BatchMode>("unsent");
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -48,9 +48,25 @@ export function XeroBatchCard() {
   const [busy, setBusy] = useState<"preview" | "send" | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const stop = useRef(false);
+  const [connectedOn, setConnectedOn] = useState<string | null>(null);
+  const [includeBefore, setIncludeBefore] = useState(false);
+
+  // The default From is the day Xero was connected: earlier documents may already be in Xero, so they need the tick box below.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/integrations/xero/batch", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "info" }) });
+        const info = (await res.json().catch(() => ({}))) as { connectedOn?: string | null };
+        if (alive && res.ok && info.connectedOn) { setConnectedOn(info.connectedOn); setFrom(defaultFrom(info.connectedOn, new Date().toISOString().slice(0, 10))); }
+      } catch { /* the card still works without the default */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+  const needsTick = startsBeforeConnection(from, connectedOn) && !includeBefore;
 
   async function call(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
-    const res = await fetch("/api/integrations/xero/batch", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch("/api/integrations/xero/batch", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...body, include_before_connection: includeBefore }) });
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
       toast.error(typeof json.error === "string" ? json.error : "That didn't work. Try again.");
@@ -123,8 +139,15 @@ export function XeroBatchCard() {
         <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <label className="text-sm font-medium text-slate-700">From<Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-1 h-11" data-testid="batch-from" /></label>
           <label className="text-sm font-medium text-slate-700">To<Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mt-1 h-11" data-testid="batch-to" /></label>
-          <Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void runPreview()}>Preview</Button>
+          <Button type="button" variant="outline" className="min-h-11" disabled={busy !== null || needsTick} onClick={() => void runPreview()}>Preview</Button>
         </div>
+        {connectedOn ? (
+          <label className="flex items-start gap-2 text-sm" data-testid="batch-include-before">
+            <input type="checkbox" className="mt-1" checked={includeBefore} disabled={busy !== null} onChange={(e) => { setIncludeBefore(e.target.checked); setPreview(null); }} />
+            <span>Include documents issued before Xero was connected ({connectedOn}). They may already be in Xero: check first.</span>
+          </label>
+        ) : null}
+        {needsTick ? <p className="text-sm text-amber-700" data-testid="batch-before-warning">That starts before Xero was connected. Tick the box above to include those documents, or choose {connectedOn} or later.</p> : null}
         <fieldset className="flex flex-wrap gap-4 text-sm" disabled={busy !== null}>
           <label className="flex items-center gap-2"><input type="radio" name="batch-mode" checked={mode === "unsent"} onChange={() => { setMode("unsent"); setPreview(null); }} />Send what has not been sent</label>
           <label className="flex items-center gap-2"><input type="radio" name="batch-mode" checked={mode === "failed_only"} onChange={() => { setMode("failed_only"); setPreview(null); }} />Resend failed only</label>
@@ -165,6 +188,9 @@ export function XeroBatchCard() {
               {busy === "send" ? <Button type="button" variant="outline" className="min-h-11" onClick={() => { stop.current = true; }}>Stop</Button> : null}
               {note ? <span className="text-sm text-slate-600" role="status">{note}</span> : null}
             </div>
+            {done.filter((r) => !preview.items.some((i) => i.id === r.docId)).map((r) => (
+              <p key={`${r.docType}:${r.docId}`} className="text-sm text-amber-700" data-testid="batch-extra">{OUTCOME[r.outcome]}: {r.detail}</p>
+            ))}
             {done.length ? (
               <p className="text-sm" data-testid="batch-report">Sent {count("sent")}, failed {count("failed")}, to check in Xero {count("needs_check")}, waiting {count("waiting")}, left alone {count("left")}.</p>
             ) : null}

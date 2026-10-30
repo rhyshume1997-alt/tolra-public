@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   adminClients: 0,
   filters: [] as Array<[string, string, unknown]>,
   chunkCalls: 0,
+  chunkOptions: [] as unknown[],
 }));
 
 vi.mock("@/lib/server/auth", () => ({
@@ -24,7 +25,7 @@ vi.mock("@/lib/server/auth", () => ({
   readJson: async (r: Request) => ({ ok: true, data: await r.json() }),
   requireProfile: async (roles?: string[]) => (roles && !roles.includes(state.role)
     ? NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    : { supabase: {}, user: { id: "u1" }, profile: { organization_id: "org-1", role: state.role }, session: state.support ? { support: true, read_only: false } : null }),
+    : { supabase: { from: (t: string) => query(t) }, user: { id: "u1" }, profile: { organization_id: "org-1", role: state.role }, session: state.support ? { support: true, read_only: false } : null }),
 }));
 
 const TABLES: Record<string, unknown[]> = {
@@ -38,6 +39,7 @@ function query(table: string) {
   const self = () => q;
   for (const m of ["select", "not", "or", "gte", "lte", "order", "limit"]) q[m] = self;
   q.eq = (col: string, val: unknown) => { state.filters.push([table, col, val]); return q; };
+  q.in = async () => ({ data: [], error: null });
   q.range = async () => ({ data: TABLES[table] ?? [], error: null });
   q.maybeSingle = async () => ({ data: (TABLES[table] ?? [])[0] ?? null, error: null });
   return q;
@@ -47,7 +49,7 @@ vi.mock("@/lib/integrations/server", () => ({ xeroReady: () => ({ config: {}, ke
 vi.mock("@/lib/integrations/xero/batch-deps", () => ({ batchDeps: () => ({}) }));
 vi.mock("@/lib/integrations/xero/batch-server", async (orig) => ({
   ...(await orig<typeof import("@/lib/integrations/xero/batch-server")>()),
-  runBatchChunk: async () => { state.chunkCalls += 1; return { results: [], stopped: null, remaining: [] }; },
+  runBatchChunk: async (_d: unknown, _i: unknown, _m: unknown, options: unknown) => { state.chunkCalls += 1; state.chunkOptions.push(options); return { results: [], stopped: null, remaining: [] }; },
 }));
 
 const post = (body: unknown) => new Request("https://app.example.test/x", { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } });
@@ -55,7 +57,7 @@ const get = (qs: string) => new Request(`https://app.example.test/x?${qs}`);
 const ID = "11111111-1111-4111-8111-111111111111";
 const SEND = { action: "send", mode: "unsent", items: [{ doc_type: "invoice", doc_id: ID }] };
 
-beforeEach(() => { state.role = "admin"; state.support = false; state.adminClients = 0; state.filters = []; state.chunkCalls = 0; });
+beforeEach(() => { state.role = "admin"; state.support = false; state.adminClients = 0; state.filters = []; state.chunkCalls = 0; state.chunkOptions = []; });
 
 describe("batch route guards", () => {
   it.each(["office", "workshop", "viewer"])("%s gets 403 before any service-role client or send", async (role) => {
@@ -97,6 +99,40 @@ describe("batch route guards", () => {
     expect((await POST(post(SEND))).status).toBe(409);
     expect(state.chunkCalls).toBe(1);
     expect(state.filters).toContainEqual(["integration_connections", "organization_id", "org-1"]);
+  });
+});
+
+describe("documents issued before Xero was connected", () => {
+  const PREVIEW = { action: "preview", from: "2026-09-01", to: "2026-10-31", mode: "unsent" };
+  beforeEach(() => { TABLES.integration_connections = [{ status: "connected", connected_at: "2026-10-12T09:00:00Z" }]; });
+
+  it("info answers the connection day (the page's default From)", async () => {
+    const { POST } = await import("@/app/api/integrations/xero/batch/route");
+    const res = await POST(post({ action: "info" }));
+    expect(await res.json()).toEqual({ connected: true, connectedOn: "2026-10-12" });
+  });
+
+  it("a range starting before the connection day is refused without the flag, accepted with it", async () => {
+    const { POST } = await import("@/app/api/integrations/xero/batch/route");
+    const refused = await POST(post(PREVIEW));
+    expect(refused.status).toBe(400);
+    expect((await refused.json()).error).toMatch(/connected on 2026-10-12/);
+    expect((await POST(post({ ...PREVIEW, include_before_connection: false }))).status).toBe(400);
+    const ok = await POST(post({ ...PREVIEW, include_before_connection: true }));
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).connectedOn).toBe("2026-10-12");
+  });
+
+  it("a range from the connection day needs no flag", async () => {
+    const { POST } = await import("@/app/api/integrations/xero/batch/route");
+    expect((await POST(post({ ...PREVIEW, from: "2026-10-12" }))).status).toBe(200);
+  });
+
+  it("the send passes the connection day and the flag on to the chunk", async () => {
+    const { POST } = await import("@/app/api/integrations/xero/batch/route");
+    await POST(post(SEND));
+    await POST(post({ ...SEND, include_before_connection: true }));
+    expect(state.chunkOptions).toEqual([{ connectedOn: "2026-10-12", includeBefore: false }, { connectedOn: "2026-10-12", includeBefore: true }]);
   });
 });
 

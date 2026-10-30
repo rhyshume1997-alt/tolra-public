@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { batchDeps } from "@/lib/integrations/xero/batch-deps";
 import { BATCH_CHUNK, parseRange } from "@/lib/integrations/xero/batch";
-import { previewBatch, runBatchChunk } from "@/lib/integrations/xero/batch-server";
+import { BeforeConnectionError, loadConnection, previewBatch, runBatchChunk } from "@/lib/integrations/xero/batch-server";
 import { xeroReady } from "@/lib/integrations/server";
 import { MANUAL_SEND_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
@@ -14,9 +14,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const item = z.object({ doc_type: z.enum(["invoice", "credit_note"]), doc_id: z.string().uuid() });
+// include_before_connection: the admin ticked "Include documents issued before Xero was connected". Without it a range (or a document with no
+// send row) dated before the connection day is refused: it may already be in Xero, and a first attempt does not look first.
 const schema = z.discriminatedUnion("action", [
-  z.object({ action: z.literal("preview"), from: z.string(), to: z.string(), mode: z.enum(["unsent", "failed_only"]) }),
-  z.object({ action: z.literal("send"), mode: z.enum(["unsent", "failed_only"]), items: z.array(item).min(1).max(BATCH_CHUNK) }),
+  z.object({ action: z.literal("info") }),
+  z.object({ action: z.literal("preview"), from: z.string(), to: z.string(), mode: z.enum(["unsent", "failed_only"]), include_before_connection: z.boolean().optional() }),
+  z.object({ action: z.literal("send"), mode: z.enum(["unsent", "failed_only"]), items: z.array(item).min(1).max(BATCH_CHUNK), include_before_connection: z.boolean().optional() }),
 ]);
 
 /**
@@ -43,18 +46,20 @@ export async function POST(request: Request) {
   if (!ready || !service) return jsonError("Xero is not set up on this server yet.", 503);
   const org = auth.profile.organization_id;
   try {
+    if (body.action === "info") return NextResponse.json(await loadConnection(service, org));
     if (body.action === "preview") {
       const range = parseRange(body.from, body.to);
       if (!range.ok) return jsonError(range.error, 400);
-      return NextResponse.json(await previewBatch({ docsClient: auth.supabase, service, org, range: range.range, mode: body.mode }));
+      return NextResponse.json(await previewBatch({ docsClient: auth.supabase, service, org, range: range.range, mode: body.mode, includeBefore: body.include_before_connection === true }));
     }
-    const { data: conn, error: connError } = await service.from("integration_connections").select("status").eq("organization_id", org).eq("provider", "xero").maybeSingle();
-    if (connError) throw new Error(connError.message);
-    if ((conn as { status?: string } | null)?.status !== "connected") return jsonError("Connect this company to Xero first.", 409);
+    const connection = await loadConnection(service, org);
+    if (!connection.connected) return jsonError("Connect this company to Xero first.", 409);
     const outcome = await runBatchChunk(batchDeps({ user: auth.supabase, service, org, ready }),
-      body.items.map((i) => ({ docType: i.doc_type, id: i.doc_id })), body.mode);
+      body.items.map((i) => ({ docType: i.doc_type, id: i.doc_id })), body.mode,
+      { connectedOn: connection.connectedOn, includeBefore: body.include_before_connection === true });
     return NextResponse.json(outcome);
   } catch (err) {
+    if (err instanceof BeforeConnectionError) return jsonError(err.message, 400);
     console.error("[integrations] batch failed:", (err as { code?: string }).code ?? (err instanceof Error ? err.name : "error"));
     return jsonError("The batch stopped. Nothing is sent twice: preview again to see what is left.", 500);
   }

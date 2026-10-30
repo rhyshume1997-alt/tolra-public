@@ -5,7 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RunSummary } from "@/lib/integrations/engine";
 import {
   BATCH_MAX_DOCUMENTS, CREDIT_COLUMNS, INVOICE_COLUMNS, type BatchDoc, type BatchDocType, type BatchMode, type BatchSend, type ItemResult, type Range,
-  chunkAction, creditDocument, docKey, invoiceDocument, pauseSeconds, resultFor, selectBatch, sendOrder,
+  chunkAction, creditDocument, docKey, invoiceDocument, londonDate, pauseSeconds, resultFor, selectBatch, sendOrder,
 } from "@/lib/integrations/xero/batch";
 import type { SendStatus } from "@/lib/integrations/send-log";
 
@@ -97,23 +97,41 @@ export async function loadImportedIds(client: SupabaseClient, org: string, docs:
 
 export type Preview = {
   connected: boolean;
+  /** The day (London) Xero was connected, or null: the default From of the page. */
+  connectedOn: string | null;
   truncated: boolean;
   counts: ReturnType<typeof selectBatch>["counts"];
   items: Array<{ docType: BatchDocType; id: string; ref: string | null; customer: string; date: string; total: number | null; state: string }>;
 };
 
+export class BeforeConnectionError extends Error {
+  constructor(readonly connectedOn: string) {
+    super(`Xero was connected on ${connectedOn}. Documents issued before then may already be in Xero: tick the box to include them.`);
+    this.name = "BeforeConnectionError";
+  }
+}
+
+/** The company's Xero connection: whether it is live and the London day it was connected (null when unknown). */
+export async function loadConnection(service: SupabaseClient, org: string): Promise<{ connected: boolean; connectedOn: string | null }> {
+  const { data, error } = await service.from("integration_connections").select("status, connected_at").eq("organization_id", org).eq("provider", "xero").maybeSingle();
+  if (error) throw new Error(error.message);
+  const row = data as { status?: string; connected_at?: string | null } | null;
+  return { connected: row?.status === "connected", connectedOn: londonDate(row?.connected_at) };
+}
+
 /** The preview: what the mode would send for the range, as plain rows. Capped at BATCH_MAX_DOCUMENTS (the rest is left for a narrower range). */
-export async function previewBatch(opts: { docsClient: SupabaseClient; service: SupabaseClient; org: string; range: Range; mode: BatchMode }): Promise<Preview> {
+export async function previewBatch(opts: { docsClient: SupabaseClient; service: SupabaseClient; org: string; range: Range; mode: BatchMode; includeBefore?: boolean }): Promise<Preview> {
+  const connection = await loadConnection(opts.service, opts.org);
+  // Documents issued before Xero was connected may already be in Xero (from SliQ, or by hand), and a first attempt does not look first:
+  // an earlier From needs the explicit flag.
+  if (connection.connectedOn && opts.range.from < connection.connectedOn && !opts.includeBefore) throw new BeforeConnectionError(connection.connectedOn);
   const docs = await loadDocuments(opts.docsClient, opts.org, opts.range);
-  const [sends, imported, conn] = await Promise.all([
-    loadSendRows(opts.service, opts.org, docs),
-    loadImportedIds(opts.service, opts.org, docs),
-    opts.service.from("integration_connections").select("status").eq("organization_id", opts.org).eq("provider", "xero").maybeSingle(),
-  ]);
+  const [sends, imported] = await Promise.all([loadSendRows(opts.service, opts.org, docs), loadImportedIds(opts.service, opts.org, docs)]);
   const selection = selectBatch({ docs, sends: sends.filter((s) => s.action === "create"), range: opts.range, mode: opts.mode, imported });
   const truncated = selection.selected.length > BATCH_MAX_DOCUMENTS || docs.length >= BATCH_MAX_DOCUMENTS * 4;
   return {
-    connected: (conn.data as { status?: string } | null)?.status === "connected",
+    connected: connection.connected,
+    connectedOn: connection.connectedOn,
     truncated,
     counts: selection.counts,
     items: selection.selected.slice(0, BATCH_MAX_DOCUMENTS).map(({ doc, send }) => ({
@@ -138,8 +156,12 @@ export interface ChunkDeps {
   enqueue(doc: BatchDoc): Promise<void>;
   /** Queues a failed row again as the signed-in admin (integration_retry_send: admin and two-step checked by the database). */
   retry(sendId: string): Promise<void>;
-  /** One engine run for one document: `only` = its first attempt only; without it the engine's normal claim. */
+  /** One engine run for one document: `only` = its first attempt only; without it the engine's normal claim (the company's OLDEST due row). */
   run(only: { docType: BatchDocType; docId: string } | null): Promise<RunSummary>;
+  /** The company's due pending rows in the engine's claim order (oldest first), a short head of the queue. */
+  dueQueue(): Promise<BatchSend[]>;
+  /** One send row by its id. */
+  loadSendById(id: string): Promise<BatchSend | null>;
   now(): number;
 }
 
@@ -155,7 +177,13 @@ const STOP_REASONS = new Set(["rate_limited", "not_connected", "needs_reconnect"
 /** After this long a chunk starts no new document (the route's limit is 60 s; one document may need several Xero calls). */
 export const CHUNK_BUDGET_MS = 35_000;
 
-export async function runBatchChunk(deps: ChunkDeps, items: Array<{ docType: BatchDocType; id: string }>, mode: BatchMode): Promise<ChunkOutcome> {
+export type ChunkOptions = {
+  /** The London day Xero was connected (null: unknown). A document with no send row dated before it needs includeBefore. */
+  connectedOn?: string | null;
+  includeBefore?: boolean;
+};
+
+export async function runBatchChunk(deps: ChunkDeps, items: Array<{ docType: BatchDocType; id: string }>, mode: BatchMode, options: ChunkOptions = {}): Promise<ChunkOutcome> {
   const started = deps.now();
   const results: ItemResult[] = [];
   for (let i = 0; i < items.length; i += 1) {
@@ -180,6 +208,11 @@ export async function runBatchChunk(deps: ChunkDeps, items: Array<{ docType: Bat
         : { docType: doc.docType, docId: doc.id, ref: doc.ref, outcome: "left", detail: action.reason, externalNumber: send?.externalNumber ?? null });
       continue;
     }
+    if (action.kind === "enqueue_first" && options.connectedOn && doc.date < options.connectedOn && !options.includeBefore) {
+      results.push({ docType: doc.docType, docId: doc.id, ref: doc.ref, outcome: "left", externalNumber: null,
+        detail: "Issued before Xero was connected: it may already be in Xero. Tick the box to include earlier documents." });
+      continue;
+    }
     let only: { docType: BatchDocType; docId: string } | null = { docType: doc.docType, docId: doc.id };
     if (action.kind === "enqueue_first") await deps.enqueue(doc);
     else if (action.kind === "retry_then_send") {
@@ -188,13 +221,29 @@ export async function runBatchChunk(deps: ChunkDeps, items: Array<{ docType: Bat
       only = null;
     } else if (action.kind === "send_queued") only = null;
 
-    // The engine takes the oldest due row when it is not told which one, so a few passes (bounded) until this document has been tried.
-    let blocked: string | null = null;
-    for (let pass = 0; pass < (only ? 1 : 3); pass += 1) {
-      const summary = await deps.run(only);
-      send = await deps.loadSend(doc.docType, doc.id);
-      if (summary.blocked) { blocked = summary.blocked; break; }
-      if (send?.status !== "pending" || (send.nextAttemptAt && Date.parse(send.nextAttemptAt) > deps.now())) break;
+    // The engine can only be told which document for a FIRST attempt (084's claim). A held-back or retried row is claimed as the company's
+    // oldest due row, so the batch runs it only when it is that row: otherwise another document (one waiting for an admin's Send now, maybe
+    // outside this range) would be sent. Anything else the engine does is reported below, never silent.
+    let before: BatchSend[] = [];
+    if (!only) {
+      before = await deps.dueQueue();
+      if (before[0]?.id !== send?.id) {
+        results.push({ docType: doc.docType, docId: doc.id, ref: doc.ref, outcome: "waiting", externalNumber: null,
+          detail: "Other documents are queued ahead of it, so the batch left it queued. Use Send now to send the queue in order." });
+        continue;
+      }
+    }
+    const summary = await deps.run(only);
+    send = await deps.loadSend(doc.docType, doc.id);
+    const blocked = summary.blocked;
+    for (const queued of before.slice(1)) {
+      const after = await deps.loadSendById(queued.id);
+      if (after && (after.status !== queued.status || after.attempts !== queued.attempts)) {
+        results.push((() => {
+          const extra = resultFor({ ...doc, id: after.docId, docType: after.docType, ref: null }, after);
+          return { ...extra, detail: ["Also processed from the waiting queue, ahead of this batch's documents.", extra.detail].filter(Boolean).join(" ") };
+        })());
+      }
     }
     results.push(resultFor(doc, send));
     if (blocked) {
