@@ -3,7 +3,9 @@
  * live preview in Settings > Email templates). A company's own text, when it has saved one (public.email_templates, migration 106),
  * replaces the default; with no saved text, or 106 not applied, the default below is used.
  *
- * The default texts are the wording the app used before templates existed, moved here unchanged. Placeholders are `{{name}}`:
+ * The default texts for quote, invoice, purchase order, overdue invoice reminder and weekly timesheet are Astra's wording (approved by
+ * Rhys, 30 Oct 2026), written with this app's own placeholder names. The delivery note, workshop and RFQ texts are the wording the app
+ * used before templates existed. Placeholders are `{{name}}`:
  *   - a placeholder with a value is replaced by it ("" is a value: the placeholder disappears);
  *   - a placeholder with no value (unknown, or not given for this e-mail) stays visible as `{{name}}`, so a mistake shows in the
  *     preview and in the draft instead of vanishing;
@@ -42,21 +44,22 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     usedFor: "Sending a quote to the customer (Quotes > Send).",
     placeholders: ["document_number", "company_name", "customer_name", "total", "link"],
     subject: "Quote {{document_number}} from {{company_name}}",
-    body: "Hello,\n\nPlease find our quote {{document_number}} attached as a PDF.\n\nKind regards,\n{{company_name}}",
+    body: "Hi {{customer_name}}\n\nPlease find attached quote {{document_number}} for {{total}}\n\nIf you'd like to proceed, reply to confirm and we'll arrange the next steps\n\nAny questions or changes needed, please let us know\n\nThanks,\n{{company_name}}",
   },
   invoice: {
     label: "Invoice",
     usedFor: "Sending an invoice to the customer (Invoices > Send).",
     placeholders: ["document_number", "company_name", "customer_name", "total", "due_date", "link"],
     subject: "Invoice {{document_number}} from {{company_name}}",
-    body: "Hello,\n\nPlease find our invoice {{document_number}} attached as a PDF.\n\nKind regards,\n{{company_name}}",
+    body: "Hi {{customer_name}}\n\nPlease find attached invoice {{document_number}} for {{total}}, due on {{due_date}}\n\nPayment details are on the invoice, please use {{document_number}} as your payment reference\n\nIf anything needs checking, reply to this email\n\nThanks,\n{{company_name}}",
   },
   purchase_order: {
     label: "Purchase order",
     usedFor: "Sending a purchase order to the supplier (Purchase orders > Email).",
     placeholders: ["document_number", "company_name", "customer_name", "total", "due_date", "link"],
     subject: "Purchase order {{document_number}} from {{company_name}}",
-    body: "Hello,\n\nPlease find our purchase order {{document_number}} attached as a PDF.\n\nKind regards,\n{{company_name}}",
+    // customer_name is the supplier's name here (there is no separate supplier placeholder).
+    body: "Hi {{customer_name}}\n\nPlease find attached purchase order {{document_number}}\n\nPlease confirm you've received it and advise your expected delivery date\n\nLet us know before proceeding if any prices or requirements differ from the order\n\nThanks,\n{{company_name}}",
   },
   delivery_note: {
     label: "Delivery note",
@@ -70,14 +73,32 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     usedFor: "Chasing an overdue invoice (Invoices > Chase overdue, and scheduled reminders).",
     placeholders: ["greeting", "document_number", "total", "due_date", "days_overdue", "payment_note", "company_name", "customer_name", "person_name"],
     subject: "Overdue invoice {{document_number}} from {{company_name}}",
-    body: "{{greeting}},\n\nOur records show invoice {{document_number}} for {{total}} was due on {{due_date}} and is now {{days_overdue}} overdue.{{payment_note}}\n\nPlease arrange payment, or let us know if there is a problem with the invoice.\n\nKind regards,\n{{company_name}}",
+    // The friendly text. The model has one reminder template (no tone tiers), so the firm and final texts are kept here for the follow-up:
+    //
+    //   Firm:
+    //   Hi {{customer_name}}
+    //   Invoice {{document_number}} remains unpaid, with {{total}} outstanding since {{due_date}}
+    //   Please arrange payment and reply to confirm the payment date
+    //   If there's a query holding this up, please let us know today so we can resolve it
+    //   Thanks,
+    //   {{company_name}}
+    //
+    //   Final:
+    //   Hi {{customer_name}}
+    //   This is our final email reminder for invoice {{document_number}}, with {{total}} outstanding since {{due_date}}
+    //   Please arrange payment now or contact us today to discuss the outstanding balance
+    //   If we don't hear from you, we'll contact you directly to agree the next steps
+    //   Thanks,
+    //   {{company_name}}
+    body: "Hi {{customer_name}}\n\nA friendly reminder that invoice {{document_number}} was due on {{due_date}}, with {{total}} still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\n{{company_name}}",
   },
   timesheet: {
     label: "Weekly timesheet",
     usedFor: "The weekly timesheet e-mail to admins (scheduled).",
     placeholders: ["person_name", "week", "hours", "company_name", "link"],
     subject: "Timesheet for {{person_name}}, week {{week}} from {{company_name}}",
-    body: "Hello,\n\nThe timesheet for {{person_name}}, week {{week}}, is ready: {{hours}} hours recorded.\n\n{{link}}\n\nKind regards,\n{{company_name}}",
+    // Left out from Astra's text: Hi {admin_name}, Approval status and Items needing attention (the sender has none of them). "Hi there" stands in for the admin's name.
+    body: "Hi there\n\nThe weekly timesheet for {{person_name}} at {{company_name}} is ready to review\n\nPeriod: week {{week}}\nRecorded hours: {{hours}}\n\nReview the entries in Tolra before approving them for payroll\n\n{{link}}\n\nThanks,\n{{company_name}}",
   },
   job_to_workshop: {
     label: "Job sheet to workshop",

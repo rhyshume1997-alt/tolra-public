@@ -2,7 +2,8 @@
  * E11 company e-mail templates (lib/email/templates, components/email/email-templates-card, migration 106):
  *   - renderTemplate: placeholders filled, an unknown or unfilled placeholder stays visible, "" removes it, HTML escaped, the subject
  *     one line, the company's own text before the default (each of subject and body on its own).
- *   - The defaults are the wording the app used before (the old hard-coded strings, rebuilt here, must come out byte for byte).
+ *   - The defaults: quote, invoice, purchase order, reminder and timesheet are Astra's wording (pinned below, with our placeholders); the
+ *     delivery note, workshop and RFQ texts are the old hard-coded strings, which must still come out byte for byte.
  *   - The store: 106 not applied answers "not applied" / no override quietly (no throw, no console line); saves send the company and
  *     key; friendly messages for refusals.
  *   - The Settings card: the preview shows the rendered text; the not-applied message; read-only without office or admin.
@@ -53,7 +54,8 @@ describe("renderTemplate", () => {
     expect(renderTemplate("quote", vars).subject).toBe("Quote Q-9 from Acme");
     expect(renderTemplate("quote", vars, { subject: "Your quote {{document_number}}", body: "Custom {{company_name}}" })).toMatchObject({ subject: "Your quote Q-9", text: "Custom Acme" });
     expect(renderTemplate("quote", vars, { subject: "  ", body: "Custom" })).toMatchObject({ subject: "Quote Q-9 from Acme", text: "Custom" });
-    expect(renderTemplate("quote", vars, { subject: "Mine", body: "" }).text).toBe("Hello,\n\nPlease find our quote Q-9 attached as a PDF.\n\nKind regards,\nAcme");
+    expect(renderTemplate("quote", vars, { subject: "Mine", body: "" }).text).toBe(renderTemplate("quote", vars).text);
+    expect(renderTemplate("quote", vars, { subject: "Mine", body: "" }).text).toMatch(/^Hi \{\{customer_name\}\}\n\nPlease find attached quote Q-9 for \{\{total\}\}\n/);
     expect(renderTemplate("quote", vars, null).subject).toBe("Quote Q-9 from Acme");
   });
 
@@ -77,8 +79,8 @@ describe("vars builders for the automatic senders (E12/E13)", () => {
   it("invoiceReminderVars fills every placeholder of the default reminder: no {{greeting}} reaches a customer", () => {
     const out = renderTemplate("invoice_reminder", invoiceReminderVars({ reference: "I-9", total: "£10.00", dueDate: "01/11/2026", daysOverdue: 5, companyName: "Acme", customerName: "Cust" }));
     expect(`${out.subject}${out.text}`).not.toMatch(/\{\{/);
-    expect(out.text.startsWith("Hello,\n")).toBe(true);
-    expect(out.text).toContain("is now 5 days overdue.\n");
+    expect(out.text.startsWith("Hi Cust\n")).toBe(true);
+    expect(out.text).toContain("invoice I-9 was due on 01/11/2026, with £10.00 still outstanding\n");
   });
   it("timesheetVars: whose timesheet, the ISO week with its dates, the hours; every placeholder filled", () => {
     const vars = timesheetVars({ week: 45, weekStart: "02/11/2026", weekEnd: "08/11/2026", hours: 37.456, companyName: "Acme", personName: " Jane Smith ", link: "https://app.example.com/time?week=45" });
@@ -86,7 +88,9 @@ describe("vars builders for the automatic senders (E12/E13)", () => {
     const out = renderTemplate("timesheet", vars);
     expect(`${out.subject}${out.text}`).not.toMatch(/\{\{/);
     expect(out.subject).toBe("Timesheet for Jane Smith, week 45 (02/11/2026 to 08/11/2026) from Acme");
-    expect(out.text.split("\n")[2]).toBe("The timesheet for Jane Smith, week 45 (02/11/2026 to 08/11/2026), is ready: 37.46 hours recorded.");
+    expect(out.text.split("\n")[2]).toBe("The weekly timesheet for Jane Smith at Acme is ready to review");
+    expect(out.text).toContain("\nPeriod: week 45 (02/11/2026 to 08/11/2026)\nRecorded hours: 37.46\n");
+    expect(out.text).toContain("https://app.example.com/time?week=45");
     const bare = renderTemplate("timesheet", timesheetVars({ week: "45", hours: "40", companyName: "Acme" }));
     expect(`${bare.subject}${bare.text}`).not.toMatch(/\{\{/);
     expect(bare.subject).toBe("Timesheet for the team, week 45 from Acme");
@@ -98,27 +102,39 @@ describe("vars builders for the automatic senders (E12/E13)", () => {
   });
 });
 
-describe("the defaults keep the wording the app used before", () => {
+describe("the defaults: Astra's wording with our placeholders, and the old wording where Astra gave none", () => {
   const company = "Acme Ltd";
-  it("quote, invoice (Send)", () => {
-    const ref = "Q-1";
-    expect(renderTemplate("quote", { document_number: ref, company_name: company })).toMatchObject({
-      subject: `Quote ${ref} from ${company}`, text: `Hello,\n\nPlease find our quote ${ref} attached as a PDF.\n\nKind regards,\n${company}` });
-    expect(renderTemplate("invoice", { document_number: "I-7", company_name: company })).toMatchObject({
-      subject: `Invoice I-7 from ${company}`, text: `Hello,\n\nPlease find our invoice I-7 attached as a PDF.\n\nKind regards,\n${company}` });
+  it("quote, invoice and purchase order (Send)", () => {
+    expect(renderTemplate("quote", { document_number: "Q-1", company_name: company, customer_name: "Cust", total: "£100.00" })).toMatchObject({
+      subject: `Quote Q-1 from ${company}`,
+      text: `Hi Cust\n\nPlease find attached quote Q-1 for £100.00\n\nIf you'd like to proceed, reply to confirm and we'll arrange the next steps\n\nAny questions or changes needed, please let us know\n\nThanks,\n${company}` });
+    expect(renderTemplate("invoice", { document_number: "I-7", company_name: company, customer_name: "Cust", total: "£100.00", due_date: "01/12/2026" })).toMatchObject({
+      subject: `Invoice I-7 from ${company}`,
+      text: `Hi Cust\n\nPlease find attached invoice I-7 for £100.00, due on 01/12/2026\n\nPayment details are on the invoice, please use I-7 as your payment reference\n\nIf anything needs checking, reply to this email\n\nThanks,\n${company}` });
+    expect(renderTemplate("purchase_order", { document_number: "PO-5", company_name: company, customer_name: "Supplier Ltd" })).toMatchObject({
+      subject: `Purchase order PO-5 from ${company}`,
+      text: `Hi Supplier Ltd\n\nPlease find attached purchase order PO-5\n\nPlease confirm you've received it and advise your expected delivery date\n\nLet us know before proceeding if any prices or requirements differ from the order\n\nThanks,\n${company}` });
   });
 
-  it("the overdue chaser, with and without a contact name and a part payment", () => {
-    const old = (contact: string | undefined, days: number, paid: number) =>
-      `Hello${contact ? ` ${contact}` : ""},\n\nOur records show invoice I-1 for £100.00 was due on 01/10/2026 and is now ${days} day${days === 1 ? "" : "s"} overdue.${paid > 0 ? ` We have received £40.00, leaving £60.00 to pay.` : ""}\n\nPlease arrange payment, or let us know if there is a problem with the invoice.\n\nKind regards,\n${company}`;
+  it("the overdue reminder (friendly), whatever the contact name, days or part payment", () => {
+    const expected = `Hi Cust\n\nA friendly reminder that invoice I-1 was due on 01/10/2026, with £100.00 still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\n${company}`;
     for (const [contact, days, paid] of [["Jane", 1, 0], [undefined, 5, 40], ["", 12, 40]] as const) {
       const out = renderTemplate("invoice_reminder", invoiceReminderVars({
         reference: "I-1", total: "£100.00", dueDate: "01/10/2026", daysOverdue: days, companyName: company, customerName: "Cust",
         contactName: contact, amountPaid: paid, paidText: "£40.00", balanceText: "£60.00",
       }));
-      expect(out.text).toBe(old(contact, days, paid));
+      expect(out.text).toBe(expected);
       expect(out.subject).toBe(`Overdue invoice I-1 from ${company}`);
     }
+  });
+
+  it("no default line ends with a full stop or contains an em dash", () => {
+    for (const key of TEMPLATE_KEYS) {
+      const d = DEFAULT_TEMPLATES[key];
+      expect(`${d.subject}\n${d.body}`).not.toMatch(/[\u2014\u2013]/);
+    }
+    for (const key of ["quote", "invoice", "purchase_order", "invoice_reminder", "timesheet"] as const)
+      for (const line of DEFAULT_TEMPLATES[key].body.split("\n")) expect(line).not.toMatch(/\.$/);
   });
 
   it("the delivery note e-mail, the workshop job sheet and the RFQ clarification", () => {
