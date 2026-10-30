@@ -117,13 +117,15 @@ describe("the defaults: Astra's wording with our placeholders, and the old wordi
   });
 
   it("the overdue reminder (friendly), whatever the contact name, days or part payment", () => {
-    const expected = `Hi Cust\n\nA friendly reminder that invoice I-1 was due on 01/10/2026, with £100.00 still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\n${company}`;
+    // The amount said is what is still to pay: the whole £100.00 when nothing is received, £60.00 after £40.00.
+    const expected = (owed: string) => `Hi Cust\n\nA friendly reminder that invoice I-1 was due on 01/10/2026, with ${owed} still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\n${company}`;
     for (const [contact, days, paid] of [["Jane", 1, 0], [undefined, 5, 40], ["", 12, 40]] as const) {
+      const owed = paid ? "£60.00" : "£100.00";
       const out = renderTemplate("invoice_reminder", invoiceReminderVars({
         reference: "I-1", total: "£100.00", dueDate: "01/10/2026", daysOverdue: days, companyName: company, customerName: "Cust",
-        contactName: contact, amountPaid: paid, paidText: "£40.00", balanceText: "£60.00",
+        contactName: contact, amountPaid: paid, paidText: "£40.00", balanceText: owed,
       }));
-      expect(out.text).toBe(expected);
+      expect(out.text).toBe(expected(owed));
       expect(out.subject).toBe(`Overdue invoice I-1 from ${company}`);
     }
   });

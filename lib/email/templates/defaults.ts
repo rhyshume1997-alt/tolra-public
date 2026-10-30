@@ -21,6 +21,8 @@ export const PLACEHOLDERS = [
   "customer_name", "document_number", "total", "due_date", "company_name", "days_overdue", "person_name", "week", "hours", "link",
   // Needed to keep the existing wording of the delivery note, chaser and workshop texts.
   "greeting", "payment_note", "job", "delivery_date", "status", "description",
+  // What is still to pay on an invoice (after receipts, credits and refunds): the reminder texts say this, not the invoice total.
+  "balance",
 ] as const;
 export type Placeholder = (typeof PLACEHOLDERS)[number];
 export type TemplateVars = Partial<Record<string, string>>;
@@ -71,13 +73,13 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
   invoice_reminder: {
     label: "Overdue invoice reminder",
     usedFor: "Chasing an overdue invoice (Invoices > Chase overdue, and scheduled reminders).",
-    placeholders: ["greeting", "document_number", "total", "due_date", "days_overdue", "payment_note", "company_name", "customer_name", "person_name"],
+    placeholders: ["greeting", "document_number", "total", "balance", "due_date", "days_overdue", "payment_note", "company_name", "customer_name", "person_name"],
     subject: "Overdue invoice {{document_number}} from {{company_name}}",
     // The friendly text. The model has one reminder template (no tone tiers), so the firm and final texts are kept here for the follow-up:
     //
     //   Firm:
     //   Hi {{customer_name}}
-    //   Invoice {{document_number}} remains unpaid, with {{total}} outstanding since {{due_date}}
+    //   Invoice {{document_number}} remains unpaid, with {{balance}} outstanding since {{due_date}}
     //   Please arrange payment and reply to confirm the payment date
     //   If there's a query holding this up, please let us know today so we can resolve it
     //   Thanks,
@@ -85,12 +87,12 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     //
     //   Final:
     //   Hi {{customer_name}}
-    //   This is our final email reminder for invoice {{document_number}}, with {{total}} outstanding since {{due_date}}
+    //   This is our final email reminder for invoice {{document_number}}, with {{balance}} outstanding since {{due_date}}
     //   Please arrange payment now or contact us today to discuss the outstanding balance
     //   If we don't hear from you, we'll contact you directly to agree the next steps
     //   Thanks,
     //   {{company_name}}
-    body: "Hi {{customer_name}}\n\nA friendly reminder that invoice {{document_number}} was due on {{due_date}}, with {{total}} still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\n{{company_name}}",
+    body: "Hi {{customer_name}}\n\nA friendly reminder that invoice {{document_number}} was due on {{due_date}}, with {{balance}} still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\n{{company_name}}",
   },
   timesheet: {
     label: "Weekly timesheet",
@@ -134,6 +136,7 @@ export const SAMPLE_VARS: Record<Placeholder, string> = {
   delivery_date: "28/10/2026",
   status: "Delivered",
   description: "10 x flange, 316 stainless",
+  balance: "£1,000.00",
 };
 
 export const isTemplateKey = (value: unknown): value is TemplateKey => typeof value === "string" && (TEMPLATE_KEYS as readonly string[]).includes(value);
@@ -195,6 +198,7 @@ export function invoiceReminderVars(input: {
     customer_name: input.customerName,
     document_number: input.reference,
     total: input.total,
+    balance: input.balanceText || input.total,
     due_date: input.dueDate,
     days_overdue: daysText(input.daysOverdue),
     payment_note: (input.amountPaid ?? 0) > 0 && input.paidText && input.balanceText ? ` We have received ${input.paidText}, leaving ${input.balanceText} to pay.` : "",

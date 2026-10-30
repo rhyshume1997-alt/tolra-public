@@ -118,8 +118,8 @@ describe("running a period of reminders", () => {
     const mail = send.mock.calls[0][0];
     expect(mail).toMatchObject({ organizationId: ORG, kind: "invoice_reminder", to: ["pay@acme.test"], recordType: "invoice", recordId: "1", idempotencyKey: scheduleEmailKey("invoice_reminder", "sch-1", "2026-10-26", "1") });
     expect(mail.subject).toBe("Overdue invoice INV-1 from JNR");
-    expect(mail.text).toBe("Hello Pat,\n\nOur records show invoice INV-1 for £120.00 was due on 01/10/2026 and is now 25 days overdue.\n\nPlease arrange payment, or let us know if there is a problem with the invoice.\n\nKind regards,\nJNR");
-    expect(mail.html).toContain("Hello Pat,<br>");
+    expect(mail.text).toBe("Hi Acme Ltd\n\nA friendly reminder that invoice INV-1 was due on 01/10/2026, with £120.00 still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\nJNR");
+    expect(mail.html).toContain("Hi Acme Ltd<br>");
   });
 
   it("every placeholder of the default text is filled: no '{{' reaches a customer, whoever the contact is and whatever has been paid", async () => {
@@ -134,18 +134,21 @@ describe("running a period of reminders", () => {
       expect(m.html ?? "").not.toContain("{{");
     }
     const plain = mails.find((m) => m.recordId === "5")!;
-    expect(plain.text.startsWith("Hello,\n")).toBe(true); // no contact name: "Hello," not "Hello ,"
-    expect(plain.text).toContain("is now 1 day overdue."); // singular
-    // Received 20 and credited 10 on a 120 invoice: it came to 100 before receipts, 20 received, 90... balance = 120 - 20 - 10 = 90.
-    expect(plain.text).toContain("for £110.00 was due");
-    expect(plain.text).toContain("We have received £20.00, leaving £90.00 to pay.");
+    expect(plain.text.startsWith("Hi Plain Ltd\n")).toBe(true);
+    // Received 20 and credited 10 on a 120 invoice: the balance is 120 - 20 - 10 = 90, and that is what is still outstanding.
+    expect(plain.text).toContain("with £90.00 still outstanding");
   });
 
-  it("a one-day-late and a many-days-late invoice read right", async () => {
+  it("a one-day-late and a many-days-late invoice read right, with the greeting and payment note, in a company's own text", async () => {
+    db.rows("email_templates").push({ organization_id: ORG, key: "invoice_reminder", subject: "Overdue {{document_number}}", body: "{{greeting}}, {{document_number}} is now {{days_overdue}} overdue.{{payment_note}}" });
+    db.rows("customers").push({ organization_id: ORG, name: "Plain Ltd", email: "plain@x.test", contact_name: null });
+    db.rows("invoices").push({ organization_id: ORG, ...inv("5", { customer: "Plain Ltd", due_date: "2026-10-25", amount_paid: 20, credited_amount: 10 }) });
     const out = await run();
-    expect(out.sent).toBe(1);
-    expect(send.mock.calls[0][0].text).toContain("25 days overdue");
-    expect(send.mock.calls[0][0].text).not.toContain("is now 25 overdue");
+    expect(out.sent).toBe(2);
+    const plain = send.mock.calls.map((c) => c[0]).find((m) => m.recordId === "5")!;
+    expect(plain.text).toBe("Hello, INV-5 is now 1 day overdue. We have received £20.00, leaving £90.00 to pay."); // no contact: "Hello," not "Hello ,"
+    const late = send.mock.calls.map((c) => c[0]).find((m) => m.recordId === "1")!;
+    expect(late.text).toBe("Hello Pat, INV-1 is now 25 days overdue."); // nothing received: no payment note
   });
 
   it("dedupe: the same period never sends the same invoice twice, however often it runs", async () => {
