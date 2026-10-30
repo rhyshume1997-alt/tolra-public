@@ -13,6 +13,7 @@ import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
 import { missingDbObject } from "@/lib/time-features";
 import { type TimeSettings, localDateOf, weekStartOf } from "@/lib/time-sheet";
+import { fmtDateTime } from "@/lib/dates";
 import { type PersonWeek, WEEK_STATE_TEXT, loadWeek } from "@/lib/time-week";
 import { useUser } from "@/lib/use-user";
 
@@ -38,7 +39,7 @@ function WeekPrint() {
   const approval = (p: PersonWeek) => {
     const s = p.status;
     if (!s || s.state === "not_approved") return `${WEEK_STATE_TEXT.not_approved}`;
-    const when = s.approved_at ? new Date(s.approved_at).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" }) : "";
+    const when = s.approved_at ? fmtDateTime(s.approved_at) : "";
     return `${names[s.approved_by ?? ""] ?? UNKNOWN}, ${when}${s.state === "changed_since_approval" ? " (changed since approval)" : ""}`;
   };
   return (

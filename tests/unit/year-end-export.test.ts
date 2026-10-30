@@ -4,10 +4,10 @@ import { paymentFromRow } from "@/lib/payments";
 import { invoicePaidFigures, paymentExportRows, paymentsCsv, summaryCsv } from "@/lib/year-end-export";
 
 describe("year-end summary.csv", () => {
-  it("has the agreed columns, UK dates, two decimals, quoting and a BOM for Excel", () => {
+  it("has the agreed columns, ISO dates, two decimals, quoting and a BOM for Excel", () => {
     const csv = summaryCsv([{ type: "Invoice", number: "INV-0001", date: "2025-03-04", party: 'Smith, "Quoted" Ltd', net: 100, vat: 20, gross: 120, paid: 120, balance: 0, paidDate: "2025-04-01", status: "paid", pdf: "invoices/INV-0001.pdf" }]);
     expect(csv.startsWith("﻿Type,Number,Date,Customer / supplier,Net,VAT,Gross,Paid,Balance due,Paid date,Status,PDF\r\n")).toBe(true);
-    expect(csv).toContain('Invoice,INV-0001,04/03/2025,"Smith, ""Quoted"" Ltd",100.00,20.00,120.00,120.00,0.00,01/04/2025,paid,invoices/INV-0001.pdf\r\n');
+    expect(csv).toContain('Invoice,INV-0001,2025-03-04,"Smith, ""Quoted"" Ltd",100.00,20.00,120.00,120.00,0.00,2025-04-01,paid,invoices/INV-0001.pdf\r\n');
   });
 
   it("leaves paid and balance blank for other documents and for an unknown payment", () => {
@@ -15,8 +15,8 @@ describe("year-end summary.csv", () => {
       { type: "Quote", number: "QUO-1", date: "2025-03-04", party: "A", net: 10, vat: 2, gross: 12, paidDate: "", status: "sent", pdf: "" },
       { type: "Invoice", number: "INV-2", date: "2025-03-04", party: "B", net: 10, vat: 2, gross: 12, paid: null, balance: null, paidDate: "", status: "issued", pdf: "" },
     ]);
-    expect(csv).toContain("Quote,QUO-1,04/03/2025,A,10.00,2.00,12.00,,,,sent,\r\n");
-    expect(csv).toContain("Invoice,INV-2,04/03/2025,B,10.00,2.00,12.00,,,,issued,\r\n");
+    expect(csv).toContain("Quote,QUO-1,2025-03-04,A,10.00,2.00,12.00,,,,sent,\r\n");
+    expect(csv).toContain("Invoice,INV-2,2025-03-04,B,10.00,2.00,12.00,,,,issued,\r\n");
   });
 });
 
@@ -60,9 +60,9 @@ describe("year-end payments.csv", () => {
     ]);
     const csv = paymentsCsv(rows);
     expect(csv.startsWith("﻿Invoice,Paid on,Amount,Method,Reference,Source,Reversed\r\n")).toBe(true);
-    expect(csv).toContain("INV-0001,01/04/2025,40.00,cheque,CHQ 7,recorded,Yes\r\n");
-    expect(csv).toContain("INV-0001,10/05/2025,-40.00,cheque,CHQ 7,recorded,Reversal: cheque bounced\r\n");
-    expect(csv).toContain('INV-0002,02/04/2025,80.00,BACS,"Ref, ""A""",recorded,No\r\n');
+    expect(csv).toContain("INV-0001,2025-04-01,40.00,cheque,CHQ 7,recorded,Yes\r\n");
+    expect(csv).toContain("INV-0001,2025-05-10,-40.00,cheque,CHQ 7,recorded,Reversal: cheque bounced\r\n");
+    expect(csv).toContain('INV-0002,2025-04-02,80.00,BACS,"Ref, ""A""",recorded,No\r\n');
     expect(csv).toContain("INV-0002,,25.00,,,legacy,No\r\n");
   });
 

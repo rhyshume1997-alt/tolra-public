@@ -1,3 +1,4 @@
+import { fmtDateText } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { DEMO_MACHINES } from "@/lib/job-worksheet";
 import { supabase } from "@/lib/supabase";
@@ -329,9 +330,9 @@ export function formatMinutes(minutes: number) {
   return h && m ? `${h}h ${m}m` : m ? `${m}m` : `${h}h`;
 }
 
-/** "Sat 10 Oct" for a plan date. */
+/** "Sat 10 Oct" for a plan date (the person's date format, lib/dates). */
 export function formatPlanDate(date: string) {
-  return parseLocalDate(date)?.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) ?? date;
+  return parseLocalDate(date) ? fmtDateText(date, { weekday: "short" }) : date;
 }
 
 /** One day as "Sat 10 Oct 05:00-13:00". */
@@ -576,10 +577,6 @@ export function formatDayTime(date: Date) {
   const day = date.toLocaleDateString("en-GB", { weekday: "short" });
   const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
   return `${day} ${time}`;
-}
-
-export function formatDateTimeShort(date: Date) {
-  return `${date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 export function formatHours(hours: number) {
