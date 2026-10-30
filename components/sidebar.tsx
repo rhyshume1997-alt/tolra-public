@@ -145,28 +145,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       return;
     }
 
-    if (!supabase) {
-      toast.error("Supabase is not configured.");
-      return;
-    }
-
-    const email = profile?.email;
-    if (!email) {
-      toast.error("Could not verify your account email.");
-      return;
-    }
-
-    const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
-    if (verifyError) {
-      toast.error("Current password incorrect.");
-      return;
-    }
-
-    // Through the server, which applies the same rules as everywhere else (length, and a known-breach check).
-    const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+    // Through the server, which checks the current password (without replacing this session) and applies the same rules as
+    // everywhere else (length, and a known-breach check).
+    const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, current_password: currentPassword }) });
     if (!response.ok) {
       const result = (await response.json().catch(() => ({}))) as { error?: string };
-      toast.error(response.status === 400 && result.error ? result.error : "Couldn't update your password. Try again.");
+      toast.error([400, 403, 503].includes(response.status) && result.error ? result.error : "Couldn't update your password. Try again.");
       return;
     }
 

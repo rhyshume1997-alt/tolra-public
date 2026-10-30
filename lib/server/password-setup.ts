@@ -25,6 +25,25 @@ export function changedAfterTemporary(meta: PasswordMarkers): boolean {
   return Date.parse(meta.password_changed_at) > Date.parse(meta.temp_password_set_at);
 }
 
+/** How a reset or invite link shows in a session's amr: "recovery" / "invite" (a PKCE link), "otp" (verified link), "magiclink". */
+const LINK_METHODS = new Set(["recovery", "invite", "otp", "magiclink"]);
+/** How long after following the link the person may choose a password without their current one. */
+export const LINK_SIGN_IN_MAX_AGE_S = 60 * 60;
+
+/**
+ * True when an e-mail link (a password reset or an invite) signed this session in within the last hour (`methods`: the session's
+ * amr, as getAuthenticatorAssuranceLevel returns it): the link proved who it is, so choosing a new password needs no current one
+ * (audit Z7/C9). A session signed in with a password, an older link session, or entries without a time do not count.
+ */
+export function recentLinkSignIn(methods: unknown, nowSeconds = Date.now() / 1000): boolean {
+  if (!Array.isArray(methods)) return false;
+  return methods.some((entry) => {
+    const { method, timestamp } = (entry ?? {}) as { method?: unknown; timestamp?: unknown };
+    return typeof method === "string" && LINK_METHODS.has(method) && typeof timestamp === "number"
+      && timestamp <= nowSeconds + 60 && nowSeconds - timestamp <= LINK_SIGN_IN_MAX_AGE_S;
+  });
+}
+
 /** Runs a write up to `attempts` times; true once it succeeds. For short, idempotent writes only. */
 export async function persist(write: () => PromiseLike<{ error: unknown }>, attempts = 3): Promise<boolean> {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
