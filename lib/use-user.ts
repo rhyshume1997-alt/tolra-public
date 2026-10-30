@@ -5,14 +5,15 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
-import { resetCompanyProfile } from "@/lib/company";
+import { loadCompanyProfile, resetCompanyProfile } from "@/lib/company";
+import { companyChangedElsewhere, listenForTabSignals } from "@/lib/company-sync";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
 import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
 import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
 import { confirmedUser, invalidateConfirmedUser } from "@/lib/confirmed-user";
 import { OfflineIdentityExpiredError, offlineIdentityExpired } from "@/lib/offline/identity-age";
 import { pendingEntries, waitForReplayIdle } from "@/lib/offline/outbox";
-import { accessSignal, confirmOfflineAccess, OFFLINE_ACCESS_EVENT, sessionGoneReason, signalAccessRecheck } from "@/lib/offline/access";
+import { confirmOfflineAccess, OFFLINE_ACCESS_EVENT, sessionGoneReason, signalAccessRecheck } from "@/lib/offline/access";
 import { isNetworkError } from "@/lib/offline/store";
 import { onSyncComplete, syncNow } from "@/lib/offline/sync";
 import { resetOrgSettings } from "@/lib/org-settings";
@@ -104,6 +105,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error(err);
     }
+    // The other open tabs share this session: they check now and go to sign-in, not at their next focus or 10-minute recheck.
+    signalAccessRecheck();
     // Offline the server can't be told and supabase-js keeps the session: end it on this device regardless.
     clearAuthCookies();
     forgetLastActive();
@@ -137,6 +140,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const { error: switchError } = await supabase.rpc("switch_organization", { p_org: organizationId });
       if (switchError) throw switchError;
       invalidateConfirmedUser();
+      // The session is in the new company for every tab: the other open tabs check now and follow (lib/company-sync.ts).
+      signalAccessRecheck();
       // Switching away: the previous company's offline copy and the queue the person agreed to remove go from this device.
       const kept = await wipeOfflineScope(offlineScope(), confirmed);
       setOfflineScope(null);
@@ -158,6 +163,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     let accessEnded = false;
     // This tab found its session gone and is going to sign-in: it asked the other tabs once and ignores their answers.
     let leaving = false;
+    // This tab saw another tab switch company and is going to the dashboard (followCompanySwitch).
+    let followed = false;
     let currentUserId: string | null = null;
     let recheck: (() => Promise<void>) | null = null;
     let recheckRunner: { stop: () => void } | null = null;
@@ -270,6 +277,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           // This page is switching company on purpose: the answer may already name the new one. No answer (no lock, no role
           // update, no offline-clock restart); the reload at /dashboard loads the person and company from the server again.
           if (organizationSwitchInProgress()) return;
+          if (companyChangedElsewhere(live.organization_id, now)) {
+            if (mounted) followCompanySwitch();
+            return;
+          }
           const member = now.organization_id === live.organization_id && now.role
             ? { role: now.role as UserRole, secondary_role: (now.secondary_role as UserRole | null) ?? null, active: true, hidden_sections: now.hidden_sections }
             : null;
@@ -306,6 +317,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
       recheck = runner.ask;
       if (recheckTimer) clearInterval(recheckTimer);
       recheckTimer = setInterval(() => void recheck?.(), ACCESS_RECHECK_EVERY_MS);
+    }
+
+    /**
+     * Another tab switched company (the session is in a different company now): this tab leaves the old company's profile and pages
+     * the way the picker does, but removes nothing from the device (the switching tab asked the person and wiped what they agreed to),
+     * and reloads at the dashboard. A form open here is told by the browser's "leave this page?" prompt, the same as for any reload.
+     */
+    function followCompanySwitch() {
+      if (accessEnded || followed) return;
+      followed = true;
+      sessionEnding.value = true;
+      invalidateConfirmedUser();
+      setOfflineScope(null);
+      resetCompanyProfile();
+      resetOrgSettings();
+      writeStoredRole(null);
+      window.location.assign("/dashboard");
     }
 
     let loadingNow = false;
@@ -456,14 +484,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const onAccessEnded = (event: Event) => {
       if ((event as CustomEvent<string>).detail === currentUserId && !accessEnded) void endAccess("removed");
     };
-    const onStorage = (event: StorageEvent) => {
-      if (accessEnded || leaving) return;
-      const signal = accessSignal(event, currentUserId);
-      if (signal === "end") void endAccess("removed");
-      else if (signal === "recheck") void recheck?.();
-    };
     window.addEventListener(OFFLINE_ACCESS_EVENT, onAccessEnded);
-    window.addEventListener("storage", onStorage);
+    const stopTabSignals = listenForTabSignals(window, {
+      userId: () => currentUserId,
+      skip: () => accessEnded || leaving || followed,
+      onSignal: (signal) => {
+        if (signal === "end") void endAccess("removed");
+        else if (signal === "recheck") void recheck?.();
+        // Company settings changed in another tab: read them again (a failed read keeps what is shown).
+        else void loadCompanyProfile(true);
+      },
+    });
     const onOnline = () => {
       if (accessEnded) return;
       if (recheck && !expiredLock) void recheck();
@@ -481,7 +512,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
       window.removeEventListener(OFFLINE_ACCESS_EVENT, onAccessEnded);
-      window.removeEventListener("storage", onStorage);
+      stopTabSignals();
       window.removeEventListener("online", onOnline);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);

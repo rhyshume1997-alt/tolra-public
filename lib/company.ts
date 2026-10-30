@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { type BankDetails, EMPTY_BANK_DETAILS, parseBankDetails } from "@/lib/bank-details";
 import { companyLogoUrl, isHexColour } from "@/lib/branding";
 import type { ShellBrand } from "@/lib/brand-pending";
+import { announceCompanyChanged } from "@/lib/company-sync";
 import { DEMO_MODE } from "@/lib/demo";
 import { supabase } from "@/lib/supabase";
 
@@ -321,6 +322,8 @@ export async function saveCompanyProfile(organizationId: string, next: Omit<Comp
     .upsert({ organization_id: organizationId, company_profile: next, updated_at: new Date().toISOString() }, { onConflict: "organization_id" });
   if (error) throw error;
   await loadCompanyProfile(true);
+  // The other open tabs hold the old copy until they load again: tell them (lib/company-sync.ts).
+  announceCompanyChanged();
 }
 
 export function storedProfile(profile: CompanyProfile): Omit<CompanyProfile, "logoSrc"> {
