@@ -18,14 +18,19 @@ const row = (id: string, status: BatchSend["status"], over: Partial<BatchSend> =
 
 function world(docs: BatchDoc[], sends: BatchSend[], opts: { imported?: string[]; outcome?: (id: string) => "sent" | "failed" | "rate_limited" | "blocked_unmapped" } = {}) {
   const table = new Map(sends.map((s) => [s.docId, { ...s }]));
+  // Every change to a send row stamps it (the database's updated_at); latestChange / changedSince read the stamps.
+  let clock = 0;
+  const stamps = new Map<string, number>();
+  const touch = (r: BatchSend) => { stamps.set(r.id, (clock += 1)); };
+  for (const r of table.values()) touch(r);
   const log = { runs: [] as Array<string | null>, enqueued: [] as string[], retried: [] as string[], pushed: [] as string[] };
   const outcome = opts.outcome ?? (() => "sent" as const);
   const deps: ChunkDeps = {
     loadDoc: async (_t: BatchDocType, id: string) => docs.find((d) => d.id === id) ?? null,
     loadSend: async (_t, id) => (table.get(id) ? { ...table.get(id)! } : null),
     isImported: async (id) => (opts.imported ?? []).includes(id),
-    enqueue: async (d) => { log.enqueued.push(d.id); if (!table.has(d.id)) table.set(d.id, row(d.id, "pending")); },
-    retry: async (sendId) => { const r = [...table.values()].find((x) => x.id === sendId)!; log.retried.push(r.docId); r.status = "pending"; },
+    enqueue: async (d) => { log.enqueued.push(d.id); if (!table.has(d.id)) { const r = row(d.id, "pending"); table.set(d.id, r); touch(r); } },
+    retry: async (sendId) => { const r = [...table.values()].find((x) => x.id === sendId)!; log.retried.push(r.docId); r.status = "pending"; touch(r); },
     run: async (only) => {
       log.runs.push(only?.docId ?? null);
       const summary: RunSummary = { sent: 0, failed: 0, needsCheck: 0, retryLater: 0, skipped: 0, blocked: null, unmapped: [] };
@@ -34,6 +39,7 @@ function world(docs: BatchDoc[], sends: BatchSend[], opts: { imported?: string[]
       const r = pending[0];
       if (!r) return summary;
       r.attempts += 1;
+      touch(r);
       const o = outcome(r.docId);
       log.pushed.push(r.docId);
       if (o === "sent") { r.status = "sent"; r.externalId = "x1"; summary.sent = 1; }
@@ -43,10 +49,11 @@ function world(docs: BatchDoc[], sends: BatchSend[], opts: { imported?: string[]
       return summary;
     },
     dueQueue: async () => [...table.values()].filter((r) => r.status === "pending" && (!r.nextAttemptAt || Date.parse(r.nextAttemptAt) <= NOW)).map((r) => ({ ...r })),
-    loadSendById: async (id) => { const r = [...table.values()].find((x) => x.id === id); return r ? { ...r } : null; },
+    latestChange: async () => (clock ? String(Math.max(...stamps.values())) : null),
+    changedSince: async (since) => [...table.values()].filter((r) => (stamps.get(r.id) ?? 0) > Number(since ?? 0)).map((r) => ({ ...r })),
     now: () => NOW,
   };
-  return { deps, table, log };
+  return { deps, table, log, touch };
 }
 const items = (...ids: string[]) => ids.map((id) => ({ docType: "invoice" as const, id }));
 
@@ -186,12 +193,37 @@ describe("the batch only ever sends what it listed", () => {
     w.deps.run = async (only) => {
       const summary = await run(only);
       const z = w.table.get("z")!;
-      z.status = "sent"; z.attempts += 1; z.externalId = "xz";
+      z.status = "sent"; z.attempts += 1; z.externalId = "xz"; w.touch(z);
       return summary;
     };
     const out = await runBatchChunk(w.deps, items("a"), "unsent");
     expect(out.results.map((r) => [r.docId, r.outcome])).toEqual([["z", "sent"], ["a", "sent"]]);
     expect(out.results[0].detail).toMatch(/Also processed from the waiting queue/);
+  });
+});
+
+describe("a row the engine sends instead, wherever it was in the queue", () => {
+  it("a row beyond the first 10 of the queue that gets claimed is reported", async () => {
+    const queue = Array.from({ length: 12 }, (_, i) => `q${i}`);
+    const docs = [doc("a"), ...queue.map((id) => doc(id, { date: "2025-01-15" }))];
+    const rows = [row("a", "pending", { attempts: 2, nextAttemptAt: "2026-10-30T11:30:00Z" }), ...queue.map((id) => row(id, "pending", { attempts: 1, nextAttemptAt: "2026-10-30T11:00:00Z" }))];
+    const w = world(docs, rows);
+    const run = w.deps.run;
+    w.deps.run = async (only) => {
+      const summary = await run(only);
+      const far = w.table.get("q11")!; // the 13th row of the queue, outside any first-10 snapshot
+      far.status = "failed"; far.attempts += 1; far.lastError = "Xero said no"; w.touch(far);
+      return summary;
+    };
+    const out = await runBatchChunk(w.deps, items("a"), "unsent");
+    expect(out.results.map((r) => [r.docId, r.outcome])).toEqual([["q11", "failed"], ["a", "sent"]]);
+    expect(out.results[0].detail).toMatch(/Also processed from the waiting queue.*Xero said no/);
+    expect(w.table.get("q0")!.status).toBe("pending");
+  });
+  it("nothing else changed: nothing extra is reported", async () => {
+    const w = world([doc("a"), doc("z", { date: "2025-01-15" })], [row("z", "sent")]);
+    const out = await runBatchChunk(w.deps, items("a"), "unsent");
+    expect(out.results.map((r) => r.docId)).toEqual(["a"]);
   });
 });
 

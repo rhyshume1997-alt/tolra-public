@@ -52,17 +52,34 @@ export function batchDeps(opts: { user: SupabaseClient; service: SupabaseClient;
       const { error } = await user.rpc("integration_retry_send", { p_send: sendId });
       if (error) throw new Error(error.message);
     },
-    async loadSendById(id) {
-      const { data, error } = await service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero").eq("id", id).maybeSingle();
+    async latestChange() {
+      const { data, error } = await service.from("integration_sends").select("updated_at").eq("organization_id", org).eq("provider", "xero")
+        .order("updated_at", { ascending: false }).limit(1);
       if (error) throw new Error(error.message);
-      return data ? toBatchSend(data as Parameters<typeof toBatchSend>[0]) : null;
+      return ((data ?? [])[0] as { updated_at?: string } | undefined)?.updated_at ?? null;
     },
-    async dueQueue() {
-      // The engine's claim order (084 integration_claim_next): pending, due, oldest first. A short head is enough.
-      const { data, error } = await service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero")
-        .eq("status", "pending").lte("next_attempt_at", new Date().toISOString()).order("created_at").order("id").limit(10);
+    async changedSince(since) {
+      let query = service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero");
+      if (since) query = query.gt("updated_at", since);
+      const { data, error } = await query.order("updated_at").limit(200);
       if (error) throw new Error(error.message);
       return ((data ?? []) as Array<Parameters<typeof toBatchSend>[0]>).map(toBatchSend);
+    },
+    async dueQueue() {
+      // The engine's claim order (084 integration_claim_next): pending, due, oldest first. A void is claimable only once its invoice's create
+      // has an external id and is sent or failed (otherwise the claim skips it), so a void that cannot go yet is not the head.
+      const { data, error } = await service.from("integration_sends").select(SEND_COLUMNS).eq("organization_id", org).eq("provider", "xero")
+        .eq("status", "pending").lte("next_attempt_at", new Date().toISOString()).order("created_at").order("id").limit(50);
+      if (error) throw new Error(error.message);
+      const rows = ((data ?? []) as Array<Parameters<typeof toBatchSend>[0]>).map(toBatchSend);
+      const voids = rows.filter((r) => r.action === "void");
+      if (!voids.length) return rows;
+      const { data: creates, error: createError } = await service.from("integration_sends").select("doc_id, status, external_id").eq("organization_id", org).eq("provider", "xero")
+        .eq("action", "create").in("doc_id", voids.map((v) => v.docId));
+      if (createError) throw new Error(createError.message);
+      const ready = new Set(((creates ?? []) as Array<{ doc_id: string; status: string; external_id: string | null }>)
+        .filter((c) => c.external_id && (c.status === "sent" || c.status === "failed")).map((c) => c.doc_id));
+      return rows.filter((r) => r.action !== "void" || ready.has(r.docId));
     },
     run: (only) => sendQueued(service, org, ready, { maxDocuments: 1, budgetMs: 15_000, ...(only ? { only } : {}) }),
     now: () => Date.now(),

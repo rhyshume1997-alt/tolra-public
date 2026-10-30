@@ -37,6 +37,8 @@ export type BatchSend = {
   lastError: string | null;
   nextAttemptAt: string | null;
   sentAt: string | null;
+  /** The document's number as the row keeps it (for a row the batch did not list). */
+  docRef?: string | null;
 };
 
 export const BATCH_MAX_DOCUMENTS = 500;

@@ -18,14 +18,14 @@ const PAGE = 1000;
 const IMPORT_CHUNK = 100;
 
 type SendRow = {
-  id: string; doc_type: BatchDocType; doc_id: string; action: "create" | "void"; status: SendStatus; attempts: number; external_id: string | null;
+  id: string; doc_type: BatchDocType; doc_id: string; doc_ref?: string | null; action: "create" | "void"; status: SendStatus; attempts: number; external_id: string | null;
   external_number: string | null; last_error: string | null; next_attempt_at: string | null; sent_at: string | null;
 };
-export const SEND_COLUMNS = "id, doc_type, doc_id, action, status, attempts, external_id, external_number, last_error, next_attempt_at, sent_at";
+export const SEND_COLUMNS = "id, doc_type, doc_id, doc_ref, action, status, attempts, external_id, external_number, last_error, next_attempt_at, sent_at";
 
 export const toBatchSend = (r: SendRow): BatchSend & { action: "create" | "void" } => ({
   id: r.id, docType: r.doc_type, docId: r.doc_id, action: r.action, status: r.status, attempts: r.attempts, externalId: r.external_id,
-  externalNumber: r.external_number, lastError: r.last_error, nextAttemptAt: r.next_attempt_at, sentAt: r.sent_at,
+  externalNumber: r.external_number, lastError: r.last_error, nextAttemptAt: r.next_attempt_at, sentAt: r.sent_at, docRef: r.doc_ref ?? null,
 });
 
 /** Day before and after, for the timestamp columns, so the exact (London) day is decided in code, not by the database's time zone. */
@@ -158,10 +158,12 @@ export interface ChunkDeps {
   retry(sendId: string): Promise<void>;
   /** One engine run for one document: `only` = its first attempt only; without it the engine's normal claim (the company's OLDEST due row). */
   run(only: { docType: BatchDocType; docId: string } | null): Promise<RunSummary>;
-  /** The company's due pending rows in the engine's claim order (oldest first), a short head of the queue. */
+  /** The company's due rows the engine could claim, in its claim order (oldest first): a short head of the queue. */
   dueQueue(): Promise<BatchSend[]>;
-  /** One send row by its id. */
-  loadSendById(id: string): Promise<BatchSend | null>;
+  /** The latest updated_at of any of the company's send rows (every claim, result, retry and skip sets it), or null. The database's own clock. */
+  latestChange(): Promise<string | null>;
+  /** Every send row of the company changed after `since` (updated_at later than it), without a limit on how far down the queue. */
+  changedSince(since: string | null): Promise<BatchSend[]>;
   now(): number;
 }
 
@@ -224,26 +226,24 @@ export async function runBatchChunk(deps: ChunkDeps, items: Array<{ docType: Bat
     // The engine can only be told which document for a FIRST attempt (084's claim). A held-back or retried row is claimed as the company's
     // oldest due row, so the batch runs it only when it is that row: otherwise another document (one waiting for an admin's Send now, maybe
     // outside this range) would be sent. Anything else the engine does is reported below, never silent.
-    let before: BatchSend[] = [];
     if (!only) {
-      before = await deps.dueQueue();
+      const before = await deps.dueQueue();
       if (before[0]?.id !== send?.id) {
         results.push({ docType: doc.docType, docId: doc.id, ref: doc.ref, outcome: "waiting", externalNumber: null,
           detail: "Other documents are queued ahead of it, so the batch left it queued. Use Send now to send the queue in order." });
         continue;
       }
     }
+    // Anything the run changes among the company's send rows other than this document's (an older row the engine claimed instead, a row
+    // that fell due after the queue was read, a skip) is found by the database's own change stamps and reported, wherever it was in the queue.
+    const mark = await deps.latestChange();
     const summary = await deps.run(only);
     send = await deps.loadSend(doc.docType, doc.id);
     const blocked = summary.blocked;
-    for (const queued of before.slice(1)) {
-      const after = await deps.loadSendById(queued.id);
-      if (after && (after.status !== queued.status || after.attempts !== queued.attempts)) {
-        results.push((() => {
-          const extra = resultFor({ ...doc, id: after.docId, docType: after.docType, ref: null }, after);
-          return { ...extra, detail: ["Also processed from the waiting queue, ahead of this batch's documents.", extra.detail].filter(Boolean).join(" ") };
-        })());
-      }
+    for (const other of await deps.changedSince(mark)) {
+      if (other.id === send?.id) continue;
+      const extra = resultFor({ ...doc, id: other.docId, docType: other.docType, ref: other.docRef ?? null }, other);
+      results.push({ ...extra, detail: ["Also processed from the waiting queue, ahead of this batch's documents.", extra.detail].filter(Boolean).join(" ") });
     }
     results.push(resultFor(doc, send));
     if (blocked) {
