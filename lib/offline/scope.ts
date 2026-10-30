@@ -59,10 +59,19 @@ function clearStatus() {
   refreshToken += 1;
   setStatus({ offline: false, syncedAt: null, pending: 0, pendingItems: [], pendingPhotos: [], conflicts: [], rejected: [] });
 }
+/**
+ * Publishes the queue as read, unless it is exactly what is already on show: an unchanged queue (every sync pass of an idle shell)
+ * gives the status no new arrays, so the sync indicator and banner do not re-render for nothing.
+ */
+function publishQueue(pending: OutboxEntry[], conflicts: HeldEntry[], rejected: HeldEntry[]) {
+  const same = (shown: unknown[], read: unknown[]) => shown.length === read.length && JSON.stringify(shown) === JSON.stringify(read);
+  if (status.pending === pending.length && same(status.pendingItems, pending) && same(status.conflicts, conflicts) && same(status.rejected, rejected)) return;
+  setStatus({ pending: pending.length, pendingItems: pending, pendingPhotos: pending.filter((entry) => entry.op.kind === "photo"), conflicts, rejected });
+}
 export async function refreshCounts() {
   const scope = currentScope;
   const token = ++refreshToken;
-  if (!scope) return setStatus({ pending: 0, pendingItems: [], pendingPhotos: [], conflicts: [], rejected: [] });
+  if (!scope) return publishQueue([], [], []);
   let read: [OutboxEntry[], HeldEntry[], HeldEntry[]];
   try {
     read = await Promise.all([pendingEntries(scope), conflictEntries(scope), rejectedEntries(scope)]);
@@ -74,7 +83,7 @@ export async function refreshCounts() {
   // The scope was switched, signed out or wiped, or a newer read started, while this one waited: publishing now could show
   // another company's queue (or an older picture of this one).
   if (token !== refreshToken || !sameScope(scope)) return;
-  setStatus({ pending: pending.length, pendingItems: pending, pendingPhotos: pending.filter((entry) => entry.op.kind === "photo"), conflicts, rejected });
+  publishQueue(pending, conflicts, rejected);
 }
 
 /** True while `scope` still names the scope in use: compared by key (user + company), because a refreshed scope object for the same company is not a change. */
@@ -101,7 +110,7 @@ export async function outboxState(): Promise<{ pending: number; conflicts: numbe
     }
     if (!sameScope(scope)) continue;
     const [pending, conflicts, rejected] = read;
-    if (token === refreshToken) setStatus({ pending: pending.length, pendingItems: pending, pendingPhotos: pending.filter((entry) => entry.op.kind === "photo"), conflicts, rejected });
+    if (token === refreshToken) publishQueue(pending, conflicts, rejected);
     return { pending: pending.length, conflicts: conflicts.length, rejected: rejected.length };
   }
   return null;
