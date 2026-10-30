@@ -208,7 +208,8 @@ test("Settings: the admin sees the lock card Unlocked with the everyone-is-cover
     await page.goto("/settings");
     const card = page.getByTestId("clock-in-lock-card");
     await expect(card).toBeVisible();
-    await expect(card.getByRole("heading", { name: "Clock-in network lock" })).toBeVisible();
+    // The card title is a CardTitle div (no heading role), as on every Settings card.
+    await expect(card.locator('[data-slot="card-title"]')).toHaveText("Clock-in network lock");
     await expect(card.getByTestId("clock-in-lock-state")).toHaveText("Unlocked: clock-in works from any network.");
     await expect(card).toContainText(LOCK_CARD_SENTENCE);
     await expect(card).toContainText("Can clock in off site");
@@ -278,12 +279,12 @@ test("admin presses Lock: Locked to <ip> since <date> by <admin>, one row for th
     const dialog = page.getByRole("dialog", { name: "Lock clock-in to this network?" });
     await expect(dialog).toContainText(LOCK_NET);
     await dialog.getByRole("button", { name: "Lock", exact: true }).click();
-    await expect(state).toContainText(`Locked to ${LOCK_NET} since`);
+    await expect(state).toContainText(`Locked to ${LOCK_NET} (IPv4) since`);
     const rows = await lockRows();
     expect(rows.map((r) => r.organization_id)).toEqual([company.id]); // this company only, none for alpha or beta
     expect(rows[0].network).toBe(LOCK_NET);
     expect(rows[0].locked_by).toBe(company.admin.id);
-    await expect(state).toContainText(`Locked to ${LOCK_NET} since ${fmtDateTime(rows[0].locked_at)} by ${company.adminName}.`);
+    await expect(state).toContainText(`Locked to ${LOCK_NET} (IPv4) since ${fmtDateTime(rows[0].locked_at)} by ${company.adminName}.`);
     await expect(card.getByTestId("clock-in-lock-here")).toContainText("clock-ins from here go in");
 
     // From another network the card says a clock-in would be refused (the database decides; the card mirrors it).
@@ -299,7 +300,7 @@ test("admin presses Lock: Locked to <ip> since <date> by <admin>, one row for th
     const again = page.getByRole("dialog", { name: "Re-capture the clock-in network?" });
     await expect(again).toContainText(`instead of ${LOCK_NET}`);
     await again.getByRole("button", { name: "Re-capture", exact: true }).click();
-    await expect(state).toContainText(`Locked to ${RECAPTURE_NET} since`);
+    await expect(state).toContainText(`Locked to ${RECAPTURE_NET} (IPv4) since`);
     expect((await lockRows()).map((r) => [r.organization_id, r.network])).toEqual([[company.id, RECAPTURE_NET]]);
 
     // Unlock.
