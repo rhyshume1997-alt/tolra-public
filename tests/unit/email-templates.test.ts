@@ -17,7 +17,7 @@ vi.mock("@/lib/use-user", () => ({ useUser: () => ({ activeRole: "office" }) }))
 
 import { EmailTemplateEditor, EmailTemplatesBody, editorText } from "@/components/email/email-templates-card";
 import {
-  DEFAULT_TEMPLATES, PLACEHOLDERS, SAMPLE_VARS, TEMPLATE_KEYS, fillPlaceholders, invoiceReminderVars, isTemplateKey, renderTemplate, unknownPlaceholders,
+  DEFAULT_TEMPLATES, PLACEHOLDERS, SAMPLE_VARS, TEMPLATE_KEYS, fillPlaceholders, invoiceReminderVars, isTemplateKey, renderTemplate, timesheetVars, unknownPlaceholders,
 } from "@/lib/email/templates/defaults";
 import {
   TEMPLATES_NOT_APPLIED_MESSAGE, isMissingTableError, loadTemplateOverride, loadTemplateOverrides, resetTemplateOverride, saveTemplateOverride, templateProblem,
@@ -70,6 +70,31 @@ describe("renderTemplate", () => {
     }
     expect(isTemplateKey("alert")).toBe(false);
     expect(isTemplateKey("quote")).toBe(true);
+  });
+});
+
+describe("vars builders for the automatic senders (E12/E13)", () => {
+  it("invoiceReminderVars fills every placeholder of the default reminder: no {{greeting}} reaches a customer", () => {
+    const out = renderTemplate("invoice_reminder", invoiceReminderVars({ reference: "I-9", total: "£10.00", dueDate: "01/11/2026", daysOverdue: 5, companyName: "Acme", customerName: "Cust" }));
+    expect(`${out.subject}${out.text}`).not.toMatch(/\{\{/);
+    expect(out.text.startsWith("Hello,\n")).toBe(true);
+    expect(out.text).toContain("is now 5 days overdue.\n");
+  });
+  it("timesheetVars: whose timesheet, the ISO week with its dates, the hours; every placeholder filled", () => {
+    const vars = timesheetVars({ week: 45, weekStart: "02/11/2026", weekEnd: "08/11/2026", hours: 37.456, companyName: "Acme", personName: " Jane Smith ", link: "https://app.example.com/time?week=45" });
+    expect(vars).toEqual({ week: "45 (02/11/2026 to 08/11/2026)", hours: "37.46", company_name: "Acme", person_name: "Jane Smith", link: "https://app.example.com/time?week=45" });
+    const out = renderTemplate("timesheet", vars);
+    expect(`${out.subject}${out.text}`).not.toMatch(/\{\{/);
+    expect(out.subject).toBe("Timesheet for Jane Smith, week 45 (02/11/2026 to 08/11/2026) from Acme");
+    expect(out.text.split("\n")[2]).toBe("The timesheet for Jane Smith, week 45 (02/11/2026 to 08/11/2026), is ready: 37.46 hours recorded.");
+    const bare = renderTemplate("timesheet", timesheetVars({ week: "45", hours: "40", companyName: "Acme" }));
+    expect(`${bare.subject}${bare.text}`).not.toMatch(/\{\{/);
+    expect(bare.subject).toBe("Timesheet for the team, week 45 from Acme");
+    // The Settings help text lists the person first.
+    expect(DEFAULT_TEMPLATES.timesheet.placeholders[0]).toBe("person_name");
+  });
+  it("renderTemplate answers { subject, text, html } (the shape the scheduled senders read)", () => {
+    expect(Object.keys(renderTemplate("timesheet", SAMPLE_VARS)).sort()).toEqual(["html", "subject", "text"]);
   });
 });
 

@@ -4,7 +4,7 @@ import { ActivityPanel } from "@/components/activity-panel";
 import { EmptyList } from "@/components/empty-list";
 import { deliveryNotesEmptyHint } from "@/lib/empty-hints";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { PenLine, Plus, Truck, type LucideIcon } from "lucide-react";
@@ -700,18 +700,19 @@ function EmailDraft({ note, companyName, saving, onCopy, onSent, onSendNow }: { 
   const vars = deliveryNoteEmailVars(note, companyName);
   const [subject, setSubject] = useState(() => renderTemplate("delivery_note", vars).subject);
   const [draftBody, setDraftBody] = useState(() => renderTemplate("delivery_note", vars).text);
-  const [edited, setEdited] = useState(false);
+  // A ref, not state: the template answer (which may arrive late) must see typing that happened after the effect started.
+  const edited = useRef(false);
   // The company's own text (Settings > Email templates) replaces the default once loaded, unless the person has started editing.
   useEffect(() => {
     let live = true;
     void loadTemplateOverride(supabase, "delivery_note").then((override) => {
-      if (!live || !override || edited) return;
+      if (!live || !override || edited.current) return;
       const email = renderTemplate("delivery_note", deliveryNoteEmailVars(note, companyName), override);
       setSubject(email.subject);
       setDraftBody(email.text);
     });
     return () => { live = false; };
-    // Loaded once per opened note; `edited` is read at answer time.
+    // Loaded once per opened note; `edited.current` is read when the answer arrives.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.ref, companyName]);
   const [confirming, setConfirming] = useState(false);
@@ -720,8 +721,8 @@ function EmailDraft({ note, companyName, saving, onCopy, onSent, onSendNow }: { 
   return (
     <div className="grid gap-3">
       <Input value={note.email} readOnly placeholder="No email address on file for this customer" />
-      <Input value={subject} onChange={(event) => { setEdited(true); setSubject(event.target.value); }} />
-      <Textarea className="min-h-56" value={draftBody} onChange={(event) => { setEdited(true); setDraftBody(event.target.value); }} />
+      <Input value={subject} onChange={(event) => { edited.current = true; setSubject(event.target.value); }} />
+      <Textarea className="min-h-56" value={draftBody} onChange={(event) => { edited.current = true; setDraftBody(event.target.value); }} />
       <div className="flex flex-wrap gap-2">
         <Button className="bg-brand text-brand-ink" disabled={saving} onClick={() => onSendNow(note, subject, draftBody)}>Send now</Button>
         <Button variant="outline" disabled={saving} onClick={() => void onCopy(note, subject, draftBody)}>Copy Email Body</Button>

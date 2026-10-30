@@ -75,9 +75,9 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
   timesheet: {
     label: "Weekly timesheet",
     usedFor: "The weekly timesheet e-mail to admins (scheduled).",
-    placeholders: ["week", "hours", "person_name", "company_name", "link"],
-    subject: "Timesheet for week {{week}} from {{company_name}}",
-    body: "Hello,\n\nThe timesheet for week {{week}} is ready: {{hours}} hours recorded.\n\n{{link}}\n\nKind regards,\n{{company_name}}",
+    placeholders: ["person_name", "week", "hours", "company_name", "link"],
+    subject: "Timesheet for {{person_name}}, week {{week}} from {{company_name}}",
+    body: "Hello,\n\nThe timesheet for {{person_name}}, week {{week}}, is ready: {{hours}} hours recorded.\n\n{{link}}\n\nKind regards,\n{{company_name}}",
   },
   job_to_workshop: {
     label: "Job sheet to workshop",
@@ -104,7 +104,7 @@ export const SAMPLE_VARS: Record<Placeholder, string> = {
   company_name: "Your Company Ltd",
   days_overdue: "5 days",
   person_name: "Jane Smith",
-  week: "45",
+  week: "45 (02/11/2026 to 08/11/2026)",
   hours: "37.5",
   link: "https://app.example.com/documents/Q-1042",
   greeting: "Hello Jane Smith",
@@ -179,4 +179,17 @@ export function invoiceReminderVars(input: {
     payment_note: (input.amountPaid ?? 0) > 0 && input.paidText && input.balanceText ? ` We have received ${input.paidText}, leaving ${input.balanceText} to pay.` : "",
     company_name: input.companyName,
   };
+}
+
+/**
+ * The weekly timesheet e-mail's values (scheduled timesheets, one e-mail per person). `week` is the ISO week number; with `weekStart`
+ * and `weekEnd` (already formatted, e.g. fmtDate) it reads "45 (02/11/2026 to 08/11/2026)". Hours as a number: at most two decimals.
+ * No person name gives "the team".
+ */
+export function timesheetVars(input: {
+  week: string | number; hours: number | string; companyName: string; personName?: string | null; weekStart?: string | null; weekEnd?: string | null; link?: string | null;
+}): TemplateVars {
+  const hours = typeof input.hours === "number" ? String(Math.round(input.hours * 100) / 100) : input.hours;
+  const range = input.weekStart && input.weekEnd ? ` (${input.weekStart} to ${input.weekEnd})` : "";
+  return { week: `${input.week}${range}`, hours, company_name: input.companyName, person_name: input.personName?.trim() || "the team", link: input.link?.trim() || "" };
 }
