@@ -16,6 +16,7 @@ import { accessSignal, confirmOfflineAccess, OFFLINE_ACCESS_EVENT, sessionGoneRe
 import { isNetworkError } from "@/lib/offline/store";
 import { onSyncComplete, syncNow } from "@/lib/offline/sync";
 import { resetOrgSettings } from "@/lib/org-settings";
+import { setPageCompany } from "@/lib/page-company";
 import { type SessionInfo, offlineCopyAllowed, parseSessionInfo } from "@/lib/session-info";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { UserProfile, UserRole } from "@/types";
@@ -395,6 +396,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         if (nextProfile.organization_id) {
           fullyConfirmedAt = loadStartedAt;
           const keepCopy = offlineCopyAllowed(info);
+          // S5: the company this page works in; a write after another tab switches the session away is refused (lib/page-company.ts).
+          setPageCompany(nextProfile.organization_id);
           setOfflineScope({ userId: currentUser.id, orgId: nextProfile.organization_id }, { support: !keepCopy });
           if (keepCopy) {
             const identity = { profile: nextProfile, organizations: orgError ? [] : orgData ?? [], hiddenSections: hidden };
@@ -432,6 +435,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const stored = readStoredRole();
             setActiveRoleState(stored && getAllowedRoles(cachedProfile).includes(stored) ? stored : cachedProfile.role);
             setOfflineScope({ userId: sessionUser.id, orgId: cachedProfile.organization_id });
+            setPageCompany(cachedProfile.organization_id);
             reportOffline(true, identity!.syncedAt);
             // Still open when the 12 hours pass: lock then, not only at the next load.
             confirmedAt = identity!.syncedAt ?? null;

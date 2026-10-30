@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useOrgSettings } from "@/lib/org-settings";
-import { canOpenDestination } from "@/lib/destinations";
+import { useAiFeatures } from "@/components/ai-features";
+import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
 import { passwordProblem } from "@/lib/password";
 import { awaitingApproval } from "@/lib/approval-queue";
 import { supabase } from "@/lib/supabase";
@@ -36,7 +37,14 @@ type NavItem = {
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
-  { title: "Workspace", items: [{ href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] }] },
+  {
+    title: "Workspace",
+    items: [
+      { href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] },
+      // Only while the server has the AI helper on (aiNavAvailable); office and admin.
+      { href: "/ai-helper", label: "AI", roles: ["admin", "office"] },
+    ],
+  },
   {
     title: "Sales Pipeline",
     items: [
@@ -76,6 +84,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { profile, organizations, switchOrganization, activeRole, setActiveRole, signOut, hasAnyRole, hiddenSections } = useUser();
   const orgSettings = useOrgSettings();
+  const { aiHelper } = useAiFeatures();
   const connection = connectionState(useOfflineStatus());
   const { profile: company, loading: companyLoading } = useShellCompany();
   // Until the company is known the header shows a neutral placeholder, never the product name in the company's place (lib/brand-pending).
@@ -215,7 +224,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 overflow-y-auto pb-4">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
           if (!visibleItems.length) return null;
 
           return (

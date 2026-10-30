@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ListSkeleton } from "@/components/list-skeleton";
 import { usersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
-import { Check, Copy, KeyRound, Plus, RefreshCw, Shield } from "lucide-react";
+import { Check, Copy, KeyRound, Mail, Plus, RefreshCw, Shield } from "lucide-react";
 
 import { RoleGate } from "@/components/role-gate";
 import { Badge } from "@/components/ui/badge";
@@ -510,7 +510,7 @@ export default function UsersPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="page-title">User Management</h1>
-            <p className="mt-2 text-sm text-slate-500">Add people to {company?.name ?? "your company"}, choose what they can open, and manage their passwords. No emails are sent.</p>
+            <p className="mt-2 text-sm text-slate-500">Add people to {company?.name ?? "your company"}, choose what they can open, and manage their passwords. Nothing is e-mailed unless you press Send password reset e-mail.</p>
           </div>
           <Button className="bg-brand text-brand-ink" onClick={openAdd}><Plus className="size-4" /> New user</Button>
         </div>
@@ -581,6 +581,26 @@ export default function UsersPage() {
                                 <KeyRound className="size-3.5" /> Set password
                               </Button>
                             )}
+                            {isSelf ? null : (() => {
+                              // Same gate as Set password, plus: the login must be this company's alone (a shared login resets its own password) and able to sign in.
+                              const resetReason = !user.email ? "No e-mail address on file: use Set password."
+                                : identity.reason ?? (signInChecking ? SIGN_IN_CHECKING_LABEL : signIn.get(user.id) !== "on" ? "Only available for a login that belongs to this company alone and can sign in: they can use Forgot password on the sign-in page." : null);
+                              return (
+                                <Button data-testid="send-reset-email" variant="outline" size="sm" disabled={saving || !user.active || resetReason !== null} title={resetReason ?? "E-mail them a link to choose a new password"} onClick={() => {
+                                  if (!window.confirm(`E-mail ${user.name} a link to choose a new password? Their current password keeps working until they use it.`)) return;
+                                  void run(async () => {
+                                    try {
+                                      const result = await callApi<{ sentTo?: string }>("/api/admin/users/reset-link", "POST", { userId: user.id });
+                                      toast.success(`Password reset e-mail sent to ${result.sentTo ?? "their address"}.`);
+                                    } catch (err) {
+                                      toast.error(err instanceof Error ? err.message : friendlyError(err));
+                                    }
+                                  });
+                                }}>
+                                  <Mail className="size-3.5" /> Send password reset e-mail
+                                </Button>
+                              );
+                            })()}
                             {isSelf || user.role !== "admin" ? null : (
                               <Button variant="outline" size="sm" disabled={saving || !user.active || !identity.allowed} title={identity.reason ?? undefined} onClick={() => {
                                 if (!window.confirm(`Reset two-step sign-in for ${user.name}? They will set up their authenticator app again at their next sign-in. Only do this once you are sure it is really them asking.`)) return;
@@ -627,7 +647,7 @@ export default function UsersPage() {
             onChanged={() => void load()} />
         ) : null}
         <p data-testid="sign-in-help" className="text-xs text-slate-500">{SIGN_IN_HELP}</p>
-        <p className="text-xs text-slate-500">Forgotten passwords: staff can use &quot;Forgot password?&quot; on the sign-in page, or you can set a new one here. Page access hides a page from that person; for quotes, invoices, sales orders, purchase orders, RFQs and emails their data is blocked too.</p>
+        <p className="text-xs text-slate-500">Forgotten passwords: staff can use &quot;Forgot password?&quot; on the sign-in page, you can e-mail them a reset link, or you can set a new one here. Page access hides a page from that person; for quotes, invoices, sales orders, purchase orders, RFQs and emails their data is blocked too.</p>
 
         {/* Add user */}
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
