@@ -55,14 +55,16 @@ export const roundedHours = (minutes: number) => Math.round((Math.max(0, roundMi
 
 export type PayrollWeek = { weekStart: string; people: PersonWeek[] };
 
-/** People in name order, then weeks in date order. A person's week with no time, no job time and no ticks is left out. `names` maps a user id to the name shown. */
+/** People in name order, then weeks in date order. A person's week with no entry, flag, job time or tick at all is left out; one open shift (clock-in, no clock-out) is kept, 0 paid, with its check. `names` maps a user id to the name shown. */
 export function payrollRows(weeks: PayrollWeek[], names: Record<string, string | null>, unknownName = "Unknown"): PayrollRow[] {
   const rows: PayrollRow[] = [];
   for (const { weekStart, people } of weeks) {
     for (const p of people) {
       const w = p.week;
       const tickedDays = p.dayFlags?.days.some((d) => DAY_FLAG_KEYS.some((k) => d.flags[k])) ?? false;
-      if (w.daysWorked === 0 && w.labour <= 0 && w.attendance <= 0 && !tickedDays) continue;
+      // Anyone with any entry, flag or job time that week is in the file: an open shift (clock-in, no clock-out) counts 0 paid but must still be seen, with its check.
+      const anyEntry = w.days.some((d) => d.sessions.length > 0 || d.flags.length > 0 || d.worked);
+      if (w.daysWorked === 0 && w.labour <= 0 && w.attendance <= 0 && w.flags.length === 0 && !anyEntry && !tickedDays) continue;
       const state = p.status?.state ?? "not_approved";
       const name = names[p.userId] ?? unknownName;
       const totals = p.dayFlags?.totals;

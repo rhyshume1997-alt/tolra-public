@@ -81,6 +81,17 @@ describe("payrollRows", () => {
     expect(row.ticks.sunday).toEqual({ days: 0, paidMinutes: 0 });
   });
 
+  it("keeps a person whose only entry is a clock-in with no clock-out: Paid 0, and the check names the missing clock-out", () => {
+    const open = person("u1", "2026-10-19", [ev("u1", "in", "2026-10-21 07:00")]);
+    expect(open.week.paid).toBe(0);
+    const out = payrollRows([{ weekStart: "2026-10-19", people: [open] }], NAMES);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ person: "Pat Turner", paidMinutes: 0, daysWorked: 0 });
+    expect(out[0].checks).toContain("Clock-out missing");
+    const line = toCsv(PAYROLL_COLUMNS, out).slice(1).split("\r\n")[1].split(",");
+    expect(line.slice(0, 8)).toEqual(["Pat Turner", "2026-10-19", "2026-10-25", "0", "0", "0", "0", "0:00"]);
+  });
+
   it("names an unknown person without losing the row", () => {
     expect(payrollRows([{ weekStart: "2026-10-19", people: [samWk1] }], {}, "—")[0].person).toBe("—");
   });
