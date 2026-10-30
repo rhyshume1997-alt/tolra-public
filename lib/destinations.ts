@@ -17,6 +17,7 @@ import type { UserRole } from "@/types";
 const FIXED_ROLES: Array<[string, UserRole[]]> = [
   ["/dashboard", ["admin", "office", "workshop", "viewer"]],
   ["/admin", ["admin"]],
+  ["/numbers", ["admin"]],
   ["/settings", ["admin"]],
   // The AI section (office and admin): a sidebar item only while the server has AI_HELPER_ENABLED on (see aiNavAvailable).
   ["/ai-helper", ["admin", "office"]],
