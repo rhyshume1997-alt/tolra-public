@@ -25,6 +25,9 @@ export function changedAfterTemporary(meta: PasswordMarkers): boolean {
   return Date.parse(meta.password_changed_at) > Date.parse(meta.temp_password_set_at);
 }
 
+// The same rule the "Choose your password" page uses to decide whether to show its form (it has no current-password field).
+export { LINK_SIGN_IN_MAX_AGE_S, recentLinkSignIn } from "@/lib/set-password-link";
+
 /** Runs a write up to `attempts` times; true once it succeeds. For short, idempotent writes only. */
 export async function persist(write: () => PromiseLike<{ error: unknown }>, attempts = 3): Promise<boolean> {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {

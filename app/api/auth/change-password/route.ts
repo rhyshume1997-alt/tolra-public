@@ -1,11 +1,14 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { forbiddenOrigin, jsonError, readJson, sameOrigin } from "@/lib/server/auth";
+import { isUnreachableError } from "@/lib/auth-errors";
+import { adminMfaRequired, holdsAdmin } from "@/lib/mfa-policy";
+import { forbiddenOrigin, jsonError, mfaRequired, readJson, sameOrigin } from "@/lib/server/auth";
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
-import { changedAfterTemporary, markers, persist, setMustChange } from "@/lib/server/password-setup";
+import { changedAfterTemporary, markers, persist, recentLinkSignIn, setMustChange } from "@/lib/server/password-setup";
 import { isBreachedPassword } from "@/lib/server/breached-password";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { withGatewayRetry } from "@/lib/server/resilient-fetch";
@@ -17,9 +20,13 @@ import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 // Success is only reported once the requirement is durably cleared. If the password changed but the bookkeeping
 // failed, the answer says so (partial: true) and { finish: true } completes it later without a second password
 // change; that is only allowed once the login's own markers prove the temporary password was replaced.
+//
+// Who may change it (audit Z7/C9): the current password is checked, unless an admin set a temporary one (must change password) or
+// a reset or invite link signed this session in within the hour; and an admin needs the second step (aal2) when REQUIRE_ADMIN_MFA is
+// on, except while choosing their own password in place of a temporary one (the middleware sends them here before /mfa).
 
 const schema = z.union([
-  z.object({ password: z.string().max(PASSWORD_MAX) }),
+  z.object({ password: z.string().max(PASSWORD_MAX), current_password: z.string().max(256).optional() }),
   z.object({ finish: z.literal(true) }),
 ]);
 
@@ -27,6 +34,19 @@ const PARTIAL = "Your new password is saved, but setting up your account didn't 
 
 function partial() {
   return NextResponse.json({ error: PARTIAL, partial: true }, { status: 500 });
+}
+
+/**
+ * Checks a password with a sign-in that is never stored (a separate client, as /api/auth/signin checks one); the extra session it
+ * makes is ended at once. Null when the auth service could not be asked (that says nothing about the password).
+ */
+async function passwordMatches(url: string, anonKey: string, email: string | undefined, password: string): Promise<boolean | null> {
+  if (!email || !password) return false;
+  const check = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await check.auth.signInWithPassword({ email, password });
+  if (error || !data.session) return isUnreachableError(error) ? null : false;
+  await check.auth.signOut({ scope: "local" }).catch(() => undefined);
+  return true;
 }
 
 export async function POST(request: Request) {
@@ -66,9 +86,24 @@ export async function POST(request: Request) {
     return finish();
   }
 
-  const { password } = parsed.data;
+  const { password, current_password } = parsed.data;
   const problem = passwordProblem(password);
   if (problem) return jsonError(problem, 400);
+
+  // Who is asking. Unreadable state counts against the caller: the current password is asked for, and an admin needs aal2.
+  const { data: profile, error: profileError } = await admin.from("user_profiles").select("must_change_password").eq("id", user.id).maybeSingle();
+  const mustChange = !profileError && profile?.must_change_password === true;
+  const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (adminMfaRequired() && !mustChange && assurance?.currentLevel !== "aal2") {
+    const { data: memberships, error: membershipError } = await admin.from("organization_members").select("role, secondary_role").eq("user_id", user.id).eq("active", true);
+    if (membershipError || (memberships ?? []).some((membership) => holdsAdmin(membership))) return mfaRequired();
+  }
+  if (!mustChange && !recentLinkSignIn(assurance?.currentAuthenticationMethods)) {
+    if (!current_password) return jsonError("Enter your current password.", 400);
+    const matches = await passwordMatches(supabaseUrl, supabaseAnonKey, user.email, current_password);
+    if (matches === null) return jsonError("Couldn't check your current password. Try again shortly.", 503);
+    if (!matches) return jsonError("Your current password is wrong.", 400);
+  }
   // Server side and private (k-anonymity range lookup); never blocks when the service is unavailable.
   if (await isBreachedPassword(password)) return jsonError("That password has appeared in a known data breach, so it isn't safe to use. Choose a different one.", 400);
 

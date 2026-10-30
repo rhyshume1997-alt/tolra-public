@@ -213,14 +213,21 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Browser suite
         # A manual run may name spec files (`specs`): only those run, in the same disposable stack. Empty = the whole suite.
+        # The list comes in through SPECS, never pasted into the script (audit S4): split into words on spaces, with no globbing or
+        # command substitution, and an entry that looks like an option is refused.
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.specs }}" ]; then
-            npx playwright test ${{ inputs.specs }}
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$SPECS" ]; then
+            read -r -a spec_files <<< "$SPECS"
+            for spec in "${spec_files[@]}"; do
+              case "$spec" in -*) echo "specs: list spec files only, not options" >&2; exit 1 ;; esac
+            done
+            npx playwright test "${spec_files[@]}"
           else
             npm run test:e2e
           fi
         env:
           E2E_SKIP_BUILD: "1"
+          SPECS: ${{ inputs.specs }}
       - name: Keep run evidence (backend identity, failures)
         if: always()
         uses: actions/upload-artifact@v4
