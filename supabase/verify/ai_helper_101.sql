@@ -37,8 +37,8 @@ UNION ALL SELECT 'usage_month_key_and_checks',
 UNION ALL SELECT 'guards_on_every_table',
   (SELECT count(*) = 8 FROM pg_trigger tg JOIN t ON t.oid = tg.tgrelid WHERE NOT tg.tgisinternal AND tg.tgname IN ('support_read_only', 'admin_mfa'))
   AND (SELECT count(*) = 8 FROM pg_trigger tg JOIN t ON t.oid = tg.tgrelid WHERE NOT tg.tgisinternal)
--- The six app functions: definer, pinned search_path, signed-in only. From 102, ai_helper_settle is the server's (service role) only:
--- either form passes here; supabase/verify/security_guards_102.sql checks 102's.
+-- The six app functions: definer, pinned search_path, signed-in only. From 103, ai_helper_settle is the server's (service role) only:
+-- either form passes here; supabase/verify/ai_helper_service_role_103.sql checks 103's.
 UNION ALL SELECT 'functions_definer_signed_in_only',
   (SELECT count(*) = 6 AND bool_and(prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public'] AND NOT has_function_privilege('anon', oid, 'EXECUTE')
                                     AND (has_function_privilege('authenticated', oid, 'EXECUTE')

@@ -63,7 +63,7 @@ const digest = (text: string) => createHash("sha256").update(text, "utf8").diges
  * ai_helper_requested or ai_helper_refused) -> read and decrypt the company's key -> one model call -> validate -> settle (actual cost,
  * the validated suggestion, ai_helper_suggested; or the failure, ai_helper_failed). No reservation, no model call. A suggestion whose
  * settle (and so its audit row) fails is not shown. The reservation is the person's own session (after the route's own sign-in and
- * role checks); only the key read and settle use the service role (migration 102: reserve no longer returns the key, and settle is
+ * role checks); only the key read and settle use the service role (migration 103: reserve no longer returns the key, and settle is
  * the service role's only), each for this company and this reservation alone.
  */
 export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>> {
