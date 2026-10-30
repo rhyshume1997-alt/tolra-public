@@ -14,6 +14,7 @@
 -- Rollback: supabase/release/117_email_history_drafted_by_lock.rollback.sql (drops the trigger and the function; no data changes).
 -- =====================================================================================================
 
+-- -----------------------------------------------------------------------------------------------------
 -- 1. The guard: what this file builds on exists.
 DO $$
 BEGIN
@@ -23,6 +24,7 @@ BEGIN
 END
 $$;
 
+-- -----------------------------------------------------------------------------------------------------
 -- 2. The lock.
 CREATE OR REPLACE FUNCTION public.email_history_drafted_by_lock()
 RETURNS trigger
@@ -36,11 +38,15 @@ BEGIN
   RETURN NEW;
 END
 $$;
+
+-- -----------------------------------------------------------------------------------------------------
+-- 2b. Not callable by the API roles; the trigger.
 REVOKE ALL ON FUNCTION public.email_history_drafted_by_lock() FROM PUBLIC, anon, authenticated;
 DROP TRIGGER IF EXISTS email_history_drafted_by_lock ON public.email_history;
 CREATE TRIGGER email_history_drafted_by_lock BEFORE UPDATE OF drafted_by ON public.email_history
   FOR EACH ROW EXECUTE FUNCTION public.email_history_drafted_by_lock();
 
+-- -----------------------------------------------------------------------------------------------------
 -- 3. Self-check.
 DO $$
 BEGIN
