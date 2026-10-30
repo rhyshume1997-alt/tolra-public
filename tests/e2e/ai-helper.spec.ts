@@ -1,7 +1,7 @@
 /**
  * The AI admin helper, end to end against the local stack (mock provider: no model, no network; synthetic RFQs only).
  *   - Company switch off: no AI UI (no dashboard link, no RFQ box) and the routes refuse.
- *   - An admin switches it on in Settings, sets a cap and the company's own key: only "set" and the last four come back.
+ *   - An admin switches it on in the AI section, sets a cap and the company's own key: only "set" and the last four come back.
  *   - Office: paste an RFQ -> a suggestion with "Needs human review" flags -> Approve: the server rebuilds the DRAFT quote from the
  *     stored suggestion and prices it (no engine here: £0.00, flagged); an ai_helper_approved audit row; nothing else is sent or issued.
  *     A tampered Approve body (a price, an extra line, a quote id) is refused and saves nothing.
@@ -51,16 +51,22 @@ test("switch off: no AI UI, and the routes refuse", async ({ page }) => {
   expect(await requests(w.tenants.alpha.id)).toEqual([]);
 });
 
-test("an admin turns it on in Settings with a cap and the company's own key; the key never comes back", async ({ page }) => {
+test("an admin turns it on in the AI section with a cap and the company's own key; the key never comes back", async ({ page }) => {
   await signIn(page, w.tenants.alpha.users.admin);
-  await page.goto("/settings");
+  await page.goto("/ai-helper");
   const card = page.getByTestId("ai-helper-settings");
+  const master = page.getByTestId("ai-helper-master");
   await expect(card).toContainText("No API key set");
-  await card.getByRole("checkbox", { name: /Round-up/ }).check();
-  await card.getByRole("checkbox", { name: /RFQ email to draft quote/ }).check();
+  await expect(page.getByTestId("ai-master-state")).toHaveText("AI is off");
+  // Each switch saves straight away (the box only changes once the server has answered).
+  await master.getByRole("checkbox", { name: /Round-up/ }).click();
+  await expect(master.getByRole("checkbox", { name: /Round-up/ })).toBeChecked();
+  await master.getByRole("checkbox", { name: /RFQ email to draft quote/ }).click();
+  await expect(master.getByRole("checkbox", { name: /RFQ email to draft quote/ })).toBeChecked();
+  await expect(page.getByTestId("ai-master-state")).not.toHaveText("AI is off");
   await card.getByRole("textbox", { name: "Monthly AI limit in pounds" }).fill("5");
-  await card.getByRole("button", { name: "Save AI helper settings" }).click();
-  await expect(page.getByText("AI helper settings saved")).toBeVisible();
+  await card.getByRole("button", { name: "Save monthly limit" }).click();
+  await expect(page.getByText("Monthly limit saved")).toBeVisible();
   await card.getByLabel("Anthropic API key").fill(KEY);
   await card.getByRole("button", { name: "Save key" }).click();
   await expect(card.getByTestId("ai-helper-key-state")).toHaveText("API key set (ending WXYZ)");
@@ -74,7 +80,7 @@ test("an admin turns it on in Settings with a cap and the company's own key; the
   expect(stored!.api_key_enc).toMatch(/^v1\./);
   expect(stored!.api_key_enc).not.toContain("SYNTHETIC");
   const events = await auditRows(w.tenants.alpha.id, "ai\\_helper\\_%");
-  expect(events.map((e) => e.action).sort()).toEqual(["ai_helper_key_set", "ai_helper_settings_updated"]);
+  expect([...new Set(events.map((e) => e.action))].sort()).toEqual(["ai_helper_key_set", "ai_helper_settings_updated"]);
 });
 
 test("office: RFQ email -> suggestion with Needs human review -> Approve creates a draft quote and an audit row", async ({ page }) => {
@@ -224,9 +230,8 @@ test("company beta can't see alpha's settings, key, ledger or suggestions", asyn
   await signIn(page, w.tenants.beta.users.admin);
   const status = await (await page.request.get("/api/ai-helper/status")).json();
   expect(status).toMatchObject({ roundup_enabled: false, rfq_enabled: false, key_set: false, key_last4: null, month_spent_pence: 0 });
-  await page.goto("/settings");
-  await expect(page.getByTestId("ai-helper-key-state")).toHaveText("No API key set");
   await page.goto("/ai-helper");
+  await expect(page.getByTestId("ai-helper-key-state")).toHaveText("No API key set");
   await expect(page.getByTestId("ai-helper-off")).toBeVisible();
   expect((await page.request.post("/api/ai-helper/rfq/decision", { data: { requestId: alphaRequest, decision: "rejected" } })).status()).toBe(404);
 

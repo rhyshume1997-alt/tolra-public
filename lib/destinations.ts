@@ -18,6 +18,8 @@ const FIXED_ROLES: Array<[string, UserRole[]]> = [
   ["/dashboard", ["admin", "office", "workshop", "viewer"]],
   ["/admin", ["admin"]],
   ["/settings", ["admin"]],
+  // The AI section (office and admin): a sidebar item only while the server has AI_HELPER_ENABLED on (see aiNavAvailable).
+  ["/ai-helper", ["admin", "office"]],
   // The daily job sheet and weekly hours (050 to 052): not a hideable section (no member_section_keys() entry).
   ["/time", ["admin", "office", "workshop"]],
 ];
@@ -44,4 +46,9 @@ export function canOpenDestination(target: string, access: DestinationAccess): b
   if (section && access.hiddenSections.includes(section)) return false;
   if (access.hiddenNav && href !== "/dashboard" && href !== "/settings" && access.hiddenNav.includes(href.replace(/^\//, ""))) return false;
   return true;
+}
+
+/** The AI section's menu item exists only when this server has the AI helper on (AI_HELPER_ENABLED, handed to the browser as a boolean). */
+export function aiNavAvailable(href: string, aiHelperOn: boolean): boolean {
+  return href !== "/ai-helper" || aiHelperOn;
 }
