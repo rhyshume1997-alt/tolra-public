@@ -43,6 +43,8 @@ test("admin: sent to set-up from every page, refused by the API, then in after t
   for (const path of ["/dashboard", "/settings", "/invoices", "/admin/users"]) {
     await page.goto(`${base}${path}`);
     await expect(page).toHaveURL(/\/mfa/);
+    // Let this visit's set-up finish before the next navigation cuts it short.
+    await expect(page.getByAltText("QR code for your authenticator app")).toBeVisible();
   }
   const refused = await api(page, "/api/admin/alert-test");
   expect(refused.status()).toBe(403);
