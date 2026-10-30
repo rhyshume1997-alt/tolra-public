@@ -48,6 +48,11 @@ export async function downloadPdf(
   }
 }
 
+/** The PDF of a document element as a Blob (for attaching to a one-click e-mail, components/email/send-email-button). */
+export async function pdfBlob(element: ReactElement): Promise<Blob> {
+  return pdf(element as ReactElement<DocumentProps>).toBlob();
+}
+
 /** Opens the user's email client with a draft to `to`. The PDF can't be attached from a mailto: link, so callers also download it. */
 export function openMailDraft(to: string, subject: string, body: string) {
   const href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

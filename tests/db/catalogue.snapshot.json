@@ -16,6 +16,11 @@
  },
  {
   "kind": "function",
+  "object": "public._company_email_caller(p_org uuid, p_user uuid)",
+  "detail": "invoker search_path=pg_catalog, public 0331859360b98338419133698caf9479"
+ },
+ {
+  "kind": "function",
   "object": "public._ensure_member(p_user uuid, p_email text, p_org uuid, p_role text)",
   "detail": "definer search_path=pg_catalog, public 02962ef8cd29fc7dcb8a59ae0e0468dc"
  },
@@ -98,6 +103,11 @@
   "kind": "function",
   "object": "public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)",
   "detail": "definer search_path=pg_catalog, public a8ab54c5c90053d65ef4e5137c28fef7"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_set_finance_check(p_enabled boolean)",
+  "detail": "definer search_path=pg_catalog, public 5b376e46fca600e12cc3d49ec2a5621a"
  },
  {
   "kind": "function",
@@ -291,6 +301,11 @@
  },
  {
   "kind": "function",
+  "object": "public.complete_company_email(p_org uuid, p_user uuid, p_send uuid, p_outcome text)",
+  "detail": "definer search_path=pg_catalog, public fdb59509bbd221bb2895d37f070d0bef"
+ },
+ {
+  "kind": "function",
   "object": "public.complete_job_email(p_history uuid, p_outcome text)",
   "detail": "definer search_path=pg_catalog, public 1090fc1ecf4c4efa5b895f1e627a35cc"
  },
@@ -458,6 +473,11 @@
   "kind": "function",
   "object": "public.draft_invoice_order_lines(p_invoice uuid)",
   "detail": "definer search_path=pg_catalog, public 8bbf5738e41dc4560d172f7bed8881d3"
+ },
+ {
+  "kind": "function",
+  "object": "public.email_templates_stamp()",
+  "detail": "invoker search_path=pg_catalog, public d9f3c09f2085416d3cc939bc9cae2e2f"
  },
  {
   "kind": "function",
@@ -1436,6 +1456,11 @@
  },
  {
   "kind": "function",
+  "object": "public.reserve_company_email(p_org uuid, p_user uuid, p_key text, p_to text, p_subject text, p_body text, p_related_type text, p_related_id text, p_mode text)",
+  "detail": "definer search_path=pg_catalog, public ace58de117122ee2ffafff90db5c2c53"
+ },
+ {
+  "kind": "function",
   "object": "public.reserve_job_email(p_job uuid, p_recipient text, p_subject text, p_body text, p_key text, p_mode text)",
   "detail": "definer search_path=pg_catalog, public 7f49f1a9ac83b4721649b38279c330f7"
  },
@@ -1851,6 +1876,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public._company_email_caller(p_org uuid, p_user uuid)",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
   "object": "public._ensure_member(p_user uuid, p_email text, p_org uuid, p_role text)",
   "detail": "service_role"
  },
@@ -1932,6 +1962,11 @@
  {
   "kind": "function-grant",
   "object": "public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_set_finance_check(p_enabled boolean)",
   "detail": "authenticated,service_role"
  },
  {
@@ -2126,6 +2161,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.complete_company_email(p_org uuid, p_user uuid, p_send uuid, p_outcome text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.complete_job_email(p_history uuid, p_outcome text)",
   "detail": "authenticated,service_role"
  },
@@ -2293,6 +2333,11 @@
   "kind": "function-grant",
   "object": "public.draft_invoice_order_lines(p_invoice uuid)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.email_templates_stamp()",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -3271,6 +3316,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.reserve_company_email(p_org uuid, p_user uuid, p_key text, p_to text, p_subject text, p_body text, p_related_type text, p_related_id text, p_mode text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.reserve_job_email(p_job uuid, p_recipient text, p_subject text, p_body text, p_key text, p_mode text)",
   "detail": "authenticated,service_role"
  },
@@ -3863,6 +3913,26 @@
   "kind": "policy",
   "object": "public.email_history :: email_history section access",
   "detail": "RESTRICTIVE ALL authenticated 8c916f6a468d48bf97b09296a01d2f17"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_templates :: email_templates member select",
+  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_templates :: email_templates office delete",
+  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_templates :: email_templates office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+ },
+ {
+  "kind": "policy",
+  "object": "public.email_templates :: email_templates office update",
+  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
  },
  {
   "kind": "policy",
@@ -4726,6 +4796,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.email_templates",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.import_batches",
   "detail": "enabled"
  },
@@ -5046,6 +5121,11 @@
  },
  {
   "kind": "rls",
+  "object": "security_audit.company_email_sends",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "security_audit.email_send_ledger",
   "detail": "DISABLED"
  },
@@ -5153,6 +5233,11 @@
   "kind": "table-grant",
   "object": "public.email_history :: authenticated",
   "detail": "DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.email_templates :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
  },
  {
   "kind": "table-grant",
@@ -5813,6 +5898,26 @@
   "kind": "trigger",
   "object": "public.email_history :: support_read_only",
   "detail": "O be149aa91037cab484651f6b0c9f0ce4"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_templates :: admin_mfa",
+  "detail": "O afc3f6a425e7bb05a88ecd1191787153"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_templates :: audit_email_templates_changes",
+  "detail": "O af9794028d54a2fb1ee4881dee2d6205"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_templates :: email_templates_stamp",
+  "detail": "O 77f4d2c6901690ffd49b722a08ea1eca"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.email_templates :: support_read_only",
+  "detail": "O bf2c42dee01febfa2a643dd97145aa1a"
  },
  {
   "kind": "trigger",
@@ -7296,6 +7401,16 @@
  },
  {
   "kind": "trigger",
+  "object": "security_audit.company_email_sends :: admin_mfa",
+  "detail": "O 572a0b13053d6f4003c27bf69fdba748"
+ },
+ {
+  "kind": "trigger",
+  "object": "security_audit.company_email_sends :: support_read_only",
+  "detail": "O d6d816e5ddce4374ebc29bc82d7a4359"
+ },
+ {
+  "kind": "trigger",
   "object": "security_audit.email_send_ledger :: admin_mfa",
   "detail": "O 55836e88b972d1af1ce43b57987d9e56"
  },
@@ -7368,6 +7483,11 @@
   "kind": "unique-index",
   "object": "public.document_attachments :: document_attachments_storage_path_key",
   "detail": "cf9d79a8417dbbf52df380bd17dbc2b9"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.email_templates :: email_templates_org_key",
+  "detail": "0a38feeae475a1a81d7cb44b50613d9f"
  },
  {
   "kind": "unique-index",
