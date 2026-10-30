@@ -7,7 +7,8 @@ import { PrintLogo } from "@/components/print-logo";
 import { SignatureImage } from "@/components/signature-pad";
 import { type CompanyProfile, useCompanyProfile } from "@/lib/company";
 import { CUSTOMER_SIGNOFF_STATEMENT, type PrintedSignOff, customerLine, formatSignedAt, hashPrefix, kindLabel, legacySignOffText, useCustomerSignOffSetting, usePrintedSignOffs } from "@/lib/job-signoff";
-import { type JobWorksheet, formatDateGB, signOffState } from "@/lib/job-worksheet";
+import { fmtDate } from "@/lib/dates";
+import { type JobWorksheet, signOffState } from "@/lib/job-worksheet";
 
 /**
  * The Basic print layout (P1 print pack, D30-4; lib/print-layout): a plain job sheet for any company. The same data and loaders as the
@@ -78,12 +79,12 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
       <div className="grid grid-cols-2 border border-b-0 border-black">
         <div className="border-r border-black">
           <Field label="Customer" value={ws.customer} />
-          <Field label="Date received" value={formatDateGB(ws.date_received)} />
+          <Field label="Date received" value={fmtDate(ws.date_received)} />
           <Field label="Drawing no." value={ws.drawing_no} />
         </div>
         <div>
           <Field label="Customer order no." value={ws.customer_po} />
-          <Field label="Date required" value={formatDateGB(ws.date_required)} />
+          <Field label="Date required" value={fmtDate(ws.date_required)} />
           <Field label="Quantity" value={ws.quantity_required} />
         </div>
       </div>
@@ -138,9 +139,9 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
             <span className="flex items-end gap-1.5">
               <strong className="text-[10px] uppercase">Name:</strong>
               <span className="min-w-[45mm] border-b border-black px-1" data-signoff={signOff === null ? "loading" : signOff.status === "signed" ? "signed" : legacyText ? "legacy" : "unsigned"}>
-                {signOff?.status === "signed" ? `${signOff.latest.initials} ${signOff.latest.signer_name} (signed ${formatDateGB(signOff.latest.signed_on)}, revision ${signOff.latest.worksheet_version}, sha256 ${hashPrefix(signOff.latest.snapshot_sha256)})` : null}
+                {signOff?.status === "signed" ? `${signOff.latest.initials} ${signOff.latest.signer_name} (signed ${fmtDate(signOff.latest.signed_on)}, revision ${signOff.latest.worksheet_version}, sha256 ${hashPrefix(signOff.latest.snapshot_sha256)})` : null}
                 {signOff?.status === "signed" ? signOff.cosigns.map((row) => (
-                  <span key={row.id} className="block text-[10px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)} co-signature: {row.initials} {row.signer_name} (signed {formatDateGB(row.signed_on)})</span>
+                  <span key={row.id} className="block text-[10px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)} co-signature: {row.initials} {row.signer_name} (signed {fmtDate(row.signed_on)})</span>
                 )) : null}
                 {signOff?.status === "stale" ? <strong>NOT SIGNED OFF (revision {signOff.latest.worksheet_version} was signed; edited since)</strong> : null}
                 {signOff?.status === "none" ? (legacyText ? <span className="text-[10px]">{legacyText}</span> : <strong>Not signed off</strong>) : null}
@@ -152,7 +153,7 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
                 <span key={row.id} className="inline-block align-bottom">{row.signature_kind === "drawn" ? <SignatureImage path={row.signature_data} className="h-[9mm] w-[27mm]" /> : <span className="font-serif italic">{row.signature_data}</span>}</span>
               )) : undefined}
             </Slot>
-            <Slot label="Date" width="min-w-[30mm]">{signOff?.status === "signed" ? formatDateGB(signOff.latest.signed_on) : undefined}</Slot>
+            <Slot label="Date" width="min-w-[30mm]">{signOff?.status === "signed" ? fmtDate(signOff.latest.signed_on) : undefined}</Slot>
           </div>
         </div>
       </div>
@@ -166,7 +167,7 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
                 <p><strong>{customerLine(row)}</strong></p>
                 {row.statement ? <p className="italic">&ldquo;{row.statement}&rdquo;</p> : null}
                 {row.customer_comment ? <p className="whitespace-pre-wrap">Comment: {row.customer_comment}</p> : null}
-                <p className="text-[9px]">Signed {formatSignedAt(row.device_signed_at) || formatDateGB(row.signed_on)} (phone time); received {formatSignedAt(row.created_at)}; revision {row.worksheet_version}, sha256 {hashPrefix(row.record_sha256)}</p>
+                <p className="text-[9px]">Signed {formatSignedAt(row.device_signed_at) || fmtDate(row.signed_on)} (phone time); received {formatSignedAt(row.created_at)}; revision {row.worksheet_version}, sha256 {hashPrefix(row.record_sha256)}</p>
               </div>
               <span className="shrink-0 border-b border-black px-1">{row.signature_kind === "drawn" ? <SignatureImage path={row.signature_data} className="h-[12mm] w-[40mm]" /> : <span className="font-serif text-[14px] italic">{row.signature_data}</span>}</span>
             </div>
@@ -221,7 +222,7 @@ export function BasicWorksheetPackPrint({ sheets }: { sheets: BasicPackSheet[] }
                 <td className={`${td} whitespace-pre-wrap`}>{ws.description}</td>
                 <td className={td}>{ws.drawing_no}</td>
                 <td className={td}>{ws.quantity_required}</td>
-                <td className={td}><p>{formatDateGB(ws.date_received)}</p><p>{formatDateGB(ws.date_required)}</p></td>
+                <td className={td}><p>{fmtDate(ws.date_received)}</p><p>{fmtDate(ws.date_required)}</p></td>
                 <td className={td} data-signoff={signOffs === null ? "loading" : signOffs.get(ws.job_no)?.status === "signed" ? "signed" : legacy ? "legacy" : "unsigned"}><PackSignOff state={state} legacy={legacy} /></td>
               </tr>
             );
@@ -254,10 +255,10 @@ function packLegacyText(ws: JobWorksheet, signOffs: Map<string, PrintedSignOff> 
 /** The current revision's sign-off, worded as on the JNR pack; anything else prints as not signed off. */
 function PackSignOff({ state, legacy }: { state: PrintedSignOff | null; legacy: string | null }) {
   if (state === null) return null;
-  const customer = state.customer?.length ? <p className="text-[8.5px]" data-customer-signoff-print="signed">Customer: {state.customer.map((row) => `${customerLine(row)}, ${formatDateGB(row.signed_on)}`).join("; ")}</p> : null;
+  const customer = state.customer?.length ? <p className="text-[8.5px]" data-customer-signoff-print="signed">Customer: {state.customer.map((row) => `${customerLine(row)}, ${fmtDate(row.signed_on)}`).join("; ")}</p> : null;
   let internal: ReactNode;
   if (legacy) internal = <span className="text-[8.5px]">{legacy}</span>;
-  else if (state.status === "signed") internal = <>{state.latest.initials} {state.latest.signer_name}<p className="text-[8.5px]">Signed {formatDateGB(state.latest.signed_on)} (rev {state.latest.worksheet_version}, sha256 {hashPrefix(state.latest.snapshot_sha256)})</p>{state.cosigns.map((row) => <p key={row.id} className="text-[8.5px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)}: {row.initials} {row.signer_name}, {formatDateGB(row.signed_on)}</p>)}</>;
+  else if (state.status === "signed") internal = <>{state.latest.initials} {state.latest.signer_name}<p className="text-[8.5px]">Signed {fmtDate(state.latest.signed_on)} (rev {state.latest.worksheet_version}, sha256 {hashPrefix(state.latest.snapshot_sha256)})</p>{state.cosigns.map((row) => <p key={row.id} className="text-[8.5px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)}: {row.initials} {row.signer_name}, {fmtDate(row.signed_on)}</p>)}</>;
   else if (state.status === "stale") internal = <strong>NOT SIGNED OFF<span className="block text-[8.5px] font-normal">(revision {state.latest.worksheet_version} was signed; edited since)</span></strong>;
   else internal = <strong>NOT SIGNED OFF</strong>;
   return <>{internal}{customer}</>;
