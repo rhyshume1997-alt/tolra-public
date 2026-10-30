@@ -29,11 +29,15 @@ UNION ALL SELECT 'guards_on_table',
 UNION ALL SELECT 'functions_definer_signed_in_only',
   (SELECT count(*) = 3 AND bool_and(prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
                                     AND has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')) FROM f)
--- The audit helper: callable by no signed-in user.
-UNION ALL SELECT 'audit_helper_closed',
-  to_regprocedure('public._reopen_audit(uuid,text,uuid,jsonb)') IS NOT NULL
+-- The internal helpers (audit, and the signed-off reopen that may pass an issued invoice): callable by no signed-in user.
+UNION ALL SELECT 'internal_helpers_closed',
+  to_regprocedure('public._reopen_audit(uuid,text,uuid,jsonb)') IS NOT NULL AND to_regprocedure('public._reopen_job_signed_off(uuid,text)') IS NOT NULL
   AND NOT has_function_privilege('authenticated', 'public._reopen_audit(uuid,text,uuid,jsonb)', 'EXECUTE')
--- Every reopen goes through 081's reopen_job, which 113 does not replace (081's body).
+  AND NOT has_function_privilege('authenticated', 'public._reopen_job_signed_off(uuid,text)', 'EXECUTE')
+-- Every reopen goes through 081's reopen_job, which 113 does not replace (081's body); only its invoice_issued refusal is passed, by
+-- the signed-off helper.
 UNION ALL SELECT 'reopen_job_still_081',
   coalesce((SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) = '2fca7e7164a55f9f9e0744f8a0c6b50e' FROM pg_proc WHERE oid = to_regprocedure('public.reopen_job(uuid,text)')), FALSE)
-  AND coalesce((SELECT position('public.reopen_job(p_record_id, v_reason)' IN prosrc) > 0 FROM pg_proc WHERE oid = to_regprocedure('public.reopen_record(text,uuid,text,text)')), FALSE);
+  AND coalesce((SELECT position('public._reopen_job_signed_off(p_record_id, v_reason)' IN prosrc) > 0 FROM pg_proc WHERE oid = to_regprocedure('public.reopen_record(text,uuid,text,text)')), FALSE)
+  AND coalesce((SELECT position('RETURN public.reopen_job(p_job, p_reason)' IN prosrc) > 0 AND position('''invoice_issued''' IN prosrc) > 0
+                FROM pg_proc WHERE oid = to_regprocedure('public._reopen_job_signed_off(uuid,text)')), FALSE);

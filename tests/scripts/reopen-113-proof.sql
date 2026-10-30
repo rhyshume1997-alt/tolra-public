@@ -28,7 +28,7 @@ INSERT INTO public.organization_members (user_id, organization_id, role) VALUES
   ('11300000-0000-0000-0000-00000000a005', '11300000-0000-0000-0000-0000000000a0', 'workshop'),
   ('11300000-0000-0000-0000-00000000b001', '11300000-0000-0000-0000-0000000000b0', 'admin')
 ON CONFLICT DO NOTHING;
--- Finished jobs (finished by w1 unless said): J1 tick box, J2 admin-present by w1 (waits), J3 admin reopens, J4 invoiced, J5 finished by
+-- Finished jobs (finished by w1 unless said): J1 tick box, J2 admin-present by w1 (waits), J3 admin reopens, J4/J7/J8 invoiced, J5 finished by
 -- w2, J6 gone out on a delivery note, JB company B's.
 INSERT INTO public.jobs (id, organization_id, job_no, finished_at, finished_by, customer) VALUES
   ('11300000-0000-0000-0000-000000000001', '11300000-0000-0000-0000-0000000000a0', 'J-1131', now() - interval '1 hour', '11300000-0000-0000-0000-00000000a004', 'Customer'),
@@ -37,13 +37,24 @@ INSERT INTO public.jobs (id, organization_id, job_no, finished_at, finished_by, 
   ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-0000000000a0', 'J-1134', now() - interval '1 hour', '11300000-0000-0000-0000-00000000a004', 'Customer'),
   ('11300000-0000-0000-0000-000000000005', '11300000-0000-0000-0000-0000000000a0', 'J-1135', now() - interval '1 hour', '11300000-0000-0000-0000-00000000a005', 'Customer'),
   ('11300000-0000-0000-0000-000000000006', '11300000-0000-0000-0000-0000000000a0', 'J-1136', now() - interval '1 hour', '11300000-0000-0000-0000-00000000a004', 'Customer'),
+  ('11300000-0000-0000-0000-000000000007', '11300000-0000-0000-0000-0000000000a0', 'J-1137', now() - interval '1 hour', '11300000-0000-0000-0000-00000000a004', 'Customer'),
+  ('11300000-0000-0000-0000-000000000008', '11300000-0000-0000-0000-0000000000a0', 'J-1138', now() - interval '1 hour', '11300000-0000-0000-0000-00000000a004', 'Customer'),
   ('11300000-0000-0000-0000-00000000000b', '11300000-0000-0000-0000-0000000000b0', 'J-113B', now() - interval '1 hour', '11300000-0000-0000-0000-00000000b001', 'Customer');
--- J4 is invoiced (an issued invoice), J6 has gone out (a despatched delivery note): reopen_job (081) refuses both.
+-- J4, J5, J6, J7 and J8 have an issued invoice; J6 has also gone out (a despatched delivery note). Plain reopen_job (081) refuses all of
+-- them; the sign-off (113) may reopen an invoiced job past its invoice, never one gone out, never someone else's finish.
 INSERT INTO public.invoices (id, organization_id, customer, job_id, invoice_ref, status) VALUES
-  ('11300000-0000-0000-0000-0000000000f4', '11300000-0000-0000-0000-0000000000a0', 'Customer', '11300000-0000-0000-0000-000000000004', 'INV-1134', 'issued');
+  ('11300000-0000-0000-0000-0000000000f4', '11300000-0000-0000-0000-0000000000a0', 'Customer', '11300000-0000-0000-0000-000000000004', 'INV-1134', 'issued'),
+  ('11300000-0000-0000-0000-0000000000f5', '11300000-0000-0000-0000-0000000000a0', 'Customer', '11300000-0000-0000-0000-000000000005', 'INV-1135', 'issued'),
+  ('11300000-0000-0000-0000-0000000000f6', '11300000-0000-0000-0000-0000000000a0', 'Customer', '11300000-0000-0000-0000-000000000006', 'INV-1136', 'issued'),
+  ('11300000-0000-0000-0000-0000000000f7', '11300000-0000-0000-0000-0000000000a0', 'Customer', '11300000-0000-0000-0000-000000000007', 'INV-1137', 'issued'),
+  ('11300000-0000-0000-0000-0000000000f8', '11300000-0000-0000-0000-0000000000a0', 'Customer', '11300000-0000-0000-0000-000000000008', 'INV-1138', 'issued');
 INSERT INTO public.delivery_notes (organization_id, dn_number, status, job_id) VALUES
   ('11300000-0000-0000-0000-0000000000a0', 'DN-1136', 'despatched', '11300000-0000-0000-0000-000000000006');
-CREATE TEMP TABLE proof_invoice_before AS SELECT md5(row_to_json(i)::TEXT) AS h FROM public.invoices i WHERE i.id = '11300000-0000-0000-0000-0000000000f4';
+-- Every invoice row of company A, byte for byte (the whole row as JSON), before anything is reopened.
+CREATE TEMP TABLE proof_invoice_before AS SELECT md5(string_agg(row_to_json(i)::TEXT, '|' ORDER BY i.id)) AS h FROM public.invoices i WHERE i.organization_id = '11300000-0000-0000-0000-0000000000a0';
+CREATE FUNCTION pg_temp.invoices_unchanged() RETURNS BOOLEAN LANGUAGE sql AS $$
+  SELECT md5(string_agg(row_to_json(i)::TEXT, '|' ORDER BY i.id)) = (SELECT h FROM proof_invoice_before) FROM public.invoices i WHERE i.organization_id = '11300000-0000-0000-0000-0000000000a0';
+$$;
 GRANT SELECT ON proof_invoice_before TO authenticated;
 
 -- Sign in as a person of the given company (aal2, so an admin passes the second step).
@@ -95,28 +106,33 @@ DO $$ BEGIN
   RAISE NOTICE 'PASS tick box: job reopened, request row, 081 flow event and audit event in one transaction';
 END $$;
 
--- 2. Rules of 081 still hold, for every mode: w1 can't reopen w2's finish, an invoiced job or a job gone out; nothing is left behind.
+-- 2. Rules of 081 still hold, for every mode: w1 can't reopen w2's finish (invoiced too) or a job gone out (invoiced too); plain
+--    reopen_job (no sign-off) still refuses an invoiced job, for the workshop and for an admin; nothing is left behind.
 SELECT pg_temp.sign_in('11300000-0000-0000-0000-00000000a004');
-SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000005', 'Finished by mistake, still machining', 'tick_box_notify')$$, 'w1 reopening w2''s finish (tick box)', '%finished by someone else%');
-SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000005', 'Finished by mistake, still machining', 'admin_present')$$, 'w1 reopening w2''s finish (admin present)', '%finished by someone else%');
-SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000004', 'Finished by mistake, still machining', 'tick_box_notify')$$, 'invoiced job (tick box)', '%has been invoiced (INV-1134)%');
-SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000006', 'Finished by mistake, still machining', 'admin_present')$$, 'job gone out (admin present)', '%has gone out (DN-1136)%');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000005', 'Finished by mistake, still machining', 'tick_box_notify')$$, 'w1 reopening w2''s invoiced finish (tick box)', '%finished by someone else%');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000005', 'Finished by mistake, still machining', 'admin_present')$$, 'w1 reopening w2''s invoiced finish (admin present)', '%finished by someone else%');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000006', 'Finished by mistake, still machining', 'tick_box_notify')$$, 'invoiced job gone out (tick box)', '%has gone out (DN-1136)%');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000006', 'Finished by mistake, still machining', 'admin_present')$$, 'invoiced job gone out (admin present)', '%has gone out (DN-1136)%');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_job('11300000-0000-0000-0000-000000000004', 'Finished by mistake, still machining')$$, 'invoiced job without the sign-off (plain reopen_job, workshop)', '%has been invoiced (INV-1134)%');
 DO $$ DECLARE p JSONB; BEGIN
-  p := public.reopen_preview('job', '11300000-0000-0000-0000-000000000004');
-  IF (p ->> 'allowed')::BOOLEAN OR p -> 'issued_invoices' <> '["INV-1134"]'::JSONB OR p ->> 'refusal' NOT LIKE '%invoiced%' THEN RAISE EXCEPTION 'FAIL preview J4 %', p; END IF;
-  RAISE NOTICE 'PASS preview names the issued invoice and the refusal: %', p ->> 'refusal';
+  p := public.reopen_preview('job', '11300000-0000-0000-0000-000000000006');
+  IF (p ->> 'allowed')::BOOLEAN OR p ->> 'refusal_hint' <> 'already_despatched' THEN RAISE EXCEPTION 'FAIL preview J6 %', p; END IF;
+  RAISE NOTICE 'PASS preview of a job gone out: refused (%)', p ->> 'refusal';
 END $$;
+SELECT pg_temp.sign_in('11300000-0000-0000-0000-00000000a001');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_job('11300000-0000-0000-0000-000000000004', 'Finished by mistake, still machining')$$, 'invoiced job without the sign-off (plain reopen_job, admin)', '%has been invoiced (INV-1134)%');
+SELECT pg_temp.expect_refused($$SELECT public.reopen_record('job', '11300000-0000-0000-0000-000000000006', 'Finished by mistake, still machining', 'admin_present')$$, 'admin reopening an invoiced job gone out', '%has gone out (DN-1136)%');
+SELECT pg_temp.expect_refused($$SELECT public._reopen_job_signed_off('11300000-0000-0000-0000-000000000004', 'Finished by mistake, still machining')$$, 'the internal signed-off reopen called directly', '%permission denied%');
 RESET ROLE;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM public.reopen_requests WHERE record_id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000005', '11300000-0000-0000-0000-000000000006')) THEN
     RAISE EXCEPTION 'FAIL a refused reopen left a request row'; END IF;
   IF (SELECT count(*) FROM public.jobs WHERE id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000005', '11300000-0000-0000-0000-000000000006') AND finished_at IS NOT NULL) <> 3 THEN
     RAISE EXCEPTION 'FAIL a refused job was reopened'; END IF;
-  IF (SELECT md5(row_to_json(i)::TEXT) FROM public.invoices i WHERE i.id = '11300000-0000-0000-0000-0000000000f4') <> (SELECT h FROM proof_invoice_before) THEN
-    RAISE EXCEPTION 'FAIL the issued invoice changed'; END IF;
+  IF NOT pg_temp.invoices_unchanged() THEN RAISE EXCEPTION 'FAIL an invoice changed'; END IF;
   IF EXISTS (SELECT 1 FROM public.job_flow_events WHERE job_id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000005', '11300000-0000-0000-0000-000000000006')
              AND kind = 'reopen') THEN RAISE EXCEPTION 'FAIL a refused attempt or a preview left a reopen event'; END IF;
-  RAISE NOTICE 'PASS refusals and previews leave no row, no reopen event, no reopen, and the issued invoice byte for byte as it was';
+  RAISE NOTICE 'PASS refusals and previews leave no row, no reopen event, no reopen, and every invoice byte for byte as it was';
 END $$;
 
 -- 3. Admin present, caller not an admin: w1 asks on J2. Nothing is reopened until an admin approves with their own session.
@@ -199,7 +215,46 @@ DO $$ BEGIN
   RAISE NOTICE 'PASS rows, decisions and 5 audit events (no reason text) as expected';
 END $$;
 
--- 7. The requester can never approve their own request (an admin who asked as office earlier, say): w1 made admin, then decides own.
+-- 7. Reopen after the invoice is issued, through the sign-off only: the job is reopened, every invoice row is unchanged, the request
+--    keeps the invoice number and the audit event names it. (Rhys D30-5, orchestrator decision 30 Oct.)
+SELECT pg_temp.sign_in('11300000-0000-0000-0000-00000000a004');
+DO $$ DECLARE p JSONB; r JSONB; BEGIN
+  p := public.reopen_preview('job', '11300000-0000-0000-0000-000000000004');
+  IF NOT (p ->> 'allowed')::BOOLEAN OR p -> 'issued_invoices' <> '["INV-1134"]'::JSONB OR NOT (p ->> 'past_issued_invoice')::BOOLEAN THEN RAISE EXCEPTION 'FAIL preview J4 %', p; END IF;
+  RAISE NOTICE 'PASS preview of an invoiced job: allowed on the sign-off path, names INV-1134';
+  r := public.reopen_record('job', '11300000-0000-0000-0000-000000000004', 'Customer reported a burr, needs rework', 'tick_box_notify');
+  IF r ->> 'status' <> 'pending' OR NOT (r ->> 'reopened')::BOOLEAN OR r -> 'issued_invoices' <> '["INV-1134"]'::JSONB THEN RAISE EXCEPTION 'FAIL tick box past invoice %', r; END IF;
+  RAISE NOTICE 'PASS tick box past an issued invoice: reopened now, pending for the admin';
+  r := public.reopen_record('job', '11300000-0000-0000-0000-000000000007', 'Customer reported a burr, needs rework', 'admin_present');
+  IF r ->> 'status' <> 'pending' OR (r ->> 'reopened')::BOOLEAN THEN RAISE EXCEPTION 'FAIL admin present (non-admin) past invoice %', r; END IF;
+  RAISE NOTICE 'PASS admin present by a non-admin on an invoiced job: waiting, not reopened';
+END $$;
+SELECT pg_temp.sign_in('11300000-0000-0000-0000-00000000a001');
+DO $$ DECLARE r JSONB; BEGIN
+  r := public.decide_reopen_request((SELECT id FROM public.reopen_requests WHERE record_id = '11300000-0000-0000-0000-000000000007'), 'approve', NULL);
+  IF r ->> 'status' <> 'approved' OR NOT (r ->> 'reopened_now')::BOOLEAN THEN RAISE EXCEPTION 'FAIL admin approval past invoice %', r; END IF;
+  RAISE NOTICE 'PASS admin approved J7 with their own session: reopened past INV-1137';
+  r := public.reopen_record('job', '11300000-0000-0000-0000-000000000008', 'Customer reported a burr, needs rework', 'admin_present');
+  IF r ->> 'status' <> 'approved' OR NOT (r ->> 'reopened')::BOOLEAN THEN RAISE EXCEPTION 'FAIL admin reopen past invoice %', r; END IF;
+  RAISE NOTICE 'PASS an admin reopening an invoiced job: approved at once';
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM public.jobs WHERE id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000007', '11300000-0000-0000-0000-000000000008') AND finished_at IS NULL AND finished_by IS NULL) <> 3 THEN
+    RAISE EXCEPTION 'FAIL an invoiced job was not reopened'; END IF;
+  IF (SELECT count(*) FROM public.job_flow_events WHERE job_id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000007', '11300000-0000-0000-0000-000000000008') AND kind = 'reopen' AND reason = 'Customer reported a burr, needs rework') <> 3 THEN
+    RAISE EXCEPTION 'FAIL the job flow reopen events (081) past the invoice'; END IF;
+  IF NOT pg_temp.invoices_unchanged() THEN RAISE EXCEPTION 'FAIL an invoice changed on a reopen past it'; END IF;
+  IF (SELECT count(*) FROM public.invoices WHERE organization_id = '11300000-0000-0000-0000-0000000000a0') <> 5 THEN RAISE EXCEPTION 'FAIL an invoice was added or removed'; END IF;
+  IF (SELECT string_agg(r.record_ref || '=' || array_to_string(r.issued_invoices, ','), ' ' ORDER BY r.record_ref) FROM public.reopen_requests r WHERE r.record_id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000007', '11300000-0000-0000-0000-000000000008'))
+     <> 'J-1134=INV-1134 J-1137=INV-1137 J-1138=INV-1138' THEN RAISE EXCEPTION 'FAIL the request rows don''t carry the invoice numbers'; END IF;
+  IF (SELECT count(*) FROM security_audit.audit_log a JOIN public.reopen_requests r ON r.id::TEXT = a.entity_id
+      WHERE r.record_id IN ('11300000-0000-0000-0000-000000000004', '11300000-0000-0000-0000-000000000007', '11300000-0000-0000-0000-000000000008') AND a.entity_table = 'reopen_requests' AND a.metadata -> 'issued_invoices' = to_jsonb(r.issued_invoices)) <> 4 THEN
+    RAISE EXCEPTION 'FAIL the audit events past the invoice (want J4 requested, J7 requested + approved, J8 approved)'; END IF;
+  RAISE NOTICE 'PASS reopened past the issued invoice via the sign-off: jobs reopened, 081 flow events, every invoice row unchanged, invoice numbers on the requests and in 4 audit events';
+END $$;
+
+-- 8. The requester can never approve their own request (an admin who asked as office earlier, say): w1 made admin, then decides own.
 UPDATE public.organization_members SET role = 'admin' WHERE user_id = '11300000-0000-0000-0000-00000000a004';
 INSERT INTO public.reopen_requests (organization_id, record_type, record_id, record_ref, requested_by, reason, approval_mode, notified_at, status)
   VALUES ('11300000-0000-0000-0000-0000000000a0', 'job', '11300000-0000-0000-0000-000000000005', 'J-1135', '11300000-0000-0000-0000-00000000a004', 'Asked before promotion', 'admin_present', now(), 'pending');

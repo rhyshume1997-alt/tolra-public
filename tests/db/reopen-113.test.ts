@@ -8,8 +8,11 @@
  *   - An admin is here: an admin's own reopen is approved at once. A non-admin's waits (nothing reopened) until an admin approves it
  *     with their own session; workshop and office can't approve; nobody approves their own request; a decision is made once.
  *   - A rejection after the fact records the decision and does NOT undo the reopen.
- *   - 081's rules hold in every mode: someone else's finish, an invoiced job (the issued invoice unchanged) or a job gone out are refused
- *     and leave no request row. A support session can't reopen.
+ *   - 081's rules hold in every mode: someone else's finish or a job gone out are refused and leave no request row; plain reopen_job
+ *     still refuses an invoiced job. A support session can't reopen.
+ *   - Reopen after the invoice is issued (orchestrator 30 Oct, from D30-5): possible through the sign-off only (tick box, an admin's own
+ *     approval, an admin); the job is reopened, every invoice row is byte for byte unchanged, the request and its audit events carry
+ *     the invoice number.
  *   - Two companies: neither can read, preview, reopen or decide the other's; no direct INSERT or UPDATE for anyone signed in.
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), as the 101 suite does. The same checks, as one psql script
@@ -100,6 +103,8 @@ const decide = (p: Person, request: unknown, decision: string, note: string | nu
 
 const sql = <T extends Record<string, unknown>>(text: string, params: unknown[] = []) => withDb(async (db) => (await db.query<T>(text, params)).rows);
 const job = async (id: string) => (await sql<{ finished_at: string | null }>("select finished_at from public.jobs where id = $1", [id]))[0];
+/** Every invoice row of company A, byte for byte. */
+const invoicesHash = async () => (await sql<{ h: string }>("select md5(string_agg(row_to_json(i)::text, '|' order by i.id)) as h from public.invoices i where organization_id = $1", [orgA]))[0].h;
 const requests = (id: string) => sql<Record<string, unknown>>("select * from public.reopen_requests where record_id = $1 order by requested_at", [id]);
 
 const A = { admin: person("a-admin"), admin2: person("a-admin2"), office: person("a-office"), w1: person("a-w1"), w2: person("a-w2"), support: person("a-support") };
@@ -128,12 +133,15 @@ beforeAll(async () => {
     await member(db, orgA, A.w2, "workshop");
     await supportMember(db, orgA, A.support);
     await member(db, orgB, B.admin, "admin");
-    for (const key of ["tick", "wait", "admin", "invoiced", "other", "out", "support"]) await finishedJob(db, orgA, key, key === "other" ? A.w2 : A.w1);
+    for (const key of ["tick", "wait", "admin", "invoiced", "invoiced2", "invoiced3", "other", "out", "support"]) await finishedJob(db, orgA, key, key === "other" ? A.w2 : A.w1);
     await finishedJob(db, orgB, "beta", B.admin);
-    await db.query("insert into public.invoices (organization_id, customer, job_id, invoice_ref, status) values ($1, 'Customer 113', $2, $3, 'issued')",
-      [orgA, jobs.invoiced, `INV-113-${run}`]);
+    // Issued invoices on the three invoiced jobs, and on the job finished by someone else and the job gone out (which stay refused).
+    for (const key of ["invoiced", "invoiced2", "invoiced3", "other", "out"]) {
+      await db.query("insert into public.invoices (organization_id, customer, job_id, invoice_ref, status) values ($1, 'Customer 113', $2, $3, 'issued')",
+        [orgA, jobs[key], `INV-113${key}-${run}`]);
+    }
     await db.query("insert into public.delivery_notes (organization_id, dn_number, status, job_id) values ($1, $2, 'despatched', $3)", [orgA, `DN-113-${run}`, jobs.out]);
-    invoiceBefore = (await db.query<{ h: string }>("select md5(row_to_json(i)::text) as h from public.invoices i where job_id = $1", [jobs.invoiced])).rows[0].h;
+    invoiceBefore = await invoicesHash();
   });
 });
 
@@ -220,19 +228,45 @@ describe("113: an admin is here", () => {
 });
 
 describe("113: 081's reopen rules hold in every mode", () => {
-  it("refuses someone else's finish, an invoiced job and a job gone out, leaving no row and the issued invoice unchanged", async () => {
+  it("refuses someone else's finish and a job gone out (both invoiced too), and an invoiced job without the sign-off; no row, no invoice change", async () => {
     for (const mode of ["tick_box_notify", "admin_present"]) {
       expect(await reopen(A.w1, jobs.other, mode)).toMatchObject({ ok: false, code: "42501", hint: "reopen_not_allowed" });
-      expect(await reopen(A.w1, jobs.invoiced, mode)).toMatchObject({ ok: false, code: "22023", hint: "invoice_issued" });
       expect(await reopen(A.w1, jobs.out, mode)).toMatchObject({ ok: false, code: "22023", hint: "already_despatched" });
     }
-    expect(await preview(A.w1, jobs.invoiced)).toMatchObject({ ok: true, value: { allowed: false, issued_invoices: [`INV-113-${run}`], refusal_hint: "invoice_issued" } });
+    expect(await reopen(A.admin, jobs.out, "admin_present")).toMatchObject({ ok: false, code: "22023", hint: "already_despatched" });
+    // Plain reopen_job (081) has no sign-off: still refused, for the workshop and for an admin.
+    for (const who of [A.w1, A.admin]) {
+      expect(await call(who, "public.reopen_job($1, 'Finished by mistake, still machining')", [jobs.invoiced])).toMatchObject({ ok: false, code: "22023", hint: "invoice_issued" });
+    }
+    expect(await call(A.admin, "public._reopen_job_signed_off($1, 'Finished by mistake, still machining')", [jobs.invoiced])).toMatchObject({ ok: false, code: "42501" });
+    expect(await preview(A.w1, jobs.out)).toMatchObject({ ok: true, value: { allowed: false, refusal_hint: "already_despatched" } });
     for (const key of ["other", "invoiced", "out"]) {
       expect(await requests(jobs[key])).toEqual([]);
       expect((await job(jobs[key])).finished_at).not.toBeNull();
       expect(await sql("select 1 from public.job_flow_events where job_id = $1 and kind = 'reopen'", [jobs[key]])).toEqual([]);
     }
-    expect((await sql<{ h: string }>("select md5(row_to_json(i)::text) as h from public.invoices i where job_id = $1", [jobs.invoiced]))[0].h).toBe(invoiceBefore);
+    expect(await invoicesHash()).toBe(invoiceBefore);
+  });
+
+  it("reopens an invoiced job through the sign-off only: tick box, an admin's approval, an admin; every invoice row unchanged", async () => {
+    expect(await preview(A.w1, jobs.invoiced)).toMatchObject({ ok: true, value: { allowed: true, past_issued_invoice: true, issued_invoices: [`INV-113invoiced-${run}`] } });
+    expect(await reopen(A.w1, jobs.invoiced, "tick_box_notify", "Customer reported a burr, needs rework"))
+      .toMatchObject({ ok: true, value: { status: "pending", reopened: true, issued_invoices: [`INV-113invoiced-${run}`] } });
+    const waiting = await reopen(A.w1, jobs.invoiced2, "admin_present", "Customer reported a burr, needs rework");
+    expect(waiting).toMatchObject({ ok: true, value: { status: "pending", reopened: false } });
+    expect((await job(jobs.invoiced2)).finished_at).not.toBeNull();
+    expect(await decide(A.admin, (waiting as unknown as { value: { request_id: string } }).value.request_id, "approve")).toMatchObject({ ok: true, value: { status: "approved", reopened_now: true } });
+    expect(await reopen(A.admin, jobs.invoiced3, "admin_present", "Customer reported a burr, needs rework")).toMatchObject({ ok: true, value: { status: "approved", reopened: true } });
+    for (const key of ["invoiced", "invoiced2", "invoiced3"]) {
+      expect((await job(jobs[key])).finished_at).toBeNull();
+      expect(await sql("select 1 from public.job_flow_events where job_id = $1 and kind = 'reopen' and reason = 'Customer reported a burr, needs rework'", [jobs[key]])).toHaveLength(1);
+      const [row] = await requests(jobs[key]);
+      expect(row.issued_invoices).toEqual([`INV-113${key}-${run}`]);
+      const events = await sql<{ metadata: Record<string, unknown> }>("select metadata from security_audit.audit_log where organization_id = $1 and entity_id = $2 and entity_table = 'reopen_requests'", [orgA, row.id]);
+      expect(events.length).toBeGreaterThan(0);
+      for (const event of events) expect(event.metadata.issued_invoices).toEqual([`INV-113${key}-${run}`]);
+    }
+    expect(await invoicesHash()).toBe(invoiceBefore);
   });
 
   it("a support session can't reopen", async () => {

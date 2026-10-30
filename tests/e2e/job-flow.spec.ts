@@ -2,13 +2,14 @@
  * The job flow in the browser (migration 081): the workshop finishes a job made from a sales order (since 099 Finish drafts only what has
  * been despatched, so nothing here; the job's draft is then made by hand, no number),
  * reopens its own Finish with a reason (113: confirmed, with the "No admin available" tick box), finishes it again, and is told it can't inspect its own work; the office inspects it with the
- * acceptance criteria and the measured result, and it is Complete; the draft then reads "Ready to issue". Fixed far dates only.
+ * acceptance criteria and the measured result, and it is Complete; the draft then reads "Ready to issue". Then (113) the office issues it
+ * and reopens the job through the sign-off: the confirmation names the issued invoice, which stays exactly as it was. Fixed far dates only.
  */
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 
-import { adminClient } from "../support/fixtures";
+import { adminClient, signedInClient } from "../support/fixtures";
 import { confirmFinish, signIn, world } from "./helpers";
 
 const w = world();
@@ -101,4 +102,28 @@ test("finish, reopen with a reason, finish again; the finisher can't inspect; th
   await office.goto("/invoices");
   await expect(office.getByRole("row").filter({ hasText: customer }).getByTestId("draft-job-stage")).toHaveText("Ready to issue");
   expect((await service.from("invoices").select("id").eq("job_id", job!.id)).data).toHaveLength(1);
+
+  // 6. Reopen after the invoice is issued (113; orchestrator 30 Oct, from D30-5): the office issues the draft, then reopens the Complete
+  // job through the sign-off. The confirmation names the issued invoice, no admin is about so the tick box reopens it now, and the
+  // issued invoice and its lines are exactly as they were.
+  const officeApi = await signedInClient(w.tenants.alpha.users.office);
+  const { data: invoiceRef, error: issueError } = await officeApi.rpc("issue_invoice", { p_invoice: draft!.id });
+  expect(issueError).toBeNull();
+  const invoiceBefore = (await service.from("invoices").select("*").eq("id", draft!.id).single()).data;
+  const linesBefore = (await service.from("invoice_line_items").select("*").eq("invoice_id", draft!.id).order("position")).data;
+  expect(invoiceBefore?.invoice_ref).toBe(invoiceRef);
+  await office.goto("/jobs");
+  await office.getByRole("button", { name: /^Complete \(/ }).click();
+  await office.getByRole("row").filter({ hasText: no }).getByRole("button", { name: "Reopen" }).click();
+  const again = office.getByRole("dialog", { name: `Reopen ${no}` });
+  await again.getByLabel(/^Reason/).fill("Customer reported a burr after invoicing");
+  await again.getByRole("checkbox", { name: `I am reopening ${no}; the issued invoice ${invoiceRef} stays as it is.` }).check();
+  await again.getByRole("checkbox", { name: /^No admin available: reopen now and notify the admin/ }).check();
+  await again.getByRole("button", { name: "Reopen now and notify the admin" }).click();
+  await expect(office.getByText(`${no} reopened. The admin has been told`)).toBeVisible();
+  expect(await stored()).toMatchObject({ finished_at: null, stage: "machining" });
+  expect((await service.from("invoices").select("*").eq("id", draft!.id).single()).data).toEqual(invoiceBefore);
+  expect((await service.from("invoice_line_items").select("*").eq("invoice_id", draft!.id).order("position")).data).toEqual(linesBefore);
+  const pastInvoice = (await service.from("reopen_requests").select("approval_mode, status, issued_invoices").eq("record_id", job!.id).eq("reason", "Customer reported a burr after invoicing")).data!;
+  expect(pastInvoice).toEqual([{ approval_mode: "tick_box_notify", status: "pending", issued_invoices: [invoiceRef] }]);
 });

@@ -8,7 +8,8 @@
  *     approves it with their own session in the Approval Queue, as the early release is an admin's own action.
  *   - "No admin available": the job is reopened now and the admin is told (Approval Queue badge, and an e-mail where the company
  *     mailer is set up); the admin approves or rejects later. A rejection records the decision; it does not undo the reopen.
- * Every rule of who may reopen what stays in 081's reopen_job (the server checks it in every mode). Before 113 is applied the dialog
+ * Every rule of who may reopen what stays in 081's reopen_job (the server checks it in every mode), with one exception made by the
+ * sign-off: an issued invoice does not stop it (the invoice stays exactly as it is). A job gone out on a delivery note stays refused. Before 113 is applied the dialog
  * keeps today's Reopen (reopen_job with a reason) and says so (REOPEN_FALLBACK_NOTICE).
  */
 import { missingDbObject } from "@/lib/db-features";
@@ -56,8 +57,8 @@ export function parsePreview(data: unknown, fallbackRef: string): ReopenPreview 
 }
 
 /**
- * The sentence the person confirms. An issued invoice is never changed by a reopen (081 refuses the reopen of an invoiced job, so
- * the sentence then explains why nothing can be done); a draft invoice stays a draft.
+ * The sentence the person confirms. A job whose invoice is issued can be reopened through this sign-off only (113; plain reopen_job
+ * still refuses it), and the issued invoice is never changed, so the sentence names it; a draft invoice stays a draft.
  */
 export function confirmationSentence(preview: Pick<ReopenPreview, "record_ref" | "issued_invoices" | "draft_invoice">): string {
   const ref = preview.record_ref;

@@ -96,8 +96,8 @@ function notifyAdmins(requestId: string) {
  * Reopen a finished job, signed off (migration 113, lib/reopen-sign-off): a reason, a confirmation that names the job and its invoice,
  * then an admin's approval (an admin here, or the admin's own login in the Approval Queue) or the "No admin available" tick box that
  * reopens now and notifies the admin. Every rule of who may reopen what stays 081's reopen_job: the person who finished it while it
- * awaits inspection, the office or an admin for anyone's; refused once a delivery note has gone out or it has been invoiced (the
- * issued invoice never changes). Machine time and signatures are kept; a passed inspection is voided and kept on record. Before 113 is
+ * awaits inspection, the office or an admin for anyone's; refused once a delivery note has gone out. An invoiced job may be reopened
+ * through this sign-off (113); the issued invoice never changes and the confirmation names it. Before 113 an invoiced job stays refused. Machine time and signatures are kept; a passed inspection is voided and kept on record. Before 113 is
  * applied it is today's Reopen (reopen_job with a reason) with a notice.
  * onReopened: the job is reopened (the board updates); onWaiting: an admin has to approve first (nothing changed yet).
  */

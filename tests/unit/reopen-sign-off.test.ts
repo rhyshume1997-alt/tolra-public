@@ -2,7 +2,8 @@
  * Reopen sign-off (migration 113; Rhys 30 Oct, D30-5), the app side:
  *   - the dialog's state machine: reason 10..500 characters, the confirmation ticked, then an admin's own approval or (anyone else)
  *     a choice of "An admin is here" or the "No admin available" tick box; a job reopen_job would refuse can't be submitted;
- *   - the confirmation sentence names the job and its invoice (an issued invoice stays as it is; a draft stays a draft);
+ *   - the confirmation sentence names the job and its invoice (an issued invoice stays as it is; a draft stays a draft); an invoiced job
+ *     is offered the sign-off (113 reopens it past the invoice), a job gone out is refused;
  *   - the RPC call shapes (reopen_preview, reopen_record, decide_reopen_request; reopen_job in fallback);
  *   - fallback while 113 isn't applied: today's Reopen and the notice "Admin approval recording is available after database update 113";
  *   - the Approval Queue's list (badges, "does not undo", buttons for an admin only) and the dialog's content as rendered;
@@ -54,7 +55,7 @@ describe("the dialog's state machine", () => {
     expect(checkReopenForm({ reason: REASON, confirmed: false, mode: null }, { ...ctx, isAdmin: true })).toMatchObject({ ok: false });
   });
   it("a job the server would refuse can't be submitted; its own reason is shown", () => {
-    const refused = preview({ allowed: false, refusal: "J-0012 has been invoiced (INV-0010), so it can't be reopened." });
+    const refused = preview({ allowed: false, refusal: "J-0012 has gone out (DN-0004), so it can't be reopened." });
     expect(checkReopenForm({ reason: REASON, confirmed: true, mode: "tick_box_notify" }, { ...ctx, preview: refused })).toEqual({ ok: false, error: refused.refusal });
   });
   it("in fallback (no 113) only the reason is asked, as before", () => {
@@ -131,9 +132,17 @@ describe("the dialog as rendered", () => {
     expect(out).not.toContain("No admin available");
     expect(out).toContain("Approve and reopen");
   });
-  it("refused by the server: its reason, no choices, the button off", () => {
-    const out = html({ preview: preview({ allowed: false, issued_invoices: ["INV-0010"], refusal: "J-0012 has been invoiced (INV-0010), so it can't be reopened." }) });
-    expect(out).toContain("has been invoiced (INV-0010)");
+  it("an invoiced job (113: reopened through the sign-off): the sentence names the issued invoice, and both sign-off choices are offered", () => {
+    const out = html({ preview: preview({ issued_invoices: ["INV-0010"] }) });
+    expect(out).toContain("I am reopening J-0012; the issued invoice INV-0010 stays as it is.");
+    expect(out).toContain("An admin is here: admin approval");
+    expect(out).toContain("No admin available: reopen now and notify the admin");
+    expect(out).not.toContain('role="alert"');
+    expect(checkReopenForm({ reason: REASON, confirmed: true, mode: "tick_box_notify" }, { isAdmin: false, fallback: false, preview: preview({ issued_invoices: ["INV-0010"] }) })).toEqual({ ok: true, mode: "tick_box_notify" });
+  });
+  it("refused by the server (gone out on a delivery note, invoiced too): its reason, no choices, the button off", () => {
+    const out = html({ preview: preview({ allowed: false, issued_invoices: ["INV-0010"], delivery_notes_out: ["DN-0004"], refusal: "J-0012 has gone out (DN-0004), so it can't be reopened." }) });
+    expect(out).toContain("has gone out (DN-0004)");
     expect(out).toContain("the issued invoice INV-0010 stays as it is");
     expect(out).not.toContain("No admin available");
     expect(out).toMatch(/<button[^>]*disabled=""[^>]*>Reopen job<\/button>/);
