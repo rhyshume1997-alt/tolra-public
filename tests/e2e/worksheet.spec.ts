@@ -76,6 +76,14 @@ test("workshop pack: the selected jobs print together on one worksheet sheet", a
   await page.goto("/jobs");
   for (const jobNo of jobs) await page.getByRole("row").filter({ hasText: jobNo }).getByRole("checkbox").check();
   const [pack] = await Promise.all([page.waitForEvent("popup"), page.getByRole("button", { name: "Print Workshop Pack" }).click()]);
+  // P1 (D30-4): a company other than JNR prints the Basic pack by default; the JNR sheet is one pick away on the print page.
+  await expect(pack.locator('[data-print-layout="basic"]')).toHaveCount(1);
+  await expect(pack.getByText("JOB SHEETS", { exact: true })).toHaveCount(1);
+  for (const jobNo of jobs) await expect(pack.getByText(jobNo, { exact: true })).toBeVisible();
+  await expect(pack.getByText(`HEAT-${jobs[0]}`)).toHaveCount(0);
+  await expect(pack.getByLabel("Print layout")).toHaveValue("");
+  await pack.getByLabel("Print layout").selectOption("jnr");
+  await expect(pack.locator('[data-print-layout="basic"]')).toHaveCount(0);
   await expect(pack.getByText("(MULTI PART) WORKSHEET")).toHaveCount(1);
   for (const jobNo of jobs) {
     await expect(pack.getByText(jobNo, { exact: true })).toBeVisible();

@@ -15,6 +15,7 @@ import { type BankDetails, EMPTY_BANK_DETAILS, parseBankDetails } from "@/lib/ba
 import { companyLogoUrl, isHexColour } from "@/lib/branding";
 import type { ShellBrand } from "@/lib/brand-pending";
 import { DEMO_MODE } from "@/lib/demo";
+import { type PrintLayout, parsePrintLayout } from "@/lib/print-layout";
 import { supabase } from "@/lib/supabase";
 
 export type CompanyProfile = {
@@ -78,6 +79,9 @@ export type CompanyProfile = {
    *  Optional: a profile saved before per-day hours has none, and every work day then uses workStart..workEnd. Whenever it is saved,
    *  workStart/workEnd/workDays are saved with it (the earliest start, the latest end, the worked days) so older readers keep working. */
   workHoursByDay?: Record<number, DayHours>;
+  /** The job worksheet print layout an admin chose (Settings > Print layout; lib/print-layout). Absent: never chosen, so the company's
+   *  default applies. Kept here only so saving Company details writes it back unchanged. */
+  printLayout?: PrintLayout;
 };
 
 /** One day's working hours ("HH:MM"; an end of "24:00" is midnight). */
@@ -263,6 +267,7 @@ export function parseCompanyProfile(value: unknown): CompanyProfile | null {
     bankDetails: parseBankDetails(v.bankDetails),
     showCreditsInBalance: v.showCreditsInBalance === true,
     ...parseWorkingHours(v),
+    ...(parsePrintLayout(v.printLayout) ? { printLayout: parsePrintLayout(v.printLayout) as PrintLayout } : {}),
   };
   const complete = REQUIRED.every((k) => (Array.isArray(profile[k]) ? (profile[k] as string[]).length > 0 : Boolean(profile[k])))
     // A VAT-registered company must print its VAT number.

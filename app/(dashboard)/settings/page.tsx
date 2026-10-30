@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
+import { PrintLayoutCard } from "@/components/print-layout-settings-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,6 +164,8 @@ function CompanyDetailsCard() {
       bankDetails: bankCheck.bank,
       showCreditsInBalance: form.showCreditsInBalance,
       ...hoursToSave.fields,
+      // Settings > Print layout saves this on its own; Company details writes it back unchanged.
+      ...(profile?.printLayout ? { printLayout: profile.printLayout } : {}),
     };
     void run(async () => {
       try {
@@ -642,6 +645,7 @@ export default function SettingsPage() {
         <TimeSettingsCard />
         <SiteNetworkCard />
         <CustomerSignOffCard />
+        <PrintLayoutCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
         <Card>
