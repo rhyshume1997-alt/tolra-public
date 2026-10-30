@@ -7,6 +7,7 @@ import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, T
 
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
 import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
+import { EmailTemplatesCard } from "@/components/email/email-templates-card";
 import { PrintLayoutCard } from "@/components/print-layout-settings-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
@@ -715,6 +716,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         <WorkshopEmailCard />
+        <EmailTemplatesCard />
       </div>
     </RoleGate>
   );

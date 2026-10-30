@@ -28,6 +28,8 @@ import { useCompanyProfile } from "@/lib/company";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
 import { fmtDate, nowIso } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
+import { type TemplateText, renderTemplate } from "@/lib/email/templates/defaults";
+import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { friendlyError } from "@/lib/friendly-error";
 import { gbp } from "@/lib/money";
 import { RFQ_DISPLAY_KEY, rfqCardFields } from "@/lib/rfq-display";
@@ -121,13 +123,21 @@ export default function RfqPage() {
   const [body, setBody] = useState("");
 
   const signOffName = company?.name ?? "";
+  // The company's own clarification text (Settings > Email templates); null = the default (none saved, or 106 not applied).
+  const [clarifyOverride, setClarifyOverride] = useState<TemplateText | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadTemplateOverride(supabase, "rfq_clarify").then((override) => { if (live) setClarifyOverride(override); });
+    return () => { live = false; };
+  }, []);
   const openClarify = useCallback((rfq: RfqRow) => {
     setViewing(null);
-    setSubject("Clarification needed for RFQ");
-    setBody(`Hi,\n\nThanks for the RFQ. Before quoting, could you please confirm the missing details below?\n\nBest regards,\n${signOffName}`);
+    const email = renderTemplate("rfq_clarify", { company_name: signOffName, customer_name: rfq.customer }, clarifyOverride);
+    setSubject(email.subject);
+    setBody(email.text);
     setMailOpened(false);
     setClarifying(rfq);
-  }, [signOffName]);
+  }, [signOffName, clarifyOverride]);
 
   useEffect(() => {
     if (profile?.role !== "admin") return;
