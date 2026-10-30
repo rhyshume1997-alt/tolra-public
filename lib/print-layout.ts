@@ -114,6 +114,17 @@ export async function saveCompanyPrintLayout(layout: PrintLayout, organizationId
   if (saveError) throw saveError;
 }
 
+/**
+ * A profile about to be saved (Company details, logo), with the print layout as stored in the row's raw company_profile: the stored
+ * choice wins (Settings > Print layout owns it), else the profile's own, else none (the company's default applies).
+ */
+export function withStoredPrintLayout<T extends { printLayout?: PrintLayout }>(next: T, storedProfile: unknown): T {
+  const raw = storedProfile && typeof storedProfile === "object" && !Array.isArray(storedProfile) ? (storedProfile as Record<string, unknown>)[PRINT_LAYOUT_KEY] : null;
+  const layout = parsePrintLayout(raw) ?? parsePrintLayout(next.printLayout);
+  const { printLayout: _drop, ...rest } = next; // eslint-disable-line @typescript-eslint/no-unused-vars
+  return (layout ? { ...rest, [PRINT_LAYOUT_KEY]: layout } : rest) as T;
+}
+
 /** The signed-in company's layout for the print pages: null while it loads. */
 export function useCompanyPrintLayout(): CompanyPrintLayout | null {
   const [layout, setLayout] = useState<CompanyPrintLayout | null>(null);

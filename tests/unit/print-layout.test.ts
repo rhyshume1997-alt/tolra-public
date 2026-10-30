@@ -57,8 +57,8 @@ import { JobWorksheetPackPrint } from "@/components/job-worksheet-pack-print";
 import { JobWorksheetPrint } from "@/components/job-worksheet-print";
 import { WorksheetInLayout, WorksheetPackInLayout } from "@/components/print-layout-picker";
 import { printLayoutStatus } from "@/components/print-layout-settings-card";
-import { parseCompanyProfile } from "@/lib/company";
-import { type CompanyPrintLayout, JNR_ORG_SLUG, chosenPrintLayout, defaultPrintLayout, loadCompanyPrintLayout, resolvePrintLayout, saveCompanyPrintLayout } from "@/lib/print-layout";
+import { parseCompanyProfile, saveCompanyProfile } from "@/lib/company";
+import { type CompanyPrintLayout, type PrintLayout, JNR_ORG_SLUG, chosenPrintLayout, defaultPrintLayout, loadCompanyPrintLayout, resolvePrintLayout, saveCompanyPrintLayout, withStoredPrintLayout } from "@/lib/print-layout";
 import JobSheetPrintPage from "@/app/(dashboard)/jobs/[id]/print/page";
 import WorkshopPackPage from "@/app/(dashboard)/jobs/print/page";
 import { FULL_SHEET, LEGACY_SHEET, PACK, PRINT_COMPANY, SIGN_OFFS, STALE_SHEET } from "@/tests/support/print-fixtures";
@@ -157,6 +157,27 @@ describe("saving the setting", () => {
     h.calls = [];
     await expect(saveCompanyPrintLayout("fancy" as never, "org-m")).rejects.toThrow("Unknown print layout.");
     expect(h.calls.find((call) => call.op === "upsert")).toBeUndefined();
+  });
+
+  it("a layout saved while Company details is still incomplete survives a later Company details save (P1-4)", async () => {
+    // The row holds only the layout choice: the rest of the profile is not set up, so it parses to null.
+    const incomplete = { name: "Marpet", printLayout: "jnr" };
+    expect(parseCompanyProfile(incomplete)).toBeNull();
+    h.tables.organization_settings = { data: { organization_id: "org-m", company_profile: incomplete }, error: null };
+    const details = { ...PRINT_COMPANY, name: "Marpet", documentName: "Marpet Ltd", logoSrc: undefined, logoUrl: undefined };
+    delete (details as { printLayout?: unknown }).printLayout;
+    await saveCompanyProfile("org-m", details);
+    const upsert = h.calls.find((call) => call.op === "upsert");
+    expect(upsert?.args[0]).toMatchObject({ organization_id: "org-m", company_profile: { documentName: "Marpet Ltd", printLayout: "jnr" } });
+    expect(h.calls).toContainEqual({ table: "organization_settings", op: "eq", args: ["organization_id", "org-m"] });
+  });
+
+  it("the stored choice wins over a stale one in the profile being saved; none stored and none given saves none", () => {
+    expect(withStoredPrintLayout({ a: 1, printLayout: "jnr" as const }, { printLayout: "basic" })).toEqual({ a: 1, printLayout: "basic" });
+    expect(withStoredPrintLayout({ a: 1, printLayout: "jnr" as const }, {})).toEqual({ a: 1, printLayout: "jnr" });
+    const bare: { a: number; printLayout?: PrintLayout } = { a: 1 };
+    expect(withStoredPrintLayout(bare, { printLayout: "fancy" })).toEqual({ a: 1 });
+    expect(withStoredPrintLayout(bare, null)).toEqual({ a: 1 });
   });
 
   it("Company details keeps the choice: the profile carries a valid printLayout and drops anything else", () => {

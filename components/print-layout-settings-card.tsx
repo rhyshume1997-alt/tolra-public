@@ -35,7 +35,7 @@ export function PrintLayoutCard() {
     try {
       await saveCompanyPrintLayout(next, await getCurrentOrganizationId());
       setCompany({ layout: next, saved: next, source: "saved" });
-      // Company details holds the profile too: reload it so saving that card writes this choice back unchanged.
+      // Company details holds the profile too: reload it (its save keeps the stored choice: saveCompanyProfile).
       void loadCompanyProfile(true);
       void auditEvent({ action: "organization_settings.update", entityTable: "organization_settings", oldData: { printLayout: before.saved }, newData: { printLayout: next }, metadata: { section: "print_layout" } });
       toast.success(`Worksheets now print in the ${printLayoutLabel(next)} layout`);
@@ -51,6 +51,7 @@ export function PrintLayoutCard() {
       <CardHeader><CardTitle className="flex items-center gap-2"><Printer className="size-5 text-brand-accent" /> Print layout</CardTitle></CardHeader>
       <CardContent className="space-y-3 text-sm">
         <p className="text-slate-600 dark:text-slate-300">The layout the job worksheet and the workshop pack print in. <strong>Basic</strong> is a plain job sheet: job number, customer, description, quantity, dates, an operations and notes area and sign-off boxes. <strong>JNR sheet</strong> is the full JNR worksheet (material cert, heat / cast, machines, part checklist). Anyone printing can still pick the other layout on the print page.</p>
+        <p className="text-slate-600 dark:text-slate-300">The JNR sheet prints material cert, heat/cast, machines and the part checklist; Basic leaves them out.</p>
         {company === null ? <p className="text-slate-500">Loading…</p> : (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">

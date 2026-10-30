@@ -164,8 +164,6 @@ function CompanyDetailsCard() {
       bankDetails: bankCheck.bank,
       showCreditsInBalance: form.showCreditsInBalance,
       ...hoursToSave.fields,
-      // Settings > Print layout saves this on its own; Company details writes it back unchanged.
-      ...(profile?.printLayout ? { printLayout: profile.printLayout } : {}),
     };
     void run(async () => {
       try {
