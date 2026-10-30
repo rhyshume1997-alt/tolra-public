@@ -11,8 +11,9 @@
  * API never returns the secret, a company admin is refused; (4) the owner enters placeholder Xero details (for the accountant link);
  * (5) back as the admin, Microsoft Connect is enabled and goes to login.microsoftonline.com with the fixed redirect_uri, a state and a
  * code_challenge; (6) the callback with a bogus state sends the admin back with the error and stores no connection; (7) the accountant's
- * link: made by the admin (only its hash is stored), opened signed out (sent to Xero's authorize URL, not followed), single use, a bogus
- * token refused; (8) office cannot make a link or connect, workshop is sent away from the page.
+ * link: made by the admin (only its hash is stored); opening it only shows a page and uses nothing up; its Continue button (a same-origin
+ * POST) uses it once and goes to Xero's authorize URL (not followed); a second Continue and a bogus token are refused; the admin cancels an
+ * open link from the card; (8) office cannot make a link or connect, workshop is sent away from the page.
  *
  * Stored app details are platform wide and only this spec writes them: they are removed again (with this spec's invites and states in
  * company beta) before and after the run. The world is read inside tests and hooks, never at import.
@@ -137,7 +138,7 @@ test("1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' an
 
   await expect(page.getByTestId("xero-status")).toBeVisible();
   if (!status.xero.configured) {
-    await expect(page.getByTestId("xero-not-set-up")).toHaveText("Not set up yet: the owner must enter the Xero app details.");
+    await expect(page.getByTestId("xero-not-set-up")).toContainText("Not set up yet: the owner must enter the Xero app details.");
     await expect(page.getByRole("button", { name: "Connect to Xero" })).toBeDisabled();
     // With no app details the accountant's link is not offered either.
     await expect(page.getByTestId("xero-invite")).toContainText("Not set up yet");
@@ -301,7 +302,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
   expect(url.searchParams.get("client_id")).toBe(app.clientId);
   expect(url.searchParams.get("response_type")).toBe("code");
   expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/api/integrations/microsoft/callback`);
-  expect(url.searchParams.get("scope")).toContain("Mail.Send");
+  expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send User.Read");
   const state = url.searchParams.get("state") ?? "";
   expect(state.length).toBeGreaterThanOrEqual(20);
   expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -378,38 +379,66 @@ test("6. the Microsoft callback with a bogus state sends the admin back with the
   await expect(card.getByRole("button", { name: "Connect Microsoft 365" })).toBeEnabled();
 });
 
-test("7. the accountant's link: made by the admin, hashed in the database, opens signed out onto Xero's sign-in once only; a bogus token is refused", async ({ page, playwright, baseURL }) => {
+test("7. the accountant's link: the page only shows, Continue uses it once and goes to Xero, a bogus token is refused, the admin can cancel an open link", async ({ page, browser, playwright, baseURL }) => {
   const origin = originOf(baseURL);
   const app = xeroApp();
   const beta = world().tenants.beta;
   await signIn(page, beta.users.admin);
   await page.goto("/admin/integrations");
   const panel = page.getByTestId("xero-invite");
-  await panel.getByRole("button", { name: "Send the accountant a connect link" }).click();
-  const url = await panel.getByTestId("xero-invite-url").inputValue();
-  const parsed = INVITE_URL.exec(url);
-  expect(parsed, url).not.toBeNull();
-  expect(parsed![1]).toBe(origin); // built on the site address, not on a request header
-  const token = parsed![2];
-  await expect(panel).toContainText("Works once");
+  const makeLink = async () => {
+    await panel.getByRole("button", { name: "Send the accountant a connect link" }).click();
+    const url = await panel.getByTestId("xero-invite-url").inputValue();
+    const parsed = INVITE_URL.exec(url);
+    expect(parsed, url).not.toBeNull();
+    expect(parsed![1]).toBe(origin); // built on the site address, not on a request header
+    return { path: `/api/integrations/invite/${parsed![2]}`, token: parsed![2] };
+  };
+  const inviteRow = async (token: string) => (await rows<{ id: string; token_hash: string; created_by: string; used_at: string | null; revoked_at: string | null; revoked_by: string | null; provider: string }>(
+    "select id, token_hash, created_by, used_at, revoked_at, revoked_by, provider from public.integration_connect_invites where token_hash = $1", [sha256(token)]))[0];
+  const statesVia = async (inviteId: string) => rows<{ state_hash: string; user_id: string; provider: string }>(
+    "select state_hash, user_id, provider from public.integration_oauth_states where via_invite = $1", [inviteId]);
+  // Each signed-out visitor has its own client address (the public link routes are limited to 20 in 15 minutes per address).
+  const anonAddress = () => ({ "x-real-ip": `10.${240 + Math.floor(Math.random() * 15)}.${Math.floor(Math.random() * 250)}.${1 + Math.floor(Math.random() * 250)}` });
 
-  // The token is in the link only: the database keeps its SHA-256, for 24 hours, unused.
-  const invites = await rows<Record<string, unknown> & { id: string; token_hash: string; created_by: string; used_at: string | null; hours: number }>(
+  // --- Link A: made by the admin; the token is in the link only, the database keeps its SHA-256 for 24 hours, unused.
+  const a = await makeLink();
+  await expect(panel).toContainText("Works once");
+  const invites = await rows<Record<string, unknown> & { hours: number }>(
     "select i.*, extract(epoch from (expires_at - created_at))::numeric / 3600 as hours from public.integration_connect_invites i where organization_id = $1", [beta.id]);
   expect(invites).toHaveLength(1);
-  const invite = invites[0];
-  expect(invite).toMatchObject({ token_hash: sha256(token), created_by: beta.users.admin.id, used_at: null, provider: "xero" });
-  expect(Number(invite.hours)).toBeGreaterThan(23.9);
-  expect(Number(invite.hours)).toBeLessThanOrEqual(24);
-  expect(JSON.stringify(invite)).not.toContain(token);
-  expect(invite.token_hash).not.toBe(token);
+  expect(invites[0]).toMatchObject({ token_hash: sha256(a.token), created_by: beta.users.admin.id, used_at: null, revoked_at: null, provider: "xero" });
+  expect(Number(invites[0].hours)).toBeGreaterThan(23.9);
+  expect(Number(invites[0].hours)).toBeLessThanOrEqual(24);
+  expect(JSON.stringify(invites[0])).not.toContain(a.token);
+  const inviteA = await inviteRow(a.token);
+  // The open link is listed on the card.
+  await expect(page.getByTestId("xero-open-invites").getByRole("listitem")).toHaveCount(1);
 
-  const anonymous = await playwright.request.newContext({ baseURL });
+  const anonymous = await playwright.request.newContext({ baseURL, extraHTTPHeaders: anonAddress() });
   try {
-    // Signed out, first open: straight to Xero's authorize URL (read, not followed).
-    const first = await noFollow(anonymous, `/api/integrations/invite/${token}`);
-    expect(first.res.status()).toBe(303);
-    const xero = new URL(first.location);
+    // GET shows a page and uses nothing up (a mail scanner or chat preview fetching the link must not burn it); twice, same answer.
+    for (const attempt of [1, 2]) {
+      const shown = await anonymous.get(a.path, { maxRedirects: 0 });
+      expect(shown.status(), `GET ${attempt}`).toBe(200);
+      expect(shown.headers()["location"]).toBeUndefined();
+      const html = await shown.text();
+      expect(html, `GET ${attempt}`).toContain(`Connect ${beta.name} to Xero`);
+      expect(html, `GET ${attempt}`).toContain("Continue to Xero");
+      expect(html).not.toContain(a.token);
+      expect((await inviteRow(a.token)).used_at, `GET ${attempt}`).toBeNull();
+      expect(await statesVia(inviteA.id), `GET ${attempt}`).toHaveLength(0);
+    }
+
+    // A page from another site cannot press Continue: refused, nothing used up.
+    const foreign = await anonymous.post(a.path, { maxRedirects: 0, headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" } });
+    expect(foreign.status()).toBe(403);
+    expect((await inviteRow(a.token)).used_at).toBeNull();
+
+    // Continue (a same-origin POST): used up, straight to Xero's authorize URL (read, not followed).
+    const go = await anonymous.post(a.path, { maxRedirects: 0, headers: { Origin: origin } });
+    expect(go.status()).toBe(303);
+    const xero = new URL(go.headers()["location"]);
     expect(xero.origin + xero.pathname).toBe("https://login.xero.com/identity/connect/authorize");
     expect(xero.searchParams.get("client_id")).toBe(app.clientId);
     expect(xero.searchParams.get("response_type")).toBe("code");
@@ -418,28 +447,27 @@ test("7. the accountant's link: made by the admin, hashed in the database, opens
     expect(state.length).toBeGreaterThanOrEqual(20);
     expect(xero.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(xero.searchParams.get("code_challenge_method")).toBe("S256");
-    expect(first.location).not.toContain(app.secret);
-    expect(first.location).not.toContain(token);
+    expect(go.headers()["location"]).not.toContain(app.secret);
+    expect(go.headers()["location"]).not.toContain(a.token);
+    expect((await inviteRow(a.token)).used_at).not.toBeNull();
+    // One state kept for it, bound to the company's admin who made the link.
+    expect(await statesVia(inviteA.id)).toEqual([{ state_hash: sha256(state), user_id: beta.users.admin.id, provider: "xero" }]);
 
-    // Used up, with one state kept for it (bound to the company and the admin who made the link).
-    const [used] = await rows<{ used_at: string | null }>("select used_at from public.integration_connect_invites where id = $1", [invite.id]);
-    expect(used.used_at).not.toBeNull();
-    const states = await rows<{ state_hash: string; user_id: string; provider: string }>(
-      "select state_hash, user_id, provider from public.integration_oauth_states where via_invite = $1", [invite.id]);
-    expect(states).toEqual([{ state_hash: sha256(state), user_id: beta.users.admin.id, provider: "xero" }]);
-
-    // The same link again: refused with a fixed page, nothing redirected, no second state.
-    const second = await anonymous.get(`/api/integrations/invite/${token}`, { maxRedirects: 0 });
-    expect(second.status()).toBe(404);
-    expect(second.headers()["location"]).toBeUndefined();
-    expect(await second.text()).toContain("This link can't be used");
-    expect(second.headers()["content-type"]).toContain("text/html");
+    // The link is spent: a second Continue is refused (404), no redirect, no second state; the page itself no longer opens.
+    const again = await anonymous.post(a.path, { maxRedirects: 0, headers: { Origin: origin } });
+    expect(again.status()).toBe(404);
+    expect(again.headers()["location"]).toBeUndefined();
+    expect(await again.text()).toContain("This link can't be used");
+    expect((await anonymous.get(a.path, { maxRedirects: 0 })).status()).toBe(404);
+    expect(await statesVia(inviteA.id)).toHaveLength(1);
 
     // Bogus tokens: the wrong shape, and the right shape that no one made. Both 404, and neither starts anything.
-    for (const bogus of ["not-a-token", "A".repeat(43), "A".repeat(44), `${token.slice(0, -1)}${token.endsWith("A") ? "B" : "A"}`]) {
-      const res = await anonymous.get(`/api/integrations/invite/${bogus}`, { maxRedirects: 0 });
-      expect(res.status(), bogus).toBe(404);
-      expect(res.headers()["location"], bogus).toBeUndefined();
+    for (const bogus of ["not-a-token", "A".repeat(43), "A".repeat(44), `${a.token.slice(0, -1)}${a.token.endsWith("A") ? "B" : "A"}`]) {
+      for (const method of ["get", "post"] as const) {
+        const res = await anonymous[method](`/api/integrations/invite/${bogus}`, { maxRedirects: 0, headers: { Origin: origin } });
+        expect(res.status(), `${method} ${bogus}`).toBe(404);
+        expect(res.headers()["location"], `${method} ${bogus}`).toBeUndefined();
+      }
     }
     expect(Number((await rows<{ n: string }>("select count(*)::text as n from public.integration_oauth_states where via_invite is not null and organization_id = $1", [beta.id]))[0].n)).toBe(1);
 
@@ -453,6 +481,63 @@ test("7. the accountant's link: made by the admin, hashed in the database, opens
   } finally {
     await anonymous.dispose();
   }
+
+  // --- Link B, in a real signed-out browser: the page, then the real Continue button (the form and the page's security policy let it
+  // reach Xero). Xero's address is answered here, so nothing leaves the machine.
+  const b = await makeLink();
+  const visitor = await browser.newContext({ extraHTTPHeaders: anonAddress() });
+  try {
+    const visit = await visitor.newPage();
+    await visit.route(/^https:\/\/login\.xero\.com\//, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>intercepted</title><p>intercepted</p>" }));
+    await visit.goto(b.path);
+    await expect(visit.getByRole("heading", { name: `Connect ${beta.name} to Xero` })).toBeVisible();
+    expect((await inviteRow(b.token)).used_at).toBeNull();
+    const [toXero] = await Promise.all([
+      visit.waitForRequest((r) => r.url().startsWith("https://login.xero.com/")),
+      visit.getByRole("button", { name: "Continue to Xero" }).click(),
+    ]);
+    const u = new URL(toXero.url());
+    expect(u.pathname).toBe("/identity/connect/authorize");
+    expect(u.searchParams.get("redirect_uri")).toBe(`${origin}/api/integrations/invite/callback`);
+    expect(u.searchParams.get("client_id")).toBe(app.clientId);
+    await expect(visit.getByText("intercepted", { exact: true })).toBeVisible();
+    expect((await inviteRow(b.token)).used_at).not.toBeNull();
+  } finally {
+    await visitor.close();
+  }
+
+  // --- Link C: the admin cancels an open link on the card. Cancel -> confirm -> DELETE: revoked in the database, gone from the card,
+  // and the link no longer opens or continues.
+  await page.reload();
+  const c = await makeLink();
+  const inviteC = await inviteRow(c.token);
+  const list = page.getByTestId("xero-open-invites");
+  await expect(list.getByRole("listitem")).toHaveCount(1); // A and B were used; only C is open
+  await list.getByRole("button", { name: "Cancel", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Cancel this connect link?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Cancel link" }).click();
+  await expect(page.getByText("Link cancelled: it no longer works.")).toBeVisible();
+  await expect(page.getByTestId("xero-open-invites")).toHaveCount(0);
+  const revoked = await inviteRow(c.token);
+  expect(revoked.revoked_at).not.toBeNull();
+  expect(revoked.revoked_by).toBe(beta.users.admin.id);
+  expect(revoked.used_at).toBeNull();
+  const after = await playwright.request.newContext({ baseURL, extraHTTPHeaders: anonAddress() });
+  try {
+    expect((await after.get(c.path, { maxRedirects: 0 })).status()).toBe(404);
+    const post = await after.post(c.path, { maxRedirects: 0, headers: { Origin: origin } });
+    expect(post.status()).toBe(404);
+    expect(post.headers()["location"]).toBeUndefined();
+    expect(await statesVia(inviteC.id)).toHaveLength(0);
+  } finally {
+    await after.dispose();
+  }
+  // Cancelling a link that is already spent or cancelled is refused and changes nothing.
+  const twice = await page.request.delete(`/api/integrations/invite?id=${inviteC.id}`);
+  expect(twice.status()).toBe(404);
+  expect((await page.request.delete("/api/integrations/invite?id=not-a-uuid")).status()).toBe(400);
+  // (Disconnect also cancels open links; that needs a connected company, which no spec here may create: covered by tests/db and the proof SQL.)
 });
 
 test("8. office cannot make a link or connect (403); workshop is sent away from the page; nobody signed in gets 401", async ({ page, browser, playwright, baseURL }) => {
@@ -464,6 +549,7 @@ test("8. office cannot make a link or connect (403); workshop is sent away from 
     expect((await page.request.post(path)).status(), `office ${path}`).toBe(403);
   }
   expect((await page.request.get("/api/integrations/status")).status()).toBe(403);
+  expect((await page.request.delete("/api/integrations/invite?id=00000000-0000-4000-8000-000000000000")).status()).toBe(403);
   await page.goto("/admin/integrations");
   await expect(page).toHaveURL(/\/dashboard/);
 
