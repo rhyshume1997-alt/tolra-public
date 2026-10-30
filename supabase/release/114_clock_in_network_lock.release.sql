@@ -50,7 +50,7 @@ BEGIN;
 -- safe to run more than once. Rollback: supabase/release/114_clock_in_network_lock.rollback.sql.
 -- =====================================================================================================
 
--- ---- 0. Needs 050 and 075 -------------------------------------------------------------------------------------------------------
+-- ----- 0. Needs 050 and 075 ------------------------------------------------------------------------------------------------------
 DO $$
 BEGIN
   IF to_regclass('public.attendance_events') IS NULL OR to_regprocedure('public.time_company_lock(uuid)') IS NULL
@@ -65,7 +65,7 @@ BEGIN
 END
 $$;
 
--- ---- 1. The company's lock (no row = unlocked) ---------------------------------------------------------------------------------
+-- ----- 1. The company's lock (no row = unlocked) --------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.clock_in_network_locks (
   organization_id UUID PRIMARY KEY REFERENCES public.organizations(id) ON DELETE CASCADE,
   id              UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
@@ -81,7 +81,7 @@ CREATE POLICY "clock_in_network_locks rbac select" ON public.clock_in_network_lo
 REVOKE ALL ON public.clock_in_network_locks FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.clock_in_network_locks TO authenticated;
 
--- ---- 1b. Per person: may clock in off site while the lock is on (no row = FALSE) --------------------------------------------------
+-- ----- 1b. Per person: may clock in off site while the lock is on (no row = FALSE) -------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.clock_in_network_exemptions (
   organization_id  UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -99,7 +99,7 @@ CREATE POLICY "clock_in_network_exemptions rbac select" ON public.clock_in_netwo
 REVOKE ALL ON public.clock_in_network_exemptions FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.clock_in_network_exemptions TO authenticated;
 
--- ---- 2. Clock actions the lock could not check (accepted, marked network_unverified) ------------------------------------------------
+-- ----- 2. Clock actions the lock could not check (accepted, marked network_unverified) -----------------------------------------------
 CREATE TABLE IF NOT EXISTS public.clock_in_network_unverified (
   event_id        UUID PRIMARY KEY REFERENCES public.attendance_events(id) ON DELETE RESTRICT,
   id              UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
@@ -141,7 +141,7 @@ BEGIN
 END
 $$;
 
--- ---- 3. The check, before each clock action is recorded --------------------------------------------------------------------------
+-- ----- 3. The check, before each clock action is recorded -------------------------------------------------------------------------
 -- Runs inside record_attendance_event (050), which holds the company's and the person's locks. Unlocked company, a person allowed off
 -- site (1b), a synced-later action or no client address: returns at once (the row goes in). Otherwise refuses an address outside both
 -- the locked network and the saved site networks. Internal.
@@ -186,7 +186,7 @@ DROP TRIGGER IF EXISTS clock_in_network_lock ON public.attendance_events;
 CREATE TRIGGER clock_in_network_lock BEFORE INSERT ON public.attendance_events
   FOR EACH ROW EXECUTE FUNCTION public.clock_in_network_lock_check();
 
--- ---- 4. The mark, after a clock action the lock could not check is recorded ------------------------------------------------------
+-- ----- 4. The mark, after a clock action the lock could not check is recorded -----------------------------------------------------
 -- Never refuses: any error is swallowed (the clock action stays recorded, without the mark). Internal.
 CREATE OR REPLACE FUNCTION public.clock_in_network_unverified_record()
 RETURNS TRIGGER
@@ -228,7 +228,7 @@ DROP TRIGGER IF EXISTS zz_clock_in_network_unverified ON public.attendance_event
 CREATE TRIGGER zz_clock_in_network_unverified AFTER INSERT ON public.attendance_events
   FOR EACH ROW EXECUTE FUNCTION public.clock_in_network_unverified_record();
 
--- ---- 5. Admin: lock (or re-capture), unlock -----------------------------------------------------------------------------------
+-- ----- 5. Admin: lock (or re-capture), unlock ----------------------------------------------------------------------------------
 -- Locks clock-in to the network this request comes from (075's request_client_ip: cf-connecting-ip only), or re-captures it.
 CREATE OR REPLACE FUNCTION public.lock_clock_in_network()
 RETURNS JSONB
@@ -319,7 +319,7 @@ $$;
 REVOKE ALL ON FUNCTION public.set_clock_in_off_site_allowed(UUID, BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.set_clock_in_off_site_allowed(UUID, BOOLEAN) TO authenticated;
 
--- ---- 6. Self-check before COMMIT --------------------------------------------------------------------------------------------------
+-- ----- 6. Self-check before COMMIT -------------------------------------------------------------------------------------------------
 DO $$
 DECLARE
   v_fn TEXT;
