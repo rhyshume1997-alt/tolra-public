@@ -81,6 +81,9 @@ BEGIN
   RETURN jsonb_build_object('rfq', to_jsonb(v_rfq), 'moved', v_moved, 'email_history_id', v_history);
 END
 $$;
+
+-- -----------------------------------------------------------------------------------------------------
+-- 2b. Who may call it, and what it is.
 REVOKE ALL ON FUNCTION public.log_rfq_clarification(UUID, TEXT, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.log_rfq_clarification(UUID, TEXT, TEXT) TO authenticated;
 COMMENT ON FUNCTION public.log_rfq_clarification(UUID, TEXT, TEXT) IS
