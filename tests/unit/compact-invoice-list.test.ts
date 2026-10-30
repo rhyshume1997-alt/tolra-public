@@ -29,9 +29,11 @@ describe("compact invoice totals", () => {
     expect(t.outstanding).toBe(350);
   });
 
-  it("a void invoice adds nothing to outstanding", () => {
-    expect(compactInvoiceTotals([open, voided]).outstanding).toBe(120);
-    expect(compactInvoiceTotals([voided]).outstanding).toBe(0);
+  it("a void or cancelled invoice adds nothing to any figure, but is still counted as a row shown", () => {
+    expect(compactInvoiceTotals([open, voided])).toEqual({ count: 2, net: 100, vat: 20, gross: 120, paid: 0, outstanding: 120 });
+    expect(compactInvoiceTotals([voided])).toEqual({ count: 1, net: 0, vat: 0, gross: 0, paid: 0, outstanding: 0 });
+    const cancelled = row({ rawStatus: "cancelled", status: "closed", amount: 90, subtotal: 75, vatAmount: 15, amountPaid: 90, balance: 0 });
+    expect(compactInvoiceTotals([open, cancelled])).toEqual({ count: 2, net: 100, vat: 20, gross: 120, paid: 0, outstanding: 120 });
   });
 
   it("adds in whole pence (no floating point drift)", () => {
@@ -88,7 +90,7 @@ describe("CompactInvoiceList render", () => {
 
   it("shows a row per invoice with its figures and dates", () => {
     expect(html.match(/data-testid="compact-invoice-row"/g)).toHaveLength(3);
-    for (const text of ["INV-0001", "Acme Ltd", "INV-0002", "Brown &amp; Sons", "INV-0003", "£500.00", "£100.00", "£600.00", "£250.00", "£350.00", "01/10/2026", "31/10/2026", "PART PAID", "VOID"]) expect(html).toContain(text);
+    for (const text of ["INV-0001", "Acme Ltd", "INV-0002", "Brown &amp; Sons", "INV-0003", "£500.00", "£100.00", "£600.00", "£240.00", "£250.00", "£350.00", "01/10/2026", "31/10/2026", "PART PAID", "VOID"]) expect(html).toContain(text);
   });
 
   it("has the ten columns", () => {
@@ -98,9 +100,9 @@ describe("CompactInvoiceList render", () => {
   it("puts the totals of the rows shown at the foot", () => {
     const foot = html.slice(html.indexOf("<tfoot"));
     expect(foot).toContain("Totals (3 invoices)");
-    expect(foot).toContain('data-total="net">£800.00<');
-    expect(foot).toContain('data-total="vat">£160.00<');
-    expect(foot).toContain('data-total="gross">£960.00<');
+    expect(foot).toContain('data-total="net">£600.00<');
+    expect(foot).toContain('data-total="vat">£120.00<');
+    expect(foot).toContain('data-total="gross">£720.00<');
     expect(foot).toContain('data-total="paid">£250.00<');
     expect(foot).toContain('data-total="outstanding">£470.00<');
   });

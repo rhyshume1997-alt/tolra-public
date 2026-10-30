@@ -1,7 +1,10 @@
+import { isVoid } from "@/lib/invoice-void";
 import { fromPence, toPence } from "@/lib/money";
 
 /** The fields of an Invoices list row the compact list and its totals need. */
 export type CompactInvoiceFigures = {
+  /** invoices.status as stored: a void or cancelled invoice is left out of every total. */
+  rawStatus: string;
   /** Stored total, including carriage and VAT. */
   amount: number;
   /** Stored subtotal and VAT as issued; absent on demo data. */
@@ -23,12 +26,14 @@ export function netAndVat(invoice: Pick<CompactInvoiceFigures, "amount" | "subto
 export type CompactInvoiceTotals = { count: number; net: number; vat: number; gross: number; paid: number; outstanding: number };
 
 /**
- * The foot of the compact list: the sums of exactly the rows given (the filtered set the list shows), added in whole pence so a long
- * column never drifts. Outstanding is each row's own balance, so void, cancelled, draft and paid invoices add nothing to it.
+ * The foot of the compact list: the sums of the rows given (the filtered set the list shows), added in whole pence so a long column
+ * never drifts. Void and cancelled invoices stay in the list but add nothing to any figure (`count` is the rows shown). Outstanding is
+ * each row's own balance, so draft and paid invoices add nothing to it either.
  */
 export function compactInvoiceTotals(rows: CompactInvoiceFigures[]): CompactInvoiceTotals {
   let net = 0, vat = 0, gross = 0, paid = 0, outstanding = 0;
   for (const row of rows) {
+    if (isVoid(row.rawStatus)) continue;
     const split = netAndVat(row);
     net += toPence(split.net);
     vat += toPence(split.vat);
