@@ -8,7 +8,7 @@ import type { FinanceCheckKind, Suggestion } from "@/lib/ai/finance-check/check"
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type State = { status: "loading" } | { status: "ready"; suggestions: Suggestion[] } | { status: "unavailable" };
+type State = { status: "loading" } | { status: "ready"; suggestions: Suggestion[] } | { status: "unavailable" } | { status: "company_off" };
 
 /**
  * "Check before issue" (Tolra AI agent 1, SUGGEST ONLY). Shown inside the Issue dialogs only when the server has the finance check
@@ -38,6 +38,11 @@ function FinanceCheckBody({ kind, id }: { kind: FinanceCheckKind; id: string }) 
     const timer = setTimeout(() => controller.abort(), 15_000);
     fetch("/api/ai/finance-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, id }), signal: controller.signal })
       .then(async (res) => {
+        // The company has the check off (AI section): show nothing at all, not an error.
+        if (res.status === 403 && ((await res.json().catch(() => null)) as { code?: string } | null)?.code === "company_off") {
+          if (live) setState({ status: "company_off" });
+          return;
+        }
         const body = res.ok ? ((await res.json()) as { suggestions?: Suggestion[] }) : null;
         if (live) setState(body && Array.isArray(body.suggestions) ? { status: "ready", suggestions: body.suggestions } : { status: "unavailable" });
       })
@@ -62,6 +67,7 @@ function FinanceCheckBody({ kind, id }: { kind: FinanceCheckKind; id: string }) 
     }
   }
 
+  if (state.status === "company_off") return null;
   return (
     <section aria-label="Check before issue" data-testid="ai-finance-check" className="space-y-2 rounded-lg border p-3 text-sm">
       <h3 className="font-semibold text-slate-950">Check before issue</h3>

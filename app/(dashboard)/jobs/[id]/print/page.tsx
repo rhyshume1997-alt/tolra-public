@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
 
-import { JobWorksheetPrint } from "@/components/job-worksheet-print";
+import { PrintLayoutPicker, WorksheetInLayout } from "@/components/print-layout-picker";
 import { listCustomerPos } from "@/lib/job-files";
 import { Button } from "@/components/ui/button";
 import { DEMO_MODE } from "@/lib/demo";
 import { type JobWorksheet, type WorksheetJobInfo, listDrawings, loadWorksheet } from "@/lib/job-worksheet";
+import { type PrintLayout, chosenPrintLayout, useCompanyPrintLayout } from "@/lib/print-layout";
 
 type DemoJob = Omit<WorksheetJobInfo, "id"> & { drawings: string[] };
 
@@ -35,10 +36,15 @@ async function demoJobInfo(id: string): Promise<DemoJob> {
 export default function JobSheetPrintPage() {
   const { id } = useParams<{ id: string }>();
   const [worksheet, setWorksheet] = useState<JobWorksheet | null>(null);
+  const [traceable, setTraceable] = useState(false);
   const [drawings, setDrawings] = useState<string[]>([]);
   const [customerPos, setCustomerPos] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // The company's layout (Settings > Print layout), unless the person picks the other one for this print.
+  const companyLayout = useCompanyPrintLayout();
+  const [override, setOverride] = useState<PrintLayout | null>(null);
+  const layout = chosenPrintLayout(companyLayout, override);
 
   const load = useCallback(async () => {
     setError(null);
@@ -50,6 +56,7 @@ export default function JobSheetPrintPage() {
       return;
     }
     setWorksheet(loaded.worksheet);
+    setTraceable(loaded.row?.traceable === true);
     const stored = loaded.demo ? null : await listDrawings(id);
     setDrawings(stored ? stored.map((file) => (file.revision ? `${file.name} (Rev ${file.revision})` : file.name)) : demo.drawings);
     setCustomerPos(loaded.demo ? [] : (await listCustomerPos(id).catch(() => [])).map((file) => file.file_name));
@@ -71,15 +78,18 @@ export default function JobSheetPrintPage() {
       `}</style>
       <div className="no-print mx-auto mb-4 flex w-[210mm] max-w-full items-center justify-between">
         <p className="text-sm text-slate-500">A4 portrait worksheet. Blank cells are left for handwriting.</p>
-        <Button className="bg-[#1E3472] text-white" disabled={!worksheet} onClick={() => window.print()}><Printer className="size-4" /> Print Now</Button>
+        <div className="flex items-center gap-3">
+          <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} />
+          <Button className="bg-[#1E3472] text-white" disabled={!worksheet || !layout} onClick={() => window.print()}><Printer className="size-4" /> Print Now</Button>
+        </div>
       </div>
       {error ? (
         <div className="no-print mx-auto flex w-[210mm] max-w-full items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
           <span>{error}</span>
           <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button>
         </div>
-      ) : worksheet ? (
-        <JobWorksheetPrint worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} />
+      ) : worksheet && layout ? (
+        <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} traceable={traceable} />
       ) : (
         <p className="text-sm text-slate-500">Loading worksheet...</p>
       )}

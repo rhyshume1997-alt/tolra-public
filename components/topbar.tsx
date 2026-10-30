@@ -19,6 +19,7 @@ import { PRODUCT } from "@/lib/product";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/ai-helper": "AI",
   "/email": "Email & Payment Automation",
   "/rfq": "RFQ Control Centre",
   "/quotes": "Quote Generator",

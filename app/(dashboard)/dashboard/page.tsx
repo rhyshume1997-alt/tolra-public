@@ -19,7 +19,7 @@ import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutco
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { dueWindow, fmtDate, fmtDateTime, fmtDueBy, toDateInput } from "@/lib/dates";
+import { dueWindow, fmtDateTime, fmtDueBy, toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { attentionState } from "@/lib/attention";
 import type { AttentionRole, AttentionSection } from "@/lib/attention-items";
@@ -33,10 +33,12 @@ import { linkedQuotes, rfqFigures } from "@/lib/rfq-stage";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 import { myJobs, type MyJob } from "@/lib/my-jobs";
+import { MyJobs } from "@/components/workshop/my-jobs";
 import { useCanOpen } from "@/lib/use-destinations";
 import { ColumnToggle } from "@/components/column-toggle";
 import { dashboardTileKeysFor, kpiGridClass, statGridClass } from "@/lib/dashboard-tiles";
 import { useColumnVisibility } from "@/lib/org-settings";
+import { WholeFloor } from "@/components/workshop/whole-floor";
 
 const DASH = "—";
 const DAY_MS = 86_400_000;
@@ -290,7 +292,7 @@ async function loadWorkshopData(userId?: string | null): Promise<WorkshopData> {
   const names = new Map((machines.data ?? []).map((m) => [String(m.id), String(m.name ?? "")]));
   let mine: MyJob[] | null = null;
   if (userId) {
-    const mineRes = await q(supabase!.from("jobs").select("id, job_no, description, stage, date_required, due_date, finished_at, assigned_to").eq("assigned_to", userId).is("finished_at", null).order("date_required", { ascending: true, nullsFirst: false }).limit(200));
+    const mineRes = await q(supabase!.from("jobs").select("id, job_no, customer, description, quantity_required, stage, status, specification, date_required, due_date, started_at, finished_at, assigned_to").eq("assigned_to", userId).or("finished_at.is.null,stage.eq.rework").order("date_required", { ascending: true, nullsFirst: false }).limit(200));
     // Fetch a bounded larger set: DB order ignores due_date fallback, so myJobs sorts by effective date and caps display at 20.
     mine = mineRes.data ? myJobs(mineRes.data, userId) : null;
   }
@@ -584,19 +586,7 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
     <>
       {error ? <ErrorCard message={error} onRetry={retry} /> : null}
       {shownKpis.length ? <section className={`grid gap-4 ${kpiGridClass(shownKpis.length)}`}>{shownKpis.map(([, tile]) => tile)}</section> : null}
-      {isVisible("my-jobs") && d?.myJobs && d.myJobs.length ? (
-        <Card>
-          <CardHeader><CardTitle>My jobs</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {d.myJobs.map((job) => (
-              <MaybeLink href={jobHref(job.id)} allowed={canOpen("/jobs")} key={job.id} className="block rounded-lg border p-3 transition [a&]:hover:bg-slate-50">
-                <p className="font-semibold">{job.jobNo} {job.description}</p>
-                <p className="text-xs text-slate-500">{hasReworkTag(job) ? "Running, Rework tag" : stageLabel(job.stage)}{job.due ? ` · due ${fmtDate(job.due)}` : ""}</p>
-              </MaybeLink>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
+      {isVisible("my-jobs") && d?.myJobs && d.myJobs.length ? <MyJobs jobs={d.myJobs} role={role} canOpenJobs={canOpen("/jobs")} /> : null}
       {isVisible("needs-attention") ? <section className="grid gap-6 xl:grid-cols-3"><AttentionList role={role} /></section> : null}
       {showPriority || showSchedule ? <section className={`grid gap-6 ${showPriority && showSchedule ? "xl:grid-cols-2" : ""}`}>
         {showPriority ? <Card><CardHeader><CardTitle>Priority Jobs</CardTitle></CardHeader><CardContent className="space-y-3">
@@ -612,6 +602,7 @@ function WorkshopDashboard({ role }: { role: AttentionRole }) {
           {(d?.bookings ?? []).map((row) => <MaybeLink href="/schedule" allowed={canOpen("/schedule")} key={row.id} className="block rounded-lg bg-slate-50 p-3">{fmtDateTime(row.start)}: {row.machine} - {row.jobNo}</MaybeLink>)}
         </CardContent></Card> : null}
       </section> : null}
+      {isVisible("whole-floor") ? <WholeFloor /> : null}
     </>
   );
 }
