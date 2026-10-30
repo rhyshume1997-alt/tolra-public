@@ -24,7 +24,9 @@ BEGIN;
 --   Every other rule is unchanged: a deactivated or deleted membership, a disabled profile, a forced password change, a company not
 --   'active', a support window, grant or elevation, a platform owner's aal2, an ended or timed-out session.
 -- GUARD (section 1): each function must be 017's / 036's (or already 116's), md5 with every whitespace character removed; and the
--- owner must be able to read auth.users.banned_until. Safe to run again.
+-- owner must be able to read auth.users.banned_until. Safe to run again, also after 118 (S11), which runs this file's
+-- _session_membership query, unchanged, from PL/pgSQL: the guard accepts 118's body too, and re-running this file puts this
+-- file's SQL body back (the same answers, only slower) until 118 is re-run after it, as the run sheet re-runs files in order.
 -- SELF-CHECK (section 4). Verify: supabase/verify/ban_ends_session_116.sql (every row TRUE).
 -- Rollback: supabase/release/116_ban_ends_session.rollback.sql (puts back 017's and 036's bodies; only with Rhys's approval).
 -- =====================================================================================================
@@ -42,8 +44,9 @@ BEGIN
   IF v_active IS NULL OR v_active NOT IN ('19fe21959a87cd880feb0fb0190980eb', 'af6457cae4d8b89cd34b5963574fbe58') THEN
     RAISE EXCEPTION '116: public.session_is_active is not 017''s (md5 without whitespace %); stop and compare it first', coalesce(v_active, 'missing');
   END IF;
-  -- a15c6833cefc4b752ceafce0a10730b2: 036's _session_membership; b9c4e5c7147e1c7893b4e586dae0be2e: this file's (section 3).
-  IF v_member IS NULL OR v_member NOT IN ('a15c6833cefc4b752ceafce0a10730b2', 'b9c4e5c7147e1c7893b4e586dae0be2e') THEN
+  -- a15c6833cefc4b752ceafce0a10730b2: 036's _session_membership; b9c4e5c7147e1c7893b4e586dae0be2e: this file's (section 3);
+  -- 38ad8bd255ea9a2d2b8713aa04eb7c82: 118's (this file's query run by PL/pgSQL; a re-run of 116 after 118, see the header).
+  IF v_member IS NULL OR v_member NOT IN ('a15c6833cefc4b752ceafce0a10730b2', 'b9c4e5c7147e1c7893b4e586dae0be2e', '38ad8bd255ea9a2d2b8713aa04eb7c82') THEN
     RAISE EXCEPTION '116: public._session_membership is not 036''s (md5 without whitespace %); stop and compare it first', coalesce(v_member, 'missing');
   END IF;
   IF to_regprocedure('public.check_request_session()') IS NULL
