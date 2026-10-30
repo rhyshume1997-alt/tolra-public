@@ -41,7 +41,7 @@ test.beforeAll(async () => {
   admin = solo.admin;
   // The company's workshop person (the e-mail carries the run id, so teardown removes them with the rest of the run).
   const db = adminClient();
-  const email = `workshop.floor.${w.runId}.${Date.now().toString(36)}@${EMAIL_DOMAIN}`;
+  const email = `workshop.floor${Date.now().toString(36)}.${w.runId}@${EMAIL_DOMAIN}`;
   const password = `Fl-${randomUUID()}`;
   const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "Lee Barker" } });
   expect(created.error).toBeNull();
