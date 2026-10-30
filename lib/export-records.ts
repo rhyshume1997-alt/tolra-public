@@ -33,6 +33,14 @@ function rowsToTable(rows: ExportRow[]) {
     .join("")}</tbody></table>`;
 }
 
+/**
+ * The code the PDF export needs: loaded on the first PDF export, not with the page. The Job Board also fetches it ahead, when
+ * online and idle (lib/pdf-warm.ts), through this same function, so its Export PDF works offline.
+ */
+export function loadExportPdfCode() {
+  return Promise.all([import("@react-pdf/renderer"), import("@/components/pdf/BaseDocumentPDF")]);
+}
+
 /** `entityTable` is the record type exported (audit log); `filename` is only the download title. */
 export async function exportRows(format: "word" | "pdf" | "print", filename: string, rows: ExportRow[], entityTable: AuditTable) {
   if (!rows.length) {
@@ -63,8 +71,7 @@ export async function exportRows(format: "word" | "pdf" | "print", filename: str
   if (format === "pdf") {
     try {
       const company = await requireCompanyProfile();
-      // The PDF renderer is loaded on the first PDF export, not with the page.
-      const [{ pdf }, { BaseDocumentPDF }] = await Promise.all([import("@react-pdf/renderer"), import("@/components/pdf/BaseDocumentPDF")]);
+      const [{ pdf }, { BaseDocumentPDF }] = await loadExportPdfCode();
       const pdfElement = createElement(BaseDocumentPDF, {
         data: {
           title: filename,
