@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { XeroMappings } from "@/components/xero-mappings";
 import { XeroSendLog } from "@/components/xero-send-log";
 import { NEEDS_DATABASE_UPDATE, databaseHas084, missingDbObject } from "@/lib/db-features";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { NEEDS_107, cardStatusLabel, connectOutcomeMessage, notSetUpMessage, overviewSummary, type IntegrationOverview } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +33,8 @@ export function IntegrationsPanel() {
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
   const [invite, setInvite] = useState<{ url: string; expiresAt: string | null } | null>(null);
+  const [openInvites, setOpenInvites] = useState<Array<{ id: string; created_at: string; expires_at: string; created_by_name: string | null }>>([]);
+  const [cancelInvite, setCancelInvite] = useState<string | null>(null);
   const { organizations } = useUser();
   const company = organizations.find((org) => org.is_current)?.name ?? null;
 
@@ -114,6 +116,31 @@ export function IntegrationsPanel() {
     }
   }
 
+  const loadInvites = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc("integration_invites_open", { p_provider: "xero" });
+    if (!error) setOpenInvites((data ?? []) as typeof openInvites);
+  }, []);
+
+  useEffect(() => { if (has084 && status?.db107) void loadInvites(); }, [has084, status, loadInvites, version]);
+
+  async function revokeInvite() {
+    const id = cancelInvite;
+    setCancelInvite(null);
+    if (!id) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/integrations/invite?id=${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" }).catch(() => null);
+      const body = (res ? await res.json().catch(() => ({})) : {}) as { error?: string };
+      if (!res?.ok) toast.error(body.error ?? "Couldn't cancel the link. Try again.");
+      else toast.success("Link cancelled: it no longer works.");
+      setInvite(null);
+      await loadInvites();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function runTest() {
     setBusy(true);
     setTest(null);
@@ -131,6 +158,7 @@ export function IntegrationsPanel() {
       const r = await postIntegration("/api/integrations/invite");
       if (!r.ok) toast.error(r.error);
       else if (typeof r.body.url === "string") setInvite({ url: r.body.url, expiresAt: typeof r.body.expiresAt === "string" ? r.body.expiresAt : null });
+      await loadInvites();
     } finally {
       setBusy(false);
     }
@@ -183,7 +211,7 @@ export function IntegrationsPanel() {
               ) : null}
               {summary!.countsLabel ? <p className="text-sm text-slate-600">{summary!.countsLabel}</p> : null}
               {status && !status.xero.configured && overview.status !== "connected" ? (
-                <p className="text-sm text-slate-600" data-testid="xero-not-set-up">{notSetUpMessage("xero")}</p>
+                <p className="text-sm text-slate-600" data-testid="xero-not-set-up">{notSetUpMessage("xero")}{status.xero.problem ? ` ${status.xero.problem}` : ""}</p>
               ) : null}
               <div className="flex flex-wrap gap-2">
                 {overview.status !== "connected" ? (
@@ -214,6 +242,16 @@ export function IntegrationsPanel() {
                         <p className="text-xs text-slate-500">Works once{invite.expiresAt ? `, until ${fmtDate(invite.expiresAt)} (24 hours)` : ", for 24 hours"}. It opens Xero&apos;s sign-in for this company only and gives no access to Tolra.</p>
                       </div>
                     ) : null}
+                    {openInvites.length ? (
+                      <ul className="space-y-1" data-testid="xero-open-invites">
+                        {openInvites.map((i) => (
+                          <li key={i.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                            <span>Open link{i.created_by_name ? ` from ${i.created_by_name}` : ""}, made {fmtDateTime(i.created_at)}, expires {fmtDateTime(i.expires_at)}</span>
+                            <Button variant="outline" size="sm" onClick={() => setCancelInvite(i.id)} disabled={busy}>Cancel</Button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -224,9 +262,17 @@ export function IntegrationsPanel() {
           )}
         </CardContent>
         <ConfirmDialog
+          open={cancelInvite !== null}
+          title="Cancel this connect link?"
+          description="It stops working at once. Anyone who has it can't use it to connect Xero."
+          confirmLabel="Cancel link"
+          onConfirm={revokeInvite}
+          onCancel={() => setCancelInvite(null)}
+        />
+        <ConfirmDialog
           open={confirmDisconnect}
           title="Disconnect from Xero?"
-          description="Nothing more is sent. Anything queued and not yet sent is dropped (it is never sent to another organisation). The send log stays."
+          description="Nothing more is sent. Anything queued and not yet sent is dropped (it is never sent to another organisation). Open connect links are cancelled. The send log stays."
           confirmLabel="Disconnect"
           onConfirm={disconnect}
           onCancel={() => setConfirmDisconnect(false)}

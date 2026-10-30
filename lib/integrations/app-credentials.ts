@@ -86,6 +86,17 @@ export function missingDbObject(error: { code?: string | null; message?: string 
   return /could not find the .* in the schema cache|(function|relation|column) .* does not exist/i.test(error.message ?? "");
 }
 
+/**
+ * Why the environment's Xero settings can't be used, naming the value expected (so the env can be fixed), or null. Only the redirect
+ * is checked here: it must be exactly `${NEXT_PUBLIC_SITE_URL}/api/integrations/xero/callback` (https, no query).
+ */
+export function xeroEnvProblem(env: Env = process.env): string | null {
+  const set = env.XERO_REDIRECT_URI?.trim();
+  if (!set || validRedirectUri("xero", set)) return null;
+  const expected = defaultRedirectUri("xero", env) ?? `https://<your site>${CALLBACK_PATH.xero}`;
+  return `XERO_REDIRECT_URI must be exactly ${expected} (https, no query).`;
+}
+
 type StoredRow = { provider: string; client_id: string; client_secret_enc: string; redirect_uri: string | null };
 
 /** The AAD context the client secret is encrypted under: platform level, per provider. */

@@ -36,7 +36,7 @@ DECLARE
   a_admin UUID := gen_random_uuid(); a_office UUID := gen_random_uuid(); b_admin UUID := gen_random_uuid(); owner_u UUID := gen_random_uuid();
   s_admin UUID := gen_random_uuid(); s_office UUID := gen_random_uuid(); s_b UUID := gen_random_uuid(); s_owner UUID := gen_random_uuid();
   a_support UUID := gen_random_uuid(); s_support UUID := gen_random_uuid(); v_grant UUID := gen_random_uuid();
-  v_tok TEXT; v_tok2 TEXT; v_state TEXT; v_state2 TEXT; v_j JSONB; n INT; v_inv UUID; r RECORD;
+  v_tok TEXT; v_tok2 TEXT; v_tok3 TEXT; v_state TEXT; v_state2 TEXT; v_j JSONB; n INT; v_inv UUID; v_id UUID; r RECORD;
 BEGIN
   INSERT INTO public.organizations (id, name, slug, status, require_admin_mfa) VALUES (org_a, '107 alpha', 'zz-107-alpha-' || left(org_a::TEXT, 8), 'active', TRUE),
                                                                                    (org_b, '107 beta', 'zz-107-beta-' || left(org_b::TEXT, 8), 'active', TRUE);
@@ -148,6 +148,21 @@ BEGIN
     RAISE EXCEPTION 'FAIL invites readable';
   EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS invites table not readable through the API';
   END;
+  -- Opening the link's page (a GET) only peeks: the company's name, nothing used up, however often.
+  PERFORM pg_temp.svc();
+  FOR n IN 1..3 LOOP
+    v_j := public.integration_invite_peek(v_tok);
+    IF v_j ->> 'company_name' <> '107 alpha' THEN RAISE EXCEPTION 'FAIL peek %', v_j; END IF;
+  END LOOP;
+  PERFORM pg_temp.me();
+  IF (SELECT used_at FROM public.integration_connect_invites WHERE token_hash = v_tok) IS NOT NULL THEN RAISE EXCEPTION 'FAIL peek used the link up'; END IF;
+  RAISE NOTICE 'PASS the link''s page (peek) shows the company and uses nothing up';
+  PERFORM pg_temp.be(a_admin, s_admin, 'aal2');
+  BEGIN
+    PERFORM public.integration_invite_peek(v_tok);
+    RAISE EXCEPTION 'FAIL a signed-in user peeked';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS peek is not callable by signed-in users';
+  END;
   PERFORM pg_temp.svc();
   v_state2 := pg_temp.h();
   v_j := public.integration_invite_redeem(v_tok, v_state2, pg_temp.c());
@@ -161,6 +176,7 @@ BEGIN
     RAISE EXCEPTION 'FAIL invite used twice';
   EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS the same link a second time is refused (single use)';
   END;
+  IF public.integration_invite_peek(v_tok) IS NOT NULL THEN RAISE EXCEPTION 'FAIL a used link still peeks'; END IF;
   -- A normal (session) state is never consumed by the invite callback.
   IF public.integration_oauth_consume_invite('microsoft', v_state) IS NOT NULL THEN RAISE EXCEPTION 'FAIL session state consumed as invite'; END IF;
   v_j := public.integration_oauth_consume_invite('xero', v_state2);
@@ -202,6 +218,46 @@ BEGIN
     RAISE EXCEPTION 'FAIL a fourth open invite';
   EXCEPTION WHEN program_limit_exceeded THEN RAISE NOTICE 'PASS at most three open links per company';
   END;
+  -- Cancel: the open list shows them (no token or hash); support and office can't cancel; the admin can; a cancelled link is dead.
+  v_j := public.integration_invites_open('xero');
+  IF jsonb_array_length(v_j) <> 3 OR v_j::TEXT ~ '[0-9a-f]{64}' THEN RAISE EXCEPTION 'FAIL open list %', v_j; END IF;
+  v_id := (v_j -> 0 ->> 'id')::UUID;
+  PERFORM pg_temp.be(a_support, s_support, 'aal2');
+  BEGIN
+    PERFORM public.integration_invite_revoke(v_id);
+    RAISE EXCEPTION 'FAIL support cancelled a link';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS support session cannot cancel a link';
+  END;
+  PERFORM pg_temp.be(a_office, s_office, 'aal2');
+  BEGIN
+    PERFORM public.integration_invite_revoke(v_id);
+    RAISE EXCEPTION 'FAIL office cancelled a link';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS office cannot cancel a link';
+  END;
+  PERFORM pg_temp.be(a_admin, s_admin, 'aal1');
+  BEGIN
+    PERFORM public.integration_invite_revoke(v_id);
+    RAISE EXCEPTION 'FAIL password-only admin cancelled a link';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS password-only admin cannot cancel a link (two-step)';
+  END;
+  PERFORM pg_temp.be(b_admin, s_b, 'aal2');
+  IF public.integration_invite_revoke(v_id) THEN RAISE EXCEPTION 'FAIL another company cancelled A''s link'; END IF;
+  PERFORM pg_temp.be(a_admin, s_admin, 'aal2');
+  IF NOT public.integration_invite_revoke(v_id) THEN RAISE EXCEPTION 'FAIL admin cancel'; END IF;
+  IF public.integration_invite_revoke(v_id) THEN RAISE EXCEPTION 'FAIL cancelled twice'; END IF;
+  IF jsonb_array_length(public.integration_invites_open('xero')) <> 2 THEN RAISE EXCEPTION 'FAIL cancelled link still listed'; END IF;
+  PERFORM pg_temp.me();
+  SELECT token_hash INTO v_tok3 FROM public.integration_connect_invites WHERE id = v_id;
+  PERFORM pg_temp.svc();
+  IF public.integration_invite_peek(v_tok3) IS NOT NULL THEN RAISE EXCEPTION 'FAIL cancelled link peeks'; END IF;
+  BEGIN
+    PERFORM public.integration_invite_redeem(v_tok3, pg_temp.h(), pg_temp.c());
+    RAISE EXCEPTION 'FAIL cancelled link used';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS the admin cancels an open link; it no longer opens or counts';
+  END;
+  PERFORM pg_temp.be(a_admin, s_admin, 'aal2');
+  PERFORM public.integration_invite_create('xero', pg_temp.h());
+  RAISE NOTICE 'PASS a cancelled link frees its place (three open again)';
   IF EXISTS (SELECT 1 FROM security_audit.audit_log WHERE entity_table = 'integration_connect_invites' AND metadata::TEXT LIKE '%' || v_tok || '%') THEN
     RAISE EXCEPTION 'FAIL token hash in the audit log';
   END IF;
@@ -259,12 +315,36 @@ BEGIN
   END IF;
   RAISE NOTICE 'PASS app credential changes audited at platform level, no ciphertext in the log';
 
-  -- 6. Disconnect Microsoft 365 (084's function) deletes its tokens.
+  -- 6. Disconnect Microsoft 365 (through 107's wrapper) deletes its tokens and leaves the Xero links alone.
   PERFORM pg_temp.be(a_admin, s_admin, 'aal2');
-  PERFORM public.integration_disconnect('microsoft');
+  v_j := public.integration_disconnect_revoke('microsoft');
+  IF (v_j ->> 'invites_revoked')::INT <> 0 OR jsonb_array_length(public.integration_invites_open('xero')) <> 3 THEN RAISE EXCEPTION 'FAIL microsoft disconnect touched links %', v_j; END IF;
   PERFORM pg_temp.me();
   IF EXISTS (SELECT 1 FROM public.integration_secrets WHERE organization_id = org_a AND provider = 'microsoft') THEN RAISE EXCEPTION 'FAIL tokens kept'; END IF;
-  RAISE NOTICE 'PASS disconnecting Microsoft 365 deletes its tokens';
+  RAISE NOTICE 'PASS disconnecting Microsoft 365 deletes its tokens (Xero links untouched)';
+  -- 7. Disconnecting Xero cancels every open Xero link; support can't use the wrapper; 084's disconnect itself still checks admin.
+  PERFORM pg_temp.be(a_support, s_support, 'aal2');
+  BEGIN
+    PERFORM public.integration_disconnect_revoke('xero');
+    RAISE EXCEPTION 'FAIL support disconnected';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS support session cannot disconnect';
+  END;
+  PERFORM pg_temp.be(a_office, s_office, 'aal2');
+  BEGIN
+    PERFORM public.integration_disconnect_revoke('xero');
+    RAISE EXCEPTION 'FAIL office disconnected';
+  EXCEPTION WHEN insufficient_privilege THEN RAISE NOTICE 'PASS office cannot disconnect';
+  END;
+  PERFORM pg_temp.be(a_admin, s_admin, 'aal2');
+  v_j := public.integration_disconnect_revoke('xero');
+  IF v_j ->> 'status' <> 'disconnected' OR (v_j ->> 'invites_revoked')::INT <> 3 OR jsonb_array_length(public.integration_invites_open('xero')) <> 0 THEN
+    RAISE EXCEPTION 'FAIL disconnect revoke %', v_j;
+  END IF;
+  PERFORM pg_temp.me();
+  IF EXISTS (SELECT 1 FROM public.integration_connect_invites WHERE organization_id = org_a AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now()) THEN
+    RAISE EXCEPTION 'FAIL open links left after disconnect';
+  END IF;
+  RAISE NOTICE 'PASS disconnecting Xero cancels every open connect link (and disconnects as 084 does)';
 END
 $$;
 

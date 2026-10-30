@@ -18,15 +18,20 @@ BEGIN;
 --      the platform owner. RLS on, no policy, no grant to anon or authenticated: only the server (service role) reads it; the owner
 --      writes it through integration_app_credentials_save / _remove and reads only client id + last 4 through _list.
 --   d. public.integration_connect_invites: a one-use link an admin sends the accountant (24 hours, Xero only). Only the SHA-256 of the
---      token is kept. RLS on, no policy, no grant. integration_oauth_states.via_invite: the invite a Connect was started from.
+--      token is kept. RLS on, no policy, no grant. integration_oauth_states.via_invite: the invite a Connect was started from. Opening
+--      the link (a GET) only shows the company's name (integration_invite_peek): a mail scanner or a chat preview never uses it up; the
+--      page's Continue button (a POST) does. An admin can cancel an open link; disconnecting cancels every open link.
 --   Functions (SECURITY DEFINER, pinned search_path):
 --     signed in: integration_oauth_start (Connect for 'xero' or 'microsoft': admin, two-step, own company, never a support session),
---                integration_invite_create (admin, two-step, own company, never a support session),
+--                integration_invite_create, integration_invite_revoke, integration_disconnect_revoke (084's integration_disconnect,
+--                then every open link cancelled) (admin, two-step, own company, never a support session), integration_invites_open
+--                (admin, own company: the open links, never a token or hash),
 --                integration_app_credentials_save / _remove / _list (platform owner, aal2).
---     server only (service role): integration_invite_redeem (the link, once: marks it used and keeps a 10-minute OAuth state bound to
---                the invite's company and the admin who made it), integration_oauth_consume_invite (the callback for that state only).
+--     server only (service role): integration_invite_peek (an open link's company name, nothing used up), integration_invite_redeem
+--                (the link, once: marks it used and keeps a 10-minute OAuth state bound to the invite's company and the admin who made
+--                it), integration_oauth_consume_invite (the callback for that state only).
 --     internal: integration_sends_accounting_only (trigger).
--- AUDIT: named events INTEGRATION_INVITE_CREATED, INTEGRATION_INVITE_USED (the company's log), INTEGRATION_APP_CREDENTIALS_SAVED and
+-- AUDIT: named events INTEGRATION_INVITE_CREATED, _USED, _REVOKED (the company's log), INTEGRATION_APP_CREDENTIALS_SAVED and
 -- _REMOVED (platform level: organization_id NULL). Never a token, a token hash, a secret or its ciphertext.
 -- GUARD (section 1). SELF-CHECK (section 6). Verify: supabase/verify/integrations_connect_107.sql (every row TRUE).
 -- Rollback: supabase/release/107_integrations_connect.rollback.sql (Rhys's approval; removes every Microsoft 365 connection).
@@ -106,6 +111,8 @@ CREATE TABLE IF NOT EXISTS public.integration_connect_invites (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   expires_at      TIMESTAMPTZ NOT NULL,
   used_at         TIMESTAMPTZ,
+  revoked_at      TIMESTAMPTZ,
+  revoked_by      UUID,
   CONSTRAINT integration_connect_invites_token_key UNIQUE (token_hash),
   CONSTRAINT integration_connect_invites_24h CHECK (expires_at > created_at AND expires_at <= created_at + interval '24 hours')
 );
@@ -194,10 +201,10 @@ BEGIN
     RAISE EXCEPTION 'Invalid link.' USING ERRCODE = '22023';
   END IF;
   DELETE FROM public.integration_connect_invites i
-  WHERE i.organization_id = v_org AND (i.used_at IS NOT NULL OR i.expires_at < now()) AND i.created_at < now() - interval '30 days';
+  WHERE i.organization_id = v_org AND (i.used_at IS NOT NULL OR i.revoked_at IS NOT NULL OR i.expires_at < now()) AND i.created_at < now() - interval '30 days';
   IF (SELECT count(*) FROM public.integration_connect_invites i
-      WHERE i.organization_id = v_org AND i.used_at IS NULL AND i.expires_at > now()) >= 3 THEN
-    RAISE EXCEPTION 'Three connect links are already open: use one of them, or wait until they expire (24 hours).' USING ERRCODE = '54000', HINT = 'too_many_invites';
+      WHERE i.organization_id = v_org AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()) >= 3 THEN
+    RAISE EXCEPTION 'Three connect links are already open: cancel one, or wait until they expire (24 hours).' USING ERRCODE = '54000', HINT = 'too_many_invites';
   END IF;
   INSERT INTO public.integration_connect_invites (organization_id, provider, token_hash, created_by, created_at, expires_at)
   VALUES (v_org, p_provider, p_token_hash, v_uid, now(), now() + interval '24 hours')
@@ -224,7 +231,7 @@ DECLARE
   v_inv RECORD;
 BEGIN
   UPDATE public.integration_connect_invites i SET used_at = now()
-  WHERE i.token_hash = p_token_hash AND i.used_at IS NULL AND i.expires_at > now()
+  WHERE i.token_hash = p_token_hash AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()
   RETURNING i.id, i.organization_id, i.provider, i.created_by INTO v_inv;
   IF v_inv.id IS NULL THEN
     RAISE EXCEPTION 'This connect link has expired or was already used: ask for a new one.' USING ERRCODE = '42501', HINT = 'invite_invalid';
@@ -243,6 +250,115 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.integration_invite_redeem(TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.integration_invite_redeem(TEXT, TEXT, TEXT) TO service_role;
+
+-- 4c'. The link's page (server only, no Tolra session): an open link's company name, so the page can say what it connects. Nothing is
+-- used up (a GET by a mail scanner or a chat preview must not burn the link). NULL for anything but an open link whose admin is still
+-- an active, non-support admin of the active company.
+CREATE OR REPLACE FUNCTION public.integration_invite_peek(p_token_hash TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  RETURN (SELECT jsonb_build_object('provider', i.provider, 'company_name', o.name, 'expires_at', i.expires_at)
+          FROM public.integration_connect_invites i JOIN public.organizations o ON o.id = i.organization_id
+          WHERE i.token_hash = p_token_hash AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now() AND o.status = 'active'
+            AND EXISTS (SELECT 1 FROM public.organization_members m
+                        WHERE m.organization_id = i.organization_id AND m.user_id = i.created_by AND m.active AND NOT m.support
+                          AND 'admin' IN (m.role, coalesce(m.secondary_role, ''))));
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_invite_peek(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_invite_peek(TEXT) TO service_role;
+
+-- 4c''. The open links (signed in: admin, own company): when each was made, by whom, until when. Never the token or its hash.
+CREATE OR REPLACE FUNCTION public.integration_invites_open(p_provider TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_org UUID := public.current_user_organization_id();
+BEGIN
+  IF v_org IS NULL OR auth.uid() IS NULL OR NOT public.has_org_role(ARRAY['admin']) THEN
+    RAISE EXCEPTION 'Only admins can see the company''s connect links.' USING ERRCODE = '42501';
+  END IF;
+  RETURN (SELECT coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'created_at', i.created_at, 'expires_at', i.expires_at,
+                                                       'created_by_name', coalesce(nullif(btrim(p.full_name), ''), p.email)) ORDER BY i.created_at), '[]'::JSONB)
+          FROM public.integration_connect_invites i LEFT JOIN public.user_profiles p ON p.id = i.created_by
+          WHERE i.organization_id = v_org AND i.provider = p_provider AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now());
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_invites_open(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.integration_invites_open(TEXT) TO authenticated;
+
+-- 4c'''. Cancel one open link (signed in: admin, two-step, own company, never support). FALSE when it is not open (used, expired,
+-- cancelled, or not this company's). Audited.
+CREATE OR REPLACE FUNCTION public.integration_invite_revoke(p_invite UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org UUID := public.current_user_organization_id();
+  v_uid UUID := auth.uid();
+BEGIN
+  PERFORM public.assert_privileged_aal();
+  IF v_org IS NULL OR v_uid IS NULL OR NOT public.has_org_role(ARRAY['admin'])
+     OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
+    RAISE EXCEPTION 'Only the company''s own admins can cancel a connect link.' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.integration_connect_invites i SET revoked_at = now(), revoked_by = v_uid
+  WHERE i.id = p_invite AND i.organization_id = v_org AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now();
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  PERFORM security_audit.log_named_event(v_org, 'INTEGRATION_INVITE_REVOKED', 'integration_connect_invites', p_invite::TEXT,
+    jsonb_build_object('by', v_uid, 'reason', 'cancelled'));
+  RETURN TRUE;
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_invite_revoke(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.integration_invite_revoke(UUID) TO authenticated;
+
+-- 4c''''. Disconnect, and cancel every open link of that provider (signed in: admin, two-step, own company, never support). 084's
+-- integration_disconnect does the disconnect itself (its body is unchanged); the links go in the same transaction. Its answer, plus
+-- the number of links cancelled.
+CREATE OR REPLACE FUNCTION public.integration_disconnect_revoke(p_provider TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org     UUID := public.current_user_organization_id();
+  v_uid     UUID := auth.uid();
+  v_out     JSONB;
+  v_revoked INTEGER;
+BEGIN
+  IF coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
+    RAISE EXCEPTION 'Only the company''s own admins can disconnect it.' USING ERRCODE = '42501';
+  END IF;
+  v_out := public.integration_disconnect(p_provider);
+  UPDATE public.integration_connect_invites i SET revoked_at = now(), revoked_by = v_uid
+  WHERE i.organization_id = v_org AND i.provider = p_provider AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now();
+  GET DIAGNOSTICS v_revoked = ROW_COUNT;
+  IF v_revoked > 0 THEN
+    PERFORM security_audit.log_named_event(v_org, 'INTEGRATION_INVITE_REVOKED', 'integration_connect_invites', p_provider,
+      jsonb_build_object('by', v_uid, 'reason', 'disconnected', 'count', v_revoked));
+  END IF;
+  RETURN v_out || jsonb_build_object('invites_revoked', v_revoked);
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_disconnect_revoke(TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.integration_disconnect_revoke(TEXT) TO authenticated;
 
 -- 4d. The callback for a state an invite started (server only): unexpired, unused, started from an invite; used up. Returns the
 -- company, the admin who made the invite and the encrypted verifier. NULL when no such state exists (nothing is used up then).
@@ -364,6 +480,7 @@ DECLARE
   v_t  TEXT;
 BEGIN
   FOREACH v_fn IN ARRAY ARRAY['public.integration_oauth_start(text,text,text)', 'public.integration_invite_create(text,text)',
+                              'public.integration_invites_open(text)', 'public.integration_invite_revoke(uuid)', 'public.integration_disconnect_revoke(text)',
                               'public.integration_app_credentials_save(text,text,text,text,text,integer)', 'public.integration_app_credentials_remove(text)',
                               'public.integration_app_credentials_list()'] LOOP
     IF NOT coalesce((SELECT p.prosecdef AND p.proconfig IS NOT NULL AND has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
@@ -371,7 +488,7 @@ BEGIN
       RAISE EXCEPTION '107: % is not a signed-in-only definer function', v_fn;
     END IF;
   END LOOP;
-  FOREACH v_fn IN ARRAY ARRAY['public.integration_invite_redeem(text,text,text)', 'public.integration_oauth_consume_invite(text,text)'] LOOP
+  FOREACH v_fn IN ARRAY ARRAY['public.integration_invite_peek(text)', 'public.integration_invite_redeem(text,text,text)', 'public.integration_oauth_consume_invite(text,text)'] LOOP
     IF to_regprocedure(v_fn) IS NULL OR has_function_privilege('anon', to_regprocedure(v_fn), 'EXECUTE')
        OR has_function_privilege('authenticated', to_regprocedure(v_fn), 'EXECUTE') OR NOT has_function_privilege('service_role', to_regprocedure(v_fn), 'EXECUTE')
        OR (SELECT p.proconfig IS NULL OR NOT p.prosecdef FROM pg_proc p WHERE p.oid = to_regprocedure(v_fn)) THEN

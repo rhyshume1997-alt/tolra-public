@@ -14,13 +14,15 @@ vi.mock("server-only", () => ({}));
 const key = randomBytes(32);
 let session: { read_only: boolean; support: boolean } | null = null;
 let refuse: number | null = null;
+let origin = true;
 type RpcFn = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
 const userRpc = vi.fn<RpcFn>(async () => ({ data: { expires_at: "2026-10-31T15:00:00Z" }, error: null }));
 const requireProfile = vi.fn<(roles: string[]) => Promise<unknown>>(async () => (refuse
   ? NextResponse.json({ error: "Forbidden" }, { status: refuse })
   : { supabase: { rpc: userRpc }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session }));
 vi.mock("@/lib/server/auth", () => ({
-  sameOrigin: () => true,
+  sameOrigin: () => origin,
+  clientIp: () => "203.0.113.7",
   forbiddenOrigin: () => NextResponse.json({ error: "Forbidden" }, { status: 403 }),
   isErrorResponse: (v: unknown) => v instanceof NextResponse,
   jsonError: (m: string, s: number) => NextResponse.json({ error: m }, { status: s }),
@@ -31,7 +33,13 @@ vi.mock("@/lib/server/auth", () => ({
 
 /** The service-role client: table reads answer `table`, rpc answers `svcRpc`. */
 let table: { data: unknown; error: unknown } = { data: null, error: null };
-const svcRpc = vi.fn<RpcFn>(async () => ({ data: null, error: null }));
+/** The service role's rpc: the rate limiter allows (auth_rate_hit TRUE) unless `rate` says otherwise; peek finds the company. */
+let rate: "ok" | "over" | "down" = "ok";
+const svcRpc = vi.fn<RpcFn>(async (fn) => {
+  if (fn === "auth_rate_hit") return rate === "down" ? { data: null, error: { code: "57014" } } : { data: rate === "ok", error: null };
+  if (fn === "integration_invite_peek") return { data: { provider: "xero", company_name: "Alpha <Ltd>" }, error: null };
+  return { data: null, error: null };
+});
 const serviceClient = () => {
   const c: Record<string, unknown> = {};
   for (const m of ["select", "eq", "neq", "limit"]) c[m] = () => c;
@@ -57,7 +65,7 @@ const ENV = { NEXT_PUBLIC_SITE_URL: "https://app.example.test", INTEGRATIONS_ENC
 const saved: Record<string, string | undefined> = {};
 beforeEach(() => {
   for (const [k, v] of Object.entries(ENV)) { saved[k] = process.env[k]; process.env[k] = v; }
-  session = null; refuse = null; platformRefusal = null; table = { data: null, error: null };
+  session = null; refuse = null; platformRefusal = null; table = { data: null, error: null }; origin = true; rate = "ok";
   for (const f of [userRpc, svcRpc, ownerRpc, createSupabaseAdminClient, microsoftReady, requireProfile, ms.beginMicrosoftConnect, ms.disconnectMicrosoft, ms.testMicrosoft]) f.mockClear();
 });
 afterEach(() => { for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } });
@@ -138,27 +146,72 @@ describe("the accountant's link (create)", () => {
 });
 
 describe("opening a link (public)", () => {
-  const open = async (token: string) => (await import("@/app/api/integrations/invite/[token]/route")).GET(new Request(`https://app.example.test/api/integrations/invite/${token}`), { params: Promise.resolve({ token }) });
+  const url = (token: string) => `https://app.example.test/api/integrations/invite/${token}`;
+  const route = () => import("@/app/api/integrations/invite/[token]/route");
+  const get = async (token: string) => (await route()).GET(new Request(url(token)), { params: Promise.resolve({ token }) });
+  const press = async (token: string) => (await route()).POST(new Request(url(token), { method: "POST" }), { params: Promise.resolve({ token }) });
+  const fns = () => svcRpc.mock.calls.map((c) => c[0]);
+  const good = () => randomBytes(32).toString("base64url");
 
-  it("a malformed link: a fixed 404 page, no database call", async () => {
-    const res = await open("not-a-token");
-    expect(res.status).toBe(404);
+  it("a malformed link: a fixed 404 page, no database call (GET or POST)", async () => {
+    expect((await get("not-a-token")).status).toBe(404);
+    expect((await press("not-a-token")).status).toBe(404);
     expect(createSupabaseAdminClient).not.toHaveBeenCalled();
-    expect(svcRpc).not.toHaveBeenCalled();
+  });
+
+  it("GET (a mail scanner, a chat preview, the accountant) only shows 'Connect <company> to Xero' with Continue: nothing is used up", async () => {
+    const token = good();
+    for (let i = 0; i < 3; i += 1) {
+      const res = await get(token);
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain("Connect Alpha &lt;Ltd&gt; to Xero");
+      expect(html).toContain('<form method="post"><button type="submit">Continue to Xero</button></form>');
+      expect(res.headers.get("cache-control")).toBe("no-store");
+    }
+    expect(fns()).not.toContain("integration_invite_redeem");
+    expect(fns().filter((f) => f === "integration_invite_peek")).toHaveLength(3);
+  });
+
+  it("GET for a link that isn't open: the same fixed page, nothing used up", async () => {
+    svcRpc.mockImplementationOnce(async () => ({ data: true, error: null })).mockImplementationOnce(async () => ({ data: null, error: null }));
+    const res = await get(good());
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain("This link can't be used");
+    expect(fns()).not.toContain("integration_invite_redeem");
+  });
+
+  it("POST (the Continue button): used up through the service role and sent straight to Xero", async () => {
+    const res = await press(good());
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toMatch(/^https:\/\/login\.xero\.com\//);
+    expect(fns()).toEqual(["auth_rate_hit", "integration_invite_redeem"]);
+  });
+
+  it("POST from another site is refused before anything", async () => {
+    origin = false;
+    expect((await press(good())).status).toBe(403);
+    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
   });
 
   it("Xero not set up: the link is NOT used up", async () => {
     delete process.env.XERO_CLIENT_ID;
-    const res = await open(randomBytes(32).toString("base64url"));
-    expect(res.status).toBe(503);
-    expect(svcRpc).not.toHaveBeenCalled();
+    expect((await press(good())).status).toBe(503);
+    expect(fns()).not.toContain("integration_invite_redeem");
   });
 
-  it("a good link: used up through the service role and sent straight to Xero", async () => {
-    const res = await open(randomBytes(32).toString("base64url"));
-    expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toMatch(/^https:\/\/login\.xero\.com\//);
-    expect(svcRpc.mock.calls.map((c) => c[0])).toEqual(["integration_invite_redeem"]);
+  it("rate limited (20 in 15 minutes per IP), and fails closed when the limiter is down: nothing peeked or used up", async () => {
+    for (const r of ["over", "down"] as const) {
+      rate = r;
+      svcRpc.mockClear();
+      expect((await get(good())).status).toBe(429);
+      expect((await press(good())).status).toBe(429);
+      const cb = await (await import("@/app/api/integrations/invite/callback/route")).GET(new Request("https://app.example.test/api/integrations/invite/callback?state=s&code=c"));
+      expect(cb.status).toBe(429);
+      expect(fns().every((f) => f === "auth_rate_hit")).toBe(true);
+    }
+    const [, args] = svcRpc.mock.calls[0];
+    expect(args).toMatchObject({ p_bucket: "integration_invite", p_window_seconds: 900, p_max: 20 });
   });
 
   it("the invite callback without a code completes nothing", async () => {
@@ -168,11 +221,45 @@ describe("opening a link (public)", () => {
   });
 });
 
+describe("cancelling an open link (DELETE /api/integrations/invite?id=)", () => {
+  const id = "44444444-4444-4444-8444-444444444444";
+  const del = async (q = `?id=${id}`) => (await import("@/app/api/integrations/invite/route")).DELETE(new Request(`https://app.example.test/api/integrations/invite${q}`, { method: "DELETE" }));
+
+  it("support sessions and non-admins are refused before any database call", async () => {
+    for (const s of [{ read_only: true, support: true }, { read_only: false, support: true }]) {
+      session = s;
+      expect((await del()).status).toBe(403);
+    }
+    session = null;
+    refuse = 403;
+    expect((await del()).status).toBe(403);
+    expect(userRpc).not.toHaveBeenCalled();
+  });
+
+  it("the admin cancels it through integration_invite_revoke; a link no longer open is 404; a bad id is 400", async () => {
+    userRpc.mockResolvedValueOnce({ data: true, error: null });
+    expect((await del()).status).toBe(200);
+    expect(userRpc).toHaveBeenCalledWith("integration_invite_revoke", { p_invite: id });
+    userRpc.mockResolvedValueOnce({ data: false, error: null });
+    expect((await del()).status).toBe(404);
+    userRpc.mockClear();
+    expect((await del("?id=nope")).status).toBe(400);
+    expect(userRpc).not.toHaveBeenCalled();
+  });
+});
+
 describe("status: what the page may offer", () => {
   it("107 not applied (table missing): db107 false, Xero still configured from the environment, Microsoft not", async () => {
     table = { data: null, error: { code: "PGRST205", message: "Could not find the table 'public.integration_connect_invites' in the schema cache" } };
     const res = await (await import("@/app/api/integrations/status/route")).GET();
     expect(await res.json()).toEqual({ db107: false, xero: { configured: true }, microsoft: { configured: false } });
+  });
+
+  it("a XERO_REDIRECT_URI that isn't exactly right: 'not set up' names the value expected", async () => {
+    process.env.XERO_REDIRECT_URI = "https://app.example.test/api/integrations/xero/callback?x=1";
+    const body = await (await (await import("@/app/api/integrations/status/route")).GET()).json();
+    expect(body.xero).toEqual({ configured: false, problem: "XERO_REDIRECT_URI must be exactly https://app.example.test/api/integrations/xero/callback (https, no query)." });
+    delete process.env.XERO_REDIRECT_URI;
   });
 
   it("107 applied, nothing stored and no Microsoft env: Microsoft 'not set up'", async () => {

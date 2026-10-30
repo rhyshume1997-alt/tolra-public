@@ -14,7 +14,8 @@ import {
   appSecretContext, databaseHas107, defaultRedirectUri, envCredentials, getAppCredentials, inviteRedirectUri, last4, missingDbObject, validRedirectUri,
 } from "@/lib/integrations/app-credentials";
 import { decryptSecret, encryptSecret } from "@/lib/integrations/crypto";
-import { INVITE_TOKEN, finishInviteConnect, hashInviteToken, inviteVerifierContext, invitePage, newInviteToken, redeemInvite } from "@/lib/integrations/invite";
+import { INVITE_TOKEN, finishInviteConnect, hashInviteToken, inviteConfirmPage, inviteVerifierContext, invitePage, newInviteToken, peekInvite, redeemInvite } from "@/lib/integrations/invite";
+import { disconnectAndRevoke } from "@/lib/integrations/server";
 import { microsoftTokenSource } from "@/lib/integrations/microsoft/client";
 import { beginMicrosoftConnect, finishMicrosoftConnect } from "@/lib/integrations/microsoft/connect";
 import { MicrosoftAuthError, authorizeUrl as msAuthorizeUrl, microsoftTenant, refreshTokens as msRefresh } from "@/lib/integrations/microsoft/oauth";
@@ -186,6 +187,18 @@ describe("the accountant's connect link", () => {
     expect(svc.calls[0]).toEqual({ fn: "integration_oauth_consume_invite", args: { p_provider: "xero", p_state_hash: hashState(state) } });
   });
 
+  it("the link's page (peek) asks the database for the company only: nothing is used up; a malformed link asks nothing", async () => {
+    const { token, tokenHash } = newInviteToken();
+    const svc = fakeClient({ rpc: { integration_invite_peek: { data: { company_name: "Alpha Ltd" } } } });
+    expect(await peekInvite(svc.client, token)).toEqual({ companyName: "Alpha Ltd" });
+    expect(svc.calls).toEqual([{ fn: "integration_invite_peek", args: { p_token_hash: tokenHash } }]);
+    expect(await peekInvite(svc.client, "bad")).toBeNull();
+    expect(svc.calls).toHaveLength(1);
+    const html = await inviteConfirmPage("A&B <x>").text();
+    expect(html).toContain("Connect A&amp;B &lt;x&gt; to Xero");
+    expect(html).not.toContain("<x>");
+  });
+
   it("the accountant's page is fixed text (nothing from the request), not cached, framed by nobody", async () => {
     const res = invitePage("<script>");
     const html = await res.text();
@@ -204,7 +217,7 @@ describe("Microsoft 365 delegated Connect", () => {
     const user = fakeClient({});
     const url = new URL(await beginMicrosoftConnect(user.client, ORG, msReady));
     expect(url.origin + url.pathname).toBe("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize");
-    expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send Mail.Read User.Read");
+    expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send User.Read");
     expect(url.searchParams.get("redirect_uri")).toBe(`${SITE}/api/integrations/microsoft/callback`);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.has("client_secret")).toBe(false);
@@ -291,6 +304,24 @@ describe("Microsoft 365 token refresh (under 084's lease)", () => {
     expect(String(mark.p_reason)).toContain("Microsoft 365 refused the stored sign-in");
     await expect(msRefresh(msReady.config, "r", fetchImpl as never)).rejects.toBeInstanceOf(MicrosoftAuthError);
     await expect(msRefresh(msReady.config, "r", fetchImpl as never)).rejects.not.toHaveProperty("message", expect.stringContaining("AADSTS"));
+  });
+});
+
+describe("disconnect cancels the open links (107), and falls back to 084's disconnect before 107", () => {
+  it("107: integration_disconnect_revoke only", async () => {
+    const user = fakeClient({});
+    await disconnectAndRevoke(user.client, "xero");
+    expect(user.calls.map((c) => c.fn)).toEqual(["integration_disconnect_revoke"]);
+  });
+  it("before 107 (function missing): 084's integration_disconnect, as before", async () => {
+    const user = fakeClient({ rpc: { integration_disconnect_revoke: { error: { code: "PGRST202", message: "Could not find the function" } } } });
+    await disconnectAndRevoke(user.client, "microsoft");
+    expect(user.calls).toEqual([{ fn: "integration_disconnect_revoke", args: { p_provider: "microsoft" } }, { fn: "integration_disconnect", args: { p_provider: "microsoft" } }]);
+  });
+  it("any other refusal is the answer (no second try)", async () => {
+    const user = fakeClient({ rpc: { integration_disconnect_revoke: { error: { code: "P0002", message: "not connected", hint: "not_connected" } } } });
+    await expect(disconnectAndRevoke(user.client, "xero")).rejects.toMatchObject({ hint: "not_connected" });
+    expect(user.calls).toHaveLength(1);
   });
 });
 

@@ -11,6 +11,10 @@ DROP FUNCTION IF EXISTS public.integration_app_credentials_list();
 DROP FUNCTION IF EXISTS public.integration_app_credentials_remove(TEXT);
 DROP FUNCTION IF EXISTS public.integration_app_credentials_save(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER);
 DROP FUNCTION IF EXISTS public.integration_oauth_consume_invite(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.integration_disconnect_revoke(TEXT);
+DROP FUNCTION IF EXISTS public.integration_invite_revoke(UUID);
+DROP FUNCTION IF EXISTS public.integration_invites_open(TEXT);
+DROP FUNCTION IF EXISTS public.integration_invite_peek(TEXT);
 DROP FUNCTION IF EXISTS public.integration_invite_redeem(TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.integration_invite_create(TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.integration_oauth_start(TEXT, TEXT, TEXT);
@@ -40,6 +44,7 @@ BEGIN
      OR EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_oauth_states' AND column_name = 'via_invite')
      OR EXISTS (SELECT 1 FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
                 AND p.proname IN ('integration_oauth_start', 'integration_invite_create', 'integration_invite_redeem', 'integration_oauth_consume_invite',
+                                  'integration_invite_peek', 'integration_invites_open', 'integration_invite_revoke', 'integration_disconnect_revoke',
                                   'integration_app_credentials_save', 'integration_app_credentials_remove', 'integration_app_credentials_list',
                                   'integration_sends_accounting_only'))
      OR EXISTS (SELECT 1 FROM pg_constraint c WHERE c.contype = 'c' AND pg_get_constraintdef(c.oid) LIKE '%microsoft%'

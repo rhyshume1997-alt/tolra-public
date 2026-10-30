@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { KEY_VERSION, decryptSecret, encryptSecret } from "@/lib/integrations/crypto";
-import { DbError, serviceDb } from "@/lib/integrations/server";
+import { DbError, disconnectAndRevoke, serviceDb } from "@/lib/integrations/server";
 import { type MicrosoftReady, getProfile, microsoftTokenSource } from "@/lib/integrations/microsoft/client";
 import { authorizeUrl, exchangeCode } from "@/lib/integrations/microsoft/oauth";
 import { hashState, newAuthorisation } from "@/lib/integrations/xero/oauth";
@@ -55,8 +55,7 @@ export async function finishMicrosoftConnect(service: SupabaseClient, org: strin
 
 /** Disconnect: as the signed-in admin (the database checks admin and two-step; the tokens are deleted). Consent stays at Microsoft. */
 export async function disconnectMicrosoft(userClient: SupabaseClient): Promise<void> {
-  const { error } = await userClient.rpc("integration_disconnect", { p_provider: "microsoft" });
-  if (error) throw new DbError(error.message, error.code, (error as { hint?: string }).hint);
+  await disconnectAndRevoke(userClient, "microsoft");
 }
 
 /** Test: the company's mailbox as Microsoft 365 answers for it now (a fresh token if due). null when not connected / must connect again. */

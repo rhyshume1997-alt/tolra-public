@@ -3,8 +3,9 @@
  * service role for the server's own calls):
  *   - Microsoft 365 as a connection provider: Connect started by the company's admin only (integration_oauth_start), completed through
  *     084's consume/store, shown by 084's overview; issuing an invoice in a company connected to Microsoft 365 queues Xero only, never fails;
- *   - the accountant's link: created by the company's admin only, kept as a hash, single use (a second open is refused), refused once
- *     expired; its state is completed by the invite callback only, once; the tables are unreadable through the API;
+ *   - the accountant's link: created by the company's admin only, kept as a hash; peeking (the GET page) uses nothing up; single use
+ *     (a second open is refused), refused once expired or cancelled; cancelled by the admin, and every open link on Disconnect; its state
+ *     is completed by the invite callback only, once; the tables are unreadable through the API;
  *   - app-level credentials: a company admin can neither set, remove nor list them; the table is unreadable through the API.
  * The same checks with the platform owner, support sessions and the two-step rule: tests/scripts/integrations_connect_107_proof.sql.
  */
@@ -119,6 +120,32 @@ describe("the accountant's connect link", () => {
     await q(user("admin"), "select public.integration_oauth_begin('xero', $1, $2) as id", [state, cipher()]);
     const [{ c }] = await svc<{ c: unknown }>("select public.integration_oauth_consume_invite('xero', $1) as c", [state]);
     expect(c).toBeNull();
+  });
+
+  it("the page's peek uses nothing up; a cancelled link is dead; Disconnect cancels every open link", async () => {
+    const token = hash();
+    const [{ r }] = await q<{ r: { id: string } }>(user("admin"), "select public.integration_invite_create('xero', $1) as r", [token]);
+    for (let i = 0; i < 3; i += 1) {
+      const [{ p }] = await svc<{ p: { company_name: string } | null }>("select public.integration_invite_peek($1) as p", [token]);
+      expect(p?.company_name).toBe(alpha().name);
+    }
+    expect(await owner("select used_at from public.integration_connect_invites where token_hash = $1", [token])).toEqual([{ used_at: null }]);
+    expect(await refusal(user("office"), "select public.integration_invite_revoke($1)", [r.id])).toMatchObject({ code: "42501" });
+    const [{ ok }] = await q<{ ok: boolean }>(user("admin"), "select public.integration_invite_revoke($1) as ok", [r.id]);
+    expect(ok).toBe(true);
+    expect(await svcRefusal("select public.integration_invite_redeem($1, $2, $3)", [token, hash(), cipher()])).toMatchObject({ hint: "invite_invalid" });
+    // Connected to Xero with two open links: Disconnect (107's wrapper of 084's) cancels both.
+    const state = hash();
+    await q(user("admin"), "select public.integration_oauth_begin('xero', $1, $2) as id", [state, cipher()]);
+    await svc("select public.integration_oauth_consume($1, $2, 'xero', $3) as r", [alpha().id, alpha().users.admin.id, state]);
+    await svc("select public.integration_store_connection($1, $2, 'xero', $3, 'Alpha Xero', $4, $5, $6, now() + interval '30 minutes', 1) as r",
+      [alpha().id, alpha().users.admin.id, `tenant-${randomUUID()}`, randomUUID(), cipher(), cipher()]);
+    await q(user("admin"), "select public.integration_invite_create('xero', $1) as r", [hash()]);
+    const [{ d }] = await q<{ d: { status: string; invites_revoked: number } }>(user("admin"), "select public.integration_disconnect_revoke('xero') as d");
+    expect(d.status).toBe("disconnected");
+    expect(d.invites_revoked).toBeGreaterThanOrEqual(1);
+    const [{ open }] = await q<{ open: unknown[] }>(user("admin"), "select public.integration_invites_open('xero') as open");
+    expect(open).toEqual([]);
   });
 
   it("no token hash in the audit log", async () => {
