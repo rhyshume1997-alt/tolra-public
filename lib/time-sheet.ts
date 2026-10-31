@@ -307,6 +307,20 @@ export function pairAttendance(events: AttendanceEvent[], settings: TimeSettings
   return { sessions, issues };
 }
 
+/**
+ * Whether a person is clocked in now, from their paired sessions (pairAttendance, or a day's `sessions`): the ONE rule behind Weekly
+ * hours' "Clocked in since 08:05 · on a break" and the Whole floor's clocked-in count, so the two can't disagree. Clocked in = the latest
+ * session that has a start is still open (no clock-out, and younger than long_session_hours: the "open" flag); on a break = the last action
+ * in it is a Break start. A session left open longer than that, a clock-out, or a stray break with no clock-in is NOT clocked in.
+ * `since`: the clock-in instant (ms) while clocked in, else null.
+ */
+export function clockStateOf(sessions: AttendanceSession[]): { clockedIn: boolean; onBreak: boolean; since: number | null } {
+  const last = sessions.filter((s) => s.start !== null).at(-1) ?? null;
+  const clockedIn = Boolean(last && last.end === null && last.flags.includes("open"));
+  const onBreak = clockedIn && Boolean(last?.events.at(-1)?.action === "break_start");
+  return { clockedIn, onBreak, since: clockedIn && last ? last.start : null };
+}
+
 // ----- labour ------------------------------------------------------------------------------------------------------------------------
 export type LabourSession = {
   id: string;

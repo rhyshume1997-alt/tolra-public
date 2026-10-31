@@ -354,6 +354,9 @@ describe("the platform owner", () => {
     expect((await c.rpc("report_job_problem", { p_job: seedC.jobs, p_reason: "other", p_note: "Support attempt", p_request_id: randomUUID() })).error).not.toBeNull();
     expect((await c.rpc("resolve_job_problem", { p_problem: randomUUID(), p_note: "Support attempt" })).error).not.toBeNull();
     expect(await sql("select 1 from public.job_problems where organization_id = $1", [gamma])).toEqual([]);
+    // 118: parts are not logged on the company's job from a read-only support session.
+    expect((await c.rpc("log_job_parts", { p_job: seedC.jobs, p_quantity: 1, p_note: null, p_client_op_id: randomUUID() })).error).not.toBeNull();
+    expect(await sql("select 1 from public.job_part_logs where organization_id = $1", [gamma])).toEqual([]);
     // Files.
     const png = Buffer.from("89504e470d0a1a0a", "hex");
     const upload = await c.storage.from("org-logos").upload(`${gamma}/support.png`, png, { contentType: "image/png", upsert: true });

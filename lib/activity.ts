@@ -74,6 +74,7 @@ const TABLE_LABELS: Record<string, string> = {
   rfqs: "RFQ",
   stock: "Stock item",
   operator_sessions: "Operator session",
+  job_part_logs: "Parts entry",
   time_settings: "Time setting",
   attendance_events: "Clock action",
   attendance_event_networks: "Clock action network",
@@ -281,6 +282,8 @@ const ACTION_LABELS: Record<string, string> = {
   // 117: a Problem raised from My jobs, and the office clearing it.
   REPORT_JOB_PROBLEM: "Problem reported",
   RESOLVE_JOB_PROBLEM: "Problem resolved",
+  // 118: parts logged on a job from My jobs (a negative entry is a correction).
+  LOG_JOB_PARTS: "Parts logged",
   SEND: "Sent",
   DESPATCH: "Despatched",
   QUOTE_EMAILED: "Emailed to the customer",
@@ -472,6 +475,17 @@ export function describeEntry(entry: ActivityEntry, names: PeopleMap = {}): { ti
     const said = typeof meta.note === "string" && meta.note ? `Note: ${meta.note}` : "";
     const done = typeof meta.resolution_note === "string" && meta.resolution_note ? `What was done: ${meta.resolution_note}` : "";
     return { title: label, details: [reason, said, done].filter(Boolean) };
+  }
+  // Migration 118: how many were added or taken off, the count after, and for a correction why.
+  if (entry.action === "LOG_JOB_PARTS") {
+    const quantity = typeof meta.quantity === "number" ? meta.quantity : null;
+    const total = typeof meta.total_after === "number" ? meta.total_after : null;
+    const wanted = typeof meta.quantity_required === "number" ? meta.quantity_required : null;
+    const said = typeof meta.note === "string" && meta.note ? `Note: ${meta.note}` : "";
+    return {
+      title: quantity !== null && quantity < 0 ? "Parts taken off (correction)" : label,
+      details: [quantity === null ? "" : quantity < 0 ? `Taken off: ${-quantity}` : `Added: ${quantity}`, total === null ? "" : `Count now: ${total}${wanted === null ? "" : ` of ${wanted}`}`, said].filter(Boolean),
+    };
   }
   if (entry.action === "RESEND") {
     const previous = typeof meta.previous_by === "string" ? ` by ${personName(names, meta.previous_by)}` : "";

@@ -931,6 +931,11 @@
  },
  {
   "kind": "function",
+  "object": "public.job_parts_done(p_jobs uuid[])",
+  "detail": "invoker search_path=pg_catalog, public 066e36ebc48485d06a54dd9696d1ea9c"
+ },
+ {
+  "kind": "function",
   "object": "public.job_release_state(p_job uuid)",
   "detail": "definer search_path=pg_catalog, public cb7adc6ee7e1c0f41f81e5d318d84354"
  },
@@ -1088,6 +1093,11 @@
   "kind": "function",
   "object": "public.log_delivery_note_email(p_note uuid, p_to text, p_subject text, p_body text, p_status text)",
   "detail": "invoker search_path=pg_catalog, public 74a207e3812c175e7d580b78b3721946"
+ },
+ {
+  "kind": "function",
+  "object": "public.log_job_parts(p_job uuid, p_quantity integer, p_note text, p_client_op_id uuid)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 3ad7fd8ee7876566fdde15be847ea464"
  },
  {
   "kind": "function",
@@ -2796,6 +2806,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.job_parts_done(p_jobs uuid[])",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.job_release_state(p_job uuid)",
   "detail": "authenticated,service_role"
  },
@@ -2952,6 +2967,11 @@
  {
   "kind": "function-grant",
   "object": "public.log_delivery_note_email(p_note uuid, p_to text, p_subject text, p_body text, p_status text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.log_job_parts(p_job uuid, p_quantity integer, p_note text, p_client_op_id uuid)",
   "detail": "authenticated,service_role"
  },
  {
@@ -4126,6 +4146,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.job_part_logs :: job_part_logs rbac select",
+  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+ },
+ {
+  "kind": "policy",
   "object": "public.job_problems :: job_problems rbac select",
   "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
  },
@@ -4921,6 +4946,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.job_part_logs",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.job_problems",
   "detail": "enabled"
  },
@@ -5342,6 +5372,11 @@
  {
   "kind": "table-grant",
   "object": "public.job_machines :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.job_part_logs :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -6443,6 +6478,26 @@
   "kind": "trigger",
   "object": "public.job_machines :: zz_same_org_source_so_line_id",
   "detail": "O 219302cc4b510a23dec0e22ff7b821b4"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.job_part_logs :: admin_mfa",
+  "detail": "O 3cb4d731df4f5340754b11d7b8cd3e17"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.job_part_logs :: audit_job_part_logs_changes",
+  "detail": "O fb6d40df605199bd7879b7a099c5f1df"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.job_part_logs :: support_read_only",
+  "detail": "O f5200346bba5f28bb47b512932fc0383"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.job_part_logs :: zz_same_org_job_id",
+  "detail": "O 40a742b74f5058ff115ac023dc8466de"
  },
  {
   "kind": "trigger",
@@ -7588,6 +7643,11 @@
   "kind": "unique-index",
   "object": "public.job_machines :: job_machines_one_per_machine",
   "detail": "f2cb3e5447bd9d28a3635f401c5e060a"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.job_part_logs :: job_part_logs_organization_id_client_op_id_key",
+  "detail": "b9eb739afdfd282dcd9164310d5b21d8"
  },
  {
   "kind": "unique-index",

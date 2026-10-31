@@ -282,6 +282,8 @@ function attempts(): Attempt[] {
     // 117: a problem raised on beta's job, and beta's own open problem cleared, each from alpha.
     ["public.report_job_problem(p_job uuid, p_reason text, p_note text, p_request_id uuid)", () => alpha.rpc("report_job_problem", { p_job: beta.job, p_reason: "other", p_note: "Cross-company attempt", p_request_id: randomUUID() }), "refused"],
     ["public.resolve_job_problem(p_problem uuid, p_note text)", () => alpha.rpc("resolve_job_problem", { p_problem: beta.problem, p_note: "Cross-company attempt" }), "refused"],
+    // 118: parts logged on beta's job, from alpha (job_parts_done is not definer: it counts only what alpha's own row rules show).
+    ["public.log_job_parts(p_job uuid, p_quantity integer, p_note text, p_client_op_id uuid)", () => alpha.rpc("log_job_parts", { p_job: beta.job, p_quantity: 1, p_note: null, p_client_op_id: randomUUID() }), "refused"],
     // 059: the manual invoice-from-delivery-notes path (now SECURITY DEFINER), pointed at beta's sent-out note.
     ["public.create_invoice_from_delivery_notes(p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)", () => alpha.rpc("create_invoice_from_delivery_notes", { p_notes: [beta.note], p_invoice_date: "2026-10-10", p_due_date: "2026-11-09", p_terms: "30 days" }), "refused"],
     // 067: beta's sent-out note put on beta's (issued) invoice, from alpha.
