@@ -165,8 +165,8 @@ export function XeroBatchCard() {
             {preview.items.length ? (
               <div className="max-h-72 overflow-auto rounded border border-slate-200">
                 <table role="table" className="w-full text-sm" data-testid="batch-list">
-                  <thead role="rowgroup" className="bg-slate-50 text-left text-xs text-slate-600 max-md:hidden"><tr role="row" role="row"><th role="columnheader" className="p-2">Document</th><th role="columnheader" className="p-2">Customer</th><th role="columnheader" className="p-2">Date</th><th role="columnheader" className="p-2 text-right">Total</th><th role="columnheader" className="p-2">Result</th></tr></thead>
-                  <tbody role="rowgroup" role="rowgroup">
+                  <thead role="rowgroup" className="bg-slate-50 text-left text-xs text-slate-600 max-md:hidden"><tr role="row"><th role="columnheader" className="p-2">Document</th><th role="columnheader" className="p-2">Customer</th><th role="columnheader" className="p-2">Date</th><th role="columnheader" className="p-2 text-right">Total</th><th role="columnheader" className="p-2">Result</th></tr></thead>
+                  <tbody role="rowgroup">
                     {preview.items.map((i) => {
                       const r = results[`${i.docType}:${i.id}`];
                       return (

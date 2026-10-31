@@ -158,7 +158,7 @@ export function WeekReview() {
                 <th role="columnheader" />
               </tr>
             </thead>
-            <tbody role="rowgroup" role="rowgroup">
+            <tbody role="rowgroup">
               {sorted.length ? sorted.map((p) => {
                 const state = p.status?.state ?? "not_approved";
                 return (
@@ -182,7 +182,7 @@ export function WeekReview() {
                     </td>
                   </tr>
                 );
-              }) : <tr role="row" role="row"><td role="cell" colSpan={shownColumns} className="px-3 py-4 text-slate-500">Nobody has recorded time this week.</td></tr>}
+              }) : <tr role="row"><td role="cell" colSpan={shownColumns} className="px-3 py-4 text-slate-500">Nobody has recorded time this week.</td></tr>}
             </tbody>
           </table>
         </div>

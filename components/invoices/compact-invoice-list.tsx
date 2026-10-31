@@ -47,7 +47,7 @@ export function CompactInvoiceList<T extends CompactInvoice>({ rows, onOpen }: {
     <div data-testid="compact-invoice-list" className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 dark:border-white/10">
       <table role="table" className="w-full border-collapse text-sm desk:min-w-[56rem]" data-tablet-cards>
         <thead role="rowgroup" className="hidden border-b border-slate-200 bg-slate-50 desk:table-header-group dark:border-white/10 dark:bg-white/5">
-          <tr role="row" role="row">
+          <tr role="row">
             <th role="columnheader" scope="col" className={HEAD}>Invoice</th>
             <th role="columnheader" scope="col" className={HEAD}>Date</th>
             <th role="columnheader" scope="col" className={HEAD}>Customer</th>
@@ -60,7 +60,7 @@ export function CompactInvoiceList<T extends CompactInvoice>({ rows, onOpen }: {
             <th role="columnheader" scope="col" className={HEAD}>Due</th>
           </tr>
         </thead>
-        <tbody role="rowgroup" role="rowgroup">
+        <tbody role="rowgroup">
           {rows.map((invoice) => {
             const { net, vat } = netAndVat(invoice);
             return (

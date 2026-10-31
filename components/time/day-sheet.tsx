@@ -339,7 +339,7 @@ export function DaySheet() {
               {day.jobs.length ? (
                 <table role="table" className="w-full text-sm" data-testid="job-lines" data-tablet-cards>
                   <thead role="rowgroup" className="hidden md:table-header-group"><tr role="row" className="border-b text-left text-xs uppercase text-slate-500"><th role="columnheader" className="py-1">Job</th><th role="columnheader">Times</th><th role="columnheader" className="text-right">Time</th><th role="columnheader" className="text-right">Share</th><th role="columnheader" /></tr></thead>
-                  <tbody role="rowgroup" role="rowgroup">
+                  <tbody role="rowgroup">
                     {day.jobs.map((line) => {
                       const job = jobById[line.jobId];
                       return (
