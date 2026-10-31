@@ -97,6 +97,7 @@ const ALL = [...AOW, "viewer"];
 const GATED: Record<string, string[]> = {
   "/admin": A,
   "/settings": A,
+  "/numbers": A,
   "/invoices": AO,
   "/sales-orders": AO,
   "/approval": AO,

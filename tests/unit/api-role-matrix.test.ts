@@ -74,6 +74,8 @@ const EXPECTED: Record<string, Row> = {
   "cron/daily:GET": r("cron", "-", "-"),
   "cron/email-schedules:GET": r("cron", "-", "-"),
   "cron/ip-purge:GET": r("cron", "-", "-"),
+  "cron/nightly:GET": r("cron", "-", "-"),
+  "cron/overview-snapshot:GET": r("cron", "-", "-"),
   "cron/xero-sweep:GET": r("cron", "-", "-"),
   "email/send:POST": r("admin,office", "switch", "refused"),
   "favicon:GET": r("public", "-", "-"),
