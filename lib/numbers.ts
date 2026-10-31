@@ -10,8 +10,8 @@
  *      payment can settle an invoice from an earlier month.
  *   3. Where is machine time going? Recorded machine_runs per machine, clipped to the chosen months, overlaps on a machine once.
  *
- * Rules (the same as the Overview, lib/overview-metrics on design/overview-item1; the helpers below are written identically so that,
- * once that branch is on main, they can be replaced by imports from it):
+ * Rules (the same as the Overview: invoiceNetPence, isInvoiced and the row types are imported from lib/overview-metrics, so the two
+ * pages cannot drift apart; tests/unit/numbers-overview-reconcile.test.ts checks that they agree month by month):
  *   - Invoiced (ex VAT): an issued invoice counts on its invoice date (else the day it was made, London) at total minus VAT. A draft,
  *     void or cancelled invoice never counts. An issued credit note takes its own total minus VAT off, ONCE, on its own credit date:
  *     the credited invoice stays counted where it was issued, so nothing is counted twice and a credit in a later month lowers that
@@ -22,32 +22,17 @@
  */
 import { calendarDate, toDateInput } from "@/lib/dates";
 import { fromPence, toPence } from "@/lib/money";
+import { invoiceNetPence, isInvoiced, type CreditMetricRow, type InvoiceMetricRow } from "@/lib/overview-metrics";
 import { invoiceStatus } from "@/lib/receivables";
 
 const HOUR_MS = 3_600_000;
 const LONDON = "Europe/London";
 
-/** Statuses that were never a sale: a draft has not been issued; void and cancelled were taken back (lib/receivables NOT_COLLECTIBLE). */
-const NOT_INVOICED = new Set(["draft", "void", "voided", "cancelled", "canceled"]);
-
-export type NumberInvoice = {
-  customer?: string | null;
-  status?: string | null;
-  subtotal?: number | string | null;
-  vat?: number | string | null;
-  carriage?: number | string | null;
-  total?: number | string | null;
-  invoice_date?: string | null;
-  created_at?: string | null;
-};
-
-export type NumberCredit = {
-  customer?: string | null;
-  status?: string | null;
-  vat?: number | string | null;
-  total?: number | string | null;
-  credit_date?: string | null;
-};
+// The same rows and the same rules as the Overview, so these are its types and its two helpers, not copies. Re-exported so the page and
+// the tests keep importing them from here.
+export { invoiceNetPence, isInvoiced };
+export type NumberInvoice = InvoiceMetricRow;
+export type NumberCredit = CreditMetricRow;
 
 export type NumberPayment = { amount: number | string | null; paid_on: string | null };
 export type NumberMachine = { id: string; name: string };
@@ -111,18 +96,6 @@ export function windowOf(periods: Period[]): { start: string; end: string; start
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Invoiced revenue (ex VAT), credit notes off once on their own date
 // ---------------------------------------------------------------------------------------------------------------------------------
-
-/** An issued invoice's value ex VAT, in pence: total minus VAT (carriage included), else lines plus carriage; null with no figures. */
-export function invoiceNetPence(row: NumberInvoice): number | null {
-  if (row.total != null && row.total !== "") return pence(row.total) - pence(row.vat);
-  if (row.subtotal != null && row.subtotal !== "") return pence(row.subtotal) + pence(row.carriage);
-  return null;
-}
-
-/** True when the invoice was issued and still stands as a sale (a credited or paid one included: its credit note comes off apart). */
-export function isInvoiced(row: { status?: string | null }): boolean {
-  return !NOT_INVOICED.has(invoiceStatus(row.status));
-}
 
 /** The London calendar day an invoice counts on: its invoice date, else the day it was made. */
 const invoiceDay = (row: NumberInvoice) => calendarDate(row.invoice_date) || calendarDate(row.created_at);
