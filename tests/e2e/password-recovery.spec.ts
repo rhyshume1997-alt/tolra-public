@@ -7,7 +7,7 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 
 import { generatePassword } from "@/lib/password";
 import { adminClient } from "../support/fixtures";
-import { asSeparateDevice, signIn, world } from "./helpers";
+import { aal2Admin, asSeparateDevice, world } from "./helpers";
 
 const w = world();
 const MAIL = process.env.TEST_MAILPIT_URL ?? "http://127.0.0.1:54324";
@@ -34,7 +34,7 @@ const signInStatus = async (request: APIRequestContext, email: string, password:
 test("forgot password: e-mail, link, new password works, old one doesn't, the same link can't be used twice", async ({ browser, page, baseURL }) => {
   test.setTimeout(180_000);
   // A person made by the admin screen's own route (so the run's clean-up removes them), with a password they know.
-  await signIn(page, w.tenants.alpha.users.admin);
+  await aal2Admin(page);
   const email = `recover.${w.runId}@example.test`;
   const oldPassword = generatePassword(14);
   const created = await page.request.post("/api/admin/users", { headers: { origin: baseURL! }, data: { email, full_name: "Recover Person", role: "office", password: oldPassword, must_change_password: false } });

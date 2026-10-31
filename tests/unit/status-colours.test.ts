@@ -11,6 +11,8 @@ const AGREED: Record<StatusKey, [StatusColour, string]> = {
   at_risk: ["yellow", "At risk"], awaiting_inspection: ["yellow", "Waiting for inspection"], part_paid: ["yellow", "Part paid"],
   conditional_supplier: ["yellow", "Conditional supplier"], waiting_on_supplier: ["yellow", "Waiting on supplier"], waiting_on_customer: ["yellow", "Waiting on customer"],
   overdue: ["red", "Overdue"], blocked_supplier: ["red", "Blocked supplier"], sync_failed: ["red", "Sync failed"], failed_inspection: ["red", "Failed inspection"],
+  // 117: a problem an operator reported on a job (My jobs, the Job Board).
+  problem: ["red", "Problem"],
   active: ["blue", "Active"], in_progress: ["blue", "Running"], sent: ["blue", "Sent"], issued: ["blue", "Issued"], sync_pending: ["blue", "Sync pending"],
   rework: ["purple", "Rework"],
   draft: ["grey", "Draft"], not_started: ["grey", "Not started"], no_due_date: ["grey", "No due date"], archived: ["grey", "Archived"], void: ["grey", "Void"], cancelled: ["grey", "Cancelled"],

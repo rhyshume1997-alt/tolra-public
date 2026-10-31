@@ -8,6 +8,7 @@ import { LimiterUnavailableError, LoginLookupError, clientIp, hashKey, limiterUn
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { isUnreachableError } from "@/lib/auth-errors";
 import { withGatewayRetry } from "@/lib/server/resilient-fetch";
+import { LAST_ACTIVE_COOKIE } from "@/lib/session-policy";
 
 // Sign-in with a username OR an e-mail. Usernames are resolved to the e-mail here, on the server, with the service
 // role; the browser never learns whether a username or e-mail exists: every failure gets the same answer.
@@ -111,5 +112,9 @@ export async function POST(request: Request) {
     await admin.from("user_profiles").update({ last_login_at: new Date().toISOString() }).eq("id", data.user.id).then(() => undefined, () => undefined);
   }
 
+  // A new sign-in starts a fresh idle clock: the last-use cookie (HttpOnly, 30 days) outlives a normal sign-out, which runs in the browser
+  // and cannot delete it, so the middleware would otherwise end this new sign-in at its first page for the old session's idleness
+  // ("signed out after 12 hours" straight after signing in). Same attributes as middleware.ts. Only after a correct password.
+  cookieStore.set(LAST_ACTIVE_COOKIE, String(Date.now()), { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
   return NextResponse.json({ ok: true });
 }

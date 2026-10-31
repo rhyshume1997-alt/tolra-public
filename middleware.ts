@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
 import { MFA_ENROL_PARAM, adminMfaRequired, holdsAdmin, shouldCheckEnrolment } from "@/lib/mfa-policy";
 import { accessEndedCookie } from "@/lib/offline/access";
 import { companyStepRoute, parseSessionInfo } from "@/lib/session-info";
@@ -14,6 +15,8 @@ const ALL_ROLES = ["admin", "office", "workshop", "viewer"];
 // First matching prefix wins. Client-side RoleGate is cosmetic; this is the real gate.
 const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/admin", ["admin"]],
+  // Numbers (the history of invoiced, received and machine time): the owner's page, admin only.
+  ["/numbers", ["admin"]],
   ["/invoices", ["admin", "office"]],
   ["/sales-orders", ["admin", "office"]],
   ["/settings", ["admin"]],
@@ -29,6 +32,8 @@ const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/delivery-notes", ["admin", "office", "workshop"]],
   // Time and pay (050 to 052): the person's own sheet for workshop; everyone's for admin and office (the database decides what each sees).
   ["/time", ["admin", "office", "workshop"]],
+  // The AI helper: office and admin only, as its API routes and the database (101).
+  ["/ai-helper", [...AI_HELPER_ROLES]],
 ];
 
 /** Pages that work from the device's offline copy when Supabase can't be reached (Job Board, worksheets, schedule, pack, job sheet). */
@@ -46,6 +51,14 @@ export async function middleware(request: NextRequest) {
     if (isAsset || isConfigurationError || isApi) return NextResponse.next();
     return NextResponse.redirect(new URL("/configuration-error", request.url));
   }
+
+  // Installable-app files: needed before sign-in (installing from the sign-in page, the offline page).
+  const isPwaFile = path === "/manifest.webmanifest" || path === "/offline.html" || path === "/sw.js";
+  // Files and the installable-app files never depended on who is signed in: they return here, before the auth server and the
+  // database are asked anything (phone lag: getUser, user_profiles and my_session ran first, in series, for every one of them).
+  // The API does not: its getUser below refreshes an expiring session and writes the new cookies on the response (the routes'
+  // own clients are read-only and would use up the refresh token without saving the new one).
+  if (isAsset || isPwaFile) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -78,20 +91,15 @@ export async function middleware(request: NextRequest) {
   const offlineCapable = OFFLINE_ROUTES.some((prefix) => path === prefix || path.startsWith(prefix + "/"));
   if (authUnreachable && hasSessionCookie && offlineCapable) return response;
   const isLogin = path === "/login";
-  const isAuthApi = path.startsWith("/api/auth/");
   const isRoleSelect = path === "/select-role";
   // Invite / password-reset landing page: it creates the session itself from the link, so it must open signed out
   // (and must not bounce a freshly signed-in user to /dashboard before they have chosen a password).
   const isSetPassword = path === "/auth/set-password";
-  // Installable-app files: needed before sign-in (installing from the sign-in page, the offline page).
-  const isPwaFile = path === "/manifest.webmanifest" || path === "/offline.html" || path === "/sw.js";
 
-  if (isAsset) return response;
   if (isConfigurationError) return response;
+  // Each route checks the caller itself; the middleware only refreshed the session cookies above.
   if (isApi) return response;
-  if (isAuthApi) return response;
   if (isSetPassword) return response;
-  if (isPwaFile) return response;
   if (!data.user && isLogin && request.nextUrl.searchParams.get("expired") !== "1" && expiredSignInRedirect({
     hasAuthCookie: hasSessionCookie,
     lastActive: request.cookies.get(LAST_ACTIVE_COOKIE)?.value,

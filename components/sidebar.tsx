@@ -41,6 +41,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Workspace",
     items: [
       { href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] },
+      { href: "/numbers", label: "Numbers", roles: ["admin"] },
       // Only while the server has the AI helper on (aiNavAvailable); office and admin.
       { href: "/ai-helper", label: "AI", roles: ["admin", "office"] },
     ],
@@ -154,28 +155,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       return;
     }
 
-    if (!supabase) {
-      toast.error("Supabase is not configured.");
-      return;
-    }
-
-    const email = profile?.email;
-    if (!email) {
-      toast.error("Could not verify your account email.");
-      return;
-    }
-
-    const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
-    if (verifyError) {
-      toast.error("Current password incorrect.");
-      return;
-    }
-
-    // Through the server, which applies the same rules as everywhere else (length, and a known-breach check).
-    const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+    // Through the server, which checks the current password (without replacing this session) and applies the same rules as
+    // everywhere else (length, and a known-breach check).
+    const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, current_password: currentPassword }) });
     if (!response.ok) {
       const result = (await response.json().catch(() => ({}))) as { error?: string };
-      toast.error(response.status === 400 && result.error ? result.error : "Couldn't update your password. Try again.");
+      toast.error([400, 403, 503].includes(response.status) && result.error ? result.error : "Couldn't update your password. Try again.");
       return;
     }
 
@@ -235,7 +220,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                   const badge = item.href === "/approval" && approvalCount ? approvalCount.toString() : null;
                   return (
-                    <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
+                    <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>
                       {badge ? <span className="flex min-w-5 items-center justify-center bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">{badge}</span> : null}
                     </Link>

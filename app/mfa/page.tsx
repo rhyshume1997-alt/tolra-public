@@ -56,7 +56,9 @@ export default function MfaPage() {
     for (const factor of existing?.all ?? []) {
       if (factor.factor_type === "totp" && factor.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: factor.id });
     }
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `${PRODUCT.name} ${new Date().toISOString().slice(0, 10)}` });
+    // Unique per attempt: a set-up cut short by leaving the page can leave a factor behind that this list didn't see yet, and a
+    // repeated name is refused (mfa_factor_name_conflict), so the same name all day stopped the set-up.
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: `${PRODUCT.name} ${new Date().toISOString().slice(0, 19)} ${crypto.randomUUID().slice(0, 4)}` });
     if (error || !data) return fail(SETUP_FAILED);
     setEnrolment({ factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
     setStage("setup");

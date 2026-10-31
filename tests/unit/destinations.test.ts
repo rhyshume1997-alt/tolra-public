@@ -12,6 +12,11 @@ describe("canOpenDestination: a visible link must open", () => {
     expect(canOpenDestination("/approval", { activeRole: "viewer", hiddenSections: none })).toBe(false);
   });
 
+  it("Numbers is for the admin view only", () => {
+    expect(canOpenDestination("/numbers", { activeRole: "admin", hiddenSections: none })).toBe(true);
+    for (const activeRole of ["office", "workshop", "viewer"] as const) expect(canOpenDestination("/numbers", { activeRole, hiddenSections: none }), activeRole).toBe(false);
+  });
+
   it("follows the active view, not the person's highest role", () => {
     // An admin working in the workshop view gets the workshop's links.
     expect(canOpenDestination("/invoices", { activeRole: "workshop", hiddenSections: none })).toBe(false);

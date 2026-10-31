@@ -129,6 +129,11 @@ beforeAll(async () => {
   beta.photo = randomUUID();
   const reserved = await betaAdmin.rpc("reserve_job_photo", { p_id: beta.photo, p_job: beta.job, p_note: `${MARKER} photo`, p_captured_at: null, p_byte_size: 100 });
   if (reserved.error) throw new Error(reserved.error.message);
+
+  // A problem reported on beta's job by beta's admin (117), for resolve to be pointed at.
+  const problem = await betaAdmin.rpc("report_job_problem", { p_job: beta.job, p_reason: "material", p_note: `${MARKER} problem`, p_request_id: randomUUID() });
+  if (problem.error) throw new Error(problem.error.message);
+  beta.problem = problem.data as string;
 });
 
 afterAll(async () => {
@@ -274,6 +279,11 @@ function attempts(): Attempt[] {
     ["public.reserve_job_photo(p_id uuid, p_job uuid, p_note text, p_captured_at timestamp with time zone, p_byte_size integer)", () => alpha.rpc("reserve_job_photo", { p_id: randomUUID(), p_job: beta.job, p_note: "Cross-company attempt", p_captured_at: null, p_byte_size: 100 }), "refused"],
     ["public.finalise_job_photo(p_id uuid)", () => alpha.rpc("finalise_job_photo", { p_id: beta.photo }), "refused"],
     ["public.remove_job_photo(p_id uuid)", () => alpha.rpc("remove_job_photo", { p_id: beta.photo }), "refused"],
+    // 117: a problem raised on beta's job, and beta's own open problem cleared, each from alpha.
+    ["public.report_job_problem(p_job uuid, p_reason text, p_note text, p_request_id uuid)", () => alpha.rpc("report_job_problem", { p_job: beta.job, p_reason: "other", p_note: "Cross-company attempt", p_request_id: randomUUID() }), "refused"],
+    ["public.resolve_job_problem(p_problem uuid, p_note text)", () => alpha.rpc("resolve_job_problem", { p_problem: beta.problem, p_note: "Cross-company attempt" }), "refused"],
+    // 118: parts logged on beta's job, from alpha (job_parts_done is not definer: it counts only what alpha's own row rules show).
+    ["public.log_job_parts(p_job uuid, p_quantity integer, p_note text, p_client_op_id uuid)", () => alpha.rpc("log_job_parts", { p_job: beta.job, p_quantity: 1, p_note: null, p_client_op_id: randomUUID() }), "refused"],
     // 059: the manual invoice-from-delivery-notes path (now SECURITY DEFINER), pointed at beta's sent-out note.
     ["public.create_invoice_from_delivery_notes(p_notes uuid[], p_invoice_date date, p_due_date date, p_terms text)", () => alpha.rpc("create_invoice_from_delivery_notes", { p_notes: [beta.note], p_invoice_date: "2026-10-10", p_due_date: "2026-11-09", p_terms: "30 days" }), "refused"],
     // 067: beta's sent-out note put on beta's (issued) invoice, from alpha.
@@ -316,12 +326,15 @@ function attempts(): Attempt[] {
     ["public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)", () => alpha.rpc("record_inbound_email", { p_graph_message_id: `AAA-${randomUUID()}`, p_internet_message_id: null, p_from_address: "a@example.test", p_from_name: null, p_subject: `Re: ${MARKER}`, p_received_at: day, p_body_preview: "", p_body_text: "" }), "nothing of beta's"],
     ["public.save_mail_poll_state(p_next_link text, p_checkpoint timestamp with time zone)", () => alpha.rpc("save_mail_poll_state", { p_next_link: null, p_checkpoint: day }), "nothing of beta's"],
     // 101: the AI helper. Settings and key change the caller's own company only; reserve answers from the caller's company (alpha's
-    // features are off, so it refuses); settle and decide pointed at beta's suggestion refuse.
+    // features are off, so it refuses); decide pointed at beta's suggestion refuses. Settle is the service role's only from 103 (no
+    // longer callable by a signed-in user, so not listed here; tests/db/ai-helper-service-role-103.test.ts).
     ["public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)", () => alpha.rpc("ai_helper_save_settings", { p_roundup: false, p_rfq: false, p_cap_pence: 0 }), "nothing of beta's"],
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
-    ["public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)", () => alpha.rpc("ai_helper_settle", { p_request: beta.aiRequest, p_status: "failed", p_failure: "invalid", p_cost_pence: 0, p_model: null, p_output: null }), "refused"],
     ["public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)", () => alpha.rpc("ai_helper_decide", { p_request: beta.aiRequest, p_decision: "rejected", p_quote: null }), "refused"],
+    // 102: whether a profile is one the caller may change: asked about beta's person, FALSE (nothing of beta's is revealed or touched).
+    ["public.admin_may_edit_profile(p_user uuid)", () => alpha.rpc("admin_may_edit_profile", { p_user: world.tenants.beta.users.office.id }), "nothing of beta's"],
+    ["public.admin_may_read_profile(p_user uuid)", () => alpha.rpc("admin_may_read_profile", { p_user: world.tenants.beta.users.office.id }), "nothing of beta's"],
     ["public.write_audit(p_action text, p_entity_table text, p_entity_id text, p_old jsonb, p_new jsonb, p_metadata jsonb, p_ip text, p_user_agent text)", () => alpha.rpc("write_audit", { p_action: "UPDATE", p_entity_table: "jobs", p_entity_id: beta.job, p_old: null, p_new: null, p_metadata: {}, p_ip: null, p_user_agent: null }), "nothing of beta's"],
   ];
 }
@@ -364,6 +377,9 @@ describe("pointed at the other company's records, each function refuses or touch
     expect((await alpha.rpc("job_file_quote_reference_ok", { p_org: world.tenants.beta.id, p_kind: "customer_po", p_path: beta.attachmentPath, p_source: beta.attachment })).data).toBe(false);
     // 093: beta's person reads as protected from alpha (fail closed; no answer that tells beta's logins apart).
     expect((await alpha.rpc("admin_login_is_protected", { p_user: world.tenants.beta.users.office.id })).data).toBe(true);
+    // 102: beta's person is never one alpha's admin may change.
+    expect((await alpha.rpc("admin_may_edit_profile", { p_user: world.tenants.beta.users.office.id })).data).toBe(false);
+    expect((await alpha.rpc("admin_may_read_profile", { p_user: world.tenants.beta.users.office.id })).data).toBe(false);
     expect(await betaFingerprint()).toEqual(before);
   });
 

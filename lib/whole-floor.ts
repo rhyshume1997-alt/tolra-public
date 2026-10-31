@@ -6,6 +6,7 @@
  */
 import { fmtDueBy } from "@/lib/dates";
 import { requiredDate } from "@/lib/job-status";
+import { requiredParts } from "@/lib/parts-quantity";
 import { benchRows, inUseRows, isStale, pausedRows } from "@/lib/machine-runs";
 import { COLOUR_CLASSES, SCHEDULE_STATES, STATUS_MAP, type StatusKey } from "@/lib/status-colours";
 
@@ -32,6 +33,8 @@ export type FloorJob = {
   due: string | null;
   /** true / false; null when it can't be told (the job read failed). */
   late: boolean | null;
+  /** The quantity required (M), or null when none is on file or the job read failed: "N of M parts" shows only with one (lib/job-parts). */
+  quantity: number | null;
 };
 
 export type FloorRow = {
@@ -92,11 +95,12 @@ export function wholeFloor(reads: FloorReads, today: string, now = new Date()): 
   }
   const jobOf = (id: string, jobNo: string): FloorJob => {
     const row = jobs.get(id);
-    if (!row) return { id, jobNo: jobNo || "—", customer: null, description: null, due: null, late: detailsFailed ? null : false };
+    if (!row) return { id, jobNo: jobNo || "—", customer: null, description: null, due: null, late: detailsFailed ? null : false, quantity: null };
     const due = requiredDate(row as { date_required?: string | null; due_date?: string | null }) || null;
     return {
       id, jobNo: text(row.job_no) ?? (jobNo || "—"), customer: text(row.customer), description: text(row.description), due,
       late: !row.finished_at && due !== null && due < today,
+      quantity: requiredParts(row.quantity_required as number | string | null | undefined),
     };
   };
 

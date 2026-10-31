@@ -13,8 +13,8 @@ const w = world();
 /** Pages each role must be turned away from (sent to the dashboard), and one page it must reach. */
 const CASES: Record<Exclude<Role, "admin">, { refused: string[]; allowed: string }> = {
   office: { refused: ["/admin/users", "/settings"], allowed: "/invoices" },
-  workshop: { refused: ["/admin/users", "/invoices", "/sales-orders", "/quotes", "/customers", "/purchase-orders"], allowed: "/jobs" },
-  viewer: { refused: ["/admin/users", "/invoices", "/sales-orders", "/quotes", "/delivery-notes", "/suppliers"], allowed: "/jobs" },
+  workshop: { refused: ["/admin/users", "/invoices", "/sales-orders", "/quotes", "/customers", "/purchase-orders", "/ai-helper"], allowed: "/jobs" },
+  viewer: { refused: ["/admin/users", "/invoices", "/sales-orders", "/quotes", "/delivery-notes", "/suppliers", "/ai-helper"], allowed: "/jobs" },
 };
 
 for (const [role, { refused, allowed }] of Object.entries(CASES) as [Exclude<Role, "admin">, (typeof CASES)["office"]][]) {

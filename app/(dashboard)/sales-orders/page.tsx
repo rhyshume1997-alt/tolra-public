@@ -32,7 +32,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { SalesOrderPDF } from "@/components/pdf/SalesOrderPDF";
 import { auditEvent } from "@/lib/audit";
 import { requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { resolveCustomerAddress } from "@/lib/customers";
@@ -520,6 +519,8 @@ export default function SalesOrdersPage() {
     await downloadPdf(async () => {
       const profile = await requireCompanyProfile();
       const billTo = await resolveCustomerAddress(order.customer);
+      // The PDF code is loaded when a PDF is made, not with the page.
+      const { SalesOrderPDF } = await import("@/components/pdf/SalesOrderPDF");
       return (
         <SalesOrderPDF
           data={{
