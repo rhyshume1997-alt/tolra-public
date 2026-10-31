@@ -15,6 +15,8 @@ const ALL_ROLES = ["admin", "office", "workshop", "viewer"];
 // First matching prefix wins. Client-side RoleGate is cosmetic; this is the real gate.
 const ROUTE_ROLES: Array<[string, string[]]> = [
   ["/admin", ["admin"]],
+  // Numbers (the history of invoiced, received and machine time): the owner's page, admin only.
+  ["/numbers", ["admin"]],
   ["/invoices", ["admin", "office"]],
   ["/sales-orders", ["admin", "office"]],
   ["/settings", ["admin"]],

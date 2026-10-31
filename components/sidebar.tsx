@@ -41,6 +41,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Workspace",
     items: [
       { href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] },
+      { href: "/numbers", label: "Numbers", roles: ["admin"] },
       // Only while the server has the AI helper on (aiNavAvailable); office and admin.
       { href: "/ai-helper", label: "AI", roles: ["admin", "office"] },
     ],
