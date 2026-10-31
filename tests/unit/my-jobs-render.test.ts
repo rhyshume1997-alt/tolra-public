@@ -88,4 +88,22 @@ describe("MyJobs: Open drawing and Problem", () => {
     expect(viewer.match(/data-testid="my-job-problem-flag"/g)).toHaveLength(1);
     expect(viewer).not.toContain('data-testid="my-job-problem"');
   });
+
+  it("an open problem shows a bold headline with the reason, and marks that card only; a card without one has neither", () => {
+    const html = withProblems("workshop", reported);
+    expect(html).toMatch(/data-testid="my-job-problem-headline" class="[^"]*font-bold[^"]*"[^>]*>(<svg[^>]*>.*?<\/svg>)?Problem: Material</);
+    expect(html.match(/data-problem="open"/g)).toHaveLength(1);
+    const cards = html.split("<article").slice(1);
+    expect(cards).toHaveLength(2);
+    const flagged = cards.find((card) => card.includes('data-job-id="r1"')) ?? "";
+    const plain = cards.find((card) => card.includes('data-job-id="t1"')) ?? "";
+    expect(flagged).toContain('data-problem="open"');
+    expect(flagged).toContain("border-[#DC2626]");
+    expect(plain).not.toContain("data-problem");
+    expect(plain).not.toContain("my-job-problem-headline");
+    expect(plain).not.toContain("border-[#DC2626]");
+    expect(plain).toContain("border-line");
+    // No open problem anywhere: no card is marked.
+    expect(withProblems("workshop", { available: true, problems: [] })).not.toContain("data-problem");
+  });
 });

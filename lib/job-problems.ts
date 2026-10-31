@@ -57,11 +57,11 @@ export const problemsFor = (problems: readonly OpenProblem[], jobId: string) => 
 /** The ids of the jobs that carry at least one open problem. */
 export const jobsWithProblems = (problems: readonly OpenProblem[]): ReadonlySet<string> => new Set(problems.map((p) => p.job_id));
 
-/** The flag on a job's card: the word, how many, and what it is about. Null when the job has no open problem. */
-export function problemFlag(problems: readonly OpenProblem[]): { word: "Problem"; count: number; detail: string } | null {
+/** The flag on a job's card: the word, how many, what it is about, and the bold headline ("Problem: Material"). Null when the job has no open problem. */
+export function problemFlag(problems: readonly OpenProblem[]): { word: "Problem"; count: number; headline: string; detail: string } | null {
   if (!problems.length) return null;
   const reasons = [...new Set(problems.map((p) => reasonLabel(p.reason)))];
-  return { word: "Problem", count: problems.length, detail: `${problems.length === 1 ? "Problem reported" : `${problems.length} problems reported`}: ${reasons.join(", ")}. Waiting for the office.` };
+  return { word: "Problem", count: problems.length, headline: `${problems.length === 1 ? "Problem" : `Problems (${problems.length})`}: ${reasons.join(", ")}`, detail: `${problems.length === 1 ? "Problem reported" : `${problems.length} problems reported`}: ${reasons.join(", ")}. Waiting for the office.` };
 }
 
 export type ProblemControls = {
