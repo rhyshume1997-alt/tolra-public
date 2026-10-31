@@ -25,14 +25,14 @@ export const COLOUR_TOKENS: Record<StatusColour, { light: string; dark: string }
   grey: { light: "#6B7280", dark: "#9CA3AF" },
 };
 
-/** `badge` is the filled pill (dark text on yellow and green in light mode; dark text on every fill in dark mode); `dot` is the small round marker. */
-export const COLOUR_CLASSES: Record<StatusColour, { badge: string; dot: string }> = {
-  green: { badge: "bg-[#16A34A] text-slate-950 dark:bg-[#4ADE80] dark:text-slate-950", dot: "bg-[#16A34A] dark:bg-[#4ADE80]" },
-  yellow: { badge: "bg-[#CA8A04] text-slate-950 dark:bg-[#FACC15] dark:text-slate-950", dot: "bg-[#CA8A04] dark:bg-[#FACC15]" },
-  red: { badge: "bg-[#DC2626] text-white dark:bg-[#F87171] dark:text-slate-950", dot: "bg-[#DC2626] dark:bg-[#F87171]" },
-  blue: { badge: "bg-[#2563EB] text-white dark:bg-[#60A5FA] dark:text-slate-950", dot: "bg-[#2563EB] dark:bg-[#60A5FA]" },
-  purple: { badge: "bg-[#7C3AED] text-white dark:bg-[#C4B5FD] dark:text-slate-950", dot: "bg-[#7C3AED] dark:bg-[#C4B5FD]" },
-  grey: { badge: "bg-[#6B7280] text-white dark:bg-[#9CA3AF] dark:text-slate-950", dot: "bg-[#6B7280] dark:bg-[#9CA3AF]" },
+/** `badge` is the filled pill (dark text on yellow and green in light mode; dark text on every fill in dark mode); `dot` is the small round marker; `edge` is a border colour (a card edge that carries the status) and `tint` a faint fill under ordinary text. */
+export const COLOUR_CLASSES: Record<StatusColour, { badge: string; dot: string; edge: string; tint: string }> = {
+  green: { badge: "bg-[#16A34A] text-slate-950 dark:bg-[#4ADE80] dark:text-slate-950", dot: "bg-[#16A34A] dark:bg-[#4ADE80]", edge: "border-[#16A34A] dark:border-[#4ADE80]", tint: "bg-[#16A34A]/10 dark:bg-[#4ADE80]/15" },
+  yellow: { badge: "bg-[#CA8A04] text-slate-950 dark:bg-[#FACC15] dark:text-slate-950", dot: "bg-[#CA8A04] dark:bg-[#FACC15]", edge: "border-[#CA8A04] dark:border-[#FACC15]", tint: "bg-[#CA8A04]/10 dark:bg-[#FACC15]/15" },
+  red: { badge: "bg-[#DC2626] text-white dark:bg-[#F87171] dark:text-slate-950", dot: "bg-[#DC2626] dark:bg-[#F87171]", edge: "border-[#DC2626] dark:border-[#F87171]", tint: "bg-[#DC2626]/10 dark:bg-[#F87171]/15" },
+  blue: { badge: "bg-[#2563EB] text-white dark:bg-[#60A5FA] dark:text-slate-950", dot: "bg-[#2563EB] dark:bg-[#60A5FA]", edge: "border-[#2563EB] dark:border-[#60A5FA]", tint: "bg-[#2563EB]/10 dark:bg-[#60A5FA]/15" },
+  purple: { badge: "bg-[#7C3AED] text-white dark:bg-[#C4B5FD] dark:text-slate-950", dot: "bg-[#7C3AED] dark:bg-[#C4B5FD]", edge: "border-[#7C3AED] dark:border-[#C4B5FD]", tint: "bg-[#7C3AED]/10 dark:bg-[#C4B5FD]/15" },
+  grey: { badge: "bg-[#6B7280] text-white dark:bg-[#9CA3AF] dark:text-slate-950", dot: "bg-[#6B7280] dark:bg-[#9CA3AF]", edge: "border-[#6B7280] dark:border-[#9CA3AF]", tint: "bg-[#6B7280]/10 dark:bg-[#9CA3AF]/15" },
 };
 
 export type StatusKey =

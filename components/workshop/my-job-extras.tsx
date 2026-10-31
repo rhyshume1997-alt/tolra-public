@@ -17,6 +17,7 @@ import {
   NEEDS_CONNECTION, PROBLEM_NOTE_MAX, PROBLEM_REASONS, problemControls, problemFlag, reasonLabel, reportFailure, reportJobProblem, reportSignature, requestKeyFor,
   type OpenProblem, type ProblemReason,
 } from "@/lib/job-problems";
+import { COLOUR_CLASSES } from "@/lib/status-colours";
 import { supabase } from "@/lib/supabase";
 
 const TAP = "h-auto min-h-12 whitespace-normal px-4 py-2 text-base font-semibold pointer-coarse:h-auto pointer-coarse:min-h-12";
@@ -109,8 +110,8 @@ export function MyJobExtras({ jobId, jobNo, role, available, problems, readOnly 
   return (
     <div className="space-y-3" data-testid="my-job-extras">
       {flag ? (
-        <div role="status" data-testid="my-job-problem-flag" className="border-l-4 border-brand bg-brand-soft px-4 py-3 text-ink">
-          <p className="text-sm font-semibold">{flag.word}{flag.count > 1 ? ` (${flag.count})` : ""}</p>
+        <div role="status" data-testid="my-job-problem-flag" className={`border-2 px-4 py-3 text-ink ${COLOUR_CLASSES.red.edge} ${COLOUR_CLASSES.red.tint}`}>
+          <p data-testid="my-job-problem-headline" className="flex items-center gap-2 text-lg font-bold break-words"><AlertTriangle aria-hidden className="size-6 shrink-0" />{flag.headline}</p>
           <p className="mt-1 text-base break-words">{flag.detail}</p>
         </div>
       ) : null}
