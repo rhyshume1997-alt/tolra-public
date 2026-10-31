@@ -13,7 +13,10 @@ import { floorNow } from "@/lib/overview";
 // The section only asks whether its link opens for this person; the sign-in context is not what is under test.
 vi.mock("@/lib/use-destinations", () => ({ useCanOpen: () => () => true }));
 
-const people = (figure: string) => renderToStaticMarkup(createElement(OverviewSection, { id: "people", title: "People", figure, sub: "This week" }, null));
+const people = (figure: string) => {
+  const props = { id: "people", title: "People", figure, sub: "This week", children: null };
+  return renderToStaticMarkup(createElement(OverviewSection, props));
+};
 const figureText = (html: string) => /data-testid="overview-people-figure">([^<]*)</.exec(html)?.[1]?.replaceAll("&#x27;", "'");
 
 describe("Overview People: on the floor now", () => {
