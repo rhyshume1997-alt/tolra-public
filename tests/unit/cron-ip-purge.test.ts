@@ -132,9 +132,12 @@ describe("GET /api/cron/ip-purge: failures and what is never shown", () => {
 });
 
 describe("vercel.json", () => {
-  it("runs the purge route once a day", async () => {
+  it("runs the purge route once a day (and the Overview's owed snapshot, tests/unit/cron-overview-snapshot.test.ts)", async () => {
     const { readFileSync } = await import("node:fs");
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
-    expect(config.crons).toEqual([{ path: "/api/cron/ip-purge", schedule: expect.stringMatching(/^\d{1,2} \d{1,2} \* \* \*$/) }]);
+    expect(config.crons).toEqual([
+      { path: "/api/cron/ip-purge", schedule: expect.stringMatching(/^\d{1,2} \d{1,2} \* \* \*$/) },
+      { path: "/api/cron/overview-snapshot", schedule: expect.stringMatching(/^\d{1,2} \d{1,2} \* \* \*$/) },
+    ]);
   });
 });
