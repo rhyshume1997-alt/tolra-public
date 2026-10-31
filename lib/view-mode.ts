@@ -50,9 +50,9 @@ export function readViewMode(key: string, fallback: ViewMode): ViewMode {
 /**
  * The view chosen for a list page, remembered per person per page (this device). Phones always show cards: the
  * pages render their card layout below the md breakpoint whatever is chosen here. Up to 1024px a chosen "table" is
- * returned as "cards" (see effectiveViewMode).
+ * returned as "cards" (see effectiveViewMode); so is "list" on a page that passes `listNeedsWide`.
  */
-export function useViewMode(page: string, fallback: ViewMode): [ViewMode, (mode: ViewMode) => void] {
+export function useViewMode(page: string, fallback: ViewMode, options: { listNeedsWide?: boolean } = {}): [ViewMode, (mode: ViewMode) => void] {
   const { user } = useUser();
   const key = viewModeKey(user?.id, page);
   const [mode, setMode] = useState<ViewMode>(fallback);
@@ -66,5 +66,5 @@ export function useViewMode(page: string, fallback: ViewMode): [ViewMode, (mode:
       // not remembered (private window); the choice still applies now
     }
   }, [key]);
-  return [effectiveViewMode(mode, wide), choose];
+  return [effectiveViewMode(mode, wide, options.listNeedsWide), choose];
 }

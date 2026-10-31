@@ -24,8 +24,10 @@ import { loadOpenProblems, problemsFor, type OpenProblem, type OpenProblems } fr
 import { NO_PARTS, loadPartsDone, type PartsTotals } from "@/lib/job-parts";
 import { DUE_CHIPS } from "@/lib/job-status";
 import { myJobAction, myJobOffersPause, type MyJob, type MyJobAction } from "@/lib/my-jobs";
+import { COLOUR_CLASSES } from "@/lib/status-colours";
 import { supabase } from "@/lib/supabase";
 import { useMaybeUser } from "@/lib/use-user";
+import { cn } from "@/lib/utils";
 
 const DUE_WORD = Object.fromEntries(DUE_CHIPS.map((chip) => [chip.value, chip.label])) as Record<MyJob["dueLight"], string>;
 const ACTION_ICON: Record<MyJobAction["kind"], React.ElementType> = { start: Play, finish: CheckCircle2, rework: Wrench, view: Eye };
@@ -71,7 +73,7 @@ function MyJobCard({ job, role, canOpenJobs, available, problems, readOnly, onRe
   const what = [job.customer, job.description, job.quantity != null ? `qty ${job.quantity}` : ""].filter(Boolean).join(" · ");
   const href = jobHref(job);
   return (
-    <article data-testid="my-job" data-job-id={job.id} aria-label={job.jobNo} className="min-w-0 space-y-4 rounded-lg border border-line bg-surface p-4">
+    <article data-testid="my-job" data-job-id={job.id} data-problem={problems.length ? "open" : undefined} aria-label={job.jobNo} className={cn("min-w-0 space-y-4 rounded-lg border bg-surface p-4", problems.length ? `border-2 ${COLOUR_CLASSES.red.edge}` : "border-line")}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="min-w-0 font-mono text-2xl font-semibold break-all text-ink">{job.jobNo}</p>
         {/* Status, rework and due light: each a badge with its word, never colour alone. */}

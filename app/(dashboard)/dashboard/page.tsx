@@ -13,7 +13,8 @@ import { AlertCircle, Clock, FileText, Layers } from "lucide-react";
 import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, Sparkline, SplitBar } from "@/components/dashboard-charts";
 import { TeamWeek } from "@/components/team-week";
 import { OverviewJump, OverviewLeaks, OverviewOthers, OverviewSection } from "@/components/overview";
-import { attentionSummary, fleetLoad, leaksFrom, otherAttention, revenueVsLastMonth } from "@/lib/overview";
+import { attentionSummary, fleetLoad, floorNow, leaksFrom, otherAttention, revenueVsLastMonth } from "@/lib/overview";
+import { attendanceReadable, loadClockedIn } from "@/lib/floor-attendance";
 import { cuttingHoursByMachine, daysToGetPaid, estimateByJob, invoicedByJob, invoicedByMonth, jobsVsEstimate, owedTrend, quotesWon, revenuePerMachineHour, runHoursByJob, topCustomersInvoiced, type OwedPoint } from "@/lib/overview-metrics";
 import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
 
@@ -446,6 +447,12 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   // The owner's Overview reads Needs attention once, for both the leaks row and the list (the office card loads its own).
   const attentionLoader = useCallback((): Promise<AttentionSection[] | null> => (office ? Promise.resolve(null) : supabase ? loadAttention(supabase, "admin") : Promise.reject(new Error("Supabase is not configured."))), [office]);
   const attention = useLoaded(attentionLoader);
+  // Who is clocked in right now, for the People heading. Clock records are readable by admin and office only (lib/floor-attendance),
+  // and only the owner's Overview shows the figure.
+  const { activeRole } = useUser();
+  const readsClocks = !office && attendanceReadable(activeRole);
+  const clockedLoader = useCallback(() => (readsClocks && supabase ? loadClockedIn(supabase) : Promise.resolve(null)), [readsClocks]);
+  const clockedIn = useLoaded(clockedLoader);
   const d = data;
   // The Revenue panel and This month's tile show one series at a time: invoiced ex VAT (the default) or money received.
   const [revenueBasis, setRevenueBasis] = useState<"invoiced" | "received">("invoiced");
@@ -598,6 +605,8 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
     const leaks = leaksFrom(attention.data, { rfqsToQuote: loading ? null : d?.rfqsToQuote ?? null, overdueOwed: loading ? null : overdueOwed, money: (v) => gbp(v, 0) }, attention.error !== null);
     // The Today figure counts the Needs attention card's list: its sections plus the Dashboard's own items (d.attention).
     const summary = attentionSummary(attention.data, loading ? { count: null, failed: false } : d ? { count: d.attention.length, failed: d.attentionFailed } : { count: null, failed: true }, attention.error !== null);
+    // The People figure: a dash with the reason while loading or when the clock records couldn't be read in full, never 0 (lib/overview).
+    const peopleFigure = floorNow(clockedIn.data, clockedIn.loading).figure;
     // What the figure counts beyond the leak tiles, listed under them so the figure always matches what is on screen (lib/overview).
     const others = otherAttention(attention.data, loading || !d ? { items: null, failed: !loading } : { items: d.attention, failed: d.attentionFailed }, attention.error !== null);
     // Up to four tiles share one row; five or six (the Work row with everything shown) go two then three across, never a squeezed row.
@@ -623,7 +632,7 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
           {tileRow(machineTiles)}
           {panelGrid(machinePanels)}
         </OverviewSection> : null}
-        {present.includes("people") ? <OverviewSection id="people" title="People" sub="This week, from clock-ins · only admins see this" href="/time/week" linkLabel="Weekly hours">
+        {present.includes("people") ? <OverviewSection id="people" title="People" figure={readsClocks ? peopleFigure : undefined} sub="This week, from clock-ins · only admins see this" href="/time/week" linkLabel="Weekly hours">
           <TeamWeek />
         </OverviewSection> : null}
       </>

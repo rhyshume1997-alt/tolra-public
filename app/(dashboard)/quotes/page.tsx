@@ -1071,7 +1071,7 @@ export default function QuotesPage() {
         {view !== "cards" ? (
           <Card className="hidden md:block">
             <CardContent className="p-0">
-              <Table className="table-fixed max-desk:min-w-[60rem] max-desk:[&_td]:px-2 max-desk:[&_th]:px-2" aria-label="Quotes">
+              <Table className="table-fixed" data-tablet-cards aria-label="Quotes">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-9"><SelectBox aria-label={`Select all ${visible.length} filtered quotes`} checked={visible.length > 0 && visible.every((quote) => selectedRefs.includes(quote.ref))} onChange={(event) => setSelectedRefs(event.target.checked ? visible.map((quote) => quote.ref) : [])} /></TableHead>
@@ -1091,15 +1091,15 @@ export default function QuotesPage() {
                   {visible.map((quote) => (
                     <TableRow key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "bg-brand-accent/5" : undefined}>
                       <TableCell><SelectBox aria-label={`Select ${quote.ref}`} checked={selectedRefs.includes(quote.ref)} onChange={() => setSelectedRefs((current) => current.includes(quote.ref) ? current.filter((ref) => ref !== quote.ref) : [...current, quote.ref])} /></TableCell>
-                      {isVisible("ref") ? <TableCell className="font-mono font-bold whitespace-normal [overflow-wrap:anywhere]">{quote.ref}</TableCell> : null}
-                      {isVisible("date") ? <TableCell>{quote.date ? fmtDate(quote.date) : ""}</TableCell> : null}
-                      {isVisible("customer") ? <TableCell><span className="block truncate" title={quote.customer}>{quote.customer}</span></TableCell> : null}
-                      {isVisible("description") ? <TableCell className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{quote.description}</span></TableCell> : null}
-                      {isVisible("status") ? <TableCell><StatusBadge status={quoteStatusKey(quote.status)} label={quote.status} className="capitalize" unmapped={{ className: statusStyle(quote.status).badge }} /></TableCell> : null}
-                      {isVisible("value") ? <TableCell className="text-right font-semibold tabular-nums">{currency(quote.value)}</TableCell> : null}
-                      {isVisible("valid") ? <TableCell>{quote.validUntil ? fmtDate(quote.validUntil) : "\u2014"}</TableCell> : null}
-                      <TableCell>
-                        <div className="flex flex-wrap justify-end gap-1">
+                      {isVisible("ref") ? <TableCell data-label="Quote" className="font-mono font-bold whitespace-normal [overflow-wrap:anywhere]">{quote.ref}</TableCell> : null}
+                      {isVisible("date") ? <TableCell data-label="Date">{quote.date ? fmtDate(quote.date) : ""}</TableCell> : null}
+                      {isVisible("customer") ? <TableCell data-label="Customer"><span className="block truncate" title={quote.customer}>{quote.customer}</span></TableCell> : null}
+                      {isVisible("description") ? <TableCell data-label="Description" className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{quote.description}</span></TableCell> : null}
+                      {isVisible("status") ? <TableCell data-label="Status"><StatusBadge status={quoteStatusKey(quote.status)} label={quote.status} className="capitalize" unmapped={{ className: statusStyle(quote.status).badge }} /></TableCell> : null}
+                      {isVisible("value") ? <TableCell data-label="Value" className="font-semibold tabular-nums desk:text-right">{currency(quote.value)}</TableCell> : null}
+                      {isVisible("valid") ? <TableCell data-label="Valid until">{quote.validUntil ? fmtDate(quote.validUntil) : "\u2014"}</TableCell> : null}
+                      <TableCell data-actions>
+                        <div className="flex flex-wrap gap-1 desk:justify-end">
                           <Button size="icon" variant="outline" className="size-8" title={`View ${quote.ref}`} aria-label={`View ${quote.ref}`} onClick={() => setViewingQuote(quote)}><Eye className="size-4" aria-hidden /></Button>
                           {canOfferSend(quote.rawStatus) ? <Button size="icon" className="size-8 bg-brand text-brand-ink hover:bg-brand-hover" title={`${quote.rawStatus === "draft" ? "Send" : "Resend"} ${quote.ref} to the customer`} aria-label={`${quote.rawStatus === "draft" ? "Send" : "Resend"} ${quote.ref} to the customer`} disabled={saving} onClick={() => void askToSend(quote)}><Send className="size-4" /></Button> : null}
                           <Button size="icon" variant="outline" className="size-8" title={`Download ${quote.ref} as PDF`} aria-label={`Download ${quote.ref} as PDF`} onClick={() => void downloadQuotePdf(quote)}><Download className="size-4" aria-hidden /></Button>
