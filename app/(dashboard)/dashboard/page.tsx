@@ -10,11 +10,12 @@ import { StatTile, toneFromAccent } from "@/components/stat-tile";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Clock, FileText, Layers } from "lucide-react";
-import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, SplitBar } from "@/components/dashboard-charts";
+import { BarList, DueColumns, LightDot, Panel, PercentLine, RevenueLine, Sparkline, SplitBar } from "@/components/dashboard-charts";
 import { TeamWeek } from "@/components/team-week";
-import { OverviewJump, OverviewLeaks, OverviewSection } from "@/components/overview";
-import { attentionSummary, fleetLoad, leaksFrom, revenueVsLastMonth } from "@/lib/overview";
-import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, topCustomers, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
+import { OverviewJump, OverviewLeaks, OverviewOthers, OverviewSection } from "@/components/overview";
+import { attentionSummary, fleetLoad, leaksFrom, otherAttention, revenueVsLastMonth } from "@/lib/overview";
+import { cuttingHoursByMachine, daysToGetPaid, estimateByJob, invoicedByJob, invoicedByMonth, jobsVsEstimate, owedTrend, quotesWon, revenuePerMachineHour, runHoursByJob, topCustomersInvoiced, type OwedPoint } from "@/lib/overview-metrics";
+import { jobsByStatus, lights, machineLoad, onTimeByMonth, owedByAge, quoteOutcomes, rightFirstTime, workloadDue, type AgeBucket, type JobsByStatus, type Light, type MachineLoad } from "@/lib/dashboard-analytics";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import { gbp, toPence } from "@/lib/money";
 import { awaitingApproval } from "@/lib/approval-queue";
 import { quoteFigures, sentSince } from "@/lib/quote-status";
 import { declinedValueByQuote } from "@/lib/quote-versions";
-import { databaseHas068 } from "@/lib/db-features";
+import { databaseHas068, missingDbObject } from "@/lib/db-features";
 import { linkedQuotes, rfqFigures } from "@/lib/rfq-stage";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
@@ -56,12 +57,19 @@ type AdminData = {
   dueThisWeek: number | null;
   /** The last day of the window dueThisWeek was counted over (YYYY-MM-DD), so the label shows the date the count used. */
   dueBy: string;
+  /** Received per month (invoice_payments by date received, reversals included); null when that read failed. */
   revenue: Array<{ month: string; revenue: number }> | null;
   thisMonthRevenue: number | null;
+  /** Invoiced ex VAT per month (issued invoices less issued credit notes, lib/overview-metrics); null when a read failed. */
+  invoiced: Array<{ month: string; revenue: number }> | null;
+  thisMonthInvoiced: number | null;
   quotesSentThisMonth: number | null;
+  /** Accepted this month by quotes.accepted_at, and accepted quotes with no date (not counted); null when the quotes read failed. */
+  quotesWon: { count: number; undated: number } | null;
   lateJobs: number | null;
   onTimeJobs: number | null;
-  avgDaysToPay: number | null;
+  /** Invoice date to paid, invoices paid in the last 90 days (lib/overview-metrics daysToGetPaid); null when the read failed. */
+  daysToPay: { average: number | null; count: number } | null;
   pipeline: { rfqs: number | null; quoted: number | null; accepted: number | null; paid: number | null };
   attention: AttentionItem[];
   /** A read behind the attention list failed, so the list may be missing items. */
@@ -75,7 +83,16 @@ type AdminData = {
   rft: ReturnType<typeof rightFirstTime> | null;
   machines: MachineLoad[] | null;
   workDue: Array<{ date: string; count: number }> | null;
-  customers: Array<{ customer: string; value: number }> | null;
+  /** Invoiced ex VAT per customer, last 6 months, credit notes off (lib/overview-metrics topCustomersInvoiced); null when a read failed. */
+  customers: { rows: Array<{ customer: string; value: number }>; share: number | null; topCustomer: string | null } | null;
+  /** Recorded cutting hours this week per machine (machine_runs, overlaps once); null when the runs or machines read failed. */
+  cutting: { total: number; machines: Array<{ id: string; name: string; hours: number }> } | null;
+  /** £ invoiced per recorded machine hour, last 90 days, jobs with both only; `value` null when no job has both; null when a read failed. */
+  perMachineHour: { value: ReturnType<typeof revenuePerMachineHour> } | null;
+  /** Recorded run hours against planned hours for jobs finished in the last 90 days; `value` null when none has both; null when a read failed. */
+  vsEstimate: { value: ReturnType<typeof jobsVsEstimate> } | null;
+  /** Nightly owed snapshots (migration 116): "missing" while 116 is not applied (the sparkline is hidden); null when the read failed. */
+  owedTrend: { state: "missing" } | { state: "ok"; points: OwedPoint[] } | null;
 };
 
 type WorkshopData = {
@@ -120,6 +137,18 @@ async function qAll(page: (from: number, to: number) => PromiseLike<{ data: any;
 
 const head = (table: string) => supabase!.from(table).select("*", { count: "exact", head: true });
 
+/** Like qAll, for rows whose `column` is one of `ids`: asked 100 ids at a time (a short URL); any failed part blanks the whole figure. */
+async function qIn(table: string, columns: string, column: string, ids: string[]): Promise<Result> {
+  const rows: any[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const part = ids.slice(i, i + 100);
+    const res = await qAll((from, to) => supabase!.from(table).select(columns).in(column, part).order("id").range(from, to));
+    if (!res.data) return { data: null, count: null };
+    rows.push(...res.data);
+  }
+  return { data: rows, count: null };
+}
+
 const monthKey = (iso: string) => toDateInput(iso).slice(0, 7);
 
 function lastSixMonths() {
@@ -153,7 +182,8 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
   // 068 (quote versions, declined lines): read only once the database has it; before it every quote is version 1 with no declined line.
   const has068 = await databaseHas068();
   const [quoteRows, declinedRows, rfqRows, jobsOpen, dueWeek, drafts, lateJobsCount, datedJobsCount] = await Promise.all([
-    qAll((from, to) => supabase!.from("quotes").select(`id, quote_ref, ${has068 ? "version, " : ""}status, valid_until, total_value, vat_enabled, sent_at, rfq_id, created_at`).order("id").range(from, to)),
+    // accepted_at (020, set by accept_quote 058): Quotes won this month counts by the date a quote was accepted, never the date sent.
+    qAll((from, to) => supabase!.from("quotes").select(`id, quote_ref, ${has068 ? "version, " : ""}status, valid_until, total_value, vat_enabled, sent_at, accepted_at, rfq_id, created_at`).order("id").range(from, to)),
     // Lines left off an accepted quote's order (068): an accepted quote is won for its ordered lines only.
     has068
       ? qAll((from, to) => supabase!.from("quote_line_items").select("quote_id, quantity, unit_price, vat_pct, vat_exempt").eq("declined", true).order("id").range(from, to))
@@ -195,22 +225,49 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
   let unpaidInvoices: number | null = null;
   let revenue: AdminData["revenue"] = null;
   let thisMonthRevenue: number | null = null;
-  let avgDaysToPay: number | null = null;
+  let invoiced: AdminData["invoiced"] = null;
+  let thisMonthInvoiced: number | null = null;
+  let daysToPay: AdminData["daysToPay"] = null;
   let paidCount: number | null = null;
   let ageBuckets: AgeBucket[] | null = null;
   let customers: AdminData["customers"] = null;
+  let cutting: AdminData["cutting"] = null;
+  let perMachineHour: AdminData["perMachineHour"] = null;
+  let vsEstimate: AdminData["vsEstimate"] = null;
+  let owedTrendData: AdminData["owedTrend"] = null;
   const attention: AttentionItem[] = [];
   let attentionFailed = false;
 
   if (!office) {
-    const [unpaidRes, paidRes, paidHead, paymentRes] = await Promise.all([
+    const nowIso = new Date().toISOString();
+    const [unpaidRes, paidRes, paidHead, paymentRes, issuedRes, creditRes, runRes, snapshotRes] = await Promise.all([
       qAll((from, to) => supabase!.from("invoices").select("id, invoice_ref, customer, total, status, amount_paid, credited_amount, refunded_amount, due_date, payment_unverified").neq("status", "paid").order("id").range(from, to)),
-      qAll((from, to) => supabase!.from("invoices").select("id, customer, total, paid_at, invoice_date, created_at").eq("status", "paid").or(`paid_at.gte.${sinceIso},invoice_date.gte.${sinceIso},created_at.gte.${sinceIso}`).order("id").range(from, to)),
+      qAll((from, to) => supabase!.from("invoices").select("id, customer, total, status, paid_at, invoice_date, created_at, payment_unverified").eq("status", "paid").or(`paid_at.gte.${sinceIso},invoice_date.gte.${sinceIso},created_at.gte.${sinceIso}`).order("id").range(from, to)),
       q(head("invoices").eq("status", "paid")),
       // Money received in the period comes from the payment rows by the date received (migration 032), reversals
       // (negative rows) included on their own date: never from invoice totals.
       qAll((from, to) => supabase!.from("invoice_payments").select("amount, paid_on").gte("paid_on", sinceIso).order("id").range(from, to)),
+      // Invoiced ex VAT: every invoice dated in the six months (drafts, void and cancelled are left out by lib/overview-metrics, which
+      // also takes total minus VAT), or with no invoice date and made in them.
+      qAll((from, to) => supabase!.from("invoices").select("id, customer, job_id, status, subtotal, vat, carriage, total, invoice_date, created_at").or(`invoice_date.gte.${sinceIso},and(invoice_date.is.null,created_at.gte.${sinceIso})`).order("id").range(from, to)),
+      // Issued credit notes in the six months (migration 034): taken off invoiced, on their own date and customer.
+      qAll((from, to) => supabase!.from("credit_notes").select("id, customer, status, vat, total, credit_date").eq("status", "issued").gte("credit_date", sinceIso).order("id").range(from, to)),
+      // Recorded machine runs (migration 044) still going or ended in the six months: cutting time, £ per machine hour, jobs vs estimate.
+      qAll((from, to) => supabase!.from("machine_runs").select("id, job_id, machine_id, started_at, ended_at").or(`ended_at.is.null,ended_at.gte.${sinceIso}`).order("id").range(from, to)),
+      // The nightly owed snapshots (migration 116), last 90 days. Read apart from q() so a missing table (116 not applied) is told
+      // apart from a failed read: the first hides the sparkline, the second is a dash.
+      (async () => {
+        try {
+          const { data, error } = await supabase!.from("overview_owed_snapshots").select("snapshot_date, owed_amount, late_amount").gte("snapshot_date", ninetyDaysAgo).order("snapshot_date");
+          if (error) return missingDbObject(error) ? ({ state: "missing" } as const) : null;
+          return Array.isArray(data) ? ({ state: "ok", points: owedTrend(data) } as const) : null;
+        } catch (err) {
+          console.error(err);
+          return null;
+        }
+      })(),
     ]);
+    owedTrendData = snapshotRes;
     paidCount = paidHead.count;
     if (failedRead(unpaidRes)) attentionFailed = true;
     if (unpaidRes.data) {
@@ -231,14 +288,36 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
       revenue = months.map((m) => ({ month: m.month, revenue: Math.round(buckets.get(m.key) ?? 0) }));
       thisMonthRevenue = buckets.get(months[5].key) ?? 0;
     }
-    if (paidRes.data) {
-      const gaps: number[] = [];
-      for (const row of paidRes.data) {
-        if (row.paid_at && row.invoice_date) gaps.push((new Date(row.paid_at).getTime() - new Date(row.invoice_date).getTime()) / DAY_MS);
+    // Days to get paid: invoices marked paid in the last 90 days, invoice date to paid (lib/overview-metrics daysToGetPaid).
+    if (paidRes.data) daysToPay = daysToGetPaid(paidRes.data, ninetyDaysAgo);
+    if (issuedRes.data && creditRes.data) {
+      // Invoiced ex VAT per month, from issued invoices less issued credit notes (lib/overview-metrics invoicedByMonth).
+      const byMonth = invoicedByMonth(issuedRes.data, creditRes.data, months.map((m) => m.key));
+      if (byMonth) {
+        invoiced = months.map((m) => ({ month: m.month, revenue: Math.round(byMonth.get(m.key) ?? 0) }));
+        thisMonthInvoiced = byMonth.get(months[5].key) ?? 0;
       }
-      avgDaysToPay = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
-      // Top customers: invoices paid in the six months, by the date they were paid.
-      customers = topCustomers(paidRes.data.filter((row) => row.paid_at && String(row.paid_at).slice(0, 10) >= sinceIso));
+      // Top customers: invoiced ex VAT per customer over the six months, credit notes off (lib/overview-metrics topCustomersInvoiced).
+      const top = topCustomersInvoiced(issuedRes.data, creditRes.data, sinceIso);
+      customers = top ? { rows: top.rows, share: top.share, topCustomer: top.topCustomer } : null;
+    }
+    if (runRes.data && machineRows.data) {
+      const runs = runRes.data.map((r: any) => ({ job_id: String(r.job_id), machine_id: String(r.machine_id), started_at: String(r.started_at), ended_at: r.ended_at ? String(r.ended_at) : null }));
+      // Cutting time this week: machine_runs from Monday to now, per machine (lib/overview-metrics cuttingHoursByMachine).
+      const perMachine = cuttingHoursByMachine(runs, monday.toISOString(), nowIso);
+      const machinesCut = machineRows.data
+        .map((m: any) => ({ id: String(m.id), name: String(m.name ?? "Machine"), hours: perMachine.get(String(m.id)) ?? 0 }))
+        .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name));
+      cutting = { total: Math.round(machinesCut.reduce((sum, m) => sum + m.hours, 0) * 10) / 10, machines: machinesCut };
+      const hoursByJob = runHoursByJob(runs, nowIso);
+      // £ per machine hour: invoiced ex VAT on jobs invoiced in the last 90 days over the run hours recorded on those jobs.
+      if (issuedRes.data) perMachineHour = { value: revenuePerMachineHour(invoicedByJob(issuedRes.data, ninetyDaysAgo), hoursByJob) };
+      // Jobs vs estimate: jobs finished in the last 90 days, run hours against their planned machine hours (job_machines, 042).
+      if (finishedJobRows.data) {
+        const finished = finishedJobRows.data.filter((j: any) => j.finished_at && toDateInput(j.finished_at) >= ninetyDaysAgo).map((j: any) => String(j.id));
+        const plans = await qIn("job_machines", "id, job_id, estimated_hours", "job_id", finished);
+        if (plans.data) vsEstimate = { value: jobsVsEstimate(finished, estimateByJob(plans.data), hoursByJob) };
+      }
     }
   }
 
@@ -253,10 +332,14 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
     dueBy: weekEnd,
     revenue,
     thisMonthRevenue,
+    invoiced,
+    thisMonthInvoiced,
     quotesSentThisMonth: quoteRows.data ? sentSince(quoteRows.data, monthStart) : null,
+    // Quotes won: accepted this calendar month (London) by quotes.accepted_at (lib/overview-metrics quotesWon).
+    quotesWon: quoteRows.data ? quotesWon(quoteRows.data, monthStart) : null,
     lateJobs: lateJobsCount.count,
     onTimeJobs: datedJobsCount.count !== null && lateJobsCount.count !== null ? onTimeJobCount(datedJobsCount.count, lateJobsCount.count) : null,
-    avgDaysToPay,
+    daysToPay,
     pipeline: { rfqs: rfqs ? rfqs.outstanding : null, quoted: quotes ? quotes.open.count : null, accepted: quotes ? quotes.byStatus.accepted.count : null, paid: paidCount },
     attention,
     attentionFailed,
@@ -269,6 +352,10 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
     machines: machineRows.data && bookingRows.data ? machineLoad(machineRows.data.map((m: any) => ({ ...m, id: String(m.id) })), bookingRows.data.map((b: any) => ({ ...b, machine_id: String(b.machine_id) })), monday) : null,
     workDue: openJobRows.data ? workloadDue(openJobRows.data, today) : null,
     customers,
+    cutting,
+    perMachineHour,
+    vsEstimate,
+    owedTrend: owedTrendData,
   };
 }
 
@@ -360,7 +447,11 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const attentionLoader = useCallback((): Promise<AttentionSection[] | null> => (office ? Promise.resolve(null) : supabase ? loadAttention(supabase, "admin") : Promise.reject(new Error("Supabase is not configured."))), [office]);
   const attention = useLoaded(attentionLoader);
   const d = data;
-  const revenueTotal = d?.revenue ? d.revenue.reduce((sum, row) => sum + row.revenue, 0) : null;
+  // The Revenue panel and This month's tile show one series at a time: invoiced ex VAT (the default) or money received.
+  const [revenueBasis, setRevenueBasis] = useState<"invoiced" | "received">("invoiced");
+  const series = revenueBasis === "invoiced" ? d?.invoiced ?? null : d?.revenue ?? null;
+  const thisMonthSeries = revenueBasis === "invoiced" ? d?.thisMonthInvoiced : d?.thisMonthRevenue;
+  const revenueTotal = series ? series.reduce((sum, row) => sum + row.revenue, 0) : null;
   const pipe = d?.pipeline;
   const canOpen = useCanOpen();
   const { isVisible } = useColumnVisibility("dashboard");
@@ -375,13 +466,30 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const shownKpis = kpis.filter(([key]) => isVisible(key));
   const lastOnTime = d?.onTime ? [...d.onTime].reverse().find((m) => m.percent !== null)?.percent ?? null : null;
   // This month so far against last month, and all machines together: from the same rows as the Revenue and Machine load panels (lib/overview).
-  const revenueCompare = revenueVsLastMonth(d?.revenue ?? null, loading, (v) => gbp(v, 0));
+  const revenueCompare = revenueVsLastMonth(series, loading, (v) => gbp(v, 0), revenueBasis);
   const fleet = fleetLoad(d?.machines ?? null, loading);
+  // A figure whose read failed is a dash with "Couldn't load this." (never 0); while loading, a dash with "Loading…".
+  const failedSub = loading ? "Loading…" : "Couldn't load this.";
+  const daysAvg = d?.daysToPay?.average ?? null;
+  const won = d?.quotesWon ?? null;
+  const estimate = d?.vsEstimate ?? null;
   const stats = ([
-    ["this-month-revenue", "This month's revenue", money(d?.thisMonthRevenue, loading), revenueCompare.detail, "/invoices", "none"],
+    // invoices (issued, ex VAT, less credit notes) or invoice_payments (by date received), as the Revenue panel's selector says.
+    ["this-month-revenue", `This month, ${revenueBasis === "invoiced" ? "invoiced ex VAT" : "received"}`, money(thisMonthSeries, loading), revenueCompare.detail, "/invoices", "none"],
+    // quotes.sent_at in this calendar month (lib/quote-status sentSince).
     ["quotes-sent", "Quotes sent", num(d?.quotesSentThisMonth, loading), "Sent this month", "/quotes", "none"],
+    // jobs: unfinished and past their required date, against unfinished with a date and not late (lib/job-status).
     ["jobs-late-on-time", "Jobs late / on time", d && d.lateJobs !== null && d.onTimeJobs !== null ? `${d.lateJobs} / ${d.onTimeJobs}` : DASH, "Jobs not finished, by required date", "/jobs", d && d.lateJobs !== null ? (d.lateJobs ? "red" : "green") : "none"],
-    ["avg-days-to-pay", "Average days to pay", d?.avgDaysToPay != null ? `${Math.round(d.avgDaysToPay)} days` : DASH, "Invoice date to final payment", "/invoices", lights.daysToPay(d?.avgDaysToPay ?? null)],
+    // invoices marked paid in the last 90 days: invoice date to paid (lib/overview-metrics daysToGetPaid).
+    ["avg-days-to-pay", "Average days to pay", daysAvg !== null && !loading ? `${Math.round(daysAvg)} days` : DASH,
+      !d?.daysToPay || loading ? failedSub : d.daysToPay.count ? `Invoice date to paid, ${d.daysToPay.count} paid in the last 90 days` : "Nothing paid in the last 90 days", "/invoices", lights.daysToPay(loading ? null : daysAvg)],
+    // quotes accepted this month by quotes.accepted_at (lib/overview-metrics quotesWon); an accepted quote with no date is not guessed.
+    ["quotes-won", "Quotes won", won && !loading ? String(won.count) : DASH,
+      !won || loading ? failedSub : `Accepted this month${won.undated ? ` · ${won.undated} accepted with no date not counted` : ""}`, "/quotes", "none"],
+    // machine_runs hours against job_machines.estimated_hours, jobs finished in the last 90 days with both (lib/overview-metrics).
+    ["jobs-vs-estimate", "Jobs vs estimate", estimate?.value && !loading ? `${estimate.value.percent}%` : DASH,
+      !estimate || loading ? failedSub : estimate.value ? `Run time of planned, ${estimate.value.jobs} job${estimate.value.jobs === 1 ? "" : "s"} finished in 90 days, ${estimate.value.over} over` : "No finished job in 90 days has both a plan and run time", "/jobs",
+      !estimate?.value || loading ? "none" : estimate.value.percent > 110 ? "red" : estimate.value.percent > 100 ? "amber" : "green"],
   ] as Array<[string, string, string, string, string, Light]>).filter(([key]) => isVisible(key));
   const showAttention = isVisible("needs-attention");
   const showPipeline = isVisible("quote-pipeline");
@@ -392,11 +500,32 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const rowCols = (n: number) => (["", "", "lg:grid-cols-2", "lg:grid-cols-3"][n] ?? "");
 
   // Each panel is built once; the office view and the owner's Overview arrange them differently.
-  const revenuePanel = (className?: string) => <Panel title="Revenue, last 6 months" meta={revenueTotal !== null ? `${gbp(revenueTotal, 0)} received` : undefined} href={canOpen("/invoices") ? "/invoices" : undefined} className={className}>
-    {d?.revenue ? <RevenueLine data={d.revenue} /> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
+  // The selector is always drawn (loading or not) and keeps its size, so switching or loading never moves the page.
+  const basisButton = (basis: "invoiced" | "received", label: string) => (
+    <button type="button" aria-pressed={revenueBasis === basis} onClick={() => setRevenueBasis(basis)} data-testid={`revenue-basis-${basis}`}
+      className={`px-2 py-1 text-[0.8125rem] font-semibold transition pointer-coarse:min-h-11 ${revenueBasis === basis ? "bg-brand text-brand-ink" : "text-muted-foreground hover:bg-canvas hover:text-ink"}`}>{label}</button>
+  );
+  const revenuePanel = (className?: string) => <Panel title="Revenue, last 6 months" meta={<span className="inline-flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+    <span role="group" aria-label="Revenue shown as" className="inline-flex border border-line">{basisButton("invoiced", "Invoiced ex VAT")}{basisButton("received", "Received")}</span>
+    <span data-testid="revenue-total">{revenueTotal !== null ? `${gbp(revenueTotal, 0)} ${revenueBasis === "invoiced" ? "invoiced" : "received"}` : DASH}</span>
+  </span>} href={canOpen("/invoices") ? "/invoices" : undefined} className={className}>
+    {series ? <RevenueLine data={series} label={revenueBasis === "invoiced" ? "Invoiced ex VAT" : "Received"} /> : <p className="flex h-56 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
   </Panel>;
+  // The owed trend: nightly snapshots only (migration 116), nothing filled in. Hidden while 116 is not applied; a dash when the read failed.
+  const trend = d?.owedTrend;
+  const owedTrendBlock = loading || !d || trend?.state === "missing" ? null : !trend ? (
+    <p className="border-t border-line pt-3 text-sm text-muted-foreground" data-testid="owed-trend">{DASH} Couldn&apos;t load this.</p>
+  ) : trend.points.length < 2 ? (
+    <p className="border-t border-line pt-3 text-sm text-muted-foreground" data-testid="owed-trend">The trend starts once two nightly figures have been taken.</p>
+  ) : (
+    <div className="border-t border-line pt-3" data-testid="owed-trend">
+      <p className="text-[0.8125rem] text-muted-foreground">Owed each night, {trend.points.length} nights from {fmtDueBy(trend.points[0].date)}</p>
+      <Sparkline data={trend.points.map((p) => ({ date: fmtDueBy(p.date), value: p.owed }))} label="Owed" />
+    </div>
+  );
   const owedPanel = <Panel title="Money owed by age" meta={d?.moneyOwed != null ? gbp(d.moneyOwed, 0) : undefined} href={canOpen("/invoices") ? "/invoices" : undefined}>
     {d?.owedByAge && !d.owedByAge.some((b) => b.value > 0) ? <p className="py-6 text-center text-sm text-muted-foreground">Nothing owed.</p> : d?.owedByAge ? <div className="space-y-3"><SplitBar parts={d.owedByAge} /><ul className="divide-y divide-line/70">{d.owedByAge.map((b) => <li key={b.key} className="flex items-center gap-2 py-2 text-sm"><LightDot light={b.value > 0 ? b.light : "none"} /><span className="text-ink">{b.label}</span><span className="ml-auto font-semibold tabular-nums text-ink">{gbp(b.value, 0)}</span></li>)}</ul></div> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+    {owedTrendBlock}
   </Panel>;
   const quotesPanel = <Panel title="Quotes, last 90 days" meta={d?.quotes90?.winRate != null ? `Win rate ${d.quotes90.winRate}%` : undefined} href={canOpen("/quotes") ? "/quotes" : undefined}>
     {d?.quotes90 ? <BarList rows={d.quotes90.outcomes.map((o) => ({ key: o.key, label: o.label, value: o.count, light: o.key === "accepted" ? "green" as const : o.key === "expired" ? "amber" as const : o.key === "rejected" ? "none" as const : undefined, colour: o.key === "sent" ? "var(--brand-accent)" : undefined }))} empty="No quotes sent in the last 90 days." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
@@ -430,9 +559,21 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const workDuePanel = <Panel title="Work coming due" meta="Next 14 days" href={canOpen("/jobs") ? "/jobs" : undefined}>
     {d?.workDue ? <DueColumns data={d.workDue} /> : <p className="flex h-44 items-center justify-center text-sm text-muted-foreground">{waiting}</p>}
   </Panel>;
-  const customersPanel = <Panel title="Top customers" meta="Paid, last 6 months">
-    {d?.customers ? <BarList rows={d.customers.map((c) => ({ key: c.customer, label: c.customer, value: c.value }))} format={(v) => gbp(v, 0)} empty="No paid invoices in the last 6 months." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+  // invoices (issued, ex VAT) less credit_notes, per customer, last 6 months; the share is the largest customer's part of everyone's total.
+  const customersPanel = <Panel title="Top customers" meta={<span data-testid="top-customer-share">{d?.customers?.share != null && !loading ? `Largest ${d.customers.share}% of invoiced` : "Invoiced ex VAT, last 6 months"}</span>}>
+    {d?.customers ? <BarList rows={d.customers.rows.map((c) => ({ key: c.customer, label: c.customer, value: c.value }))} format={(v) => gbp(v, 0)} empty="Nothing invoiced in the last 6 months." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+    <p className="mt-2 text-[0.8125rem] text-muted-foreground">Invoiced ex VAT in the last 6 months, credit notes taken off.</p>
   </Panel>;
+  // machine_runs this week (Monday to now), per machine, overlaps once (lib/overview-metrics cuttingHoursByMachine). Not booked hours.
+  const cuttingPanel = <Panel title="Cutting time this week" meta={<span data-testid="cutting-total">{d?.cutting && !loading ? `${d.cutting.total}h recorded` : DASH}</span>} href={canOpen("/schedule") ? "/schedule" : undefined}>
+    {d?.cutting ? <BarList rows={d.cutting.machines.map((m) => ({ key: m.id, label: m.name, value: m.hours, colour: "var(--brand)" }))} format={(v) => `${v}h`} empty="No machine runs recorded this week." /> : <p className="py-6 text-center text-sm text-muted-foreground">{waiting}</p>}
+    <p className="mt-2 text-[0.8125rem] text-muted-foreground">Recorded machine runs, paused time left out. Machine load is the booked hours.</p>
+  </Panel>;
+  // invoices (ex VAT, last 90 days) on jobs over machine_runs hours on those same jobs; jobs without both are left out, never spread.
+  const pmh = d?.perMachineHour ?? null;
+  const perHourTile = <StatTile key="per-machine-hour" label="£ per machine hour" value={pmh?.value && !loading ? gbp(pmh.value.perHour, 0) : DASH}
+    sub={!pmh || loading ? failedSub : pmh.value ? `${gbp(pmh.value.revenue, 0)} invoiced over ${pmh.value.hours}h on ${pmh.value.jobs} job${pmh.value.jobs === 1 ? "" : "s"}, last 90 days` : "No job invoiced in 90 days has recorded run time"}
+    href={canOpen("/invoices") ? "/invoices" : undefined} tone="neutral" valueClassName="text-2xl" />;
   const pipelinePanel = (className?: string) => <MaybeLink href="/quotes" allowed={canOpen("/quotes")} className={className}><Card className={`h-full transition ${canOpen("/quotes") ? "cursor-pointer hover:bg-slate-50" : ""}`}><CardHeader><CardTitle>Quote pipeline</CardTitle></CardHeader><CardContent className="grid auto-rows-fr grid-cols-2 gap-3">{([["RFQs outstanding", pipe?.rfqs], ["Quotes awaiting reply", pipe?.quoted], ["Accepted", pipe?.accepted], ...(office ? [] : [["Invoices paid", pipe?.paid]])] as Array<[string, number | null | undefined]>).map(([label, value]) => (
     <div key={label} className="flex min-h-24 min-w-0 flex-col justify-between gap-2 rounded-lg bg-canvas p-3 text-ink"><span className="text-sm leading-tight text-muted-foreground">{label}</span><span className="text-2xl font-semibold leading-none tabular-nums">{num(value, loading)}</span></div>
   ))}</CardContent></Card></MaybeLink>;
@@ -443,27 +584,31 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
     const kpiTile = (key: string) => shownKpis.filter(([k]) => k === key).map(([, tile]) => tile);
     const moneyTiles = [...kpiTile("money-owed"), ...statTiles(["this-month-revenue", "avg-days-to-pay"])];
     const moneyPanels = [isVisible("revenue-trend") && revenuePanel(), isVisible("money-by-age") && owedPanel, isVisible("top-customers") && customersPanel].filter(Boolean);
-    const workTiles = [...kpiTile("open-jobs"), ...kpiTile("open-quotes"), ...statTiles(["quotes-sent", "jobs-late-on-time"])];
+    const workTiles = [...kpiTile("open-jobs"), ...kpiTile("open-quotes"), ...statTiles(["quotes-sent", "jobs-late-on-time", "quotes-won", "jobs-vs-estimate"])];
     const workPanels = [isVisible("quote-outcomes") && quotesPanel, isVisible("jobs-by-status") && jobsStatusPanel, isVisible("on-time-delivery") && onTimePanel, isVisible("right-first-time") && rftPanel, isVisible("work-due") && workDuePanel, showPipeline && pipelinePanel()].filter(Boolean);
-    const machinePanels = [isVisible("machine-load") && machinePanel].filter(Boolean);
+    const machineTiles = [isVisible("per-machine-hour") && perHourTile].filter(Boolean) as React.ReactNode[];
+    const machinePanels = [isVisible("machine-load") && machinePanel, isVisible("cutting-time") && cuttingPanel].filter(Boolean);
     const present = [
       (showLeaks || showAttention) && "today",
       (moneyTiles.length || moneyPanels.length) && "money",
       (workTiles.length || workPanels.length) && "work",
-      machinePanels.length && "machines",
+      (machineTiles.length || machinePanels.length) && "machines",
       isVisible("team-week") && "people",
     ].filter((s): s is string => typeof s === "string");
     const leaks = leaksFrom(attention.data, { rfqsToQuote: loading ? null : d?.rfqsToQuote ?? null, overdueOwed: loading ? null : overdueOwed, money: (v) => gbp(v, 0) }, attention.error !== null);
     // The Today figure counts the Needs attention card's list: its sections plus the Dashboard's own items (d.attention).
     const summary = attentionSummary(attention.data, loading ? { count: null, failed: false } : d ? { count: d.attention.length, failed: d.attentionFailed } : { count: null, failed: true }, attention.error !== null);
-    const tileRow = (tiles: React.ReactNode[]) => tiles.length ? <div className={`grid gap-4 ${statGridClass(tiles.length)}`}>{tiles}</div> : null;
+    // What the figure counts beyond the leak tiles, listed under them so the figure always matches what is on screen (lib/overview).
+    const others = otherAttention(attention.data, loading || !d ? { items: null, failed: !loading } : { items: d.attention, failed: d.attentionFailed }, attention.error !== null);
+    // Up to four tiles share one row; five or six (the Work row with everything shown) go two then three across, never a squeezed row.
+    const tileRow = (tiles: React.ReactNode[]) => tiles.length ? <div className={`grid gap-4 ${tiles.length > 4 ? "sm:grid-cols-2 xl:grid-cols-3" : statGridClass(tiles.length)}`}>{tiles}</div> : null;
     const panelGrid = (panels: React.ReactNode[]) => panels.length ? <div className={`grid gap-4 ${rowCols(Math.min(panels.length, 3))}`}>{panels.map((p, i) => <div key={i} className="contents">{p}</div>)}</div> : null;
     return (
       <>
         {error ? <ErrorCard message={error} onRetry={retry} /> : null}
         <OverviewJump present={present} />
         {present.includes("today") ? <OverviewSection id="today" title="Today" figure={summary.total === null ? `${DASH} ${summary.detail}` : summary.detail} sub="Where work and money are slipping, and what needs doing">
-          {showLeaks ? <OverviewLeaks leaks={leaks} /> : null}
+          {showLeaks ? <div><OverviewLeaks leaks={leaks} /><OverviewOthers others={others} loading={loading || attention.loading} /></div> : null}
           {showAttention ? <div className="grid gap-6 xl:grid-cols-3"><AttentionList role="admin" preloaded={attention} extra={d?.attention ?? []} extraFailed={d?.attentionFailed ?? false} extraLoading={loading} wide /></div> : null}
         </OverviewSection> : null}
         {present.includes("money") ? <OverviewSection id="money" title="Money" sub="What's coming in, from whom, and what's still owed" href="/invoices" linkLabel="Open invoicing">
@@ -474,7 +619,8 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
           {tileRow(workTiles)}
           {panelGrid(workPanels)}
         </OverviewSection> : null}
-        {present.includes("machines") ? <OverviewSection id="machines" title="Machines" sub="How busy each machine is this week" href="/schedule" linkLabel="Machine schedule">
+        {present.includes("machines") ? <OverviewSection id="machines" title="Machines" sub="How busy each machine is this week, and what its time earns" href="/schedule" linkLabel="Machine schedule">
+          {tileRow(machineTiles)}
           {panelGrid(machinePanels)}
         </OverviewSection> : null}
         {present.includes("people") ? <OverviewSection id="people" title="People" sub="This week, from clock-ins · only admins see this" href="/time/week" linkLabel="Weekly hours">

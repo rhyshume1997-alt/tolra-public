@@ -48,6 +48,18 @@ export async function unbilledJobsOf(db: SupabaseClient): Promise<Record<string,
   }
 }
 
+/** 117's open Problems with their job; [] before 117 (the table is missing), null when the read failed or was cut short. Oldest reported first. */
+export async function jobProblemsOf(db: SupabaseClient): Promise<Record<string, unknown>[] | null> {
+  try {
+    const { rows, truncated } = await fetchAll((from, to) => db.from("job_problems").select("id, job_id, reason, note, reported_at, jobs(job_no, customer)").eq("status", "open").order("id").range(from, to));
+    return truncated ? null : (rows as Record<string, unknown>[]);
+  } catch (err) {
+    if (missingDbObject(err as { code?: string | null; message?: string | null })) return [];
+    console.error(err);
+    return null;
+  }
+}
+
 export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
   const wanted = new Set(rulesForRole(role).map((rule) => rule.id));
   const need = (...ids: Array<ReturnType<typeof rulesForRole>[number]["id"]>) => ids.some((id) => wanted.has(id));
@@ -55,7 +67,7 @@ export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
   // those rows in SQL (NULL <> 'paid' is not true), so a null-status draft never reached the dashboard.
   const none = Promise.resolve([] as Record<string, unknown>[] | null);
 
-  const [quotes, rfqs, quoted, purchaseOrders, lateJobs, finishedJobs, invoices, deliveryNotes, unbilledJobs] = await Promise.all([
+  const [quotes, rfqs, quoted, purchaseOrders, lateJobs, finishedJobs, invoices, deliveryNotes, unbilledJobs, jobProblems] = await Promise.all([
     need("quotes-expired", "quotes-no-decision")
       ? rowsOf((from, to) => db.from("quotes").select("id, quote_ref, customer, status, valid_until, sent_at").in("status", ["draft", "sent"]).order("id").range(from, to))
       : none,
@@ -81,6 +93,7 @@ export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
       ? rowsOf((from, to) => db.from("delivery_notes").select("id, dn_number, customer, status, invoice_id, delivery_date, created_at, updated_at").in("status", wanted.has("delivery-uninvoiced") ? ["awaiting", "despatched", "delivered", "signed"] : ["awaiting"]).order("id").range(from, to))
       : none,
     need("jobs-unbilled") ? unbilledJobsOf(db) : none,
+    need("jobs-problems") ? jobProblemsOf(db) : none,
   ]);
   // A failed archive read gives null invoices ("couldn't load"), never a draft list that might include archived ones.
   const archivedInvoices = need("invoices-draft") && invoices
@@ -88,7 +101,7 @@ export async function loadAttention(db: SupabaseClient, role: AttentionRole) {
     : null;
   const invoiceRows = !invoices ? null : need("invoices-draft") ? (archivedInvoices ? withoutArchivedDrafts(invoices, new Set(archivedInvoices.map((row) => String(row.record_id)))) : null) : invoices;
   const input: AttentionInput = {
-    quotes, rfqs, purchaseOrders, lateJobs, finishedJobs, invoices: invoiceRows, deliveryNotes, unbilledJobs,
+    quotes, rfqs, purchaseOrders, lateJobs, finishedJobs, invoices: invoiceRows, deliveryNotes, unbilledJobs, jobProblems,
     quotedRfqIds: quoted ? quoted.map((row) => String(row.rfq_id)) : null,
   };
   return buildAttention(input, role, toDateInput(new Date()));

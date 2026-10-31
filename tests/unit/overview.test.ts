@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import type { AttentionSection } from "@/lib/attention-items";
-import { attentionSummary, fleetLoad, leaksFrom, OVERVIEW_SECTIONS, revenueVsLastMonth } from "@/lib/overview";
+import { attentionSummary, fleetLoad, leaksFrom, otherAttention, OVERVIEW_SECTIONS, revenueVsLastMonth } from "@/lib/overview";
 
 const sec = (id: AttentionSection["id"], count: number, detail = "", failed = false): AttentionSection => ({
   id,
@@ -90,11 +90,49 @@ describe("owner overview figures", () => {
     sec("invoices-overdue", 2),
   ];
 
-  it("Today counts the whole Needs attention list plus the Dashboard's own items, and the late or overdue among them", () => {
+  it("Today counts the whole Needs attention list plus the Dashboard's own items, and the late among them", () => {
     const summary = attentionSummary(sections, { count: 1, failed: false });
-    expect(summary).toEqual({ total: 15, urgent: 4, detail: "15 things need you, 4 of them late or overdue", failed: false });
-    expect(attentionSummary([sec("jobs-inspection", 1)], { count: 0, failed: false }).detail).toBe("1 thing needs you, none late or overdue");
+    expect(summary).toEqual({ total: 15, urgent: 4, detail: "15 things need you, 4 late", failed: false });
+    expect(attentionSummary([sec("jobs-inspection", 1)], { count: 0, failed: false }).detail).toBe("1 thing needs you, none late");
     expect(attentionSummary([sec("jobs-late", 0)], { count: 0, failed: false })).toMatchObject({ total: 0, urgent: 0, detail: "Nothing needs you right now." });
+  });
+
+  it("the words say Late, never overdue or late or overdue", () => {
+    const words = [
+      attentionSummary(sections, { count: 0, failed: false }).detail,
+      ...leaksFrom(sections, { rfqsToQuote: 0, overdueOwed: 6900, money }).flatMap((l) => [l.label, l.alarm ?? ""]),
+      ...leaksFrom(sections.map((s) => sec(s.id, 0)), { rfqsToQuote: 0, overdueOwed: 0, money }).map((l) => l.detail),
+    ].join(" | ");
+    expect(words).not.toMatch(/overdue/i);
+    const money_ = leaksFrom(sections, { rfqsToQuote: 0, overdueOwed: 6900, money }).find((l) => l.id === "invoices-overdue")!;
+    expect(money_).toMatchObject({ label: "Money late", alarm: "Late" });
+  });
+
+  it("the headline matches what is on screen: the four leak tiles plus every other rule and Dashboard item add up to it", () => {
+    // Rhys saw 6 in the headline and 0 on every tile: the 6 were in rules the tiles don't show. They are listed now, not dropped.
+    const hidden = [sec("quotes-no-decision", 0), sec("jobs-late", 0), sec("jobs-inspection", 0), sec("invoices-overdue", 0), sec("invoices-draft", 4), sec("delivery-uninvoiced", 1), sec("pos-late", 0)];
+    const extra = [{ key: "inv-payment-to-confirm", title: "3 imported invoices: payment to confirm", href: "/invoices" }];
+    const summary = attentionSummary(hidden, { count: extra.length, failed: false });
+    expect(summary.detail).toBe("6 things need you, none late");
+    const others = otherAttention(hidden, { items: extra, failed: false })!;
+    expect(others).toEqual([
+      { id: "invoices-draft", kind: "rule", label: "invoices-draft", count: 4, href: "/x?filter=invoices-draft" },
+      { id: "delivery-uninvoiced", kind: "rule", label: "delivery-uninvoiced", count: 1, href: "/x?filter=delivery-uninvoiced" },
+      { id: "inv-payment-to-confirm", kind: "item", label: "3 imported invoices: payment to confirm", count: 1, href: "/invoices" },
+    ]);
+    const tiles = leaksFrom(hidden, { rfqsToQuote: 0, overdueOwed: 0, money }).filter((l) => l.id !== "rfqs-to-quote").reduce((sum, l) => sum + (l.count ?? 0), 0);
+    expect(tiles + others.reduce((sum, o) => sum + o.count, 0)).toBe(summary.total);
+    // And with the full example list.
+    const all = otherAttention(sections, { items: [], failed: false })!;
+    expect(all.map((o) => o.id)).toEqual(["quotes-expired"]);
+  });
+
+  it("the other items are null (a dash) while loading or when any part failed, like the headline", () => {
+    expect(otherAttention(null, { items: [], failed: false })).toBeNull();
+    expect(otherAttention(sections, { items: null, failed: false })).toBeNull();
+    expect(otherAttention(sections, { items: [], failed: true })).toBeNull();
+    expect(otherAttention([...sections, sec("pos-late", 0, "", true)], { items: [], failed: false })).toBeNull();
+    expect(otherAttention(sections, { items: [], failed: false }, true)).toBeNull();
   });
 
   it("Today is a dash while loading, and says so when any part of the list failed", () => {
@@ -115,6 +153,8 @@ describe("owner overview figures", () => {
     expect(revenueVsLastMonth(months([0, 0, 0, 0, 2000, 500]), false, money)).toMatchObject({ change: -75, detail: "So far 75% below Sep (£2,000)" });
     expect(revenueVsLastMonth(months([0, 0, 0, 0, 1000, 1000]), false, money).detail).toBe("So far level with Sep (£1,000)");
     expect(revenueVsLastMonth(months([0, 0, 0, 0, 0, 500]), false, money)).toEqual({ previous: 0, change: null, detail: "Nothing received in Sep", failed: false });
+    // The invoiced series says invoiced.
+    expect(revenueVsLastMonth(months([0, 0, 0, 0, 0, 500]), false, money, "invoiced").detail).toBe("Nothing invoiced in Sep");
   });
 
   it("a last month that netted below zero (reversals) is not compared with, and a tiny amount is never '100% below'", () => {

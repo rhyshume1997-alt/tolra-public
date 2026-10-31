@@ -6,7 +6,7 @@
  *   green  #16A34A / #4ADE80  complete, accepted, passed, paid, on time, delivered
  *   yellow #CA8A04 / #FACC15  at risk, waiting for inspection, part paid, conditional supplier, waiting on supplier/customer
  *                             (yellow fill with DARK text, never yellow text on a light page)
- *   red    #DC2626 / #F87171  overdue, blocked supplier, sync failed, failed inspection
+ *   red    #DC2626 / #F87171  overdue, blocked supplier, sync failed, failed inspection, a problem reported on a job (117)
  *   blue   #2563EB / #60A5FA  active, running (a job), sent, issued, sync pending
  *   purple #7C3AED / #C4B5FD  rework only (a tag on a Running job, never a status)
  *   grey   #6B7280 / #9CA3AF  draft, not started, archived, void, cancelled
@@ -38,7 +38,7 @@ export const COLOUR_CLASSES: Record<StatusColour, { badge: string; dot: string }
 export type StatusKey =
   | "complete" | "accepted" | "passed" | "paid" | "on_track" | "delivered"
   | "at_risk" | "awaiting_inspection" | "part_paid" | "conditional_supplier" | "waiting_on_supplier" | "waiting_on_customer"
-  | "overdue" | "blocked_supplier" | "sync_failed" | "failed_inspection"
+  | "overdue" | "blocked_supplier" | "sync_failed" | "failed_inspection" | "problem"
   | "active" | "in_progress" | "sent" | "issued" | "sync_pending"
   | "rework"
   | "draft" | "not_started" | "no_due_date" | "archived" | "void" | "cancelled";
@@ -62,6 +62,7 @@ export const STATUS_MAP: Record<StatusKey, { label: string; colour: StatusColour
   blocked_supplier: { label: "Blocked supplier", colour: "red" },
   sync_failed: { label: "Sync failed", colour: "red" },
   failed_inspection: { label: "Failed inspection", colour: "red" },
+  problem: { label: "Problem", colour: "red" },
 
   active: { label: "Active", colour: "blue" },
   in_progress: { label: "Running", colour: "blue" },
