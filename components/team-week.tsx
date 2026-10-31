@@ -65,9 +65,9 @@ export function TeamWeek() {
       ) : !rows.length ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Nobody has clocked in this week yet.</p>
       ) : (
-        <div className="-mx-4 overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-sm">
-            <thead>
+        <div className="-mx-4">
+          <table className="w-full text-sm desk:min-w-[44rem]" data-tablet-cards>
+            <thead className="hidden md:table-header-group">
               <tr className="border-b border-line text-left text-[0.8125rem] text-muted-foreground">
                 <th className="px-4 py-2 font-medium">Person</th>
                 <th className="px-2 py-2 font-medium">Right now</th>
@@ -79,21 +79,21 @@ export function TeamWeek() {
             </thead>
             <tbody className="divide-y divide-line/70">
               {rows.map((row) => (
-                <tr key={row.userId}>
-                  <td className="px-4 py-2.5 font-semibold text-ink">
+                <tr key={row.userId} className="block md:table-row">
+                  <td className="block px-4 py-2.5 font-semibold text-ink md:table-cell">
                     {row.name}
                     <span className="block text-xs font-normal text-muted-foreground">{row.daysWorked} day{row.daysWorked === 1 ? "" : "s"} worked</span>
                   </td>
-                  <td className="px-2 py-2.5"><span className="inline-flex items-center gap-2 text-ink"><LightDot light={NOW_LIGHT[row.now.state]} />{nowText(row.now)}</span></td>
-                  <td className="px-2 py-2.5">
+                  <td data-label="Right now" className="block px-4 py-2.5 md:table-cell desk:px-2"><span className="inline-flex items-center gap-2 text-ink"><LightDot light={NOW_LIGHT[row.now.state]} />{nowText(row.now)}</span></td>
+                  <td data-label="Time on jobs" className="block px-4 py-2.5 md:table-cell desk:px-2">
                     <span className="flex items-center gap-2">
                       <span className="h-3 flex-1 bg-canvas"><span className="block h-full bg-brand" style={{ width: `${most ? (row.jobMinutes / most) * 100 : 0}%` }} /></span>
                       <span className="w-14 text-right font-semibold tabular-nums text-ink">{hm(row.jobMinutes)}</span>
                     </span>
                   </td>
-                  <td className="px-2 py-2.5 text-right tabular-nums text-ink">{hm(row.paidMinutes)}</td>
-                  <td className="px-2 py-2.5 text-right tabular-nums text-ink">{row.onJobsPercent === null ? "—" : `${row.onJobsPercent}%`}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink">{row.jobsFinished}</td>
+                  <td data-label="Paid hours" className="block px-4 py-2.5 tabular-nums text-ink md:table-cell desk:px-2 desk:text-right">{hm(row.paidMinutes)}</td>
+                  <td data-label="On jobs" className="block px-4 py-2.5 tabular-nums text-ink md:table-cell desk:px-2 desk:text-right">{row.onJobsPercent === null ? "—" : `${row.onJobsPercent}%`}</td>
+                  <td data-label="Jobs finished" className="block px-4 py-2.5 font-semibold tabular-nums text-ink md:table-cell desk:text-right">{row.jobsFinished}</td>
                 </tr>
               ))}
             </tbody>

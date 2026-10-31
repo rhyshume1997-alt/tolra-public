@@ -7,8 +7,8 @@
  * - no heading text overflows its box (scrollWidth <= clientWidth).
  *
  * The view is chosen at 1280 px (the switcher is hidden on phones) and the window is then resized, because the view is remembered per
- * person. What each width really shows follows the app: phones (< 768) always show Cards; from 768 to 1024 a chosen Table is shown as
- * Cards (dense tables need the desk layout); List and Table are tables from 768 / 1025 px. The expected layout is asserted, so a
+ * person. What each width really shows follows the app: phones (< 768) always show Cards; from 768 to 1024 a chosen Table or List is shown as
+ * Cards (dense tables need the desk layout); List and Table are tables from 1025 px. The expected layout is asserted, so a
  * width that silently showed the wrong thing fails here instead of passing on the wrong boxes.
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -54,7 +54,7 @@ async function openView(page: Page, width: number, view: View): Promise<"cards" 
   await choice.click();
   await expect(choice).toHaveAttribute("aria-pressed", "true");
   await page.setViewportSize({ width, height: 900 });
-  const shown = width < 768 ? "cards" : view === "Table" && width <= 1024 ? "cards" : (view.toLowerCase() as "cards" | "list" | "table");
+  const shown = width < 768 ? "cards" : (view === "Table" || view === "List") && width <= 1024 ? "cards" : (view.toLowerCase() as "cards" | "list" | "table");
   if (shown === "cards") {
     await expect(page.locator('[data-testid="job-card"]:visible').first()).toBeVisible();
     await expect(page.locator("table:visible")).toHaveCount(0);

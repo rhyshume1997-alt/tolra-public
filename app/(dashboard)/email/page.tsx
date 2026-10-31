@@ -115,16 +115,16 @@ export default function EmailPage() {
 
       {loading ? <Skeleton className="h-60" /> : (
       <Card><CardContent className="p-0">
-        <Table>
+        <Table data-tablet-cards>
           <TableHeader className="hidden md:table-header-group"><TableRow><TableHead>To</TableHead><TableHead>Subject</TableHead><TableHead>Related to</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
           <TableBody>
             {visible.map((item) => (
               <TableRow key={item.id} className="block md:table-row">
-                <TableCell className="block font-semibold md:table-cell">{item.to}</TableCell>
-                <TableCell className="block md:table-cell">{item.subject}</TableCell>
-                <TableCell className="block capitalize md:table-cell">{item.related}</TableCell>
-                <TableCell className="block md:table-cell">{item.when}</TableCell>
-                <TableCell className="block space-y-2 md:table-cell">
+                <TableCell data-label="To" className="block font-semibold md:table-cell">{item.to}</TableCell>
+                <TableCell data-label="Subject" className="block md:table-cell">{item.subject}</TableCell>
+                <TableCell data-label="Related to" className="block capitalize md:table-cell">{item.related}</TableCell>
+                <TableCell data-label="Date" className="block md:table-cell">{item.when}</TableCell>
+                <TableCell data-label="Status" className="block space-y-2 md:table-cell">
                   <StatusBadge status={emailStatusKey(item.status)} label={STATUS_LABEL[item.status] ?? item.status} />
                   {item.status === "unknown" && item.related === "job" ? (
                     <div className="max-w-xs space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
@@ -138,7 +138,7 @@ export default function EmailPage() {
                     </div>
                   ) : null}
                 </TableCell>
-                <TableCell className="block md:table-cell">
+                <TableCell data-actions className="block md:table-cell">
                   <Dialog>
                     <DialogTrigger asChild><Button variant="outline" size="sm"><Mail className="size-4" /> View</Button></DialogTrigger>
                     <DialogContent className="max-w-2xl">

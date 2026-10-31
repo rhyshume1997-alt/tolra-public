@@ -107,9 +107,11 @@ describe("CompactInvoiceList render", () => {
     expect(foot).toContain('data-total="outstanding">£470.00<');
   });
 
-  it("scrolls sideways inside its own box so the page does not", () => {
-    expect(html).toMatch(/data-testid="compact-invoice-list" class="[^"]*overflow-x-auto/);
-    expect(html).toMatch(/<table class="[^"]*min-w-\[/);
+  it("is a wide table only from 1025px; below that each invoice stacks as a card and names every column", () => {
+    // The 56rem floor applies at desk: and up, so a phone or tablet never needs a sideways scroll.
+    expect(html).toMatch(/<table class="[^"]*desk:min-w-\[56rem\]"[^>]*data-tablet-cards/);
+    expect(html).not.toMatch(/<table class="(?:[^"]* )?min-w-\[/);
+    for (const label of ["Date", "Customer", "Net", "VAT", "Gross", "Paid", "Outstanding", "Status", "Due"]) expect(html).toContain(`data-label="${label}"`);
   });
 });
 

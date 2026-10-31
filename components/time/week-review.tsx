@@ -129,7 +129,7 @@ export function WeekReview() {
         <Button variant="outline" size="sm" onClick={() => go(addDays(week, -7))} aria-label="Previous week"><ChevronLeft className="size-4" /></Button>
         <span className="text-sm font-medium">Week of {dayHeading(week)}</span>
         <Button variant="outline" size="sm" onClick={() => go(addDays(week, 7))} aria-label="Next week"><ChevronRight className="size-4" /></Button>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <ColumnToggle tableKey="hours" />
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("csv")}>Export CSV</Button>
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("xlsx")}>Export Excel</Button>
@@ -141,8 +141,10 @@ export function WeekReview() {
       {people === null && !error ? <p className="text-sm text-slate-500">Loading…</p> : null}
       {people ? (
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full text-sm" data-testid="week-table">
-            <thead>
+          {/* Below 1024px each person is a stacked card (data-tablet-cards in app/globals.css, labels from data-label) so the week
+              never scrolls sideways on a phone or tablet. The header row stays in the markup, hidden on a phone. */}
+          <table className="w-full text-sm" data-testid="week-table" data-tablet-cards>
+            <thead className="hidden md:table-header-group">
               <tr className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500">
                 <th className="px-3 py-2">Person</th>
                 {isVisible("days") ? <th className="px-2 text-right">Days</th> : null}
@@ -160,21 +162,21 @@ export function WeekReview() {
               {sorted.length ? sorted.map((p) => {
                 const state = p.status?.state ?? "not_approved";
                 return (
-                  <tr key={p.userId} className="border-b align-top" data-testid={`week-row-${p.userId}`}>
-                    <td className="px-3 py-2"><Link className="font-medium hover:underline" href={`/time?date=${week}${p.userId !== me ? `&user=${p.userId}` : ""}`}>{names[p.userId] ?? UNKNOWN}</Link></td>
-                    {isVisible("days") ? <td className="px-2 py-2 text-right">{p.week.daysWorked}</td> : null}
-                    {isVisible("clocked") ? <td className="px-2 py-2 text-right font-mono">{hm(p.week.attendance)}</td> : null}
-                    {isVisible("breaks") ? <td className="px-2 py-2 text-right font-mono">{hmSigned(-p.week.breakDeduction)}</td> : null}
-                    <td className="px-2 py-2 text-right font-mono" data-testid="week-paid">{hm(p.week.paid)}</td>
-                    {isVisible("jobs") ? <td className="px-2 py-2 text-right font-mono">{hm(p.week.labour)}</td> : null}
-                    {showFlags && isVisible("ticks") ? <td className="px-2 py-2 text-xs" data-testid="week-day-flags">{p.dayFlags ? <DayFlagsCell flags={p.dayFlags} /> : null}
+                  <tr key={p.userId} className="block border-b align-top md:table-row" data-testid={`week-row-${p.userId}`}>
+                    <td className="block px-3 py-2 md:table-cell"><Link className="font-medium hover:underline" href={`/time?date=${week}${p.userId !== me ? `&user=${p.userId}` : ""}`}>{names[p.userId] ?? UNKNOWN}</Link></td>
+                    {isVisible("days") ? <td data-label="Days" className="block px-3 py-2 text-left md:table-cell md:px-2 desk:text-right">{p.week.daysWorked}</td> : null}
+                    {isVisible("clocked") ? <td data-label="Clocked" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right">{hm(p.week.attendance)}</td> : null}
+                    {isVisible("breaks") ? <td data-label="Breaks" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right">{hmSigned(-p.week.breakDeduction)}</td> : null}
+                    <td data-label="Paid" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right" data-testid="week-paid">{hm(p.week.paid)}</td>
+                    {isVisible("jobs") ? <td data-label="On jobs" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right">{hm(p.week.labour)}</td> : null}
+                    {showFlags && isVisible("ticks") ? <td data-label="Day ticks" className="block px-3 py-2 text-xs empty:max-md:hidden md:table-cell md:px-2" data-testid="week-day-flags">{p.dayFlags ? <DayFlagsCell flags={p.dayFlags} /> : null}
                     </td> : null}
-                    {isVisible("check") ? <td className="px-2 py-2 text-xs text-amber-800">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
-                    {isVisible("approval") ? <td className="px-2 py-2 text-xs" data-testid="week-state">
+                    {isVisible("check") ? <td data-label="Check" className="block px-3 py-2 text-xs text-amber-800 empty:max-md:hidden md:table-cell md:px-2">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
+                    {isVisible("approval") ? <td data-label="Approval" className="block px-3 py-2 text-xs md:table-cell md:px-2" data-testid="week-state">
                       <span className={state === "approved" ? "text-emerald-700" : state === "changed_since_approval" ? "text-amber-700" : "text-slate-500"}>{WEEK_STATE_TEXT[state]}</span>
                       {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {new Date(p.status.approved_at).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" })}</div> : null}
                     </td> : null}
-                    <td className="px-2 py-2 text-right">
+                    <td data-actions className="block px-3 py-2 text-left empty:max-md:hidden md:table-cell md:px-2 desk:text-right">
                       {showFlags && p.dayFlags?.anySuggested && seesEveryone ? <Button size="sm" variant="outline" className="mr-1" onClick={() => void saveSuggested(p)} data-testid="save-suggested-ticks">Save suggested ticks</Button> : null}
                       {canApprove && p.status && state !== "approved" && !isFuture ? <Button size="sm" onClick={() => setApproving(p)} data-testid="approve-week"><CheckCircle2 className="size-4" /> Approve</Button> : null}
                     </td>

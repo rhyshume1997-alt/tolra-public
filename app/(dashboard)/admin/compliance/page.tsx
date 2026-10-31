@@ -178,8 +178,8 @@ export default function CompliancePage() {
             ) : null}
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search audit entries..." className="h-11" />
             <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableHeader>
+              <Table data-tablet-cards>
+                <TableHeader className="hidden md:table-header-group">
                   <TableRow>
                     <TableHead>When</TableHead>
                     <TableHead>User</TableHead>
@@ -190,12 +190,12 @@ export default function CompliancePage() {
                 </TableHeader>
                 <TableBody>
                   {filteredEntries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="whitespace-nowrap text-xs">{fmtDateTime(entry.created_at)}</TableCell>
-                      <TableCell className="text-xs">{entry.actor_email || "System"}</TableCell>
-                      <TableCell><Badge variant="outline">{auditActionLabel(entry.action)}</Badge></TableCell>
-                      <TableCell className="text-xs">{recordTypeLabel(entry.entity_table)}</TableCell>
-                      <TableCell className="whitespace-normal break-all font-mono text-xs">{entry.hash || "Pending"}</TableCell>
+                    <TableRow key={entry.id} className="block md:table-row">
+                      <TableCell data-label="When" className="block whitespace-nowrap text-xs md:table-cell">{fmtDateTime(entry.created_at)}</TableCell>
+                      <TableCell data-label="User" className="block text-xs md:table-cell">{entry.actor_email || "System"}</TableCell>
+                      <TableCell data-label="Action" className="block md:table-cell"><Badge variant="outline">{auditActionLabel(entry.action)}</Badge></TableCell>
+                      <TableCell data-label="Record" className="block text-xs md:table-cell">{recordTypeLabel(entry.entity_table)}</TableCell>
+                      <TableCell data-label="Integrity code" className="block whitespace-normal break-all font-mono text-xs md:table-cell">{entry.hash || "Pending"}</TableCell>
                     </TableRow>
                   ))}
                   {!filteredEntries.length && !error && !loading ? (

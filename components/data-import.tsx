@@ -413,7 +413,7 @@ export function DataImport() {
           </p>
           <div className="overflow-x-auto rounded-lg border bg-white">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="max-md:hidden">
                 <tr className="text-left text-xs text-slate-500">
                   <th className="px-3 py-2">Kind</th><th className="px-3 py-2 text-right">Rows</th><th className="px-3 py-2 text-right">Created</th>
                   <th className="px-3 py-2 text-right">Matched (skipped)</th><th className="px-3 py-2 text-right">Linked</th><th className="px-3 py-2 text-right">Problems</th><th className="px-3 py-2 text-right">Warnings</th>
@@ -421,14 +421,14 @@ export function DataImport() {
               </thead>
               <tbody>
                 {preview.map((row) => (
-                  <tr key={row.kind} className="border-t" data-testid={`import-count-${row.kind}`}>
-                    <td className="px-3 py-2 font-medium">{KIND_LABEL[row.kind]}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-col="rows">{row.rows}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-col="created">{row.created}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-col="matched">{row.matched}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-col="linked">{row.linked ?? "–"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-col="problems">{row.problems}</td>
-                    <td className="px-3 py-2 text-right tabular-nums" data-col="warnings">{row.warnings}</td>
+                  <tr key={row.kind} className="border-t max-md:grid max-md:grid-cols-3 max-md:gap-x-2 max-md:px-3 max-md:py-2" data-testid={`import-count-${row.kind}`}>
+                    <td className="px-3 py-2 font-medium max-md:col-span-3 max-md:px-0">{KIND_LABEL[row.kind]}</td>
+                    <td data-label="Rows" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="rows">{row.rows}</td>
+                    <td data-label="Created" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="created">{row.created}</td>
+                    <td data-label="Matched (skipped)" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="matched">{row.matched}</td>
+                    <td data-label="Linked" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="linked">{row.linked ?? "–"}</td>
+                    <td data-label="Problems" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="problems">{row.problems}</td>
+                    <td data-label="Warnings" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="warnings">{row.warnings}</td>
                   </tr>
                 ))}
               </tbody>

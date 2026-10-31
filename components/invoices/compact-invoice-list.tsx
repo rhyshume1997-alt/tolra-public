@@ -32,20 +32,21 @@ function statusLabel(invoice: CompactInvoice): string {
 }
 
 const money = (value: number) => gbp(value, 2);
-const NUM = "whitespace-nowrap px-2 py-1.5 text-right tabular-nums";
+const NUM = "block whitespace-nowrap px-2 py-1.5 text-left tabular-nums desk:table-cell desk:text-right";
 const HEAD = "whitespace-nowrap px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-300";
 
 /**
  * The dense, accounting-package style list of invoices: number, date, customer, net, VAT, gross, paid, outstanding, status, due date,
  * with the totals of the rows given at the foot. `rows` is the list's own filtered set. A click on a row opens that invoice. The
- * table scrolls sideways inside its own box on a phone; the page does not.
+ * table is a table from 1025px; below that (phone and tablet) each invoice is a stacked card with its columns as labelled lines
+ * (data-tablet-cards in app/globals.css), so neither it nor the page scrolls sideways.
  */
 export function CompactInvoiceList<T extends CompactInvoice>({ rows, onOpen }: { rows: T[]; onOpen: (invoice: T) => void }) {
   const totals = compactInvoiceTotals(rows);
   return (
     <div data-testid="compact-invoice-list" className="w-full max-w-full overflow-x-auto rounded-lg border border-slate-200 dark:border-white/10">
-      <table className="w-full min-w-[56rem] border-collapse text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+      <table className="w-full border-collapse text-sm desk:min-w-[56rem]" data-tablet-cards>
+        <thead className="hidden border-b border-slate-200 bg-slate-50 desk:table-header-group dark:border-white/10 dark:bg-white/5">
           <tr>
             <th scope="col" className={HEAD}>Invoice</th>
             <th scope="col" className={HEAD}>Date</th>
@@ -67,33 +68,33 @@ export function CompactInvoiceList<T extends CompactInvoice>({ rows, onOpen }: {
                 key={invoice.id ?? invoice.reference}
                 data-testid="compact-invoice-row"
                 onClick={() => onOpen(invoice)}
-                className={`cursor-pointer border-b border-slate-100 hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/5 ${invoice.status === "paid" ? "opacity-60" : ""}`}
+                className={`block cursor-pointer border-b border-slate-100 desk:table-row hover:bg-slate-50 dark:border-white/5 dark:hover:bg-white/5 ${invoice.status === "paid" ? "opacity-60" : ""}`}
               >
-                <td className="whitespace-nowrap px-2 py-1.5 font-mono font-semibold">
+                <td className="block whitespace-nowrap px-2 py-1.5 font-mono font-semibold desk:table-cell">
                   <button type="button" className="text-left underline-offset-2 hover:underline focus-visible:underline" aria-label={`Open ${shownInvoiceRef(invoice)}`}>{shownInvoiceRef(invoice)}</button>
                 </td>
-                <td className="whitespace-nowrap px-2 py-1.5">{fmtDate(invoice.date)}</td>
-                <td className="max-w-[16rem] truncate px-2 py-1.5">{invoice.customer}</td>
-                <td className={NUM}>{money(net)}</td>
-                <td className={NUM}>{money(vat)}</td>
-                <td className={`${NUM} font-semibold`}>{money(invoice.amount)}</td>
-                <td className={NUM}>{money(invoice.amountPaid)}</td>
-                <td className={`${NUM} font-semibold`}>{money(invoice.balance)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5"><StatusBadge status={invoiceStatusKey(invoice)} unmapped={{ variant: "outline" }} label={statusLabel(invoice)} /></td>
-                <td className="whitespace-nowrap px-2 py-1.5">{fmtDate(invoice.dueDate)}</td>
+                <td data-label="Date" className="block whitespace-nowrap px-2 py-1.5 desk:table-cell">{fmtDate(invoice.date)}</td>
+                <td data-label="Customer" className="block max-w-[16rem] truncate px-2 py-1.5 desk:table-cell">{invoice.customer}</td>
+                <td data-label="Net" className={NUM}>{money(net)}</td>
+                <td data-label="VAT" className={NUM}>{money(vat)}</td>
+                <td data-label="Gross" className={`${NUM} font-semibold`}>{money(invoice.amount)}</td>
+                <td data-label="Paid" className={NUM}>{money(invoice.amountPaid)}</td>
+                <td data-label="Outstanding" className={`${NUM} font-semibold`}>{money(invoice.balance)}</td>
+                <td data-label="Status" className="block whitespace-nowrap px-2 py-1.5 desk:table-cell"><StatusBadge status={invoiceStatusKey(invoice)} unmapped={{ variant: "outline" }} label={statusLabel(invoice)} /></td>
+                <td data-label="Due" className="block whitespace-nowrap px-2 py-1.5 desk:table-cell">{fmtDate(invoice.dueDate)}</td>
               </tr>
             );
           })}
         </tbody>
-        <tfoot className="border-t-2 border-slate-300 bg-slate-50 font-semibold dark:border-white/20 dark:bg-white/5" data-testid="compact-invoice-totals">
-          <tr>
-            <td className="whitespace-nowrap px-2 py-2" colSpan={3}>Totals ({totals.count} invoice{totals.count === 1 ? "" : "s"})</td>
-            <td className={NUM} data-total="net">{money(totals.net)}</td>
-            <td className={NUM} data-total="vat">{money(totals.vat)}</td>
-            <td className={NUM} data-total="gross">{money(totals.gross)}</td>
-            <td className={NUM} data-total="paid">{money(totals.paid)}</td>
-            <td className={NUM} data-total="outstanding">{money(totals.outstanding)}</td>
-            <td colSpan={2} />
+        <tfoot className="block border-t-2 border-slate-300 bg-slate-50 font-semibold desk:table-footer-group dark:border-white/20 dark:bg-white/5" data-testid="compact-invoice-totals">
+          <tr className="block desk:table-row">
+            <td className="block whitespace-nowrap px-2 py-2 desk:table-cell" colSpan={3}>Totals ({totals.count} invoice{totals.count === 1 ? "" : "s"})</td>
+            <td data-label="Net" className={NUM} data-total="net">{money(totals.net)}</td>
+            <td data-label="VAT" className={NUM} data-total="vat">{money(totals.vat)}</td>
+            <td data-label="Gross" className={NUM} data-total="gross">{money(totals.gross)}</td>
+            <td data-label="Paid" className={NUM} data-total="paid">{money(totals.paid)}</td>
+            <td data-label="Outstanding" className={NUM} data-total="outstanding">{money(totals.outstanding)}</td>
+            <td colSpan={2} className="hidden desk:table-cell" />
           </tr>
         </tfoot>
       </table>

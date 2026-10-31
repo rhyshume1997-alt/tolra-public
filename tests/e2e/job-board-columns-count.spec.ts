@@ -7,8 +7,8 @@
  * present; Reset to default; the choice survives a reload; the table's own scroll container scrolled to its right end shows the last
  * header (Actions) at the same top as the first; the page never scrolls sideways.
  *
- * Widths: tables exist at 1280 and 1523 px. Phones (< 768) always show Cards and from 768 to 1024 px a chosen Table is shown as Cards,
- * so at 390 and 768 the Table case asserts that fallback (and the Cards labels) instead. The view is chosen at 1280 px, then the window
+ * Widths: tables exist at 1280 and 1523 px. Phones (< 768) always show Cards and from 768 to 1024 px a chosen Table or List is shown as Cards,
+ * so at 390 and 768 the Table and List cases assert that fallback (and the Cards labels) instead. The view is chosen at 1280 px, then the window
  * is resized. Every test that changes the picker puts it back (Reset to default, clicked only when something is hidden) in a finally.
  */
 import { expect, test, type Locator, type Page } from "@playwright/test";
@@ -73,7 +73,7 @@ async function openView(page: Page, width: number, view: View): Promise<"cards" 
 
 /** What `view` shows at `width`, waited for. */
 async function settle(page: Page, width: number, view: View): Promise<"cards" | "list" | "table"> {
-  const shown = width < 768 ? "cards" : view === "Table" && width <= 1024 ? "cards" : (view.toLowerCase() as "cards" | "list" | "table");
+  const shown = width < 768 ? "cards" : (view === "Table" || view === "List") && width <= 1024 ? "cards" : (view.toLowerCase() as "cards" | "list" | "table");
   if (shown === "cards") {
     await expect(page.locator('[data-testid="job-card"]:visible').first()).toBeVisible();
     await expect(page.locator("table:visible")).toHaveCount(0);

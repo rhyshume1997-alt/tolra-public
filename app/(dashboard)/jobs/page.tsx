@@ -519,8 +519,8 @@ export default function JobsPage() {
     if (worksheetDirty) setConfirmDiscard(true);
     else setWorksheetJob(null);
   };
-  // Job Board view: one line per job by default (fits the screen), full table or cards on request (lib/view-mode).
-  const [view, setView] = useViewMode("jobs", "list");
+  // Job Board view: one line per job by default (fits the screen), full table or cards on request (lib/view-mode). The List and the Table are wide tables with sticky columns, so up to 1024px they show as Cards.
+  const [view, setView] = useViewMode("jobs", "list", { listNeedsWide: true });
   // The Columns picker (admin and office): which of the shared columns Table, List and Cards show. Job No, Due and Actions always.
   const { isVisible: columnOn } = useColumnVisibility("jobs");
   const jobColumns = useMemo(() => shownJobColumns(columnOn), [columnOn]);
@@ -1588,7 +1588,7 @@ export default function JobsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ColumnToggle tableKey="jobs" />
-          <ViewSwitcher value={view} onChange={setView} buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
+          <ViewSwitcher value={view} onChange={setView} hideListBelowDesk buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
           {isViewer ? null : <Button className={cn("min-h-11 bg-brand text-brand-ink", secondaryTouch)} onClick={() => setNewJobOpen(true)}><Plus className="size-4" /> New job</Button>}
         </div>
       </div>
