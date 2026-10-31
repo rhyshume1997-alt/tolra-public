@@ -140,3 +140,20 @@ test("prints show the sign-off of the current revision only; an earlier revision
   await expect(page.locator('[data-signoff="legacy"]')).toHaveCount(1);
   await expect(page.locator('[data-signoff="legacy"]')).toContainText(/^Signed off \(earlier typed record\): Old Name, 09\/10\/2026, \d\d:\d\d, no signature or hash$/);
 });
+
+test("on a phone, the worksheet's Close button stays on screen at the bottom of a long worksheet, and closes it", async ({ page }) => {
+  const jobNo = `J-CLOSE-${w.runId}`;
+  await newJob(jobNo);
+  await page.setViewportSize({ width: 390, height: 700 });
+  await signIn(page, w.tenants.beta.users.workshop);
+  const sheet = await openWorksheet(page, jobNo);
+  const close = sheet.getByRole("button", { name: "Close", exact: true });
+  await expect(close).toBeInViewport();
+  const scrolled = await sheet.evaluate((el) => { el.scrollTop = el.scrollHeight; return el.scrollTop; });
+  expect(scrolled, "the worksheet is long enough to scroll on a phone").toBeGreaterThan(0);
+  await expect(close).toBeInViewport();
+  const box = await close.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(32);
+  await close.click();
+  await expect(sheet).toBeHidden();
+});
