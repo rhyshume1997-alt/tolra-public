@@ -172,6 +172,26 @@ export function fleetLoad(machines: Array<{ booked: number; available: number }>
   return { percent, free, detail: `${percent}% of available hours booked · ${free}h free`, failed: false };
 }
 
+export type FloorNow = {
+  count: number | null;
+  detail: string;
+  /** The words beside the People heading: the detail, or a dash then the reason when there is no number. */
+  figure: string;
+  failed: boolean;
+};
+
+/**
+ * The People heading's figure: how many people are clocked in right now, by the one rule Weekly hours and the Whole floor use
+ * (lib/floor-attendance loadClockedIn). `clocked` is null when that read failed or hit its row limit. While it loads, or when it could
+ * not be read, the figure is a dash with the reason, never a reassuring 0; a real 0 (the read worked and nobody is in) stays a 0.
+ */
+export function floorNow(clocked: { clockedIn: number } | null, loading: boolean): FloorNow {
+  if (loading) return { count: null, detail: LOADING, figure: `— ${LOADING}`, failed: false };
+  if (!clocked) return { count: null, detail: FAILED, figure: `— ${FAILED}`, failed: true };
+  const detail = `${clocked.clockedIn} on the floor now`;
+  return { count: clocked.clockedIn, detail, figure: detail, failed: false };
+}
+
 /** The Overview's sections, in page order: the jump links and the section anchors use these ids. */
 export const OVERVIEW_SECTIONS = [
   { id: "today", label: "Today" },
