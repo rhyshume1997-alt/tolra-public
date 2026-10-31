@@ -11,8 +11,8 @@ BEGIN;
 -- calls made from inside another function, so the resolver's query (six tables, three CTEs) was parsed and planned again for
 -- EVERY row: about 25 catalogue buffers and 0.45 to 1 ms per row. Measured on the local stand-in (5,000 invoices, 6,000 quotes,
 -- 4,500 jobs in one company, a second company of the same size), signed in as the company's admin:
---   select count(*) from invoices 2,100-2,900 ms; invoices list first 1,000 rows 2,900-3,200 ms; dashboard_money_figures (111)
---   3,300-3,650 ms; dashboard_work_figures (111) 6,000-6,550 ms. After this file: 175-210 ms, 180-230 ms, 255-300 ms, 435-490 ms,
+--   select count(*) from invoices 2,100-2,900 ms; invoices list first 1,000 rows 2,900-3,200 ms; dashboard_money_figures (111, since dropped)
+--   3,300-3,650 ms; dashboard_work_figures (111, since dropped) 6,000-6,550 ms. After this file: 175-210 ms, 180-230 ms, 255-300 ms, 435-490 ms,
 --   with buffers per row down from 25 to 3. Results identical (tests/scripts/rls-helper-speed-121.measure.sql).
 --
 -- WHAT CHANGES. One function, public._session_membership(): the same query, word for word (119's function body), now run by

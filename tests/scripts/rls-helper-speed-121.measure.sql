@@ -6,9 +6,8 @@
 --
 -- Seeds two companies (5,000 invoices, 6,000 quotes, 4,000 RFQs, 4,500 jobs, 1,300 payments each), then, as company m's admin
 -- (role authenticated + request.jwt.claims, one membership, aal1, a session id with no saved choice), runs EXPLAIN (ANALYZE,
--- BUFFERS) on: Q1-Q3 count(*) of invoices / quotes / jobs, Q4 the invoices page's first 50, Q5 its first fetchAll page (1,000),
--- Q6-Q7 111's dashboard functions (skipped when 111 is not applied). Q8 prints the counts and an md5 of each dashboard result,
--- which must be the same before and after 121. Compare "Execution Time" and "Buffers: shared hit" with and without 121
+-- BUFFERS) on: Q1-Q3 count(*) of invoices / quotes / jobs, Q4 the invoices page's first 50, Q5 its first fetchAll page (1,000).
+-- Q8 prints the counts, which must be the same before and after 121. Compare "Execution Time" and "Buffers: shared hit" with and without 121
 -- (supabase/release/121_rls_helper_speed.rollback.sql on the copy puts 036's function back).
 \set ON_ERROR_STOP 1
 \pset pager off
@@ -58,18 +57,6 @@ explain (analyze, buffers, costs off) select count(*) from public.jobs;
 explain (analyze, buffers, costs off) select * from public.invoices order by created_at desc, id limit 50 offset 0;
 \echo Q5 invoices page first fetchAll page 0..999
 explain (analyze, buffers, costs off) select * from public.invoices order by created_at desc, id limit 1000 offset 0;
-select to_regprocedure('public.dashboard_money_figures(date,date)') is not null as has_111 \gset
-\if :has_111
-\echo Q6 dashboard_money_figures
-explain (analyze, buffers, costs off) select public.dashboard_money_figures('2026-10-30','2026-05-01');
-\echo Q7 dashboard_work_figures
-explain (analyze, buffers, costs off) select public.dashboard_work_figures('2026-10-30','2026-11-06','2026-05-01','2026-10-01','2026-08-01','2026-10-26','2026-11-02','2026-10-30 12:00');
-\echo Q8 result check
-select (select count(*) from public.invoices) inv, (select count(*) from public.quotes) quo, (select count(*) from public.jobs) job,
-       md5(public.dashboard_money_figures('2026-10-30','2026-05-01')::text) money_md5,
-       md5(public.dashboard_work_figures('2026-10-30','2026-11-06','2026-05-01','2026-10-01','2026-08-01','2026-10-26','2026-11-02','2026-10-30 12:00')::text) work_md5;
-\else
-\echo Q8 result check (111 not applied: counts only)
+\echo Q8 result check (counts)
 select (select count(*) from public.invoices) inv, (select count(*) from public.quotes) quo, (select count(*) from public.jobs) job;
-\endif
 rollback;
