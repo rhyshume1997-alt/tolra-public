@@ -4,24 +4,53 @@
  * The workshop dashboard's "My jobs" (shop-floor tablet): one card per job assigned to the operator, with one big main action and a big
  * Pause tap. Every action only opens the job on the Job Board (/jobs?job=<id>, which shows and highlights it), where the board's own
  * buttons do the work, so the offline path (outbox, machine pick, paused-machine prompt) is the board's, unchanged. Without access to
- * the Job Board the cards show the same details and no actions.
+ * the Job Board the cards show the same details and no Job Board actions. Open drawing and Problem (migration 117) sit under the details
+ * (components/workshop/my-job-extras); they do not start, pause or finish anything. Each card also shows the parts logged ("12 of 50 parts")
+ * with a "+1 part" button once the database has migration 118 (components/workshop/my-job-parts); that writes the count itself and needs a connection.
  */
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Eye, PauseCircle, Play, Wrench } from "lucide-react";
 
 import { StatusBadge } from "@/components/status-badge";
+import { MyJobExtras } from "@/components/workshop/my-job-extras";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MyJobParts } from "@/components/workshop/my-job-parts";
 import { fmtDate } from "@/lib/dates";
 import { JOB_STATUS_BADGE, JOB_STATUS_LABELS, reworkTag, stageLabel, stageOf } from "@/lib/job-flow";
 import { jobHref } from "@/lib/job-link";
+import { loadOpenProblems, problemsFor, type OpenProblem, type OpenProblems } from "@/lib/job-problems";
+import { NO_PARTS, loadPartsDone, type PartsTotals } from "@/lib/job-parts";
 import { DUE_CHIPS } from "@/lib/job-status";
 import { myJobAction, myJobOffersPause, type MyJob, type MyJobAction } from "@/lib/my-jobs";
+import { supabase } from "@/lib/supabase";
+import { useMaybeUser } from "@/lib/use-user";
 
 const DUE_WORD = Object.fromEntries(DUE_CHIPS.map((chip) => [chip.value, chip.label])) as Record<MyJob["dueLight"], string>;
 const ACTION_ICON: Record<MyJobAction["kind"], React.ElementType> = { start: Play, finish: CheckCircle2, rework: Wrench, view: Eye };
 
-export function MyJobs({ jobs, role, canOpenJobs }: { jobs: MyJob[]; role: string | null | undefined; canOpenJobs: boolean }) {
+export function MyJobs({ jobs, role, canOpenJobs, initialProblems, initialParts }: { jobs: MyJob[]; role: string | null | undefined; canOpenJobs: boolean; initialProblems?: OpenProblems; initialParts?: PartsTotals }) {
+  // Open problems on these jobs (migration 117). Until the database says it has them, nothing about Problems shows (fail closed).
+  const [state, setState] = useState<OpenProblems>(initialProblems ?? { available: null, problems: [] });
+  const readOnly = useMaybeUser()?.session?.read_only ?? false;
+  const ids = jobs.map((job) => job.id).join(",");
+  const reload = useCallback(async () => {
+    if (!supabase || !ids) return;
+    setState(await loadOpenProblems(supabase, ids.split(",")));
+  }, [ids]);
+  useEffect(() => { void reload(); }, [reload]);
+  // Parts done on each job (migration 118): read once for the cards shown, and again after an entry. Until the database answers that it has
+  // 118 the cards show no count and no parts button (lib/job-parts, fail closed). `initialParts`: what a test starts from (no read is made).
+  const [parts, setParts] = useState<PartsTotals>(initialParts ?? NO_PARTS);
+  const reloadParts = useCallback(async () => {
+    if (!supabase || !ids) return;
+    setParts(await loadPartsDone(supabase, ids.split(",")));
+  }, [ids]);
+  useEffect(() => {
+    if (initialParts) return;
+    void reloadParts();
+  }, [initialParts, reloadParts]);
   return (
     <Card data-testid="my-jobs">
       <CardHeader className="flex flex-wrap items-baseline justify-between gap-2">
@@ -29,13 +58,13 @@ export function MyJobs({ jobs, role, canOpenJobs }: { jobs: MyJob[]; role: strin
         <p className="text-sm text-muted-foreground">{jobs.length} job{jobs.length === 1 ? "" : "s"}</p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {jobs.map((job) => <MyJobCard key={job.id} job={job} role={role} canOpenJobs={canOpenJobs} />)}
+        {jobs.map((job) => <MyJobCard key={job.id} job={job} role={role} canOpenJobs={canOpenJobs} available={state.available} problems={problemsFor(state.problems, job.id)} readOnly={readOnly} onReported={() => void reload()} parts={parts} onLogged={() => void reloadParts()} />)}
       </CardContent>
     </Card>
   );
 }
 
-function MyJobCard({ job, role, canOpenJobs }: { job: MyJob; role: string | null | undefined; canOpenJobs: boolean }) {
+function MyJobCard({ job, role, canOpenJobs, available, problems, readOnly, onReported, parts, onLogged }: { job: MyJob; role: string | null | undefined; canOpenJobs: boolean; available: boolean | null; problems: OpenProblem[]; readOnly: boolean; onReported: () => void; parts: PartsTotals; onLogged: () => void }) {
   const action = myJobAction(job, role);
   const Icon = ACTION_ICON[action.kind];
   const tag = reworkTag(job);
@@ -49,6 +78,7 @@ function MyJobCard({ job, role, canOpenJobs }: { job: MyJob; role: string | null
         <span className="inline-flex flex-wrap items-center gap-1 text-xs font-semibold">
           <StatusBadge status={JOB_STATUS_BADGE[job.status]} label={JOB_STATUS_LABELS[job.status]} />
           {tag ? <StatusBadge status={tag.status} label={tag.label} /> : null}
+          {problems.length ? <StatusBadge data-testid="my-job-problem-tag" status="problem" label="Problem" /> : null}
           <StatusBadge data-testid="my-job-due" status={job.dueLight} label={DUE_WORD[job.dueLight]} />
         </span>
       </div>
@@ -63,6 +93,8 @@ function MyJobCard({ job, role, canOpenJobs }: { job: MyJob; role: string | null
           <p className="mt-1 text-base font-medium whitespace-pre-line break-words">{job.notes}</p>
         </div>
       ) : null}
+      <MyJobExtras jobId={job.id} jobNo={job.jobNo} role={role} available={available} problems={problems} readOnly={readOnly} onReported={onReported} />
+      <MyJobParts jobId={job.id} jobNo={job.jobNo} quantity={job.quantity} role={role} parts={parts} onLogged={onLogged} />
       {canOpenJobs ? (
         <div className="space-y-3">
           <Button asChild className="h-auto min-h-14 w-full whitespace-normal px-4 py-3 text-lg font-semibold pointer-coarse:h-auto pointer-coarse:min-h-14">

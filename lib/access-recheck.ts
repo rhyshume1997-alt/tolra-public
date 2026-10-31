@@ -50,11 +50,38 @@ export const SYNC_RECHECK_SKIP_MS = 10_000;
  * got an answer (a refusal may mean access changed), or when there is no full confirmation from the last SYNC_RECHECK_SKIP_MS
  * (none yet, opened offline, or a clock moved back). Only a quiet pass right after a full confirmation is answered by it. Focus,
  * visibility, "online", other-tab signals and the 10-minute timer are not affected.
+ *
+ * An idle pass (a background pass with nothing queued, which asked the server nothing; lib/offline/sync.ts) asks again only when
+ * there is no full confirmation from the last ACCESS_RECHECK_EVERY_MS: while the 10-minute recheck is answering, the minute loop adds
+ * no requests (phone lag); while it is not (opened offline, or the connection is down) the minute loop still asks, so access ends at
+ * the first answer from the server once the connection is back.
  */
-export function syncPassNeedsRecheck(event: { sessionGone: boolean; quiet: boolean }, fullyConfirmedAt: number | null, now: number = Date.now(), skipMs: number = SYNC_RECHECK_SKIP_MS): boolean {
+export function syncPassNeedsRecheck(event: { sessionGone: boolean; quiet: boolean; idle?: boolean }, fullyConfirmedAt: number | null, now: number = Date.now(), skipMs: number = event.idle ? ACCESS_RECHECK_EVERY_MS : SYNC_RECHECK_SKIP_MS): boolean {
   if (event.sessionGone || !event.quiet || fullyConfirmedAt === null) return true;
   const elapsed = now - fullyConfirmedAt;
   return !(elapsed >= 0 && elapsed < skipMs);
+}
+
+/**
+ * Coming back to the app fires "visibilitychange" (visible) and "focus" together, and each asked for a recheck: two passes of the same
+ * three reads for one return (phone lag). Within RETURN_PAIR_MS of a recheck asked by one of them, the OTHER one does not ask again;
+ * the same event twice (two focus events) always asks, and the pair is used up once matched, so every return still asks once.
+ */
+export const RETURN_PAIR_MS = 30_000;
+export type ReturnEvent = "focus" | "visible";
+
+/** Returns `ask(kind, now)`: true when that focus / visible event should ask for a recheck (see RETURN_PAIR_MS). */
+export function createReturnAsk(pairMs: number = RETURN_PAIR_MS) {
+  let last: { kind: ReturnEvent; at: number } | null = null;
+  return (kind: ReturnEvent, now: number = Date.now()): boolean => {
+    const elapsed = last ? now - last.at : -1;
+    if (last && last.kind !== kind && elapsed >= 0 && elapsed < pairMs) {
+      last = null;
+      return false;
+    }
+    last = { kind, at: now };
+    return true;
+  };
 }
 
 /** Milliseconds until a saved identity confirmed at `confirmedAt` stops opening the app offline (0 = already expired). */

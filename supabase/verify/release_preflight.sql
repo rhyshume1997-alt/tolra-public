@@ -78,7 +78,7 @@ markers(migration, present) AS (
     ('076 data import',                    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'import_undo') AND to_regclass('public.import_runs') IS NOT NULL AND EXISTS (SELECT 1 FROM fn WHERE proname = 'invoice_issue_lock' AND prosrc LIKE '%quoteflow.data_import_undo%')),
     ('077 audit hash index lookup',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'set_audit_hash' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '5f4b0bcedcdf8a8c044e2e78a88a7221')),
     ('078 ip retention, CRD numbers',     EXISTS (SELECT 1 FROM fn WHERE proname = 'purge_site_network_ips') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'next_doc_number' AND prosrc LIKE '%''CRD''%') AND to_regclass('public.attendance_event_network_ips') IS NOT NULL),
-    -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.
+    -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.,
     ('079 import under pg-safeupdate',    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data_run' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('f7c672e961be898619c046d76458680e', '0a2fec5746b0b1262cb2af6fe792bd7c'))),
     ('080 activity labels, job work',     EXISTS (SELECT 1 FROM fn WHERE proname = 'convert_sales_order' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'dc8165549871bd15047765ac4fba811e')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'activity_label' AND prosrc LIKE '%credit_ref%')),
@@ -117,6 +117,9 @@ markers(migration, present) AS (
     ('100 customer archive',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'set_archive_state' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0b3bc80a57f0e0e16e4f0d7f42c5eccf')),
     ('101 ai helper',                     to_regclass('public.ai_helper_requests') IS NOT NULL AND to_regclass('public.ai_helper_secrets') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
+    ('102 security guards',               EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_may_edit_profile')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'organization_settings_guard_nav' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '99579bb09f2fcf9458103b3128af20c8')),
+    ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'ca5166191666584107491f95ccce4702')),
     ('105 invoice write-off',             EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_off_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'c7449f4564711533d43a1aa252eddfdf')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reverse_write_off' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4750ac042335694164b634edca559f23')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = 'public.invoices'::regclass)),
@@ -138,6 +141,14 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'clock_in_network_lock' AND tgrelid = to_regclass('public.attendance_events'))),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
+    ('116 overview owed snapshots',       to_regclass('public.overview_owed_snapshots') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'capture_overview_owed')),
+    ('117 job problems',                  to_regclass('public.job_problems') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'report_job_problem')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'resolve_job_problem')),
+    ('118 job part logs',                 to_regclass('public.job_part_logs') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_job_parts')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_parts_done')),
     ('119 ban ends session',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'session_is_active' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('dd70574344856582b9819431b45e6c5c', '4fa415c7b3222def6c37e93353e804c2'))),
     ('120 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
@@ -350,15 +361,28 @@ checks(n, check_name, value, expected) AS (
     (to_regprocedure('public.assert_privileged_aal()') IS NOT NULL AND to_regprocedure('public._session_membership()') IS NOT NULL
      AND to_regprocedure('public.support_readonly_guard()') IS NOT NULL AND to_regclass('security_audit.audit_log') IS NOT NULL)::TEXT,
     'true (101 replaces no existing object; its tables are new)'
-  UNION ALL SELECT 45, '113 needs: public.reopen_job is 081''s (113 calls it for every reopen and replaces nothing)',
+  UNION ALL SELECT 45, '102 needs: organization_settings_guard_nav 058''s, user_profiles_guard 012''s (or already 102''s); admin_login_is_protected (093). Needs no 099 or 101 object',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'a3524f981c1f7b122d0935c837408d0d' THEN '058' WHEN '99579bb09f2fcf9458103b3128af20c8' THEN '102' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'organization_settings_guard_nav'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '4dd071f7e70fc10a633ad11f9f5c0180' THEN '012' WHEN '986ea8500279eb9724eae987797281a7' THEN '102' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'user_profiles_guard'), 'missing')
+    || ' / ' || CASE WHEN to_regprocedure('public.admin_login_is_protected(uuid)') IS NOT NULL THEN '093 present' ELSE '093 missing' END,
+    '058 / 012 / 093 present before 102, 102 / 102 / 093 present after (other or missing: stop, 102 refuses to replace it)'
+  UNION ALL SELECT 46, '103 needs: 101 applied; ai_helper_reserve and ai_helper_settle 101''s (or already 103''s)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '8b9a4ec9293a5b6f0ddc8e505822c84f' THEN '101' WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'), 'missing (101 not applied)')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cd5ac6d43f9a5ade20815a82ed123717' THEN '101' WHEN 'ca5166191666584107491f95ccce4702' THEN '103' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle'), 'missing (101 not applied)'),
+    '101 / 101 before 103, 103 / 103 after (missing: apply 101 first; other: stop, 103 refuses to replace it)'
+  UNION ALL SELECT 47, '113 needs: public.reopen_job is 081''s (113 calls it for every reopen and replaces nothing)',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing'),
     '081 before and after 113 (other or missing: stop and report)'
-  UNION ALL SELECT 46, '107 needs: the integrations layer (084) and is_platform_admin / assert_platform_aal (036)',
+  UNION ALL SELECT 48, '107 needs: the integrations layer (084) and is_platform_admin / assert_platform_aal (036)',
     (to_regclass('public.integration_connections') IS NOT NULL AND to_regprocedure('public.integration_oauth_consume(uuid,uuid,text,text)') IS NOT NULL
      AND to_regprocedure('public.is_platform_admin()') IS NOT NULL AND to_regprocedure('public.assert_platform_aal()') IS NOT NULL)::TEXT,
     'true (107 replaces no existing function; it widens three provider checks to add microsoft and adds two tables)'
-  UNION ALL SELECT 47, '119 needs: public.session_is_active is 017''s and _session_membership 036''s (or already 119''s); may read auth.users.banned_until',
+  UNION ALL SELECT 49, '119 needs: public.session_is_active is 017''s and _session_membership 036''s (or already 119''s); may read auth.users.banned_until',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '19fe21959a87cd880feb0fb0190980eb' THEN '017' WHEN 'af6457cae4d8b89cd34b5963574fbe58' THEN '119' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'session_is_active'), 'missing')
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'a15c6833cefc4b752ceafce0a10730b2' THEN '036' WHEN 'dd70574344856582b9819431b45e6c5c' THEN '119' WHEN '4fa415c7b3222def6c37e93353e804c2' THEN '121' ELSE 'other' END
@@ -366,18 +390,18 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until')
                      THEN has_column_privilege(current_user, 'auth.users', 'banned_until', 'SELECT')::TEXT ELSE 'no banned_until column' END,
     '017 / 036 / true before 119, 119 / 119 / true after (119 / 121 / true once 121 is applied; other: stop, 119 refuses to replace it)'
-  UNION ALL SELECT 48, '119 (informational): logins banned now that still hold an active membership (their open tokens stop working when 119 is applied)',
+  UNION ALL SELECT 50, '119 (informational): logins banned now that still hold an active membership (their open tokens stop working when 119 is applied)',
     CASE WHEN NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until') THEN 'n/a'
          ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(DISTINCT u.id) AS n FROM auth.users u JOIN public.organization_members m ON m.user_id = u.id
                 WHERE u.banned_until > now() AND m.active$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
     'informational: report the figure (119 changes no row; those people already cannot sign in)'
-  UNION ALL SELECT 49, '105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)',
+  UNION ALL SELECT 51, '105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)',
     CASE WHEN NOT EXISTS (SELECT 1 FROM col WHERE table_name = 'invoices' AND column_name = 'status') THEN 'n/a'
          ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(*) || ' / ' || count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM security_audit.audit_log a
                 WHERE a.action = 'WRITE_OFF_INVOICE' AND a.entity_table = 'invoices' AND a.entity_id = i.id::TEXT)) AS n
                 FROM public.invoices i WHERE lower(regexp_replace(coalesce(i.status, ''), '[^[:alpha:]]', '', 'g')) = 'writtenoff'$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
     'informational, the same before and after 105 (105 changes no invoice): report both figures; from 105 a write-off is made only with Write off'
-  UNION ALL SELECT 50, '121 needs: public._session_membership is 119''s (or already 121''s)',
+  UNION ALL SELECT 52, '121 needs: public._session_membership is 119''s (or already 121''s)',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'dd70574344856582b9819431b45e6c5c' THEN '119' WHEN '4fa415c7b3222def6c37e93353e804c2' THEN '121' WHEN 'a15c6833cefc4b752ceafce0a10730b2' THEN '036' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = '_session_membership'), 'missing'),
     '119 before 121, 121 after (036: apply 119 first; other: stop, 121 refuses to replace it)'

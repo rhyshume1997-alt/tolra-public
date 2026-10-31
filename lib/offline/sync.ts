@@ -9,7 +9,7 @@ import { type StartStage, stagesBeforeStart } from "@/lib/job-actions";
 import { PHOTO_MIME } from "@/lib/photo-image";
 import { type BenchStartAnswer, type RunStartAnswer, SERVER_UPGRADE_CODE, SERVER_UPGRADE_REASON, benchStartOutcome, isServerTooOld, missingRunsReason, replayedStartClashReason, requestedRunsPresent, runRefusal, runTimeConflictReason, timeConflictsOf } from "@/lib/machine-runs";
 import { readAttachment, rejectedEntries, replayOutbox, requeueHeldRunOps, withReplayLock, type ClockOp, type LabourOp, type OutboxOp, type PauseOp, type PhotoOp, type ReplayOutcome, type RunPauseOp, type RunStartOp, type CustomerSignOffOp, type InspectOp, type InternalSignOffOp, type SignOffOp, type StartOp } from "@/lib/offline/outbox";
-import { offlineScope, refreshCounts, reportOffline, suspendOfflineAccess } from "@/lib/offline/scope";
+import { offlineScope, outboxState, refreshCounts, reportOffline, suspendOfflineAccess } from "@/lib/offline/scope";
 import { organizationSwitchAffects } from "@/lib/access-recheck";
 import { parseSessionInfo, offlineCopyAllowed } from "@/lib/session-info";
 import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
@@ -471,8 +471,9 @@ const syncListeners = new Set<(event: SyncPassEvent) => void>();
 /**
  * What a sync pass tells its listeners. sessionGone: the pass found the session gone and sent nothing (the access recheck should run
  * now). quiet: no queued change got an answer from the server in this pass (nothing was sent, or the pass stopped before sending).
+ * idle: a background pass found nothing queued, in conflict or refused, and asked the server nothing (syncNow `background`).
  */
-export type SyncPassEvent = { sessionGone: boolean; quiet: boolean };
+export type SyncPassEvent = { sessionGone: boolean; quiet: boolean; idle?: boolean };
 
 /** Runs `listener` after every sync pass (the signed-in person's access is asked again then; lib/use-user.ts). Returns the unsubscribe. */
 export function onSyncComplete(listener: (event: SyncPassEvent) => void): () => void {
@@ -483,8 +484,14 @@ export function onSyncComplete(listener: (event: SyncPassEvent) => void): () => 
 /** This build's id (the service worker's version): held run entries filed by an older build are requeued once per build. */
 export const BUILD_ID = process.env.NEXT_PUBLIC_APP_VERSION || "dev";
 
-/** Replays the queue for the current scope; safe to call often. */
-export async function syncNow() {
+/**
+ * Replays the queue for the current scope; safe to call often. `background` (the shell's minute loop, page visible, "online"): when
+ * this scope has nothing queued, in conflict or refused, the pass makes no request (phone lag: it used to ask the auth server and
+ * my_session every minute for an empty queue) and returns null. Its listeners are told it was idle: the access recheck then asks the
+ * server only if nothing has confirmed the person for ACCESS_RECHECK_EVERY_MS (lib/access-recheck.ts syncPassNeedsRecheck), so a
+ * page opened offline still ends a removed person's access at the first answer once the connection is back.
+ */
+export async function syncNow(options: { background?: boolean } = {}) {
   const scope = offlineScope();
   if (!scope || !supabase) return null;
   // While this page switches company on purpose (lib/use-user.ts switchOrganization), the server may already answer for the NEW
@@ -496,6 +503,14 @@ export async function syncNow() {
     const current = offlineScope();
     return current !== null && scopeKey(current) === scopeKey(scope);
   };
+  if (options.background) {
+    // A failed read (null) is not "empty": the full pass below runs as before.
+    const queued = await outboxState();
+    if (queued && queued.pending + queued.conflicts + queued.rejected === 0) {
+      if (stillCurrent()) for (const listener of syncListeners) listener({ sessionGone: false, quiet: true, idle: true });
+      return null;
+    }
+  }
   {
     // A cached token is not permission to recover quarantined work. Confirm the same user AND company first. The user is the auth
     // server's answer, shared with this page load when it is seconds old and the device's session still names that user
@@ -548,7 +563,8 @@ export async function syncNow() {
 /** Runs the sync loop while the dashboard is open. */
 export function useOfflineSync() {
   useEffect(() => {
-    const run = () => { void syncNow(); };
+    // Background passes: nothing is asked of the server while this scope's queue is empty (syncNow).
+    const run = () => { void syncNow({ background: true }); };
     const onOnline = () => { reportOffline(false); run(); };
     const onVisible = () => { if (document.visibilityState === "visible") run(); };
     window.addEventListener("online", onOnline);

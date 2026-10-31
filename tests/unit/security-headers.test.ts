@@ -216,13 +216,19 @@ describe("cookie attributes: the Supabase auth cookies written by the app's rout
     const response = await POST(request());
     expect(response.status).toBe(200);
     const calls = setCalls();
-    expect(calls.length).toBeGreaterThan(0);
-    for (const call of calls) {
+    // Sign-in also restarts the idle clock (tolra_last_active, the middleware's own HttpOnly cookie); every other cookie is Supabase's.
+    const auth = calls.filter((call) => call.name !== "tolra_last_active");
+    expect(auth.length).toBeGreaterThan(0);
+    for (const call of auth) {
+      expect(call.name).toMatch(/^sb-/);
       expect(call.options.secure).toBe(true);
       expect(call.options.path).toBe("/");
       expect(call.options.sameSite).toBe("lax");
       expect(call.options.httpOnly).toBe(false);
       expect([400 * DAY_S, 0]).toContain(call.options.maxAge);
+    }
+    for (const call of calls.filter((c) => c.name === "tolra_last_active")) {
+      expect(call.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 30 * DAY_S });
     }
   });
 

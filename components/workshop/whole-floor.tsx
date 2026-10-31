@@ -9,11 +9,15 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ClockedInFigure } from "@/components/workshop/clocked-in-figure";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dueWindow } from "@/lib/dates";
+import { attendanceReadable, loadClockedIn, type ClockedIn } from "@/lib/floor-attendance";
+import { NO_PARTS, loadPartsDone, partsText, type PartsTotals } from "@/lib/job-parts";
 import { supabase } from "@/lib/supabase";
 import { useCanOpen } from "@/lib/use-destinations";
+import { useUser } from "@/lib/use-user";
 import { cn } from "@/lib/utils";
 import {
   FLOOR_FAILED, FLOOR_WORDS, countText, dueText, elapsedText, floorDotClass, floorJobIds, sinceText, wholeFloor,
@@ -48,7 +52,7 @@ async function loadFloor(): Promise<Floor> {
     read(client.from("machine_bookings").select("id, job_id, job_no, machine_id, start_at, status").neq("status", "complete").gte("start_at", now.toISOString()).order("start_at").limit(200)),
   ]);
   const ids = floorJobIds(inUse, paused, bench);
-  const jobs = ids.length ? await read(client.from("jobs").select("id, job_no, customer, description, date_required, due_date, finished_at").in("id", ids)) : [];
+  const jobs = ids.length ? await read(client.from("jobs").select("id, job_no, customer, description, date_required, due_date, finished_at, quantity_required").in("id", ids)) : [];
   return wholeFloor({ machines, inUse, paused, bench, jobs, bookings }, dueWindow(now).today, now);
 }
 
@@ -62,8 +66,10 @@ function StateWord({ word, className }: { word: FloorState | "late"; className?:
   );
 }
 
-function Row({ row, floor, now }: { row: FloorRow; floor: Floor; now: Date }) {
+function Row({ row, floor, now, parts }: { row: FloorRow; floor: Floor; now: Date; parts: PartsTotals }) {
   const canOpen = useCanOpen();
+  // "12 of 50 parts" (migration 118): only with the database's yes, a count for this job and a quantity on it; otherwise nothing, never "0 of".
+  const partsLine = row.job ? partsText(parts, row.job.id, row.job.quantity) : null;
   const href = row.job ? `/jobs?job=${encodeURIComponent(row.job.id)}` : "/schedule";
   const linkable = canOpen(row.job ? "/jobs" : "/schedule");
   const since = sinceText(row, now);
@@ -84,6 +90,7 @@ function Row({ row, floor, now }: { row: FloorRow; floor: Floor; now: Date }) {
             <p className="truncate text-base text-ink">{row.job.customer ?? DASH}</p>
             {row.job.description ? <p className="truncate text-base text-muted-foreground">{row.job.description}</p> : null}
             <p className="text-base text-muted-foreground">{dueText(row.job, floor.detailsFailed)}</p>
+            {partsLine ? <p className="text-base font-semibold text-ink" data-testid="floor-parts">Parts logged: <span className="tabular-nums">{partsLine}</span></p> : null}
           </>
         ) : <p className="text-base text-muted-foreground">Nothing on it</p>}
       </div>
@@ -121,12 +128,24 @@ export function WholeFloor() {
   const [state, setState] = useState<{ floor: Floor | null; loading: boolean; now: Date }>({ floor: null, loading: true, now: new Date() });
   // The timer, coming back to the tab and Retry can overlap: only the newest read is shown, an older one finishing late is dropped.
   const latest = useRef(0);
+  // Parts logged per job (migration 118) and who is clocked in (the one rule Weekly hours uses; admin and office only: lib/floor-attendance).
+  const [parts, setParts] = useState<PartsTotals>(NO_PARTS);
+  const [clocked, setClocked] = useState<ClockedIn | null>(null);
+  const { activeRole } = useUser();
+  const readsClocks = attendanceReadable(activeRole);
   const load = useCallback(async () => {
     const request = ++latest.current;
-    const floor = await loadFloor().catch((err) => { console.error(err); return FLOOR_FAILED; });
+    const [floor, clockedNow] = await Promise.all([
+      loadFloor().catch((err) => { console.error(err); return FLOOR_FAILED; }),
+      readsClocks && supabase ? loadClockedIn(supabase) : Promise.resolve(null),
+    ]);
+    const jobIds = floor.rows.flatMap((row) => (row.job ? [row.job.id] : []));
+    const partsNow = supabase && jobIds.length ? await loadPartsDone(supabase, jobIds) : NO_PARTS;
     if (request !== latest.current) return;
     setState({ floor, loading: false, now: new Date() });
-  }, []);
+    setParts(partsNow);
+    setClocked(clockedNow);
+  }, [readsClocks]);
   const retry = useCallback(() => { setState((s) => ({ ...s, loading: true })); void load(); }, [load]);
   // Read on mount, then every minute while the page is visible, and when the person comes back to it.
   useEffect(() => {
@@ -156,6 +175,7 @@ export function WholeFloor() {
               <StateWord word={word} className="font-normal" />
             </li>
           ))}
+          <ClockedInFigure role={activeRole} clocked={loading ? null : clocked} />
         </ul>
       </CardHeader>
       <CardContent className="px-0">
@@ -178,7 +198,7 @@ export function WholeFloor() {
             ) : null}
             {floor.rows.length ? (
               <ul className="border-y border-line" data-testid="floor-rows">
-                {floor.rows.map((row) => <Row key={row.key} row={row} floor={floor} now={now} />)}
+                {floor.rows.map((row) => <Row key={row.key} row={row} floor={floor} now={now} parts={parts} />)}
               </ul>
             ) : <p className="px-4 py-4 text-base text-muted-foreground">No machines set up yet.</p>}
           </>

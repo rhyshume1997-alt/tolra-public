@@ -45,8 +45,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { storedTotalsProblem } from "@/components/pdf/BaseDocumentPDF";
-import { InvoicePDF } from "@/components/pdf/InvoicePDF";
+import { storedTotalsProblem } from "@/components/pdf/pdf-totals";
 import { auditEvent } from "@/lib/audit";
 import { type CompanyProfile, requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { fetchCustomers, findCustomer, resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
@@ -1064,6 +1063,8 @@ export default function InvoicesPage() {
     const deliveryNotes = deliveryNotesPrintedLine(ownNotes);
     // The customer sign-off (072) of the job those notes are on, when there is one; none (or 072 not applied) leaves the invoice as it was.
     const customerSignOff = supabase && ownNotes.length ? await invoiceCustomerSignOff(supabase, ownNotes) : undefined;
+    // The PDF code is loaded when a PDF is made, not with the page.
+    const { InvoicePDF } = await import("@/components/pdf/InvoicePDF");
     return (
       <InvoicePDF
         data={{

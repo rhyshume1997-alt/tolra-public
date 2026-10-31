@@ -6,7 +6,7 @@ import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  ADMIN_MFA_ONBOARDING_NOTICE, adminMfaRuleMessage, adminMfaStatusLabel, becomesAdmin, parseAdminMfaOverview, shouldCheckEnrolment,
+  ADMIN_MFA_ONBOARDING_NOTICE, adminMfaRuleMessage, adminMfaStatusLabel, becomesAdmin, changesAdmin, parseAdminMfaOverview, shouldCheckEnrolment,
 } from "@/lib/mfa-policy";
 
 // ---- middleware harness -----------------------------------------------------------------------------------------------------
@@ -128,6 +128,21 @@ describe("policy helpers", () => {
     expect(becomesAdmin({ role: "office", secondary_role: "admin" }, { role: "admin" })).toBe(false);
     expect(becomesAdmin({ role: "admin" }, { role: "office" })).toBe(false);
     expect(becomesAdmin({ role: "office" }, { role: "admin", active: false })).toBe(false);
+  });
+
+  it("changesAdmin (audit Z1): admin given or taken by a PATCH; other changes, and admin kept, are not", () => {
+    const office = { role: "office", secondary_role: null, active: true };
+    const admin = { role: "admin", secondary_role: null, active: true };
+    expect(changesAdmin(office, { role: "admin" })).toBe(true);
+    expect(changesAdmin(office, { secondary_role: "admin" })).toBe(true);
+    expect(changesAdmin(admin, { role: "office" })).toBe(true);
+    expect(changesAdmin({ ...office, secondary_role: "admin" }, { secondary_role: null })).toBe(true);
+    expect(changesAdmin({ ...admin, active: false }, { active: true })).toBe(true);
+    expect(changesAdmin({ ...office, active: false }, { role: "admin" })).toBe(true);
+    expect(changesAdmin(office, { role: "viewer", secondary_role: "workshop", active: false })).toBe(false);
+    expect(changesAdmin(admin, { secondary_role: "office" })).toBe(false);
+    expect(changesAdmin({ ...office, secondary_role: "admin" }, { role: "admin", secondary_role: null })).toBe(false);
+    expect(changesAdmin(admin, {})).toBe(false);
   });
 
   it("shouldCheckEnrolment: never when the global switch is on or for non-admins; not once a factor exists", () => {

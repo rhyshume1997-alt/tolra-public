@@ -23,7 +23,7 @@ const bench = [
   { job_id: "j4", run_id: "b2", is_open: false, started_at: "2026-10-29T09:10:00Z", ended_at: "2026-10-29T10:00:00Z", end_reason: "paused", operator_id: "u3", operator_name: "Ian Price", on_machine: false, state: "paused" },
 ];
 const jobs = [
-  { id: "j1", job_no: "J-2409", customer: "Severn Valve Co", description: "Valve body", date_required: "2026-10-26", due_date: null, finished_at: null },
+  { id: "j1", job_no: "J-2409", customer: "Severn Valve Co", description: "Valve body", date_required: "2026-10-26", due_date: null, finished_at: null, quantity_required: 50 },
   { id: "j2", job_no: "J-2421", customer: "Precision Engineering Group", description: "Drive shaft", date_required: "2026-11-05", due_date: null, finished_at: null },
   { id: "j3", job_no: "J-2415", customer: "Midland Fluid Power", description: "End cap", date_required: null, due_date: null, finished_at: null },
 ];
@@ -44,7 +44,9 @@ describe("whole floor: shaping", () => {
 
   it("a running machine carries its job, who, since when, and the next booking that isn't the job on it", () => {
     const mill = wholeFloor(reads(), TODAY, NOW).rows.find((r) => r.place === "Mill")!;
-    expect(mill.job).toEqual({ id: "j1", jobNo: "J-2409", customer: "Severn Valve Co", description: "Valve body", due: "2026-10-26", late: true });
+    expect(mill.job).toEqual({ id: "j1", jobNo: "J-2409", customer: "Severn Valve Co", description: "Valve body", due: "2026-10-26", late: true, quantity: 50 });
+    // A job read without a quantity (j2, j3 here) has none: no "N of M" is shown for it.
+    expect(wholeFloor(reads(), TODAY, NOW).rows.find((r) => r.place === "Lathe")!.job!.quantity).toBeNull();
     expect(mill.operator).toBe("Lee Barker");
     expect(mill.next).toBe("J-2427");
     expect(sinceText(mill, NOW)).toBe("Since 08:05");

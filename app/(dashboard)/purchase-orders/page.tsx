@@ -27,7 +27,6 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { PurchaseOrderPDF } from "@/components/pdf/PurchaseOrderPDF";
 import { auditEvent } from "@/lib/audit";
 import { requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { DEMO_MODE } from "@/lib/demo";
@@ -409,6 +408,8 @@ export default function PurchaseOrdersPage() {
     const lineItems = saved.length
       ? saved.map((item) => ({ description: String(item.description), quantity: Number(item.qty || 1), unitPrice: Number(item.unit_price || 0), vatPct: item.vat_pct === undefined ? undefined : Number(item.vat_pct), vatExempt: Boolean(item.vat_exempt) }))
       : [{ description: `Materials ordered from ${po.supplier}`, quantity: 1, unitPrice: po.value }];
+    // The PDF code is loaded when a PDF is made, not with the page.
+    const { PurchaseOrderPDF } = await import("@/components/pdf/PurchaseOrderPDF");
     return (
       <PurchaseOrderPDF
         data={{

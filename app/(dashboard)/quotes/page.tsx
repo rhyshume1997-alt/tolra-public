@@ -31,8 +31,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { storedTotalsProblem } from "@/components/pdf/BaseDocumentPDF";
-import { QuotePDF } from "@/components/pdf/QuotePDF";
+import { storedTotalsProblem } from "@/components/pdf/pdf-totals";
 import { auditEvent } from "@/lib/audit";
 import { type CompanyProfile, requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { fetchCustomers, resolveCustomer, resolveCustomerAddress, saveCustomer } from "@/lib/customers";
@@ -663,6 +662,8 @@ export default function QuotesPage() {
     const problem = quoteTotalsProblem(quote, items, profile);
     if (problem) throw problem;
     const billTo = issuedBillTo(quote.customerSnapshot, quote.customer) ?? await resolveCustomerAddress(quote.customer);
+    // The PDF code is loaded when a PDF is made, not with the page.
+    const { QuotePDF } = await import("@/components/pdf/QuotePDF");
     return (
       <QuotePDF
         data={{
@@ -807,7 +808,7 @@ export default function QuotesPage() {
         // The old way (also the "Open in my mail app" link): the person's own mail app, the PDF downloaded to attach, then "has it gone?".
         const mailApp = async (subject: string, body: string) => {
           openMailDraft(customer?.email ?? "", subject, body);
-          const ok = await downloadPdf(element, pdfName(ready), { entityTable: "quotes", entityId: ready.ref }, { silent: true });
+          const ok = await downloadPdf(element, pdfName(quote), { entityTable: "quotes", entityId: quote.ref }, { silent: true });
           if (!ok) return;
           toast.success("PDF downloaded \u2014 attach it to the email that just opened");
           setSendConfirm(ready);

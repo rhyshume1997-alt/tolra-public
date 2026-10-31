@@ -10,9 +10,9 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 export type AdminContext = { auth: Exclude<Awaited<ReturnType<typeof requireProfile>>, NextResponse>; admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>> };
 
 /**
- * `aal2`: the route hands over a login (setting someone's password, resetting their two-step sign-in), so the caller's session must
- * have passed the second step ALWAYS, whatever REQUIRE_ADMIN_MFA and the company's require_admin_mfa say (audit item 4); refused with
- * the usual mfa_required answer. Every other route keeps requireProfile's rule.
+ * `aal2`: the route hands over a login (setting someone's password, resetting their two-step sign-in, creating a user or adding a
+ * login, audit Z1), so the caller's session must have passed the second step ALWAYS, whatever REQUIRE_ADMIN_MFA and the company's
+ * require_admin_mfa say (audit item 4); refused with the usual mfa_required answer. Every other route keeps requireProfile's rule.
  */
 export async function guard(request: Request, options: { aal2?: boolean } = {}): Promise<AdminContext | NextResponse> {
   if (!sameOrigin(request)) return forbiddenOrigin();
@@ -22,12 +22,18 @@ export async function guard(request: Request, options: { aal2?: boolean } = {}):
   // no password or two-step resets. The database refuses set_member_access for it too; the service-role paths are stopped here.
   if (auth.session?.support) return jsonError("Support access can't manage users", 403);
   if (options.aal2) {
-    const { data: assurance, error: assuranceError } = await auth.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assuranceError || assurance?.currentLevel !== "aal2") return mfaRequired();
+    const refused = await requireAal2(auth);
+    if (refused) return refused;
   }
   const admin = createSupabaseAdminClient();
   if (!admin) return jsonError("User management not configured", 503);
   return { auth, admin };
+}
+
+/** The mfa_required answer unless the caller's session has passed the second step (aal2); null when it has. */
+export async function requireAal2(auth: AdminContext["auth"]): Promise<NextResponse | null> {
+  const { data: assurance, error: assuranceError } = await auth.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  return assuranceError || assurance?.currentLevel !== "aal2" ? mfaRequired() : null;
 }
 
 export async function audit(ctx: Pick<AdminContext, "auth">, action: string, entityId: string, newData: Record<string, unknown>, request: Request, oldData: Record<string, unknown> | null = null) {

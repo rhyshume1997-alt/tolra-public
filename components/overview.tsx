@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 
 import { LightDot } from "@/components/dashboard-charts";
 import { useCanOpen } from "@/lib/use-destinations";
-import { OVERVIEW_SECTIONS, type Leak } from "@/lib/overview";
+import { OVERVIEW_SECTIONS, type Leak, type OtherAttention } from "@/lib/overview";
 
 /** Jump links to each section; the one in view is marked. Sections that are hidden by the Columns picker are left out. */
 export function OverviewJump({ present }: { present: string[] }) {
@@ -39,13 +39,14 @@ export function OverviewJump({ present }: { present: string[] }) {
   );
 }
 
-/** One section of the Overview: a heading, a line of context, an optional link, then its panels. */
-export function OverviewSection({ id, title, sub, href, linkLabel, children }: { id: string; title: string; sub: string; href?: string; linkLabel?: string; children: React.ReactNode }) {
+/** One section of the Overview: a heading, its headline figure if it has one, a line of context, an optional link, then its panels. */
+export function OverviewSection({ id, title, figure, sub, href, linkLabel, children }: { id: string; title: string; figure?: string; sub: string; href?: string; linkLabel?: string; children: React.ReactNode }) {
   const canOpen = useCanOpen();
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-40 space-y-4" data-testid={`overview-${id}`}>
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 id={`${id}-title`} className="text-lg font-semibold text-ink">{title}</h2>
+        {figure ? <p className="text-sm font-semibold tabular-nums text-ink max-sm:basis-full" data-testid={`overview-${id}-figure`}>{figure}</p> : null}
         <p className="text-sm text-muted-foreground">{sub}</p>
         {href && linkLabel && canOpen(href) ? <Link href={href} className="ml-auto text-sm font-semibold text-brand-accent hover:underline">{linkLabel}</Link> : null}
       </header>
@@ -80,6 +81,29 @@ export function OverviewLeaks({ leaks }: { leaks: Leak[] }) {
         return linkable
           ? <Link key={leak.id} href={leak.href} className={`${cls} transition hover:bg-canvas`} data-testid={`leak-${leak.id}`}>{body}</Link>
           : <div key={leak.id} className={cls} data-testid={`leak-${leak.id}`}>{body}</div>;
+      })}
+    </div>
+  );
+}
+
+/**
+ * Under the leaks row: everything else the Today figure counts (lib/overview otherAttention), so the figure always matches what is on
+ * screen. Always one line high at least, loading or loaded, so nothing below it jumps when the list arrives.
+ */
+export function OverviewOthers({ others, loading }: { others: OtherAttention[] | null; loading: boolean }) {
+  const canOpen = useCanOpen();
+  return (
+    <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1.5 border border-t-0 border-line bg-surface px-4 py-2 text-[0.8125rem]" data-testid="overview-others">
+      <span className="font-semibold text-ink">Also counted in Today</span>
+      {others === null ? (
+        <span className="text-muted-foreground">{loading ? "Loading…" : "— Couldn't load this."}</span>
+      ) : !others.length ? (
+        <span className="text-muted-foreground">Nothing else needs you.</span>
+      ) : others.map((o) => {
+        const body = <>{o.label}{o.kind === "rule" ? <span className="ml-1.5 bg-canvas px-1.5 py-0.5 font-semibold tabular-nums text-ink" data-testid={`other-count-${o.id}`}>{o.count}</span> : null}</>;
+        return canOpen(o.href)
+          ? <Link key={o.id} href={o.href} className="min-w-0 break-words text-brand-accent hover:underline" data-testid={`other-${o.id}`}>{body}</Link>
+          : <span key={o.id} className="min-w-0 break-words text-ink" data-testid={`other-${o.id}`}>{body}</span>;
       })}
     </div>
   );
