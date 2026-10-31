@@ -8,7 +8,7 @@ import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
 import { loadCompanyProfile, resetCompanyProfile } from "@/lib/company";
 import { companyChangedElsewhere, followsCompanySwitch, listenForTabSignals } from "@/lib/company-sync";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
-import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
+import { confirmSignOut, confirmUnsyncedDiscard, currentOfflineStatus, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
 import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, createReturnAsk, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
 import { confirmedUser, invalidateConfirmedUser } from "@/lib/confirmed-user";
 import { OfflineIdentityExpiredError, offlineIdentityExpired } from "@/lib/offline/identity-age";
@@ -221,6 +221,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       // Lock synchronously before storage or network work. Pending records and bytes stay scoped on this device.
       accessEnded = true;
+      // The sign-in page tells the person how many changes were not sent and are kept (B23). Read from the banner's in-memory counts
+      // (synchronous, before setOfflineScope(null) clears them): no storage read can delay the lock.
+      const shown = currentOfflineStatus();
+      try { window.localStorage.setItem(LOCK_NOTICE_KEY, JSON.stringify({ reason: "disabled", pending: shown.pending + shown.conflicts.length + shown.rejected.length })); } catch { /* the plain message */ }
       sessionEnding.value = true;
       setUser(null);
       setProfile(null);

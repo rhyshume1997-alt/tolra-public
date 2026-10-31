@@ -59,6 +59,16 @@ export function expiredSignInRedirect(input: { hasAuthCookie: boolean; lastActiv
   return input.hasAuthCookie && idleExceeded(input.lastActive, input.now, OFFICE_IDLE_TIMEOUT_MS);
 }
 
+/**
+ * Access ended (disabled, removed or moved; lib/use-user.ts endAccess): what the sign-in page adds about the offline changes that were
+ * NOT sent and stay on this device behind the access lock (B23). Empty when none were waiting.
+ */
+export function accessEndedKeptMessage(kept: number): string {
+  if (kept <= 0) return "";
+  const one = kept === 1;
+  return ` ${one ? "1 change" : `${kept} changes`} you made offline ${one ? "was" : "were"} not sent and ${one ? "is" : "are"} still saved on this device. ${one ? "It" : "They"} will be sent if your access is restored and you sign in again.`;
+}
+
 /** What the sign-in page says. `pending` is the number of offline changes kept on the device. */
 export function idleMessage(reason: IdleReason, pending: number): string {
   const lead = reason === "locked"

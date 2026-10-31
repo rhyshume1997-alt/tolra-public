@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { SignIn } from "@/components/ui/sign-in";
 import { discardedMessage, takeDiscardedNotice } from "@/lib/offline/store";
-import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, forgetLastActive, idleMessage } from "@/lib/session-policy";
+import { EXPIRED_NOTICE_COOKIE, LOCK_NOTICE_KEY, accessEndedKeptMessage, forgetLastActive, idleMessage } from "@/lib/session-policy";
 import { adoptServerAccessEnded } from "@/lib/offline/access";
 import { INVALID_CREDENTIALS_MESSAGE, UNREACHABLE_MESSAGE, classifySignInResponse, isUnreachableError } from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
@@ -55,6 +55,19 @@ export function LoginForm({ initialBranding }: { initialBranding: LoginBranding 
   // on a request this page never saw: every other open tab is told through the storage mark and locks now, keeping its queued
   // work. This only ever suspends; a fresh server confirmation is the only thing that clears the mark.
   useEffect(() => { adoptServerAccessEnded(); }, []);
+
+  // Access ended (lib/use-user.ts endAccess): say how many offline changes were not sent and are kept on this device (B23).
+  useEffect(() => {
+    if (!disabled) return;
+    let kept = 0;
+    try {
+      const notice = JSON.parse(window.localStorage.getItem(LOCK_NOTICE_KEY) || "null") as { reason?: string; pending?: number } | null;
+      if (notice?.reason !== "disabled") return;
+      kept = Number(notice.pending) || 0;
+      window.localStorage.removeItem(LOCK_NOTICE_KEY);
+    } catch { return; /* storage blocked: the plain message */ }
+    if (kept > 0) setError(`Your account has been disabled.${accessEndedKeptMessage(kept)}`);
+  }, [disabled]);
 
   // This device locked or expired the sign-in after the idle limit (lib/session-policy.ts): say why, and that offline changes were kept.
   const idleParam = searchParams.get("locked") === "1" ? "locked" : searchParams.get("expired") === "1" ? "expired" : searchParams.get("ended") === "1" ? "ended" : null;
