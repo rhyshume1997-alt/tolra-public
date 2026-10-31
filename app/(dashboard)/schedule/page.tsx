@@ -25,11 +25,11 @@ import { useCompanyProfile, workStartOn, workingHoursOf } from "@/lib/company";
 import { supabase } from "@/lib/supabase";
 import {
   CLEAR_START_MAX_STEPS, type BookingSaveOptions, DEFAULT_WORKING_DAYS, bookedNotStarted, WEEKDAY_OPTIONS, addDaysToDate, bookingSaveMessage, completeFinishedJobBookings, computeFinish, deleteBooking, demoBookings, demoJobs, demoMachines, fetchSchedule,
-  findOverlaps, formatDateTimeShort, formatDayPlan, isoWeekday, timeOf, formatHours, localDateString, machineStatus, nextClearStart, planSegments, saveBooking, saveMachine, scheduleAll, splitClearShift, startAfterBooking,
+  findOverlaps, formatDayPlan, isoWeekday, timeOf, formatHours, localDateString, machineStatus, nextClearStart, planSegments, saveBooking, saveMachine, scheduleAll, splitClearShift, startAfterBooking,
   formatHoursClock, liveLeftText, runClock, toLocalInputValue, type Booking, type BookingStatus, type Machine, type ScheduledBooking, type ScheduleJob,
 } from "@/lib/machine-schedule";
 import { DEMO_MACHINES } from "@/lib/job-worksheet";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate, fmtDayDateTime } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { loadOfflineSnapshot, reportOffline, saveOfflineSnapshot } from "@/lib/offline/scope";
 import { isNetworkError } from "@/lib/offline/store";
@@ -361,7 +361,7 @@ export default function SchedulePage() {
             {isVisible("jobs-table") ? <Card>
               <CardHeader><CardTitle className="text-lg">Jobs on machines</CardTitle></CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <Table data-tablet-cards>
                   <TableHeader className="hidden md:table-header-group"><TableRow><TableHead>Job</TableHead><TableHead>Machine</TableHead><TableHead>Start</TableHead><TableHead>Est. finish</TableHead>{isVisible("hours-left") ? <TableHead>Hours left</TableHead> : null}<TableHead>Status</TableHead><TableHead>Required</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
                     {runningRows.map((r) => {
@@ -369,14 +369,14 @@ export default function SchedulePage() {
                       const view = r.booking_id ? undefined : unbookedViews.get(r.machine_id);
                       return (
                         <TableRow key={`run-${r.run_id}`} data-testid="running-unbooked" data-job-id={r.job_id} className="block bg-red-50/60 md:table-row">
-                          <TableCell className="block font-semibold md:table-cell">{r.job_no || "—"}</TableCell>
-                          <TableCell className="block md:table-cell">{r.machine_name}</TableCell>
-                          <TableCell className="block md:table-cell">{formatDateTimeShort(new Date(r.started_at))}</TableCell>
-                          <TableCell data-testid="unbooked-finish" className="block md:table-cell">{view ? unbookedFinishText(view) : "-"}</TableCell>
-                          {isVisible("hours-left") ? <TableCell data-testid="unbooked-left" className="block md:table-cell">{view ? unbookedLeftText(view) : "-"}</TableCell> : null}
-                          <TableCell className="block font-semibold text-red-700 md:table-cell">Running now (not booked)<span className="block text-xs font-normal text-slate-600">by {r.operator_name ?? "—"} since {sinceText(r.started_at, now)}{view?.clock ? `, ${runningForText(view.clock.elapsedMinutes)}` : ""}</span></TableCell>
-                          <TableCell className="block md:table-cell">{req ? fmtDate(req) : "-"}</TableCell>
-                          <TableCell className="block md:table-cell">{canBook ? <Button variant="outline" size="sm" onClick={() => setBooking({ jobId: r.job_id, machineId: r.machine_id })}>Book it</Button> : null}</TableCell>
+                          <TableCell data-label="Job" className="block font-semibold md:table-cell">{r.job_no || "—"}</TableCell>
+                          <TableCell data-label="Machine" className="block md:table-cell">{r.machine_name}</TableCell>
+                          <TableCell data-label="Start" className="block md:table-cell">{fmtDayDateTime(r.started_at)}</TableCell>
+                          <TableCell data-label="Est. finish" data-testid="unbooked-finish" className="block md:table-cell">{view ? unbookedFinishText(view) : "-"}</TableCell>
+                          {isVisible("hours-left") ? <TableCell data-label="Hours left" data-testid="unbooked-left" className="block md:table-cell">{view ? unbookedLeftText(view) : "-"}</TableCell> : null}
+                          <TableCell data-label="Status" className="block font-semibold text-red-700 md:table-cell">Running now (not booked)<span className="block text-xs font-normal text-slate-600">by {r.operator_name ?? "—"} since {sinceText(r.started_at, now)}{view?.clock ? `, ${runningForText(view.clock.elapsedMinutes)}` : ""}</span></TableCell>
+                          <TableCell data-label="Required" className="block md:table-cell">{req ? fmtDate(req) : "-"}</TableCell>
+                          <TableCell data-actions className="block md:table-cell">{canBook ? <Button variant="outline" size="sm" onClick={() => setBooking({ jobId: r.job_id, machineId: r.machine_id })}>Book it</Button> : null}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -385,17 +385,17 @@ export default function SchedulePage() {
                       const late = Boolean(req) && b.status !== "complete" && b.finish > new Date(`${req}T23:59:59`);
                       return (
                         <TableRow key={b.id} className={`block md:table-row${b.status === "complete" ? " opacity-60" : ""}`}>
-                          <TableCell className="block font-semibold md:table-cell">{b.jobNo || "-"}<span className="block text-xs font-normal text-slate-500">{b.description}</span></TableCell>
-                          <TableCell className="block md:table-cell">{b.machine.name}</TableCell>
-                          <TableCell className="block md:table-cell">{formatDateTimeShort(b.start)}</TableCell>
-                          <TableCell className={`block md:table-cell ${late ? "font-semibold text-red-700" : ""}`}>
-                            {formatDateTimeShort(b.finish)}
+                          <TableCell data-label="Job" className="block font-semibold md:table-cell">{b.jobNo || "-"}<span className="block text-xs font-normal text-slate-500">{b.description}</span></TableCell>
+                          <TableCell data-label="Machine" className="block md:table-cell">{b.machine.name}</TableCell>
+                          <TableCell data-label="Start" className="block md:table-cell">{fmtDayDateTime(b.start)}</TableCell>
+                          <TableCell data-label="Est. finish" className={`block md:table-cell ${late ? "font-semibold text-red-700" : ""}`}>
+                            {fmtDayDateTime(b.finish)}
                             {late ? <span className="ml-2 inline-flex items-center gap-1 rounded-none bg-red-100 px-2 py-0.5 text-xs text-red-700"><Flag className="size-3" /> After required date</span> : null}
                           </TableCell>
-                          {isVisible("hours-left") ? <TableCell className="block md:table-cell">{liveLeftOf(b) ? <span data-testid="live-hours-left">{liveLeftOf(b)} ({formatHoursClock(b.estimatedHours)} booked)</span> : <>{formatHours(b.hoursLeft)} of {formatHours(b.estimatedHours)}</>}</TableCell> : null}
-                          <TableCell className="block md:table-cell">{bookingStatusLabel(b, now)}</TableCell>
-                          <TableCell className="block md:table-cell">{req ? fmtDate(req) : "-"}</TableCell>
-                          <TableCell className="block md:table-cell"><Button variant="outline" size="sm" onClick={() => setSelectedId(b.id)}>{canBook ? "Update" : "View"}</Button></TableCell>
+                          {isVisible("hours-left") ? <TableCell data-label="Hours left" className="block md:table-cell">{liveLeftOf(b) ? <span data-testid="live-hours-left">{liveLeftOf(b)} ({formatHoursClock(b.estimatedHours)} booked)</span> : <>{formatHours(b.hoursLeft)} of {formatHours(b.estimatedHours)}</>}</TableCell> : null}
+                          <TableCell data-label="Status" className="block md:table-cell">{bookingStatusLabel(b, now)}</TableCell>
+                          <TableCell data-label="Required" className="block md:table-cell">{req ? fmtDate(req) : "-"}</TableCell>
+                          <TableCell data-actions className="block md:table-cell"><Button variant="outline" size="sm" onClick={() => setSelectedId(b.id)}>{canBook ? "Update" : "View"}</Button></TableCell>
                         </TableRow>
                       );
                     })}
@@ -411,17 +411,17 @@ export default function SchedulePage() {
                 {canManageMachines ? <Button variant="outline" onClick={() => setEditingMachine(emptyMachine)}><Plus className="size-4" /> Add machine</Button> : null}
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <Table data-tablet-cards>
                   <TableHeader className="hidden md:table-header-group"><TableRow><TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Hours per day</TableHead><TableHead>Working days</TableHead><TableHead>Active</TableHead><TableHead /></TableRow></TableHeader>
                   <TableBody>
                     {machines.map((m) => (
                       <TableRow key={m.id} className="block md:table-row">
-                        <TableCell className="block font-semibold md:table-cell">{m.name}</TableCell>
-                        <TableCell className="block md:table-cell">{m.type || "-"}</TableCell>
-                        <TableCell className="block md:table-cell">{m.hoursPerDay}</TableCell>
-                        <TableCell className="block md:table-cell">{WEEKDAY_OPTIONS.filter((d) => m.workingDays.includes(d.dow)).map((d) => d.label).join(", ")}</TableCell>
-                        <TableCell className="block md:table-cell">{m.active ? "Yes" : "No"}</TableCell>
-                        <TableCell className="block md:table-cell">{canManageMachines ? <Button variant="outline" size="sm" onClick={() => setEditingMachine(m)}><Pencil className="size-3.5" /> Edit</Button> : null}</TableCell>
+                        <TableCell data-label="Name" className="block font-semibold md:table-cell">{m.name}</TableCell>
+                        <TableCell data-label="Type" className="block md:table-cell">{m.type || "-"}</TableCell>
+                        <TableCell data-label="Hours per day" className="block md:table-cell">{m.hoursPerDay}</TableCell>
+                        <TableCell data-label="Working days" className="block md:table-cell">{WEEKDAY_OPTIONS.filter((d) => m.workingDays.includes(d.dow)).map((d) => d.label).join(", ")}</TableCell>
+                        <TableCell data-label="Active" className="block md:table-cell">{m.active ? "Yes" : "No"}</TableCell>
+                        <TableCell data-actions className="block md:table-cell">{canManageMachines ? <Button variant="outline" size="sm" onClick={() => setEditingMachine(m)}><Pencil className="size-3.5" /> Edit</Button> : null}</TableCell>
                       </TableRow>
                     ))}
                     {!machines.length ? (
@@ -483,7 +483,7 @@ export default function SchedulePage() {
             {runDetail ? (
               <div className="grid gap-1 text-sm" data-testid="run-detail">
                 <p>{runDetail.label}</p>
-                <p className="text-slate-600">Started {formatDateTimeShort(new Date(runDetail.bar.run.started_at))}{runDetail.bar.run.ended_at ? `, ended ${formatDateTimeShort(new Date(runDetail.bar.run.ended_at))}` : ", still running"}.</p>
+                <p className="text-slate-600">Started {fmtDayDateTime(runDetail.bar.run.started_at)}{runDetail.bar.run.ended_at ? `, ended ${fmtDayDateTime(new Date(runDetail.bar.run.ended_at))}` : ", still running"}.</p>
                 {!runDetail.bar.run.booking_id ? <p className="text-slate-600">Not booked on the schedule.</p> : null}
               </div>
             ) : null}
@@ -676,7 +676,7 @@ function BookJobDialog({ machines, jobs, scheduled, now, isAdmin, initialJobId, 
           {job?.estimatedHours == null && job ? <p className="text-xs text-slate-500">No setup, run or quoted time on this job&apos;s worksheet, so enter the hours.</p> : null}
           <DayPlanField on={split.on} onToggle={(on) => split.toggle(on, hoursNum, validStart ? localDateString(startDate!) : todayString(), validStart ? timeOf(startDate!) : workStartOn(workingHours, isoWeekday(todayString())))} rows={split.rows} setRows={split.setRows} estimatedHours={hoursNum} check={check} workingHours={workingHours} />
           <Textarea placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-          {finish ? <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">Estimated finish: <span className="font-semibold">{formatDateTimeShort(finish)}</span></p> : null}
+          {finish ? <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700">Estimated finish: <span className="font-semibold">{fmtDayDateTime(finish)}</span></p> : null}
           {pause && machine ? (
             <div data-testid="book-paused-warning" data-run-id={pause.paused_run_id} className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
               <p className="flex items-start gap-2"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{pausedWarningText(pause, machine.name, now)}</p>
@@ -770,8 +770,8 @@ function BookingDetailDialog({ booking, now, liveLeft, canEdit, canDelete, isAdm
       <DialogContent>
         <DialogHeader><DialogTitle>{booking.jobNo} on {booking.machine.name}</DialogTitle><DialogDescription>{booking.description || "Machine booking"}</DialogDescription></DialogHeader>
         <dl className="grid grid-cols-2 gap-2 text-sm">
-          <dt className="field-label">Start</dt><dd className="font-medium">{formatDateTimeShort(booking.start)}</dd>
-          <dt className="field-label">Estimated finish</dt><dd className="font-medium">{formatDateTimeShort(booking.finish)}</dd>
+          <dt className="field-label">Start</dt><dd className="font-medium">{fmtDayDateTime(booking.start)}</dd>
+          <dt className="field-label">Estimated finish</dt><dd className="font-medium">{fmtDayDateTime(booking.finish)}</dd>
           <dt className="field-label">Hours left</dt><dd className="font-medium" data-testid="booking-hours-left">{liveLeft ?? formatHours(booking.hoursLeft)}</dd>
           {booking.dayPlan?.length ? <><dt className="field-label">Split by day</dt><dd className="font-medium" data-testid="booking-day-plan">{formatDayPlan(booking.dayPlan)}</dd></> : null}
           {requiredDate ? <><dt className="field-label">Required</dt><dd className="font-medium">{fmtDate(requiredDate)}</dd></> : null}

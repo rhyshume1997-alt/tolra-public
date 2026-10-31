@@ -28,6 +28,8 @@ const db = vi.hoisted(() => ({
   writes: [] as string[],
   rpcs: [] as Array<{ fn: string; args: Record<string, unknown> }>,
   auditError: null as null | { code: string },
+  /** A read error on ai_helper_settings (e.g. 42703: the finance_check_enabled column does not exist yet). */
+  settingsError: null as null | { code: string },
 }));
 
 function builder(table: string) {
@@ -39,6 +41,7 @@ function builder(table: string) {
     in: (c: string, vs: unknown[]) => { rows = rows.filter((r) => vs.includes(r[c])); return q; },
     gte: () => q, or: () => q, order: () => q,
     limit: (n: number) => { rows = rows.slice(0, n); return q; },
+    maybeSingle: async () => (table === "ai_helper_settings" && db.settingsError ? { data: null, error: db.settingsError } : { data: rows[0] ?? null, error: null }),
     then: (resolve: (v: { data: Row[]; error: null }) => unknown) => Promise.resolve({ data: rows, error: null }).then(resolve),
     insert: () => { db.writes.push(`insert:${table}`); return q; },
     update: () => { db.writes.push(`update:${table}`); return q; },
@@ -93,13 +96,14 @@ function seed() {
     delivery_notes: [], delivery_note_items: [], sales_orders: [], sales_order_lines: [], quote_line_items: [],
     organization_settings: [{ organization_id: ORG, vat_registered: true, standard_rate: 20 }],
     purchase_orders: [], credit_notes: [], credit_note_lines: [],
+    ai_helper_settings: [{ organization_id: ORG, finance_check_enabled: true }, { organization_id: "o-2", finance_check_enabled: false }],
   };
 }
 
 const logs: string[] = [];
 beforeEach(() => {
   seed();
-  db.reads = []; db.writes = []; db.rpcs = []; db.auditError = null;
+  db.reads = []; db.writes = []; db.rpcs = []; db.auditError = null; db.settingsError = null;
   auth.roles = []; auth.role = "office"; auth.support = false; auth.calls = 0;
   vi.stubEnv(AI_FINANCE_CHECK_FLAG, "true");
   logs.length = 0;
@@ -142,6 +146,69 @@ describe("the switch", () => {
     expect(html).not.toContain("disabled");
     // A demo or missing id: nothing.
     expect(renderToStaticMarkup(createElement(AiFeaturesProvider, { value: { financeCheck: true } }, createElement(AiFinanceCheckPanel, { kind: "purchase_order", id: "demo-1" })))).toBe("");
+  });
+});
+
+describe("the company's own switch (ai_helper_settings.finance_check_enabled)", () => {
+  const decisionBody = { kind: "invoice", id: INV, suggestionId: "totals_mismatch:total", code: "totals_mismatch", decision: "accepted" };
+  const refusedUntouched = () => {
+    expect(db.reads).toEqual(["ai_helper_settings:finance_check_enabled"]);
+    expect(db.rpcs).toEqual([]);
+    expect(db.writes).toEqual([]);
+  };
+  const friendly = { error: "The AI finance check is switched off for this company. An admin can turn it on in the AI section.", code: "company_off" };
+
+  it("on for this company (and the server): the check runs", async () => {
+    expect((await runCheck()).status).toBe(200);
+    expect(db.reads[0]).toBe("ai_helper_settings:finance_check_enabled");
+  });
+
+  it("off for this company: 403 with a friendly message, before the document is read or any audit is written, on both routes", async () => {
+    db.tables.ai_helper_settings[0].finance_check_enabled = false;
+    const res = await runCheck();
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(friendly);
+    refusedUntouched();
+    db.reads = [];
+    const decided = await runDecision(decisionBody);
+    expect(decided.status).toBe(403);
+    expect(await decided.json()).toEqual(friendly);
+    refusedUntouched();
+  });
+
+  it("no settings row for this company: refused (another company's switch being on does not count)", async () => {
+    db.tables.ai_helper_settings = [{ organization_id: "o-2", finance_check_enabled: true }];
+    expect((await runCheck()).status).toBe(403);
+    expect((await runDecision(decisionBody)).status).toBe(403);
+  });
+
+  it("a database without the column (read error) is treated as off", async () => {
+    db.settingsError = { code: "42703" };
+    const res = await runCheck();
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("company_off");
+    refusedUntouched();
+    db.reads = [];
+    expect((await runDecision(decisionBody)).status).toBe(403);
+    refusedUntouched();
+  });
+
+  it("the server switch still comes first: env off is a 404 even when the company switch is on", async () => {
+    vi.stubEnv(AI_FINANCE_CHECK_FLAG, "false");
+    expect((await runCheck()).status).toBe(404);
+    expect(db.reads).toEqual([]);
+  });
+
+  it("a support session is refused before the company switch is read", async () => {
+    auth.role = "admin"; auth.support = true;
+    expect((await runCheck()).status).toBe(403);
+    expect(db.reads).toEqual([]);
+  });
+
+  it("the panel hides itself on company_off instead of showing an error", () => {
+    const panel = readFileSync(path.resolve(__dirname, "../../components/ai-finance-check-panel.tsx"), "utf8");
+    expect(panel).toContain('code === "company_off"');
+    expect(panel).toContain('if (state.status === "company_off") return null;');
   });
 });
 
@@ -210,7 +277,7 @@ describe("the check", () => {
     const res = await runCheck();
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "Check not available" });
-    expect(db.reads).toEqual([]);
+    expect(db.reads.filter((r) => !r.startsWith("ai_helper_settings:"))).toEqual([]);
   });
 
   it("runs for a purchase order and a credit note too", async () => {

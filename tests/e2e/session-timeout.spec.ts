@@ -127,3 +127,18 @@ test("office: a sign-in unused for more than 12 hours ends at the next page; use
   await page.goto("/quotes");
   await expect(page).toHaveURL(/\/login/);
 });
+
+test("office: a last-use cookie left from an earlier sign-in does not end a new sign-in (LOGOUT cause 2a)", async ({ page, context }) => {
+  await signIn(page, w.tenants.beta.users.office);
+  const origin = new URL(page.url()).origin;
+  // A normal sign-out runs in the browser: it removes the Supabase session cookies but cannot remove the HttpOnly last-use cookie.
+  await context.clearCookies({ name: /^sb-.+-auth-token(\.\d+)?$/ });
+  await context.addCookies([{ name: "tolra_last_active", value: String(Date.now() - 13 * 60 * MIN), url: origin }]);
+
+  await signIn(page, w.tenants.beta.users.office);
+  await page.goto("/quotes");
+  await expect(page).toHaveURL(/\/quotes/);
+  await expect(page.getByText("You were signed out after 12 hours without use.")).toHaveCount(0);
+  const lastActive = (await context.cookies(origin)).find((c) => c.name === "tolra_last_active");
+  expect(Date.now() - Number(lastActive?.value)).toBeLessThan(5 * MIN);
+});

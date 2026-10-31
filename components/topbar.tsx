@@ -19,6 +19,7 @@ import { PRODUCT } from "@/lib/product";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/ai-helper": "AI",
   "/email": "Email & Payment Automation",
   "/rfq": "RFQ Control Centre",
   "/quotes": "Quote Generator",
@@ -40,6 +41,7 @@ const pageTitles: Record<string, string> = {
   "/admin/compliance": "Security",
   "/admin/activity": "Activity",
   "/admin/data": "Data",
+  "/numbers": "Numbers",
   "/admin/integrations": "Integrations",
   "/settings": "Settings",
 };

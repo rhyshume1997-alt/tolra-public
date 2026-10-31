@@ -36,9 +36,10 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <DashboardShell company={await readCompany()}>
-      {/* AI features this server has on: plain booleans only (the env var stays on the server). All off by default. */}
-      <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled(), aiHelper: aiHelperEnabled() }}>{children}</AiFeaturesProvider>
-    </DashboardShell>
+    // AI features this server has on: plain booleans only (the env var stays on the server). All off by default. Outside the shell, so
+    // the sidebar (inside it) can show the AI item too.
+    <AiFeaturesProvider value={{ financeCheck: aiFinanceCheckEnabled(), aiHelper: aiHelperEnabled() }}>
+      <DashboardShell company={await readCompany()}>{children}</DashboardShell>
+    </AiFeaturesProvider>
   );
 }

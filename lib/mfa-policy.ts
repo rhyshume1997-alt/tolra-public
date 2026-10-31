@@ -53,6 +53,20 @@ export function becomesAdmin(before: Roles, after: Roles): boolean {
 }
 
 /**
+ * True when a membership change gives or takes admin: the role or second role to or from admin, or reactivating someone who holds
+ * it. Such a change hands over (or takes away) the company's admin rights, so it needs the second step always, like creating a user
+ * (audit Z1). Fields left undefined are unchanged; a null second role removes it.
+ */
+export function changesAdmin(before: Roles, change: { role?: string; secondary_role?: string | null; active?: boolean }): boolean {
+  const after = {
+    role: change.role ?? before?.role,
+    secondary_role: change.secondary_role !== undefined ? change.secondary_role : before?.secondary_role,
+    active: change.active ?? before?.active,
+  };
+  return holdsAdmin(before) !== holdsAdmin(after) || becomesAdmin(before, after);
+}
+
+/**
  * Whether the middleware should ask the database if this person must set up an authenticator app first. Only when the global
  * switch is off (when it is on, the aal2 gate already sends every admin to /mfa), for someone holding admin, who is not at aal2
  * and has no verified factor on this session (nextLevel aal1). The database decides the rest (my_mfa_enrolment_required).

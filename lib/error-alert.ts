@@ -11,6 +11,8 @@ import { headerText } from "@/lib/mail-header";
 /** At most one e-mail per fingerprint per hour, and this many a day (the database enforces the same: claim_error_alert). */
 export const ALERT_PER_FINGERPRINT_MS = 60 * 60 * 1000;
 export const ALERT_MAX_PER_DAY = 20;
+/** Browser-reported errors have their own, smaller budget (migration 115: 5 a day per person, 10 per company, 20 in all). This is the in-memory stand-in, per instance. */
+export const ALERT_BROWSER_MAX_PER_DAY = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const MAX_MESSAGE = 300;

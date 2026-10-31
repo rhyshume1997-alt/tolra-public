@@ -2,16 +2,15 @@
 
 import { toast } from "sonner";
 import { createElement } from "react";
-import { pdf } from "@react-pdf/renderer";
 
-import { BaseDocumentPDF } from "@/components/pdf/BaseDocumentPDF";
 import { auditEvent } from "@/lib/audit";
 import type { AuditTable } from "@/lib/audit-contract";
 import { openPrintPack } from "@/lib/print-pack";
 import { CompanyProfileMissingError, requireCompanyProfile } from "@/lib/company";
+import { PDF_OFFLINE_MESSAGE, pdfCodeUnreachable } from "@/lib/download-pdf";
 import { esc } from "@/lib/html";
 import { friendlyError } from "@/lib/friendly-error";
-import { toDateInput } from "@/lib/dates";
+import { fmtDate, toDateInput } from "@/lib/dates";
 import { CSV_TYPE, XLSX_TYPE, downloadFile, toCsv, toXlsx, type SheetColumn } from "@/lib/spreadsheet";
 
 /**
@@ -32,6 +31,14 @@ function rowsToTable(rows: ExportRow[]) {
   return `<table><thead><tr>${headers.map((header) => `<th>${esc(header)}</th>`).join("")}</tr></thead><tbody>${rows
     .map((row) => `<tr>${headers.map((header) => `<td>${esc(row[header])}</td>`).join("")}</tr>`)
     .join("")}</tbody></table>`;
+}
+
+/**
+ * The code the PDF export needs: loaded on the first PDF export, not with the page. The Job Board also fetches it ahead, when
+ * online and idle (lib/pdf-warm.ts), through this same function, so its Export PDF works offline.
+ */
+export function loadExportPdfCode() {
+  return Promise.all([import("@react-pdf/renderer"), import("@/components/pdf/BaseDocumentPDF")]);
 }
 
 /** `entityTable` is the record type exported (audit log); `filename` is only the download title. */
@@ -64,11 +71,12 @@ export async function exportRows(format: "word" | "pdf" | "print", filename: str
   if (format === "pdf") {
     try {
       const company = await requireCompanyProfile();
+      const [{ pdf }, { BaseDocumentPDF }] = await loadExportPdfCode();
       const pdfElement = createElement(BaseDocumentPDF, {
         data: {
           title: filename,
           documentNumber: new Date().toISOString().slice(0, 10),
-          keyValues: [{ label: "Date", value: new Intl.DateTimeFormat("en-GB").format(new Date()) }, { label: "Records", value: String(rows.length) }],
+          keyValues: [{ label: "Date", value: fmtDate(new Date()) }, { label: "Records", value: String(rows.length) }],
           billToLabel: "Export For:",
           billTo: [company.name],
           deliverToLabel: "Prepared By:",
@@ -94,7 +102,7 @@ export async function exportRows(format: "word" | "pdf" | "print", filename: str
       URL.revokeObjectURL(url);
       toast.success("PDF export downloaded");
     } catch (error) {
-      toast.error(error instanceof CompanyProfileMissingError ? error.message : friendlyError(error, "Failed to export PDF. Try again."));
+      toast.error(error instanceof CompanyProfileMissingError ? error.message : pdfCodeUnreachable(error) ? PDF_OFFLINE_MESSAGE : friendlyError(error, "Failed to export PDF. Try again."));
     }
     return;
   }

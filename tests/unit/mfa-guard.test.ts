@@ -35,11 +35,19 @@ vi.mock("@supabase/ssr", () => ({
     },
   }),
 }));
-vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({ auth: { admin: { mfa: { listFactors: async () => ({ data: { factors: [] }, error: null }) } } }, from: () => chain(null) }) }));
+/** How many service-role clients a request made: a refused caller must never get one. */
+let adminClients = 0;
+vi.mock("@/lib/server/supabase-admin", () => ({
+  createSupabaseAdminClient: () => {
+    adminClients += 1;
+    return { auth: { admin: { mfa: { listFactors: async () => ({ data: { factors: [] }, error: null }) } } }, from: () => chain(null) };
+  },
+}));
 
 import { POST as alertTest } from "@/app/api/admin/alert-test/route";
 import { POST as mfaReset } from "@/app/api/admin/users/mfa-reset/route";
 import { POST as setPassword } from "@/app/api/admin/users/password/route";
+import { PATCH as patchUser, POST as createUser } from "@/app/api/admin/users/route";
 import { POST as resolveJob } from "@/app/api/send-job/resolve/route";
 import { POST as mailSend } from "@/app/api/mail/send/route";
 import { adminMfaRequired, holdsAdmin } from "@/lib/mfa-policy";
@@ -59,6 +67,7 @@ beforeEach(() => {
   levelError = false;
   rpcCalls.length = 0;
   resolved.length = 0;
+  adminClients = 0;
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -176,5 +185,40 @@ describe("handing over a login always needs the second step (audit item 4)", () 
     levelError = true;
     const response = await mfaReset(post("/api/admin/users/mfa-reset", { userId: "22222222-4f50-4a6b-8c7d-9e0f1a2b3c4d" }));
     expect(await response.json()).toMatchObject({ code: "mfa_required" });
+  });
+});
+
+describe("Admin > Users routes refuse anyone who isn't an admin, and an admin without the second step (audit Z1)", () => {
+  const USER_ID = "22222222-4f50-4a6b-8c7d-9e0f1a2b3c4d";
+  const patch = (body: unknown) => new Request("https://app.test/api/admin/users", { method: "PATCH", body: JSON.stringify(body) });
+  const attempts = (): Array<[string, () => Promise<Response>]> => [
+    ["POST users (new admin)", () => createUser(post("/api/admin/users", { email: "new@example.test", full_name: "New", role: "admin", password: "Correct-Horse-Battery-9" }))],
+    ["POST users (office)", () => createUser(post("/api/admin/users", { email: "new@example.test", full_name: "New", role: "office", password: "Correct-Horse-Battery-9" }))],
+    ["PATCH users (make admin)", () => patchUser(patch({ user_id: USER_ID, role: "admin" }))],
+    ["PATCH users (second role admin)", () => patchUser(patch({ user_id: USER_ID, secondary_role: "admin" }))],
+    ["PATCH users (name)", () => patchUser(patch({ user_id: USER_ID, full_name: "Someone" }))],
+    ["Set password", () => setPassword(post("/api/admin/users/password", { user_id: USER_ID, password: "Correct-Horse-Battery-9", must_change_password: true }))],
+    ["Reset two-step", () => mfaReset(post("/api/admin/users/mfa-reset", { userId: USER_ID }))],
+  ];
+
+  it("a workshop, office or viewer session (even at aal2, or with a non-admin second role): 403 Forbidden, no service-role client", async () => {
+    level = "aal2";
+    for (const person of [{ role: "workshop" }, { role: "office" }, { role: "viewer" }, { role: "office", secondary: "workshop" }]) {
+      who = person;
+      for (const [name, attempt] of attempts()) {
+        const response = await attempt();
+        expect({ who: person, name, status: response.status, body: await response.json() }).toEqual({ who: person, name, status: 403, body: { error: "Forbidden" } });
+      }
+    }
+    expect(adminClients).toBe(0);
+  });
+
+  it("an admin at aal1 (REQUIRE_ADMIN_MFA off): creating a user of any role is refused with mfa_required, before any service-role client", async () => {
+    for (const role of ["admin", "office"]) {
+      const response = await createUser(post("/api/admin/users", { email: "new@example.test", full_name: "New", role, password: "Correct-Horse-Battery-9" }));
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "mfa_required" });
+    }
+    expect(adminClients).toBe(0);
   });
 });

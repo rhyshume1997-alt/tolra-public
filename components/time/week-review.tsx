@@ -20,13 +20,16 @@ import { loadCompanyPeople } from "@/lib/company-people";
 import { friendlyError } from "@/lib/friendly-error";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { NeedsDatabaseUpdate } from "@/components/time/needs-update";
+import { PayrollExport } from "@/components/time/payroll-export";
 import { SyncRejectionsNotice } from "@/components/time/sync-rejections-notice";
+import { NetworkUnverifiedNotice } from "@/components/time/network-unverified-notice";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { newClientOpId } from "@/lib/machine-runs";
 import { DAY_FLAG_KEYS, DAY_FLAG_LABEL, type WeekDayFlags, flagTotalsSnapshot, flagsShort, saveDayFlags, shortDay } from "@/lib/time-day-flags";
 import { databaseHasTime, missingDbObject } from "@/lib/time-features";
 import { type TimeSettings, FLAG_TEXT, ROUNDING_NOTE, addDays, approvalSnapshot, hm, hmSigned, localDateOf, weekStartOf } from "@/lib/time-sheet";
+import { fmtDateTime } from "@/lib/dates";
 import { type PersonWeek, WEEK_STATE_TEXT, loadWeek } from "@/lib/time-week";
 import { useUser } from "@/lib/use-user";
 
@@ -129,58 +132,62 @@ export function WeekReview() {
         <Button variant="outline" size="sm" onClick={() => go(addDays(week, -7))} aria-label="Previous week"><ChevronLeft className="size-4" /></Button>
         <span className="text-sm font-medium">Week of {dayHeading(week)}</span>
         <Button variant="outline" size="sm" onClick={() => go(addDays(week, 7))} aria-label="Next week"><ChevronRight className="size-4" /></Button>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <ColumnToggle tableKey="hours" />
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("csv")}>Export CSV</Button>
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("xlsx")}>Export Excel</Button>
+          {seesEveryone ? <PayrollExport week={week} names={names} /> : null}
           <Button asChild variant="outline" size="sm"><Link href={`/time/week/print?week=${week}${only ? `&user=${only}` : !seesEveryone && me ? `&user=${me}` : ""}`}><Printer className="size-4" /> Print</Link></Button>
         </div>
       </div>
       <SyncRejectionsNotice enabled={seesEveryone} nameOf={(id) => names[id] ?? UNKNOWN} />
+      <NetworkUnverifiedNotice enabled={seesEveryone} week={week} nameOf={(id) => names[id] ?? UNKNOWN} />
       {error ? <div className="flex items-center justify-between rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"><span>{error}</span><Button variant="outline" size="sm" onClick={() => void load()}>Retry</Button></div> : null}
       {people === null && !error ? <p className="text-sm text-slate-500">Loading…</p> : null}
       {people ? (
         <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full text-sm" data-testid="week-table">
-            <thead>
-              <tr className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500">
-                <th className="px-3 py-2">Person</th>
-                {isVisible("days") ? <th className="px-2 text-right">Days</th> : null}
-                {isVisible("clocked") ? <th className="px-2 text-right">Clocked</th> : null}
-                {isVisible("breaks") ? <th className="px-2 text-right">Breaks</th> : null}
-                <th className="px-2 text-right">Paid</th>
-                {isVisible("jobs") ? <th className="px-2 text-right">On jobs</th> : null}
-                {showFlags && isVisible("ticks") ? <th className="px-2">Day ticks</th> : null}
-                {isVisible("check") ? <th className="px-2">Check</th> : null}
-                {isVisible("approval") ? <th className="px-2">Approval</th> : null}
-                <th />
+          {/* Below 1024px each person is a stacked card (data-tablet-cards in app/globals.css, labels from data-label) so the week
+              never scrolls sideways on a phone or tablet. The header row stays in the markup, hidden on a phone. */}
+          <table role="table" className="w-full text-sm" data-testid="week-table" data-tablet-cards>
+            <thead role="rowgroup" className="hidden md:table-header-group">
+              <tr role="row" className="border-b bg-slate-50 text-left text-xs uppercase text-slate-500">
+                <th role="columnheader" className="px-3 py-2">Person</th>
+                {isVisible("days") ? <th role="columnheader" className="px-2 text-right">Days</th> : null}
+                {isVisible("clocked") ? <th role="columnheader" className="px-2 text-right">Clocked</th> : null}
+                {isVisible("breaks") ? <th role="columnheader" className="px-2 text-right">Breaks</th> : null}
+                <th role="columnheader" className="px-2 text-right">Paid</th>
+                {isVisible("jobs") ? <th role="columnheader" className="px-2 text-right">On jobs</th> : null}
+                {showFlags && isVisible("ticks") ? <th role="columnheader" className="px-2">Day ticks</th> : null}
+                {isVisible("check") ? <th role="columnheader" className="px-2">Check</th> : null}
+                {isVisible("approval") ? <th role="columnheader" className="px-2">Approval</th> : null}
+                <th role="columnheader" />
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {sorted.length ? sorted.map((p) => {
                 const state = p.status?.state ?? "not_approved";
                 return (
-                  <tr key={p.userId} className="border-b align-top" data-testid={`week-row-${p.userId}`}>
-                    <td className="px-3 py-2"><Link className="font-medium hover:underline" href={`/time?date=${week}${p.userId !== me ? `&user=${p.userId}` : ""}`}>{names[p.userId] ?? UNKNOWN}</Link></td>
-                    {isVisible("days") ? <td className="px-2 py-2 text-right">{p.week.daysWorked}</td> : null}
-                    {isVisible("clocked") ? <td className="px-2 py-2 text-right font-mono">{hm(p.week.attendance)}</td> : null}
-                    {isVisible("breaks") ? <td className="px-2 py-2 text-right font-mono">{hmSigned(-p.week.breakDeduction)}</td> : null}
-                    <td className="px-2 py-2 text-right font-mono" data-testid="week-paid">{hm(p.week.paid)}</td>
-                    {isVisible("jobs") ? <td className="px-2 py-2 text-right font-mono">{hm(p.week.labour)}</td> : null}
-                    {showFlags && isVisible("ticks") ? <td className="px-2 py-2 text-xs" data-testid="week-day-flags">{p.dayFlags ? <DayFlagsCell flags={p.dayFlags} /> : null}
+                  <tr role="row" key={p.userId} className="block border-b align-top md:table-row" data-testid={`week-row-${p.userId}`}>
+                    <td role="cell" className="block px-3 py-2 md:table-cell"><Link className="font-medium hover:underline" href={`/time?date=${week}${p.userId !== me ? `&user=${p.userId}` : ""}`}>{names[p.userId] ?? UNKNOWN}</Link></td>
+                    {isVisible("days") ? <td role="cell" data-label="Days" className="block px-3 py-2 text-left md:table-cell md:px-2 desk:text-right">{p.week.daysWorked}</td> : null}
+                    {isVisible("clocked") ? <td role="cell" data-label="Clocked" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right">{hm(p.week.attendance)}</td> : null}
+                    {isVisible("breaks") ? <td role="cell" data-label="Breaks" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right">{hmSigned(-p.week.breakDeduction)}</td> : null}
+                    <td role="cell" data-label="Paid" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right" data-testid="week-paid">{hm(p.week.paid)}</td>
+                    {isVisible("jobs") ? <td role="cell" data-label="On jobs" className="block px-3 py-2 text-left font-mono md:table-cell md:px-2 desk:text-right">{hm(p.week.labour)}</td> : null}
+                    {showFlags && isVisible("ticks") ? <td role="cell" data-label="Day ticks" className="block px-3 py-2 text-xs empty:max-md:hidden md:table-cell md:px-2" data-testid="week-day-flags">{p.dayFlags ? <DayFlagsCell flags={p.dayFlags} /> : null}
                     </td> : null}
-                    {isVisible("check") ? <td className="px-2 py-2 text-xs text-amber-800">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
-                    {isVisible("approval") ? <td className="px-2 py-2 text-xs" data-testid="week-state">
+                    {isVisible("check") ? <td role="cell" data-label="Check" className="block px-3 py-2 text-xs text-amber-800 empty:max-md:hidden md:table-cell md:px-2">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
+                    {isVisible("approval") ? <td role="cell" data-label="Approval" className="block px-3 py-2 text-xs md:table-cell md:px-2" data-testid="week-state">
                       <span className={state === "approved" ? "text-emerald-700" : state === "changed_since_approval" ? "text-amber-700" : "text-slate-500"}>{WEEK_STATE_TEXT[state]}</span>
-                      {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {new Date(p.status.approved_at).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" })}</div> : null}
+                      {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {fmtDateTime(p.status.approved_at)}</div> : null}
                     </td> : null}
-                    <td className="px-2 py-2 text-right">
+                    <td role="cell" data-actions className="block px-3 py-2 text-left empty:max-md:hidden md:table-cell md:px-2 desk:text-right">
                       {showFlags && p.dayFlags?.anySuggested && seesEveryone ? <Button size="sm" variant="outline" className="mr-1" onClick={() => void saveSuggested(p)} data-testid="save-suggested-ticks">Save suggested ticks</Button> : null}
                       {canApprove && p.status && state !== "approved" && !isFuture ? <Button size="sm" onClick={() => setApproving(p)} data-testid="approve-week"><CheckCircle2 className="size-4" /> Approve</Button> : null}
                     </td>
                   </tr>
                 );
-              }) : <tr><td colSpan={shownColumns} className="px-3 py-4 text-slate-500">Nobody has recorded time this week.</td></tr>}
+              }) : <tr role="row"><td role="cell" colSpan={shownColumns} className="px-3 py-4 text-slate-500">Nobody has recorded time this week.</td></tr>}
             </tbody>
           </table>
         </div>

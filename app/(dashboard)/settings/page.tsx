@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
+import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
+import { EmailTemplatesCard } from "@/components/email/email-templates-card";
+import { PrintLayoutCard } from "@/components/print-layout-settings-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +30,7 @@ import { WEEKDAY_OPTIONS } from "@/lib/machine-schedule";
 import { BREAK_MINUTES, LUNCH_MINUTES, MIN_DAY_HOURS, formatHoursMinutes, paidDay, paidWeek } from "@/lib/working-hours";
 import { TimeSettingsCard } from "@/components/time/time-settings-card";
 import { SiteNetworkCard } from "@/components/time/site-network-card";
+import { ClockInLockCard } from "@/components/time/clock-in-lock-card";
 
 const navSections = Array.from(new Set(NAV_TOGGLES.map((item) => item.section)));
 
@@ -641,9 +645,12 @@ export default function SettingsPage() {
         <AutoConvertCard />
         <TimeSettingsCard />
         <SiteNetworkCard />
+        <ClockInLockCard />
         <CustomerSignOffCard />
+        <PrintLayoutCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
+        <EmailSchedulesCard />
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><LayoutList className="size-5 text-brand-accent" /> Menu Sections</CardTitle></CardHeader>
           <CardContent className="space-y-5">
@@ -711,6 +718,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         <WorkshopEmailCard />
+        <EmailTemplatesCard />
       </div>
     </RoleGate>
   );

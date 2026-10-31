@@ -13,9 +13,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useOrgSettings } from "@/lib/org-settings";
-import { canOpenDestination } from "@/lib/destinations";
+import { useAiFeatures } from "@/components/ai-features";
+import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
 import { passwordProblem } from "@/lib/password";
 import { awaitingApproval } from "@/lib/approval-queue";
+import { usePendingReopenCount } from "@/components/reopen-approvals";
 import { supabase } from "@/lib/supabase";
 import { isCompanyPending } from "@/lib/brand-pending";
 import { useShellCompany } from "@/lib/company";
@@ -28,6 +30,7 @@ import { useOfflineStatus } from "@/lib/offline/scope";
 import { connectionState, roleLabel } from "@/lib/shell-status";
 import { ConnectionDot } from "@/components/shell-status";
 import { DisplayNameForm } from "@/components/display-name";
+import { DateFormatSettings } from "@/components/date-format-settings";
 
 type NavItem = {
   href: string;
@@ -36,7 +39,15 @@ type NavItem = {
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
-  { title: "Workspace", items: [{ href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] }] },
+  {
+    title: "Workspace",
+    items: [
+      { href: "/dashboard", label: "Dashboard", roles: ["admin", "office", "workshop", "viewer"] },
+      { href: "/numbers", label: "Numbers", roles: ["admin"] },
+      // Only while the server has the AI helper on (aiNavAvailable); office and admin.
+      { href: "/ai-helper", label: "AI", roles: ["admin", "office"] },
+    ],
+  },
   {
     title: "Sales Pipeline",
     items: [
@@ -76,11 +87,14 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { profile, organizations, switchOrganization, activeRole, setActiveRole, signOut, hasAnyRole, hiddenSections } = useUser();
   const orgSettings = useOrgSettings();
+  const { aiHelper } = useAiFeatures();
   const connection = connectionState(useOfflineStatus());
   const { profile: company, loading: companyLoading } = useShellCompany();
   // Until the company is known the header shows a neutral placeholder, never the product name in the company's place (lib/brand-pending).
   const companyPending = isCompanyPending(company, companyLoading);
   const [approvalCount, setApprovalCount] = useState<number | null>(null);
+  // 113: reopens waiting for an admin's sign-off count towards the Approval Queue badge (admin and office, who see the queue).
+  const reopenCount = usePendingReopenCount(hasAnyRole(["admin", "office"]));
   const [logoFailed, setLogoFailed] = useState(false);
   const [switching, setSwitching] = useState(false);
   const currentOrg = organizations.find((org) => org.is_current);
@@ -145,28 +159,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       return;
     }
 
-    if (!supabase) {
-      toast.error("Supabase is not configured.");
-      return;
-    }
-
-    const email = profile?.email;
-    if (!email) {
-      toast.error("Could not verify your account email.");
-      return;
-    }
-
-    const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
-    if (verifyError) {
-      toast.error("Current password incorrect.");
-      return;
-    }
-
-    // Through the server, which applies the same rules as everywhere else (length, and a known-breach check).
-    const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+    // Through the server, which checks the current password (without replacing this session) and applies the same rules as
+    // everywhere else (length, and a known-breach check).
+    const response = await fetch("/api/auth/change-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password, current_password: currentPassword }) });
     if (!response.ok) {
       const result = (await response.json().catch(() => ({}))) as { error?: string };
-      toast.error(response.status === 400 && result.error ? result.error : "Couldn't update your password. Try again.");
+      toast.error([400, 403, 503].includes(response.status) && result.error ? result.error : "Couldn't update your password. Try again.");
       return;
     }
 
@@ -215,7 +213,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       <nav className="flex-1 overflow-y-auto pb-4">
         {navSections.map((section) => {
-          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
+          const visibleItems = section.items.filter((item) => hasAnyRole(item.roles) && (item.href !== "/admin/integrations" || has084) && aiNavAvailable(item.href, Boolean(aiHelper)) && canOpenDestination(item.href, { activeRole, hiddenSections, hiddenNav: orgSettings.hiddenNav }));
           if (!visibleItems.length) return null;
 
           return (
@@ -224,9 +222,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  const badge = item.href === "/approval" && approvalCount ? approvalCount.toString() : null;
+                  const queued = (approvalCount ?? 0) + reopenCount;
+                  const badge = item.href === "/approval" && queued ? queued.toString() : null;
                   return (
-                    <Link key={item.href} href={item.href} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
+                    <Link key={item.href} href={item.href} prefetch={false} onClick={onNavigate} aria-current={active ? "page" : undefined} className={cn("flex min-h-10 items-center gap-3 px-6 py-2 pointer-coarse:min-h-11 text-[0.9rem] text-brand-ink/75 transition hover:bg-brand-ink/[0.07] hover:text-brand-ink", active && "bg-brand-ink/[0.12] font-semibold text-brand-ink")}>
                       <span className="min-w-0 flex-1 leading-snug [overflow-wrap:anywhere]">{item.label}</span>
                       {badge ? <span className="flex min-w-5 items-center justify-center bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white">{badge}</span> : null}
                     </Link>
@@ -253,6 +252,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <div className="space-y-4 text-sm">
                 <div className="rounded-lg border bg-slate-50 p-4"><p className="font-semibold text-slate-950">{profile?.full_name || profile?.email || ""}</p><p className="text-slate-500">{roleLabel(profile?.role)}{company ? `, ${company.name}` : ""}</p><p className="mt-2 text-slate-600">{profile?.email}</p></div>
                 <div className="rounded-lg border p-4"><DisplayNameForm /></div>
+                <div className="rounded-lg border p-4"><DateFormatSettings /></div>
                 {canChooseView ? (
                   <Button variant="outline" className="w-full" onClick={() => { window.location.assign("/select-role"); }}>Choose admin, office, or workshop view</Button>
                 ) : profile?.secondary_role ? (

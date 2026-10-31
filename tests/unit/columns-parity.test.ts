@@ -144,7 +144,7 @@ describe("columns parity: one column list per page, in every view", () => {
     expect(listHead).toContain("{jobColumns.map((column) => column.key === \"actions\"");
     expect(headLabels(listHead).filter((label) => label !== "Details" && label !== "Actions")).toEqual([]);
     const card = source.slice(source.indexOf("const jobCard"));
-    expect(captions(card.slice(0, card.indexOf("</dl>"))).filter((label) => label !== "Rework")).toEqual(JOB_ORDER.slice(1, 13));
+    expect(captions(card.slice(0, card.indexOf("</dl>"))).filter((label) => label !== "Rework" && label !== "Parts logged")).toEqual(JOB_ORDER.slice(1, 13));
     // Status is not a column anywhere: the List and Table render the badges inside the Due cell.
     expect(source).not.toMatch(/<TableHead[^>]*>Status<\/TableHead>/);
   });

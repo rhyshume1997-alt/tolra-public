@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { xeroEnvProblem } from "@/lib/integrations/app-credentials";
 import { DbError, beginConnect, xeroReady } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
@@ -17,8 +18,8 @@ export async function POST(request: Request) {
   // admin's), refused before any Xero or database call, as on disconnect, mappings and send. The database's support_read_only trigger
   // stops only a read-only session; an elevated one would otherwise get through.
   if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
-  const ready = xeroReady();
-  if (!ready) return jsonError("Xero is not set up on this server yet.", 503);
+  const ready = await xeroReady();
+  if (!ready) return jsonError(["Xero is not set up on this server yet.", xeroEnvProblem()].filter(Boolean).join(" "), 503);
   try {
     return NextResponse.json({ url: await beginConnect(auth.supabase, auth.profile.organization_id, ready) });
   } catch (err) {

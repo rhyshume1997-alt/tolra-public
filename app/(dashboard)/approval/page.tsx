@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { CheckCircle, Clipboard, Info, Mail } from "lucide-react";
 
 import { ColumnToggle } from "@/components/column-toggle";
+import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
@@ -287,6 +288,9 @@ export default function ApprovalPage() {
           })
         )}
       </section>
+
+      {/* 113: reopened jobs waiting for an admin's sign-off (nothing shows before the database has 113). */}
+      <ReopenApprovals />
 
       <section className="space-y-3">
         <h2 className="text-xl font-semibold text-slate-950">Recently Sent</h2>

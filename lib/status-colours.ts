@@ -6,7 +6,7 @@
  *   green  #16A34A / #4ADE80  complete, accepted, passed, paid, on time, delivered
  *   yellow #CA8A04 / #FACC15  at risk, waiting for inspection, part paid, conditional supplier, waiting on supplier/customer
  *                             (yellow fill with DARK text, never yellow text on a light page)
- *   red    #DC2626 / #F87171  overdue, blocked supplier, sync failed, failed inspection
+ *   red    #DC2626 / #F87171  overdue, blocked supplier, sync failed, failed inspection, a problem reported on a job (117)
  *   blue   #2563EB / #60A5FA  active, running (a job), sent, issued, sync pending
  *   purple #7C3AED / #C4B5FD  rework only (a tag on a Running job, never a status)
  *   grey   #6B7280 / #9CA3AF  draft, not started, archived, void, cancelled
@@ -25,20 +25,20 @@ export const COLOUR_TOKENS: Record<StatusColour, { light: string; dark: string }
   grey: { light: "#6B7280", dark: "#9CA3AF" },
 };
 
-/** `badge` is the filled pill (dark text on yellow and green in light mode; dark text on every fill in dark mode); `dot` is the small round marker. */
-export const COLOUR_CLASSES: Record<StatusColour, { badge: string; dot: string }> = {
-  green: { badge: "bg-[#16A34A] text-slate-950 dark:bg-[#4ADE80] dark:text-slate-950", dot: "bg-[#16A34A] dark:bg-[#4ADE80]" },
-  yellow: { badge: "bg-[#CA8A04] text-slate-950 dark:bg-[#FACC15] dark:text-slate-950", dot: "bg-[#CA8A04] dark:bg-[#FACC15]" },
-  red: { badge: "bg-[#DC2626] text-white dark:bg-[#F87171] dark:text-slate-950", dot: "bg-[#DC2626] dark:bg-[#F87171]" },
-  blue: { badge: "bg-[#2563EB] text-white dark:bg-[#60A5FA] dark:text-slate-950", dot: "bg-[#2563EB] dark:bg-[#60A5FA]" },
-  purple: { badge: "bg-[#7C3AED] text-white dark:bg-[#C4B5FD] dark:text-slate-950", dot: "bg-[#7C3AED] dark:bg-[#C4B5FD]" },
-  grey: { badge: "bg-[#6B7280] text-white dark:bg-[#9CA3AF] dark:text-slate-950", dot: "bg-[#6B7280] dark:bg-[#9CA3AF]" },
+/** `badge` is the filled pill (dark text on yellow and green in light mode; dark text on every fill in dark mode); `dot` is the small round marker; `edge` is a border colour (a card edge that carries the status) and `tint` a faint fill under ordinary text. */
+export const COLOUR_CLASSES: Record<StatusColour, { badge: string; dot: string; edge: string; tint: string }> = {
+  green: { badge: "bg-[#16A34A] text-slate-950 dark:bg-[#4ADE80] dark:text-slate-950", dot: "bg-[#16A34A] dark:bg-[#4ADE80]", edge: "border-[#16A34A] dark:border-[#4ADE80]", tint: "bg-[#16A34A]/10 dark:bg-[#4ADE80]/15" },
+  yellow: { badge: "bg-[#CA8A04] text-slate-950 dark:bg-[#FACC15] dark:text-slate-950", dot: "bg-[#CA8A04] dark:bg-[#FACC15]", edge: "border-[#CA8A04] dark:border-[#FACC15]", tint: "bg-[#CA8A04]/10 dark:bg-[#FACC15]/15" },
+  red: { badge: "bg-[#DC2626] text-white dark:bg-[#F87171] dark:text-slate-950", dot: "bg-[#DC2626] dark:bg-[#F87171]", edge: "border-[#DC2626] dark:border-[#F87171]", tint: "bg-[#DC2626]/10 dark:bg-[#F87171]/15" },
+  blue: { badge: "bg-[#2563EB] text-white dark:bg-[#60A5FA] dark:text-slate-950", dot: "bg-[#2563EB] dark:bg-[#60A5FA]", edge: "border-[#2563EB] dark:border-[#60A5FA]", tint: "bg-[#2563EB]/10 dark:bg-[#60A5FA]/15" },
+  purple: { badge: "bg-[#7C3AED] text-white dark:bg-[#C4B5FD] dark:text-slate-950", dot: "bg-[#7C3AED] dark:bg-[#C4B5FD]", edge: "border-[#7C3AED] dark:border-[#C4B5FD]", tint: "bg-[#7C3AED]/10 dark:bg-[#C4B5FD]/15" },
+  grey: { badge: "bg-[#6B7280] text-white dark:bg-[#9CA3AF] dark:text-slate-950", dot: "bg-[#6B7280] dark:bg-[#9CA3AF]", edge: "border-[#6B7280] dark:border-[#9CA3AF]", tint: "bg-[#6B7280]/10 dark:bg-[#9CA3AF]/15" },
 };
 
 export type StatusKey =
   | "complete" | "accepted" | "passed" | "paid" | "on_track" | "delivered"
   | "at_risk" | "awaiting_inspection" | "part_paid" | "conditional_supplier" | "waiting_on_supplier" | "waiting_on_customer"
-  | "overdue" | "blocked_supplier" | "sync_failed" | "failed_inspection"
+  | "overdue" | "blocked_supplier" | "sync_failed" | "failed_inspection" | "problem"
   | "active" | "in_progress" | "sent" | "issued" | "sync_pending"
   | "rework"
   | "draft" | "not_started" | "no_due_date" | "archived" | "void" | "cancelled";
@@ -62,6 +62,7 @@ export const STATUS_MAP: Record<StatusKey, { label: string; colour: StatusColour
   blocked_supplier: { label: "Blocked supplier", colour: "red" },
   sync_failed: { label: "Sync failed", colour: "red" },
   failed_inspection: { label: "Failed inspection", colour: "red" },
+  problem: { label: "Problem", colour: "red" },
 
   active: { label: "Active", colour: "blue" },
   in_progress: { label: "Running", colour: "blue" },

@@ -58,15 +58,15 @@ test("someone else saved first: the save is refused, local edits stay, their dat
   await expect(sheet.getByLabel("Heat / Cast #")).toHaveValue("THEIRS");
 });
 
-test("an unfinished job past its required date shows Overdue; due today doesn't", async ({ page }) => {
+test("an unfinished job past its required date shows Late; due today doesn't", async ({ page }) => {
   const late = `J-LATE-${w.runId}`;
   const today = `J-TODAY-${w.runId}`;
   await newJob(late, { date_required: "2026-01-05", status: "on_track" });
   await newJob(today, { date_required: new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date()), status: "on_track" });
   await signIn(page, w.tenants.beta.users.workshop);
   await page.goto("/jobs");
-  await expect(page.getByRole("row").filter({ hasText: late })).toContainText(/overdue/i);
-  await expect(page.getByRole("row").filter({ hasText: today })).not.toContainText(/overdue/i);
+  await expect(page.getByRole("row").filter({ hasText: late })).toContainText(/Late/);
+  await expect(page.getByRole("row").filter({ hasText: today })).not.toContainText(/Late/);
 });
 
 test("workshop pack: the selected jobs print together on one worksheet sheet", async ({ page }) => {
@@ -76,6 +76,15 @@ test("workshop pack: the selected jobs print together on one worksheet sheet", a
   await page.goto("/jobs");
   for (const jobNo of jobs) await page.getByRole("row").filter({ hasText: jobNo }).getByRole("checkbox").check();
   const [pack] = await Promise.all([page.waitForEvent("popup"), page.getByRole("button", { name: "Print Workshop Pack" }).click()]);
+  // P1 (D30-4): a company other than JNR prints the Basic pack by default; the JNR sheet is one pick away on the print page.
+  await expect(pack.locator('[data-print-layout="basic"]')).toHaveCount(1);
+  await expect(pack.getByText("JOB SHEETS", { exact: true })).toHaveCount(1);
+  for (const jobNo of jobs) await expect(pack.getByText(jobNo, { exact: true })).toBeVisible();
+  // Each job has a heat/cast no., so it is traceable (082) and Basic prints its traceability numbers.
+  for (const jobNo of jobs) await expect(pack.locator("[data-traceability]").filter({ hasText: `HEAT-${jobNo}` })).toHaveCount(1);
+  await expect(pack.getByLabel("Print layout")).toHaveValue("");
+  await pack.getByLabel("Print layout").selectOption("jnr");
+  await expect(pack.locator('[data-print-layout="basic"]')).toHaveCount(0);
   await expect(pack.getByText("(MULTI PART) WORKSHEET")).toHaveCount(1);
   for (const jobNo of jobs) {
     await expect(pack.getByText(jobNo, { exact: true })).toBeVisible();
@@ -130,4 +139,24 @@ test("prints show the sign-off of the current revision only; an earlier revision
   await expect(page.locator('[data-signoff="unsigned"]')).toContainText(/NOT SIGNED OFF\s*\(revision 0 was signed; edited since\)/); // the pack puts the reason on its own line
   await expect(page.locator('[data-signoff="legacy"]')).toHaveCount(1);
   await expect(page.locator('[data-signoff="legacy"]')).toContainText(/^Signed off \(earlier typed record\): Old Name, 09\/10\/2026, \d\d:\d\d, no signature or hash$/);
+});
+
+test("on a phone, the worksheet's Close button stays on screen at the bottom of a long worksheet, and closes it", async ({ page }) => {
+  const jobNo = `J-CLOSE-${w.runId}`;
+  await newJob(jobNo);
+  await signIn(page, w.tenants.beta.users.workshop);
+  // The Job Board shows cards, not table rows, at phone width: open the worksheet from the table, then narrow to a phone.
+  const sheet = await openWorksheet(page, jobNo);
+  await page.setViewportSize({ width: 390, height: 700 });
+  const close = sheet.getByRole("button", { name: "Close", exact: true });
+  await expect(close).toBeInViewport();
+  // Opening starts on the form, not on the Close button at the top.
+  await expect(close).not.toBeFocused();
+  const scrolled = await sheet.evaluate((el) => { el.scrollTop = el.scrollHeight; return el.scrollTop; });
+  expect(scrolled, "the worksheet is long enough to scroll on a phone").toBeGreaterThan(0);
+  await expect(close).toBeInViewport();
+  const box = await close.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(32);
+  await close.click();
+  await expect(sheet).toBeHidden();
 });

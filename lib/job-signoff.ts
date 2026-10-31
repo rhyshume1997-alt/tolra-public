@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { conflictEntries, newPhotoId, pendingEntries, rejectedEntries, type CustomerSignOffOp, type InternalSignOffOp, type SignOffOp } from "@/lib/offline/outbox";
 import { offlineScope } from "@/lib/offline/scope";
 import { isNetworkError } from "@/lib/offline/store";
+import { fmtDateText, fmtDateTimeText } from "@/lib/dates";
 import { canonicalJson, sha256Hex, verifySnapshot } from "@/lib/snapshot-hash";
 import { supabase } from "@/lib/supabase";
 
@@ -126,12 +127,12 @@ export function initialsFrom(name: string | null | undefined) {
 
 export const validInitials = (value: string) => /^[A-Z]{1,4}$/.test(value.trim().toUpperCase());
 
-/** "17 Oct 2026, 14:03" in the UK. */
+/** "17 Oct 2026, 14:03" in the UK (the person's date format; a numeric one gets the short month here). */
 export function formatSignedAt(iso: string | null | undefined) {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+  return fmtDateTimeText(date, { year: true });
 }
 
 /** "Jane Smith, Site Manager, Acme Ltd" (the parts given). */
@@ -146,11 +147,11 @@ export function todayInLondon(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 }
 
-/** 2026-10-13 -> 13 Oct 2026. */
+/** 2026-10-13 -> 13 Oct 2026 (the person's date format; a numeric one gets the short month here). */
 export function formatSignedOn(date: string) {
   const [y, m, d] = date.split("-").map(Number);
   if (!y || !m || !d) return date;
-  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, d)));
+  return fmtDateText(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, { year: true });
 }
 
 /**

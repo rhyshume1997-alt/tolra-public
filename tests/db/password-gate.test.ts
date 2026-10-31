@@ -109,6 +109,28 @@ describe("password changes and existing sessions (provider behaviour, verified)"
     const ok = await as(live.access_token).from("customers").insert({ organization_id: orgId, name: "Live session write" }).select("id");
     expect(ok.error).toBeNull();
   });
+
+  it("Change password's current-password check (audit Z7/C9) leaves no session behind and doesn't end the person's own", async () => {
+    // As app/api/auth/change-password/route.ts passwordMatches: a sign-in on a client that never stores it, then a local sign-out.
+    const user = world.tenants.beta.users.workshop;
+    const own = (await fresh().auth.signInWithPassword(user)).data.session!;
+    const check = fresh();
+    const checked = (await check.auth.signInWithPassword(user)).data.session!;
+    expect((await check.auth.signOut({ scope: "local" })).error).toBeNull();
+
+    const { apiUrl, anonKey } = isolatedBackend();
+    const as = (token: string) => createClient(apiUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    // The check's own token is refused at once (017's session check); the person's session still works.
+    const stale = await as(checked.access_token).rpc("current_user_organization_id");
+    expect(stale.error).not.toBeNull();
+    expect(stale.data ?? null).toBeNull();
+    expect((await fresh().auth.refreshSession({ refresh_token: checked.refresh_token })).error).not.toBeNull();
+    expect((await as(own.access_token).rpc("current_user_organization_id")).data).toBe(world.tenants.beta.id);
+    expect((await fresh().auth.getUser(own.access_token)).error).toBeNull();
+  });
 });
 
 describe("pending invites can't be claimed by self sign-up (audit SEC5, configuration gate)", () => {

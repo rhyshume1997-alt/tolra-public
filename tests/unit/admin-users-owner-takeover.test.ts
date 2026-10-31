@@ -7,7 +7,8 @@
  * routes ask admin_login_is_protected with the caller's token).
  *
  * Audit item 4: Set password and Reset two-step sign-in need the second step (aal2) always, whatever REQUIRE_ADMIN_MFA and the
- * company's rule say; every other Admin > Users route keeps today's rule.
+ * company's rule say. Audit Z1: so do creating a user (POST, any role, or adding an existing login) and a PATCH that gives or takes
+ * admin; every other Admin > Users change keeps today's rule.
  *
  * The real guard, helpers and routes run against one fake world: the service-role client is PostgREST-shaped over in-memory rows,
  * the caller's client answers the RPCs as the database does. requireProfile is replaced by a signed-in admin of A (no env is read).
@@ -28,6 +29,9 @@ const OWNER2 = "33333333-3333-4333-8333-333333333333";
 const FORMER = "44444444-4444-4444-8444-444444444444";
 /** An ordinary workshop member of A only: the legitimate target. */
 const MEM = "55555555-5555-4555-8555-555555555555";
+/** Another admin of A, and a deactivated admin of A (audit Z1). */
+const OTHER_ADMIN = "66666666-6666-4666-8666-666666666667";
+const OLD_ADMIN = "77777777-7777-4777-8777-777777777777";
 
 type Row = Record<string, unknown>;
 const PAST = "2026-10-19T09:00:00Z";
@@ -131,7 +135,7 @@ vi.mock("@/lib/server/password-setup", () => ({ setMustChange: async () => true 
 const { ownsIdentity, guard } = await import("@/lib/server/admin-users");
 const { POST: setPassword } = await import("@/app/api/admin/users/password/route");
 const { POST: resetTwoStep } = await import("@/app/api/admin/users/mfa-reset/route");
-const { PATCH } = await import("@/app/api/admin/users/route");
+const { PATCH, POST: createUser } = await import("@/app/api/admin/users/route");
 const { PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } = await import("@/lib/company-access");
 
 const json = (url: string, method: string, body: unknown) =>
@@ -139,6 +143,7 @@ const json = (url: string, method: string, body: unknown) =>
 const password = (userId: string) => setPassword(json("/api/admin/users/password", "POST", { user_id: userId, password: "Correct-Horse-Battery-9", must_change_password: false }));
 const twoStep = (userId: string) => resetTwoStep(json("/api/admin/users/mfa-reset", "POST", { userId }));
 const patch = (body: Row) => PATCH(json("/api/admin/users", "PATCH", body));
+const create = (body: Row) => createUser(json("/api/admin/users", "POST", body));
 
 beforeEach(() => {
   world.memberships = [
@@ -304,10 +309,52 @@ describe("audit item 4: Set password and Reset two-step sign-in need aal2 always
     expect((await password(MEM)).status).toBe(200);
     expect((await twoStep(MEM)).status).toBe(200);
   });
-  it("everything else keeps today's rule: the guard without the option and the users PATCH pass at aal1", async () => {
+  it("everything else keeps today's rule: the guard without the option and a users PATCH that doesn't touch admin pass at aal1", async () => {
     world.aal = "aal1";
     expect(await guard(new Request("http://localhost/api/admin/users"))).not.toBeInstanceOf(Response);
     expect((await guard(new Request("http://localhost/api/admin/users"), { aal2: true })) as Response).toBeInstanceOf(Response);
     expect((await patch({ user_id: MEM, role: "office" })).status).toBe(200);
+    expect((await patch({ user_id: MEM, secondary_role: "viewer" })).status).toBe(200);
+  });
+});
+
+describe("audit Z1: creating a user and giving or taking admin need aal2 always", () => {
+  it("POST at aal1 (a phished admin password): mfa_required for any role, before anything is read or written", async () => {
+    world.aal = "aal1";
+    for (const role of ["admin", "office"]) {
+      const response = await create({ email: `new.${role}@example.test`, full_name: "New Person", role, password: "Correct-Horse-Battery-9" });
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "mfa_required" });
+    }
+    // Adding an existing login (by username or e-mail) is refused the same way.
+    expect((await create({ email: `${MEM.slice(0, 4)}@example.test`, role: "admin" })).status).toBe(403);
+    expect(world.rpcCalls).toEqual([]);
+  });
+
+  it("PATCH at aal1 that gives admin (role, second role, reactivating an admin) or takes it away: mfa_required, nothing written", async () => {
+    world.aal = "aal1";
+    world.memberships.push(member(OTHER_ADMIN, A, { role: "admin" }), member(OLD_ADMIN, A, { role: "admin", active: false }));
+    for (const body of [
+      { user_id: MEM, role: "admin" },
+      { user_id: MEM, secondary_role: "admin" },
+      { user_id: OTHER_ADMIN, role: "office" },
+      { user_id: OLD_ADMIN, active: true },
+      { user_id: MEM, role: "admin", full_name: "Promoted" },
+    ]) {
+      const response = await patch(body);
+      expect(response.status, JSON.stringify(body)).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "mfa_required" });
+    }
+    expect(world.rpcCalls).not.toContain("set_member_access");
+    expect(world.memberships.find((m) => m.user_id === MEM)).toMatchObject({ role: "workshop", secondary_role: null });
+    expect(world.memberships.find((m) => m.user_id === OTHER_ADMIN)).toMatchObject({ role: "admin" });
+    expect(world.memberships.find((m) => m.user_id === OLD_ADMIN)).toMatchObject({ active: false });
+  });
+
+  it("at aal2 the same PATCH works", async () => {
+    world.memberships.push(member(OTHER_ADMIN, A, { role: "admin" }));
+    expect((await patch({ user_id: MEM, role: "admin" })).status).toBe(200);
+    expect(world.memberships.find((m) => m.user_id === MEM)).toMatchObject({ role: "admin" });
+    expect((await patch({ user_id: OTHER_ADMIN, role: "office" })).status).toBe(200);
   });
 });

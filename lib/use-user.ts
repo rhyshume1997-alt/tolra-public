@@ -5,23 +5,30 @@ import type { ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
 
 import { LOCK_NOTICE_KEY, forgetLastActive } from "@/lib/session-policy";
-import { resetCompanyProfile } from "@/lib/company";
+import { loadCompanyProfile, resetCompanyProfile } from "@/lib/company";
+import { companyChangedElsewhere, followsCompanySwitch, listenForTabSignals } from "@/lib/company-sync";
 import { displayNameProblem, normaliseDisplayName } from "@/lib/display-name";
 import { confirmSignOut, confirmUnsyncedDiscard, keptAfterSwitchMessage, loadOfflineIdentity, offlineScope, queueGrewDuring, reportOffline, saveOfflineIdentity, setOfflineScope, suspendOfflineAccess, unsyncedIds, wipeOfflineData, wipeOfflineScope } from "@/lib/offline/scope";
-import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
+import { ACCESS_RECHECK_EVERY_MS, askAccess, beginOrganizationSwitch, createRecheckRunner, createReturnAsk, decideAccess, endOrganizationSwitch, msUntilOfflineExpiry, organizationSwitchInProgress, sessionEnding, syncPassNeedsRecheck } from "@/lib/access-recheck";
 import { confirmedUser, invalidateConfirmedUser } from "@/lib/confirmed-user";
 import { OfflineIdentityExpiredError, offlineIdentityExpired } from "@/lib/offline/identity-age";
 import { pendingEntries, waitForReplayIdle } from "@/lib/offline/outbox";
-import { accessSignal, confirmOfflineAccess, OFFLINE_ACCESS_EVENT, sessionGoneReason, signalAccessRecheck } from "@/lib/offline/access";
+import { confirmOfflineAccess, OFFLINE_ACCESS_EVENT, sessionGoneReason, signalAccessRecheck } from "@/lib/offline/access";
 import { isNetworkError } from "@/lib/offline/store";
 import { onSyncComplete, syncNow } from "@/lib/offline/sync";
 import { resetOrgSettings } from "@/lib/org-settings";
+import { setPageCompany } from "@/lib/page-company";
 import { type SessionInfo, offlineCopyAllowed, parseSessionInfo } from "@/lib/session-info";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { UserProfile, UserRole } from "@/types";
 
 const PROFILE_COLUMNS = "id, email, full_name, role, secondary_role, organization_id, organization, workshop_email, active";
 const ROLE_KEY = "active-role";
+
+/** Same sections in the same order (the recheck's answer compared with what is shown). */
+function sameSections(a: readonly string[], b: readonly string[]) {
+  return a.length === b.length && a.every((section, i) => section === b[i]);
+}
 
 function getAllowedRoles(profile: UserProfile): UserRole[] {
   if (profile.role === "admin") return ["admin", "office", "workshop"];
@@ -104,6 +111,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error(err);
     }
+    // The other open tabs share this session: they check now and go to sign-in, not at their next focus or 10-minute recheck.
+    signalAccessRecheck();
     // Offline the server can't be told and supabase-js keeps the session: end it on this device regardless.
     clearAuthCookies();
     forgetLastActive();
@@ -137,6 +146,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const { error: switchError } = await supabase.rpc("switch_organization", { p_org: organizationId });
       if (switchError) throw switchError;
       invalidateConfirmedUser();
+      // The session is in the new company for every tab: the other open tabs check now and follow (lib/company-sync.ts).
+      signalAccessRecheck();
       // Switching away: the previous company's offline copy and the queue the person agreed to remove go from this device.
       const kept = await wipeOfflineScope(offlineScope(), confirmed);
       setOfflineScope(null);
@@ -158,6 +169,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     let accessEnded = false;
     // This tab found its session gone and is going to sign-in: it asked the other tabs once and ignores their answers.
     let leaving = false;
+    // This tab saw another tab switch company and is going to the dashboard (followCompanySwitch).
+    let followed = false;
     let currentUserId: string | null = null;
     let recheck: (() => Promise<void>) | null = null;
     let recheckRunner: { stop: () => void } | null = null;
@@ -274,6 +287,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
             ? { role: now.role as UserRole, secondary_role: (now.secondary_role as UserRole | null) ?? null, active: true, hidden_sections: now.hidden_sections }
             : null;
           const profileNow = profileResult.data ? { active: (profileResult.data as { active: boolean }).active, organization_id: now.organization_id ?? live.organization_id } : null;
+          // Another tab switched company: follow it, but only if THIS tab's company is still one the person belongs to. The server also
+          // answers with another company when the person was removed from this one and has a single other (migration 036
+          // _session_membership falls back to it); that is a removal and goes through decideAccess below. A disabled profile ends too.
+          if (profileNow && profileNow.active !== false && companyChangedElsewhere(live.organization_id, now)) {
+            const orgs = await client.rpc("my_organizations");
+            // A failed read is not an answer: the next check decides.
+            if (orgs.error) return;
+            if (!mounted || accessEnded) return;
+            if (followsCompanySwitch(live.organization_id, now, (orgs.data ?? []) as Array<{ organization_id: string }>)) {
+              followCompanySwitch();
+              return;
+            }
+          }
           const decision = decideAccess(live, { signedIn: true, profile: profileNow, membership: member });
           if (!mounted || accessEnded) return;
           if (decision.kind === "end") {
@@ -291,7 +317,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
             writeStoredRole(role);
             setActiveRoleState(role);
           }
-          setHiddenSections(hidden);
+          // The same page access as shown keeps the same array: no new context value, so no re-render of every useUser() page.
+          setHiddenSections((shown) => (sameSections(shown, hidden) ? shown : hidden));
           fullyConfirmedAt = passStartedAt;
           if (keepCopy) {
             confirmedAt = new Date().toISOString();
@@ -306,6 +333,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
       recheck = runner.ask;
       if (recheckTimer) clearInterval(recheckTimer);
       recheckTimer = setInterval(() => void recheck?.(), ACCESS_RECHECK_EVERY_MS);
+    }
+
+    /**
+     * Another tab switched company (the session is in a different company now): this tab leaves the old company's profile and pages
+     * the way the picker does, but removes nothing from the device (the switching tab asked the person and wiped what they agreed to),
+     * and reloads at the dashboard. A form open here is told by the browser's "leave this page?" prompt, the same as for any reload.
+     */
+    function followCompanySwitch() {
+      if (accessEnded || followed) return;
+      followed = true;
+      sessionEnding.value = true;
+      invalidateConfirmedUser();
+      setOfflineScope(null);
+      resetCompanyProfile();
+      resetOrgSettings();
+      writeStoredRole(null);
+      window.location.assign("/dashboard");
     }
 
     let loadingNow = false;
@@ -395,6 +439,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         if (nextProfile.organization_id) {
           fullyConfirmedAt = loadStartedAt;
           const keepCopy = offlineCopyAllowed(info);
+          // S5: the company this page works in; a write after another tab switches the session away is refused (lib/page-company.ts).
+          setPageCompany(nextProfile.organization_id);
           setOfflineScope({ userId: currentUser.id, orgId: nextProfile.organization_id }, { support: !keepCopy });
           if (keepCopy) {
             const identity = { profile: nextProfile, organizations: orgError ? [] : orgData ?? [], hiddenSections: hidden };
@@ -432,6 +478,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const stored = readStoredRole();
             setActiveRoleState(stored && getAllowedRoles(cachedProfile).includes(stored) ? stored : cachedProfile.role);
             setOfflineScope({ userId: sessionUser.id, orgId: cachedProfile.organization_id });
+            setPageCompany(cachedProfile.organization_id);
             reportOffline(true, identity!.syncedAt);
             // Still open when the 12 hours pass: lock then, not only at the next load.
             confirmedAt = identity!.syncedAt ?? null;
@@ -456,21 +503,26 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const onAccessEnded = (event: Event) => {
       if ((event as CustomEvent<string>).detail === currentUserId && !accessEnded) void endAccess("removed");
     };
-    const onStorage = (event: StorageEvent) => {
-      if (accessEnded || leaving) return;
-      const signal = accessSignal(event, currentUserId);
-      if (signal === "end") void endAccess("removed");
-      else if (signal === "recheck") void recheck?.();
-    };
     window.addEventListener(OFFLINE_ACCESS_EVENT, onAccessEnded);
-    window.addEventListener("storage", onStorage);
+    const stopTabSignals = listenForTabSignals(window, {
+      userId: () => currentUserId,
+      skip: () => accessEnded || leaving || followed,
+      onSignal: (signal) => {
+        if (signal === "end") void endAccess("removed");
+        else if (signal === "recheck") void recheck?.();
+        // Company settings changed in another tab: read them again (a failed read keeps what is shown).
+        else void loadCompanyProfile(true);
+      },
+    });
     const onOnline = () => {
       if (accessEnded) return;
       if (recheck && !expiredLock) void recheck();
       else if (!loadingNow) void loadUser(); // locked or never loaded: load for real now the server is reachable
     };
-    const onFocus = () => void recheck?.();
-    const onVisible = () => { if (document.visibilityState === "visible") void recheck?.(); };
+    // Coming back to the app fires both: one recheck for the pair (lib/access-recheck.ts createReturnAsk).
+    const returnAsk = createReturnAsk();
+    const onFocus = () => { if (returnAsk("focus")) void recheck?.(); };
+    const onVisible = () => { if (document.visibilityState === "visible" && returnAsk("visible")) void recheck?.(); };
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisible);
@@ -481,7 +533,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
       window.removeEventListener(OFFLINE_ACCESS_EVENT, onAccessEnded);
-      window.removeEventListener("storage", onStorage);
+      stopTabSignals();
       window.removeEventListener("online", onOnline);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);

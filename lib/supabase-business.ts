@@ -2,6 +2,7 @@
 
 import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { missingDbObject } from "@/lib/db-features";
+import { assertPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { isSupplierStatus, type SupplierStatus } from "@/lib/supplier-status";
 import { ValidationError } from "@/lib/validation/schemas";
@@ -74,6 +75,8 @@ export async function getCurrentUserAndOrganization(): Promise<{ userId: string;
   // The company of THIS sign-in session, as the database sees it (not the profile's copy).
   const { data: organizationId, error: organizationError } = await supabase.rpc("current_user_organization_id");
   if (organizationError || typeof organizationId !== "string") throw new Error("User profile organization was not found.");
+  // S5: another tab may have switched the session to another company since this page opened: refuse rather than file it there.
+  assertPageCompany(organizationId);
   return { userId: userData.user.id, organizationId };
 }
 

@@ -12,6 +12,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
+        role="table"
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
       />
@@ -23,6 +24,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
+      role="rowgroup"
       className={cn("[&_tr]:border-b", className)}
       {...props}
     />
@@ -33,6 +35,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
+      role="rowgroup"
       className={cn("[&_tr:last-child]:border-0", className)}
       {...props}
     />
@@ -43,6 +46,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
       data-slot="table-footer"
+      role="rowgroup"
       className={cn(
         "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
         className
@@ -56,6 +60,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
+      role="row"
       className={cn(
         "border-b border-line/80 transition-colors hover:bg-canvas/70 has-aria-expanded:bg-canvas data-[state=selected]:bg-brand-soft",
         className
@@ -69,6 +74,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      role="columnheader"
       className={cn(
         "h-10 px-3 text-left align-middle font-mono text-[0.68rem] font-medium uppercase tracking-[0.1em] whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className
@@ -82,6 +88,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
+      role="cell"
       className={cn(
         "px-3 py-3 align-middle whitespace-nowrap text-ink [&:has([role=checkbox])]:pr-0",
         className

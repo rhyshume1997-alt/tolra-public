@@ -27,16 +27,17 @@ import { executeClockOp, executeLabourOp, syncNow } from "@/lib/offline/sync";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { supabase } from "@/lib/supabase";
 import { type JobInfo, type SendNotice, type TimeData, deviceLabel, loadStartableJobs, loadTimeData, overlayPending, syncPassRan, timeSendNotice } from "@/lib/time-data";
-import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, dayTotals, hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
+import { type AttendanceEvent, type LabourSession, FLAG_TEXT, addDays, clockStateOf, dayTotals,hm, hmSigned, localDateOf, localDayBounds, localTimeOf, weekStartOf, zoneLabel } from "@/lib/time-sheet";
+import { fmtDateText } from "@/lib/dates";
 import { TIME_NEEDS_DATABASE_UPDATE, databaseHasTime, missingDbObject, timeOpsAllowed } from "@/lib/time-features";
 import { useUser } from "@/lib/use-user";
 
 const today = () => localDateOf(new Date());
 const VALID_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** "Mon 19 Oct 2026". */
+/** "Mon, 19 Oct 2026" (the person's date format, with the weekday). */
 export function dayHeading(date: string) {
-  return new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  return fmtDateText(date, { weekday: "short", year: true });
 }
 /** "07:31", with BST/GMT on the two clock-change days (so a repeated hour is never ambiguous on screen). */
 export function clockTime(at: string | number | null | undefined, date?: string) {
@@ -142,9 +143,8 @@ export function DaySheet() {
     return map;
   }, [merged, jobs]);
 
-  const lastSession = day?.sessions.filter((s) => s.start !== null).at(-1) ?? null;
-  const clockedIn = Boolean(lastSession && lastSession.end === null && lastSession.flags.includes("open"));
-  const onBreak = clockedIn && Boolean(lastSession?.events.at(-1)?.action === "break_start");
+  // The one clocked-in rule (lib/time-sheet clockStateOf), shared with the Whole floor's clocked-in count.
+  const { clockedIn, onBreak, since: clockedInSince } = clockStateOf(day?.sessions ?? []);
   const openJobs = day?.jobs.filter((j) => j.open) ?? [];
 
   async function send(op: ClockOp | LabourOp, label: string) {
@@ -247,7 +247,7 @@ export function DaySheet() {
             {Object.entries(people).sort((a, b) => (a[1] ?? "").localeCompare(b[1] ?? "")).map(([id, n]) => <option key={id} value={id}>{n ?? UNKNOWN}{id === me ? " (you)" : ""}</option>)}
           </select>
         ) : null}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <ColumnToggle tableKey="hours" />
           <Button asChild variant="outline" size="sm"><Link href={printHref}><Printer className="size-4" /> Print</Link></Button>
         </div>
@@ -261,7 +261,7 @@ export function DaySheet() {
           <CardContent className="flex flex-wrap items-center gap-3 pt-6">
             <Clock className="size-5 text-brand-accent" />
             <span className="font-medium" data-testid="clock-state">
-              {clockedIn ? `Clocked in since ${clockTime(lastSession?.start ?? null, date)}${onBreak ? " · on a break" : ""}` : "Not clocked in"}
+              {clockedIn ? `Clocked in since ${clockTime(clockedInSince, date)}${onBreak ? " · on a break" : ""}` : "Not clocked in"}
             </span>
             <div className="ml-auto flex flex-wrap gap-2">
               {clockedIn ? (
@@ -336,16 +336,17 @@ export function DaySheet() {
                   <Button disabled={!startJob || busy} onClick={() => { const j = jobById[startJob]; if (j) { void labour(j, "start"); setStartJob(""); } }} data-testid="labour-start"><Play className="size-4" /> Start</Button>
                 </div>
               ) : null}
+              {/* Below 1024px each job is a stacked card (data-tablet-cards in app/globals.css, labels from data-label), so a phone never scrolls sideways. */}
               {day.jobs.length ? (
-                <table className="w-full text-sm" data-testid="job-lines">
-                  <thead><tr className="border-b text-left text-xs uppercase text-slate-500"><th className="py-1">Job</th><th>Times</th><th className="text-right">Time</th><th className="text-right">Share</th><th /></tr></thead>
-                  <tbody>
+                <table role="table" className="w-full text-sm" data-testid="job-lines" data-tablet-cards>
+                  <thead role="rowgroup" className="hidden md:table-header-group"><tr role="row" className="border-b text-left text-xs uppercase text-slate-500"><th role="columnheader" className="py-1">Job</th><th role="columnheader">Times</th><th role="columnheader" className="text-right">Time</th><th role="columnheader" className="text-right">Share</th><th role="columnheader" /></tr></thead>
+                  <tbody role="rowgroup">
                     {day.jobs.map((line) => {
                       const job = jobById[line.jobId];
                       return (
-                        <tr key={line.jobId} className="border-b align-top">
-                          <td className="py-2"><span className="font-medium">{job?.job_no ?? "Job"}</span><div className="text-xs text-slate-500">{[job?.customer, job?.description].filter(Boolean).join(" · ")}</div></td>
-                          <td className="py-2">
+                        <tr role="row" key={line.jobId} className="block border-b align-top md:table-row">
+                          <td role="cell" className="block py-2 md:table-cell"><span className="font-medium">{job?.job_no ?? "Job"}</span><div className="text-xs text-slate-500">{[job?.customer, job?.description].filter(Boolean).join(" · ")}</div></td>
+                          <td role="cell" data-label="Times" className="block py-2 md:table-cell">
                             {line.sessions.map((s) => (
                               <div key={s.id} className="flex flex-wrap items-center gap-1">
                                 <span className="font-mono">{clockTime(s.started_at, date)}–{s.ended_at ? clockTime(s.ended_at, date) : "now"}</span>
@@ -361,9 +362,9 @@ export function DaySheet() {
                               </div>
                             ))}
                           </td>
-                          <td className="py-2 text-right font-mono">{hm(line.minutes)}</td>
-                          <td className="py-2 text-right font-mono">{hm(line.allocatedMinutes)}</td>
-                          <td className="py-2 text-right">{own && isToday && line.open && job ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void labour(job, "stop")} data-testid="labour-stop"><Square className="size-4" /> Stop</Button> : null}</td>
+                          <td role="cell" data-label="Time" className="block py-2 text-left font-mono md:table-cell desk:text-right">{hm(line.minutes)}</td>
+                          <td role="cell" data-label="Share" className="block py-2 text-left font-mono md:table-cell desk:text-right">{hm(line.allocatedMinutes)}</td>
+                          <td role="cell" data-actions className="block py-2 text-left empty:max-md:hidden md:table-cell desk:text-right">{own && isToday && line.open && job ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void labour(job, "stop")} data-testid="labour-stop"><Square className="size-4" /> Stop</Button> : null}</td>
                         </tr>
                       );
                     })}

@@ -30,15 +30,15 @@ async function seedQuotes(tag: string, description = "Layout check") {
 }
 
 /** Everything the Quotes table shows must sit inside its own cell, and the table must never be wider than its card. */
-async function expectFits(page: Page, label: string, ref: string, width: number) {
+async function expectFits(page: Page, label: string, ref: string) {
   const table = page.getByRole("table", { name: "Quotes" });
   await expect(table, label).toBeVisible();
-  const problems = await table.evaluate((el, [quoteRef, pageWidth]) => {
+  const problems = await table.evaluate((el, [quoteRef]) => {
     const out: string[] = [];
     const container = el.parentElement!;
-    // Every column shows in every view (Astra's ruling): below 1024px the table keeps its width and scrolls inside its card, so only the
-    // page itself must not scroll sideways there; from 1024px the table fits its card.
-    if (pageWidth >= 1024 && container.scrollWidth > container.clientWidth + 1) out.push(`table scrolls sideways (${container.scrollWidth} > ${container.clientWidth})`);
+    // Every column shows in every view (Astra's ruling). Below 1025px each quote is a stacked card with its columns as labelled lines (data-tablet-cards),
+    // so at every width neither the page nor the table's card scrolls sideways.
+    if (container.scrollWidth > container.clientWidth + 1) out.push(`table scrolls sideways (${container.scrollWidth} > ${container.clientWidth})`);
     if (document.documentElement.scrollWidth > document.documentElement.clientWidth + 1) out.push("page scrolls sideways");
     for (const th of Array.from(el.querySelectorAll("thead th"))) {
       const name = th.textContent?.trim() || "(select all)";
@@ -59,7 +59,7 @@ async function expectFits(page: Page, label: string, ref: string, width: number)
       }
     }
     return out;
-  }, [ref, width] as const);
+  }, [ref] as const);
   expect(problems, label).toEqual([]);
 }
 
@@ -74,7 +74,7 @@ test("Quotes table: every header, the Status badge (Superseded) and the Actions 
       await page.getByRole("button", { name: view, exact: true }).click();
       await expect(page.getByRole("button", { name: view, exact: true })).toHaveAttribute("aria-pressed", "true");
       await expect(page.getByRole("table", { name: "Quotes" }).getByRole("row").filter({ hasText: ref }).first()).toBeVisible();
-      await expectFits(page, `${view} @${width}`, ref, width);
+      await expectFits(page, `${view} @${width}`, ref);
     }
   }
 });

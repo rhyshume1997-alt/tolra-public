@@ -25,8 +25,9 @@ import { friendlyError } from "@/lib/friendly-error";
 import { type SavedJobMachine, autoBookedLines, databaseAutoBooks, notBookedYet } from "@/lib/auto-booking";
 import { type JobMachineEntry, keepsBooking, loadJobMachinesForDialog, machinesSaveReady, planMachinesSave } from "@/lib/job-machine-plan";
 import {
-  type Booking, type Machine, type ScheduledBooking, defaultJobStart, deleteBooking, formatDateTimeShort, planJobBookings, saveBooking, scheduleAll, toLocalInputValue,
+  type Booking, type Machine, type ScheduledBooking, defaultJobStart, deleteBooking, planJobBookings, saveBooking, scheduleAll, toLocalInputValue,
 } from "@/lib/machine-schedule";
+import { fmtDayDateTime } from "@/lib/dates";
 import { MAX_MACHINES, MAX_MACHINE_HOURS } from "@/lib/so-machines";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -221,7 +222,7 @@ export function JobMachinesDialog({ job, role, onClose, onSaved }: { job: JobMac
                         <Input aria-label={`Start on machine ${index + 1}`} type="datetime-local" className={touch} disabled={!movable} value={startOf(row)} onChange={(e) => setRow(row.key, { start: e.target.value, touched: true, startEdited: true })} />
                       </label>
                     ) : null}
-                    {planned && planned.hours > 0 ? <p className="text-xs text-slate-500">Finishes about {formatDateTimeShort(planned.finish)}{planned.clashes.length ? <span className="font-semibold text-amber-700 dark:text-amber-400">{` - clashes with ${[...new Set(planned.clashes.map((c) => c.jobNo))].join(", ")}`}</span> : null}</p> : null}
+                    {planned && planned.hours > 0 ? <p className="text-xs text-slate-500">Finishes about {fmtDayDateTime(planned.finish)}{planned.clashes.length ? <span className="font-semibold text-amber-700 dark:text-amber-400">{` - clashes with ${[...new Set(planned.clashes.map((c) => c.jobNo))].join(", ")}`}</span> : null}</p> : null}
                     {!kept && !row.book && !row.booking && row.machineId && Number(row.hours) > 0 && !loaded.some((entry) => entry.machineId === row.machineId)
                       ? <p className="text-xs text-slate-500" data-testid="auto-book-hint">Goes on the schedule at {byId.get(row.machineId)?.name ?? "the machine"}&apos;s next free time when you save.</p> : null}
                     {leaving ? <p className="text-xs text-amber-700 dark:text-amber-400">Its booking on {leaving} is removed from the schedule when you save.</p> : null}

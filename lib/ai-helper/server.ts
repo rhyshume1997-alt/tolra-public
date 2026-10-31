@@ -9,6 +9,7 @@ import { AI_HELPER_EFFORT, AI_HELPER_MODELS, AI_REQUEST_TIMEOUT_MS, type AiHelpe
 import { mockProvider } from "@/lib/ai-helper/mock";
 import { type AiFailure, type AiHelperProvider, AiProviderError, type AiUsage } from "@/lib/ai-helper/provider";
 import { decryptSecret } from "@/lib/integrations/crypto";
+import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 /**
  * The model provider this server uses: the company's own Anthropic account, or (AI_HELPER_PROVIDER=mock, tests and local runs only) the
@@ -31,11 +32,11 @@ export type RunOutcome<T> =
 export function outcomeMessage(outcome: Exclude<RunOutcome<unknown>, { kind: "ok" }>): { status: number; error: string; code: string } {
   switch (outcome.kind) {
     case "off": return { status: 404, error: "The AI helper is off for this company.", code: "off" };
-    case "cap": return { status: 429, error: "This company's AI limit for the month has been reached, so nothing was sent to the AI. An admin can raise the limit in Settings.", code: "cap" };
-    case "no_key": return { status: 409, error: "No AI key is set for this company. An admin can add the company's own key in Settings.", code: "no_key" };
+    case "cap": return { status: 429, error: "This company's AI limit for the month has been reached, so nothing was sent to the AI. An admin can raise the limit in the AI section.", code: "cap" };
+    case "no_key": return { status: 409, error: "No AI key is set for this company. An admin can add the company's own key in the AI section.", code: "no_key" };
     case "failed":
-      if (outcome.detail === "auth") return { status: 503, error: "The AI service refused this company's key. An admin can check it in Settings. Nothing was changed.", code: "key_refused" };
-      if (outcome.detail === "key") return { status: 503, error: "The company's AI key can't be read on this server. An admin can enter it again in Settings. Nothing was changed.", code: "key_unreadable" };
+      if (outcome.detail === "auth") return { status: 503, error: "The AI service refused this company's key. An admin can check it in the AI section. Nothing was changed.", code: "key_refused" };
+      if (outcome.detail === "key") return { status: 503, error: "The company's AI key can't be read on this server. An admin can enter it again in the AI section. Nothing was changed.", code: "key_unreadable" };
       if (outcome.failure === "refused") return { status: 422, error: "The AI declined to read this. Nothing was changed: fill the quote in by hand.", code: "refused" };
       if (outcome.failure === "invalid") return { status: 502, error: "The AI's answer could not be used. Nothing was changed: try again or fill the quote in by hand.", code: "invalid" };
       return { status: 503, error: "The AI service is not answering right now. Nothing was changed: try again later or carry on by hand.", code: "model_down" };
@@ -59,14 +60,22 @@ const digest = (text: string) => createHash("sha256").update(text, "utf8").diges
 
 /**
  * One request, in the order the cap and the audit need: reserve (the database checks role, company, switch, key and cap, and writes
- * ai_helper_requested or ai_helper_refused) -> decrypt the company's key -> one model call -> validate -> settle (actual cost, the
- * validated suggestion, ai_helper_suggested; or the failure, ai_helper_failed). No reservation, no model call. A suggestion whose
- * settle (and so its audit row) fails is not shown. Every database call is the person's own session.
+ * ai_helper_requested or ai_helper_refused) -> read and decrypt the company's key -> one model call -> validate -> settle (actual cost,
+ * the validated suggestion, ai_helper_suggested; or the failure, ai_helper_failed). No reservation, no model call. A suggestion whose
+ * settle (and so its audit row) fails is not shown. The reservation is the person's own session (after the route's own sign-in and
+ * role checks); only the key read and settle use the service role (migration 103: reserve no longer returns the key, and settle is
+ * the service role's only), each for this company and this reservation alone.
  */
 export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>> {
   const model = AI_HELPER_MODELS[input.feature];
   const maxOutputTokens = MAX_OUTPUT_TOKENS[input.feature];
   const estimate = estimatePence(model, Buffer.byteLength(input.system + input.data, "utf8"), maxOutputTokens);
+  // Without the service role nothing could be settled: refuse before anything is reserved.
+  const service = createSupabaseAdminClient();
+  if (!service) {
+    console.error("[ai-helper] service role not configured");
+    return { kind: "unavailable" };
+  }
   const { data: reserved, error } = await input.supabase.rpc("ai_helper_reserve", {
     p_feature: input.feature, p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8"),
   });
@@ -75,13 +84,13 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     console.error("[ai-helper] reserve refused", error.code ?? "error");
     return { kind: "unavailable" };
   }
-  const answer = reserved as { ok?: boolean; reason?: string; request_id?: string; key_enc?: string } | null;
+  const answer = reserved as { ok?: boolean; reason?: string; request_id?: string } | null;
   if (!answer?.request_id) return { kind: "unavailable" };
   const requestId = answer.request_id;
   if (!answer.ok) return answer.reason === "cap" ? { kind: "cap", requestId } : { kind: "no_key", requestId };
 
   const settle = async (status: "suggested" | "failed", failure: AiFailure | null, usage: AiUsage, usedModel: string | null, output: Record<string, unknown> | null) => {
-    const { error: settleError } = await input.supabase.rpc("ai_helper_settle", {
+    const { error: settleError } = await service.rpc("ai_helper_settle", {
       p_request: requestId, p_status: status, p_failure: failure, p_cost_pence: actualPence(model, usage), p_model: usedModel, p_output: output,
     });
     if (settleError) console.error("[ai-helper] settle refused", settleError.code ?? "error");
@@ -91,7 +100,10 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
 
   let apiKey: string;
   try {
-    apiKey = decryptSecret(answer.key_enc ?? "", { organizationId: input.organizationId, provider: "anthropic", purpose: "api_key" });
+    // The reservation passed, so this company has a key: read it for this company only.
+    const { data: secret, error: secretError } = await service.from("ai_helper_secrets").select("api_key_enc").eq("organization_id", input.organizationId).maybeSingle();
+    if (secretError) throw secretError;
+    apiKey = decryptSecret(String((secret as { api_key_enc?: unknown } | null)?.api_key_enc ?? ""), { organizationId: input.organizationId, provider: "anthropic", purpose: "api_key" });
   } catch {
     await settle("failed", "unavailable", none, null, null);
     return { kind: "failed", failure: "unavailable", detail: "key" };

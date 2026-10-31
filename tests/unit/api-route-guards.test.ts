@@ -1,4 +1,4 @@
-// Every API route guards itself. middleware.ts lets every /api/ path through untouched (`if (isApi) return response;`), so a route
+// Every API route guards itself. middleware.ts lets every /api/ path through after getUser (`if (isApi) return response;`, before any page gate), so a route
 // handler with no guard of its own is open to the internet. This test reads every app/api/**/route.ts and, for each exported handler
 // (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS), requires a guard statement at the TOP LEVEL of the handler, before anything else that
 // matters, or that the route is on PUBLIC_ROUTES below with the reason it is safe without one. A guard statement is one of:
@@ -50,6 +50,11 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "auth/session:GET": "Answers only the caller's own user id and e-mail from their own cookie, or null.",
   "auth/change-password:POST": "Self-authenticates inline (auth.getUser() before any write); every write is to the caller's own login (user.id).",
   "my-company-logos:GET": "Self-authenticates inline (auth.getUser()); the service role reads only the companies my_organizations() returns AS THE CALLER.",
+  // 107 (E2): the accountant's Xero connect link, opened signed out. Each grants exactly one company's Xero Connect and nothing else.
+  "integrations/invite/[token]:GET": "The accountant's one-use Xero connect link's page: rate limited; only an open link's company name (integration_invite_peek, service role) and a Continue button. Nothing is used up; a bad link gets a fixed page.",
+  "integrations/invite/[token]:POST": "The connect link's Continue button: same origin, rate limited; only an open link (integration_invite_redeem, service role, used up at once, its admin still an admin) starts that one company's Xero Connect.",
+  "integrations/invite/callback:GET": "Xero's return for a connect link: only a state a link started in the last 10 minutes (integration_oauth_consume_invite: single use, invite states only) completes that link's company, as its admin; a fixed page, nothing else.",
+  "pwa-icon:GET": "The product's app icon drawn at the requested size (route.tsx); a fixed image, no company data, no database.",
 };
 
 type Finding = { route: string; method: string; ok: boolean; reason: string };
@@ -65,8 +70,8 @@ function isParamsRead(expr: ts.Expression): boolean {
 }
 
 /** Analyses one route file's source. Exported handlers only; same-file helpers are followed. */
-function analyseRoute(route: string, source: string): Finding[] {
-  const file = ts.createSourceFile(`${route}.ts`, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+function analyseRoute(route: string, source: string, kind: ts.ScriptKind = ts.ScriptKind.TS): Finding[] {
+  const file = ts.createSourceFile(`${route}.ts`, source, ts.ScriptTarget.Latest, true, kind);
   const topLevel = new Map<string, Fn>();
   const anyLocal = new Map<string, Fn>();
   const handlers = new Map<string, Fn | null>();
@@ -224,16 +229,32 @@ function gaps(findings: Finding[], publicRoutes: Record<string, string>): Findin
 }
 
 const API_DIR = path.resolve(__dirname, "../../app/api");
-const routeFiles = (readdirSync(API_DIR, { recursive: true }) as string[])
-  .filter((rel) => path.basename(rel) === "route.ts")
-  .map((rel) => ({ route: path.dirname(rel).split(path.sep).join("/"), source: readFileSync(path.join(API_DIR, rel), "utf8") }))
+// Every route handler file Next.js accepts (route.ts, route.tsx, route.js ..), not only route.ts: app/api/pwa-icon is a route.tsx.
+const ROUTE_FILE = /^route\.(ts|tsx|js|jsx|mjs)$/;
+const allApiFiles = readdirSync(API_DIR, { recursive: true }) as string[];
+const routeFiles = allApiFiles
+  .filter((rel) => ROUTE_FILE.test(path.basename(rel)))
+  .map((rel) => ({
+    route: path.dirname(rel).split(path.sep).join("/"),
+    source: readFileSync(path.join(API_DIR, rel), "utf8"),
+    kind: /x$/.test(rel) ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  }))
   .sort((a, b) => a.route.localeCompare(b.route));
-const findings = routeFiles.flatMap(({ route, source }) => analyseRoute(route, source));
+const findings = routeFiles.flatMap(({ route, source, kind }) => analyseRoute(route, source, kind));
 
 describe("every app/api route handler guards itself (middleware lets /api/ through)", () => {
   it("finds the route files and their handlers", () => {
     expect(routeFiles.length).toBeGreaterThanOrEqual(35);
     expect(findings.length).toBeGreaterThanOrEqual(routeFiles.length);
+  });
+
+  it("enumerates every route file under app/api by walking the folder, whatever its extension (no fixed list)", () => {
+    const anyRouteFile = allApiFiles.filter((rel) => /^route\.[a-z]+$/.test(path.basename(rel)));
+    expect(routeFiles).toHaveLength(anyRouteFile.length);
+    expect(routeFiles.map((r) => r.route)).toContain("pwa-icon");
+    // Every route file exports at least one handler the check found, so none is skipped silently.
+    const withFindings = new Set(findings.map((f) => f.route));
+    expect(routeFiles.filter((r) => !withFindings.has(r.route)).map((r) => r.route)).toEqual([]);
   });
 
   it("each handler calls a known guard first (and returns its refusal), or is on the public list with a reason", () => {
@@ -247,8 +268,10 @@ describe("every app/api route handler guards itself (middleware lets /api/ throu
   });
 
   it("the routes that use the service role on a company's behalf, or send e-mail, are guarded, not public", () => {
-    for (const key of ["admin/alert-test:POST", "send-job:POST", "mail/send:POST", "cron/ip-purge:GET", "job-photos/[id]:GET", "integrations/xero/send:POST", "integrations/xero/after-issue:POST", "integrations/xero/callback:GET",
-      "integrations/xero/disconnect:POST", "admin/users:POST", "admin/users:PATCH", "admin/users/sign-in:GET", "admin/users/sign-in:POST",
+    for (const key of ["admin/alert-test:POST", "send-job:POST", "mail/send:POST", "cron/ip-purge:GET", "cron/daily:GET", "cron/nightly:GET", "job-photos/[id]:GET", "integrations/xero/send:POST", "integrations/xero/after-issue:POST", "integrations/xero/callback:GET",
+      "integrations/xero/disconnect:POST", "integrations/xero/test:POST", "integrations/microsoft/connect:POST", "integrations/microsoft/callback:GET",
+      "integrations/microsoft/disconnect:POST", "integrations/microsoft/test:POST", "integrations/invite:POST", "integrations/invite:DELETE", "integrations/status:GET",
+      "integrations/app-credentials:GET", "integrations/app-credentials:POST", "integrations/app-credentials:DELETE", "admin/users:POST", "admin/users:PATCH", "admin/users/sign-in:GET", "admin/users/sign-in:POST",
       "admin/users/password:POST", "admin/users/mfa-reset:POST", "admin/users/companies:POST", "platform/organizations:POST"]) {
       expect(PUBLIC_ROUTES[key]).toBeUndefined();
       expect(findings.find((f) => `${f.route}:${f.method}` === key)).toMatchObject({ ok: true });

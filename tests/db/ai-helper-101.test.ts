@@ -2,8 +2,9 @@
  * Migration 101 (working number): the AI admin helper's tables and functions, on the local stack.
  *
  *   - Off by default: a new company's status has both features off, no cap and no key; reserve refuses while a feature is off.
- *   - Roles: office and admin may reserve, settle and decide; only admin may change settings or the key; workshop and viewer get
- *     nothing; a support session gets nothing; an admin without the second step (company requires it) gets nothing.
+ *   - Roles: office and admin may reserve and decide; only admin may change settings or the key; workshop and viewer get nothing; a
+ *     support session gets nothing; an admin without the second step (company requires it) gets nothing. From 103 the server settles
+ *     with the service role (settle below), and no signed-in person may call settle (settleAs); reserve hands back no key.
  *   - The cap: reserved BEFORE the call in one guarded UPDATE: 20 requests at once against room for 10 give exactly 10, and the ledger
  *     never passes the cap; settle moves the actual cost (never above the reservation) to spent; a reservation left open over 10
  *     minutes is released; no key or no room is a 'refused' request and no reservation.
@@ -97,8 +98,34 @@ const status = (p: Person) => call(p, "public.ai_helper_status()");
 const save = (p: Person, roundup: boolean, rfq: boolean, cap: number) => call(p, "public.ai_helper_save_settings($1, $2, $3)", [roundup, rfq, cap]);
 const setKey = (p: Person, enc: string | null, last4: string | null) => call(p, "public.ai_helper_set_key($1, $2)", [enc, last4]);
 const reserve = (p: Person, feature: string, estimate: number) => call(p, "public.ai_helper_reserve($1, $2, $3, $4)", [feature, estimate, DIGEST, 100]);
-const settle = (p: Person, id: unknown, statusName: string, failure: string | null, cost: number, output: unknown) =>
-  call(p, "to_jsonb(public.ai_helper_settle($1, $2, $3, $4, $5, $6))", [id, statusName, failure, cost, "claude-opus-5-5", output === null ? null : JSON.stringify(output)]);
+const settleArgs = (id: unknown, statusName: string, failure: string | null, cost: number, output: unknown) =>
+  [id, statusName, failure, cost, "claude-opus-5-5", output === null ? null : JSON.stringify(output)];
+/** A signed-in person calling settle themself: refused from 103 (service role only). */
+const settleAs = (p: Person, id: unknown, statusName: string, failure: string | null, cost: number, output: unknown) =>
+  call(p, "to_jsonb(public.ai_helper_settle($1, $2, $3, $4, $5, $6))", settleArgs(id, statusName, failure, cost, output));
+/** The server settling the request `p` reserved, as it does from 103: with the service role (no person). */
+async function settle(p: Person, id: unknown, statusName: string, failure: string | null, cost: number, output: unknown): Promise<Awaited<ReturnType<typeof call>>> {
+  const owner = (await withDb(async (db) => (await db.query<{ user_id: string }>("select user_id from public.ai_helper_requests where id = $1", [id])).rows))[0]?.user_id;
+  if (owner !== undefined && owner !== p.id) throw new Error(`test bug: request ${String(id)} is not ${p.email}'s`);
+  try {
+    const value = await withDb(async (db) => {
+      await db.query("begin");
+      try {
+        await db.query("set local role service_role");
+        await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: "service_role" })]);
+        const v = (await db.query<{ v: Record<string, unknown> | null }>("select to_jsonb(public.ai_helper_settle($1, $2, $3, $4, $5, $6)) as v", settleArgs(id, statusName, failure, cost, output))).rows[0]?.v ?? null;
+        await db.query("commit");
+        return v;
+      } catch (error) {
+        await db.query("rollback");
+        throw error;
+      }
+    });
+    return { ok: true, value };
+  } catch (error) {
+    return { ok: false, code: (error as { code?: string }).code ?? "error", hint: (error as { hint?: string }).hint };
+  }
+}
 const decide = (p: Person, id: unknown, decision: string, quote: string | null) => call(p, "to_jsonb(public.ai_helper_decide($1, $2, $3))", [id, decision, quote]);
 
 const sql = <T extends Record<string, unknown>>(text: string, params: unknown[] = []) => withDb(async (db) => (await db.query<T>(text, params)).rows);
@@ -156,7 +183,7 @@ describe("101: off by default, roles", () => {
 
   it("workshop and viewer get nothing from any function; office may not change settings or the key", async () => {
     for (const p of [A.workshop, A.viewer]) {
-      for (const r of [await status(p), await reserve(p, "rfq", 1), await save(p, true, true, 100), await setKey(p, KEY_ENC, "WXYZ"), await settle(p, randomUUID(), "failed", "invalid", 0, null), await decide(p, randomUUID(), "rejected", null)]) {
+      for (const r of [await status(p), await reserve(p, "rfq", 1), await save(p, true, true, 100), await setKey(p, KEY_ENC, "WXYZ"), await settleAs(p, randomUUID(), "failed", "invalid", 0, null), await decide(p, randomUUID(), "rejected", null)]) {
         expect(r).toMatchObject({ ok: false, code: "42501" });
       }
     }
@@ -236,17 +263,20 @@ describe("101: off by default, roles", () => {
 });
 
 describe("101: the cap", () => {
-  it("reserve hands back the key and a request id, audited; settle moves the actual cost (never above the reservation) to spent", async () => {
+  it("reserve hands back a request id (no key, from 103), audited; settle moves the actual cost (never above the reservation) to spent", async () => {
     const r = await reserve(A.office, "rfq", 10);
-    expect(r).toMatchObject({ ok: true, value: { ok: true, key_enc: KEY_ENC } });
+    expect(r).toMatchObject({ ok: true, value: { ok: true } });
+    expect(Object.keys((r as unknown as { value: Record<string, unknown> }).value).sort()).toEqual(["ok", "request_id"]);
     const id = (r as unknown as { value: { request_id: string } }).value.request_id;
     expect(await usage(orgA)).toEqual([{ reserved_pence: 10, spent_pence: 0 }]);
     expect((await audit(orgA, "ai_helper_requested")).at(-1)).toMatchObject({ entity_id: id, actor_user_id: A.office.id, metadata: { feature: "rfq", estimate_pence: 10, input_bytes: 100 } });
-    // Someone else (even an admin) can't settle it; a bad shape is refused.
-    expect(await settle(A.admin, id, "suggested", null, 1, { kind: "rfq", lines: [] })).toMatchObject({ ok: false, code: "42501" });
+    // No signed-in person can settle it (the requester included, an admin too: 103); a bad shape is refused.
+    expect(await settleAs(A.admin, id, "suggested", null, 1, { kind: "rfq", lines: [] })).toMatchObject({ ok: false, code: "42501" });
+    expect(await settleAs(A.office, id, "suggested", null, 0, { kind: "rfq", lines: [] })).toMatchObject({ ok: false, code: "42501" });
     expect(await settle(A.office, id, "suggested", "invalid", 1, { lines: [] })).toMatchObject({ ok: false, code: "22023" });
     expect(await settle(A.office, id, "suggested", null, 99, { kind: "rfq", lines: [{}, {}] })).toMatchObject({ ok: true });
     expect(await usage(orgA)).toEqual([{ reserved_pence: 0, spent_pence: 10 }]);
+    expect((await audit(orgA, "ai_helper_suggested")).at(-1)).toMatchObject({ entity_id: id, actor_user_id: A.office.id });
     expect((await audit(orgA, "ai_helper_suggested")).at(-1)?.metadata).toEqual({ feature: "rfq", model: "claude-opus-5-5", cost_pence: 10, lines: 2, source: "ai_helper" });
     // Once only.
     expect(await settle(A.office, id, "failed", "invalid", 0, null)).toMatchObject({ ok: false, code: "42501" });
@@ -385,13 +415,15 @@ describe("101: two companies", () => {
   it("beta can't settle or decide alpha's requests, and a beta key never reaches alpha", async () => {
     const r = await reserve(A.office, "rfq", 5);
     const id = (r as unknown as { value: { request_id: string } }).value.request_id;
-    expect(await settle(B.office, id, "failed", "invalid", 0, null)).toMatchObject({ ok: false, code: "42501" });
+    expect(await settleAs(B.office, id, "failed", "invalid", 0, null)).toMatchObject({ ok: false, code: "42501" });
     await settle(A.office, id, "suggested", null, 1, { kind: "rfq", lines: [] });
     expect(await decide(B.admin, id, "rejected", null)).toMatchObject({ ok: false, code: "42501" });
     expect((await sql<{ status: string }>("select status from public.ai_helper_requests where id = $1", [id]))[0].status).toBe("suggested");
     await setKey(B.admin, "v1.dddddddddddddddd.eeeeeeeeeeeeeeeeeeeeee.ffffffffffff", "BETA");
     const a = await reserve(A.office, "rfq", 1);
-    expect((a as unknown as { value: { key_enc: string } }).value.key_enc).toBe(KEY_ENC);
+    // From 103 reserve hands back no key; alpha's stored key (what the server reads for alpha) is still alpha's own.
+    expect((a as unknown as { value: Record<string, unknown> }).value).not.toHaveProperty("key_enc");
+    expect((await sql<{ k: string }>("select api_key_enc as k from public.ai_helper_secrets where organization_id = $1", [orgA]))[0].k).toBe(KEY_ENC);
     await settle(A.office, (a as unknown as { value: { request_id: string } }).value.request_id, "failed", "unavailable", 0, null);
   });
 });
