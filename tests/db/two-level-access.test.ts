@@ -350,6 +350,10 @@ describe("the platform owner", () => {
     expect((await c.rpc("next_doc_number", { p_prefix: "QUO" })).error).not.toBeNull();
     expect((await c.rpc("write_audit", { p_action: "UPDATE", p_entity_table: "jobs", p_entity_id: seedC.jobs, p_old: null, p_new: null, p_metadata: {}, p_ip: null, p_user_agent: null })).error).not.toBeNull();
     expect((await c.rpc("set_archive_state", { p_table: "jobs", p_id: seedC.jobs, p_state: "archived" })).error).not.toBeNull();
+    // 117: a Problem is neither raised on the company's job nor cleared from a read-only support session.
+    expect((await c.rpc("report_job_problem", { p_job: seedC.jobs, p_reason: "other", p_note: "Support attempt", p_request_id: randomUUID() })).error).not.toBeNull();
+    expect((await c.rpc("resolve_job_problem", { p_problem: randomUUID(), p_note: "Support attempt" })).error).not.toBeNull();
+    expect(await sql("select 1 from public.job_problems where organization_id = $1", [gamma])).toEqual([]);
     // Files.
     const png = Buffer.from("89504e470d0a1a0a", "hex");
     const upload = await c.storage.from("org-logos").upload(`${gamma}/support.png`, png, { contentType: "image/png", upsert: true });
