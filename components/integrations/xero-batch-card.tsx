@@ -165,15 +165,15 @@ export function XeroBatchCard() {
             {preview.items.length ? (
               <div className="max-h-72 overflow-auto rounded border border-slate-200">
                 <table className="w-full text-sm" data-testid="batch-list">
-                  <thead className="bg-slate-50 text-left text-xs text-slate-600"><tr><th className="p-2">Document</th><th className="p-2">Customer</th><th className="p-2">Date</th><th className="p-2 text-right">Total</th><th className="p-2">Result</th></tr></thead>
+                  <thead className="bg-slate-50 text-left text-xs text-slate-600 max-md:hidden"><tr><th className="p-2">Document</th><th className="p-2">Customer</th><th className="p-2">Date</th><th className="p-2 text-right">Total</th><th className="p-2">Result</th></tr></thead>
                   <tbody>
                     {preview.items.map((i) => {
                       const r = results[`${i.docType}:${i.id}`];
                       return (
-                        <tr key={`${i.docType}:${i.id}`} className="border-t border-slate-100" data-testid="batch-row" data-outcome={r?.outcome ?? ""}>
-                          <td className="p-2 font-medium">{label(i)}</td><td className="p-2">{i.customer}</td><td className="p-2">{i.date}</td>
-                          <td className="p-2 text-right">{money(i.total)}</td>
-                          <td className="p-2">{r ? <><strong>{OUTCOME[r.outcome]}</strong>{r.detail ? <span className="block text-xs text-slate-600">{r.detail}</span> : null}</> : null}</td>
+                        <tr key={`${i.docType}:${i.id}`} className="border-t border-slate-100 max-md:grid max-md:grid-cols-2 max-md:p-2" data-testid="batch-row" data-outcome={r?.outcome ?? ""}>
+                          <td className="p-2 font-medium max-md:col-span-2">{label(i)}</td><td data-label="Customer" className="p-2">{i.customer}</td><td data-label="Date" className="p-2">{i.date}</td>
+                          <td data-label="Total" className="p-2 text-right max-md:text-left">{money(i.total)}</td>
+                          <td data-label="Result" className="p-2">{r ? <><strong>{OUTCOME[r.outcome]}</strong>{r.detail ? <span className="block text-xs text-slate-600">{r.detail}</span> : null}</> : null}</td>
                         </tr>
                       );
                     })}
