@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
+import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
 import { PrintLayoutCard } from "@/components/print-layout-settings-card";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
@@ -646,6 +647,7 @@ export default function SettingsPage() {
         <PrintLayoutCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
+        <EmailSchedulesCard />
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><LayoutList className="size-5 text-brand-accent" /> Menu Sections</CardTitle></CardHeader>
           <CardContent className="space-y-5">

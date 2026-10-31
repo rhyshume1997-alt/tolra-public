@@ -78,7 +78,7 @@ markers(migration, present) AS (
     ('076 data import',                    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'import_undo') AND to_regclass('public.import_runs') IS NOT NULL AND EXISTS (SELECT 1 FROM fn WHERE proname = 'invoice_issue_lock' AND prosrc LIKE '%quoteflow.data_import_undo%')),
     ('077 audit hash index lookup',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'set_audit_hash' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '5f4b0bcedcdf8a8c044e2e78a88a7221')),
     ('078 ip retention, CRD numbers',     EXISTS (SELECT 1 FROM fn WHERE proname = 'purge_site_network_ips') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'next_doc_number' AND prosrc LIKE '%''CRD''%') AND to_regclass('public.attendance_event_network_ips') IS NOT NULL),
-    -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.
+    -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.,
     ('079 import under pg-safeupdate',    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data_run' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('f7c672e961be898619c046d76458680e', '0a2fec5746b0b1262cb2af6fe792bd7c'))),
     ('080 activity labels, job work',     EXISTS (SELECT 1 FROM fn WHERE proname = 'convert_sales_order' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'dc8165549871bd15047765ac4fba811e')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'activity_label' AND prosrc LIKE '%credit_ref%')),
@@ -120,6 +120,11 @@ markers(migration, present) AS (
     ('102 security guards',               EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_may_edit_profile')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'organization_settings_guard_nav' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '99579bb09f2fcf9458103b3128af20c8')),
     ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'ca5166191666584107491f95ccce4702')),
+    ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
+                                          AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
+    ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reopen_record')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'decide_reopen_request')),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
     ('116 overview owed snapshots',       to_regclass('public.overview_owed_snapshots') IS NOT NULL
@@ -350,6 +355,10 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cd5ac6d43f9a5ade20815a82ed123717' THEN '101' WHEN 'ca5166191666584107491f95ccce4702' THEN '103' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle'), 'missing (101 not applied)'),
     '101 / 101 before 103, 103 / 103 after (missing: apply 101 first; other: stop, 103 refuses to replace it)'
+  UNION ALL SELECT 47, '113 needs: public.reopen_job is 081''s (113 calls it for every reopen and replaces nothing)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing'),
+    '081 before and after 113 (other or missing: stop and report)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
