@@ -26,9 +26,9 @@ describe("reasons and words", () => {
   });
   it("the flag says Problem, how many, why and who is waited for; nothing when there is none", () => {
     expect(problemFlag([])).toBeNull();
-    expect(problemFlag([problem()])).toEqual({ word: "Problem", count: 1, detail: "Problem reported: Material. Waiting for the office." });
+    expect(problemFlag([problem()])).toEqual({ word: "Problem", count: 1, headline: "Problem: Material", detail: "Problem reported: Material. Waiting for the office." });
     expect(problemFlag([problem(), problem({ id: "p2", reason: "drawing" }), problem({ id: "p3", reason: "material" })])).toEqual({
-      word: "Problem", count: 3, detail: "3 problems reported: Material, Drawing. Waiting for the office.",
+      word: "Problem", count: 3, headline: "Problems (3): Material, Drawing", detail: "3 problems reported: Material, Drawing. Waiting for the office.",
     });
   });
   it("picks one job's problems, and the set of jobs that carry any", () => {
