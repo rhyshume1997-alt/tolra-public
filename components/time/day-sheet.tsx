@@ -335,8 +335,8 @@ export function DaySheet() {
                   <Button disabled={!startJob || busy} onClick={() => { const j = jobById[startJob]; if (j) { void labour(j, "start"); setStartJob(""); } }} data-testid="labour-start"><Play className="size-4" /> Start</Button>
                 </div>
               ) : null}
+              {/* Below 1024px each job is a stacked card (data-tablet-cards in app/globals.css, labels from data-label), so a phone never scrolls sideways. */}
               {day.jobs.length ? (
-                {/* Below 1024px each job is a stacked card (data-tablet-cards in app/globals.css, labels from data-label), so a phone never scrolls sideways. */}
                 <table className="w-full text-sm" data-testid="job-lines" data-tablet-cards>
                   <thead className="hidden md:table-header-group"><tr className="border-b text-left text-xs uppercase text-slate-500"><th className="py-1">Job</th><th>Times</th><th className="text-right">Time</th><th className="text-right">Share</th><th /></tr></thead>
                   <tbody>
