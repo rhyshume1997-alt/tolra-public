@@ -15,7 +15,8 @@ describe("DialogHeader stickyClose", () => {
   it("sticks to the top of the scrolling dialog and holds the Close button, 44px on a touch screen", () => {
     const html = render(true);
     expect(html).toContain('data-sticky-close=""');
-    expect(html).toMatch(/class="[^"]*\bsticky\b[^"]*\bbg-surface\b[^"]*\bz-10\b/);
+    const headerClass = html.match(/^<div[^>]* class="([^"]*)"/)![1].split(" ");
+    for (const cls of ["sticky", "bg-surface", "z-10"]) expect(headerClass).toContain(cls);
     expect(html).toMatch(/<button[^>]*class="[^"]*pointer-coarse:size-11[^"]*"[^>]*>.*<span class="sr-only">Close<\/span><\/button>/);
     expect(html.match(/>Close</g)).toHaveLength(1);
   });
