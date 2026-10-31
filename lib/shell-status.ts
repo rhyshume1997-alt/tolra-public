@@ -36,8 +36,9 @@ export function shellStatusSummary(input: { role?: string | null; company?: stri
 
 /**
  * Dense tables only where the screen supports them (wider than 1024px). On a phone or tablet a chosen "table" is shown as
- * cards; "cards" and the compact "list" are shown as chosen. The choice itself is kept, so it returns on a wide screen.
+ * cards; "cards" and the compact "list" are shown as chosen, except on a page whose list is a wide table with sticky columns (the Job Board:
+ * `listNeedsWide`), where "list" is shown as cards too. The choice itself is kept, so it returns on a wide screen.
  */
-export function effectiveViewMode(mode: ViewMode, wide: boolean): ViewMode {
-  return !wide && mode === "table" ? "cards" : mode;
+export function effectiveViewMode(mode: ViewMode, wide: boolean, listNeedsWide = false): ViewMode {
+  return !wide && (mode === "table" || (listNeedsWide && mode === "list")) ? "cards" : mode;
 }

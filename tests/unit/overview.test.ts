@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import type { AttentionSection } from "@/lib/attention-items";
-import { attentionSummary, fleetLoad, leaksFrom, otherAttention, OVERVIEW_SECTIONS, revenueVsLastMonth } from "@/lib/overview";
+import { ATTENTION_RULES, type AttentionSection } from "@/lib/attention-items";
+import { attentionSummary, fleetLoad, floorNow, leaksFrom, otherAttention, OVERVIEW_SECTIONS, revenueVsLastMonth } from "@/lib/overview";
 
 const sec = (id: AttentionSection["id"], count: number, detail = "", failed = false): AttentionSection => ({
   id,
@@ -127,6 +127,27 @@ describe("owner overview figures", () => {
     expect(all.map((o) => o.id)).toEqual(["quotes-expired"]);
   });
 
+  it("open Problems (jobs-problems, migration 117) are counted in Today with the other rules and listed under the tiles, since no tile shows them", () => {
+    const rule = ATTENTION_RULES.find((r) => r.id === "jobs-problems")!;
+    expect(rule.roles).toEqual(["admin", "office"]);
+    const withProblems = [...sections, sec("jobs-problems", 2, "Severn Valve Co (reported today)")];
+    // The other rules make 14 (1 + 6 + 2 + 3 + 2), plus the 2 Problems and 1 Dashboard item.
+    expect(attentionSummary(withProblems, { count: 1, failed: false })).toEqual({ total: 17, urgent: 4, detail: "17 things need you, 4 late", failed: false });
+    // Problems are not Late: they add to the total but not to the late count.
+    expect(attentionSummary([sec("jobs-problems", 3)], { count: 0, failed: false })).toEqual({ total: 3, urgent: 0, detail: "3 things need you, none late", failed: false });
+    // None of the four tiles is Problems, so the "Also counted in Today" line lists it, with its own title, count and link.
+    expect(leaksFrom(withProblems, { rfqsToQuote: 0, overdueOwed: 0, money }).map((l) => l.id)).not.toContain("jobs-problems");
+    const others = otherAttention(withProblems, { items: [], failed: false })!;
+    expect(others).toContainEqual({ id: "jobs-problems", kind: "rule", label: "jobs-problems", count: 2, href: "/x?filter=jobs-problems" });
+    // The tiles plus the listed rules add up to the headline exactly.
+    const tiles = leaksFrom(withProblems, { rfqsToQuote: 0, overdueOwed: 0, money }).filter((l) => l.id !== "rfqs-to-quote").reduce((sum, l) => sum + (l.count ?? 0), 0);
+    expect(tiles + others.reduce((sum, o) => sum + o.count, 0)).toBe(attentionSummary(withProblems, { count: 0, failed: false }).total);
+    // With no open Problem the rule is not listed; if its read failed, the headline and the line are both a dash.
+    expect(otherAttention([...sections, sec("jobs-problems", 0)], { items: [], failed: false })!.map((o) => o.id)).not.toContain("jobs-problems");
+    expect(attentionSummary([...sections, sec("jobs-problems", 0, "", true)], { count: 0, failed: false })).toMatchObject({ total: null, failed: true });
+    expect(otherAttention([...sections, sec("jobs-problems", 0, "", true)], { items: [], failed: false })).toBeNull();
+  });
+
   it("the other items are null (a dash) while loading or when any part failed, like the headline", () => {
     expect(otherAttention(null, { items: [], failed: false })).toBeNull();
     expect(otherAttention(sections, { items: null, failed: false })).toBeNull();
@@ -184,5 +205,17 @@ describe("owner overview figures", () => {
   it("the machine figure is a dash while loading and says so when the machines or bookings read failed", () => {
     expect(fleetLoad(null, true)).toEqual({ percent: null, free: null, detail: "Loading…", failed: false });
     expect(fleetLoad(null, false)).toEqual({ percent: null, free: null, detail: "Couldn't load this.", failed: true });
+  });
+
+  it("People: how many are on the floor now is the clocked-in count, and a real 0 is a 0", () => {
+    expect(floorNow({ clockedIn: 4 }, false)).toEqual({ count: 4, detail: "4 on the floor now", figure: "4 on the floor now", failed: false });
+    expect(floorNow({ clockedIn: 0 }, false)).toMatchObject({ count: 0, figure: "0 on the floor now", failed: false });
+  });
+
+  it("People: a clock read that failed, or is still loading, is a dash with the reason and never 0", () => {
+    expect(floorNow(null, false)).toEqual({ count: null, detail: "Couldn't load this.", figure: "— Couldn't load this.", failed: true });
+    expect(floorNow(null, true)).toEqual({ count: null, detail: "Loading…", figure: "— Loading…", failed: false });
+    // Still loading wins over a stale count from an earlier read.
+    expect(floorNow({ clockedIn: 3 }, true).count).toBeNull();
   });
 });
