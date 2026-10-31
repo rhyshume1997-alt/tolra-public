@@ -1827,8 +1827,16 @@ export default function JobsPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(worksheetJob)} onOpenChange={(open) => !open && closeWorksheet()}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle><DialogDescription>Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription></DialogHeader>
+        {/* The Close X now comes first in the sticky header, so opening would focus it: start on the first field instead, or on the
+            dialog itself while the form is still loading. */}
+        <DialogContent className="max-w-4xl" hideClose onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const content = event.currentTarget as HTMLElement | null;
+          const first = content?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])");
+          (first ?? content)?.focus();
+        }}>
+          <DialogHeader stickyClose><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle></DialogHeader>
+          <DialogDescription className="-mt-6">Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription>
           {worksheetJob && !worksheetJob.finished_at && (benchPaused(worksheetJob) || benchRunning(worksheetJob)) ? (
             <p data-testid="worksheet-bench" className="text-sm"><span className={cn("rounded-none px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide", benchPaused(worksheetJob) ? "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100")}>{benchPaused(worksheetJob) ? "Paused" : "Running"}</span> <span className="text-slate-600 dark:text-slate-300">{benchPaused(worksheetJob) ? "Start on the board resumes it." : "On the bench (no machine)."}</span></p>
           ) : null}
