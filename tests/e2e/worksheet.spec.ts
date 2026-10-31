@@ -144,9 +144,10 @@ test("prints show the sign-off of the current revision only; an earlier revision
 test("on a phone, the worksheet's Close button stays on screen at the bottom of a long worksheet, and closes it", async ({ page }) => {
   const jobNo = `J-CLOSE-${w.runId}`;
   await newJob(jobNo);
-  await page.setViewportSize({ width: 390, height: 700 });
   await signIn(page, w.tenants.beta.users.workshop);
+  // The Job Board shows cards, not table rows, at phone width: open the worksheet from the table, then narrow to a phone.
   const sheet = await openWorksheet(page, jobNo);
+  await page.setViewportSize({ width: 390, height: 700 });
   const close = sheet.getByRole("button", { name: "Close", exact: true });
   await expect(close).toBeInViewport();
   // Opening starts on the form, not on the Close button at the top.
