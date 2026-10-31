@@ -41,6 +41,7 @@ const pageTitles: Record<string, string> = {
   "/admin/compliance": "Security",
   "/admin/activity": "Activity",
   "/admin/data": "Data",
+  "/numbers": "Numbers",
   "/admin/integrations": "Integrations",
   "/settings": "Settings",
 };

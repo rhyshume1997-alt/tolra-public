@@ -18,7 +18,7 @@ export type Leak = {
   /** What the link does, in words. */
   action: string;
   href: string;
-  /** Red word next to the count when there is any (late, overdue). */
+  /** Red word next to the count when there is any (Late). */
   alarm?: string;
   failed: boolean;
 };
@@ -72,7 +72,8 @@ export function leaksFrom(sections: AttentionSection[] | null, figures: Figures,
     sectionLeak(sections, "jobs-late", "Jobs running late", "See why", "Nothing is late.", "Late", listFailed),
     sectionLeak(sections, "jobs-inspection", "Waiting to be checked", "Open inspection", "Nothing waiting for inspection.", undefined, listFailed),
     (() => {
-      const leak = sectionLeak(sections, "invoices-overdue", "Money overdue", "Chase payment", "Nothing overdue.", "Overdue", listFailed);
+      // The rule id stays "invoices-overdue"; the words say Late, as everywhere else on the Overview.
+      const leak = sectionLeak(sections, "invoices-overdue", "Money late", "Chase payment", "Nothing late.", "Late", listFailed);
       if (leak && figures.overdueOwed !== null && figures.overdueOwed > 0) leak.extra = figures.money(figures.overdueOwed);
       return leak;
     })(),
@@ -87,41 +88,63 @@ const FAILED = "Couldn't load this.";
 export type AttentionSummary = {
   /** Everything on the Needs attention list; null while loading or when any read behind the list failed. */
   total: number | null;
-  /** Of those, the jobs past their required date and the overdue invoices (the two leaks with a red word). */
+  /** Of those, the jobs past their required date and the invoices past their due date (the two leaks with the red word Late). */
   urgent: number | null;
   detail: string;
   failed: boolean;
 };
 
 /**
- * The Today heading's figure: how many things need the owner, and how many are late or overdue. The same sum the Needs attention card
+ * The Today heading's figure: how many things need the owner, and how many of them are late. The same sum the Needs attention card
  * counts (lib/attention-load: quotes, rfqs, purchase_orders, jobs, invoices, delivery_notes, jobs_awaiting_despatch_or_invoice()),
  * plus the Dashboard's own items (`extra`: imported invoices whose payment is to confirm, from invoices). Any part missing is a dash.
+ * The leaks row shows four of those rules as tiles; otherAttention() lists the rest under it, so everything counted here is on screen.
  */
 export function attentionSummary(sections: AttentionSection[] | null, extra: { count: number | null; failed: boolean }, listFailed = false): AttentionSummary {
   if (listFailed || extra.failed || sections?.some((s) => s.failed)) return { total: null, urgent: null, detail: FAILED, failed: true };
   if (!sections || extra.count === null) return { total: null, urgent: null, detail: LOADING, failed: false };
   const total = sections.reduce((sum, s) => sum + s.count, 0) + extra.count;
   const urgent = (fromSection(sections, "jobs-late")?.count ?? 0) + (fromSection(sections, "invoices-overdue")?.count ?? 0);
-  const detail = total === 0
-    ? "Nothing needs you right now."
-    : `${total} thing${total === 1 ? " needs" : "s need"} you, ${urgent ? `${urgent} of them late or overdue` : "none late or overdue"}`;
+  if (total === 0) return { total: 0, urgent: 0, detail: "Nothing needs you right now.", failed: false };
+  const detail = `${total} thing${total === 1 ? " needs" : "s need"} you, ${urgent > 0 ? `${urgent} late` : "none late"}`;
   return { total, urgent, detail, failed: false };
+}
+
+/** The Needs attention rules the leaks row already shows as tiles (rfqs-to-quote is a Dashboard figure, not one of these rules). */
+const LEAK_RULES: ReadonlySet<AttentionRuleId> = new Set(["quotes-no-decision", "jobs-late", "jobs-inspection", "invoices-overdue"]);
+
+/** kind "rule": a Needs attention rule and its count; "item": one Dashboard item (counted once; its title carries its own number). */
+export type OtherAttention = { id: string; kind: "rule" | "item"; label: string; count: number; href: string };
+
+/**
+ * Everything the Today figure counts that is not a leak tile: the other Needs attention rules with something in them (their own titles,
+ * counts and links, from the same sections), and the Dashboard's own items (`extra`, each counted once as attentionSummary and the
+ * Needs attention card count them: today only "N imported invoices: payment to confirm", from invoices). The four leak tiles' counts
+ * plus these add up to the Today figure exactly. null while loading or when any part failed (the Today figure is a dash then too).
+ */
+export function otherAttention(sections: AttentionSection[] | null, extra: { items: Array<{ key: string; title: string; href: string }> | null; failed: boolean }, listFailed = false): OtherAttention[] | null {
+  if (listFailed || extra.failed || !sections || !extra.items || sections.some((s) => s.failed)) return null;
+  const rows: OtherAttention[] = sections
+    .filter((s) => !LEAK_RULES.has(s.id) && s.count > 0)
+    .map((s) => ({ id: s.id, kind: "rule" as const, label: s.title, count: s.count, href: s.href }));
+  for (const item of extra.items) rows.push({ id: item.key, kind: "item", label: item.title, count: 1, href: item.href });
+  return rows;
 }
 
 export type RevenueCompare = { previous: number | null; change: number | null; detail: string; failed: boolean };
 
 /**
- * This month's money received so far against all of last month: the last two points of the Revenue panel (the Dashboard's six months
- * from invoice_payments, by the date received), so the tile, the line and this comparison are one read. `change` is null when last
- * month had nothing to compare with (nothing received, or netted below zero).
+ * This month so far against all of last month: the last two points of the Revenue panel's chosen series (received: the Dashboard's six
+ * months from invoice_payments, by the date received; invoiced: issued invoices ex VAT less credit notes, lib/overview-metrics), so the
+ * tile, the line and this comparison are one read. `change` is null when last month had nothing to compare with (nothing received or
+ * invoiced, or netted below zero).
  */
-export function revenueVsLastMonth(revenue: Array<{ month: string; revenue: number }> | null, loading: boolean, money: (value: number) => string): RevenueCompare {
+export function revenueVsLastMonth(revenue: Array<{ month: string; revenue: number }> | null, loading: boolean, money: (value: number) => string, verb: "received" | "invoiced" = "received"): RevenueCompare {
   if (loading) return { previous: null, change: null, detail: LOADING, failed: false };
   if (!revenue || revenue.length < 2) return { previous: null, change: null, detail: FAILED, failed: true };
   const { revenue: current } = revenue[revenue.length - 1];
   const { month, revenue: previous } = revenue[revenue.length - 2];
-  if (previous === 0) return { previous, change: null, detail: `Nothing received in ${month}`, failed: false };
+  if (previous === 0) return { previous, change: null, detail: `Nothing ${verb} in ${month}`, failed: false };
   // Reversals are negative payment rows, so a month can net below zero; a percentage of that would flip its sign.
   if (previous < 0) return { previous, change: null, detail: `${month} netted below zero`, failed: false };
   let change = Math.round(((current - previous) / previous) * 100);

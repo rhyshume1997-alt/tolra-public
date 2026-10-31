@@ -32,8 +32,8 @@ export function Panel({ title, meta, href, children, className }: { title: strin
 const axis = { tickLine: false, axisLine: false, tick: { fontSize: 12, fill: "var(--muted-foreground)" } } as const;
 const kGbp = (value: number) => (Math.abs(value) >= 1000 ? `£${Math.round(value / 100) / 10}k` : `£${Math.round(value)}`);
 
-/** Money received per month, as a line with a light fill under it. */
-export function RevenueLine({ data }: { data: Array<{ month: string; revenue: number }> }) {
+/** Money per month (received, or invoiced ex VAT: `label` names which), as a line with a light fill under it. */
+export function RevenueLine({ data, label = "Received" }: { data: Array<{ month: string; revenue: number }>; label?: string }) {
   return (
     <div className="h-56">
       <ResponsiveContainer width="100%" height="100%">
@@ -41,9 +41,23 @@ export function RevenueLine({ data }: { data: Array<{ month: string; revenue: nu
           <CartesianGrid stroke="var(--line)" vertical={false} />
           <XAxis dataKey="month" {...axis} />
           <YAxis {...axis} width={52} tickFormatter={kGbp} />
-          <Tooltip cursor={{ stroke: "var(--line)" }} formatter={(value) => [gbp(Number(value), 0), "Received"]} />
+          <Tooltip cursor={{ stroke: "var(--line)" }} formatter={(value) => [gbp(Number(value), 0), label]} />
           <Area type="linear" dataKey="revenue" stroke="var(--brand)" strokeWidth={2.5} fill="var(--brand)" fillOpacity={0.08} dot={{ r: 3, fill: "var(--brand)", strokeWidth: 0 }} activeDot={{ r: 5 }} />
         </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** A small line of one figure over time (the money-owed trend): no axes, a fixed height so it never moves the page, a tooltip per point. */
+export function Sparkline({ data, label }: { data: Array<{ date: string; value: number }>; label: string }) {
+  return (
+    <div className="h-16" role="img" aria-label={`${label}: ${data.length} points, latest ${gbp(data[data.length - 1]?.value ?? 0, 0)}`}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+          <Tooltip cursor={{ stroke: "var(--line)" }} labelFormatter={(value) => String(value)} formatter={(value) => [gbp(Number(value), 0), label]} />
+          <Line type="linear" dataKey="value" stroke="var(--brand)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );

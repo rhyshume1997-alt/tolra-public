@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { MyJobs } from "@/components/workshop/my-jobs";
+import type { OpenProblems } from "@/lib/job-problems";
 import type { MyJob } from "@/lib/my-jobs";
 
 const running: MyJob = { id: "r1", jobNo: "J-2409", customer: "Severn Valve Co", description: "Valve body", quantity: 4, stage: "machining", status: "running", due: "2026-10-26", dueLight: "overdue", notes: "Deburr all edges" };
@@ -26,7 +27,7 @@ describe("MyJobs render", () => {
     const html = render("workshop");
     expect(html.match(/data-testid="my-job-notes"/g)).toHaveLength(1);
     expect(html).toContain("Deburr all edges");
-    for (const word of ["Running", "Not started", "Overdue", "No due date"]) expect(html).toContain(`>${word}<`);
+    for (const word of ["Running", "Not started", "Late", "No due date"]) expect(html).toContain(`>${word}<`);
     expect(html).toContain("Severn Valve Co · Valve body · qty 4");
   });
   it("a viewer gets View only; without the Job Board, no actions", () => {
@@ -37,5 +38,54 @@ describe("MyJobs render", () => {
     const closed = render("workshop", false);
     expect(hrefs(closed)).toEqual([]);
     expect(closed).toContain("J-2409");
+  });
+});
+
+// Migration 117: Open drawing and Problem on each card.
+const withProblems = (role: string, initialProblems: OpenProblems) => renderToStaticMarkup(createElement(MyJobs, { jobs: [running, todo], role, canOpenJobs: true, initialProblems }));
+const reported: OpenProblems = { available: true, problems: [{ id: "p1", job_id: "r1", reason: "material", note: "Wrong grade", reported_by: "u9", reported_at: "2026-10-14T09:00:00Z" }] };
+
+describe("MyJobs: Open drawing and Problem", () => {
+  it("Open drawing is on every card for every role, at least 48 px tall, and is a button (not a link to the Job Board)", () => {
+    for (const role of ["workshop", "viewer", "office"]) {
+      const html = render(role);
+      expect(html.match(/data-testid="my-job-drawing"/g), role).toHaveLength(2);
+      expect(html).toContain("Open drawing");
+      expect(html).toMatch(/class="[^"]*min-h-12[^"]*"[^>]*data-testid="my-job-drawing"|data-testid="my-job-drawing"[^>]*class="[^"]*min-h-12/);
+    }
+    expect(hrefs(render("workshop"))).toEqual(["/jobs?job=r1", "/jobs?job=r1", "/jobs?job=t1"]);
+  });
+
+  it("fail closed: no Problem button or flag until the database says it has 117 (missing, or not known)", () => {
+    for (const available of [null, false]) {
+      const html = withProblems("workshop", { available, problems: reported.problems });
+      expect(html, String(available)).not.toContain('data-testid="my-job-problem"');
+      expect(html).toContain("Open drawing");
+    }
+    expect(render("workshop")).not.toContain('data-testid="my-job-problem"');
+  });
+
+  it("with 117: workshop, office and admin get a 48 px Problem button on each card; a viewer gets none", () => {
+    for (const role of ["workshop", "office", "admin"]) {
+      const html = withProblems(role, { available: true, problems: [] });
+      expect(html.match(/data-testid="my-job-problem"/g), role).toHaveLength(2);
+      expect(html).toMatch(/class="[^"]*min-h-12[^"]*"[^>]*data-testid="my-job-problem"|data-testid="my-job-problem"[^>]*class="[^"]*min-h-12/);
+    }
+    expect(withProblems("viewer", { available: true, problems: [] })).not.toContain('data-testid="my-job-problem"');
+  });
+
+  it("a job with an open problem carries a Problem tag and a flag in words, on that job only; Start and Pause still there", () => {
+    const html = withProblems("workshop", reported);
+    expect(html.match(/data-testid="my-job-problem-tag"/g)).toHaveLength(1);
+    expect(html).toContain(">Problem<");
+    expect(html.match(/data-testid="my-job-problem-flag"/g)).toHaveLength(1);
+    expect(html).toContain("Problem reported: Material. Waiting for the office.");
+    expect(html).toContain("Finish on the Job Board");
+    expect(html).toContain("Start on the Job Board");
+    expect(html.match(/data-testid="my-job-pause"/g)).toHaveLength(1);
+    // A viewer sees the flag (it is information) and gets no button.
+    const viewer = withProblems("viewer", reported);
+    expect(viewer.match(/data-testid="my-job-problem-flag"/g)).toHaveLength(1);
+    expect(viewer).not.toContain('data-testid="my-job-problem"');
   });
 });

@@ -2,7 +2,7 @@
 
 import type { AuditTable } from "@/lib/audit-contract";
 import type { ReactElement } from "react";
-import { type DocumentProps, pdf } from "@react-pdf/renderer";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { toast } from "sonner";
 
 import { auditEvent } from "@/lib/audit";
@@ -10,9 +10,23 @@ import { CompanyProfileMissingError } from "@/lib/company";
 import { DocumentTotalsMismatchError } from "@/lib/document-integrity";
 import { friendlyError } from "@/lib/friendly-error";
 
+/** Shown when the PDF code (loaded on the first PDF, not with the page) cannot be fetched because the device is offline. */
+export const PDF_OFFLINE_MESSAGE = "PDF needs an internet connection to load. Connect and try again.";
+
+/** The bundler's or the browser's answer when a lazily loaded file could not be fetched (webpack ChunkLoadError, native import()). */
+const CHUNK_LOAD_FAILED = /Loading (css )?chunk \S+ failed|Failed to load chunk|Failed to fetch dynamically imported module|error loading dynamically imported module|Importing a module script failed/i;
+
+/** True when making the PDF failed because its code could not be loaded: the device says it is offline, or the import itself failed. */
+export function pdfCodeUnreachable(error: unknown): boolean {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  if (!(error instanceof Error)) return false;
+  return error.name === "ChunkLoadError" || CHUNK_LOAD_FAILED.test(error.message);
+}
+
 /** Message safe to show when a PDF can't be built. A missing company profile has its own friendly text. */
 export function pdfErrorMessage(error: unknown) {
   if (error instanceof CompanyProfileMissingError || error instanceof DocumentTotalsMismatchError) return error.message;
+  if (pdfCodeUnreachable(error)) return PDF_OFFLINE_MESSAGE;
   return friendlyError(error, "Couldn't generate the PDF. Try again.");
 }
 
@@ -29,6 +43,8 @@ export async function downloadPdf(
 ): Promise<boolean> {
   try {
     const element = typeof source === "function" ? await source() : source;
+    // Loaded on the first PDF, not with the page (it is the largest library in the app).
+    const { pdf } = await import("@react-pdf/renderer");
     // Every caller's element renders a <Document> (React 19 types no longer infer that from ReactElement).
     const blob = await pdf(element as ReactElement<DocumentProps>).toBlob();
     const url = URL.createObjectURL(blob);

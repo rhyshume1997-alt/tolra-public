@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
-import { CreditNotePDF } from "@/components/pdf/CreditNotePDF";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -179,6 +178,8 @@ export function CreditNotesPanel({ invoice, onChanged }: {
       const { data, error: linesError } = await supabase.from("credit_note_lines").select("description, quantity, unit_price, vat_pct, vat_exempt, vat_amount").eq("credit_note_id", note.id).order("position");
       if (linesError) throw linesError;
       const billTo = issuedBillTo(note.customer_snapshot, note.customer) ?? await resolveCustomerAddress(note.customer);
+      // The PDF code is loaded when a PDF is made, not with the page.
+      const { CreditNotePDF } = await import("@/components/pdf/CreditNotePDF");
       return (
         <CreditNotePDF
           data={{

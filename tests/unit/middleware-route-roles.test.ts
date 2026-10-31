@@ -61,6 +61,17 @@ describe("middleware: pages by role", () => {
     }
   });
 
+  it("/numbers (and its sub-pages): admin only; office, workshop and viewer go to the dashboard", async () => {
+    role = "admin";
+    expect(await visit("/numbers")).toBeNull();
+    expect(await visit("/numbers/anything")).toBeNull();
+    for (const refused of ["office", "workshop", "viewer"]) {
+      role = refused;
+      expect(await visit("/numbers"), refused).toBe("/dashboard");
+      expect(await visit("/numbers/anything"), refused).toBe("/dashboard");
+    }
+  });
+
   it("the existing rules are unchanged (a sample)", async () => {
     role = "workshop";
     expect(await visit("/jobs")).toBeNull();
