@@ -350,6 +350,10 @@ describe("the platform owner", () => {
     expect((await c.rpc("next_doc_number", { p_prefix: "QUO" })).error).not.toBeNull();
     expect((await c.rpc("write_audit", { p_action: "UPDATE", p_entity_table: "jobs", p_entity_id: seedC.jobs, p_old: null, p_new: null, p_metadata: {}, p_ip: null, p_user_agent: null })).error).not.toBeNull();
     expect((await c.rpc("set_archive_state", { p_table: "jobs", p_id: seedC.jobs, p_state: "archived" })).error).not.toBeNull();
+    // 117: a Problem is neither raised on the company's job nor cleared from a read-only support session.
+    expect((await c.rpc("report_job_problem", { p_job: seedC.jobs, p_reason: "other", p_note: "Support attempt", p_request_id: randomUUID() })).error).not.toBeNull();
+    expect((await c.rpc("resolve_job_problem", { p_problem: randomUUID(), p_note: "Support attempt" })).error).not.toBeNull();
+    expect(await sql("select 1 from public.job_problems where organization_id = $1", [gamma])).toEqual([]);
     // 118: parts are not logged on the company's job from a read-only support session.
     expect((await c.rpc("log_job_parts", { p_job: seedC.jobs, p_quantity: 1, p_note: null, p_client_op_id: randomUUID() })).error).not.toBeNull();
     expect(await sql("select 1 from public.job_part_logs where organization_id = $1", [gamma])).toEqual([]);

@@ -56,6 +56,8 @@ import { loadOfflineSnapshot, queueOffline, reportOffline, saveOfflineSnapshot }
 import { isNetworkError, stripJobMoney } from "@/lib/offline/store";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
 import { unbilledJobsOf } from "@/lib/attention-load";
+import { JobProblemsPanel, ProblemJobsContext, ProblemTag } from "@/components/job-problems";
+import { jobsWithProblems, loadOpenProblems } from "@/lib/job-problems";
 import { jobMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { DUE_CHIPS, formatAverageJobTime, hasRequiredDate, jobMatchesStatus, jobStatus, requiredDate } from "@/lib/job-status";
@@ -85,7 +87,7 @@ import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type BoardFiles, boardDescription, shownJobColumns, jobBoardFiles, loadBoardJobFiles } from "@/lib/job-board-files";
 import { useColumnVisibility } from "@/lib/org-settings";
 
-const JOB_FILTER_LABELS: Record<string, string> = { overdue: "Jobs past their required date", "awaiting-inspection": "Jobs waiting for inspection", "complete-unbilled": "Complete jobs not yet fully despatched or invoiced" };
+const JOB_FILTER_LABELS: Record<string, string> = { overdue: "Jobs past their required date", "awaiting-inspection": "Jobs waiting for inspection", "complete-unbilled": "Complete jobs not yet fully despatched or invoiced", problems: "Jobs with a problem reported" };
 
 type WorkshopJob = JobRecord & {
   /** Who finished it (035): the person who may undo their own Finish while it awaits inspection (081). */
@@ -175,7 +177,7 @@ async function loadDemoJobs(): Promise<WorkshopJob[]> {
   ];
 }
 
-type JobState = { started_at?: string; finished_at?: string; inspected_at?: string; due_date?: string; status: string; stage?: string };
+type JobState = { id?: string; started_at?: string; finished_at?: string; inspected_at?: string; due_date?: string; status: string; stage?: string };
 /** A failed inspection holds the job in the rework stage (migration 037) until the rework is finished and it is inspected again. */
 const inRework = (job: JobState) => isInRework(job);
 /**
@@ -218,6 +220,7 @@ function JobStatusBadges({ job, progress, failedUndecided = false, compact = fal
     <span data-testid="job-status" className={cn("inline-flex min-w-0 flex-wrap items-center gap-1 text-xs font-semibold", compact ? "flex-col items-start gap-0.5" : "")}>
       <StatusBadge status={status.status} label={status.label} className={wrap} />
       {tag ? <StatusBadge data-testid="rework-tag" status={tag.status} label={tag.label} className={wrap} /> : null}
+      <ProblemTag jobId={job.id} className={wrap} />
       {due ? <StatusBadge data-testid="due-light" status={due} label={DUE_LABEL[due]} className={wrap} /> : null}
       {showProgress ? <span data-testid="job-progress-text" className="min-w-0 max-w-full basis-full whitespace-normal font-normal text-slate-600 [overflow-wrap:anywhere] dark:text-slate-300">{`\u00b7 ${progress}`}</span> : null}
     </span>
@@ -585,11 +588,21 @@ export default function JobsPage() {
     return () => { active = false; };
   }, [listFilter, attempt]);
 
+  // 117: the jobs with an open Problem (the tag on their rows, and the "Problems reported" filter from the dashboard). Empty until the database has 117.
+  const [problemIds, setProblemIds] = useState<ReadonlySet<string>>(new Set());
+  const [problemsAttempt, setProblemsAttempt] = useState(0);
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    void loadOpenProblems(supabase).then((answer) => { if (active) setProblemIds(answer.available ? jobsWithProblems(answer.problems) : new Set()); });
+    return () => { active = false; };
+  }, [attempt, problemsAttempt]);
+
   const visible = useMemo(
-    () => listFilter ? jobs.filter((job) => jobMatchesFilter(listFilter, job, toDateInput(new Date()), unbilledIds)) : jobs.filter((job) => (show === "all" || show === showOf(job)) && (!statusTile || jobStatusOf(job) === statusTile) && (!reworkOnly || reworkTag(job) !== null)
+    () => listFilter ? jobs.filter((job) => jobMatchesFilter(listFilter, job, toDateInput(new Date()), unbilledIds, problemIds)) : jobs.filter((job) => (show === "all" || show === showOf(job)) && (!statusTile || jobStatusOf(job) === statusTile) && (!reworkOnly || reworkTag(job) !== null)
       && (statusFilters.has("all") || (inDueScope(job) && [...statusFilters].some((status) => jobMatchesStatus(job, status)))) && (stageFilters.size === 0 || stageFilters.has(stageOf(job.stage) ?? ""))
       && (jobType === "all" || (jobType === "internal") === Boolean(job.is_internal))),
-    [jobs, listFilter, unbilledIds, show, showOf, statusTile, reworkOnly, stageFilters, statusFilters, jobType]
+    [jobs, listFilter, unbilledIds, problemIds, show, showOf, statusTile, reworkOnly, stageFilters, statusFilters, jobType]
   );
 
   // Related jobs, both ways: the job a job is for, and the jobs that name it.
@@ -1167,7 +1180,7 @@ export default function JobsPage() {
       Started: job.started_at ? fmtDateTime(job.started_at) : "Not started",
       Finished: job.finished_at ? fmtDateTime(job.finished_at) : "Not finished",
       // The same words as the board: the status, then the Rework tag and the due-date light when the job has them.
-      Status: [flowBadge(job, { paused: isPaused(job) }).label, reworkTag(job, failedUndecided(job))?.label, dueLightOf(job) ? DUE_LABEL[dueLightOf(job)!] : null].filter(Boolean).join(", "),
+      Status: [flowBadge(job, { paused: isPaused(job) }).label, reworkTag(job, failedUndecided(job))?.label, dueLightOf(job) ? DUE_LABEL[dueLightOf(job)!] : null, problemIds.has(job.id) ? "Problem" : null].filter(Boolean).join(", "),
     }));
   }
 
@@ -1566,6 +1579,7 @@ export default function JobsPage() {
   });
 
   return (
+    <ProblemJobsContext.Provider value={problemIds}>
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -1820,6 +1834,7 @@ export default function JobsPage() {
           ) : null}
           {worksheetJob ? <JobWorksheetForm key={worksheetJob.id} job={{ id: worksheetJob.id, job_no: worksheetJob.job_no, customer: worksheetJob.customer, description: worksheetJob.description, due_date: worksheetJob.due_date, drawings: worksheetJob.drawings, customer_po: worksheetJob.customer_po, date_received: worksheetJob.date_received, date_required: worksheetJob.date_required, quote_ref: worksheetJob.quote_ref, quantity_required: worksheetJob.quantity_required, drawing_no: worksheetJob.drawing_no }} onDirtyChange={setWorksheetDirty} onSaved={(ws, row) => setJobs((current) => current.map((item) => (item.id === worksheetJob.id ? (row ? rowToJob(row) : { ...item, description: ws.description }) : item)))} /> : null}
         {worksheetJob ? <JobDrawingRevision key={`drawing-${worksheetJob.id}`} jobId={worksheetJob.id} role={activeRole} /> : null}
+        {worksheetJob ? <JobProblemsPanel key={`problems-${worksheetJob.id}`} jobId={worksheetJob.id} jobNo={worksheetJob.job_no} onChanged={() => setProblemsAttempt((n) => n + 1)} /> : null}
         {worksheetJob ? <JobPhotos key={`photos-${worksheetJob.id}`} jobId={worksheetJob.id} jobNo={worksheetJob.job_no} /> : null}
         <ActivityPanel table="jobs" recordId={worksheetJob?.id} className="mt-4" /></DialogContent>
       </Dialog>
@@ -1899,5 +1914,6 @@ export default function JobsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ProblemJobsContext.Provider>
   );
 }

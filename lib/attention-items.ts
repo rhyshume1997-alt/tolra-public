@@ -14,6 +14,9 @@
  * sent and not invoiced, is listed ("jobs-unbilled", admin and office; quantities only, no money), read from
  * jobs_awaiting_despatch_or_invoice(). Before 099 that function is missing and the section is simply empty.
  *
+ * PROBLEMS (migration 117): a job with an open Problem reported from My jobs is listed ("jobs-problems", admin and office), oldest first, from
+ * job_problems. Before 117 the table is missing and the section is simply empty.
+ *
  * ROLES: admin sees every rule. Office sees the non-money rules (the dashboard already keeps invoice figures from office).
  * Workshop and viewer see only the workshop rules: late jobs, jobs awaiting inspection, delivery notes awaiting. Money rules
  * (overdue invoices, draft invoices, uninvoiced delivery notes) are never offered to workshop or viewer, and the loader does
@@ -51,7 +54,8 @@ export type AttentionRuleId =
   | "delivery-awaiting"
   | "jobs-inspection"
   | "delivery-uninvoiced"
-  | "jobs-unbilled";
+  | "jobs-unbilled"
+  | "jobs-problems";
 
 type Rule = { id: AttentionRuleId; title: string; href: string; roles: AttentionRole[]; money: boolean };
 
@@ -70,6 +74,7 @@ export const ATTENTION_RULES: Rule[] = [
   { id: "jobs-inspection", title: "Jobs waiting for inspection", href: "/jobs?filter=awaiting-inspection", roles: ALL, money: false },
   { id: "delivery-uninvoiced", title: "Delivery notes despatched with no invoice", href: "/delivery-notes?filter=not-invoiced", roles: ["admin"], money: true },
   { id: "jobs-unbilled", title: "Complete jobs not yet fully despatched or invoiced", href: "/jobs?filter=complete-unbilled", roles: OFFICE, money: false },
+  { id: "jobs-problems", title: "Problems reported", href: "/jobs?filter=problems", roles: OFFICE, money: false },
 ];
 
 /** The rules this role may see (the loader reads only these). */
@@ -98,6 +103,8 @@ export type AttentionInput = {
   deliveryNotes: Row[] | null;
   /** 099: Complete jobs with order quantity to despatch or to invoice (jobs_awaiting_despatch_or_invoice). Optional: none before 099. */
   unbilledJobs?: Row[] | null;
+  /** 117: open job problems with their job (job_problems, embedded jobs: job_no, customer). Optional: none before 117. */
+  jobProblems?: Row[] | null;
 };
 
 export type AttentionItem = { key: string; title: string; detail: string; href: string; ageDays: number };
@@ -139,6 +146,9 @@ function section(rule: Rule, rows: Row[] | null, build: (row: Row) => AttentionI
   found.sort(oldestFirst);
   return { id: rule.id, title: rule.title, href: rule.href, count: found.length, items: found.slice(0, ATTENTION_TOP), failed: false };
 }
+
+/** The reasons an operator can give (lib/job-problems PROBLEM_REASONS), in words. */
+const REASON_WORDS: Record<string, string> = { material: "Material", drawing: "Drawing", machine: "Machine", quality: "Quality", tooling: "Tooling", other: "Other" };
 
 const quoteHref = (id: unknown) => `/quotes?quote=${encodeURIComponent(text(id))}`;
 const jobHref = (id: unknown) => `/jobs?job=${encodeURIComponent(text(id))}`;
@@ -246,6 +256,15 @@ export function buildAttention(input: AttentionInput, role: AttentionRole, today
       const parts = [toDespatch === null ? "nothing despatched yet" : toDespatch > 0 ? `${toDespatch} to despatch` : null, toInvoice > 0 ? `${toInvoice} despatched, not invoiced` : null].filter(Boolean);
       const days = Math.max(0, daysBetween(done, today));
       return { key: `jb-${row.job_id}`, title: `Job ${text(row.job_no)} is Complete: ${parts.join(", ")}`, detail: `${text(row.customer)} (complete ${plural(days, "day")})`, href: jobHref(row.job_id), ageDays: days };
+    }),
+    // 117: an open Problem an operator reported, until the office clears it. Age is whole days since it was reported.
+    "jobs-problems": () => section(rule("jobs-problems"), input.jobProblems === undefined ? [] : input.jobProblems, (row) => {
+      const reported = dayOf(row.reported_at);
+      if (!reported || text(row.status || "open") !== "open") return null;
+      const job = (Array.isArray(row.jobs) ? row.jobs[0] : row.jobs) as Row | null | undefined;
+      const days = Math.max(0, daysBetween(reported, today));
+      const what = [REASON_WORDS[text(row.reason)] ?? "Other", text(row.note).slice(0, 80)].filter(Boolean).join(": ");
+      return { key: `jp-${row.id}`, title: `Job ${text(job?.job_no) || "(unknown)"} has a problem: ${what}`, detail: `${text(job?.customer) || "Internal"} (reported ${days === 0 ? "today" : `${plural(days, "day")} ago`})`, href: jobHref(row.job_id), ageDays: days };
     }),
   };
   return ATTENTION_RULES.filter((r) => visible.has(r.id)).map((r) => out[r.id]());

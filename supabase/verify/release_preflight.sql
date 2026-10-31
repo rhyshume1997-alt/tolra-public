@@ -122,6 +122,11 @@ markers(migration, present) AS (
     ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'ca5166191666584107491f95ccce4702')),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
+    ('116 overview owed snapshots',       to_regclass('public.overview_owed_snapshots') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'capture_overview_owed')),
+    ('117 job problems',                  to_regclass('public.job_problems') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'report_job_problem')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'resolve_job_problem')),
     ('118 job part logs',                 to_regclass('public.job_part_logs') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_job_parts')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_parts_done'))

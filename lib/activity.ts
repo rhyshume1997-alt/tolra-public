@@ -279,6 +279,9 @@ const ACTION_LABELS: Record<string, string> = {
   REMOVE_PHOTO: "Photo removed",
   PHOTO_MISMATCH: "Photo upload refused (the stored file didn't match)",
   ABANDON_STALE_PHOTOS: "Unfinished photo uploads closed",
+  // 117: a Problem raised from My jobs, and the office clearing it.
+  REPORT_JOB_PROBLEM: "Problem reported",
+  RESOLVE_JOB_PROBLEM: "Problem resolved",
   // 118: parts logged on a job from My jobs (a negative entry is a correction).
   LOG_JOB_PARTS: "Parts logged",
   SEND: "Sent",
@@ -465,6 +468,13 @@ export function describeEntry(entry: ActivityEntry, names: PeopleMap = {}): { ti
   // Migration 073: the reason given when the invoice was voided.
   if (entry.action === "VOID_INVOICE") {
     return { title: label, details: typeof meta.reason === "string" && meta.reason ? [`Reason: ${meta.reason}`] : [] };
+  }
+  // Migration 117: what the problem was (and the note), and for a clearing what was done.
+  if (entry.action === "REPORT_JOB_PROBLEM" || entry.action === "RESOLVE_JOB_PROBLEM") {
+    const reason = typeof meta.reason === "string" ? `Reason: ${humanise(meta.reason)}` : "";
+    const said = typeof meta.note === "string" && meta.note ? `Note: ${meta.note}` : "";
+    const done = typeof meta.resolution_note === "string" && meta.resolution_note ? `What was done: ${meta.resolution_note}` : "";
+    return { title: label, details: [reason, said, done].filter(Boolean) };
   }
   // Migration 118: how many were added or taken off, the count after, and for a correction why.
   if (entry.action === "LOG_JOB_PARTS") {

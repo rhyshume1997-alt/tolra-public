@@ -249,7 +249,7 @@ describe("delivery notes sent out with no invoice", () => {
 describe("roles and failures", () => {
   const ids = (role: "admin" | "office" | "workshop" | "viewer") => rulesForRole(role).map((r) => r.id);
   it("admin sees every rule", () => {
-    expect(ids("admin")).toHaveLength(11);
+    expect(ids("admin")).toHaveLength(12);
   });
   it("office sees no money rules", () => {
     expect(ids("office")).not.toContain("invoices-overdue");

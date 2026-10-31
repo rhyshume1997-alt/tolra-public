@@ -129,6 +129,11 @@ beforeAll(async () => {
   beta.photo = randomUUID();
   const reserved = await betaAdmin.rpc("reserve_job_photo", { p_id: beta.photo, p_job: beta.job, p_note: `${MARKER} photo`, p_captured_at: null, p_byte_size: 100 });
   if (reserved.error) throw new Error(reserved.error.message);
+
+  // A problem reported on beta's job by beta's admin (117), for resolve to be pointed at.
+  const problem = await betaAdmin.rpc("report_job_problem", { p_job: beta.job, p_reason: "material", p_note: `${MARKER} problem`, p_request_id: randomUUID() });
+  if (problem.error) throw new Error(problem.error.message);
+  beta.problem = problem.data as string;
 });
 
 afterAll(async () => {
@@ -274,6 +279,9 @@ function attempts(): Attempt[] {
     ["public.reserve_job_photo(p_id uuid, p_job uuid, p_note text, p_captured_at timestamp with time zone, p_byte_size integer)", () => alpha.rpc("reserve_job_photo", { p_id: randomUUID(), p_job: beta.job, p_note: "Cross-company attempt", p_captured_at: null, p_byte_size: 100 }), "refused"],
     ["public.finalise_job_photo(p_id uuid)", () => alpha.rpc("finalise_job_photo", { p_id: beta.photo }), "refused"],
     ["public.remove_job_photo(p_id uuid)", () => alpha.rpc("remove_job_photo", { p_id: beta.photo }), "refused"],
+    // 117: a problem raised on beta's job, and beta's own open problem cleared, each from alpha.
+    ["public.report_job_problem(p_job uuid, p_reason text, p_note text, p_request_id uuid)", () => alpha.rpc("report_job_problem", { p_job: beta.job, p_reason: "other", p_note: "Cross-company attempt", p_request_id: randomUUID() }), "refused"],
+    ["public.resolve_job_problem(p_problem uuid, p_note text)", () => alpha.rpc("resolve_job_problem", { p_problem: beta.problem, p_note: "Cross-company attempt" }), "refused"],
     // 118: parts logged on beta's job, from alpha (job_parts_done is not definer: it counts only what alpha's own row rules show).
     ["public.log_job_parts(p_job uuid, p_quantity integer, p_note text, p_client_op_id uuid)", () => alpha.rpc("log_job_parts", { p_job: beta.job, p_quantity: 1, p_note: null, p_client_op_id: randomUUID() }), "refused"],
     // 059: the manual invoice-from-delivery-notes path (now SECURITY DEFINER), pointed at beta's sent-out note.
