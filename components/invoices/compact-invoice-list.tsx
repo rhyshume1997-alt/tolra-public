@@ -65,6 +65,7 @@ export function CompactInvoiceList<T extends CompactInvoice>({ rows, onOpen }: {
             const { net, vat } = netAndVat(invoice);
             return (
               <tr
+                role="row"
                 key={invoice.id ?? invoice.reference}
                 data-testid="compact-invoice-row"
                 onClick={() => onOpen(invoice)}
