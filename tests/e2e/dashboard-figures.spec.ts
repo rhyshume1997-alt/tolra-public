@@ -1,7 +1,6 @@
 /**
- * E6 (migration 111): the admin dashboard's figures are worked out in the database, with the old browser-side reads as the
- * fallback until 111 is applied. Either way the page must show the same numbers, so this asserts the figures a known set of rows
- * must produce, not which route produced them.
+ * E6: the admin dashboard's figures (Open quotes, Open jobs, Money owed) are worked out from the company's records. This asserts
+ * the figures a known set of rows must produce, not how the page reads them.
  *
  * The rows go into a company of their own (createSoloTenant), so the figures are exact whatever the other specs left behind.
  * Teardown removes the company with the rest of the run (destroySyntheticWorld).
