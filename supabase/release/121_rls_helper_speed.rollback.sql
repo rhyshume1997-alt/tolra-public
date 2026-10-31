@@ -1,20 +1,20 @@
--- 118 rollback: ONLY with Rhys's approval. Puts back 116's public._session_membership() byte for byte (LANGUAGE sql, same
--- signature, security and grants). Every helper and policy answers exactly as with 118; only the per-row cost returns. Run the
--- whole text as one transaction, then the release preflight (marker 118 shows "not applied", 116 still "applied").
+-- 121 rollback: ONLY with Rhys's approval. Puts back 119's public._session_membership() byte for byte (LANGUAGE sql, same
+-- signature, security and grants). Every helper and policy answers exactly as with 121; only the per-row cost returns. Run the
+-- whole text as one transaction, then the release preflight (marker 121 shows "not applied", 119 still "applied").
 BEGIN;
 DO $$
 DECLARE
   v_member TEXT;
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public._session_membership()') INTO v_member;
-  -- 38ad8bd2...: 118's body; b9c4e5c7...: 116's (a second run of this rollback).
-  IF v_member IS NULL OR v_member NOT IN ('38ad8bd255ea9a2d2b8713aa04eb7c82', 'b9c4e5c7147e1c7893b4e586dae0be2e') THEN
-    RAISE EXCEPTION '118 rollback: _session_membership (md5 %) is neither 118''s nor 116''s; stop and compare', coalesce(v_member, 'missing');
+  -- 4fa415c7...: 121's body; dd705743...: 119's (a second run of this rollback).
+  IF v_member IS NULL OR v_member NOT IN ('4fa415c7b3222def6c37e93353e804c2', 'dd70574344856582b9819431b45e6c5c') THEN
+    RAISE EXCEPTION '121 rollback: _session_membership (md5 %) is neither 121''s nor 119''s; stop and compare', coalesce(v_member, 'missing');
   END IF;
 END
 $$;
 
--- 116's _session_membership, verbatim (supabase/migrations/116_ban_ends_session.sql).
+-- 119's _session_membership, verbatim (supabase/migrations/119_ban_ends_session.sql).
 CREATE OR REPLACE FUNCTION public._session_membership()
 RETURNS TABLE (organization_id UUID, role TEXT, secondary_role TEXT, is_support BOOLEAN, expires_at TIMESTAMPTZ, elevated_until TIMESTAMPTZ, hidden_sections TEXT[])
 LANGUAGE sql
@@ -24,7 +24,7 @@ SET search_path = pg_catalog, public
 AS $$
   WITH me AS (
     -- A platform owner works in no company at all on a token that has not passed the second step (aal2): cross-company access
-    -- always needs it, whatever REQUIRE_ADMIN_MFA says. A login whose sign-in is disabled (banned in Auth) works in none either (116).
+    -- always needs it, whatever REQUIRE_ADMIN_MFA says. A login whose sign-in is disabled (banned in Auth) works in none either (119).
     SELECT p.id,
            EXISTS (SELECT 1 FROM security_audit.platform_admins a WHERE a.user_id = p.id) AS platform_owner
     FROM public.user_profiles p
@@ -65,12 +65,12 @@ REVOKE ALL ON FUNCTION public._session_membership() FROM PUBLIC, anon, authentic
 
 DO $$
 BEGIN
-  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> 'b9c4e5c7147e1c7893b4e586dae0be2e' OR NOT p.prosecdef OR p.provolatile <> 's'
+  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> 'dd70574344856582b9819431b45e6c5c' OR NOT p.prosecdef OR p.provolatile <> 's'
              OR p.prolang <> (SELECT oid FROM pg_language WHERE lanname = 'sql')
              OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']
              OR has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
       FROM pg_proc p WHERE p.oid = to_regprocedure('public._session_membership()')) IS NOT FALSE THEN
-    RAISE EXCEPTION '118 rollback: _session_membership is not 116''s after the replace';
+    RAISE EXCEPTION '121 rollback: _session_membership is not 119''s after the replace';
   END IF;
 END
 $$;

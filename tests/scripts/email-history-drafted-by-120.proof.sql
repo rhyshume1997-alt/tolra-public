@@ -1,5 +1,5 @@
--- Proof for migration 117 (email_history.drafted_by is locked for API roles). Run on a database with migrations 000..117 applied:
---   PGPASSWORD=... psql -h HOST -U postgres -d DB -X -v ON_ERROR_STOP=1 -f tests/scripts/email-history-drafted-by-117.proof.sql
+-- Proof for migration 120 (email_history.drafted_by is locked for API roles). Run on a database with migrations 000..120 applied:
+--   PGPASSWORD=... psql -h HOST -U postgres -d DB -X -v ON_ERROR_STOP=1 -f tests/scripts/email-history-drafted-by-120.proof.sql
 -- Creates its own company and two admins inside one transaction and ROLLS BACK: nothing is left behind. Any failed expectation
 -- raises "PROOF FAILED: ..." and stops psql with a non-zero exit. Ends with "ALL PROOFS PASSED".
 -- Cases: (1) authenticated cannot move drafted_by to another user; (2) authenticated may set it to the value it already has and may
@@ -41,7 +41,7 @@ BEGIN
     RAISE EXCEPTION 'PROOF FAILED: authenticated moved drafted_by to another user';
   EXCEPTION WHEN insufficient_privilege THEN
     GET STACKED DIAGNOSTICS v_state = MESSAGE_TEXT;
-    IF v_state NOT LIKE 'Email history: who drafted%' THEN RAISE EXCEPTION 'PROOF FAILED: refused, but not by the 117 trigger: %', v_state; END IF;
+    IF v_state NOT LIKE 'Email history: who drafted%' THEN RAISE EXCEPTION 'PROOF FAILED: refused, but not by the 120 trigger: %', v_state; END IF;
   END;
   -- NULL is a change too.
   BEGIN
@@ -57,7 +57,7 @@ BEGIN
   GET DIAGNOSTICS v_n = ROW_COUNT;
   IF v_n <> 1 THEN RAISE EXCEPTION 'PROOF FAILED: an ordinary edit updated % rows', v_n; END IF;
 
-  -- (3) 006's insert rule: drafted_by must be the caller (row level security, not the 117 trigger).
+  -- (3) 006's insert rule: drafted_by must be the caller (row level security, not the 120 trigger).
   BEGIN
     INSERT INTO public.email_history (organization_id, to_email, subject, body, status, drafted_by)
     VALUES ('11111111-1111-1111-1111-111111111111', 'y@example.test', 's', 'b', 'drafted', 'bbbbbbbb-0000-0000-0000-000000000002');

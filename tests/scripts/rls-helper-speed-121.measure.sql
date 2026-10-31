@@ -1,15 +1,15 @@
--- S11 / 118: what the row-level-security helpers cost per row. READ-ONLY on the schema: everything runs in one transaction that is
+-- S11 / 121: what the row-level-security helpers cost per row. READ-ONLY on the schema: everything runs in one transaction that is
 -- rolled back. Plain PostgreSQL copy with the migration chain and the Supabase stand-ins, NEVER a hosted project:
 --
 --   create database s11 template sec_base;
---   PGPASSWORD=localonly psql -h 127.0.0.1 -U postgres -X -d s11 -f tests/scripts/rls-helper-speed-118.measure.sql
+--   PGPASSWORD=localonly psql -h 127.0.0.1 -U postgres -X -d s11 -f tests/scripts/rls-helper-speed-121.measure.sql
 --
 -- Seeds two companies (5,000 invoices, 6,000 quotes, 4,000 RFQs, 4,500 jobs, 1,300 payments each), then, as company m's admin
 -- (role authenticated + request.jwt.claims, one membership, aal1, a session id with no saved choice), runs EXPLAIN (ANALYZE,
 -- BUFFERS) on: Q1-Q3 count(*) of invoices / quotes / jobs, Q4 the invoices page's first 50, Q5 its first fetchAll page (1,000),
 -- Q6-Q7 111's dashboard functions (skipped when 111 is not applied). Q8 prints the counts and an md5 of each dashboard result,
--- which must be the same before and after 118. Compare "Execution Time" and "Buffers: shared hit" with and without 118
--- (supabase/release/118_rls_helper_speed.rollback.sql on the copy puts 036's function back).
+-- which must be the same before and after 121. Compare "Execution Time" and "Buffers: shared hit" with and without 121
+-- (supabase/release/121_rls_helper_speed.rollback.sql on the copy puts 036's function back).
 \set ON_ERROR_STOP 1
 \pset pager off
 begin;
@@ -46,7 +46,7 @@ set local session_replication_role = origin;
 analyze public.invoices; analyze public.quotes; analyze public.jobs; analyze public.rfqs; analyze public.invoice_payments;
 select set_config('request.jwt.claims', json_build_object('sub', (select id from s11_ids where k='u_m'), 'role', 'authenticated', 'aal', 'aal1', 'session_id', '00000000-0000-4000-8000-000000000011')::text, true);
 set local role authenticated;
-select '118 applied: ' || (select l.lanname = 'plpgsql' from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = 'public._session_membership()'::regprocedure)::text as state;
+select '121 applied: ' || (select l.lanname = 'plpgsql' from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = 'public._session_membership()'::regprocedure)::text as state;
 select count(*) from public.invoices; select count(*) from public.quotes; select count(*) from public.jobs;
 \echo Q1 count invoices
 explain (analyze, buffers, costs off) select count(*) from public.invoices;

@@ -1,8 +1,8 @@
--- 116 rollback: ONLY with Rhys's approval. Puts back 017's public.session_is_active and 036's public._session_membership byte for
+-- 119 rollback: ONLY with Rhys's approval. Puts back 017's public.session_is_active and 036's public._session_membership byte for
 -- byte (same signatures, security, search_path and grants). From then on a disabled sign-in (auth.users.banned_until) is again
 -- Auth's alone: an access token already issued keeps working at REST/RPC and Storage until it expires (finding S6-1 is open again).
 -- No row, table, policy, trigger, grant or setting is touched; the request hook stays 017's. Run the whole text as one
--- transaction, then the release preflight (marker 116 shows "not applied").
+-- transaction, then the release preflight (marker 119 shows "not applied").
 BEGIN;
 DO $$
 DECLARE
@@ -11,13 +11,13 @@ DECLARE
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.session_is_active()') INTO v_active;
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public._session_membership()') INTO v_member;
-  -- af6457ca...: 116's session_is_active; 19fe2195...: 017's (a second run of this rollback).
+  -- af6457ca...: 119's session_is_active; 19fe2195...: 017's (a second run of this rollback).
   IF v_active IS NULL OR v_active NOT IN ('af6457cae4d8b89cd34b5963574fbe58', '19fe21959a87cd880feb0fb0190980eb') THEN
-    RAISE EXCEPTION '116 rollback: session_is_active (md5 %) is neither 116''s nor 017''s; stop and compare', coalesce(v_active, 'missing');
+    RAISE EXCEPTION '119 rollback: session_is_active (md5 %) is neither 119''s nor 017''s; stop and compare', coalesce(v_active, 'missing');
   END IF;
-  -- b9c4e5c7...: 116's _session_membership; a15c6833...: 036's.
-  IF v_member IS NULL OR v_member NOT IN ('b9c4e5c7147e1c7893b4e586dae0be2e', 'a15c6833cefc4b752ceafce0a10730b2') THEN
-    RAISE EXCEPTION '116 rollback: _session_membership (md5 %) is neither 116''s nor 036''s; stop and compare', coalesce(v_member, 'missing');
+  -- dd705743...: 119's _session_membership; a15c6833...: 036's.
+  IF v_member IS NULL OR v_member NOT IN ('dd70574344856582b9819431b45e6c5c', 'a15c6833cefc4b752ceafce0a10730b2') THEN
+    RAISE EXCEPTION '119 rollback: _session_membership (md5 %) is neither 119''s nor 036''s; stop and compare', coalesce(v_member, 'missing');
   END IF;
 END
 $$;
@@ -93,7 +93,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.session_is_active()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '19fe21959a87cd880feb0fb0190980eb')
      OR NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._session_membership()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a15c6833cefc4b752ceafce0a10730b2') THEN
-    RAISE EXCEPTION '116 rollback: session_is_active / _session_membership are not 017''s / 036''s afterwards';
+    RAISE EXCEPTION '119 rollback: session_is_active / _session_membership are not 017''s / 036''s afterwards';
   END IF;
 END
 $$;

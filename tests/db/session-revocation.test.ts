@@ -9,9 +9,9 @@
  *   * the REQUEST HOOK (017/033, check_request_session -> session_is_active): the token's session no longer exists or is past
  *     its not_after. SQLSTATE 28000 "Your session has ended. Sign in again.". Deliberately not in the row helpers, so a plain SQL
  *     select with a dead session still returns rows here: the hook is what refuses every REST/RPC request (and Storage, 033).
- *   * a sign-in ban (auth.users.banned_until in the future, Admin > Users "Disable sign-in"), from migration 116: session_is_active is
+ *   * a sign-in ban (auth.users.banned_until in the future, Admin > Users "Disable sign-in"), from migration 119: session_is_active is
  *     false, so the request hook refuses the live token with 28000, and _session_membership gives nothing, so every row rule
- *     refuses too (case 3; SQL proof tests/scripts/ban-ends-session-116.proof.sql).
+ *     refuses too (case 3; SQL proof tests/scripts/ban-ends-session-119.proof.sql).
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), like company-access.test.ts, plus one test through the
  * real API: a signed-in token whose session row is deleted is refused by PostgREST at once.
@@ -180,7 +180,7 @@ describe("2. the session itself ends (sign-out, password change, timeout): the r
   });
 });
 
-describe("3. a sign-in ban ends the session at once (116); Deactivate (membership off) is unchanged", () => {
+describe("3. a sign-in ban ends the session at once (119); Deactivate (membership off) is unchanged", () => {
   const ban = (who = "$U") => `update auth.users set banned_until = now() + interval '100 years' where id = ${who}`;
   const off = "update public.organization_members set active = false where user_id = $U and organization_id = $A";
   const ended: Probe = { ...nothing, sessionActive: false, hook: "28000" };

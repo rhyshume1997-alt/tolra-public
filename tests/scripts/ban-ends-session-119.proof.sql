@@ -1,12 +1,12 @@
 -- =====================================================================================================
--- 116 proof (finding S6-1): a disabled sign-in (auth.users.banned_until in the future) ends the session in the database at once.
+-- 119 proof (finding S6-1): a disabled sign-in (auth.users.banned_until in the future) ends the session in the database at once.
 -- READ ONLY: the whole run is ONE transaction that is rolled back at the end (each case is a savepoint rolled back), so it can be
 -- run again and again on the same copy and leaves nothing behind.
 --
--- Runs on a plain PostgreSQL copy with the migration chain (000 to 116) and the Supabase role/auth stand-ins, NEVER on a hosted project:
+-- Runs on a plain PostgreSQL copy with the migration chain (000 to 119) and the Supabase role/auth stand-ins, NEVER on a hosted project:
 --
---   create database s6b template sec_base;      -- then apply supabase/release/116_ban_ends_session.release.sql to it
---   PGPASSWORD=localonly psql -h 127.0.0.1 -U postgres -d s6b -v ON_ERROR_STOP=1 -q -f tests/scripts/ban-ends-session-116.proof.sql
+--   create database s6b template sec_base;      -- then apply supabase/release/119_ban_ends_session.release.sql to it
+--   PGPASSWORD=localonly psql -h 127.0.0.1 -U postgres -d s6b -v ON_ERROR_STOP=1 -q -f tests/scripts/ban-ends-session-119.proof.sql
 --
 -- A signed-in user is simulated as the API does it: `set local role authenticated` plus the token's claims in request.jwt.claims.
 -- Every result line is `PASS|FAIL | case | what came back`; a clean run has no FAIL line (the script sets no exit code for a FAIL).
@@ -14,7 +14,7 @@
 -- and role the database resolves, how many rows _session_membership() gives, session_is_active(), and the request hook's answer
 -- (check_request_session, which PostgREST runs before every signed-in REST/RPC request: 28000 = "Your session has ended").
 -- Set-up copied from tests/scripts/session-revocation-proof.sql (S6). Mirrored in tests/db/session-revocation.test.ts, case 3.
--- Without 116 (rolled back, or either banned_until test removed) M, B1, B3a, B5b and B8 FAIL (and B1-w, B8-w without 036's half).
+-- Without 119 (rolled back, or either banned_until test removed) M, B1, B3a, B5b and B8 FAIL (and B1-w, B8-w without 036's half).
 -- =====================================================================================================
 \set ON_ERROR_STOP on
 \pset tuples_only on
@@ -97,10 +97,10 @@ insert into security_audit.session_company (session_id, user_id, organization_id
 \set live  '''rows=2 logos=1 org=a role=admin membership=1 session_active=true hook=ok'''
 \set ended '''rows=0 logos=0 org=- role=- membership=0 session_active=false hook=28000'''
 
-\echo === 116 applied? ===
-select public.zz_check('M  marker: session_is_active and _session_membership are 116''s',
+\echo === 119 applied? ===
+select public.zz_check('M  marker: session_is_active and _session_membership are 119''s',
   (exists (select 1 from pg_proc where oid = 'public.session_is_active()'::regprocedure and md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
-   and exists (select 1 from pg_proc where oid = 'public._session_membership()'::regprocedure and md5(regexp_replace(prosrc, '\s', '', 'g')) = 'b9c4e5c7147e1c7893b4e586dae0be2e'))::text, 'true');
+   and exists (select 1 from pg_proc where oid = 'public._session_membership()'::regprocedure and md5(regexp_replace(prosrc, '\s', '', 'g')) = 'dd70574344856582b9819431b45e6c5c'))::text, 'true');
 
 \echo === B0. baseline: U signed in, member of A, live session ===
 savepoint c; set local role authenticated; set local request.jwt.claims = :'cU';
@@ -141,7 +141,7 @@ rollback to savepoint c;
 \echo === B5. Deactivate (membership off) is unchanged; with a ban on top the hook refuses too ===
 savepoint c; update public.organization_members set active = false where user_id = :'U' and organization_id = :'A';
 set local role authenticated; set local request.jwt.claims = :'cU';
-select public.zz_check('B5a membership off, no ban: as before 116 (no rows, session still live)', public.zz_probe(), 'rows=0 logos=0 org=- role=- membership=0 session_active=true hook=ok');
+select public.zz_check('B5a membership off, no ban: as before 119 (no rows, session still live)', public.zz_probe(), 'rows=0 logos=0 org=- role=- membership=0 session_active=true hook=ok');
 select public.zz_check('B5a-w ... write refused', public.zz_insert(:'A'::uuid), '42501');
 rollback to savepoint c;
 savepoint c; :ban where id = :'U';

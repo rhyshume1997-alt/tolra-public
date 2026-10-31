@@ -1,8 +1,5 @@
--- 116_ban_ends_session.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
-BEGIN;
-
 -- =====================================================================================================
--- 116: a disabled sign-in ends the session at once (finding S6-1). Needs 017 (session_is_active, check_request_session, the
+-- 119: a disabled sign-in ends the session at once (finding S6-1). Needs 017 (session_is_active, check_request_session, the
 -- PostgREST request hook) and 036 (_session_membership). Touches no other migration's objects.
 --
 -- THE GAP. Admin > Users "Disable sign-in" (app/api/admin/users/sign-in/route.ts) and the platform owner's ban only set
@@ -23,12 +20,12 @@ BEGIN;
 --   An unban (banned_until NULL or in the past) gives the same token everything back while it is still valid, exactly as before.
 --   Every other rule is unchanged: a deactivated or deleted membership, a disabled profile, a forced password change, a company not
 --   'active', a support window, grant or elevation, a platform owner's aal2, an ended or timed-out session.
--- GUARD (section 1): each function must be 017's / 036's (or already 116's), md5 with every whitespace character removed; and the
--- owner must be able to read auth.users.banned_until. Safe to run again, also after 118 (S11), which runs this file's
--- _session_membership query, unchanged, from PL/pgSQL: the guard accepts 118's body too, and re-running this file puts this
--- file's SQL body back (the same answers, only slower) until 118 is re-run after it, as the run sheet re-runs files in order.
--- SELF-CHECK (section 4). Verify: supabase/verify/ban_ends_session_116.sql (every row TRUE).
--- Rollback: supabase/release/116_ban_ends_session.rollback.sql (puts back 017's and 036's bodies; only with Rhys's approval).
+-- GUARD (section 1): each function must be 017's / 036's (or already 119's), md5 with every whitespace character removed; and the
+-- owner must be able to read auth.users.banned_until. Safe to run again, also after 121 (S11), which runs this file's
+-- _session_membership query, unchanged, from PL/pgSQL: the guard accepts 121's body too, and re-running this file puts this
+-- file's SQL body back (the same answers, only slower) until 121 is re-run after it, as the run sheet re-runs files in order.
+-- SELF-CHECK (section 4). Verify: supabase/verify/ban_ends_session_119.sql (every row TRUE).
+-- Rollback: supabase/release/119_ban_ends_session.rollback.sql (puts back 017's and 036's bodies; only with Rhys's approval).
 -- =====================================================================================================
 
 -- -----------------------------------------------------------------------------------------------------
@@ -42,17 +39,17 @@ BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public._session_membership()') INTO v_member;
   -- 19fe21959a87cd880feb0fb0190980eb: 017's session_is_active; af6457cae4d8b89cd34b5963574fbe58: this file's (section 2).
   IF v_active IS NULL OR v_active NOT IN ('19fe21959a87cd880feb0fb0190980eb', 'af6457cae4d8b89cd34b5963574fbe58') THEN
-    RAISE EXCEPTION '116: public.session_is_active is not 017''s (md5 without whitespace %); stop and compare it first', coalesce(v_active, 'missing');
+    RAISE EXCEPTION '119: public.session_is_active is not 017''s (md5 without whitespace %); stop and compare it first', coalesce(v_active, 'missing');
   END IF;
-  -- a15c6833cefc4b752ceafce0a10730b2: 036's _session_membership; b9c4e5c7147e1c7893b4e586dae0be2e: this file's (section 3);
-  -- 38ad8bd255ea9a2d2b8713aa04eb7c82: 118's (this file's query run by PL/pgSQL; a re-run of 116 after 118, see the header).
-  IF v_member IS NULL OR v_member NOT IN ('a15c6833cefc4b752ceafce0a10730b2', 'b9c4e5c7147e1c7893b4e586dae0be2e', '38ad8bd255ea9a2d2b8713aa04eb7c82') THEN
-    RAISE EXCEPTION '116: public._session_membership is not 036''s (md5 without whitespace %); stop and compare it first', coalesce(v_member, 'missing');
+  -- a15c6833cefc4b752ceafce0a10730b2: 036's _session_membership; dd70574344856582b9819431b45e6c5c: this file's (section 3);
+  -- 4fa415c7b3222def6c37e93353e804c2: 121's (this file's query run by PL/pgSQL; a re-run of 119 after 121, see the header).
+  IF v_member IS NULL OR v_member NOT IN ('a15c6833cefc4b752ceafce0a10730b2', 'dd70574344856582b9819431b45e6c5c', '4fa415c7b3222def6c37e93353e804c2') THEN
+    RAISE EXCEPTION '119: public._session_membership is not 036''s (md5 without whitespace %); stop and compare it first', coalesce(v_member, 'missing');
   END IF;
   IF to_regprocedure('public.check_request_session()') IS NULL
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until')
      OR NOT has_column_privilege(current_user, 'auth.users', 'banned_until', 'SELECT') THEN
-    RAISE EXCEPTION '116: 017''s check_request_session, or auth.users.banned_until (readable by %), is missing', current_user;
+    RAISE EXCEPTION '119: 017''s check_request_session, or auth.users.banned_until (readable by %), is missing', current_user;
   END IF;
 END
 $$;
@@ -89,7 +86,7 @@ SET search_path = pg_catalog, public
 AS $$
   WITH me AS (
     -- A platform owner works in no company at all on a token that has not passed the second step (aal2): cross-company access
-    -- always needs it, whatever REQUIRE_ADMIN_MFA says. A login whose sign-in is disabled (banned in Auth) works in none either (116).
+    -- always needs it, whatever REQUIRE_ADMIN_MFA says. A login whose sign-in is disabled (banned in Auth) works in none either (119).
     SELECT p.id,
            EXISTS (SELECT 1 FROM security_audit.platform_admins a WHERE a.user_id = p.id) AS platform_owner
     FROM public.user_profiles p
@@ -136,16 +133,14 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.session_is_active()') AND p.prosecdef AND p.provolatile = 's'
                    AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
      OR NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._session_membership()') AND p.prosecdef AND p.provolatile = 's'
-                   AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'b9c4e5c7147e1c7893b4e586dae0be2e')
+                   AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'dd70574344856582b9819431b45e6c5c')
      OR NOT has_function_privilege('authenticated', 'public.session_is_active()', 'EXECUTE')
      OR has_function_privilege('anon', 'public.session_is_active()', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public._session_membership()', 'EXECUTE')
      OR has_function_privilege('anon', 'public._session_membership()', 'EXECUTE')
      OR NOT EXISTS (SELECT 1 FROM pg_db_role_setting s CROSS JOIN LATERAL unnest(s.setconfig) AS cfg
                     WHERE s.setrole = 'authenticator'::regrole AND cfg = 'pgrst.db_pre_request=public.check_request_session') THEN
-    RAISE EXCEPTION '116 self-check failed: session_is_active / _session_membership are not as written here, or the request hook moved';
+    RAISE EXCEPTION '119 self-check failed: session_is_active / _session_membership are not as written here, or the request hook moved';
   END IF;
 END
 $$;
-
-COMMIT;
