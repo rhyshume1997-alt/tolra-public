@@ -39,8 +39,8 @@ export function SendLogTable({ rows, people, issuedBy, busyId, onRetry }: {
 }) {
   if (!rows.length) return <p className="text-sm text-slate-500" data-testid="send-log-empty">Nothing in the send log yet.</p>;
   return (
-    <Table data-testid="send-log">
-      <TableHeader>
+    <Table data-testid="send-log" data-tablet-cards>
+      <TableHeader className="hidden md:table-header-group">
         <TableRow>
           <TableHead>Document</TableHead>
           <TableHead>Status</TableHead>
@@ -53,15 +53,15 @@ export function SendLogTable({ rows, people, issuedBy, busyId, onRetry }: {
         {rows.map((row) => {
           const view = sendLogView(row);
           return (
-            <TableRow key={row.id} data-testid="send-log-row" data-status={row.status}>
-              <TableCell className="font-medium">{view.document}</TableCell>
-              <TableCell className="whitespace-normal">
+            <TableRow key={row.id} data-testid="send-log-row" data-status={row.status} className="block md:table-row">
+              <TableCell className="block font-medium md:table-cell">{view.document}</TableCell>
+              <TableCell data-label="Status" className="block whitespace-normal md:table-cell">
                 <StatusBadge status={view.badge} label={view.label} />
                 {view.detail ? <p className="mt-1 max-w-md text-xs text-slate-600">{view.detail}</p> : null}
               </TableCell>
-              <TableCell>{fmtDateTime(view.when)}</TableCell>
-              <TableCell>{personName(people, issuedBy[row.doc_id])}</TableCell>
-              <TableCell className="text-right">
+              <TableCell data-label="When" className="block md:table-cell">{fmtDateTime(view.when)}</TableCell>
+              <TableCell data-label="Issued by" className="block md:table-cell">{personName(people, issuedBy[row.doc_id])}</TableCell>
+              <TableCell data-actions className="block empty:max-md:hidden md:table-cell desk:text-right">
                 {view.retry && onRetry ? (
                   <Button size="sm" variant="outline" disabled={busyId === row.id} onClick={() => onRetry(row)}>Retry</Button>
                 ) : null}

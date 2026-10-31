@@ -46,6 +46,12 @@ describe("dense tables only on wide screens", () => {
     expect(effectiveViewMode("table", false)).toBe("cards");
     expect(effectiveViewMode("table", true)).toBe("table");
   });
+  it("shows the list as cards up to 1024px only on a page whose list is a wide table (the Job Board)", () => {
+    expect(effectiveViewMode("list", false, true)).toBe("cards");
+    expect(effectiveViewMode("list", true, true)).toBe("list");
+    expect(effectiveViewMode("table", false, true)).toBe("cards");
+    expect(effectiveViewMode("cards", false, true)).toBe("cards");
+  });
   it("leaves cards and the compact list alone at every width", () => {
     for (const wide of [true, false]) {
       expect(effectiveViewMode("cards", wide)).toBe("cards");
