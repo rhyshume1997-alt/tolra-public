@@ -8,9 +8,11 @@
  *       clientWidth + 1 (a table or strip that has to be scrolled sideways inside its own box). Each is reported with its tag, test id or
  *       class, and the heading it sits under.
  * Every measurement is recorded as a test annotation (type "width", e.g. "390 /time page:ok inner:0") and as one console line, so the CI
- * log lists what still overflows. Only Weekly hours (/time, and its This week tab /time/week) is asserted: no page overflow and no inner
- * scroller at either width. Every other page is report-only and never fails, and a page that cannot be loaded is skipped with an
- * annotation, so one run of this spec cannot go red on a page that has not been fixed yet.
+ * log lists what still overflows. Weekly hours (/time, and its This week tab /time/week) is asserted in full: no page overflow and no
+ * inner scroller at either width. Every page this change set fixed (pageOnly) must not scroll sideways as a page at either width; its
+ * inner scrollers are reported, not asserted (the Machine Schedule time grid scrolls inside its own box on purpose). On an asserted
+ * page a load or sign-in failure fails the test, never a pass. Every other page is report-only and a page that cannot be loaded is
+ * skipped with an annotation.
  *
  * Deliberately scrollable wide strips (the Machine Schedule's time grid) appear in the report as inner scrollers; they are not asserted.
  * The Job Board shows its Cards at both widths (the List and Table need more than 1024 px), so its one measurement covers them.
@@ -25,29 +27,29 @@ type Size = { width: number; height: number };
 const SIZES: Size[] = [{ width: 390, height: 844 }, { width: 820, height: 1180 }];
 
 /** `ready` is a test id that shows when the page has its data; the measurement waits for it (up to 20 s) but goes ahead without it. */
-type Target = { path: string; ready?: string; asserted?: boolean };
+type Target = { path: string; ready?: string; asserted?: boolean; pageOnly?: boolean };
 const PAGES: Target[] = [
-  { path: "/dashboard" },
+  { path: "/dashboard", pageOnly: true },
   { path: "/numbers", ready: "numbers-page" },
   { path: "/rfq" },
-  { path: "/quotes" },
+  { path: "/quotes", pageOnly: true },
   { path: "/sales-orders" },
-  { path: "/jobs" },
-  { path: "/schedule" },
+  { path: "/jobs", pageOnly: true },
+  { path: "/schedule", pageOnly: true },
   { path: "/time", ready: "day-totals", asserted: true },
   { path: "/time/week", ready: "week-table", asserted: true },
-  { path: "/invoices" },
+  { path: "/invoices", pageOnly: true },
   { path: "/approval" },
   { path: "/purchase-orders" },
   { path: "/delivery-notes" },
   { path: "/customers" },
   { path: "/suppliers" },
-  { path: "/email" },
+  { path: "/email", pageOnly: true },
   { path: "/admin/users", ready: "user-row" },
   { path: "/admin/activity" },
-  { path: "/admin/compliance" },
-  { path: "/admin/data" },
-  { path: "/admin/integrations" },
+  { path: "/admin/compliance", pageOnly: true },
+  { path: "/admin/data", pageOnly: true },
+  { path: "/admin/integrations", pageOnly: true },
   { path: "/settings" },
 ];
 
@@ -120,7 +122,7 @@ for (const size of SIZES) {
     test.afterAll(async () => { await context?.close(); });
 
     for (const target of PAGES) {
-      test(`${target.path} fits without sideways scrolling${target.asserted ? "" : " (report only)"}`, async () => {
+      test(`${target.path} fits without sideways scrolling${target.asserted ? "" : target.pageOnly ? " (page)" : " (report only)"}`, async () => {
         test.setTimeout(120_000);
         let result: Measure | null = null;
         let failure = "";
@@ -131,6 +133,7 @@ for (const size of SIZES) {
             failure = error instanceof Error ? error.message.split("\n")[0] : String(error);
           }
         }
+        if (!result && (target.asserted || target.pageOnly)) throw new Error(`${target.path} @${size.width}: could not be loaded and measured: ${failure}`);
         if (!result) {
           test.info().annotations.push({ type: "width", description: `${size.width} ${target.path} skipped: ${failure}` });
           console.log(`[phone-width] ${size.width} ${target.path} SKIPPED (${failure})`);
@@ -147,8 +150,9 @@ for (const size of SIZES) {
           `[phone-width] ${size.width} ${target.path} page:${result.overflow ? `OVER (${result.scrollWidth} > ${result.innerWidth})` : "ok"} inner:${result.scrollers.length}`
           + (result.scrollers.length ? ` [${result.scrollers.map((s) => `${s.tag} ${s.id} under "${s.heading}" ${s.scrollWidth}>${s.clientWidth}`).join("; ")}]` : ""),
         );
-        if (!target.asserted) return;
+        if (!target.asserted && !target.pageOnly) return;
         expect(result.overflow, `${target.path} @${size.width}: the page scrolls sideways (${result.scrollWidth} > ${result.innerWidth})`).toBe(false);
+        if (!target.asserted) return;
         expect(result.scrollers, `${target.path} @${size.width}: parts that scroll sideways inside their own box`).toEqual([]);
       });
     }
