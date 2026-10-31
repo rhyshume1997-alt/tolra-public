@@ -149,6 +149,8 @@ test("on a phone, the worksheet's Close button stays on screen at the bottom of 
   const sheet = await openWorksheet(page, jobNo);
   const close = sheet.getByRole("button", { name: "Close", exact: true });
   await expect(close).toBeInViewport();
+  // Opening starts on the form, not on the Close button at the top.
+  await expect(close).not.toBeFocused();
   const scrolled = await sheet.evaluate((el) => { el.scrollTop = el.scrollHeight; return el.scrollTop; });
   expect(scrolled, "the worksheet is long enough to scroll on a phone").toBeGreaterThan(0);
   await expect(close).toBeInViewport();

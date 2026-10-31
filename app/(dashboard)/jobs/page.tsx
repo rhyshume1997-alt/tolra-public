@@ -1827,7 +1827,14 @@ export default function JobsPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(worksheetJob)} onOpenChange={(open) => !open && closeWorksheet()}>
-        <DialogContent className="max-w-4xl" hideClose>
+        {/* The Close X now comes first in the sticky header, so opening would focus it: start on the first field instead, or on the
+            dialog itself while the form is still loading. */}
+        <DialogContent className="max-w-4xl" hideClose onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const content = event.currentTarget as HTMLElement | null;
+          const first = content?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])");
+          (first ?? content)?.focus();
+        }}>
           <DialogHeader stickyClose><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle></DialogHeader>
           <DialogDescription className="-mt-6">Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription>
           {worksheetJob && !worksheetJob.finished_at && (benchPaused(worksheetJob) || benchRunning(worksheetJob)) ? (
