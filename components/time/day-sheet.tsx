@@ -337,15 +337,15 @@ export function DaySheet() {
               ) : null}
               {/* Below 1024px each job is a stacked card (data-tablet-cards in app/globals.css, labels from data-label), so a phone never scrolls sideways. */}
               {day.jobs.length ? (
-                <table className="w-full text-sm" data-testid="job-lines" data-tablet-cards>
-                  <thead className="hidden md:table-header-group"><tr className="border-b text-left text-xs uppercase text-slate-500"><th className="py-1">Job</th><th>Times</th><th className="text-right">Time</th><th className="text-right">Share</th><th /></tr></thead>
-                  <tbody>
+                <table role="table" className="w-full text-sm" data-testid="job-lines" data-tablet-cards>
+                  <thead role="rowgroup" className="hidden md:table-header-group"><tr role="row" className="border-b text-left text-xs uppercase text-slate-500"><th role="columnheader" className="py-1">Job</th><th role="columnheader">Times</th><th role="columnheader" className="text-right">Time</th><th role="columnheader" className="text-right">Share</th><th role="columnheader" /></tr></thead>
+                  <tbody role="rowgroup" role="rowgroup">
                     {day.jobs.map((line) => {
                       const job = jobById[line.jobId];
                       return (
-                        <tr key={line.jobId} className="block border-b align-top md:table-row">
-                          <td className="block py-2 md:table-cell"><span className="font-medium">{job?.job_no ?? "Job"}</span><div className="text-xs text-slate-500">{[job?.customer, job?.description].filter(Boolean).join(" · ")}</div></td>
-                          <td data-label="Times" className="block py-2 md:table-cell">
+                        <tr role="row" key={line.jobId} className="block border-b align-top md:table-row">
+                          <td role="cell" className="block py-2 md:table-cell"><span className="font-medium">{job?.job_no ?? "Job"}</span><div className="text-xs text-slate-500">{[job?.customer, job?.description].filter(Boolean).join(" · ")}</div></td>
+                          <td role="cell" data-label="Times" className="block py-2 md:table-cell">
                             {line.sessions.map((s) => (
                               <div key={s.id} className="flex flex-wrap items-center gap-1">
                                 <span className="font-mono">{clockTime(s.started_at, date)}–{s.ended_at ? clockTime(s.ended_at, date) : "now"}</span>
@@ -361,9 +361,9 @@ export function DaySheet() {
                               </div>
                             ))}
                           </td>
-                          <td data-label="Time" className="block py-2 text-left font-mono md:table-cell desk:text-right">{hm(line.minutes)}</td>
-                          <td data-label="Share" className="block py-2 text-left font-mono md:table-cell desk:text-right">{hm(line.allocatedMinutes)}</td>
-                          <td data-actions className="block py-2 text-left empty:max-md:hidden md:table-cell desk:text-right">{own && isToday && line.open && job ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void labour(job, "stop")} data-testid="labour-stop"><Square className="size-4" /> Stop</Button> : null}</td>
+                          <td role="cell" data-label="Time" className="block py-2 text-left font-mono md:table-cell desk:text-right">{hm(line.minutes)}</td>
+                          <td role="cell" data-label="Share" className="block py-2 text-left font-mono md:table-cell desk:text-right">{hm(line.allocatedMinutes)}</td>
+                          <td role="cell" data-actions className="block py-2 text-left empty:max-md:hidden md:table-cell desk:text-right">{own && isToday && line.open && job ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void labour(job, "stop")} data-testid="labour-stop"><Square className="size-4" /> Stop</Button> : null}</td>
                         </tr>
                       );
                     })}

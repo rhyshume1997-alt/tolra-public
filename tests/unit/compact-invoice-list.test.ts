@@ -109,8 +109,12 @@ describe("CompactInvoiceList render", () => {
 
   it("is a wide table only from 1025px; below that each invoice stacks as a card and names every column", () => {
     // The 56rem floor applies at desk: and up, so a phone or tablet never needs a sideways scroll.
-    expect(html).toMatch(/<table class="[^"]*desk:min-w-\[56rem\]"[^>]*data-tablet-cards/);
-    expect(html).not.toMatch(/<table class="(?:[^"]* )?min-w-\[/);
+    expect(html).toMatch(/<table [^>]*class="[^"]*desk:min-w-\[56rem\]"[^>]*data-tablet-cards/);
+    expect(html).not.toMatch(/<table [^>]*class="(?:[^"]* )?min-w-\[/);
+    // Stacked cards keep their table semantics for assistive technology (display: block would otherwise drop them).
+    expect(html).toContain('<table role="table"');
+    expect(html).toMatch(/<tr role="row"[^>]*data-testid="compact-invoice-row"/);
+    expect(html).toContain('<td role="cell" data-label="Net"');
     for (const label of ["Date", "Customer", "Net", "VAT", "Gross", "Paid", "Outstanding", "Status", "Due"]) expect(html).toContain(`data-label="${label}"`);
   });
 });

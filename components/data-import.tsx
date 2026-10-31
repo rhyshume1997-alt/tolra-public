@@ -412,23 +412,23 @@ export function DataImport() {
               : "Nothing was written. Fix the file (or the column choices above) and check it again."}
           </p>
           <div className="overflow-x-auto rounded-lg border bg-white">
-            <table className="w-full text-sm">
-              <thead className="max-md:hidden">
-                <tr className="text-left text-xs text-slate-500">
-                  <th className="px-3 py-2">Kind</th><th className="px-3 py-2 text-right">Rows</th><th className="px-3 py-2 text-right">Created</th>
-                  <th className="px-3 py-2 text-right">Matched (skipped)</th><th className="px-3 py-2 text-right">Linked</th><th className="px-3 py-2 text-right">Problems</th><th className="px-3 py-2 text-right">Warnings</th>
+            <table role="table" className="w-full text-sm">
+              <thead role="rowgroup" className="max-md:hidden">
+                <tr role="row" className="text-left text-xs text-slate-500">
+                  <th role="columnheader" className="px-3 py-2">Kind</th><th role="columnheader" className="px-3 py-2 text-right">Rows</th><th role="columnheader" className="px-3 py-2 text-right">Created</th>
+                  <th role="columnheader" className="px-3 py-2 text-right">Matched (skipped)</th><th role="columnheader" className="px-3 py-2 text-right">Linked</th><th role="columnheader" className="px-3 py-2 text-right">Problems</th><th role="columnheader" className="px-3 py-2 text-right">Warnings</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup" role="rowgroup">
                 {preview.map((row) => (
-                  <tr key={row.kind} className="border-t max-md:grid max-md:grid-cols-3 max-md:gap-x-2 max-md:px-3 max-md:py-2" data-testid={`import-count-${row.kind}`}>
-                    <td className="px-3 py-2 font-medium max-md:col-span-3 max-md:px-0">{KIND_LABEL[row.kind]}</td>
-                    <td data-label="Rows" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="rows">{row.rows}</td>
-                    <td data-label="Created" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="created">{row.created}</td>
-                    <td data-label="Matched (skipped)" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="matched">{row.matched}</td>
-                    <td data-label="Linked" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="linked">{row.linked ?? "–"}</td>
-                    <td data-label="Problems" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="problems">{row.problems}</td>
-                    <td data-label="Warnings" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="warnings">{row.warnings}</td>
+                  <tr role="row" key={row.kind} className="border-t max-md:grid max-md:grid-cols-3 max-md:gap-x-2 max-md:px-3 max-md:py-2" data-testid={`import-count-${row.kind}`}>
+                    <td role="cell" className="px-3 py-2 font-medium max-md:col-span-3 max-md:px-0">{KIND_LABEL[row.kind]}</td>
+                    <td role="cell" data-label="Rows" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="rows">{row.rows}</td>
+                    <td role="cell" data-label="Created" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="created">{row.created}</td>
+                    <td role="cell" data-label="Matched (skipped)" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="matched">{row.matched}</td>
+                    <td role="cell" data-label="Linked" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="linked">{row.linked ?? "–"}</td>
+                    <td role="cell" data-label="Problems" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="problems">{row.problems}</td>
+                    <td role="cell" data-label="Warnings" className="px-3 py-2 text-right tabular-nums max-md:px-0 max-md:text-left" data-col="warnings">{row.warnings}</td>
                   </tr>
                 ))}
               </tbody>
