@@ -261,6 +261,11 @@
  },
  {
   "kind": "function",
+  "object": "public.capture_overview_owed()",
+  "detail": "definer search_path=pg_catalog, public 2b9f0f79ce5dee89d933ed5ae36b17d5"
+ },
+ {
+  "kind": "function",
   "object": "public.carry_so_machines(p_order uuid, p_job uuid)",
   "detail": "definer search_path=pg_catalog, public 216bccfcc980d150d0ac1d3ce498de35"
  },
@@ -2117,6 +2122,11 @@
  {
   "kind": "function-grant",
   "object": "public.canonical_jsonb(p_value jsonb)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.capture_overview_owed()",
   "detail": "service_role"
  },
  {
@@ -4276,6 +4286,16 @@
  },
  {
   "kind": "policy",
+  "object": "public.overview_owed_snapshots :: overview_owed_snapshots admin select",
+  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+ },
+ {
+  "kind": "policy",
+  "object": "public.overview_owed_snapshots :: overview_owed_snapshots section access",
+  "detail": "RESTRICTIVE ALL authenticated eb0d63dd1bea9b313749b918e5e7ecc4"
+ },
+ {
+  "kind": "policy",
   "object": "public.purchase_orders :: purchase_orders rbac delete",
   "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
  },
@@ -4991,6 +5011,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.overview_owed_snapshots",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.paused_ack_ops",
   "detail": "enabled"
  },
@@ -5397,6 +5422,11 @@
  {
   "kind": "table-grant",
   "object": "public.organizations :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.overview_owed_snapshots :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -6863,6 +6893,11 @@
   "kind": "trigger",
   "object": "public.organizations :: organizations_require_admin_mfa_guard",
   "detail": "O e2da67e74e7dd08d2fd5b384002816fd"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.overview_owed_snapshots :: support_read_only",
+  "detail": "O d523224b3885c0d7be1b6de7cab21e8b"
  },
  {
   "kind": "trigger",
