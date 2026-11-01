@@ -165,7 +165,11 @@ markers(migration, present) AS (
     ('125 inbound email links',           EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.link_inbound_email(uuid, text, uuid, text, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2f7a1169a7087cf17a3f872a8f08a088')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'inbound_emails' AND column_name = 'link_suggestions')),
     ('126 booking time zero quote guards', EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delete_machine_booking(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1fee96ce68caa2bcbf89f416587e75ba')
-                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.accept_quote(uuid, text, date, uuid[])') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4f354d3878197aabe53db19807f99305'))
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.accept_quote(uuid, text, date, uuid[])') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4f354d3878197aabe53db19807f99305')),
+    ('132 dashboard tile figures',        (SELECT count(*) = 6 FROM fn WHERE nspname = 'public' AND (proname, md5(regexp_replace(prosrc, '\s', '', 'g'))) IN (
+                                            ('dashboard_open_quotes', 'd2c5bd23f4c46c421b989012e74c2e80'), ('dashboard_quotes_sent', '308be040514eab13aca8cf86dd7f2c63'),
+                                            ('dashboard_quotes_won', 'd2ca2c957383ede97833c95b84b0f8fa'), ('dashboard_quote_outcomes', '774a67cfe0e7fd2f013f7fd3abcc7dad'),
+                                            ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '717e79e4e15894b2392c3c9d0eda4e96'))))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

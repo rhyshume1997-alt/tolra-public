@@ -1,0 +1,1912 @@
+{
+    "dates": {
+        "today": "2026-10-20",
+        "monthStart": "2026-10-01",
+        "ninetyDaysAgo": "2026-07-22"
+    },
+    "people": {
+        "beta_admin": {
+            "rpc": {
+                "won": {
+                    "count": 1,
+                    "undated": 0
+                },
+                "open": {
+                    "open_count": 2,
+                    "open_pence": 199998,
+                    "accepted_count": 1
+                },
+                "owed": {
+                    "owed": 5000,
+                    "not_due": 0,
+                    "invoices": 1,
+                    "late_1_30": 0,
+                    "late_31_60": 0,
+                    "to_confirm": 0,
+                    "late_60_plus": 500000
+                },
+                "rfqs": {
+                    "outstanding": 1
+                },
+                "sent": {
+                    "count": 3
+                },
+                "outcomes": {
+                    "sent": 2,
+                    "expired": 0,
+                    "accepted": 1,
+                    "rejected": 0,
+                    "expired_sent": 0
+                }
+            },
+            "rows": {
+                "rfqs": [
+                    {
+                        "id": "b5000000-0000-0000-0000-000000000001",
+                        "status": "new"
+                    },
+                    {
+                        "id": "b5000000-0000-0000-0000-000000000002",
+                        "status": "new"
+                    }
+                ],
+                "quotes": [
+                    {
+                        "id": "b1000000-0000-0000-0000-000000000001",
+                        "rfq_id": "b5000000-0000-0000-0000-000000000001",
+                        "status": "sent",
+                        "sent_at": "2026-10-05T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-B1",
+                        "created_at": "2026-10-05T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 999.99,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "b1000000-0000-0000-0000-000000000002",
+                        "rfq_id": null,
+                        "status": "sent",
+                        "sent_at": "2026-10-05T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-B2",
+                        "created_at": "2026-10-05T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 999.99,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "b1000000-0000-0000-0000-000000000003",
+                        "rfq_id": null,
+                        "status": "accepted",
+                        "sent_at": "2026-10-05T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-B3",
+                        "created_at": "2026-10-05T12:00:00+00:00",
+                        "accepted_at": "2026-10-06T12:00:00+00:00",
+                        "total_value": 999.99,
+                        "valid_until": null,
+                        "vat_enabled": true
+                    }
+                ],
+                "unpaid": [
+                    {
+                        "id": "b2000000-0000-0000-0000-000000000001",
+                        "total": 5000.00,
+                        "status": "issued",
+                        "customer": "Other",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-B1",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    }
+                ],
+                "declined": [
+                ]
+            }
+        },
+        "alpha_admin": {
+            "rpc": {
+                "won": {
+                    "count": 2,
+                    "undated": 1
+                },
+                "open": {
+                    "open_count": 6,
+                    "open_pence": 123512819,
+                    "accepted_count": 3
+                },
+                "owed": {
+                    "owed": 634.3200000000002,
+                    "not_due": 19787,
+                    "invoices": 49,
+                    "late_1_30": 15305,
+                    "late_31_60": 14340,
+                    "to_confirm": 2,
+                    "late_60_plus": 14000
+                },
+                "rfqs": {
+                    "outstanding": 4
+                },
+                "sent": {
+                    "count": 8
+                },
+                "outcomes": {
+                    "sent": 6,
+                    "expired": 1,
+                    "accepted": 2,
+                    "rejected": 1,
+                    "expired_sent": 1
+                }
+            },
+            "rows": {
+                "rfqs": [
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000001",
+                        "status": ""
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000002",
+                        "status": null
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000003",
+                        "status": "new"
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000004",
+                        "status": "quoted"
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000005",
+                        "status": "Quoted"
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000006",
+                        "status": "clarification"
+                    }
+                ],
+                "quotes": [
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000001",
+                        "rfq_id": null,
+                        "status": "sent",
+                        "sent_at": "2026-10-05T10:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0001",
+                        "created_at": "2026-10-05T09:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 350.00,
+                        "valid_until": "2026-11-30",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000002",
+                        "rfq_id": null,
+                        "status": "SENT",
+                        "sent_at": "2026-09-30T23:30:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0002",
+                        "created_at": "2026-09-30T09:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 0.10,
+                        "valid_until": "2026-10-20",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000003",
+                        "rfq_id": "a5000000-0000-0000-0000-000000000006",
+                        "status": "sent",
+                        "sent_at": "2026-10-01T00:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0003",
+                        "created_at": "2026-10-01T00:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 0.20,
+                        "valid_until": null,
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000004",
+                        "rfq_id": null,
+                        "status": "sent",
+                        "sent_at": "2026-07-22T00:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0004",
+                        "created_at": "2026-07-21T00:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 1234567.89,
+                        "valid_until": "2027-01-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000005",
+                        "rfq_id": null,
+                        "status": "sent",
+                        "sent_at": "2026-08-10T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0005",
+                        "created_at": "2026-08-10T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 500.00,
+                        "valid_until": "2026-10-19",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000006",
+                        "rfq_id": null,
+                        "status": "draft",
+                        "sent_at": null,
+                        "version": 1,
+                        "quote_ref": "QUO-0006",
+                        "created_at": "2026-09-01T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 75.00,
+                        "valid_until": "2026-10-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000007",
+                        "rfq_id": null,
+                        "status": "Accepted ",
+                        "sent_at": "2026-09-20T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0007",
+                        "created_at": "2026-09-20T12:00:00+00:00",
+                        "accepted_at": "2026-10-02T12:00:00+00:00",
+                        "total_value": 10.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000008",
+                        "rfq_id": "a5000000-0000-0000-0000-000000000004",
+                        "status": "ACCEPTED",
+                        "sent_at": "2026-08-01T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0008",
+                        "created_at": "2026-08-01T12:00:00+00:00",
+                        "accepted_at": "2026-09-30T23:30:00+00:00",
+                        "total_value": 120.00,
+                        "valid_until": "2026-09-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000009",
+                        "rfq_id": null,
+                        "status": "accepted",
+                        "sent_at": "2026-07-01T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0009",
+                        "created_at": "2026-07-01T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 40.00,
+                        "valid_until": null,
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000010",
+                        "rfq_id": null,
+                        "status": "accepted",
+                        "sent_at": "2026-09-01T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0010",
+                        "created_at": "2026-09-01T12:00:00+00:00",
+                        "accepted_at": "2026-09-30T22:30:00+00:00",
+                        "total_value": 60.00,
+                        "valid_until": null,
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000011",
+                        "rfq_id": null,
+                        "status": "rejected",
+                        "sent_at": "2026-09-01T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0011",
+                        "created_at": "2026-09-01T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 80.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000012",
+                        "rfq_id": null,
+                        "status": "superseded",
+                        "sent_at": "2026-10-03T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0012",
+                        "created_at": "2026-10-03T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 90.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000013",
+                        "rfq_id": null,
+                        "status": "",
+                        "sent_at": null,
+                        "version": 1,
+                        "quote_ref": "QUO-0013",
+                        "created_at": "2026-10-01T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 15.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000014",
+                        "rfq_id": null,
+                        "status": null,
+                        "sent_at": null,
+                        "version": 1,
+                        "quote_ref": "QUO-0014",
+                        "created_at": "2026-10-01T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 16.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000015",
+                        "rfq_id": null,
+                        "status": "weird",
+                        "sent_at": "2026-10-04T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0015",
+                        "created_at": "2026-10-04T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 17.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000016",
+                        "rfq_id": null,
+                        "status": "sent",
+                        "sent_at": "2026-10-02T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0100",
+                        "created_at": "2026-10-02T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 100.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000017",
+                        "rfq_id": null,
+                        "status": "sent",
+                        "sent_at": "2026-10-03T12:00:00+00:00",
+                        "version": 2,
+                        "quote_ref": "QUO-0100 v2",
+                        "created_at": "2026-10-03T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 110.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000018",
+                        "rfq_id": null,
+                        "status": "draft",
+                        "sent_at": "2026-10-06T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0101 v3",
+                        "created_at": "2026-10-06T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 5.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000019",
+                        "rfq_id": null,
+                        "status": "draft",
+                        "sent_at": "2026-10-07T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "",
+                        "created_at": "2026-10-07T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 5.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    },
+                    {
+                        "id": "a1000000-0000-0000-0000-000000000020",
+                        "rfq_id": null,
+                        "status": "draft",
+                        "sent_at": "2026-10-08T12:00:00+00:00",
+                        "version": 1,
+                        "quote_ref": "QUO-0102",
+                        "created_at": "2026-10-08T12:00:00+00:00",
+                        "accepted_at": null,
+                        "total_value": 5.00,
+                        "valid_until": "2026-12-01",
+                        "vat_enabled": true
+                    }
+                ],
+                "unpaid": [
+                    {
+                        "id": "08a45f85-f7ee-7a4f-f38b-b2eda7d9b215",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-21",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S20",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "0c9b509b-9559-273a-92ff-355d6f4fbbc5",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-22",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S30",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "0e1112cb-f6e2-5f6d-d676-2bea4dded39d",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-30",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S17",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "10f4022e-5f64-1dd8-4e50-02dbaf3e58d0",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-19",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S31",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "17726296-1554-1d37-0476-20cf8a9eb08c",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-10",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S34",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "1c2765c0-3a87-6862-e2b5-0bf5d5d0b703",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-11",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S3",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2145c759-dd74-b604-df12-657ab5fbcda1",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-18",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S21",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2aadc84d-36d9-64b0-0382-5c097e84dad6",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-23",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S9",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2d1f45a9-c9d7-fd9c-970b-3d2f24f13640",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-06-22",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S40",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2ed22bd3-9649-67ad-14a3-efb9c209f01e",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-13",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S33",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "31fae02b-19e7-0acb-46d2-e06088b27ad4",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-07",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S35",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "32f71568-3ffa-7669-f465-3be466d9132e",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-11",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S13",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "39c667fd-ae3f-439d-5f12-35aa0fc3ab70",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-02",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S6",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "3abd584a-b712-a2df-4ed0-652ce6d5f16d",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-02",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S16",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "4433571a-4c9d-404d-a8b1-25cf720cd282",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-06-25",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S39",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "46a71209-4905-52f8-f610-88efe2e4a95f",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-06",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S25",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "4c50702d-3816-c3e4-119a-6733ddba0801",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-04",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S36",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "5a12eab6-7954-6f55-f5ae-ea34fbb26bce",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-14",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S12",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "7141f600-5f39-8823-0a21-86d5dbc509d4",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-08",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S14",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "784bc1b3-99cc-ffb9-8226-4046c6190c60",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-24",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S19",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "8461c50b-9d77-40b8-141b-b7e0f8dc2425",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-26",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S8",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "8cd1b867-efdf-cc00-4911-dd4e2a884867",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-06-28",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S38",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000001",
+                        "total": 120.10,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-10-25",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-01",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000002",
+                        "total": 200.00,
+                        "status": "Partial",
+                        "customer": "Acme",
+                        "due_date": "2026-10-10",
+                        "amount_paid": 50.05,
+                        "invoice_ref": "INV-02",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000003",
+                        "total": 80.00,
+                        "status": " sent ",
+                        "customer": "Acme",
+                        "due_date": "2026-09-10",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-03",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000004",
+                        "total": 100.00,
+                        "status": "overdue",
+                        "customer": "Acme",
+                        "due_date": "2026-07-01",
+                        "amount_paid": 20.00,
+                        "invoice_ref": "INV-04",
+                        "credited_amount": 10.00,
+                        "refunded_amount": 2.50,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000005",
+                        "total": 999.00,
+                        "status": "draft",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-05",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000006",
+                        "total": 999.00,
+                        "status": "  ",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-06",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000008",
+                        "total": 300.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-08",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": true
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000009",
+                        "total": 300.00,
+                        "status": "draft",
+                        "customer": "Acme",
+                        "due_date": null,
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-09",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": true
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000010",
+                        "total": 400.00,
+                        "status": "Paid",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-10",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000012",
+                        "total": 50.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-10-01",
+                        "amount_paid": 75.00,
+                        "invoice_ref": "INV-12",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000013",
+                        "total": 999.00,
+                        "status": "void",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-13",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000014",
+                        "total": 999.00,
+                        "status": "written_off",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-14",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000015",
+                        "total": 999.00,
+                        "status": "Credited",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-15",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000016",
+                        "total": 33.33,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": null,
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-16",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000017",
+                        "total": 44.44,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-10-20",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-17",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000018",
+                        "total": 999.00,
+                        "status": " draft ",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-18",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000019",
+                        "total": 61.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-08-20",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-19",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000020",
+                        "total": 60.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-08-21",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-20",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "bcb2f5a2-2109-66c0-39c6-220e6dd71c4a",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-05",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S5",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "bd4363d5-0601-3660-a6c2-eba197951fdf",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-17",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S11",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c00c2403-008d-2067-8950-4f20e312f515",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S37",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c18d9625-f6a1-ebf6-c692-416134e34c94",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-20",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S10",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c22c24c0-cdc6-c402-9dd8-aa419ebe35e4",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-31",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S27",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c32bb474-9ac3-6f70-c656-5edc4b8fa055",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-09",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S24",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c53a1b11-6358-ec86-1b45-50869fc5d836",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-17",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S1",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "d0c64dc9-f420-100a-5bd4-29c768582371",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-28",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S28",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "de81799e-f8ff-022b-c6a8-cafc188210f2",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-25",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S29",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e07546df-0826-49b3-c023-309d731aef5b",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-15",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S22",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e49ef028-ee07-1587-52f0-402804c4db3f",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-27",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S18",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e5ffbdbe-d3b8-ae32-85e6-9717d94d3f13",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-05",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S15",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e98ac8ab-3855-a81c-200c-12e6403e1eeb",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-14",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S2",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "ec86f46c-fd92-a112-fff5-a7284d39933f",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-08",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S4",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "eed59ad1-276a-999a-2ad0-c30ff8eb5194",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-16",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S32",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "f75586c5-d2bd-8d07-051f-8036c9fa08bd",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-03",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S26",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "f7bf600e-887e-fa3d-4090-12029d7acb98",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-29",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S7",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "ff609084-4b7f-1198-48b4-793e74320254",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-12",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S23",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    }
+                ],
+                "declined": [
+                    {
+                        "id": "a4000000-0000-0000-0000-000000000001",
+                        "vat_pct": 20.00,
+                        "quantity": 1.000,
+                        "quote_id": "a1000000-0000-0000-0000-000000000009",
+                        "unit_price": 10.00,
+                        "vat_exempt": false
+                    }
+                ]
+            }
+        },
+        "alpha_office_quotes_hidden": {
+            "rpc": {
+                "won": {
+                    "count": 0,
+                    "undated": 0
+                },
+                "open": {
+                    "open_count": 0,
+                    "open_pence": 0,
+                    "accepted_count": 0
+                },
+                "owed": {
+                    "owed": 634.3200000000002,
+                    "not_due": 19787,
+                    "invoices": 49,
+                    "late_1_30": 15305,
+                    "late_31_60": 14340,
+                    "to_confirm": 2,
+                    "late_60_plus": 14000
+                },
+                "rfqs": {
+                    "outstanding": 5
+                },
+                "sent": {
+                    "count": 0
+                },
+                "outcomes": {
+                    "sent": 0,
+                    "expired": 0,
+                    "accepted": 0,
+                    "rejected": 0,
+                    "expired_sent": 0
+                }
+            },
+            "rows": {
+                "rfqs": [
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000001",
+                        "status": ""
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000002",
+                        "status": null
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000003",
+                        "status": "new"
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000004",
+                        "status": "quoted"
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000005",
+                        "status": "Quoted"
+                    },
+                    {
+                        "id": "a5000000-0000-0000-0000-000000000006",
+                        "status": "clarification"
+                    }
+                ],
+                "quotes": [
+                ],
+                "unpaid": [
+                    {
+                        "id": "08a45f85-f7ee-7a4f-f38b-b2eda7d9b215",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-21",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S20",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "0c9b509b-9559-273a-92ff-355d6f4fbbc5",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-22",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S30",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "0e1112cb-f6e2-5f6d-d676-2bea4dded39d",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-30",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S17",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "10f4022e-5f64-1dd8-4e50-02dbaf3e58d0",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-19",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S31",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "17726296-1554-1d37-0476-20cf8a9eb08c",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-10",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S34",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "1c2765c0-3a87-6862-e2b5-0bf5d5d0b703",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-11",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S3",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2145c759-dd74-b604-df12-657ab5fbcda1",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-18",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S21",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2aadc84d-36d9-64b0-0382-5c097e84dad6",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-23",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S9",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2d1f45a9-c9d7-fd9c-970b-3d2f24f13640",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-06-22",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S40",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "2ed22bd3-9649-67ad-14a3-efb9c209f01e",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-13",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S33",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "31fae02b-19e7-0acb-46d2-e06088b27ad4",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-07",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S35",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "32f71568-3ffa-7669-f465-3be466d9132e",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-11",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S13",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "39c667fd-ae3f-439d-5f12-35aa0fc3ab70",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-02",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S6",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "3abd584a-b712-a2df-4ed0-652ce6d5f16d",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-02",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S16",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "4433571a-4c9d-404d-a8b1-25cf720cd282",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-06-25",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S39",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "46a71209-4905-52f8-f610-88efe2e4a95f",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-06",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S25",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "4c50702d-3816-c3e4-119a-6733ddba0801",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-04",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S36",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "5a12eab6-7954-6f55-f5ae-ea34fbb26bce",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-14",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S12",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "7141f600-5f39-8823-0a21-86d5dbc509d4",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-08",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S14",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "784bc1b3-99cc-ffb9-8226-4046c6190c60",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-24",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S19",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "8461c50b-9d77-40b8-141b-b7e0f8dc2425",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-26",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S8",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "8cd1b867-efdf-cc00-4911-dd4e2a884867",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-06-28",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S38",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000001",
+                        "total": 120.10,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-10-25",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-01",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000002",
+                        "total": 200.00,
+                        "status": "Partial",
+                        "customer": "Acme",
+                        "due_date": "2026-10-10",
+                        "amount_paid": 50.05,
+                        "invoice_ref": "INV-02",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000003",
+                        "total": 80.00,
+                        "status": " sent ",
+                        "customer": "Acme",
+                        "due_date": "2026-09-10",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-03",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000004",
+                        "total": 100.00,
+                        "status": "overdue",
+                        "customer": "Acme",
+                        "due_date": "2026-07-01",
+                        "amount_paid": 20.00,
+                        "invoice_ref": "INV-04",
+                        "credited_amount": 10.00,
+                        "refunded_amount": 2.50,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000005",
+                        "total": 999.00,
+                        "status": "draft",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-05",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000006",
+                        "total": 999.00,
+                        "status": "  ",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-06",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000008",
+                        "total": 300.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-08",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": true
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000009",
+                        "total": 300.00,
+                        "status": "draft",
+                        "customer": "Acme",
+                        "due_date": null,
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-09",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": true
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000010",
+                        "total": 400.00,
+                        "status": "Paid",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-10",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000012",
+                        "total": 50.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-10-01",
+                        "amount_paid": 75.00,
+                        "invoice_ref": "INV-12",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000013",
+                        "total": 999.00,
+                        "status": "void",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-13",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000014",
+                        "total": 999.00,
+                        "status": "written_off",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-14",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000015",
+                        "total": 999.00,
+                        "status": "Credited",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-15",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000016",
+                        "total": 33.33,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": null,
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-16",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000017",
+                        "total": 44.44,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-10-20",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-17",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000018",
+                        "total": 999.00,
+                        "status": " draft ",
+                        "customer": "Acme",
+                        "due_date": "2026-01-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-18",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000019",
+                        "total": 61.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-08-20",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-19",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "a2000000-0000-0000-0000-000000000020",
+                        "total": 60.00,
+                        "status": "issued",
+                        "customer": "Acme",
+                        "due_date": "2026-08-21",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-20",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "bcb2f5a2-2109-66c0-39c6-220e6dd71c4a",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-05",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S5",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "bd4363d5-0601-3660-a6c2-eba197951fdf",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-17",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S11",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c00c2403-008d-2067-8950-4f20e312f515",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-01",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S37",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c18d9625-f6a1-ebf6-c692-416134e34c94",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-20",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S10",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c22c24c0-cdc6-c402-9dd8-aa419ebe35e4",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-31",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S27",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c32bb474-9ac3-6f70-c656-5edc4b8fa055",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-09",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S24",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "c53a1b11-6358-ec86-1b45-50869fc5d836",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-17",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S1",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "d0c64dc9-f420-100a-5bd4-29c768582371",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-28",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S28",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "de81799e-f8ff-022b-c6a8-cafc188210f2",
+                        "total": 0.20,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-25",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S29",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e07546df-0826-49b3-c023-309d731aef5b",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-15",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S22",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e49ef028-ee07-1587-52f0-402804c4db3f",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-27",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S18",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e5ffbdbe-d3b8-ae32-85e6-9717d94d3f13",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-05",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S15",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "e98ac8ab-3855-a81c-200c-12e6403e1eeb",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-14",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S2",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "ec86f46c-fd92-a112-fff5-a7284d39933f",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-10-08",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S4",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "eed59ad1-276a-999a-2ad0-c30ff8eb5194",
+                        "total": 0.10,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-07-16",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S32",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "f75586c5-d2bd-8d07-051f-8036c9fa08bd",
+                        "total": 0.30,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-03",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S26",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "f7bf600e-887e-fa3d-4090-12029d7acb98",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-09-29",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S7",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    },
+                    {
+                        "id": "ff609084-4b7f-1198-48b4-793e74320254",
+                        "total": 0.70,
+                        "status": "issued",
+                        "customer": "Small",
+                        "due_date": "2026-08-12",
+                        "amount_paid": 0.00,
+                        "invoice_ref": "INV-S23",
+                        "credited_amount": 0.00,
+                        "refunded_amount": 0.00,
+                        "payment_unverified": false
+                    }
+                ],
+                "declined": [
+                ]
+            }
+        }
+    },
+    "source": "tests/scripts/sql/132_dashboard_tile_figures.fixture.sql"
+}
