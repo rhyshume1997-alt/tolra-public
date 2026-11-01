@@ -142,7 +142,7 @@
  {
   "kind": "function",
   "object": "public.ai_helper_status()",
-  "detail": "definer search_path=pg_catalog, public 1e01143ab0b5a284a2d4768074fd3b36"
+  "detail": "definer search_path=pg_catalog, public 3b57dc373bba07b2845e25f7584378d1"
  },
  {
   "kind": "function",
