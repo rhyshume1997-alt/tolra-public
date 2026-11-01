@@ -9,18 +9,19 @@
 \set QUIET 1
 \o /dev/null
 BEGIN;
--- Two companies. A: admin, office, w1 (the default: no exception), w2 (allowed off site while locked). B: admin.
+-- Two companies. A: admin, office, w1 (the default: no exception), w2 (allowed off site while locked), viewer. B: admin.
 INSERT INTO public.organizations (id, name, slug) VALUES
   ('12800000-0000-0000-0000-0000000000a0', 'Net A', 't-net128-a'), ('12800000-0000-0000-0000-0000000000b0', 'Net B', 't-net128-b');
 INSERT INTO auth.users (id, email) VALUES
   ('12800000-0000-0000-0000-00000000a001', 'net128.admin.a@example.test'), ('12800000-0000-0000-0000-00000000a003', 'net128.office.a@example.test'),
   ('12800000-0000-0000-0000-00000000a004', 'net128.w1.a@example.test'), ('12800000-0000-0000-0000-00000000a005', 'net128.w2.a@example.test'),
-  ('12800000-0000-0000-0000-00000000b001', 'net128.admin.b@example.test');
+  ('12800000-0000-0000-0000-00000000a006', 'net128.viewer.a@example.test'), ('12800000-0000-0000-0000-00000000b001', 'net128.admin.b@example.test');
 INSERT INTO public.user_profiles (id, email, full_name, role, organization_id) VALUES
   ('12800000-0000-0000-0000-00000000a001', 'net128.admin.a@example.test', 'Admin A', 'admin', '12800000-0000-0000-0000-0000000000a0'),
   ('12800000-0000-0000-0000-00000000a003', 'net128.office.a@example.test', 'Office A', 'office', '12800000-0000-0000-0000-0000000000a0'),
   ('12800000-0000-0000-0000-00000000a004', 'net128.w1.a@example.test', 'Worker One', 'workshop', '12800000-0000-0000-0000-0000000000a0'),
   ('12800000-0000-0000-0000-00000000a005', 'net128.w2.a@example.test', 'Worker Two', 'workshop', '12800000-0000-0000-0000-0000000000a0'),
+  ('12800000-0000-0000-0000-00000000a006', 'net128.viewer.a@example.test', 'Viewer A', 'viewer', '12800000-0000-0000-0000-0000000000a0'),
   ('12800000-0000-0000-0000-00000000b001', 'net128.admin.b@example.test', 'Admin B', 'admin', '12800000-0000-0000-0000-0000000000b0')
 ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, organization_id = EXCLUDED.organization_id, full_name = EXCLUDED.full_name;
 INSERT INTO public.organization_members (user_id, organization_id, role) VALUES
@@ -28,6 +29,7 @@ INSERT INTO public.organization_members (user_id, organization_id, role) VALUES
   ('12800000-0000-0000-0000-00000000a003', '12800000-0000-0000-0000-0000000000a0', 'office'),
   ('12800000-0000-0000-0000-00000000a004', '12800000-0000-0000-0000-0000000000a0', 'workshop'),
   ('12800000-0000-0000-0000-00000000a005', '12800000-0000-0000-0000-0000000000a0', 'workshop'),
+  ('12800000-0000-0000-0000-00000000a006', '12800000-0000-0000-0000-0000000000a0', 'viewer'),
   ('12800000-0000-0000-0000-00000000b001', '12800000-0000-0000-0000-0000000000b0', 'admin')
 ON CONFLICT DO NOTHING;
 
@@ -251,6 +253,142 @@ SELECT pg_temp.ok((SELECT count(*) = 1 FROM security_audit.audit_log WHERE organ
                    AND (metadata ->> 'removed')::INT = 2), '5k Delete all audited with the count only');
 SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000b001', '198.51.100.20');
 SELECT pg_temp.ok((public.purge_site_network_ips(TRUE) ->> 'removed')::INT = 0, '5l company B''s Delete all clears nothing of A');
+
+-- 6. Duplicates are idempotent: one refused clock action reported live, then again from the offline queue (lib/offline/sync.ts
+--    executeClockRefusalOp: the same client op id), from any address, is ONE row; the first record's address and time are kept.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a004', '198.51.100.60');
+SELECT pg_temp.expect_refused($$SELECT public.record_attendance_event('12800000-0000-0000-0000-00000000e001', 'out', NULL, 'Proof phone')$$,
+                              '6a w1 clock out from an unrecognised address: refused by 114', 'clock_in_network_locked');
+DO $$ DECLARE live JSONB; q JSONB; BEGIN
+  live := public.record_clock_in_refusal('12800000-0000-0000-0000-00000000e001', 'out');
+  PERFORM pg_temp.ok((live ->> 'recorded')::BOOLEAN AND NOT (live ->> 'replayed')::BOOLEAN, '6b the live report: recorded');
+  INSERT INTO proof_ids VALUES ('live', (live ->> 'id')::UUID);
+  q := public.record_clock_in_refusal('12800000-0000-0000-0000-00000000e001', 'out');
+  PERFORM pg_temp.ok((q ->> 'replayed')::BOOLEAN AND q ->> 'id' = live ->> 'id' AND q ->> 'attempted_at' = live ->> 'attempted_at',
+                     '6c the queued resend from the same address: the first record (replayed, same id and time)');
+END $$;
+-- The queue sends it on reconnect, by then maybe back on the workshop Wi-Fi (where 114 would not refuse) or on another network.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a004', '203.0.113.7');
+SELECT pg_temp.ok((SELECT (r ->> 'replayed')::BOOLEAN AND r ->> 'id' = (SELECT id::TEXT FROM proof_ids WHERE k = 'live')
+                   FROM (SELECT public.record_clock_in_refusal('12800000-0000-0000-0000-00000000e001', 'out') AS r) x),
+                  '6d the queued resend from the workshop address: replayed (not not_refused), the same record');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a004', '198.51.100.61');
+SELECT pg_temp.ok((SELECT (r ->> 'replayed')::BOOLEAN AND r ->> 'id' = (SELECT id::TEXT FROM proof_ids WHERE k = 'live')
+                   FROM (SELECT public.record_clock_in_refusal('12800000-0000-0000-0000-00000000e001', 'out') AS r) x),
+                  '6e the queued resend from another address: replayed, the same record');
+-- Someone else (office A, also refused from outside) under the same key: refused, nothing added.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a003', '198.51.100.62');
+SELECT pg_temp.expect_refused($$SELECT public.record_clock_in_refusal('12800000-0000-0000-0000-00000000e001', 'out')$$, '6f another person under the same key', 'client_op_reused');
+RESET ROLE;
+SELECT pg_temp.ok((SELECT count(*) = 1 AND bool_and(ip = '198.51.100.60'::INET AND user_id = '12800000-0000-0000-0000-00000000a004' AND action = 'out')
+                   FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000e001'),
+                  '6g ONE row for the key: w1, out, the live report''s address (198.51.100.60), never a resend''s');
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM public.attendance_events WHERE client_op_id = '12800000-0000-0000-0000-00000000e001'),
+                  '6h no clock record under the key (the report never records the clock action)');
+SELECT pg_temp.expect_refused($$INSERT INTO public.clock_in_network_refusals (organization_id, user_id, client_op_id, action)
+                                VALUES ('12800000-0000-0000-0000-0000000000a0', '12800000-0000-0000-0000-00000000a004', '12800000-0000-0000-0000-00000000e001', 'out')$$,
+                              '6i a second row for the key, even written directly by the owner', NULL, '%clock_in_network_refusals_one_per_key%');
+
+-- 7. Who can read an address or rename, per role (RLS, as PostgREST). A switches the Flag check on for w1 and w2 (075) so their clock
+--    actions keep their address (078's attendance_event_network_ips): w1 clocks out on the workshop network, w2 (allowed off site) clocks in from outside.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7');
+SELECT public.set_site_network_check(gen_random_uuid(), 'flag');
+SELECT public.set_member_on_site_only(gen_random_uuid(), '12800000-0000-0000-0000-00000000a004', TRUE);
+SELECT public.set_member_on_site_only(gen_random_uuid(), '12800000-0000-0000-0000-00000000a005', TRUE);
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a004', '203.0.113.7');
+INSERT INTO proof_ids VALUES ('w1out', pg_temp.clock('out'));
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a005', '198.51.100.50');
+INSERT INTO proof_ids VALUES ('w2in', pg_temp.clock('in'));
+RESET ROLE;
+SELECT pg_temp.ok((SELECT count(*) = 2 FROM public.attendance_event_network_ips WHERE event_id IN (SELECT id FROM proof_ids WHERE k IN ('w1out', 'w2in'))),
+                  '7a both clock actions kept their address (078)');
+-- Admin: everything of the company.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7');
+SELECT pg_temp.ok((SELECT count(*) FROM public.site_networks) >= 1 AND (SELECT count(*) = 1 FROM public.site_network_names)
+                  AND (SELECT count(*) = 2 FROM public.attendance_event_network_ips) AND (SELECT count(*) = 1 FROM public.clock_in_network_locks)
+                  AND EXISTS (SELECT 1 FROM public.clock_in_network_refusals WHERE ip = '198.51.100.60'::INET),
+                  '7b admin A reads the networks, the name, both addresses, the lock and the refusal address');
+-- Office (075/078/114's rule: admin and office read the networks, names, addresses and lock; 128's refusals are admin only).
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a003', '203.0.113.7');
+SELECT pg_temp.ok((SELECT count(*) FROM public.site_networks) >= 1 AND (SELECT count(*) = 1 FROM public.site_network_names)
+                  AND (SELECT count(*) = 2 FROM public.attendance_event_network_ips),
+                  '7c office A reads the networks, the name and the clock-in addresses (075/078''s admin-and-office rule, unchanged)');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_refusals), '7d office A reads no refusal record and so no refusal address (admin only)');
+SELECT pg_temp.expect_refused($$SELECT public.rename_site_network(gen_random_uuid(), (SELECT id FROM proof_ids WHERE k = 'netA'), 'Office try')$$, '7e office renames', 'admin_only');
+-- Workshop (w1): no network, name, lock or refusal; of the clock-in addresses only their own (078's rule), never anyone else's.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a004', '203.0.113.7');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_networks), '7f workshop reads no site network (no saved address)');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_network_names), '7g workshop reads no network name');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_locks), '7h workshop reads no lock (no locked address)');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_refusals), '7i workshop reads no refusal record, not even their own (no refusal address)');
+SELECT pg_temp.ok((SELECT count(*) = 1 AND bool_and(user_id = '12800000-0000-0000-0000-00000000a004') FROM public.attendance_event_network_ips)
+                  AND NOT EXISTS (SELECT 1 FROM public.attendance_event_network_ips WHERE ip = '198.51.100.50'::INET),
+                  '7j workshop: only their own clock-in address (078''s rule), never w2''s');
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM public.attendance_event_networks WHERE ip IS NOT NULL OR user_id <> '12800000-0000-0000-0000-00000000a004'),
+                  '7k workshop: their own checks only, and a check row never holds an address (078)');
+SELECT pg_temp.expect_refused($$SELECT public.rename_site_network(gen_random_uuid(), (SELECT id FROM proof_ids WHERE k = 'netA'), 'Workshop try')$$, '7l workshop renames', 'admin_only');
+-- Viewer: nothing at all, and can't rename or report.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a006', '203.0.113.7');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_networks), '7m viewer reads no site network');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_network_names), '7n viewer reads no network name');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_locks), '7o viewer reads no lock');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_refusals), '7p viewer reads no refusal record');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.attendance_event_network_ips), '7q viewer reads no clock-in address');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.attendance_event_networks), '7r viewer reads no clock-in check');
+SELECT pg_temp.expect_refused($$SELECT public.rename_site_network(gen_random_uuid(), (SELECT id FROM proof_ids WHERE k = 'netA'), 'Viewer try')$$, '7s viewer renames', 'not_allowed');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a006', '198.51.100.63');
+SELECT pg_temp.expect_refused($$SELECT public.record_clock_in_refusal(gen_random_uuid(), 'in')$$, '7t viewer reports a refusal', 'not_allowed');
+-- No API role can write any of them (admin included).
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7');
+SELECT pg_temp.expect_refused($$UPDATE public.site_networks SET label = 'Direct'$$, '7u admin direct update of site_networks', NULL, '%permission denied%');
+SELECT pg_temp.expect_refused($$DELETE FROM public.attendance_event_network_ips$$, '7v admin direct delete of clock-in addresses', NULL, '%permission denied%');
+RESET ROLE;
+
+-- 8. 30-day deletion covers BOTH the clock-in addresses (078) and the refusal addresses (128): rows at 29 and 31 days, in one purge.
+UPDATE public.attendance_event_network_ips SET checked_at = now() - INTERVAL '31 days' WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w1out');
+UPDATE public.attendance_event_network_ips SET checked_at = now() - INTERVAL '29 days' WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w2in');
+INSERT INTO public.clock_in_network_refusals (organization_id, user_id, client_op_id, action, ip, attempted_at) VALUES
+  ('12800000-0000-0000-0000-0000000000a0', '12800000-0000-0000-0000-00000000a004', '12800000-0000-0000-0000-00000000f031', 'in', '198.51.100.131', now() - INTERVAL '31 days'),
+  ('12800000-0000-0000-0000-0000000000a0', '12800000-0000-0000-0000-00000000a004', '12800000-0000-0000-0000-00000000f029', 'in', '198.51.100.129', now() - INTERVAL '29 days');
+SET LOCAL ROLE service_role;
+SELECT pg_temp.ok(public.site_network_ip_purge('12800000-0000-0000-0000-0000000000a0', 500) = 2, '8a the cron''s purge (service role): 2 cleared, the 31-day address and the 31-day refusal address');
+SELECT pg_temp.ok(public.site_network_ip_purge('12800000-0000-0000-0000-0000000000a0', 500) = 0, '8b again: nothing left');
+RESET ROLE;
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM public.attendance_event_network_ips WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w1out'))
+                  AND EXISTS (SELECT 1 FROM public.attendance_event_networks WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w1out') AND status = 'on_site'),
+                  '8c clock-in address at 31 days: deleted (the check row and its status stay)');
+SELECT pg_temp.ok((SELECT ip = '198.51.100.50'::INET FROM public.attendance_event_network_ips WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w2in')),
+                  '8d clock-in address at 29 days: kept');
+SELECT pg_temp.ok((SELECT ip IS NULL FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000f031'),
+                  '8e refusal at 31 days: the row stays, its address cleared');
+SELECT pg_temp.ok((SELECT ip = '198.51.100.129'::INET FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000f029'),
+                  '8f refusal at 29 days: address kept');
+-- A clock action clears the company's expired addresses first (078's trigger, which now runs 128's purge): both kinds at 31 days.
+UPDATE public.attendance_event_network_ips SET checked_at = now() - INTERVAL '31 days' WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w2in');
+INSERT INTO public.clock_in_network_refusals (organization_id, user_id, client_op_id, action, ip, attempted_at) VALUES
+  ('12800000-0000-0000-0000-0000000000a0', '12800000-0000-0000-0000-00000000a004', '12800000-0000-0000-0000-00000000f131', 'out', '198.51.100.132', now() - INTERVAL '31 days');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a005', '198.51.100.50');
+INSERT INTO proof_ids VALUES ('w2out', pg_temp.clock('out'));
+RESET ROLE;
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM public.attendance_event_network_ips WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w2in'))
+                  AND (SELECT ip IS NULL FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000f131')
+                  AND (SELECT ip = '198.51.100.129'::INET FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000f029')
+                  AND EXISTS (SELECT 1 FROM public.attendance_event_network_ips WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w2out')),
+                  '8g a clock action: the 31-day address and the 31-day refusal address cleared, the 29-day refusal kept, the new address kept');
+-- The admin's Delete expired: the same 30 days for both.
+UPDATE public.attendance_event_network_ips SET checked_at = now() - INTERVAL '31 days' WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w2out');
+INSERT INTO public.clock_in_network_refusals (organization_id, user_id, client_op_id, action, ip, attempted_at) VALUES
+  ('12800000-0000-0000-0000-0000000000a0', '12800000-0000-0000-0000-00000000a004', '12800000-0000-0000-0000-00000000f231', 'out', '198.51.100.133', now() - INTERVAL '31 days');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7');
+SELECT pg_temp.ok((public.purge_site_network_ips(FALSE) ->> 'removed')::INT = 2, '8h admin Delete expired: the 31-day address and the 31-day refusal address (2)');
+RESET ROLE;
+SELECT pg_temp.ok((SELECT ip = '198.51.100.129'::INET FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000f029')
+                  AND (SELECT ip IS NULL FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000f231')
+                  AND (SELECT ip = '198.51.100.60'::INET FROM public.clock_in_network_refusals WHERE client_op_id = '12800000-0000-0000-0000-00000000e001'),
+                  '8i after Delete expired: the 29-day and today''s refusal addresses kept, the 31-day one cleared');
+SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = '12800000-0000-0000-0000-0000000000a0'
+                              AND (to_jsonb(a)::TEXT LIKE '%198.51.100.1%' OR to_jsonb(a)::TEXT LIKE '%198.51.100.60%' OR to_jsonb(a)::TEXT LIKE '%198.51.100.50%')),
+                  '8j no refusal or clock-in address is anywhere in the audit log');
 
 \o
 SELECT 'workshop network 128: all checks passed' AS result;

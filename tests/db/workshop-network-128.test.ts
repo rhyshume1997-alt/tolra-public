@@ -5,8 +5,11 @@
  * 1 to 60 characters, audited once per real change, the address never changed); an online clock action refused by 114's lock reported by
  * the device and recorded only when the database would refuse that request (status refused_unrecognised, the address kept, never in the
  * audit log), read by the company's admin only and counted by the banner's query; the per-person brake; and the address cleared after
- * 078's 30 days by the cron's site_network_ip_purge, by a new report and by the admin's Delete buttons. Each check raises on failure; every
- * one must print PASS.
+ * 078's 30 days by the cron's site_network_ip_purge, by a new report and by the admin's Delete buttons. Also (ChatGPT's conditions): the
+ * same key reported live and again from the offline queue (from any address) is one row; per role, workshop and viewer read no saved
+ * network, name, lock or refusal (workshop only their own clock-in address, 078's rule), office no refusal, none of them renames; and
+ * the 30 days cover both 078's clock-in addresses and the refusal addresses (rows at 29 and 31 days, through the cron, a clock action
+ * and the admin's Delete expired). Each check raises on failure; every one must print PASS.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";

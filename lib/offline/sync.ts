@@ -261,12 +261,24 @@ async function clockOutcome(op: ClockOp, client: Rpc, expectedOrg: string | null
   if (hint === CLOCK_WRONG_COMPANY) return { status: "blocked", code: CLOCK_WRONG_COMPANY, reason: CLOCK_WRONG_COMPANY_REASON };
   if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${clockLabel(op.action)} at ${new Date(op.at).toLocaleString("en-GB", { timeZone: "Europe/London" })} is more than 14 days old, so it wasn't recorded. Ask an admin to add it to your sheet.` };
   if (hint === "client_op_reused" || hint === "not_allowed" || hint === "bad_action" || hint === "week_approved") return { status: "rejected", code: hint, reason: error.message };
-  // 128: refused by the network lock (114). Reported for the admin's banner; a report that can't reach the server is queued and sent
-  // once on reconnect (executeClockRefusalOp). The outcome below is unchanged either way.
-  if (hint === CLOCK_IN_NETWORK_LOCKED && (await reportClockInRefusal(client, op)) === "network") {
-    await queueOffline({ kind: "clock_refusal", v: 1, action: op.action, clientOpId: op.clientOpId, jobRef: CLOCK_REFUSAL_LANE, jobNo: op.jobNo }).catch(() => false);
-  }
+  // 128: refused by the network lock (114). Reported for the admin's banner in the background (never awaited here: the refusal is
+  // answered at once, whatever the report does); a report that can't reach the server is queued and sent once on reconnect
+  // (executeClockRefusalOp, the report only). The outcome below is unchanged either way.
+  if (hint === CLOCK_IN_NETWORK_LOCKED) void reportClockRefusalInBackground(client, op);
   return { status: "rejected", code: "refused", reason: friendlyError(error, "The server refused this clock action.") };
+}
+/**
+ * 128: reports a clock action the network lock refused (record_clock_in_refusal, the action's own key), and queues the report alone
+ * (kind clock_refusal, never the clock action) when it got no answer. Never throws. The clock action's outcome never waits for it.
+ */
+export async function reportClockRefusalInBackground(client: Rpc, op: ClockOp): Promise<void> {
+  try {
+    if ((await reportClockInRefusal(client, op)) === "network") {
+      await queueOffline({ kind: "clock_refusal", v: 1, action: op.action, clientOpId: op.clientOpId, jobRef: CLOCK_REFUSAL_LANE, jobNo: op.jobNo });
+    }
+  } catch {
+    // Best effort: a report that can't be sent or queued never changes the refusal.
+  }
 }
 /**
  * A labour Start or Stop from the daily job sheet (migration 051): record_labour_event under the entry's key. Applied once the server
