@@ -3,10 +3,12 @@
  */
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { evaluateCapacity, summaryLines } from "../../scripts/capacity-check.mjs";
 import { GET as health } from "@/app/api/health/route";
+
+vi.mock("server-only", () => ({}));
 
 const MB = 1024 * 1024;
 const script = path.resolve(__dirname, "../../scripts/capacity-check.mjs");
@@ -53,26 +55,88 @@ describe("the script", () => {
 });
 
 describe("GET /api/health", () => {
-  afterEach(() => { vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_SUPABASE_URL; delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; });
+  const ORIGIN = "http://127.0.0.1:1";
+  // Routes by URL: the auth service's health endpoint, and the one table-free database function the probe calls through PostgREST.
+  const stack = (auth: () => Response | Promise<Response>, rpc: () => Response | Promise<Response>) => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      calls.push(url);
+      if (url.includes("/auth/v1/health")) return auth();
+      if (url.includes("/rest/v1/rpc/booking_day_plan_ok")) return rpc();
+      throw new Error(`unexpected request ${url}`);
+    }));
+    return calls;
+  };
+  const up = () => new Response("{}", { status: 200 });
+  const rpcUp = () => new Response("true", { status: 200, headers: { "Content-Type": "application/json" } });
+  const rpcDown = () => new Response(JSON.stringify({ message: "connection to database failed" }), { status: 500, headers: { "Content-Type": "application/json" } });
+  const unhealthy = async () => {
+    const response = await health();
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, database: false });
+  };
 
-  it("200 when the database's auth service answers; says nothing else", async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = ORIGIN;
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service";
+  });
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); delete process.env.NEXT_PUBLIC_SUPABASE_URL; delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; delete process.env.SUPABASE_SERVICE_ROLE_KEY; });
+
+  it("200 when the auth service and a database query both answer; says nothing else", async () => {
+    const calls = stack(up, rpcUp);
     const response = await health();
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, database: true });
     expect(response.headers.get("cache-control")).toBe("no-store");
+    // No table is read: the only database call is the constant-answer function.
+    expect(calls.filter((url) => url.includes("/rest/v1/"))).toEqual([`${ORIGIN}/rest/v1/rpc/booking_day_plan_ok`]);
   });
 
-  it("503 when it doesn't answer, or isn't configured", async () => {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("fetch failed"); }));
-    expect((await health()).status).toBe(503);
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 502 })));
-    expect((await health()).status).toBe(503);
+  it("503 when the auth service is down but the database answers", async () => {
+    stack(() => new Response("", { status: 502 }), rpcUp);
+    await unhealthy();
+    stack(() => { throw new TypeError("fetch failed"); }, rpcUp);
+    await unhealthy();
+  });
+
+  it("503 when the auth service is up but a database query fails", async () => {
+    stack(up, rpcDown);
+    await unhealthy();
+    stack(up, () => { throw new TypeError("fetch failed"); });
+    await unhealthy();
+    stack(up, () => new Response("", { status: 503 })); // PostgREST behind the gateway is unreachable
+    await unhealthy();
+  });
+
+  it("503 when both are down", async () => {
+    stack(() => new Response("", { status: 502 }), rpcDown);
+    await unhealthy();
+  });
+
+  it("503 when the database does not answer within the timeout", async () => {
+    // AbortSignal.timeout is native (not faked): shorten the probe's 5 s so the test stays quick, and assert it asked for 5 s.
+    const real = AbortSignal.timeout.bind(AbortSignal);
+    const timeouts: number[] = [];
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => { timeouts.push(ms); return real(50); });
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (url.includes("/auth/v1/health")) return Promise.resolve(up());
+      return new Promise<Response>((_resolve, reject) => init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "TimeoutError"))));
+    }));
+    const response = await health();
+    expect(timeouts).toEqual([5000, 5000]);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ ok: false, database: false });
+  });
+
+  it("503 when it isn't configured (no URL, anon key or service key)", async () => {
+    stack(up, rpcUp);
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    await unhealthy();
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service";
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    expect((await health()).status).toBe(503);
+    await unhealthy();
   });
 });
