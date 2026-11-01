@@ -1281,6 +1281,31 @@
  },
  {
   "kind": "function",
+  "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
+  "detail": "definer search_path=pg_catalog, public 7904bd5cdd3aafb723f319905b3c265c"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_connected(p_org uuid, p_mailbox_id text, p_mail_read boolean)",
+  "detail": "definer search_path=pg_catalog, public 73195c47a3f0a8213482cdd4fcdaa16f"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_due(p_org uuid)",
+  "detail": "definer search_path=pg_catalog, public 3a36b28bcd2bc780a5819470fae0d547"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_result(p_org uuid, p_error text, p_next_link text, p_checkpoint timestamp with time zone)",
+  "detail": "definer search_path=pg_catalog, public dfa1b3b093f623c4c5b2ed22458ba1da"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_status()",
+  "detail": "definer search_path=pg_catalog, public bb51c33fb9c95bfa793d9421887ca5fa"
+ },
+ {
+  "kind": "function",
   "object": "public.member_has_verified_totp(p_user uuid)",
   "detail": "definer search_path=pg_catalog, public 2dbd5c63b2275e46eaaa7e832d8e9264"
  },
@@ -3321,6 +3346,31 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_connected(p_org uuid, p_mailbox_id text, p_mail_read boolean)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_due(p_org uuid)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_result(p_org uuid, p_error text, p_next_link text, p_checkpoint timestamp with time zone)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_status()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.member_has_verified_totp(p_user uuid)",
   "detail": ""
  },
@@ -5331,6 +5381,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.integration_mailbox_sync",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.integration_mappings",
   "detail": "enabled"
  },
@@ -6738,6 +6793,16 @@
   "kind": "trigger",
   "object": "public.integration_contacts :: support_read_only",
   "detail": "O 6fcde42e42b0151479e6cf1892e22873"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_mailbox_sync :: admin_mfa",
+  "detail": "O 9b0e79b566a6d7a02eca87033e48f169"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_mailbox_sync :: support_read_only",
+  "detail": "O 4f0bb9ba151539e571056945fb91ab72"
  },
  {
   "kind": "trigger",

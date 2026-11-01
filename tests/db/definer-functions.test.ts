@@ -48,6 +48,9 @@ const CALLER_ONLY = [
   "public.jobs_awaiting_despatch_or_invoice()",
   // 101: the caller's own company's AI helper switches, cap and spend (office and admin; never the key).
   "public.ai_helper_status()",
+  // 127: the caller's own company's inbox reading status (admins only; never the cursor or the mailbox id). 127's other four functions
+  // are the service role's only, so they are not listed here.
+  "public.mailbox_sync_status()",
 ];
 
 beforeAll(async () => {

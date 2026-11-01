@@ -2,16 +2,17 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getAppCredentials } from "@/lib/integrations/app-credentials";
+import { getAppCredentials, missingDbObject } from "@/lib/integrations/app-credentials";
 import { encryptionKey } from "@/lib/integrations/crypto";
-import { serviceDb } from "@/lib/integrations/server";
+import { DbError, serviceDb } from "@/lib/integrations/server";
 import { createTokenSource } from "@/lib/integrations/tokens";
 import { ProviderError } from "@/lib/integrations/types";
-import { type MicrosoftConfig, MicrosoftAuthError, microsoftConfigFrom, refreshTokens } from "@/lib/integrations/microsoft/oauth";
+import { MICROSOFT_SCOPES, MICROSOFT_SEND_SCOPES, type MicrosoftConfig, MicrosoftAuthError, microsoftConfigFrom, refreshTokens } from "@/lib/integrations/microsoft/oauth";
 
 // Microsoft Graph for one connected mailbox (E7). The access token is renewed under 084's lease (lib/integrations/tokens.ts: one holder
 // at a time, the new refresh token stored before the new access token is used); a refused refresh (invalid_grant) marks the connection
-// needs_reconnect. Tokens are decrypted only in memory here and never logged.
+// needs_reconnect. Tokens are decrypted only in memory here and never logged. Each company's token is decrypted only under that company's
+// context (lib/integrations/crypto.ts): it can't be read, or used, for another company.
 
 export const GRAPH_BASE = "https://graph.microsoft.com/v1.0";
 const TIMEOUT_MS = 15_000;
@@ -30,12 +31,31 @@ export async function microsoftReady(service: SupabaseClient | null, env: Record
   return creds ? { config: microsoftConfigFrom(creds, env), key } : null;
 }
 
-/** The company's Microsoft 365 access token, renewed when due; null when it must connect again. */
+/**
+ * The company's own delegated mailbox may be read now (migration 127's mailbox_sync_due for that company: connected, Mail.Read granted,
+ * the same mailbox), with its cursor; null when it can't (or 127 isn't applied). Any other database failure throws.
+ */
+export async function delegatedMailbox(service: SupabaseClient, org: string): Promise<{ checkpoint: string | null; nextLink: string | null } | null> {
+  const { data, error } = await service.rpc("mailbox_sync_due", { p_org: org });
+  if (error) {
+    if (missingDbObject(error)) return null;
+    throw new DbError(error.message, error.code);
+  }
+  const row = ((data ?? []) as Array<{ organization_id: string; checkpoint: string | null; next_link: string | null }>).find((r) => r.organization_id === org);
+  return row ? { checkpoint: row.checkpoint, nextLink: row.next_link } : null;
+}
+
+/**
+ * The company's Microsoft 365 access token, renewed when due; null when it must connect again. A renewal asks for exactly what this
+ * company's connection consented to: with Mail.Read once it allowed reading mail (127), otherwise sending only (a connection made before
+ * C1), so an old connection's sending never breaks.
+ */
 export function microsoftTokenSource(service: SupabaseClient, ready: MicrosoftReady, fetchImpl: typeof fetch = fetch) {
   const source = createTokenSource({
     db: serviceDb(service),
     key: ready.key,
-    refresh: (refreshToken) => refreshTokens(ready.config, refreshToken, fetchImpl),
+    refresh: async (refreshToken, org) => refreshTokens(ready.config, refreshToken, fetchImpl, Date.now,
+                                                        (await delegatedMailbox(service, org)) ? MICROSOFT_SCOPES : MICROSOFT_SEND_SCOPES),
     isRefused: (err) => err instanceof MicrosoftAuthError && (err.code === "invalid_grant" || err.code === "interaction_required"),
     label: "Microsoft 365",
   });
