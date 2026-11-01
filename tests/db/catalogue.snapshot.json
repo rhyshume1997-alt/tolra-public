@@ -51,6 +51,11 @@
  },
  {
   "kind": "function",
+  "object": "public.accountant_invite_peek(p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public e1e9b0efd5348a5f81c171129465c16a"
+ },
+ {
+  "kind": "function",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "definer search_path=pg_catalog, public d0d9351d698893fa56c9617e8001dce1"
  },
@@ -376,6 +381,11 @@
  },
  {
   "kind": "function",
+  "object": "public.create_accountant_invite(p_email text, p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 5503a19a83f14a15007b1b1f268b34da"
+ },
+ {
+  "kind": "function",
   "object": "public.create_credit_note(p_invoice uuid, p_reason text, p_credit_date date, p_lines jsonb)",
   "detail": "invoker search_path=pg_catalog, public eb5ac3e43046d37d349a152f302be60a"
  },
@@ -597,7 +607,7 @@
  {
   "kind": "function",
   "object": "public.handle_new_auth_user()",
-  "detail": "definer search_path=pg_catalog, public ac2d8418558cbb154c9e7ae5d72bd875"
+  "detail": "definer search_path=pg_catalog, public 503b983c4be611a43993fd489cec534b"
  },
  {
   "kind": "function",
@@ -1536,6 +1546,11 @@
  },
  {
   "kind": "function",
+  "object": "public.redeem_accountant_invite(p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 943f8a5ddb7011348f5f3c73aa1d88be"
+ },
+ {
+  "kind": "function",
   "object": "public.refund_customer_credit(p_invoice uuid, p_amount numeric, p_paid_on date, p_method text, p_reference text, p_reason text, p_request_id uuid)",
   "detail": "definer search_path=pg_catalog, public, security_audit 3ebdd484dea4778fb85d0fdd7f663add"
  },
@@ -1663,6 +1678,11 @@
   "kind": "function",
   "object": "public.revise_quote(p_quote uuid)",
   "detail": "definer search_path=pg_catalog, public 542e94a9a6bb80a0613172f623736b4f"
+ },
+ {
+  "kind": "function",
+  "object": "public.revoke_accountant_invite(p_invite uuid)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 1538e2fd55270f6b1d1374e34de3e549"
  },
  {
   "kind": "function",
@@ -2091,6 +2111,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.accountant_invite_peek(p_token_hash text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "authenticated,service_role"
  },
@@ -2412,6 +2437,11 @@
  {
   "kind": "function-grant",
   "object": "public.correct_labour_session(p_session uuid, p_started_at timestamp with time zone, p_ended_at timestamp with time zone, p_reason text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.create_accountant_invite(p_email text, p_token_hash text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -3576,6 +3606,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.redeem_accountant_invite(p_token_hash text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.refund_customer_credit(p_invoice uuid, p_amount numeric, p_paid_on date, p_method text, p_reference text, p_reason text, p_request_id uuid)",
   "detail": "authenticated,service_role"
  },
@@ -3702,6 +3737,11 @@
  {
   "kind": "function-grant",
   "object": "public.revise_quote(p_quote uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.revoke_accountant_invite(p_invite uuid)",
   "detail": "authenticated,service_role"
  },
  {
@@ -5957,11 +5997,6 @@
  {
   "kind": "table-grant",
   "object": "public.operator_sessions :: authenticated",
-  "detail": "SELECT"
- },
- {
-  "kind": "table-grant",
-  "object": "public.organization_invites :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -8438,6 +8473,11 @@
   "kind": "unique-index",
   "object": "public.organization_invites :: organization_invites_org_email_uniq",
   "detail": "28367f7bda451bbfbddb474c467aa1e4"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.organization_invites :: organization_invites_token_hash_uniq",
+  "detail": "5809f4b5577eda24d8749a110459a0fa"
  },
  {
   "kind": "unique-index",

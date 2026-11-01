@@ -136,6 +136,13 @@ beforeAll(async () => {
   const problem = await betaAdmin.rpc("report_job_problem", { p_job: beta.job, p_reason: "material", p_note: `${MARKER} problem`, p_request_id: randomUUID() });
   if (problem.error) throw new Error(problem.error.message);
   beta.problem = problem.data as string;
+
+  // 129: an open accountant invite of beta's, for someone who is not alpha's admin, for redeem and revoke to be pointed at.
+  beta.accountantToken = randomBytes(32).toString("hex");
+  const accountant = await service.from("organization_invites").insert({ organization_id: org, email: `accountant.${MARKER.toLowerCase()}@example.test`, role: "viewer",
+    expires_at: new Date(Date.now() + 86_400_000).toISOString(), token_hash: beta.accountantToken }).select("id").single();
+  if (accountant.error) throw new Error(accountant.error.message);
+  beta.accountantInvite = accountant.data.id as string;
 });
 
 afterAll(async () => {
@@ -276,6 +283,11 @@ function attempts(): Attempt[] {
     ["public.integration_invite_create(p_provider text, p_token_hash text)", () => alpha.rpc("integration_invite_create", { p_provider: "xero", p_token_hash: randomBytes(32).toString("hex") }), "nothing of beta's"],
     ["public.integration_invites_open(p_provider text)", () => alpha.rpc("integration_invites_open", { p_provider: "xero" }), "nothing of beta's"],
     ["public.integration_invite_revoke(p_invite uuid)", () => alpha.rpc("integration_invite_revoke", { p_invite: randomUUID() }), "nothing of beta's"],
+    // 129: an accountant invite is the caller's own company's (create has no company argument); beta's invite is neither redeemed by
+    // alpha's admin (another e-mail) nor revoked from alpha (FALSE, beta's fingerprint unchanged).
+    ["public.create_accountant_invite(p_email text, p_token_hash text)", () => alpha.rpc("create_accountant_invite", { p_email: `cross.${randomUUID().slice(0, 8)}@example.test`, p_token_hash: randomBytes(32).toString("hex") }), "nothing of beta's"],
+    ["public.redeem_accountant_invite(p_token_hash text)", () => alpha.rpc("redeem_accountant_invite", { p_token_hash: beta.accountantToken }), "refused"],
+    ["public.revoke_accountant_invite(p_invite uuid)", () => alpha.rpc("revoke_accountant_invite", { p_invite: beta.accountantInvite }), "nothing of beta's"],
     ["public.integration_disconnect_revoke(p_provider text)", () => alpha.rpc("integration_disconnect_revoke", { p_provider: "xero" }), "nothing of beta's"],
     ["public.integration_app_credentials_save(p_provider text, p_client_id text, p_secret_enc text, p_secret_last4 text, p_redirect_uri text, p_key_version integer)", () => alpha.rpc("integration_app_credentials_save", { p_provider: "xero", p_client_id: "cross", p_secret_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}`, p_secret_last4: "abcd", p_redirect_uri: null, p_key_version: 1 }), "refused"],
     ["public.integration_app_credentials_remove(p_provider text)", () => alpha.rpc("integration_app_credentials_remove", { p_provider: "xero" }), "refused"],

@@ -1,6 +1,6 @@
 /**
  * C2 + go-live switch + app test (Platform > App connections):
- *  - "Ask your Microsoft admin to approve": consent-blocked detection, the admin-consent URL with the EXACT scopes of oauth.ts, the plain-words
+ *  - "Ask your Microsoft admin to approve": consent-blocked detection, the admin-consent URL with Graph's .default scope (v2), the plain-words
  *    permissions that can never drift from that constant, and the signed state (tamper, expiry, company, wrong kind, one use).
  *  - One redirect URI: the existing Microsoft/Xero callbacks pass signed states on; the returns do the work and are one-use.
  *  - "Not set up yet": every provider card and route in both states (a calm card, a clean 503 {code:"not_configured"}, never a 500).
@@ -93,13 +93,14 @@ describe("consent-blocked detection", () => {
 });
 
 describe("the admin-consent URL and the permissions", () => {
-  it("is Microsoft's adminconsent page for the platform client id, the EXACT scopes, our one callback and the state", async () => {
-    const { adminConsentUrl } = await import("@/lib/integrations/microsoft/consent");
-    const { MICROSOFT_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
+  it("is Microsoft's adminconsent page for the platform client id, Graph's .default scope (v2 endpoint), our one callback and the state", async () => {
+    const { adminConsentUrl, ADMIN_CONSENT_SCOPE } = await import("@/lib/integrations/microsoft/consent");
     const url = new URL(adminConsentUrl({ clientId: "ms-client", redirectUri: msConfig.redirectUri }, "STATE.SIG"));
     expect(`${url.origin}${url.pathname}`).toBe("https://login.microsoftonline.com/organizations/v2.0/adminconsent");
     expect(url.searchParams.get("client_id")).toBe("ms-client");
-    expect(url.searchParams.get("scope")).toBe(MICROSOFT_SCOPES.join(" "));
+    // The v2 adminconsent endpoint accepts only `<resource>/.default`, never the individual scopes of the sign-in.
+    expect(ADMIN_CONSENT_SCOPE).toBe("https://graph.microsoft.com/.default");
+    expect(url.searchParams.get("scope")).toBe("https://graph.microsoft.com/.default");
     expect(url.searchParams.get("redirect_uri")).toBe(`${SITE}/api/integrations/microsoft/callback`);
     expect(url.searchParams.get("state")).toBe("STATE.SIG");
     expect([...url.searchParams.keys()].sort()).toEqual(["client_id", "redirect_uri", "scope", "state"]);

@@ -104,9 +104,10 @@ const PAGE: Record<string, { title: string; body: string }> = {
   failed: { title: "That didn't work", body: "Connecting to Xero didn't work and nothing changed. Ask for a new link." },
 };
 
-const escapeHtml = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+export const escapeHtml = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
-function page(title: string, inner: string, status: number, extra: Record<string, string> = {}): Response {
+/** The fixed, self-contained page the public link routes answer with (no app shell; the accountant invite (129) uses it too). */
+export function page(title: string, inner: string, status: number, extra: Record<string, string> = {}): Response {
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">`
     + `<title>${title}</title><style>body{font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:48px 16px}main{max-width:520px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:24px}h1{font-size:22px;margin:0 0 12px}p{color:#475569;line-height:1.5}button{font:inherit;font-weight:600;background:#13b5ea;color:#fff;border:0;border-radius:8px;padding:12px 20px;cursor:pointer}</style></head>`
     + `<body><main>${inner}</main></body></html>`;

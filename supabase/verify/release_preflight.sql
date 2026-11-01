@@ -154,7 +154,11 @@ markers(migration, present) AS (
     ('120 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass)),
     ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2')),
-    ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_status()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3ef44c838451b46ea14030164d9b1384'))
+    ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_status()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3ef44c838451b46ea14030164d9b1384')),
+    ('129 accountant invite',             EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'organization_invites' AND column_name = 'token_hash')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'create_accountant_invite')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'redeem_accountant_invite')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'handle_new_auth_user' AND position('ACCOUNTANT_INVITE_USED' IN prosrc) > 0))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

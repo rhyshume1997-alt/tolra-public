@@ -5,7 +5,7 @@ import { ADMIN_CONSENT_TTL_SECONDS, signState } from "@/lib/integrations/signed-
 
 // "Ask your Microsoft admin to approve" (C2). When a company's own Microsoft sign-in is stopped because an administrator must approve
 // Tolra first, the admin gets a link for the company's Microsoft administrator. The link is Microsoft's admin-consent page for Tolra's
-// app, asking for EXACTLY the scopes oauth.ts asks for (MICROSOFT_SCOPES, never a second list), and it comes back to the one callback
+// app (scope https://graph.microsoft.com/.default, as the v2 endpoint requires; the plain words come from MICROSOFT_SCOPES), and it comes back to the one callback
 // Microsoft already knows (/api/integrations/microsoft/callback) carrying a signed, company-bound, expiring, one-use state.
 
 /** Microsoft's own wording for "an administrator must approve this app first", wherever it shows (error, error_description). */
@@ -31,11 +31,18 @@ export function permissionsFor(scopes: readonly string[] = MICROSOFT_SCOPES): Pe
   return scopes.map((scope) => ({ scope, text: SCOPE_WORDS[scope] ?? scope }));
 }
 
-/** Microsoft's admin-consent URL for Tolra's app: the exact scopes, our callback, and the signed state. */
-export function adminConsentUrl(app: { clientId: string; redirectUri: string }, state: string, scopes: readonly string[] = MICROSOFT_SCOPES): string {
+/**
+ * Microsoft's v2 adminconsent endpoint takes ONE scope of the form `<resource>/.default`: the administrator approves every permission
+ * the app registration lists for Microsoft Graph. Individual scopes (Mail.Send, offline_access) are not accepted there. The plain-words
+ * list shown to the administrator is still derived from MICROSOFT_SCOPES (permissionsFor), which the sign-in asks for.
+ */
+export const ADMIN_CONSENT_SCOPE = "https://graph.microsoft.com/.default";
+
+/** Microsoft's admin-consent URL for Tolra's app: Graph's `.default` scope, our callback, and the signed state. */
+export function adminConsentUrl(app: { clientId: string; redirectUri: string }, state: string): string {
   const url = new URL(`${MICROSOFT_LOGIN}/organizations/v2.0/adminconsent`);
   url.searchParams.set("client_id", app.clientId);
-  url.searchParams.set("scope", scopes.join(" "));
+  url.searchParams.set("scope", ADMIN_CONSENT_SCOPE);
   url.searchParams.set("redirect_uri", app.redirectUri);
   url.searchParams.set("state", state);
   return url.toString();

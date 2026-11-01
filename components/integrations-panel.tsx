@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
+import { AccountantInviteCard } from "@/components/accountant-invite-card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
 import { Button } from "@/components/ui/button";
@@ -280,6 +281,11 @@ export function IntegrationsPanel() {
           onCancel={() => setConfirmDisconnect(false)}
         />
       </Card>
+      {/* C3 (129): the accountant joins as a viewer; the Xero step is offered only while Xero is set up here and not connected. */}
+      <AccountantInviteCard
+        offerXero={Boolean(status?.db107 && !xeroView.notSetUp && xeroView.offerInvite && overview && overview.status !== "connected")}
+        onXeroLink={() => void loadInvites()}
+      />
       <MicrosoftConnectCard status={status} />
       {overview && linked ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
       {overview && (linked || anySends) ? <XeroSendLog reloadKey={version} onChanged={() => void load()} /> : null}
