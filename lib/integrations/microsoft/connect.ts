@@ -5,7 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { KEY_VERSION, decryptSecret, encryptSecret } from "@/lib/integrations/crypto";
 import { DbError, disconnectAndRevoke, serviceDb } from "@/lib/integrations/server";
 import { type MicrosoftReady, getProfile, microsoftTokenSource } from "@/lib/integrations/microsoft/client";
-import { authorizeUrl, exchangeCode } from "@/lib/integrations/microsoft/oauth";
+import { authorizeUrl, exchangeCode, grantsMailRead } from "@/lib/integrations/microsoft/oauth";
+import { missingDbObject } from "@/lib/integrations/app-credentials";
 import { hashState, newAuthorisation } from "@/lib/integrations/xero/oauth";
 
 // Admin > Integrations > Microsoft 365 (E7): Connect, the callback, Disconnect and Test, mirroring Xero's (lib/integrations/server.ts).
@@ -25,7 +26,7 @@ export async function beginMicrosoftConnect(userClient: SupabaseClient, org: str
   return authorizeUrl(ready.config, auth.state, auth.challenge);
 }
 
-export type MicrosoftConnectOutcome = { ok: true; mailbox: string } | { ok: false; reason: "mailbox_in_use" | "disconnect_first" | "no_mailbox" | "store_failed" };
+export type MicrosoftConnectOutcome = { ok: true; mailbox: string; mailRead: boolean } | { ok: false; reason: "mailbox_in_use" | "disconnect_first" | "no_mailbox" | "store_failed" };
 
 /** Connect, steps 2 and 3 (the callback): the state used up for this admin and company; the code exchanged; the mailbox read; stored. */
 export async function finishMicrosoftConnect(service: SupabaseClient, org: string, userId: string, state: string, code: string, ready: MicrosoftReady,
@@ -50,7 +51,19 @@ export async function finishMicrosoftConnect(service: SupabaseClient, org: strin
     if (hint === "disconnect_first") return { ok: false, reason: "disconnect_first" };
     return { ok: false, reason: "store_failed" };
   }
-  return { ok: true, mailbox: profile.mailbox };
+  return { ok: true, mailbox: profile.mailbox, mailRead: await recordMailRead(service, org, profile.id, grantsMailRead(tokens.scope)) };
+}
+
+/**
+ * Inbox reading (C1, migration 127): whether this sign-in includes Mail.Read, for this company and mailbox. The same mailbox keeps its
+ * cursor (a reconnect resumes; 031's UNIQUE skips what is already stored). Never fails the connection: sending is already connected, so
+ * a missing 127 or a database refusal only leaves reading off (logged by code).
+ */
+async function recordMailRead(service: SupabaseClient, org: string, mailboxId: string, mailRead: boolean): Promise<boolean> {
+  const { error } = await service.rpc("mailbox_sync_connected", { p_org: org, p_mailbox_id: mailboxId, p_mail_read: mailRead });
+  if (!error) return mailRead;
+  if (!missingDbObject(error)) console.error("[integrations] Microsoft 365 mailbox reading not recorded:", error.code ?? "error");
+  return false;
 }
 
 /** Disconnect: as the signed-in admin (the database checks admin and two-step; the tokens are deleted). Consent stays at Microsoft. */

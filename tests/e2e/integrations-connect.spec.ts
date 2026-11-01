@@ -133,15 +133,15 @@ test("1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' an
   await page.goto("/admin/integrations");
   const card = page.getByTestId("microsoft-card");
   await expect(card.getByTestId("microsoft-status")).toContainText("No mailbox connected");
-  await expect(card.getByTestId("microsoft-not-set-up")).toHaveText("Not set up yet: the owner must enter the Microsoft 365 app details.");
+  await expect(card.getByTestId("microsoft-not-set-up")).toHaveText("Not set up yet: Tolra's Microsoft 365 connection is switched on at go-live. Nothing to do here.");
   await expect(card.getByRole("button", { name: "Connect Microsoft 365" })).toBeDisabled();
 
   await expect(page.getByTestId("xero-status")).toBeVisible();
   if (!status.xero.configured) {
-    await expect(page.getByTestId("xero-not-set-up")).toContainText("Not set up yet: the owner must enter the Xero app details.");
+    await expect(page.getByTestId("xero-not-set-up")).toContainText("Not set up yet: Tolra's Xero connection is switched on at go-live. Nothing to do here.");
     await expect(page.getByRole("button", { name: "Connect to Xero" })).toBeDisabled();
     // With no app details the accountant's link is not offered either.
-    await expect(page.getByTestId("xero-invite")).toContainText("Not set up yet");
+    await expect(page.getByTestId("xero-invite")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Send the accountant a connect link" })).toHaveCount(0);
   } else {
     // XERO_CLIENT_ID / XERO_CLIENT_SECRET in the server's environment (the wt/e3-e2e placeholders) count as set up: the Xero half cannot be shown.
@@ -302,7 +302,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
   expect(url.searchParams.get("client_id")).toBe(app.clientId);
   expect(url.searchParams.get("response_type")).toBe("code");
   expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/api/integrations/microsoft/callback`);
-  expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send User.Read");
+  expect(url.searchParams.get("scope")).toBe("offline_access User.Read Mail.Send Mail.Read"); // C1 (127): read-only inbox access too
   const state = url.searchParams.get("state") ?? "";
   expect(state.length).toBeGreaterThanOrEqual(20);
   expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);

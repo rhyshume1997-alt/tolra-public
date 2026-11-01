@@ -2,7 +2,7 @@
 -- 131: every row-level-security policy asks its role and company helpers once per statement, not once per row (ChatGPT search
 -- verdict 4b, option C; the follow-up named in 121's header). WORKING NUMBER: the final number is given at merge, and the file is then
 -- generated again against the policies main has at that point. Touches no table, row, function, trigger, grant or setting: only the
--- USING / WITH CHECK text of 181 policies.
+-- USING / WITH CHECK text of 182 policies.
 --
 -- THE COST. A policy such as USING (organization_id = current_user_organization_id() AND has_org_role(ARRAY['admin', 'office']))
 -- calls each helper for EVERY row a statement looks at. 121 made each call about 10x cheaper, but PostgreSQL still makes it once per
@@ -14,9 +14,9 @@
 --   quotes list first 1,000 81 -> 1 ms, all 20,000 1,310 -> 18 ms; invoices 48 -> 1 / 1,000 -> 14 ms; jobs 47 -> 1 / 1,090 -> 17 ms.
 --   Every result identical (md5 of the rows).
 --
--- WHAT CHANGES. In 181 of the 216 policies on public, storage.objects and security_audit.audit_log, each call of a helper that
--- takes no argument or only constants is written (SELECT <call>): has_org_role(<roles>) 213 times, current_user_organization_id()
--- 199, auth.uid() 18, user_organization_id() 9 (439 calls). The meaning is the same:
+-- WHAT CHANGES. In 182 of the 218 policies on public, storage.objects and security_audit.audit_log, each call of a helper that
+-- takes no argument or only constants is written (SELECT <call>): has_org_role(<roles>) 215 times, current_user_organization_id()
+-- 201, auth.uid() 15, user_organization_id() 9 (440 calls). The meaning is the same:
 --   * every one of these helpers is STABLE: within one statement it reads the statement's snapshot and the same request settings,
 --     so it gives every row the same answer; none writes, and a call that fails fails at its first use, as before. The sub-select
 --     returns exactly the call's value (one row, the same type; NULL stays NULL);
@@ -24,9 +24,13 @@
 --   * names, tables, commands, roles and PERMISSIVE / RESTRICTIVE are unchanged (ALTER POLICY ... USING / WITH CHECK only).
 -- Calls that take a column of the row (admin_may_read_profile(id), admin_may_edit_profile(id), job_file_quote_reference_ok(...),
 -- storage.foldername(name)) still run per row, as they must. The 54 calls main already writes as a sub-select (section_allowed,
--- session_read_only, session_is_active and four auth.uid()) are left as they are; the 35 policies with nothing to wrap are not touched.
+-- session_read_only, session_is_active and four auth.uid()) are left as they are; the 36 policies with nothing to wrap are not touched.
+-- KEPT as main writes them, because an earlier release's verify script pins that text: "Users update own profile" on user_profiles
+-- (security_guards_102.sql: USING is exactly (auth.uid() = id); the policy is not touched) and the auth.uid() of "email_history rbac insert"
+-- (email_history_drafted_by_120.sql: "drafted_by = auth.uid()"; its other calls are wrapped). Both are one-row writes: no per-row cost
+-- to speak of. The per-row check below leaves these two policies out (the second is in 131's list, its text pinned by md5).
 -- PROOF (local): after 131, every policy's text with each "( SELECT call AS name)" put back to "call" is main's text exactly (all
--- 216); the catalogue changes only in those 181 policies' expression md5; the rollback gives main's catalogue back exactly.
+-- 218); the catalogue changes only in those 182 policies' expression md5; the rollback gives main's catalogue back exactly.
 --
 -- GUARD (section 1): each policy 131 rewrites is there with main's command, roles and kind, and its text is main's (or already
 -- 131's). Safe to run again. SELF-CHECK (section 3). Verify: supabase/verify/rls_select_wrap_131.sql (every row TRUE).
@@ -53,6 +57,7 @@ BEGIN
     ('public', 'attendance_events', 'attendance_events rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_exemptions', 'clock_in_network_exemptions rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_locks', 'clock_in_network_locks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
+    ('public', 'clock_in_network_refusals', 'clock_in_network_refusals admin select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('public', 'clock_in_network_unverified', 'clock_in_network_unverified rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '1119fdfbe777371eb5ac8c8fc827906e', '1a35fb1b2012d619accab921244582b3'),
@@ -79,7 +84,7 @@ BEGIN
     ('public', 'document_attachments', 'document_attachments rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eac2f05de167aaf5631117114800206c', 'f24a63c4d2c4f2655f27de42e6167460'),
     ('public', 'document_attachments', 'document_attachments rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '65d5152bed9e043dcf180569b62f1fb2', 'd5e8c85d7a9726cd7b5fb2f83a18e838'),
     ('public', 'email_history', 'email_history rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
-    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '79b641dce3048126ea1d25c266b6e9a4'),
+    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '49213200206620f1b40d3eddeaecfab3'),
     ('public', 'email_history', 'email_history rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
     ('public', 'email_history', 'email_history rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '61d4765d2dcf519419687f753b937da8', 'f070f4c172c8572cd2517a59cbb00801'),
     ('public', 'email_schedule_runs', 'email_schedule_runs office select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'e92b788d951ce740d4157661bda75d07', 'ec3eaa346985c4d8b6f644dfdd8d29cb'),
@@ -189,6 +194,7 @@ BEGIN
     ('public', 'sales_orders', 'sales_orders rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'sales_orders', 'sales_orders rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '5cd04fff55dc985c7634b03ff43e08b3', '369c9e3cb9b8da8035af82e319a6aa3b'),
     ('public', 'site_network_members', 'site_network_members rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
+    ('public', 'site_network_names', 'site_network_names rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_network_settings', 'site_network_settings rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_networks', 'site_networks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'stock', 'stock rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
@@ -206,7 +212,6 @@ BEGIN
     ('public', 'timesheet_sends', 'timesheet_sends office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '1cbd867efcfe2dd1b1130687385ea3a6', '41df2ededed25cc3a22136d71ada5dd8'),
     ('public', 'user_profiles', 'Admins insert org profiles', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eb88838f77cc54ce415d0f1211b649f9', '8d519372ad4f1388990a4ad10cfeb5de'),
     ('public', 'user_profiles', 'Users read own profile', 'PERMISSIVE', 'SELECT', '{authenticated}', 'cc00666ac5d81806b4129769e28761f3', 'b3158818130bc2650ee2c7bd09b38a45'),
-    ('public', 'user_profiles', 'Users update own profile', 'PERMISSIVE', 'UPDATE', '{authenticated}', 'bce2f8985e0259798c9fce72dc059cb9', 'a7e6bac74873af04f399dcc47fc2e90e'),
     ('security_audit', 'audit_log', 'audit admins read org', 'PERMISSIVE', 'SELECT', '{public}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('storage', 'objects', 'document-attachments org delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '48c068dc1f6f78db386a692d9c82e7d4', '109c41f4481d07b0cbfde076012a9961'),
     ('storage', 'objects', 'document-attachments org insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd800791c699190fe37b4631839d33087', '1efb2a5fe88143699916ff3bf0fd9fb1'),
@@ -245,7 +250,7 @@ END
 $$;
 
 -- -----------------------------------------------------------------------------------------------------
--- 2a. The 162 public policies: each helper call that names no column of the row written (SELECT <call>). Generated
+-- 2a. The 163 public policies: each helper call that names no column of the row written (SELECT <call>). Generated
 --     from main's own text (pg_policies), nothing else changed.
 ALTER POLICY "ai_helper_requests office select" ON public.ai_helper_requests
   USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text]))));
@@ -263,6 +268,8 @@ ALTER POLICY "clock_in_network_exemptions rbac select" ON public.clock_in_networ
   USING (((organization_id = (SELECT current_user_organization_id())) AND (((user_id = (SELECT auth.uid())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text, 'workshop'::text]))) OR (SELECT has_org_role(ARRAY['admin'::text, 'office'::text])))));
 ALTER POLICY "clock_in_network_locks rbac select" ON public.clock_in_network_locks
   USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text]))));
+ALTER POLICY "clock_in_network_refusals admin select" ON public.clock_in_network_refusals
+  USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text]))));
 ALTER POLICY "clock_in_network_unverified rbac select" ON public.clock_in_network_unverified
   USING (((organization_id = (SELECT current_user_organization_id())) AND (((user_id = (SELECT auth.uid())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text, 'workshop'::text]))) OR (SELECT has_org_role(ARRAY['admin'::text, 'office'::text])))));
 ALTER POLICY "credit_note_lines rbac delete" ON public.credit_note_lines
@@ -321,7 +328,7 @@ ALTER POLICY "document_attachments rbac select" ON public.document_attachments
 ALTER POLICY "email_history rbac delete" ON public.email_history
   USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role('{admin,office}'::text[]))));
 ALTER POLICY "email_history rbac insert" ON public.email_history
-  WITH CHECK (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role('{admin,office}'::text[])) AND (drafted_by = (SELECT auth.uid()))));
+  WITH CHECK (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role('{admin,office}'::text[])) AND (drafted_by = auth.uid())));
 ALTER POLICY "email_history rbac select" ON public.email_history
   USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role('{admin,office}'::text[]))));
 ALTER POLICY "email_history rbac update" ON public.email_history
@@ -563,6 +570,8 @@ ALTER POLICY "sales_orders rbac update" ON public.sales_orders
   WITH CHECK (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text]))));
 ALTER POLICY "site_network_members rbac select" ON public.site_network_members
   USING (((organization_id = (SELECT current_user_organization_id())) AND (((user_id = (SELECT auth.uid())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text, 'workshop'::text]))) OR (SELECT has_org_role(ARRAY['admin'::text, 'office'::text])))));
+ALTER POLICY "site_network_names rbac select" ON public.site_network_names
+  USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text]))));
 ALTER POLICY "site_network_settings rbac select" ON public.site_network_settings
   USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text, 'office'::text]))));
 ALTER POLICY "site_networks rbac select" ON public.site_networks
@@ -601,9 +610,6 @@ ALTER POLICY "Admins insert org profiles" ON public.user_profiles
   WITH CHECK (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text]))));
 ALTER POLICY "Users read own profile" ON public.user_profiles
   USING (((SELECT auth.uid()) = id));
-ALTER POLICY "Users update own profile" ON public.user_profiles
-  USING (((SELECT auth.uid()) = id))
-  WITH CHECK (((SELECT auth.uid()) = id));
 
 -- -----------------------------------------------------------------------------------------------------
 -- 2b. The same for the 19 policies on security_audit.audit_log and storage.objects.
@@ -677,6 +683,7 @@ BEGIN
     ('public', 'attendance_events', 'attendance_events rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_exemptions', 'clock_in_network_exemptions rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_locks', 'clock_in_network_locks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
+    ('public', 'clock_in_network_refusals', 'clock_in_network_refusals admin select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('public', 'clock_in_network_unverified', 'clock_in_network_unverified rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '1119fdfbe777371eb5ac8c8fc827906e', '1a35fb1b2012d619accab921244582b3'),
@@ -703,7 +710,7 @@ BEGIN
     ('public', 'document_attachments', 'document_attachments rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eac2f05de167aaf5631117114800206c', 'f24a63c4d2c4f2655f27de42e6167460'),
     ('public', 'document_attachments', 'document_attachments rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '65d5152bed9e043dcf180569b62f1fb2', 'd5e8c85d7a9726cd7b5fb2f83a18e838'),
     ('public', 'email_history', 'email_history rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
-    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '79b641dce3048126ea1d25c266b6e9a4'),
+    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '49213200206620f1b40d3eddeaecfab3'),
     ('public', 'email_history', 'email_history rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
     ('public', 'email_history', 'email_history rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '61d4765d2dcf519419687f753b937da8', 'f070f4c172c8572cd2517a59cbb00801'),
     ('public', 'email_schedule_runs', 'email_schedule_runs office select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'e92b788d951ce740d4157661bda75d07', 'ec3eaa346985c4d8b6f644dfdd8d29cb'),
@@ -813,6 +820,7 @@ BEGIN
     ('public', 'sales_orders', 'sales_orders rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'sales_orders', 'sales_orders rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '5cd04fff55dc985c7634b03ff43e08b3', '369c9e3cb9b8da8035af82e319a6aa3b'),
     ('public', 'site_network_members', 'site_network_members rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
+    ('public', 'site_network_names', 'site_network_names rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_network_settings', 'site_network_settings rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_networks', 'site_networks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'stock', 'stock rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
@@ -830,7 +838,6 @@ BEGIN
     ('public', 'timesheet_sends', 'timesheet_sends office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '1cbd867efcfe2dd1b1130687385ea3a6', '41df2ededed25cc3a22136d71ada5dd8'),
     ('public', 'user_profiles', 'Admins insert org profiles', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eb88838f77cc54ce415d0f1211b649f9', '8d519372ad4f1388990a4ad10cfeb5de'),
     ('public', 'user_profiles', 'Users read own profile', 'PERMISSIVE', 'SELECT', '{authenticated}', 'cc00666ac5d81806b4129769e28761f3', 'b3158818130bc2650ee2c7bd09b38a45'),
-    ('public', 'user_profiles', 'Users update own profile', 'PERMISSIVE', 'UPDATE', '{authenticated}', 'bce2f8985e0259798c9fce72dc059cb9', 'a7e6bac74873af04f399dcc47fc2e90e'),
     ('security_audit', 'audit_log', 'audit admins read org', 'PERMISSIVE', 'SELECT', '{public}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('storage', 'objects', 'document-attachments org delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '48c068dc1f6f78db386a692d9c82e7d4', '109c41f4481d07b0cbfde076012a9961'),
     ('storage', 'objects', 'document-attachments org insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd800791c699190fe37b4631839d33087', '1efb2a5fe88143699916ff3bf0fd9fb1'),
@@ -865,6 +872,7 @@ BEGIN
   END IF;
   IF (SELECT count(*) FROM pg_catalog.pg_policies p
            WHERE (p.schemaname = 'public' OR (p.schemaname, p.tablename) IN (('storage', 'objects'), ('security_audit', 'audit_log')))
+             AND (p.schemaname, p.tablename, p.policyname) NOT IN (('public', 'user_profiles', 'Users update own profile'), ('public', 'email_history', 'email_history rbac insert'))
              AND regexp_replace(coalesce(p.qual, '') || ' | ' || coalesce(p.with_check, ''), '\( SELECT (auth\.)?[a-z_]+\([^()]*\) AS [a-z_]+\)', '', 'g')
                  ~ '(^|[^a-z_.])(has_org_role|section_allowed|current_user_organization_id|user_organization_id|current_user_role|current_user_secondary_role|session_read_only|session_is_active)\(|auth\.(uid|jwt|role)\(') <> 0 THEN
     RAISE EXCEPTION '131: a policy still calls a role or company helper once per row (not inside a sub-select)';

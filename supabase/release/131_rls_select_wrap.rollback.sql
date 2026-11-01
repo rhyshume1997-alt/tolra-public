@@ -1,4 +1,4 @@
--- 131 rollback: ONLY with Rhys's approval. Puts back main's USING / WITH CHECK text in the 181 policies 131 rewrote (each helper
+-- 131 rollback: ONLY with Rhys's approval. Puts back main's USING / WITH CHECK text in the 182 policies 131 rewrote (each helper
 -- call per row again). Names, commands, roles and kinds were never changed. Every policy answers exactly as with 131; only the
 -- per-row cost returns. Run the whole text as one transaction, then the release preflight (marker 131 shows "not applied").
 BEGIN;
@@ -16,6 +16,7 @@ BEGIN
     ('public', 'attendance_events', 'attendance_events rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_exemptions', 'clock_in_network_exemptions rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_locks', 'clock_in_network_locks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
+    ('public', 'clock_in_network_refusals', 'clock_in_network_refusals admin select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('public', 'clock_in_network_unverified', 'clock_in_network_unverified rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '1119fdfbe777371eb5ac8c8fc827906e', '1a35fb1b2012d619accab921244582b3'),
@@ -42,7 +43,7 @@ BEGIN
     ('public', 'document_attachments', 'document_attachments rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eac2f05de167aaf5631117114800206c', 'f24a63c4d2c4f2655f27de42e6167460'),
     ('public', 'document_attachments', 'document_attachments rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '65d5152bed9e043dcf180569b62f1fb2', 'd5e8c85d7a9726cd7b5fb2f83a18e838'),
     ('public', 'email_history', 'email_history rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
-    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '79b641dce3048126ea1d25c266b6e9a4'),
+    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '49213200206620f1b40d3eddeaecfab3'),
     ('public', 'email_history', 'email_history rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
     ('public', 'email_history', 'email_history rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '61d4765d2dcf519419687f753b937da8', 'f070f4c172c8572cd2517a59cbb00801'),
     ('public', 'email_schedule_runs', 'email_schedule_runs office select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'e92b788d951ce740d4157661bda75d07', 'ec3eaa346985c4d8b6f644dfdd8d29cb'),
@@ -152,6 +153,7 @@ BEGIN
     ('public', 'sales_orders', 'sales_orders rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'sales_orders', 'sales_orders rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '5cd04fff55dc985c7634b03ff43e08b3', '369c9e3cb9b8da8035af82e319a6aa3b'),
     ('public', 'site_network_members', 'site_network_members rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
+    ('public', 'site_network_names', 'site_network_names rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_network_settings', 'site_network_settings rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_networks', 'site_networks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'stock', 'stock rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
@@ -169,7 +171,6 @@ BEGIN
     ('public', 'timesheet_sends', 'timesheet_sends office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '1cbd867efcfe2dd1b1130687385ea3a6', '41df2ededed25cc3a22136d71ada5dd8'),
     ('public', 'user_profiles', 'Admins insert org profiles', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eb88838f77cc54ce415d0f1211b649f9', '8d519372ad4f1388990a4ad10cfeb5de'),
     ('public', 'user_profiles', 'Users read own profile', 'PERMISSIVE', 'SELECT', '{authenticated}', 'cc00666ac5d81806b4129769e28761f3', 'b3158818130bc2650ee2c7bd09b38a45'),
-    ('public', 'user_profiles', 'Users update own profile', 'PERMISSIVE', 'UPDATE', '{authenticated}', 'bce2f8985e0259798c9fce72dc059cb9', 'a7e6bac74873af04f399dcc47fc2e90e'),
     ('security_audit', 'audit_log', 'audit admins read org', 'PERMISSIVE', 'SELECT', '{public}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('storage', 'objects', 'document-attachments org delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '48c068dc1f6f78db386a692d9c82e7d4', '109c41f4481d07b0cbfde076012a9961'),
     ('storage', 'objects', 'document-attachments org insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd800791c699190fe37b4631839d33087', '1efb2a5fe88143699916ff3bf0fd9fb1'),
@@ -224,6 +225,8 @@ ALTER POLICY "clock_in_network_exemptions rbac select" ON public.clock_in_networ
   USING (((organization_id = current_user_organization_id()) AND (((user_id = auth.uid()) AND has_org_role(ARRAY['admin'::text, 'office'::text, 'workshop'::text])) OR has_org_role(ARRAY['admin'::text, 'office'::text]))));
 ALTER POLICY "clock_in_network_locks rbac select" ON public.clock_in_network_locks
   USING (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text, 'office'::text])));
+ALTER POLICY "clock_in_network_refusals admin select" ON public.clock_in_network_refusals
+  USING (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text])));
 ALTER POLICY "clock_in_network_unverified rbac select" ON public.clock_in_network_unverified
   USING (((organization_id = current_user_organization_id()) AND (((user_id = auth.uid()) AND has_org_role(ARRAY['admin'::text, 'office'::text, 'workshop'::text])) OR has_org_role(ARRAY['admin'::text, 'office'::text]))));
 ALTER POLICY "credit_note_lines rbac delete" ON public.credit_note_lines
@@ -524,6 +527,8 @@ ALTER POLICY "sales_orders rbac update" ON public.sales_orders
   WITH CHECK (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text, 'office'::text])));
 ALTER POLICY "site_network_members rbac select" ON public.site_network_members
   USING (((organization_id = current_user_organization_id()) AND (((user_id = auth.uid()) AND has_org_role(ARRAY['admin'::text, 'office'::text, 'workshop'::text])) OR has_org_role(ARRAY['admin'::text, 'office'::text]))));
+ALTER POLICY "site_network_names rbac select" ON public.site_network_names
+  USING (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text, 'office'::text])));
 ALTER POLICY "site_network_settings rbac select" ON public.site_network_settings
   USING (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text, 'office'::text])));
 ALTER POLICY "site_networks rbac select" ON public.site_networks
@@ -562,9 +567,6 @@ ALTER POLICY "Admins insert org profiles" ON public.user_profiles
   WITH CHECK (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text])));
 ALTER POLICY "Users read own profile" ON public.user_profiles
   USING ((auth.uid() = id));
-ALTER POLICY "Users update own profile" ON public.user_profiles
-  USING ((auth.uid() = id))
-  WITH CHECK ((auth.uid() = id));
 ALTER POLICY "audit admins read org" ON security_audit.audit_log
   USING (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text])));
 ALTER POLICY "document-attachments org delete" ON storage.objects
@@ -632,6 +634,7 @@ BEGIN
     ('public', 'attendance_events', 'attendance_events rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_exemptions', 'clock_in_network_exemptions rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_locks', 'clock_in_network_locks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
+    ('public', 'clock_in_network_refusals', 'clock_in_network_refusals admin select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('public', 'clock_in_network_unverified', 'clock_in_network_unverified rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '1119fdfbe777371eb5ac8c8fc827906e', '1a35fb1b2012d619accab921244582b3'),
@@ -658,7 +661,7 @@ BEGIN
     ('public', 'document_attachments', 'document_attachments rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eac2f05de167aaf5631117114800206c', 'f24a63c4d2c4f2655f27de42e6167460'),
     ('public', 'document_attachments', 'document_attachments rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '65d5152bed9e043dcf180569b62f1fb2', 'd5e8c85d7a9726cd7b5fb2f83a18e838'),
     ('public', 'email_history', 'email_history rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
-    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '79b641dce3048126ea1d25c266b6e9a4'),
+    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd2ad9ec2e6b63d75c9c5996484b28ffb', '49213200206620f1b40d3eddeaecfab3'),
     ('public', 'email_history', 'email_history rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
     ('public', 'email_history', 'email_history rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '61d4765d2dcf519419687f753b937da8', 'f070f4c172c8572cd2517a59cbb00801'),
     ('public', 'email_schedule_runs', 'email_schedule_runs office select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'e92b788d951ce740d4157661bda75d07', 'ec3eaa346985c4d8b6f644dfdd8d29cb'),
@@ -768,6 +771,7 @@ BEGIN
     ('public', 'sales_orders', 'sales_orders rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'sales_orders', 'sales_orders rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '5cd04fff55dc985c7634b03ff43e08b3', '369c9e3cb9b8da8035af82e319a6aa3b'),
     ('public', 'site_network_members', 'site_network_members rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'a7039586719a5eb88e387f127cc9034b', '14f218c24e3af08658a68116b0748f1f'),
+    ('public', 'site_network_names', 'site_network_names rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_network_settings', 'site_network_settings rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_networks', 'site_networks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'stock', 'stock rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', 'c957dab9715f3b7e43e39ded1e984ef0', '90036cbc57d00743c6f0f7bd0738a13a'),
@@ -785,7 +789,6 @@ BEGIN
     ('public', 'timesheet_sends', 'timesheet_sends office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '1cbd867efcfe2dd1b1130687385ea3a6', '41df2ededed25cc3a22136d71ada5dd8'),
     ('public', 'user_profiles', 'Admins insert org profiles', 'PERMISSIVE', 'INSERT', '{authenticated}', 'eb88838f77cc54ce415d0f1211b649f9', '8d519372ad4f1388990a4ad10cfeb5de'),
     ('public', 'user_profiles', 'Users read own profile', 'PERMISSIVE', 'SELECT', '{authenticated}', 'cc00666ac5d81806b4129769e28761f3', 'b3158818130bc2650ee2c7bd09b38a45'),
-    ('public', 'user_profiles', 'Users update own profile', 'PERMISSIVE', 'UPDATE', '{authenticated}', 'bce2f8985e0259798c9fce72dc059cb9', 'a7e6bac74873af04f399dcc47fc2e90e'),
     ('security_audit', 'audit_log', 'audit admins read org', 'PERMISSIVE', 'SELECT', '{public}', 'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94'),
     ('storage', 'objects', 'document-attachments org delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '48c068dc1f6f78db386a692d9c82e7d4', '109c41f4481d07b0cbfde076012a9961'),
     ('storage', 'objects', 'document-attachments org insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'd800791c699190fe37b4631839d33087', '1efb2a5fe88143699916ff3bf0fd9fb1'),

@@ -9,6 +9,7 @@ WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131)
     ('public', 'attendance_events', 'attendance_events rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_exemptions', 'clock_in_network_exemptions rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'clock_in_network_locks', 'clock_in_network_locks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
+    ('public', 'clock_in_network_refusals', 'clock_in_network_refusals admin select', 'PERMISSIVE', 'SELECT', '{authenticated}', '0c3f9197b8141c8b66f15268b935ae94'),
     ('public', 'clock_in_network_unverified', 'clock_in_network_unverified rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '14f218c24e3af08658a68116b0748f1f'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'credit_note_lines', 'credit_note_lines rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '1a35fb1b2012d619accab921244582b3'),
@@ -35,7 +36,7 @@ WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131)
     ('public', 'document_attachments', 'document_attachments rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', 'f24a63c4d2c4f2655f27de42e6167460'),
     ('public', 'document_attachments', 'document_attachments rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'd5e8c85d7a9726cd7b5fb2f83a18e838'),
     ('public', 'email_history', 'email_history rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '90036cbc57d00743c6f0f7bd0738a13a'),
-    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '79b641dce3048126ea1d25c266b6e9a4'),
+    ('public', 'email_history', 'email_history rbac insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '49213200206620f1b40d3eddeaecfab3'),
     ('public', 'email_history', 'email_history rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '90036cbc57d00743c6f0f7bd0738a13a'),
     ('public', 'email_history', 'email_history rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', 'f070f4c172c8572cd2517a59cbb00801'),
     ('public', 'email_schedule_runs', 'email_schedule_runs office select', 'PERMISSIVE', 'SELECT', '{authenticated}', 'ec3eaa346985c4d8b6f644dfdd8d29cb'),
@@ -145,6 +146,7 @@ WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131)
     ('public', 'sales_orders', 'sales_orders rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'sales_orders', 'sales_orders rbac update', 'PERMISSIVE', 'UPDATE', '{authenticated}', '369c9e3cb9b8da8035af82e319a6aa3b'),
     ('public', 'site_network_members', 'site_network_members rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '14f218c24e3af08658a68116b0748f1f'),
+    ('public', 'site_network_names', 'site_network_names rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_network_settings', 'site_network_settings rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'site_networks', 'site_networks rbac select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'stock', 'stock rbac delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '90036cbc57d00743c6f0f7bd0738a13a'),
@@ -162,7 +164,6 @@ WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131)
     ('public', 'timesheet_sends', 'timesheet_sends office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '41df2ededed25cc3a22136d71ada5dd8'),
     ('public', 'user_profiles', 'Admins insert org profiles', 'PERMISSIVE', 'INSERT', '{authenticated}', '8d519372ad4f1388990a4ad10cfeb5de'),
     ('public', 'user_profiles', 'Users read own profile', 'PERMISSIVE', 'SELECT', '{authenticated}', 'b3158818130bc2650ee2c7bd09b38a45'),
-    ('public', 'user_profiles', 'Users update own profile', 'PERMISSIVE', 'UPDATE', '{authenticated}', 'a7e6bac74873af04f399dcc47fc2e90e'),
     ('security_audit', 'audit_log', 'audit admins read org', 'PERMISSIVE', 'SELECT', '{public}', '0c3f9197b8141c8b66f15268b935ae94'),
     ('storage', 'objects', 'document-attachments org delete', 'PERMISSIVE', 'DELETE', '{authenticated}', '109c41f4481d07b0cbfde076012a9961'),
     ('storage', 'objects', 'document-attachments org insert', 'PERMISSIVE', 'INSERT', '{authenticated}', '1efb2a5fe88143699916ff3bf0fd9fb1'),
@@ -188,15 +189,17 @@ have AS (
          md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) AS m
   FROM pg_catalog.pg_policies p
 )
--- The 181 policies 131 rewrote: each there, with main's command, roles and kind, and 131's text.
+-- The 182 policies 131 rewrote: each there, with main's command, roles and kind, and 131's text.
 SELECT 'policies_131_wrapped' AS check_name,
-       (SELECT count(*) = 181 AND bool_and(h.policyname IS NOT NULL AND h.permissive = w.permissive AND h.cmd = w.cmd AND h.roles = w.roles AND h.m = w.md5_131)
+       (SELECT count(*) = 182 AND bool_and(h.policyname IS NOT NULL AND h.permissive = w.permissive AND h.cmd = w.cmd AND h.roles = w.roles AND h.m = w.md5_131)
         FROM want w LEFT JOIN have h ON h.schemaname = w.schema_name AND h.tablename = w.table_name AND h.policyname = w.policy_name) AS ok
--- No policy on public, storage.objects or security_audit.audit_log calls a role or company helper outside a sub-select. A later
--- migration that adds such a policy makes this FALSE (write it with (SELECT ...) too).
+-- No policy on public, storage.objects or security_audit.audit_log calls a role or company helper outside a sub-select (but the two that
+-- 102's and 120's verify scripts pin; see the migration's header). A later migration that adds such a policy makes this FALSE (write it
+-- with (SELECT ...) too).
 UNION ALL SELECT 'no_helper_called_per_row',
   (SELECT count(*) FROM pg_catalog.pg_policies p
        WHERE (p.schemaname = 'public' OR (p.schemaname, p.tablename) IN (('storage', 'objects'), ('security_audit', 'audit_log')))
+         AND (p.schemaname, p.tablename, p.policyname) NOT IN (('public', 'user_profiles', 'Users update own profile'), ('public', 'email_history', 'email_history rbac insert'))
          AND regexp_replace(coalesce(p.qual, '') || ' | ' || coalesce(p.with_check, ''), '\( SELECT (auth\.)?[a-z_]+\([^()]*\) AS [a-z_]+\)', '', 'g')
              ~ '(^|[^a-z_.])(has_org_role|section_allowed|current_user_organization_id|user_organization_id|current_user_role|current_user_secondary_role|session_read_only|session_is_active)\(|auth\.(uid|jwt|role)\(') = 0
 -- Once per statement means the same only for STABLE helpers: every one wrapped is still STABLE.

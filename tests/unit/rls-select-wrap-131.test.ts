@@ -1,7 +1,7 @@
 /**
  * 131: every role / company helper call in a policy is written (SELECT call), so PostgreSQL asks it once per statement. These checks pin
  * that the files change nothing else: the rewrite is main's own policy text with only those calls wrapped (the rollback holds main's
- * text), the same 181 policies everywhere, no other statement, and every md5 tied to the catalogue snapshot.
+ * text), the same 182 policies everywhere, no other statement, and every md5 tied to the catalogue snapshot.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -15,7 +15,7 @@ const FILE = "131_rls_select_wrap.sql";
 const m131 = () => read(path.join("supabase/migrations", FILE));
 const rollback = () => read("supabase/release/131_rls_select_wrap.rollback.sql");
 const verify = () => read("supabase/verify/rls_select_wrap_131.sql");
-const COUNT = 181;
+const COUNT = 182;
 
 type Alter = { key: string; using?: string; check?: string };
 /** Every ALTER POLICY in the text (outside DO bodies), with the USING and WITH CHECK text it sets. */
@@ -72,12 +72,12 @@ describe("131 rls select wrap (supabase/release)", () => {
       }
     }
     expect(back.size).toBe(COUNT);
-    expect(wrapped).toHaveLength(439);
+    expect(wrapped).toHaveLength(440);
     // Only literal arguments: the call means the same for every row of the statement.
     for (const call of wrapped) expect(call).toMatch(/^[\w.]+\((|ARRAY\['[a-z]+'::text(, '[a-z]+'::text)*\]|'\{[a-z,]+\}'::text\[\])\)$/);
   });
 
-  it("guard, self-check, rollback and verify name the same 181 policies once each; their md5s and attributes are the catalogue's", () => {
+  it("guard, self-check, rollback and verify name the same 182 policies once each; their md5s and attributes are the catalogue's", () => {
     const keys = alters(m131()).map((a) => a.key).sort();
     expect(new Set(keys).size).toBe(COUNT);
     const lists = [...m131().split("DO $$").slice(1), ...rollback().split("DO $$").slice(1)].map(listed);
@@ -100,6 +100,18 @@ describe("131 rls select wrap (supabase/release)", () => {
       expect(snap.get(x.key), x.key).toBe(`${x.prefix} ${x.md5s[0]}`);
     }
     expect(inSnapshot).toBe(COUNT - 1);
+  });
+
+  it("the production precheck is one read-only SELECT over the same 182 policies and md5 pairs", () => {
+    const pre = read("supabase/verify/rls_select_wrap_131_precheck.sql");
+    const code = pre.replace(/^--.*$/gm, "").replace(/'(?:[^']|'')*'/g, "''");
+    expect(code.split(";").map((s) => s.trim()).filter(Boolean)).toHaveLength(1);
+    expect(code.trim().startsWith("WITH want(")).toBe(true);
+    expect(code).not.toMatch(/\b(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP|GRANT|REVOKE|TRUNCATE|COPY|DO|BEGIN|COMMIT|SET|set_config)\b/i);
+    const pair = new Map(listed(m131().split("DO $$")[1]).map((x) => [x.key, x.md5s.join("/")]));
+    const rows = listed(pre);
+    expect(rows.map((x) => x.key).sort()).toEqual([...pair.keys()].sort());
+    for (const x of rows) expect(x.md5s.join("/"), x.key).toBe(pair.get(x.key));
   });
 
   it("the rollback is one transaction; the preflight marker names 131's text of invoices rbac select", () => {

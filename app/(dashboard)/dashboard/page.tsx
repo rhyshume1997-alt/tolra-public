@@ -34,6 +34,7 @@ import { databaseHas068, missingDbObject } from "@/lib/db-features";
 import { linkedQuotes, rfqFigures } from "@/lib/rfq-stage";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
+import { UnrecognisedNetworkBanner } from "@/components/time/unrecognised-network-banner";
 import { myJobs, type MyJob } from "@/lib/my-jobs";
 import { MyJobs } from "@/components/workshop/my-jobs";
 import { useCanOpen } from "@/lib/use-destinations";
@@ -794,6 +795,7 @@ export default function DashboardPage() {
         <div><h1 className="page-title">Dashboard</h1><p className="mt-2 text-sm text-slate-500">{getGreeting(profile?.full_name)}. {fmtDateText(new Date(), { weekday: "long", year: true, numberAs: "full" })}</p></div>
         <div className="flex flex-wrap items-center gap-2">{role === "admin" || role === "office" ? <><AiHelperDashboardLink /><ApprovalLink /></> : null}<ColumnToggle tableKey="dashboard" keys={dashboardTileKeysFor(role === "office" ? "office" : role === "admin" ? "admin" : "workshop")} /></div>
       </section>
+      {role === "admin" ? <UnrecognisedNetworkBanner /> : null}
       {role === "workshop" || role === "viewer" ? <WorkshopDashboard role={role} /> : role === "office" ? <AdminDashboard office /> : <AdminDashboard />}
     </div>
   );

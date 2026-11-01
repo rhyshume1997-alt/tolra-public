@@ -51,6 +51,11 @@
  },
  {
   "kind": "function",
+  "object": "public.accountant_invite_peek(p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public e1e9b0efd5348a5f81c171129465c16a"
+ },
+ {
+  "kind": "function",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "definer search_path=pg_catalog, public d0d9351d698893fa56c9617e8001dce1"
  },
@@ -72,7 +77,7 @@
  {
   "kind": "function",
   "object": "public.add_member(p_org uuid, p_email text, p_role text)",
-  "detail": "definer search_path=pg_catalog, public 5b5d6d53445673976307a6619d3a14a8"
+  "detail": "definer search_path=pg_catalog, public 37e214481608ef8578e73dd485a611a1"
  },
  {
   "kind": "function",
@@ -336,6 +341,16 @@
  },
  {
   "kind": "function",
+  "object": "public.clock_in_refusal_answer(p_row clock_in_network_refusals, p_replayed boolean)",
+  "detail": "invoker search_path=pg_catalog, public 16b824fe1af14553c2abb164183e70b3"
+ },
+ {
+  "kind": "function",
+  "object": "public.clock_in_refusal_ip_purge(p_org uuid, p_limit integer)",
+  "detail": "invoker search_path=pg_catalog, public 891bd0942c318b8c4d3d98e620885eff"
+ },
+ {
+  "kind": "function",
   "object": "public.company_people()",
   "detail": "definer search_path=pg_catalog, public 955357228d87d29eaa462af8ece27806"
  },
@@ -373,6 +388,11 @@
   "kind": "function",
   "object": "public.correct_labour_session(p_session uuid, p_started_at timestamp with time zone, p_ended_at timestamp with time zone, p_reason text)",
   "detail": "definer search_path=pg_catalog, public 5568e7c86f6d9d4ec84d2b484771cb35"
+ },
+ {
+  "kind": "function",
+  "object": "public.create_accountant_invite(p_email text, p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 5503a19a83f14a15007b1b1f268b34da"
  },
  {
   "kind": "function",
@@ -597,7 +617,7 @@
  {
   "kind": "function",
   "object": "public.handle_new_auth_user()",
-  "detail": "definer search_path=pg_catalog, public ac2d8418558cbb154c9e7ae5d72bd875"
+  "detail": "definer search_path=pg_catalog, public 503b983c4be611a43993fd489cec534b"
  },
  {
   "kind": "function",
@@ -1286,6 +1306,41 @@
  },
  {
   "kind": "function",
+  "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
+  "detail": "definer search_path=pg_catalog, public 7904bd5cdd3aafb723f319905b3c265c"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_suggest_email_link(p_org uuid, p_email uuid, p_kind text, p_target uuid, p_po text)",
+  "detail": "definer search_path=pg_catalog, public a4e8abe77a66865bec1462324fee9c0c"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_claim(p_org uuid, p_min_seconds integer)",
+  "detail": "definer search_path=pg_catalog, public c4634b832a1a5ec5313225eee40f0ae0"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_connected(p_org uuid, p_mailbox_id text, p_mail_read boolean)",
+  "detail": "definer search_path=pg_catalog, public 73195c47a3f0a8213482cdd4fcdaa16f"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_due(p_org uuid)",
+  "detail": "definer search_path=pg_catalog, public 3a36b28bcd2bc780a5819470fae0d547"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_result(p_org uuid, p_error text, p_next_link text, p_checkpoint timestamp with time zone)",
+  "detail": "definer search_path=pg_catalog, public dfa1b3b093f623c4c5b2ed22458ba1da"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_sync_status()",
+  "detail": "definer search_path=pg_catalog, public bb51c33fb9c95bfa793d9421887ca5fa"
+ },
+ {
+  "kind": "function",
   "object": "public.member_has_verified_totp(p_user uuid)",
   "detail": "definer search_path=pg_catalog, public 2dbd5c63b2275e46eaaa7e832d8e9264"
  },
@@ -1452,7 +1507,7 @@
  {
   "kind": "function",
   "object": "public.purge_site_network_ips(p_all boolean)",
-  "detail": "definer search_path=pg_catalog, public 89d9acdfd1de30f58faf332665671ca4"
+  "detail": "definer search_path=pg_catalog, public d871abfce6ce33b35298ac75e892934e"
  },
  {
   "kind": "function",
@@ -1516,6 +1571,11 @@
  },
  {
   "kind": "function",
+  "object": "public.record_clock_in_refusal(p_client_op_id uuid, p_action text)",
+  "detail": "definer search_path=pg_catalog, public 1fda54e6fe632fe46a9cd171d2a1d70d"
+ },
+ {
+  "kind": "function",
   "object": "public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
   "detail": "definer search_path=pg_catalog, public 787d370c49c3033950c1f0dda63ad63b"
  },
@@ -1541,6 +1601,11 @@
  },
  {
   "kind": "function",
+  "object": "public.redeem_accountant_invite(p_token_hash text)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 943f8a5ddb7011348f5f3c73aa1d88be"
+ },
+ {
+  "kind": "function",
   "object": "public.refund_customer_credit(p_invoice uuid, p_amount numeric, p_paid_on date, p_method text, p_reference text, p_reason text, p_request_id uuid)",
   "detail": "definer search_path=pg_catalog, public, security_audit 3ebdd484dea4778fb85d0fdd7f663add"
  },
@@ -1563,6 +1628,11 @@
   "kind": "function",
   "object": "public.remove_site_network(p_client_op_id uuid, p_id uuid)",
   "detail": "definer search_path=pg_catalog, public dfdd4fce93d7adb88ac7a68a45679733"
+ },
+ {
+  "kind": "function",
+  "object": "public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)",
+  "detail": "definer search_path=pg_catalog, public 32e8bee43f9b692314cb36b6f1488ca3"
  },
  {
   "kind": "function",
@@ -1668,6 +1738,11 @@
   "kind": "function",
   "object": "public.revise_quote(p_quote uuid)",
   "detail": "definer search_path=pg_catalog, public 9aa0305edd9bafbf590af61600d33698"
+ },
+ {
+  "kind": "function",
+  "object": "public.revoke_accountant_invite(p_invite uuid)",
+  "detail": "definer search_path=pg_catalog, public, security_audit 1538e2fd55270f6b1d1374e34de3e549"
  },
  {
   "kind": "function",
@@ -1812,7 +1887,7 @@
  {
   "kind": "function",
   "object": "public.site_network_ip_purge(p_org uuid, p_limit integer)",
-  "detail": "invoker search_path=pg_catalog, public ebdf35dddb2d55f6e54ef40b9eb9f6bf"
+  "detail": "invoker search_path=pg_catalog, public 87b381854626379f4ece70dcd38576e5"
  },
  {
   "kind": "function",
@@ -2101,6 +2176,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.accountant_invite_peek(p_token_hash text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "authenticated,service_role"
  },
@@ -2386,6 +2466,16 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.clock_in_refusal_answer(p_row clock_in_network_refusals, p_replayed boolean)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.clock_in_refusal_ip_purge(p_org uuid, p_limit integer)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.company_people()",
   "detail": "authenticated,service_role"
  },
@@ -2422,6 +2512,11 @@
  {
   "kind": "function-grant",
   "object": "public.correct_labour_session(p_session uuid, p_started_at timestamp with time zone, p_ended_at timestamp with time zone, p_reason text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.create_accountant_invite(p_email text, p_token_hash text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -3336,6 +3431,41 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_suggest_email_link(p_org uuid, p_email uuid, p_kind text, p_target uuid, p_po text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_claim(p_org uuid, p_min_seconds integer)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_connected(p_org uuid, p_mailbox_id text, p_mail_read boolean)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_due(p_org uuid)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_result(p_org uuid, p_error text, p_next_link text, p_checkpoint timestamp with time zone)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_status()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.member_has_verified_totp(p_user uuid)",
   "detail": ""
  },
@@ -3566,6 +3696,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.record_clock_in_refusal(p_client_op_id uuid, p_action text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
   "detail": "authenticated,service_role"
  },
@@ -3591,6 +3726,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.redeem_accountant_invite(p_token_hash text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.refund_customer_credit(p_invoice uuid, p_amount numeric, p_paid_on date, p_method text, p_reference text, p_reason text, p_request_id uuid)",
   "detail": "authenticated,service_role"
  },
@@ -3612,6 +3752,11 @@
  {
   "kind": "function-grant",
   "object": "public.remove_site_network(p_client_op_id uuid, p_id uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -3717,6 +3862,11 @@
  {
   "kind": "function-grant",
   "object": "public.revise_quote(p_quote uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.revoke_accountant_invite(p_invite uuid)",
   "detail": "authenticated,service_role"
  },
  {
@@ -4146,6 +4296,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.clock_in_network_refusals :: clock_in_network_refusals admin select",
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
+ },
+ {
+  "kind": "policy",
   "object": "public.clock_in_network_unverified :: clock_in_network_unverified rbac select",
   "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
@@ -4292,7 +4447,7 @@
  {
   "kind": "policy",
   "object": "public.email_history :: email_history rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 79b641dce3048126ea1d25c266b6e9a4"
+  "detail": "PERMISSIVE INSERT authenticated 49213200206620f1b40d3eddeaecfab3"
  },
  {
   "kind": "policy",
@@ -4921,6 +5076,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.site_network_names :: site_network_names rbac select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
   "object": "public.site_network_settings :: site_network_settings rbac select",
   "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
@@ -5032,7 +5192,7 @@
  {
   "kind": "policy",
   "object": "public.user_profiles :: Users update own profile",
-  "detail": "PERMISSIVE UPDATE authenticated a7e6bac74873af04f399dcc47fc2e90e"
+  "detail": "PERMISSIVE UPDATE authenticated bce2f8985e0259798c9fce72dc059cb9"
  },
  {
   "kind": "policy",
@@ -5231,6 +5391,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.clock_in_network_refusals",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.clock_in_network_unverified",
   "detail": "enabled"
  },
@@ -5347,6 +5512,11 @@
  {
   "kind": "rls",
   "object": "public.integration_contacts",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.integration_mailbox_sync",
   "detail": "enabled"
  },
  {
@@ -5591,6 +5761,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.site_network_names",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.site_network_ops",
   "detail": "enabled"
  },
@@ -5747,6 +5922,11 @@
  {
   "kind": "table-grant",
   "object": "public.clock_in_network_locks :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.clock_in_network_refusals :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -5981,11 +6161,6 @@
  },
  {
   "kind": "table-grant",
-  "object": "public.organization_invites :: authenticated",
-  "detail": "SELECT"
- },
- {
-  "kind": "table-grant",
   "object": "public.organization_members :: authenticated",
   "detail": "SELECT"
  },
@@ -6057,6 +6232,11 @@
  {
   "kind": "table-grant",
   "object": "public.site_network_members :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.site_network_names :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -6273,6 +6453,16 @@
   "kind": "trigger",
   "object": "public.clock_in_network_locks :: support_read_only",
   "detail": "O 2caf693d383aff3f25b54872e97d8e90"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_refusals :: admin_mfa",
+  "detail": "O 19b0c9915f6040597b8479f60cdc4f51"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_refusals :: support_read_only",
+  "detail": "O 88f41bccd0787cd04af0a1e958a97905"
  },
  {
   "kind": "trigger",
@@ -6768,6 +6958,16 @@
   "kind": "trigger",
   "object": "public.integration_contacts :: support_read_only",
   "detail": "O 6fcde42e42b0151479e6cf1892e22873"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_mailbox_sync :: admin_mfa",
+  "detail": "O 9b0e79b566a6d7a02eca87033e48f169"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.integration_mailbox_sync :: support_read_only",
+  "detail": "O 4f0bb9ba151539e571056945fb91ab72"
  },
  {
   "kind": "trigger",
@@ -7996,6 +8196,21 @@
  },
  {
   "kind": "trigger",
+  "object": "public.site_network_names :: admin_mfa",
+  "detail": "O efc4bd73743d541442be38f6c82ba386"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.site_network_names :: audit_site_network_names_changes",
+  "detail": "O fc5d3b025a489267b2d24eaef5e1a872"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.site_network_names :: support_read_only",
+  "detail": "O d2f5dc31cb3abbd96a3d46d6b508e53a"
+ },
+ {
+  "kind": "trigger",
   "object": "public.site_network_ops :: admin_mfa",
   "detail": "O cce21a8fb648a51bbe80ff8c629d6ef5"
  },
@@ -8261,6 +8476,11 @@
  },
  {
   "kind": "unique-index",
+  "object": "public.clock_in_network_refusals :: clock_in_network_refusals_one_per_key",
+  "detail": "0f3b39a2ffd5876394e6e8b97de97987"
+ },
+ {
+  "kind": "unique-index",
   "object": "public.clock_in_network_unverified :: clock_in_network_unverified_id_key",
   "detail": "9fa66ddd38f27da21fcc8f6342d40332"
  },
@@ -8481,6 +8701,11 @@
  },
  {
   "kind": "unique-index",
+  "object": "public.organization_invites :: organization_invites_token_hash_uniq",
+  "detail": "5809f4b5577eda24d8749a110459a0fa"
+ },
+ {
+  "kind": "unique-index",
   "object": "public.organizations :: organizations_slug_key",
   "detail": "a881bf64441213989542be703220da41"
  },
@@ -8528,6 +8753,11 @@
   "kind": "unique-index",
   "object": "public.site_network_members :: site_network_members_id_key",
   "detail": "441a79c95637d7723f41c93e0abd9554"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.site_network_names :: site_network_names_id_key",
+  "detail": "a7c55feff944eea77985eee94eff1fd0"
  },
  {
   "kind": "unique-index",
