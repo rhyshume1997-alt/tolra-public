@@ -146,6 +146,12 @@ export type OrgSettings = {
   loaded: boolean;
   /** true when settings are only stored in this browser (Supabase unavailable). */
   localOnly: boolean;
+  /**
+   * This person's own view on this device (G5, display plan option A), per screen: the hidden keys they chose with the Columns
+   * button. A screen with an entry here shows this instead of the company setting; a screen without one follows the company.
+   * Only workshop and viewer pickers write it (admin and office change the company setting). Browser only, never sent to the server.
+   */
+  deviceColumns: Record<string, string[]>;
 };
 
 /**
@@ -219,7 +225,7 @@ export function orgSettingsStorageKey(userId: string | null, organizationId: str
 }
 
 const NO_SETS: Sets = { hiddenNav: [], hiddenColumns: {} };
-const EMPTY: OrgSettings = { ...NO_SETS, loaded: false, localOnly: false };
+const EMPTY: OrgSettings = { ...NO_SETS, loaded: false, localOnly: false, deviceColumns: {} };
 
 let state: OrgSettings = EMPTY;
 /** The last settled value (from the server, or kept locally while offline). */
@@ -330,6 +336,75 @@ function writeLocal(sets: Sets) {
   }
 }
 
+/* ---- This person's own view on this device (G5 option A: no SQL; per-user storage in the database is after go-live) ---- */
+
+const DEVICE_KEY = "quoteflow-display-override";
+
+/** Keyed by user AND company like the company copy, so it never applies to another sign-in or this person's other company. */
+export function deviceViewStorageKey(userId: string | null, organizationId: string | null) {
+  return userId && organizationId ? `${DEVICE_KEY}:${userId}:${organizationId}` : null;
+}
+
+function readDevice(): Record<string, string[]> {
+  const key = deviceViewStorageKey(currentUserId, currentOrgId);
+  if (!key) return {};
+  try {
+    return cleanColumns(JSON.parse(window.localStorage.getItem(key) || "{}"));
+  } catch {
+    return {};
+  }
+}
+
+function writeDevice(view: Record<string, string[]>) {
+  const key = deviceViewStorageKey(currentUserId, currentOrgId);
+  if (!key) return;
+  try {
+    if (Object.keys(view).length) window.localStorage.setItem(key, JSON.stringify(view));
+    else window.localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable (private window etc.): the view still applies to this page load.
+  }
+}
+
+/** The hidden keys a screen shows with: this person's own view on this device when they have one for it, else the company's. */
+export function effectiveHidden(settings: Pick<OrgSettings, "hiddenColumns" | "deviceColumns">, tableKey: string): string[] | undefined {
+  return Object.prototype.hasOwnProperty.call(settings.deviceColumns, tableKey) ? settings.deviceColumns[tableKey] : settings.hiddenColumns[tableKey];
+}
+
+const NO_DEVICE_SCOPE: SaveResult = { localOnly: true, denied: true, message: "Your view could not be saved: sign in again and retry." };
+
+/**
+ * Hides or shows one column in this person's own view on this device. The first change to a screen starts from what the company
+ * shows, so nothing the company hid comes back unasked. Never writes to the server. A locked column cannot be hidden.
+ */
+export function setDeviceColumnHidden(tableKey: string, columnKey: string, hidden: boolean): Promise<SaveResult> {
+  if (hidden && isColumnLocked(tableKey, columnKey)) return Promise.resolve({ localOnly: true, denied: true, message: "This column is always shown." });
+  if (!deviceViewStorageKey(currentUserId, currentOrgId)) return Promise.resolve(NO_DEVICE_SCOPE);
+  const start = effectiveHidden(state, tableKey) ?? [];
+  const next = applyDelta(start, { add: hidden ? [columnKey] : [], remove: hidden ? [] : [columnKey] });
+  const deviceColumns = { ...state.deviceColumns, ...cleanColumns({ [tableKey]: next }) };
+  writeDevice(deviceColumns);
+  setState({ ...state, deviceColumns });
+  return Promise.resolve({ localOnly: true, denied: false });
+}
+
+/** Drops this person's own view of one screen on this device: it follows the company setting again. */
+export function resetDeviceColumns(tableKey: string): Promise<SaveResult> {
+  if (!Object.prototype.hasOwnProperty.call(state.deviceColumns, tableKey)) return Promise.resolve({ localOnly: true, denied: false });
+  const { [tableKey]: _dropped, ...deviceColumns } = state.deviceColumns;
+  void _dropped;
+  writeDevice(deviceColumns);
+  setState({ ...state, deviceColumns });
+  return Promise.resolve({ localOnly: true, denied: false });
+}
+
+/** Drops every own view this person has in this company on this device (an admin or office picker calls it: they follow the company). */
+export function clearDeviceColumns() {
+  if (!Object.keys(state.deviceColumns).length) return;
+  writeDevice({});
+  setState({ ...state, deviceColumns: {} });
+}
+
 type DbError = { code?: unknown; status?: unknown; message?: unknown; hint?: unknown };
 
 /** The server refused (as opposed to could not be reached): 401 / 403, 42501, a role guard, read-only support access. */
@@ -375,7 +450,7 @@ async function fetchSettings() {
     if (gen !== generation) return;
     base = row;
     writeLocal(base);
-    publish({ loaded: true, localOnly: false });
+    publish({ loaded: true, localOnly: false, deviceColumns: readDevice() });
   } catch {
     if (gen !== generation) return;
     // Offline: the stored session still names who is signed in on this device.
@@ -384,7 +459,7 @@ async function fetchSettings() {
     // Offline cold reload: the company of the last online load on this device (cleared on sign-out and company switch).
     if (!currentOrgId) currentOrgId = recallOrg();
     base = readLocal();
-    publish({ loaded: true, localOnly: true });
+    publish({ loaded: true, localOnly: true, deviceColumns: readDevice() });
   }
 }
 
@@ -530,12 +605,23 @@ export function columnVisibility(tableKey: string, hidden: string[] | undefined)
   return (columnKey: string) => !safe.includes(columnKey);
 }
 
+/**
+ * One screen's visibility: this person's own view on this device when they have one for the screen, else the company setting.
+ * setColumnVisible / resetColumns change the company setting; setOwnColumnVisible / resetOwnColumns change only the own view.
+ */
 export function useColumnVisibility(tableKey: string) {
   const settings = useOrgSettings();
-  const hidden = settings.hiddenColumns[tableKey];
+  const hidden = effectiveHidden(settings, tableKey);
   const isVisible = useMemo(() => columnVisibility(tableKey, hidden), [tableKey, hidden]);
   const isLocked = useCallback((columnKey: string) => isColumnLocked(tableKey, columnKey), [tableKey]);
   const setColumnVisible = useCallback((columnKey: string, visible: boolean) => setColumnHidden(tableKey, columnKey, !visible), [tableKey]);
   const reset = useCallback(() => resetColumns(tableKey), [tableKey]);
-  return { isVisible, isLocked, setColumnVisible, resetColumns: reset, hidden: hidden ?? [], loaded: settings.loaded, localOnly: settings.localOnly };
+  const setOwnColumnVisible = useCallback((columnKey: string, visible: boolean) => setDeviceColumnHidden(tableKey, columnKey, !visible), [tableKey]);
+  const resetOwn = useCallback(() => resetDeviceColumns(tableKey), [tableKey]);
+  const ownView = Object.prototype.hasOwnProperty.call(settings.deviceColumns, tableKey);
+  return {
+    isVisible, isLocked, setColumnVisible, resetColumns: reset, setOwnColumnVisible, resetOwnColumns: resetOwn,
+    hidden: hidden ?? [], companyHidden: settings.hiddenColumns[tableKey] ?? [], ownView, hasOwnViews: Object.keys(settings.deviceColumns).length > 0,
+    loaded: settings.loaded, localOnly: settings.localOnly,
+  };
 }
