@@ -1,0 +1,37 @@
+# Runs the CNC costing engine (and its Postgres) that Tolra's Quote
+# Builder calls through /api/costing. Start with:
+#   POSTGRES_PASSWORD=... COSTING_ENGINE_TOKEN=... docker compose up --build
+# then set COSTING_ENGINE_URL=http://localhost:8001 in Tolra's .env.local.
+services:
+  costing-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: cncq
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - costing_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  costing-engine:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@costing-db:5432/cncq
+      COSTING_ENGINE_TOKEN: ${COSTING_ENGINE_TOKEN:?Set COSTING_ENGINE_TOKEN}
+      COSTING_SEED_DEMO_DATA: ${COSTING_SEED_DEMO_DATA:-false}
+      COSTING_SEED_ORG_ID: ${COSTING_SEED_ORG_ID:-}
+      COSTING_ENABLE_DOCS: ${COSTING_ENABLE_DOCS:-false}
+    depends_on:
+      costing-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8000"
+
+volumes:
+  costing_postgres_data:

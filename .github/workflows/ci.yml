@@ -4,7 +4,7 @@
 #     required status checks, so nothing here can leave a pull request waiting.
 #   * The small "changes" job reads git diff (the pull request's merge base to its head, or the push's previous commit
 #     to its new one) and decides:
-#       - `web` is skipped when every changed file is under docs/ or is a *.md file.
+#       - `web` and `costing-engine` are skipped when every changed file is under docs/ or is a *.md file.
 #       - `integration` (disposable Supabase, database suite, upgrade rehearsal, browser suite: the slow one) is also
 #         skipped when every changed file is under tests/live/ (the manual live-tenant checks, which no CI job runs).
 #   * Everything runs whenever it can't be sure: the first push of a branch, a force push whose old commit is gone, an
@@ -17,7 +17,7 @@
 #   * `integration` is the slow one (about 22 minutes), so on a pull request it runs only once the PR carries the
 #     `ready` label: adding the label starts a run, and every later push to a labelled PR runs it too. It always runs
 #     on main and on a manual run (Actions > CI > Run workflow). The quick checks (`web`: typecheck, lint, unit tests,
-#     build) still run on every push. `ci-gate` (the one required check) stays red on a pull request
+#     build; `costing-engine`) still run on every push. `ci-gate` (the one required check) stays red on a pull request
 #     whose code changed until integration has run and passed, so `ready` is required before merging.
 name: CI
 
@@ -90,7 +90,7 @@ jobs:
           else
             code=true; integration=true
           fi
-          echo "web: $code; integration: $integration"
+          echo "web and costing-engine: $code; integration: $integration"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "integration=$integration" >> "$GITHUB_OUTPUT"
 
@@ -241,15 +241,54 @@ jobs:
         if: always()
         run: npm run test:backend:stop
 
+  costing-engine:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.code != 'false') }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: costing_smoke
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/costing-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: services/costing-engine/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Compile
+        run: python -m compileall app
+      - name: HTTP smoke (auth, tenancy, calculations) against a throwaway database
+        run: |
+          pip install httpx
+          python tests/http_smoke.py . postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/costing_smoke smoke.json
+      - name: Trusted-caller and tenant-isolation proof (A8, E1-E5) against a second throwaway database
+        run: |
+          python -c "import psycopg2; c = psycopg2.connect(host='127.0.0.1', user='postgres', password='postgres', dbname='postgres'); c.autocommit = True; c.cursor().execute('CREATE DATABASE costing_proof')"
+          python tests/trusted_caller_proof.py . postgresql+psycopg2://postgres:postgres@127.0.0.1:5432/costing_proof
+      - name: Dependency audit (gate; audit B9)
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
   # The one check to require in branch protection. A skipped job counts as passed, so requiring the jobs above directly
   # would let a pull request merge with a job skipped for the wrong reason. This job always runs and passes only when
-  # web passed (or was skipped because only docs changed) and integration passed, or was skipped
+  # web and costing-engine passed (or were skipped because only docs changed) and integration passed, or was skipped
   # because only docs or tests/live changed. A code change without the `ready` label fails it: add `ready` to merge.
   ci-gate:
     # A targeted manual run (workflow_dispatch with `specs`) reports under another check name, so it can never stand in for the
     # required `ci-gate` on a commit: it is diagnostic only, and merge approval still needs the full pull-request run.
     name: ${{ (github.event_name == 'workflow_dispatch' && inputs.specs != '') && 'targeted-run (diagnostic, not a gate)' || 'ci-gate' }}
-    needs: [changes, web, integration]
+    needs: [changes, web, integration, costing-engine]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -261,13 +300,14 @@ jobs:
           CODE: ${{ needs.changes.outputs.code }}
           INTEGRATION_NEEDED: ${{ needs.changes.outputs.integration }}
           WEB: ${{ needs.web.result }}
+          COSTING: ${{ needs.costing-engine.result }}
           INTEGRATION: ${{ needs.integration.result }}
         run: |
           echo "event=$EVENT ready=$READY changes=$CHANGES code=$CODE integration_needed=$INTEGRATION_NEEDED"
-          echo "web=$WEB integration=$INTEGRATION"
+          echo "web=$WEB costing-engine=$COSTING integration=$INTEGRATION"
           fail=0
           docs_only=false; [ "$CHANGES" = success ] && [ "$CODE" = false ] && docs_only=true
-          for job in "web:$WEB"; do
+          for job in "web:$WEB" "costing-engine:$COSTING"; do
             name="${job%%:*}"; result="${job#*:}"
             if [ "$result" = success ] || { [ "$result" = skipped ] && [ "$docs_only" = true ]; }; then
               echo "OK: $name $result"

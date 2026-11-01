@@ -1,7 +1,8 @@
 /**
  * A8 costing engine: the repo-side half of the "trusted-caller + tenant-isolation proof" (ChatGPT's condition for activating the
- * engine after go-live). The engine itself (Python service behind COSTING_ENGINE_URL) is NOT in this repo; this file proves what the
- * APP guarantees to it, and records what the ENGINE must still prove. The comment block below travels with the code.
+ * engine). The engine itself (Python service behind COSTING_ENGINE_URL) is services/costing-engine; this file proves what the APP
+ * guarantees to it. What the ENGINE must prove (E1 to E5 below) is proved by services/costing-engine/tests/trusted_caller_proof.py
+ * against the real engine and PostgreSQL (CI job costing-engine). The comment block below travels with the code.
  *
  * WHAT THIS FILE PROVES (app side, run by `npx vitest run tests/unit/costing-proxy.test.ts`)
  *   1. Only a signed-in admin/office session of an active company reaches the engine: no session 401, workshop / inactive 403, a support
@@ -21,8 +22,8 @@
  *   7. No browser bundle can read the token or URL: no 'use client' file, nor anything it imports, mentions COSTING_ENGINE_*, and the
  *      only files that do are the three server files listed (static check, no network).
  *
- * WHAT THE ENGINE (services/costing-engine, Python) MUST SHOW BEFORE IT IS ACTIVATED (NOT provable in this repo; do it in the engine repo
- * and attach the output to the go-live gate):
+ * WHAT THE ENGINE (services/costing-engine, Python) MUST SHOW BEFORE IT IS ACTIVATED (services/costing-engine/tests/trusted_caller_proof.py;
+ * attach its output to the go-live gate):
  *   E1. Token-only trust: every /api/* route returns 401 without `Authorization: Bearer <COSTING_ENGINE_TOKEN>` and with a wrong or
  *       empty token (constant-time compare, e.g. hmac.compare_digest); it fails closed (refuses to start, or 503) when the token is
  *       unset or empty; /docs, /openapi.json and /redoc are off or behind the token in production; no endpoint is open to the internet
