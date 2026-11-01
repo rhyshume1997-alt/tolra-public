@@ -6,6 +6,7 @@ import { DASHBOARD_TILES } from "@/lib/dashboard-tiles";
 import { JOB_TABLE_COLUMNS } from "@/lib/job-board-files";
 import { supabase } from "@/lib/supabase";
 import { RFQ_CARD_FIELDS, RFQ_DISPLAY_KEY } from "@/lib/rfq-display";
+import { salesOrdersEnabled, salesOrdersSwitchChange, SALES_ORDERS_KEY } from "@/lib/sales-orders-switch";
 import { getCurrentOrganizationId, getCurrentUserAndOrganization } from "@/lib/supabase-business";
 
 export type NavToggle = { key: string; href: string; label: string; section: string };
@@ -473,7 +474,13 @@ export function resetColumns(tableKey: string): Promise<SaveResult> {
 
 /** Hides or shows one menu item (key = href without the leading slash). */
 export function setNavHidden(key: string, hidden: boolean): Promise<SaveResult> {
+  if (key === SALES_ORDERS_KEY) return setSalesOrdersEnabled(!hidden);
   return enqueue({ kind: "nav", add: hidden ? [key] : [], remove: hidden ? [] : [key] });
+}
+
+/** Switches Sales Orders on or off for the company (off by default; see lib/sales-orders-switch). Admin only, like every menu change. */
+export function setSalesOrdersEnabled(on: boolean): Promise<SaveResult> {
+  return enqueue({ kind: "nav", ...salesOrdersSwitchChange(on) });
 }
 
 const combine = (results: SaveResult[]): SaveResult => {
@@ -513,6 +520,7 @@ export function useOrgSettings() {
 
 export function isNavHidden(settings: Pick<OrgSettings, "hiddenNav">, href: string) {
   if (NEVER_HIDDEN_HREFS.includes(href)) return false;
+  if (href.replace(/^\//, "") === SALES_ORDERS_KEY) return !salesOrdersEnabled(settings.hiddenNav);
   return settings.hiddenNav.includes(href.replace(/^\//, ""));
 }
 
