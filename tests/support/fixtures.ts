@@ -163,9 +163,25 @@ export async function createSyntheticWorld(runId = newRunId(), backend: Isolated
     // 083: the company's admin is on the authorised inspectors list, as 083's backfill puts every existing admin (a test about an
     // admin who isn't takes them off). Harmless before 083, when an admin could always record inspections.
     await putAdminOnInspectorsList(admin, orgId, users.admin.id, `admin inspector ${slug}`, backend);
+    // Sales Orders is off in a new company until an admin switches it on (Settings > Menu); the specs written before that default expect it.
+    await switchSalesOrdersOn(orgId, backend);
     tenants[key] = { key, id: orgId, slug, name, users };
   }
   return { runId, tenants };
+}
+
+/**
+ * Sales Orders is hidden by default (lib/sales-orders-switch: the marker "sales-orders:on" in organization_settings.hidden_nav).
+ * This is the same row an admin changes in Settings > Menu, set with the service role so a spec starts with the menu item showing.
+ */
+export async function switchSalesOrdersOn(orgId: string, backend: IsolatedBackend = isolatedBackend()) {
+  await withDb(async (db) => {
+    const done = await db.query(
+      "update public.organization_settings set hidden_nav = array_append(array_remove(array_remove(hidden_nav, 'sales-orders'), 'sales-orders:on'), 'sales-orders:on') where organization_id = $1",
+      [orgId],
+    );
+    if (done.rowCount !== 1) throw new Error(`switchSalesOrdersOn: no organization_settings row for ${orgId}`);
+  }, backend);
 }
 
 /**
@@ -173,7 +189,7 @@ export async function createSyntheticWorld(runId = newRunId(), backend: Isolated
  * total) and so must not share a company with other specs. The slug and the e-mail carry the run id, so teardown
  * (destroySyntheticWorld, leftoverRows) removes it with the rest of the run.
  */
-export async function createSoloTenant(runId: string, label: string, backend: IsolatedBackend = isolatedBackend()) {
+export async function createSoloTenant(runId: string, label: string, backend: IsolatedBackend = isolatedBackend(), options: { salesOrders?: boolean } = {}) {
   const admin = adminClient(backend);
   const slug = `${SYNTHETIC_SLUG_PREFIX}${runId}-${label}`;
   const name = `Solo ${label} Test Engineering ${runId}`;
@@ -195,6 +211,7 @@ export async function createSoloTenant(runId: string, label: string, backend: Is
   if (error || typeof orgId !== "string") throw new Error(`create_organization ${slug}: ${error?.message}`);
   // 083: the solo admin is on the authorised inspectors list too, like each tenant's admin in createSyntheticWorld.
   await putAdminOnInspectorsList(admin, orgId, id, `solo admin inspector ${slug}`, backend);
+  if (options.salesOrders !== false) await switchSalesOrdersOn(orgId, backend);
   return { id: orgId as string, slug, name, admin: { id, email, password, role: "admin" as const } satisfies SyntheticUser };
 }
 

@@ -1258,7 +1258,7 @@ export default function InvoicesPage() {
                   <label className="grid gap-1 text-xs text-slate-500">Due date<Input name="due_date" type="date" required value={formDue} onChange={(event) => { setDueTouched(true); setFormDue(event.target.value); }} /></label>
                   <label className="grid gap-1 text-xs text-slate-500">Terms<select name="terms" value={formTerms} onChange={(event) => setFormTerms(event.target.value)} className="h-9 rounded-lg border border-slate-300 px-3 text-sm text-slate-950"><option>30 days</option><option>14 days</option><option>Due on receipt</option></select></label>
                   <Input name="quote_ref" maxLength={50} placeholder="Our quote no. (QUO-0123)" value={formQuoteRef} onChange={(event) => setFormQuoteRef(event.target.value)} />
-                  <Input name="customer_po" maxLength={100} placeholder="Customer order no." value={formCustomerPo} onChange={(event) => setFormCustomerPo(event.target.value)} />
+                  <Input name="customer_po" aria-label="Customer PO" maxLength={100} placeholder="Customer PO" value={formCustomerPo} onChange={(event) => setFormCustomerPo(event.target.value)} />
                   <label className="grid gap-1 text-xs text-slate-500">Tax point (only if different from the invoice date)<Input name="tax_point" type="date" /></label>
                 </div>
                 <Textarea name="description" placeholder="Description" maxLength={500} required />
@@ -1574,7 +1574,7 @@ export default function InvoicesPage() {
                 <div><span className="field-label block">Due Date</span><p className="font-medium text-slate-950">{fmtDate(viewingInvoice.dueDate) || "-"}{viewingInvoice.status === "overdue" ? ` (${viewingInvoice.daysOverdue} days overdue)` : ""}</p></div>
                 <div><span className="field-label block">Payment Terms</span><p className="font-medium text-slate-950">{viewingInvoice.terms || company?.defaultInvoiceTerms || "-"}</p></div>
                 {viewingInvoice.quoteRef ? <div><span className="field-label block">Our Quote No.</span><p className="font-mono font-medium text-slate-950">{viewingInvoice.quoteRef}</p></div> : null}
-                {viewingInvoice.customerPo ? <div><span className="field-label block">Customer Order No.</span><p className="font-mono font-medium text-slate-950">{viewingInvoice.customerPo}</p></div> : null}
+                {viewingInvoice.customerPo ? <div><span className="field-label block">Customer PO</span><p className="font-mono font-medium text-slate-950">{viewingInvoice.customerPo}</p></div> : null}
                 {viewingInvoice.deliveryAddress ? <div><span className="field-label block">Delivery Address</span><p className="whitespace-pre-line font-medium text-slate-950">{viewingInvoice.deliveryAddress}</p></div> : null}
                 {viewingInvoice.invoiceNote ? <div className="sm:col-span-2"><span className="field-label block">Invoice Note</span><p className="font-medium text-slate-950">{viewingInvoice.invoiceNote}</p></div> : null}
                 {viewingInvoice.status === "paid" && viewingInvoice.amountPaid <= 0 ? <div><span className="field-label block">Paid</span><p className="font-medium text-slate-950">Marked paid; the amount received was never recorded</p></div>

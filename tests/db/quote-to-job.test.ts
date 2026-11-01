@@ -198,8 +198,8 @@ describe("one order and one job per quote, whatever the timing", () => {
 });
 
 describe("terms one order can't hold: the quote is accepted, the order is made by hand", () => {
+  // 126: a quote for 0.00 (the old "no lines" case) is refused before this point; see the test after this list.
   const cases: [string, Line[], { vat?: boolean; total?: number }][] = [
-    ["no lines", [], { total: 0 }],
     ["lines at different VAT rates", [{ quantity: 1, unit_price: 10, vat_pct: 20 }, { quantity: 1, unit_price: 10, vat_pct: 5 }], {}],
     ["a VAT rate an order can't hold (17.5%)", [{ quantity: 1, unit_price: 100, vat_pct: 17.5 }], {}],
     ["a penny of per-line VAT rounding (3p + 3p at 20%)", [{ quantity: 1, unit_price: 0.03, vat_pct: 20 }, { quantity: 1, unit_price: 0.03, vat_pct: 20 }], {}],
@@ -221,6 +221,16 @@ describe("terms one order can't hold: the quote is accepted, the order is made b
       expect(await ok(as.office, q.id)).toMatchObject({ accepted: false, so_id: null, needs: "sales_order_by_hand", reason: result.reason });
     });
   }
+
+  it("126: a quote for 0.00 (here with no lines) is refused as the app refuses it: not accepted, no order, no event", async () => {
+    const q = await quote([], { total: 0, status: "draft" });
+    const { error } = await accept(as.office, q.id, "PO-NOT-USED");
+    expect({ code: error?.code, hint: error?.hint, message: error?.message })
+      .toEqual({ code: "22023", hint: "quote_zero_value", message: "A quote for £0.00 can't be accepted. Add a price or decline it." });
+    expect((await adminClient().from("quotes").select("status").eq("id", q.id).single()).data?.status).toBe("draft");
+    expect(await ordersFor(q.id)).toHaveLength(0);
+    expect(await acceptEvents(q.id)).toHaveLength(0);
+  });
 
   it("the cases one order can hold are carried exactly as the app carries them (VAT off, 5%, exempt, 0%)", async () => {
     const holdable: [Line[], boolean][] = [
