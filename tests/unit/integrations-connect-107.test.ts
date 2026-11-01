@@ -341,8 +341,8 @@ describe("what Admin > Integrations says", () => {
     expect(cardStatusLabel({ status: "connected" })).toBe("All connected");
     expect(cardStatusLabel({ status: "not_connected" })).toBe("Not connected");
     expect(cardStatusLabel({ status: "not_connected" }, "microsoft")).not.toContain("Not connected");
-    expect(notSetUpMessage("xero")).toBe("Not set up yet: the owner must enter the Xero app details.");
-    expect(notSetUpMessage("microsoft")).toBe("Not set up yet: the owner must enter the Microsoft 365 app details.");
+    expect(notSetUpMessage("xero")).toBe("Not set up yet: Tolra's Xero connection is switched on at go-live. Nothing to do here.");
+    expect(notSetUpMessage("microsoft")).toBe("Not set up yet: Tolra's Microsoft 365 connection is switched on at go-live. Nothing to do here.");
     expect(connectOutcomeMessage("connected")).toBe("All connected: Xero.");
     expect(microsoftOutcomeMessage("connected")).toBe("All connected: Microsoft 365.");
   });

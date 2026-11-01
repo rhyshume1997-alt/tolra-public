@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtDate } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { NEEDS_107, cardStatusLabel, microsoftOutcomeMessage, notSetUpMessage, type IntegrationOverview } from "@/lib/integrations/overview";
+import { NEEDS_107, cardStatusLabel, connectCardView, microsoftOutcomeMessage, type IntegrationOverview } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 
 export type ConnectStatus = { db107: boolean; xero: { configured: boolean; problem?: string | null }; microsoft: { configured: boolean } };
@@ -35,6 +35,8 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
   const [confirm, setConfirm] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
   const available = status?.db107 === true;
+  const view = connectCardView("microsoft", status ? status.microsoft.configured : null);
+  const [approve, setApprove] = useState<{ url: string; mailto: string; permissions: Array<{ scope: string; text: string }>; expiresAt: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) return;
@@ -46,13 +48,37 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
   useEffect(() => { if (available) void load(); }, [available, load]);
 
   const outcome = params.get("microsoft");
+  // A calm card (never a toast, never red) while Microsoft 365 is not set up yet; "consent_blocked" has its own panel below.
   useEffect(() => {
-    if (!outcome) return;
-    if (outcome === "connected") toast.success(microsoftOutcomeMessage(outcome));
+    if (!outcome || outcome === "consent_blocked" || outcome === "not_configured") return;
+    if (outcome === "connected" || outcome === "consent_approved") toast.success(microsoftOutcomeMessage(outcome));
     else toast.error(microsoftOutcomeMessage(outcome));
   }, [outcome]);
 
+  async function makeApproveLink() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/integrations/microsoft/admin-consent", { method: "POST", credentials: "same-origin" }).catch(() => null);
+      const body = (res ? await res.json().catch(() => ({})) : {}) as { url?: string; mailto?: string; permissions?: Array<{ scope: string; text: string }>; expiresAt?: string; error?: string };
+      if (!res?.ok || !body.url || !body.mailto) return toast.error(body.error ?? "Couldn't make the link. Try again.");
+      setApprove({ url: body.url, mailto: body.mailto, permissions: body.permissions ?? [], expiresAt: body.expiresAt ?? "" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyApprove() {
+    if (!approve) return;
+    try {
+      await navigator.clipboard.writeText(approve.url);
+      toast.success("Link copied. Send it to your Microsoft administrator: it works once, for 24 hours.");
+    } catch {
+      toast.error("Couldn't copy: select the link and copy it.");
+    }
+  }
+
   async function connect() {
+    if (view.connectDisabled) return;
     setBusy(true);
     try {
       const r = await postIntegration("/api/integrations/microsoft/connect");
@@ -108,12 +134,37 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
             {overview.status === "needs_reconnect" ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">{overview.status_reason ?? "Microsoft 365 needs to be connected again."}</p>
             ) : null}
-            {!status.microsoft.configured && overview.status !== "connected" ? (
-              <p className="text-sm text-slate-600" data-testid="microsoft-not-set-up">{notSetUpMessage("microsoft")}</p>
+            {view.notSetUp && overview.status !== "connected" ? (
+              <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="microsoft-not-set-up">{view.message}</p>
+            ) : null}
+            {outcome === "consent_approved" && !view.notSetUp ? (
+              <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-800" data-testid="microsoft-consent-approved">{microsoftOutcomeMessage("consent_approved")}</p>
+            ) : null}
+            {outcome === "consent_blocked" && view.offerApproveLink ? (
+              <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-testid="microsoft-consent-blocked">
+                <p><strong>{microsoftOutcomeMessage("consent_blocked")}</strong></p>
+                <p>Ask your Microsoft administrator to approve it once. Send them this link: it shows them exactly what Tolra asks for.</p>
+                {!approve ? (
+                  <Button variant="outline" onClick={makeApproveLink} disabled={busy}>Get the link for your Microsoft admin</Button>
+                ) : (
+                  <div className="space-y-2" data-testid="microsoft-approve-link">
+                    <p>Tolra asks for these permissions only:</p>
+                    <ul className="list-disc space-y-0.5 pl-5" data-testid="microsoft-approve-permissions">
+                      {approve.permissions.map((p) => <li key={p.scope}>{p.text}</li>)}
+                    </ul>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input readOnly aria-label="Link for your Microsoft admin" value={approve.url} onFocus={(e) => e.currentTarget.select()} className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 font-mono text-xs text-slate-900" />
+                      <Button variant="outline" size="sm" onClick={copyApprove}>Copy link</Button>
+                      <a href={approve.mailto} className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900">Email it to them</a>
+                    </div>
+                    <p className="text-xs">Works once{approve.expiresAt ? `, until ${fmtDate(approve.expiresAt)} (24 hours)` : ", for 24 hours"}. After they approve, come back here and click Connect.</p>
+                  </div>
+                )}
+              </div>
             ) : null}
             <div className="flex flex-wrap gap-2">
               {overview.status !== "connected" ? (
-                <Button onClick={connect} disabled={busy || !status.microsoft.configured}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect Microsoft 365"}</Button>
+                <Button onClick={connect} disabled={busy || view.connectDisabled}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect Microsoft 365"}</Button>
               ) : null}
               {overview.status === "connected" ? <Button variant="outline" onClick={runTest} disabled={busy}>Test</Button> : null}
               {linked ? <Button variant="outline" onClick={() => setConfirm(true)} disabled={busy}>Disconnect</Button> : null}

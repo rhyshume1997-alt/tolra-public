@@ -99,7 +99,7 @@ const PAGE: Record<string, { title: string; body: string }> = {
   no_organisation: { title: "No organisation chosen", body: "No Xero organisation was chosen. Ask for a new link and choose one." },
   tenant_in_use: { title: "Already connected elsewhere", body: "That Xero organisation is already connected to another company in Tolra." },
   disconnect_first: { title: "Another organisation is connected", body: "This company is connected to another Xero organisation. Its admin must disconnect it first." },
-  not_configured: { title: "Not set up yet", body: "Xero is not set up in Tolra yet. Nothing was used up: try the same link later." },
+  not_configured: { title: "Not set up yet", body: "Tolra's Xero connection is switched on at go-live. Nothing was used up: try the same link later." },
   busy: { title: "Try again shortly", body: "Too many attempts from here, or Tolra can't check right now. Wait a few minutes and open the link again; if it was already used, ask for a new one." },
   failed: { title: "That didn't work", body: "Connecting to Xero didn't work and nothing changed. Ask for a new link." },
 };

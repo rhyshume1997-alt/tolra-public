@@ -74,9 +74,24 @@ export function cardStatusLabel(o: Pick<IntegrationOverview, "status">, provider
   return STATUS[o.status] ?? o.status;
 }
 
-/** What the page says when the app details are missing (Connect stays disabled until the platform owner enters them). */
+/** What the page says when the app details are missing (Connect stays disabled until the platform owner enters them at go-live). */
 export function notSetUpMessage(provider: "xero" | "microsoft"): string {
-  return `Not set up yet: the owner must enter the ${provider === "xero" ? "Xero" : "Microsoft 365"} app details.`;
+  return `Not set up yet: Tolra's ${provider === "xero" ? "Xero" : "Microsoft 365"} connection is switched on at go-live. Nothing to do here.`;
+}
+
+/** The `code` the connect, callback, test and invite routes answer (HTTP 503) while the app details are missing. */
+export const NOT_CONFIGURED_CODE = "not_configured";
+
+/**
+ * What a provider's card shows and offers, from the status route's answer. Not set up (no app details anywhere) is a calm grey state:
+ * the message, Connect disabled, no accountant link, no admin-approval link. While the status is still loading nothing is offered.
+ */
+export function connectCardView(provider: "xero" | "microsoft", configured: boolean | null | undefined): {
+  notSetUp: boolean; message: string | null; connectDisabled: boolean; offerInvite: boolean; offerApproveLink: boolean;
+} {
+  if (configured === null || configured === undefined) return { notSetUp: false, message: null, connectDisabled: true, offerInvite: false, offerApproveLink: false };
+  if (!configured) return { notSetUp: true, message: notSetUpMessage(provider), connectDisabled: true, offerInvite: false, offerApproveLink: false };
+  return { notSetUp: false, message: null, connectDisabled: false, offerInvite: provider === "xero", offerApproveLink: provider === "microsoft" };
 }
 
 /** Shown in place of what needs migration 107 while it is not applied (the Xero card keeps working as before). */
@@ -87,7 +102,9 @@ export function microsoftOutcomeMessage(outcome: string): string {
   switch (outcome) {
     case "connected": return "All connected: Microsoft 365.";
     case "cancelled": return "Connecting Microsoft 365 was cancelled. Nothing changed.";
-    case "refused": return "Microsoft refused the sign-in (the app may need admin consent in that Microsoft 365 tenant). Nothing changed.";
+    case "refused": return "Microsoft refused the sign-in. Nothing changed.";
+    case "consent_blocked": return "Your Microsoft 365 needs an administrator to approve Tolra first. Nothing changed.";
+    case "consent_approved": return "Approved, now click Connect.";
     case "expired": return "That Connect took too long or was started elsewhere. Click Connect Microsoft 365 again.";
     case "mailbox_in_use": return "That mailbox is already connected to another company in Tolra.";
     case "disconnect_first": return "This company is connected to another mailbox. Disconnect it first.";

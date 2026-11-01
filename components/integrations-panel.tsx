@@ -13,7 +13,7 @@ import { XeroSendLog } from "@/components/xero-send-log";
 import { NEEDS_DATABASE_UPDATE, databaseHas084, missingDbObject } from "@/lib/db-features";
 import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { NEEDS_107, cardStatusLabel, connectOutcomeMessage, notSetUpMessage, overviewSummary, type IntegrationOverview } from "@/lib/integrations/overview";
+import { NEEDS_107, cardStatusLabel, connectCardView, connectOutcomeMessage, overviewSummary, type IntegrationOverview } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
@@ -37,6 +37,7 @@ export function IntegrationsPanel() {
   const [cancelInvite, setCancelInvite] = useState<string | null>(null);
   const { organizations } = useUser();
   const company = organizations.find((org) => org.is_current)?.name ?? null;
+  const xeroView = connectCardView("xero", status ? status.xero.configured : null);
 
   useEffect(() => { let active = true; void databaseHas084().then((value) => { if (active) setHas084(value); }); return () => { active = false; }; }, []);
 
@@ -69,6 +70,7 @@ export function IntegrationsPanel() {
   useEffect(() => {
     if (!outcome) return;
     const message = connectOutcomeMessage(outcome);
+    if (outcome === "not_configured") return; // the card itself says so, calmly
     if (outcome === "connected") toast.success(message);
     else toast.error(message);
   }, [outcome]);
@@ -84,6 +86,7 @@ export function IntegrationsPanel() {
   }
 
   async function connect() {
+    if (xeroView.connectDisabled) return;
     setBusy(true);
     try {
       const body = await post("/api/integrations/xero/connect");
@@ -210,12 +213,12 @@ export function IntegrationsPanel() {
                 <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900" data-testid="xero-unmapped">{summary!.unmappedLabel}</p>
               ) : null}
               {summary!.countsLabel ? <p className="text-sm text-slate-600">{summary!.countsLabel}</p> : null}
-              {status && !status.xero.configured && overview.status !== "connected" ? (
-                <p className="text-sm text-slate-600" data-testid="xero-not-set-up">{notSetUpMessage("xero")}{status.xero.problem ? ` ${status.xero.problem}` : ""}</p>
+              {xeroView.notSetUp && overview.status !== "connected" ? (
+                <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="xero-not-set-up">{xeroView.message}{status?.xero.problem ? ` ${status.xero.problem}` : ""}</p>
               ) : null}
               <div className="flex flex-wrap gap-2">
                 {overview.status !== "connected" ? (
-                  <Button onClick={connect} disabled={busy || status?.xero.configured === false}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect to Xero"}</Button>
+                  <Button onClick={connect} disabled={busy || xeroView.connectDisabled}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect to Xero"}</Button>
                 ) : null}
                 {overview.status === "connected" ? <Button variant="outline" onClick={sendNow} disabled={busy}>Send now</Button> : null}
                 {overview.status === "connected" ? <Button variant="outline" onClick={runTest} disabled={busy}>Test</Button> : null}
@@ -224,13 +227,12 @@ export function IntegrationsPanel() {
                 ) : null}
               </div>
               {test ? <p role={test.ok ? "status" : "alert"} className={`text-sm ${test.ok ? "text-emerald-700" : "text-red-700"}`} data-testid="xero-test-result">{test.text}</p> : null}
-              <div className="space-y-2 border-t border-slate-100 pt-3" data-testid="xero-invite">
+              {/* The accountant's link is not offered at all until Xero is set up (go-live): nothing to hand out that opens onto nothing. */}
+              {xeroView.notSetUp ? null : <div className="space-y-2 border-t border-slate-100 pt-3" data-testid="xero-invite">
                 <p className="text-sm font-medium text-slate-700">The accountant does the Xero sign-in?</p>
                 {status === null ? null : !status.db107 ? (
                   <p className="text-sm text-slate-500" data-testid="xero-invite-needs-107">{NEEDS_107}</p>
-                ) : !status.xero.configured ? (
-                  <p className="text-sm text-slate-500">{notSetUpMessage("xero")}</p>
-                ) : (
+                ) : !xeroView.offerInvite ? null : (
                   <>
                     <Button variant="outline" onClick={makeInvite} disabled={busy}>Send the accountant a connect link</Button>
                     {invite ? (
@@ -254,7 +256,7 @@ export function IntegrationsPanel() {
                     ) : null}
                   </>
                 )}
-              </div>
+              </div>}
               <p className="text-xs text-slate-500">
                 Each company connects its own Xero organisation. Documents issued before the company connects are never sent.
               </p>

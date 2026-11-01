@@ -4,6 +4,9 @@ import {
   APP_PROVIDERS, type AppProvider, INVITE_CALLBACK_PATH, PROVIDER_NAME, appSecretContext, defaultRedirectUri, envCredentials, last4, missingDbObject, siteOrigin,
 } from "@/lib/integrations/app-credentials";
 import { KEY_VERSION, encryptSecret, encryptionKey } from "@/lib/integrations/crypto";
+import { permissionsFor } from "@/lib/integrations/microsoft/consent";
+import { MICROSOFT_SCOPES } from "@/lib/integrations/microsoft/oauth";
+import { XERO_SCOPES } from "@/lib/integrations/xero/oauth";
 import { isErrorResponse, jsonError, mfaRequired, readJson } from "@/lib/server/auth";
 import { requirePlatformOwner } from "@/lib/server/platform";
 
@@ -21,6 +24,11 @@ function redirects(provider: AppProvider): string[] {
   const own = defaultRedirectUri(provider);
   const origin = siteOrigin();
   return [own, provider === "xero" && origin ? `${origin}${INVITE_CALLBACK_PATH}` : null].filter((v): v is string => Boolean(v));
+}
+
+/** The exact scopes to tick at the provider: the constants the sign-in itself sends (never a second list), with Microsoft's in plain words. */
+function scopes(provider: AppProvider): Array<{ scope: string; text: string | null }> {
+  return provider === "xero" ? XERO_SCOPES.map((scope) => ({ scope, text: null })) : permissionsFor(MICROSOFT_SCOPES);
 }
 
 function dbRefusal(error: { code?: string; message?: string; hint?: string }) {
@@ -49,6 +57,7 @@ export async function GET(request: Request) {
         stored: row ? { clientId: row.client_id, secretLast4: row.client_secret_last4, updatedAt: row.updated_at } : null,
         fromEnvironment: Boolean(envCredentials(provider)),
         redirectUris: redirects(provider),
+        scopes: scopes(provider),
       };
     }),
   }, { headers: { "cache-control": "no-store" } });
