@@ -97,6 +97,14 @@ describe("the customer's PO on the quote (123)", () => {
     expect(data).toMatchObject({ changed: true, customer_po: "7788", job_updated: true, draft_invoices: 1 });
     for (const [table, id] of [["quotes", q.id], ["sales_orders", accepted.so_id], ["jobs", accepted.job_id], ["invoices", draft]] as const) expect(await poOf(table, id)).toBe("7788");
     expect(Number((await one<{ n: string }>("select count(*) as n from security_audit.audit_log where action = 'SET_CUSTOMER_PO' and entity_table = 'quotes' and entity_id = $1", [q.id])).n)).toBe(1);
+    // Who changed it, from what, to what: the named event, and each row's own change (old and new values).
+    const office = world.tenants.alpha.users.office.id;
+    expect(await one("select actor_user_id::text as actor, metadata -> 'previous_customer_po' as previous, metadata ->> 'customer_po' as po from security_audit.audit_log where action = 'SET_CUSTOMER_PO' and entity_id = $1", [q.id]))
+      .toEqual({ actor: office, previous: null, po: "7788" });
+    for (const [table, id] of [["quotes", q.id], ["sales_orders", accepted.so_id], ["jobs", accepted.job_id], ["invoices", draft]] as const) {
+      expect(Number((await one<{ n: string }>(`select count(*) as n from security_audit.audit_log where action = 'UPDATE' and entity_table = $1 and entity_id = $2
+        and actor_user_id = $3 and old_data ->> 'customer_po' is null and new_data ->> 'customer_po' = '7788'`, [table, id, office])).n)).toBe(1);
+    }
     expect((await as.office.rpc("set_quote_customer_po", { p_quote: q.id, p_customer_po: "7788" })).data).toMatchObject({ changed: false });
   });
 

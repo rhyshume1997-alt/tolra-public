@@ -116,7 +116,16 @@ BEGIN
   IF (SELECT count(*) FROM security_audit.audit_log WHERE action = 'SET_CUSTOMER_PO' AND entity_table = 'quotes' AND entity_id = '12300000-0000-0000-0000-00000000c002') <> 1 THEN RAISE EXCEPTION 'FAIL 5 audit'; END IF;
   r := pg_temp.as_user(A, $q$SELECT public.set_quote_customer_po('12300000-0000-0000-0000-00000000c002', '7788')::TEXT$q$);
   IF (substr(r, 4)::JSONB->>'changed')::BOOLEAN IS NOT FALSE THEN RAISE EXCEPTION 'FAIL 5 same again: %', r; END IF;
-  RAISE NOTICE 'PASS 5 late PO on an accepted quote: quote, order, unfinished job and draft invoice all 7788; one audit event; same again = no change';
+  -- The audit trail: the named event (previous and new PO, who), and each row's own change (old and new values, who).
+  IF NOT EXISTS (SELECT 1 FROM security_audit.audit_log WHERE action = 'SET_CUSTOMER_PO' AND entity_id = '12300000-0000-0000-0000-00000000c002'
+                   AND actor_user_id = A AND metadata ->> 'customer_po' = '7788' AND metadata ? 'previous_customer_po' AND metadata ->> 'previous_customer_po' IS NULL) THEN
+    RAISE EXCEPTION 'FAIL 5 named event lacks previous/new/actor';
+  END IF;
+  IF (SELECT count(DISTINCT entity_table) FROM security_audit.audit_log WHERE action = 'UPDATE' AND actor_user_id = A
+        AND entity_table IN ('quotes', 'sales_orders', 'jobs', 'invoices') AND old_data ->> 'customer_po' IS NULL AND new_data ->> 'customer_po' = '7788') <> 4 THEN
+    RAISE EXCEPTION 'FAIL 5 row-change audit: % tables', (SELECT string_agg(DISTINCT entity_table, ',') FROM security_audit.audit_log WHERE action = 'UPDATE' AND new_data ->> 'customer_po' = '7788');
+  END IF;
+  RAISE NOTICE 'PASS 5 late PO on an accepted quote: quote, order, unfinished job and draft invoice all 7788; one SET_CUSTOMER_PO event (previous NULL, new 7788, actor) and a row-change UPDATE (old NULL, new 7788, actor) on each of quotes, sales_orders, jobs, invoices; same again = no change';
 
   -- 6. An issued invoice is never changed: QUO-9001's invoice issued (owner), then its PO changed on the quote.
   UPDATE public.invoices SET status = 'sent', invoice_ref = 'INV-9901', issued_at = now() WHERE id = inv.id;
