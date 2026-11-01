@@ -130,7 +130,7 @@ async function setLockDirect(network: string | null) {
 
 async function actionsOf(userId: string): Promise<string[]> {
   return withDb(async (db) => (await db.query<{ action: string }>(
-    "select action from public.attendance_events where user_id = $1 and organization_id = $2 order by at, recorded_at", [userId, company.id])).rows.map((r) => r.action));
+    "select action from public.attendance_events where user_id = $1 and organization_id = $2 order by at, received_at", [userId, company.id])).rows.map((r) => r.action));
 }
 
 async function offSiteOf(userId: string): Promise<boolean | null> {

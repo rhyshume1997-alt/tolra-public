@@ -379,7 +379,7 @@ test("6. the Microsoft callback with a bogus state sends the admin back with the
   await expect(card.getByRole("button", { name: "Connect Microsoft 365" })).toBeEnabled();
 });
 
-test("7. the accountant's link: the page only shows, Continue uses it once and goes to Xero, a bogus token is refused, the admin can cancel an open link", async ({ page, browser, playwright, baseURL }) => {
+test("7. the accountant's link: the page only shows, Continue uses it once and goes to Xero, a bogus token is refused, the admin can cancel an open link", async ({ page, playwright, baseURL }) => {
   const origin = originOf(baseURL);
   const app = xeroApp();
   const beta = world().tenants.beta;
@@ -489,8 +489,14 @@ test("7. the accountant's link: the page only shows, Continue uses it once and g
 
   // --- Link B, in a real signed-out browser: the page, then the real Continue button (the form and the page's security policy let it
   // reach Xero). Xero's address is answered here, so nothing leaves the machine.
+  // Full Chromium (new headless mode), not the headless shell the suite runs on: the shell does not hand the cross-origin redirect that
+  // follows a form POST to page.route (it goes to the network, so Xero's address is never answered here); full Chromium does.
   const b = await makeLink();
-  const visitor = await browser.newContext({ extraHTTPHeaders: anonAddress() });
+  const redirectBrowser = await playwright.chromium.launch({
+    channel: "chromium",
+    ...(process.env.E2E_CHROMIUM_PATH ? { executablePath: process.env.E2E_CHROMIUM_PATH } : {}),
+  });
+  const visitor = await redirectBrowser.newContext({ extraHTTPHeaders: anonAddress() });
   try {
     const visit = await visitor.newPage();
     await visit.route(/^https:\/\/login\.xero\.com\//, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><title>intercepted</title><p>intercepted</p>" }));
@@ -509,6 +515,7 @@ test("7. the accountant's link: the page only shows, Continue uses it once and g
     expect((await inviteRow(b.token)).used_at).not.toBeNull();
   } finally {
     await visitor.close();
+    await redirectBrowser.close();
   }
 
   // --- Link C: the admin cancels an open link on the card. Cancel -> confirm -> DELETE: revoked in the database, gone from the card,
