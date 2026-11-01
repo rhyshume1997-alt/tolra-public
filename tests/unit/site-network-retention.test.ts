@@ -2,7 +2,7 @@
  * Clock-in addresses after migration 078 (lib/site-network.ts, components/time/site-network-card.tsx): the app's retention matches the
  * database's (30 days), the card learns whether the database keeps addresses apart (a missing table, or any error, reads as no), and a
  * site network is only ever added by an admin's explicit click: the app writes site_networks through add_site_network only, called from
- * the Settings card's two buttons, never from a load, an effect or a banner.
+ * the Settings card's "Use this network" button, never from a load, an effect or a banner.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -80,14 +80,15 @@ describe("a seen address never becomes a site network by itself", () => {
     }
   });
 
-  it("addSiteNetwork is only called from the Settings card's two buttons (onClick), never on load", () => {
+  it("addSiteNetwork is only called from the Settings card's one button (onClick), never on load", () => {
     const callers = sources.filter(({ text, f }) => f !== path.join("lib", "site-network.ts") && /\baddSiteNetwork\(/.test(text));
     expect(callers.map((c) => c.f)).toEqual([path.join("components", "time", "site-network-card.tsx")]);
     const card = callers[0].text;
     const lines = card.split("\n").filter((l) => /\baddSiteNetwork\(/.test(l));
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(1);
     for (const l of lines) expect(l).toMatch(/onClick=\{\(\) =>/);
-    // "Use the network I'm on now" (network null: the request's address) is one of them, an explicit button.
-    expect(card).toContain("Use the network I&apos;m on now");
+    // "Use this network" (network null: the request's address) is that explicit button; no address is typed.
+    expect(card).toContain("Use this network");
+    expect(card).not.toContain("Network address");
   });
 });

@@ -233,3 +233,36 @@ export async function loadOnSiteOnly(client: Db): Promise<Set<string>> {
   if (error) throw error;
   return new Set(((data ?? []) as { user_id: string }[]).map((r) => r.user_id));
 }
+
+// ----- the "unrecognised network" banner (admin, dashboard and Time pages) ---------------------------------------------------------------
+/** Clock actions from an unrecognised network are counted over this many days. */
+export const UNRECOGNISED_NETWORK_WINDOW_DAYS = 7;
+export type UnrecognisedClockAction = { event_id: string; checked_at: string };
+
+/**
+ * The checked clock actions of the last 7 days that came from a network that is not a saved site network (075's status off_site, which
+ * the database writes only while the check is on). Admin and office can read them (row rules). Throws on a read error.
+ */
+export async function loadUnrecognisedClockActions(client: Db, now: Date = new Date()): Promise<UnrecognisedClockAction[]> {
+  const since = new Date(now.getTime() - UNRECOGNISED_NETWORK_WINDOW_DAYS * 86_400_000).toISOString();
+  const { data, error } = await client.from("attendance_event_networks").select("event_id, checked_at")
+    .eq("status", "off_site").gte("checked_at", since).order("checked_at", { ascending: false }).limit(500);
+  if (error) throw error;
+  return (data ?? []) as UnrecognisedClockAction[];
+}
+
+/**
+ * What the banner shows: the clock actions newer than the batch the admin last dismissed (an ISO time; null: none dismissed). A later
+ * clock action from an unrecognised network is a new batch and shows the banner again. Null: nothing to show.
+ */
+export function unrecognisedBatch(rows: UnrecognisedClockAction[], dismissedUpTo: string | null): { count: number; latest: string } | null {
+  const after = dismissedUpTo ? Date.parse(dismissedUpTo) : Number.NEGATIVE_INFINITY;
+  const fresh = rows.filter((r) => Date.parse(r.checked_at) > after);
+  if (!fresh.length) return null;
+  const latest = fresh.reduce((a, r) => (Date.parse(r.checked_at) > Date.parse(a) ? r.checked_at : a), fresh[0].checked_at);
+  return { count: fresh.length, latest };
+}
+
+export function unrecognisedBannerText(count: number): string {
+  return `${count === 1 ? "1 clock-in came" : `${count} clock-ins came`} from a network Tolra doesn't recognise. If the workshop's internet address changed, stand on the workshop Wi-Fi and click Use this network.`;
+}
