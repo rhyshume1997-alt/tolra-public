@@ -402,7 +402,7 @@
  {
   "kind": "function",
   "object": "public.create_sales_order_from_quote(p_quote uuid, p_customer_po text, p_delivery_date date)",
-  "detail": "definer search_path=pg_catalog, public b77291f815feeb869b2edc58c1c8f16b"
+  "detail": "definer search_path=pg_catalog, public 83ce560cde4943454864a3cb8906bea9"
  },
  {
   "kind": "function",
@@ -1467,7 +1467,7 @@
  {
   "kind": "function",
   "object": "public.quote_lifecycle_guard()",
-  "detail": "invoker search_path=pg_catalog, public 36ba5b31ac3afd8b89214cc9a926ef05"
+  "detail": "invoker search_path=pg_catalog, public 739ce743ead2a48205b983e23bb53d7a"
  },
  {
   "kind": "function",
@@ -1662,7 +1662,7 @@
  {
   "kind": "function",
   "object": "public.revise_quote(p_quote uuid)",
-  "detail": "definer search_path=pg_catalog, public 542e94a9a6bb80a0613172f623736b4f"
+  "detail": "definer search_path=pg_catalog, public 9aa0305edd9bafbf590af61600d33698"
  },
  {
   "kind": "function",
@@ -1758,6 +1758,11 @@
   "kind": "function",
   "object": "public.set_member_on_site_only(p_client_op_id uuid, p_user uuid, p_on_site_only boolean)",
   "detail": "definer search_path=pg_catalog, public ac1f92af16d9c2c58b78c54f905aec9b"
+ },
+ {
+  "kind": "function",
+  "object": "public.set_quote_customer_po(p_quote uuid, p_customer_po text)",
+  "detail": "definer search_path=pg_catalog, public 566be453cc622e3c2d5fd2e49646168f"
  },
  {
   "kind": "function",
@@ -3797,6 +3802,11 @@
  {
   "kind": "function-grant",
   "object": "public.set_member_on_site_only(p_client_op_id uuid, p_user uuid, p_on_site_only boolean)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.set_quote_customer_po(p_quote uuid, p_customer_po text)",
   "detail": "authenticated,service_role"
  },
  {

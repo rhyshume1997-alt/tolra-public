@@ -64,6 +64,7 @@ import { useSaving } from "@/lib/use-saving";
 import { ValidationError, parseOrThrow, quoteSaveSchema, userMessage } from "@/lib/validation/schemas";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type AcceptQuoteResult, acceptOutcome, customerPoInput, deliveryDateInput } from "@/lib/accept-quote";
+import { CUSTOMER_PO_LABEL, customerPoBeside, customerPoText } from "@/lib/customer-po";
 import { databaseHas068 } from "@/lib/db-features";
 import { useDatabaseHas068 } from "@/lib/use-database-has-068";
 import { readAiDraftNotes } from "@/lib/ai-helper/draft-notes";
@@ -103,6 +104,8 @@ type QuoteRow = {
   previousVersionId?: string | null;
   /** What its declined lines came to (accepted for part of its lines, 068): the figures count the rest as won. */
   declinedValue?: number;
+  /** The customer's own PO (migration 123), shown beside the quote number; "" when there is none. */
+  customerPo: string;
 };
 type QuoteItem = {
   id?: string; description: string; quantity: number; unitPrice: number; source: string; vatPct?: number; vatExempt?: boolean;
@@ -132,7 +135,7 @@ const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 /** Demo mode only. JNR's real records are imported lazily so they never ship in the production bundle. */
 async function loadDemoQuotes(): Promise<QuoteRow[]> {
   const m = await import("@/lib/jnr-test-data");
-  return m.JNR_TEST_QUOTES.map((quote): QuoteRow => ({ ref: quote.ref, customer: quote.customer, value: quote.total, vatEnabled: true, status: quote.status, rawStatus: quote.status, description: "", validUntil: quote.validUntil, internalNotes: "", customerNotes: "", terms: "", date: quote.date, version: 1 }));
+  return m.JNR_TEST_QUOTES.map((quote): QuoteRow => ({ ref: quote.ref, customer: quote.customer, value: quote.total, vatEnabled: true, status: quote.status, rawStatus: quote.status, description: "", validUntil: quote.validUntil, internalNotes: "", customerNotes: "", terms: "", date: quote.date, version: 1, customerPo: "" }));
 }
 
 async function loadDemoItems(ref: string): Promise<QuoteItem[]> {
@@ -316,6 +319,9 @@ export default function QuotesPage() {
   const [decision, setDecision] = useState<{ quote: QuoteRow; outcome: "accepted" | "rejected" } | null>(null);
   // Confirm Accepted: the customer's PO when it is already known (optional; without it the sales order gets a provisional number).
   const [decisionPo, setDecisionPo] = useState("");
+  // The customer's PO added or changed on the quote itself (set_quote_customer_po, migration 123).
+  const [poQuote, setPoQuote] = useState<QuoteRow | null>(null);
+  const [poDraft, setPoDraft] = useState("");
   // The date the customer wants it by (optional): the sales order's delivery date, then the job's due date (accept_quote's p_delivery_date).
   const [decisionDue, setDecisionDue] = useState("");
   // Confirm Accepted: the lines the customer's PO doesn't cover (068). Every line is ticked to start; unticked lines go no further.
@@ -429,6 +435,7 @@ export default function QuotesPage() {
         customerSnapshot: quote.customer_snapshot ?? undefined,
         version: Number(quote.version ?? 1) || 1,
         previousVersionId: quote.previous_version_id ? String(quote.previous_version_id) : null,
+        customerPo: customerPoText(quote.customer_po ? String(quote.customer_po) : "") ?? "",
       }));
       // Lines left off an accepted quote's order (068), so Accepted counts only what was ordered. Before 068 there are none.
       const { rows: declinedLines, truncated: declinedTruncated } = await databaseHas068()
@@ -574,8 +581,10 @@ export default function QuotesPage() {
           internalNotes: String(form.get("internal_notes") || ""),
           terms: String(form.get("terms") || ""),
           validUntil: String(form.get("valid_until") || ""),
+          customerPo: String(form.get("customer_po") || ""),
           lines: rows.map((item) => ({ description: item.description, quantity: item.qty, unitPrice: item.unit })),
         });
+        const customerPo = customerPoText(input.customerPo);
         const lineVats = rows.map((item) => fromVatChoice(item.vat));
         const totals = documentTotals(input.lines.map((line, position) => ({ quantity: line.quantity, unitPrice: line.unitPrice, ...lineVats[position] })), 0, { vatEnabled: builderVat, standardRate: vat.standardRate });
         if (builderPreset?.mode === "edit") {
@@ -601,6 +610,16 @@ export default function QuotesPage() {
             })),
           });
           if (error) throw error;
+          // The customer PO is not one of replace_draft_quote's fields: set_quote_customer_po (123) changes it, only when it changed.
+          if (customerPo !== customerPoText(target.customerPo)) {
+            const { error: poError } = await supabase.rpc("set_quote_customer_po", { p_quote: target.id, p_customer_po: customerPo });
+            if (poError) {
+              toast.error(`Draft ${target.ref} was corrected, but its customer PO wasn't saved: ${userMessage(poError, "try again")}`);
+              closeBuilder(false);
+              void loadQuotes();
+              return;
+            }
+          }
           void auditEvent({ action: "UPDATE", entityTable: "quotes", entityId: target.ref, newData: { corrected_draft: true } });
           toast.success(`Draft ${target.ref} corrected`);
           closeBuilder(false);
@@ -620,6 +639,8 @@ export default function QuotesPage() {
             vat_enabled: builderVat,
             valid_until: input.validUntil || null,
             terms: input.terms || null,
+            // Sent only when there is one, so a quote with none saves as before.
+            ...(customerPo ? { customer_po: customerPo } : {}),
             status: "draft",
             ...(fromRfq ? { rfq_id: fromRfq.id } : {}),
           },
@@ -674,6 +695,7 @@ export default function QuotesPage() {
           terms: quote.terms || profile.defaultQuoteTerms,
           validUntil: quote.validUntil ? fmtDate(quote.validUntil) : "",
           scope: quote.description,
+          customerPo: quote.customerPo || undefined,
           billTo,
           lineItems: quotePdfLines(items),
           vatEnabled: quote.vatEnabled,
@@ -773,6 +795,8 @@ export default function QuotesPage() {
       return;
     }
     setDecisionUnticked(new Set());
+    // The quote's own customer PO is the starting value (decision 16); change it here if the customer's order says otherwise.
+    setDecisionPo(quote.customerPo);
     setDecision({ quote, outcome: "accepted" });
   }
 
@@ -870,6 +894,40 @@ export default function QuotesPage() {
     });
   }
 
+  /** The customer's PO can be added or changed on a draft, sent or accepted quote (migration 123); a rejected or replaced one is final. */
+  function canSetCustomerPo(quote: QuoteRow) {
+    return Boolean(quote.id && supabase && !DEMO_MODE) && ["draft", "sent", "accepted"].includes(quote.rawStatus);
+  }
+
+  /**
+   * Saves the customer's PO on the quote (set_quote_customer_po, migration 123). On an accepted quote it also reaches the quote's order,
+   * its unfinished job and its draft invoices, in the same call; an issued invoice keeps the PO it was issued with.
+   */
+  async function saveQuoteCustomerPo() {
+    const quote = poQuote;
+    if (!quote?.id) return;
+    await run(async () => {
+      try {
+        if (!supabase) throw new Error("Supabase is not configured.");
+        const po = customerPoInput(poDraft);
+        if (!po && quote.rawStatus !== "draft") throw new ValidationError("Enter the customer's order number");
+        const { data, error } = await supabase.rpc("set_quote_customer_po", { p_quote: quote.id, p_customer_po: po });
+        if (error) throw error;
+        const result = data as { customer_po: string | null; changed: boolean; job_no?: string | null; job_updated?: boolean; draft_invoices?: number };
+        const saved = result.customer_po ?? "";
+        setQuotes((rows) => rows.map((item) => sameQuote(item, quote) ? { ...item, customerPo: saved } : item));
+        setViewingQuote((viewing) => viewing && sameQuote(viewing, quote) ? { ...viewing, customerPo: saved } : viewing);
+        setPoQuote(null);
+        setPoDraft("");
+        if (!result.changed) return void toast.info(`${quote.ref} already has that customer PO`);
+        const reached = [result.job_updated && result.job_no ? `job ${result.job_no}` : "", result.draft_invoices ? `${result.draft_invoices} draft invoice${result.draft_invoices === 1 ? "" : "s"}` : ""].filter(Boolean);
+        toast.success(saved ? `${CUSTOMER_PO_LABEL} ${saved} saved on ${quote.ref}${reached.length ? ` and on ${reached.join(" and ")}` : ""}` : `${CUSTOMER_PO_LABEL} removed from ${quote.ref}`);
+      } catch (err) {
+        toast.error(userMessage(err, "Could not save the customer PO"));
+      }
+    });
+  }
+
   /** Records the customer's decision (accepted / rejected). Final once saved: the database refuses later changes. */
   async function recordDecision(quote: QuoteRow, outcome: "accepted" | "rejected") {
     await run(async () => {
@@ -892,7 +950,15 @@ export default function QuotesPage() {
           // One database call (accept_quote, migration 058): the quote accepted, its sales order made and, when the company's setting is
           // automatic, its job (not started). Audited there (ACCEPT, once). A quote one order can't hold is still accepted: the toast
           // says why and points to Sales Orders, where the order is entered by hand.
-          const { data, error } = await supabase.rpc("accept_quote", { p_quote: current.id!, p_customer_po: customerPoInput(decisionPo), p_delivery_date: deliveryDateInput(decisionDue), ...(lines ? { p_lines: lines } : {}) });
+          // A PO typed here that the quote doesn't hold yet goes on the quote first (123), so the quote shows it beside its number.
+          const typedPo = customerPoInput(decisionPo);
+          if (typedPo && typedPo !== customerPoText(quote.customerPo)) {
+            const { error: poError } = await supabase.rpc("set_quote_customer_po", { p_quote: current.id!, p_customer_po: typedPo });
+            if (poError) throw poError;
+            setQuotes((rows) => rows.map((item) => sameQuote(item, quote) ? { ...item, customerPo: typedPo } : item));
+            setViewingQuote((viewing) => viewing && sameQuote(viewing, quote) ? { ...viewing, customerPo: typedPo } : viewing);
+          }
+          const { data, error } = await supabase.rpc("accept_quote", { p_quote: current.id!, p_customer_po: typedPo, p_delivery_date: deliveryDateInput(decisionDue), ...(lines ? { p_lines: lines } : {}) });
           if (error) throw error;
           const result = data as AcceptQuoteResult;
           // Accepted for part of its lines: the figures count only the ordered ones (as loadQuotes does on the next load).
@@ -973,6 +1039,7 @@ export default function QuotesPage() {
                 <CustomerSelect name="customer" required value={builderCustomer} onValueChange={setBuilderCustomer} />
                 <label className="grid gap-1 text-xs text-slate-500">Valid until<Input name="valid_until" type="date" defaultValue={builderPreset?.mode === "edit" ? builderPreset.quote.validUntil : ""} /></label>
                 <label className="grid gap-1 text-xs text-slate-500">Terms<Input name="terms" maxLength={200} placeholder={company?.defaultQuoteTerms ?? "Valid for 30 days"} defaultValue={builderPreset?.quote.terms ?? ""} /></label>
+                <label className="grid gap-1 text-xs text-slate-500">{CUSTOMER_PO_LABEL} (optional)<Input name="customer_po" maxLength={100} placeholder="Customer order number (their PO)" defaultValue={builderPreset?.mode === "edit" ? builderPreset.quote.customerPo : ""} /></label>
               </div>
               <Textarea name="description" placeholder="Quote description" maxLength={2000} defaultValue={builderPreset?.quote.description ?? fromRfq?.description ?? ""} />
               <div className="space-y-2">
@@ -1092,7 +1159,7 @@ export default function QuotesPage() {
                   {visible.map((quote) => (
                     <TableRow key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "bg-brand-accent/5" : undefined}>
                       <TableCell><SelectBox aria-label={`Select ${quote.ref}`} checked={selectedRefs.includes(quote.ref)} onChange={() => setSelectedRefs((current) => current.includes(quote.ref) ? current.filter((ref) => ref !== quote.ref) : [...current, quote.ref])} /></TableCell>
-                      {isVisible("ref") ? <TableCell data-label="Quote" className="font-mono font-bold whitespace-normal [overflow-wrap:anywhere]">{quote.ref}</TableCell> : null}
+                      {isVisible("ref") ? <TableCell data-label="Quote" className="font-mono font-bold whitespace-normal [overflow-wrap:anywhere]">{quote.ref}{quote.customerPo ? <span data-testid="quote-customer-po" className="block font-sans text-xs font-normal text-slate-500">{customerPoBeside(quote.customerPo)}</span> : null}</TableCell> : null}
                       {isVisible("date") ? <TableCell data-label="Date">{quote.date ? fmtDate(quote.date) : ""}</TableCell> : null}
                       {isVisible("customer") ? <TableCell data-label="Customer"><span className="block truncate" title={quote.customer}>{quote.customer}</span></TableCell> : null}
                       {isVisible("description") ? <TableCell data-label="Description" className="whitespace-normal"><span className="block break-words text-slate-600 dark:text-slate-300">{quote.description}</span></TableCell> : null}
@@ -1120,7 +1187,7 @@ export default function QuotesPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {group.items.map((quote) => (
             <Card key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "border-brand-accent/60 ring-1 ring-brand-accent/40" : undefined}>
-              {isVisible("ref") ? <CardHeader><CardTitle className="font-bold break-words">{quote.ref}</CardTitle></CardHeader> : null}
+              {isVisible("ref") ? <CardHeader><CardTitle className="font-bold break-words">{quote.ref}</CardTitle>{quote.customerPo ? <p data-testid="quote-customer-po" className="text-xs text-slate-500">{customerPoBeside(quote.customerPo)}</p> : null}</CardHeader> : null}
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 text-sm text-slate-600 pointer-coarse:min-h-11"><input type="checkbox" className="pointer-coarse:size-6" checked={selectedRefs.includes(quote.ref)} onChange={() => setSelectedRefs((current) => current.includes(quote.ref) ? current.filter((ref) => ref !== quote.ref) : [...current, quote.ref])} /> Select for export</label>
                 {/* Labelled fields in the Quotes column order (Quote above; Actions below): Date, Customer, Description, Status, Value, Valid until. */}
@@ -1157,6 +1224,7 @@ export default function QuotesPage() {
                 <div className="min-w-0"><span className="field-label block">Customer</span><p className="font-semibold text-slate-950">{viewingQuote.customer}</p></div>
                 <div className="min-w-0"><span className="field-label block">Status</span><p><StatusBadge status={quoteStatusKey(viewingQuote.status)} label={viewingQuote.status} className="capitalize" unmapped={{ className: statusStyle(viewingQuote.status).badge }} /></p></div>
                 <div className="min-w-0"><span className="field-label block">Quote Ref</span><p className="font-mono font-bold text-slate-950">{viewingQuote.ref}</p></div>
+                <div className="min-w-0" data-testid="quote-detail-customer-po"><span className="field-label block">{CUSTOMER_PO_LABEL}</span><p className="flex flex-wrap items-center gap-2 font-medium text-slate-950"><span className="font-mono">{viewingQuote.customerPo || "Not received yet"}</span>{canSetCustomerPo(viewingQuote) ? <Button variant="outline" size="sm" disabled={saving} onClick={() => { setPoDraft(viewingQuote.customerPo); setPoQuote(viewingQuote); }}>{viewingQuote.customerPo ? "Change customer PO" : "Add customer PO"}</Button> : null}</p></div>
                 <div className="min-w-0"><span className="field-label block">Valid Until</span><p className="font-medium text-slate-950">{fmtDate(viewingQuote.validUntil) || "-"}</p></div>
                 {viewingQuote.description.trim() ? <div className="min-w-0 sm:col-span-2" data-testid="quote-description"><span className="field-label block">Description</span><p className="whitespace-pre-line break-words text-slate-950">{viewingQuote.description}</p></div> : null}
               </div>
@@ -1298,26 +1366,38 @@ export default function QuotesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <Dialog open={Boolean(poQuote)} onOpenChange={(open) => { if (!open) { setPoQuote(null); setPoDraft(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{poQuote?.customerPo ? "Change" : "Add"} the customer PO on {poQuote?.ref}</DialogTitle>
+            <DialogDescription>The customer&apos;s order number, shown beside the quote number. If the quote is accepted, its job (until it is finished) and its draft invoice get it too; an invoice already issued keeps the PO it was issued with.</DialogDescription>
+          </DialogHeader>
+          <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); void saveQuoteCustomerPo(); }}>
+            <Input aria-label={CUSTOMER_PO_LABEL} placeholder="Customer order number (their PO)" maxLength={100} value={poDraft} onChange={(event) => setPoDraft(event.target.value)} />
+            <Button type="submit" disabled={saving || (!poDraft.trim() && poQuote?.rawStatus !== "draft")} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving…" : "Save customer PO"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
       <Dialog open={Boolean(decision)} onOpenChange={(open) => { if (!open) { setDecision(null); setDecisionPo(""); setDecisionDue(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Mark {decision?.quote.ref} as {decision?.outcome}?</DialogTitle>
             <DialogDescription>
               {decision?.outcome === "accepted"
-                ? "Record that the customer accepted this quote. Its sales order is made now (and its job, if your company makes jobs automatically). This can't be undone."
+                ? "Record that the customer accepted this quote. Its job is made now if your company makes jobs automatically. This can't be undone."
                 : "Record that the customer turned this quote down. This can't be undone."}
             </DialogDescription>
           </DialogHeader>
           {decision?.outcome === "accepted" ? (
             <label className="grid gap-1 text-xs text-slate-500">Customer PO (optional)
               <Input value={decisionPo} maxLength={100} placeholder="Customer order number (their PO)" onChange={(event) => setDecisionPo(event.target.value)} />
-              <span>Not received yet? Leave it empty: the sales order gets a provisional number and you add the PO later on Sales Orders.</span>
+              <span>Not received yet? Leave it empty and add it on the quote when it arrives: it reaches the job and its draft invoice too.</span>
             </label>
           ) : null}
           {decision?.outcome === "accepted" ? (
             <label className="grid gap-1 text-xs text-slate-500">Due date (optional)
               <Input type="date" aria-label="Due date" value={decisionDue} className="h-11" onChange={(event) => setDecisionDue(event.target.value)} />
-              <span>When the customer wants it by. It goes on the sales order and becomes the job&apos;s due date.</span>
+              <span>When the customer wants it by. It becomes the job&apos;s due date.</span>
             </label>
           ) : null}
           {has068 && decision?.outcome === "accepted" && viewItems.filter((item) => item.id).length > 1 ? (
