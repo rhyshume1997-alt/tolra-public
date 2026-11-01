@@ -326,6 +326,13 @@ SELECT pg_temp.ok((SELECT count(*) = 1 AND bool_and(user_id = '12800000-0000-000
                   '7j workshop: only their own clock-in address (078''s rule), never w2''s');
 SELECT pg_temp.ok(NOT EXISTS (SELECT 1 FROM public.attendance_event_networks WHERE ip IS NOT NULL OR user_id <> '12800000-0000-0000-0000-00000000a004'),
                   '7k workshop: their own checks only, and a check row never holds an address (078)');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_network_settings), '7k2 workshop reads no site network settings (no saved network config)');
+SELECT pg_temp.ok((SELECT count(*) = 1 FROM public.attendance_event_networks WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w1out'))
+                  AND EXISTS (SELECT 1 FROM public.attendance_event_network_ips WHERE event_id = (SELECT id FROM proof_ids WHERE k = 'w1out') AND ip = '203.0.113.7'::INET),
+                  '7k3 workshop: their own check row and their own address are still visible (078''s rule)');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.attendance_event_networks WHERE user_id <> '12800000-0000-0000-0000-00000000a004')
+                  AND (SELECT count(*) = 0 FROM public.attendance_event_network_ips WHERE user_id <> '12800000-0000-0000-0000-00000000a004'),
+                  '7k4 workshop: 0 rows of other users'' checks or addresses');
 SELECT pg_temp.expect_refused($$SELECT public.rename_site_network(gen_random_uuid(), (SELECT id FROM proof_ids WHERE k = 'netA'), 'Workshop try')$$, '7l workshop renames', 'admin_only');
 -- Viewer: nothing at all, and can't rename or report.
 SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a006', '203.0.113.7');
@@ -335,6 +342,7 @@ SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_locks), '7o 
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.clock_in_network_refusals), '7p viewer reads no refusal record');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.attendance_event_network_ips), '7q viewer reads no clock-in address');
 SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.attendance_event_networks), '7r viewer reads no clock-in check');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_network_settings), '7r2 viewer reads no site network settings');
 SELECT pg_temp.expect_refused($$SELECT public.rename_site_network(gen_random_uuid(), (SELECT id FROM proof_ids WHERE k = 'netA'), 'Viewer try')$$, '7s viewer renames', 'not_allowed');
 SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a006', '198.51.100.63');
 SELECT pg_temp.expect_refused($$SELECT public.record_clock_in_refusal(gen_random_uuid(), 'in')$$, '7t viewer reports a refusal', 'not_allowed');
