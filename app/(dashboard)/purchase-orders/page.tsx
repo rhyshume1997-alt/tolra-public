@@ -54,6 +54,9 @@ import { companyVat, fromVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
 import { VatTotals } from "@/components/vat-totals";
 import { purchaseOrdersEmptyHint, supplierPickerHint } from "@/lib/empty-hints";
+import { PurchaseOrderLinkPicker } from "@/components/purchase-order-link-picker";
+import { databaseHas124 } from "@/lib/db-features";
+import { type LinkTarget, linkColumns, linkLabel, parseLinkKey, suggestQuotesForItem } from "@/lib/purchase-order-link";
 
 type PoItem = { description?: string; qty?: number; unit_price?: number; vat_pct?: number; vat_exempt?: boolean };
 
@@ -78,9 +81,25 @@ type PurchaseOrderRow = {
   /** Saved line items: { description, qty, unit_price } as written by the New PO form. */
   items?: PoItem[];
   notes?: string;
+  /** Migration 124: the customer quote or job this order was bought for (internal: never on the supplier's PDF), and the part of the
+   *  ex-VAT value that is for it (null: all of it). */
+  link?: LinkTarget | null;
+  linkedNet?: number | null;
   demo?: boolean;
 };
 
+/** "Part of this order for it": blank is the whole order (null); otherwise 0 up to the order's ex-VAT value, in pounds. */
+function parseLinkedNet(raw: string, orderValue: number): number | null {
+  const text = raw.trim();
+  if (!text) return null;
+  const value = Number(text);
+  if (!Number.isFinite(value) || value < 0 || Math.round(value * 100) > Math.round(orderValue * 100)) {
+    throw new ValidationError("The part of the order for the quote or job must be between £0 and the order's value (ex VAT). Leave it blank for the whole order.");
+  }
+  return Math.round(value * 100) / 100;
+}
+
+const PO_COLUMNS = "id, po_ref, po_number, supplier, order_date, expected_delivery, total_value, vat_enabled, status, items, notes, received_at, sent_at";
 const PO_FILTER_LABELS: Record<string, string> = { late: "Purchase orders past their expected delivery" };
 const OPEN_STATUSES = ["draft", "issued", "sent", "confirmed", "awaiting"];
 const currency = (value: number) => gbp(value, 2);
@@ -124,8 +143,14 @@ export default function PurchaseOrdersPage() {
   const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
   /** A purchase order is raised when its draft is issued (082): the Issue dialog warns on a conditional supplier and stops a blocked one. */
   const issueNotice = poAction?.kind === "issue" ? supplierOrderNotice(supplierStatuses.get(supplierKey(poAction.po.supplier))) : null;
-  const [editDraft, setEditDraft] = useState({ supplier: "", delivery: "", value: "", notes: "", vatOn: false });
+  const [editDraft, setEditDraft] = useState<{ supplier: string; delivery: string; value: string; notes: string; vatOn: boolean; link: LinkTarget | null; linkedNet: string }>({ supplier: "", delivery: "", value: "", notes: "", vatOn: false, link: null, linkedNet: "" });
   const [newOpen, setNewOpen] = useState(false);
+  // Migration 124: "For quote / job" (optional). Off until the database has it.
+  const [has124, setHas124] = useState(false);
+  const [newLink, setNewLink] = useState<LinkTarget | null>(null);
+  const [newLinkedNet, setNewLinkedNet] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [suggested, setSuggested] = useState<LinkTarget[]>([]);
   // Open / Done / Archived (lib/archive, migration 028): finished records move out of the way; nothing is deleted.
   const archive = useArchive("purchase_orders");
   const [phase, setPhase] = useState<PhaseFilterValue>("open");
@@ -156,11 +181,33 @@ export default function PurchaseOrdersPage() {
     setLoadError(null);
     try {
       if (!supabase) throw new Error("Supabase is not configured.");
+      const linked = await databaseHas124();
+      setHas124(linked);
       const { data, error } = await supabase
         .from("purchase_orders")
-        .select("id, po_ref, po_number, supplier, order_date, expected_delivery, total_value, vat_enabled, status, items, notes, received_at, sent_at")
+        .select(PO_COLUMNS + (linked ? ", quote_id, job_id, linked_net" : "") as typeof PO_COLUMNS)
         .order("created_at", { ascending: false });
       if (error) throw error;
+      // The linked quotes' and jobs' numbers, for the details and Edit (two reads, only for the ids in use).
+      const rowsRead = (data ?? []) as unknown as Record<string, unknown>[];
+      const labels = new Map<string, LinkTarget>();
+      if (linked) {
+        const quoteIds = [...new Set(rowsRead.map((row) => row.quote_id).filter(Boolean).map(String))];
+        const jobIds = [...new Set(rowsRead.map((row) => row.job_id).filter(Boolean).map(String))];
+        const [quotes, jobs] = await Promise.all([
+          quoteIds.length ? supabase.from("quotes").select("id, quote_ref, customer").in("id", quoteIds) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+          jobIds.length ? supabase.from("jobs").select("id, job_no, customer").in("id", jobIds) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+        ]);
+        for (const q of (quotes.data ?? []) as Record<string, unknown>[]) labels.set(`quote:${q.id}`, { kind: "quote", id: String(q.id), ref: String(q.quote_ref ?? ""), customer: String(q.customer ?? "") });
+        for (const j of (jobs.data ?? []) as Record<string, unknown>[]) labels.set(`job:${j.id}`, { kind: "job", id: String(j.id), ref: String(j.job_no ?? ""), customer: String(j.customer ?? "") });
+      }
+      const linkedNetOf = (row: Record<string, unknown>) => (row.linked_net === null || row.linked_net === undefined ? null : Number(row.linked_net));
+      const linkOf = (row: Record<string, unknown>): LinkTarget | null => {
+        const key = row.quote_id ? `quote:${row.quote_id}` : row.job_id ? `job:${row.job_id}` : null;
+        if (!key) return null;
+        const [kind, id] = key.split(":") as ["quote" | "job", string];
+        return labels.get(key) ?? { kind, id, ref: kind === "quote" ? "(quote)" : "(job)", customer: "" };
+      };
       // Trust the database, including an empty result.
       setPurchaseOrders((data ?? []).map((row): PurchaseOrderRow => ({
         id: String(row.id),
@@ -175,6 +222,8 @@ export default function PurchaseOrdersPage() {
         sentAt: row.sent_at || undefined,
         items: Array.isArray(row.items) ? row.items : undefined,
         notes: row.notes || "",
+        link: linked ? linkOf(row as unknown as Record<string, unknown>) : undefined,
+        linkedNet: linked ? linkedNetOf(row as unknown as Record<string, unknown>) : undefined,
       })));
     } catch (err) {
       setLoadError(friendlyError(err, "Couldn't load purchase orders."));
@@ -206,7 +255,40 @@ export default function PurchaseOrdersPage() {
   function setNewPoOpen(open: boolean) {
     setNewOpen(open);
     if (open) void loadSuppliers();
+    if (!open) { setNewLink(null); setNewLinkedNet(""); setNewDescription(""); setSuggested([]); }
   }
+
+  // "Raise supplier PO" on a quote or job (/purchase-orders?new=quote:<id> or job:<id>): New purchase order opens already linked to it.
+  useEffect(() => {
+    const wanted = parseLinkKey(new URLSearchParams(window.location.search).get("new"));
+    if (!wanted || !supabase) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("new");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    let active = true;
+    void (async () => {
+      if (!(await databaseHas124()) || !supabase) return;
+      const found = wanted.kind === "quote"
+        ? await supabase.from("quotes").select("id, quote_ref, customer").eq("id", wanted.id).maybeSingle()
+        : await supabase.from("jobs").select("id, job_no, customer").eq("id", wanted.id).maybeSingle();
+      if (!active || found.error || !found.data) return;
+      const row = found.data as Record<string, unknown>;
+      setNewLink({ kind: wanted.kind, id: String(row.id), ref: String(row.quote_ref ?? row.job_no ?? ""), customer: String(row.customer ?? "") });
+      setNewOpen(true);
+      void loadSuppliers();
+    })();
+    return () => { active = false; };
+  }, [loadSuppliers]);
+
+  // A quote with a line like the item being ordered is offered as a link (a suggestion only: nothing is linked until it is picked).
+  useEffect(() => {
+    if (!has124 || !newOpen || newLink || !supabase) { setSuggested([]); return; }
+    let current = true;
+    const timer = window.setTimeout(() => {
+      void suggestQuotesForItem(supabase as never, newDescription).then((found) => { if (current) setSuggested(found); });
+    }, 400);
+    return () => { current = false; window.clearTimeout(timer); };
+  }, [has124, newOpen, newLink, newDescription]);
 
   /** Writes columns to the given orders, then mirrors them on screen. Throws on failure. */
   async function persistPos(targets: PurchaseOrderRow[], columns: Record<string, unknown>, patch: Partial<PurchaseOrderRow>) {
@@ -238,6 +320,7 @@ export default function PurchaseOrdersPage() {
         const line = input.lines[0];
         // total_value stays the ex-VAT order value; VAT (when on) is added on the printed PO.
         const total = documentTotals([{ quantity: line.quantity, unitPrice: line.unitPrice, vatPct: 0 }]).subtotal;
+        const linkedNet = has124 && newLink ? parseLinkedNet(newLinkedNet, total) : null;
         const lineVat = fromVatChoice(newPoChoice);
         const organizationId = await getCurrentOrganizationId();
         const poRef = await allocateNumber("PO");
@@ -254,6 +337,7 @@ export default function PurchaseOrdersPage() {
           // A draft: check it, then issue it (fixes supplier, items and value), then record when it was sent.
           status: "draft",
           notes: input.notes || null,
+          ...(has124 ? { ...linkColumns(newLink), linked_net: newLink ? linkedNet : null } : {}),
         });
         if (error) throw error;
         void auditEvent({ action: "CREATE", entityTable: "purchase_orders", entityId: poRef });
@@ -264,7 +348,7 @@ export default function PurchaseOrdersPage() {
         setNewVatChoice(null);
         setNewQty("1");
         setNewUnit("");
-        setNewOpen(false);
+        setNewPoOpen(false);
         await loadPurchaseOrders();
       } catch (err) {
         toast.error(userMessage(err, "Could not save the purchase order. Nothing was saved."));
@@ -273,7 +357,7 @@ export default function PurchaseOrdersPage() {
   }
 
   function startEdit(po: PurchaseOrderRow) {
-    setEditDraft({ supplier: po.supplier, delivery: po.delivery, value: String(po.value), notes: po.notes || "", vatOn: Boolean(po.vatEnabled) && vat.registered });
+    setEditDraft({ supplier: po.supplier, delivery: po.delivery, value: String(po.value), notes: po.notes || "", vatOn: Boolean(po.vatEnabled) && vat.registered, link: po.link ?? null, linkedNet: po.linkedNet === null || po.linkedNet === undefined ? "" : String(po.linkedNet) });
     setEditing(po);
   }
 
@@ -292,14 +376,18 @@ export default function PurchaseOrdersPage() {
           lines: [{ description: "-", quantity: 1, unitPrice: 0 }],
         });
         if (!Number.isFinite(value) || value < 0 || editDraft.value.trim() === "") throw new ValidationError("Enter a valid order value.");
+        // 124: the link and its part of the value may change at any status (internal; the supplier never sees them).
+        const linkedNet = has124 && editDraft.link ? parseLinkedNet(editDraft.linkedNet, value) : null;
+        const linkCols = has124 ? { ...linkColumns(editDraft.link), linked_net: linkedNet } : {};
+        const linkPatch = has124 ? { link: editDraft.link, linkedNet } : {};
         if (po.status !== "draft") {
           // Issued: supplier, items and value are fixed (migration 027); the delivery date and notes can still change.
-          await persistPos([po], { expected_delivery: input.expectedDelivery || null, notes: input.notes || null }, { delivery: input.expectedDelivery, notes: input.notes });
+          await persistPos([po], { expected_delivery: input.expectedDelivery || null, notes: input.notes || null, ...linkCols }, { delivery: input.expectedDelivery, notes: input.notes, ...linkPatch });
         } else {
           await persistPos(
             [po],
-            { supplier: input.supplier, expected_delivery: input.expectedDelivery || null, total_value: value, notes: input.notes || null, vat_enabled: editDraft.vatOn && vat.registered },
-            { supplier: input.supplier, delivery: input.expectedDelivery, value, notes: input.notes, vatEnabled: editDraft.vatOn && vat.registered },
+            { supplier: input.supplier, expected_delivery: input.expectedDelivery || null, total_value: value, notes: input.notes || null, vat_enabled: editDraft.vatOn && vat.registered, ...linkCols },
+            { supplier: input.supplier, delivery: input.expectedDelivery, value, notes: input.notes, vatEnabled: editDraft.vatOn && vat.registered, ...linkPatch },
           );
         }
         void auditEvent({ action: "UPDATE", entityTable: "purchase_orders", entityId: po.id, newData: { supplier: input.supplier, expected_delivery: input.expectedDelivery, total_value: value } });
@@ -448,7 +536,7 @@ export default function PurchaseOrdersPage() {
                   </p>
                 ) : null}
                 <div className="grid gap-3 md:grid-cols-3">
-                  <Input name="description" maxLength={500} placeholder="Description" required />
+                  <Input name="description" maxLength={500} placeholder="Description" required onChange={(event) => setNewDescription(event.target.value)} />
                   <Input name="qty" type="number" step="0.001" min="0" inputMode="decimal" placeholder="Qty" value={newQty} onChange={(event) => setNewQty(event.target.value)} required />
                   <Input name="unit_price" type="number" step="0.01" min="0" inputMode="decimal" placeholder="Unit price (ex VAT)" value={newUnit} onChange={(event) => setNewUnit(event.target.value)} required />
                 </div>
@@ -461,6 +549,18 @@ export default function PurchaseOrdersPage() {
                 </div>
                 <label className="grid gap-1 text-xs text-slate-500">Expected delivery<Input name="expected_delivery" type="date" /></label>
                 <Textarea name="notes" maxLength={2000} placeholder="Notes" />
+                {has124 ? (
+                  <div className="grid gap-2 rounded-lg border border-slate-200 p-3" data-testid="po-link">
+                    <span className="text-xs text-slate-500">For quote / job (optional, internal: not on the supplier&apos;s PDF)</span>
+                    {suggested.length ? (
+                      <p role="status" data-testid="po-link-suggestion" className="flex flex-wrap items-center gap-2 text-sm text-slate-700">
+                        Looks like a line on {suggested.map((target) => <Button key={target.id} type="button" variant="outline" size="sm" onClick={() => setNewLink(target)}>{linkLabel(target)}</Button>)}
+                      </p>
+                    ) : null}
+                    <PurchaseOrderLinkPicker selected={newLink} active={newOpen} onPick={setNewLink} />
+                    {newLink ? <label className="grid gap-1 text-xs text-slate-500">Part of this order for it, ex VAT (leave blank for the whole order)<Input type="number" step="0.01" min="0" inputMode="decimal" data-testid="po-linked-net" value={newLinkedNet} onChange={(event) => setNewLinkedNet(event.target.value)} /></label> : null}
+                  </div>
+                ) : null}
                 <Button type="submit" disabled={saving} className="bg-brand text-brand-ink">{saving ? "Saving…" : "Save PO"}</Button>
               </form>
             </DialogContent>
@@ -538,7 +638,7 @@ export default function PurchaseOrdersPage() {
           </Table></CardContent></Card>
         )}
         <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
-        <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button>{viewing.status !== "draft" && !viewing.id.startsWith("demo-") ? <Button variant="outline" onClick={() => void emailPurchaseOrder(viewing)}>Email to supplier</Button> : null}</div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
+        <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.link ? <p data-testid="po-view-link"><strong>For:</strong> {linkLabel(viewing.link)}{viewing.linkedNet !== null && viewing.linkedNet !== undefined ? ` (${currency(viewing.linkedNet)} of this order, ex VAT)` : ""}</p> : null}{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button>{viewing.status !== "draft" && !viewing.id.startsWith("demo-") ? <Button variant="outline" onClick={() => void emailPurchaseOrder(viewing)}>Email to supplier</Button> : null}</div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
         <Dialog open={Boolean(poAction)} onOpenChange={(open) => !open && setPoAction(null)}>
           <DialogContent>
             <DialogHeader>
@@ -563,11 +663,18 @@ export default function PurchaseOrdersPage() {
             {editing ? (
               <div className="grid gap-3">
                 {editing.status !== "draft" ? <p className="text-sm text-slate-600">Issued: the supplier, items and value are fixed. You can still change the delivery date and notes.</p> : null}
-                <select value={editDraft.supplier} disabled={editing.status !== "draft"} className="h-11 rounded-lg border px-3" onChange={(event) => setEditDraft((draft) => ({ ...draft, supplier: event.target.value }))}>{(suppliers.includes(editing.supplier) ? suppliers : [editing.supplier, ...suppliers]).map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}</select>
+                <select value={editDraft.supplier} aria-label="Supplier" disabled={editing.status !== "draft"} className="h-11 rounded-lg border px-3" onChange={(event) => setEditDraft((draft) => ({ ...draft, supplier: event.target.value }))}>{(suppliers.includes(editing.supplier) ? suppliers : [editing.supplier, ...suppliers]).map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}</select>
                 <label className="grid gap-1 text-xs text-slate-500">Expected delivery<Input type="date" value={editDraft.delivery} onChange={(event) => setEditDraft((draft) => ({ ...draft, delivery: event.target.value }))} /></label>
                 <label className="grid gap-1 text-xs text-slate-500">Order value (ex VAT){editHasItems ? " - set by the line items" : ""}<Input type="number" step="0.01" min="0" inputMode="decimal" disabled={editHasItems || editing.status !== "draft"} value={editDraft.value} onChange={(event) => setEditDraft((draft) => ({ ...draft, value: event.target.value }))} /></label>
                 {editing.status === "draft" ? <VatToggle registered={vat.registered} checked={editDraft.vatOn && vat.registered} onChange={(checked) => setEditDraft((draft) => ({ ...draft, vatOn: checked }))} /> : null}
                 <Textarea placeholder="Notes" maxLength={2000} value={editDraft.notes} onChange={(event) => setEditDraft((draft) => ({ ...draft, notes: event.target.value }))} />
+                {has124 ? (
+                  <div className="grid gap-2 rounded-lg border border-slate-200 p-3" data-testid="po-edit-link">
+                    <span className="text-xs text-slate-500">For quote / job (optional, internal: not on the supplier&apos;s PDF)</span>
+                    <PurchaseOrderLinkPicker selected={editDraft.link} active={Boolean(editing)} onPick={(link) => setEditDraft((draft) => ({ ...draft, link }))} />
+                    {editDraft.link ? <label className="grid gap-1 text-xs text-slate-500">Part of this order for it, ex VAT (leave blank for the whole order)<Input type="number" step="0.01" min="0" inputMode="decimal" value={editDraft.linkedNet} onChange={(event) => setEditDraft((draft) => ({ ...draft, linkedNet: event.target.value }))} /></label> : null}
+                  </div>
+                ) : null}
                 <Button disabled={saving} onClick={() => void saveEdit()} className="bg-brand text-brand-ink">{saving ? "Saving…" : "Save Changes"}</Button>
               </div>
             ) : null}

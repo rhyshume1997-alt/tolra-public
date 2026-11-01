@@ -1437,7 +1437,7 @@
  {
   "kind": "function",
   "object": "public.purchase_order_issue_lock()",
-  "detail": "invoker search_path=pg_catalog, public af1519a03e670609e644cd03a3f45304"
+  "detail": "invoker search_path=pg_catalog, public 2c858209878abe6cff01c9d05b5ab60a"
  },
  {
   "kind": "function",
@@ -7693,6 +7693,16 @@
   "kind": "trigger",
   "object": "public.purchase_orders :: support_read_only",
   "detail": "O 9f0bc0d1ee2bb17b71191337a0d62d45"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.purchase_orders :: zz_same_org_job_id",
+  "detail": "O b787cd1c959b9d2d3db223d0b15f00a2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.purchase_orders :: zz_same_org_quote_id",
+  "detail": "O 31e1346bccbd920d0e782fbd99e13c78"
  },
  {
   "kind": "trigger",
