@@ -210,13 +210,19 @@ describe("103 release files on the local stack", () => {
     expect(result).toHaveLength(4);
     expect(result.filter((r) => !r.ok)).toEqual([]);
     const v101 = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_101.sql"))).rows);
-    expect(v101.filter((r) => !r.ok)).toEqual([]);
+    // 122 makes the cap default 500, so 101's off_by_default row reads FALSE by design; 122's own verify checks the new default.
+    expect(v101.filter((r) => !r.ok).map((r) => r.check_name)).toEqual(["off_by_default"]);
+    const v122 = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_cap_default_122.sql"))).rows);
+    expect(v122).toHaveLength(3);
+    expect(v122.filter((r) => !r.ok)).toEqual([]);
   });
 
   it("the rollback puts 101's bodies and settle grant back; the release then applies again, twice (all rolled back)", async () => {
     await withDb(async (db) => {
       await db.query("begin");
       try {
+        // 122 (cap default 500) sits on top of 101: take it away first, as 101's own verify (cap default 0) is checked below.
+        await db.query(unwrapped(read("supabase/release/122_ai_helper_cap_default.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/103_ai_helper_service_role.rollback.sql")));
         const after = Object.fromEntries((await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_service_role_103.sql"))).rows.map((r) => [r.check_name, r.ok]));
         expect(after).toMatchObject({ reserve_returns_no_key: false, settle_service_role_only: false, secrets_service_role_only: true, other_app_functions_signed_in_only: true });

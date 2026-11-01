@@ -1,7 +1,7 @@
 /**
  * Migration 101 (working number): the AI admin helper's tables and functions, on the local stack.
  *
- *   - Off by default: a new company's status has both features off, no cap and no key; reserve refuses while a feature is off.
+ *   - Off by default: a new company's status has both features off, the 500p cap (122; was 0) and no key; reserve refuses while a feature is off.
  *   - Roles: office and admin may reserve and decide; only admin may change settings or the key; workshop and viewer get nothing; a
  *     support session gets nothing; an admin without the second step (company requires it) gets nothing. From 103 the server settles
  *     with the service role (settle below), and no signed-in person may call settle (settleAs); reserve hands back no key.
@@ -169,13 +169,13 @@ afterAll(async () => {
 });
 
 describe("101: off by default, roles", () => {
-  it("a new company: both features off, no cap, no key; reserve refuses while off", async () => {
-    // No settings row at all (nothing is inserted by the migration or by a status read): it reads as off with a cap of 0.
+  it("a new company: both features off, the 500p cap (122), no key; reserve refuses while off", async () => {
+    // No settings row at all (nothing is inserted by the migration or by a status read): it reads as off with a cap of 500 (122; was 0).
     expect(await sql("select 1 from public.ai_helper_settings where organization_id = $1", [orgA])).toHaveLength(0);
     expect(await sql<{ v: unknown }>("select column_default as v from information_schema.columns where table_schema = 'public' and table_name = 'ai_helper_settings' and column_name in ('roundup_enabled', 'rfq_enabled', 'monthly_cap_pence') order by column_name"))
-      .toEqual([{ v: "0" }, { v: "false" }, { v: "false" }]);
+      .toEqual([{ v: "500" }, { v: "false" }, { v: "false" }]);
     expect(await reserve(A.admin, "roundup", 1)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
-    expect(await status(A.office)).toEqual({ ok: true, value: { roundup_enabled: false, rfq_enabled: false, monthly_cap_pence: 0, key_set: false, key_last4: null, month_spent_pence: 0, month_reserved_pence: 0, can_manage: false } });
+    expect(await status(A.office)).toEqual({ ok: true, value: { roundup_enabled: false, rfq_enabled: false, monthly_cap_pence: 500, key_set: false, key_last4: null, month_spent_pence: 0, month_reserved_pence: 0, can_manage: false } });
     expect(await reserve(A.office, "rfq", 5)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
     expect(await sql("select 1 from public.ai_helper_requests where organization_id = $1", [orgA])).toHaveLength(0);
     expect(await sql("select 1 from public.ai_helper_settings where organization_id = $1", [orgA])).toHaveLength(0);
