@@ -16,7 +16,8 @@
  * audit log) for SITE_NETWORK_IP_RETENTION_DAYS, then deleted; the status and the off-site flag are kept. A seen address never becomes a
  * site network by itself: only an admin's explicit save (addSiteNetwork, from the "Use this network" button on the Settings card) adds one.
  *
- * Migration 128: an admin renames a saved network (renameSiteNetwork; the address never changes), and online clock actions refused by
+ * Migration 128: an admin renames a saved network (renameSiteNetwork; the address and the site_networks row never change: the name is kept
+ * in site_network_names and shown in place of the saved label), and online clock actions refused by
  * 114's network lock are recorded (clock_in_network_refusals, admin read only; reported by the device, lib/clock-in-lock.ts
  * reportClockInRefusal, and re-checked by the database), so the "unrecognised network" banner counts them too.
  */
@@ -202,18 +203,20 @@ type Db = SupabaseClient;
  * them. Throws on a read error of the switch or the networks.
  */
 export async function loadSiteNetworks(client: Db): Promise<{ mode: SiteNetworkMode; networks: SavedNetwork[]; ipRetention: boolean; canRename: boolean }> {
-  const [settings, networks, kept, has128] = await Promise.all([
+  const [settings, networks, kept, names] = await Promise.all([
     client.from("site_network_settings").select("site_network_check").maybeSingle(),
     client.from("site_networks").select("id, network, label, created_at").order("created_at", { ascending: true }),
     client.from("attendance_event_network_ips").select("event_id").limit(1),
-    // 128 (rename_site_network): a GET of at most one row of the table 128 creates in the same transaction (admins read it). Any error,
-    // a missing table included, reads as false, so the Rename action stays hidden until the database has 128.
-    client.from("clock_in_network_refusals").select("id").limit(1),
+    // 128: the names admins gave the networks (site_network_names; admin and office read them). It also tells whether the database has
+    // 128: any error, a missing table included, reads as no (no names, and the Rename action stays hidden).
+    client.from("site_network_names").select("network_id, label"),
   ]);
   if (settings.error) throw settings.error;
   if (networks.error) throw networks.error;
   const mode = (settings.data as { site_network_check?: string } | null)?.site_network_check === "flag" ? "flag" : "off";
-  return { mode, networks: (networks.data ?? []) as SavedNetwork[], ipRetention: !kept.error, canRename: !has128.error };
+  const given = new Map(names.error ? [] : ((names.data ?? []) as { network_id: string; label: string }[]).map((n) => [n.network_id, n.label]));
+  const saved = ((networks.data ?? []) as SavedNetwork[]).map((n) => (given.has(n.id) ? { ...n, label: given.get(n.id)! } : n));
+  return { mode, networks: saved, ipRetention: !kept.error, canRename: !names.error };
 }
 
 async function call<T>(client: Db, fn: string, args?: Record<string, unknown>): Promise<T> {

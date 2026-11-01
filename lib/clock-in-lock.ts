@@ -20,6 +20,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { featurePresent } from "@/lib/db-features";
+import { isNetworkError } from "@/lib/offline/store";
 import { onSavedNetwork, parseIp } from "@/lib/site-network";
 
 /** The refusal's hint (114). The device holds a refused clock action as refused (never retried): see lib/offline/sync.ts clockOutcome. */
@@ -135,19 +136,21 @@ type ReportRpc = { rpc: (fn: string, args: Record<string, unknown>) => PromiseLi
 /**
  * Tells the database about this device's own clock action that 114 refused (record_clock_in_refusal, keyed by the action's client_op_id).
  * Sent straight after the refusal, from the browser, so the database sees the same address and re-checks that it would refuse it; it
- * records nothing otherwise. Best effort: never throws and never changes the clock action's outcome; a database without 128, no
- * connection, or any refusal of the report (not_refused, too_many_refusals, ...) is ignored.
+ * records nothing otherwise. Never throws and never changes the clock action's outcome. Answers "sent" (the server answered: recorded,
+ * or refused the report, e.g. no 128 yet, not_refused, too_many_refusals: nothing to retry), "network" (no answer: the connection
+ * dropped or REFUSAL_REPORT_TIMEOUT_MS passed; the caller queues it, lib/offline/sync.ts) or "none" (no client).
  */
-export async function reportClockInRefusal(client: ReportRpc | null | undefined, op: { clientOpId: string; action: string }): Promise<boolean> {
-  if (!client) return false;
+export async function reportClockInRefusal(client: ReportRpc | null | undefined, op: { clientOpId: string; action: string }): Promise<"sent" | "network" | "none"> {
+  if (!client) return "none";
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      Promise.resolve(client.rpc("record_clock_in_refusal", { p_client_op_id: op.clientOpId, p_action: op.action })).then(({ error }) => !error, () => false),
-      new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(false), REFUSAL_REPORT_TIMEOUT_MS); }),
+      Promise.resolve(client.rpc("record_clock_in_refusal", { p_client_op_id: op.clientOpId, p_action: op.action }))
+        .then(({ error }) => (error && isNetworkError(error) ? "network" as const : "sent" as const), () => "network" as const),
+      new Promise<"network">((resolve) => { timer = setTimeout(() => resolve("network"), REFUSAL_REPORT_TIMEOUT_MS); }),
     ]);
   } catch {
-    return false;
+    return "network";
   } finally {
     clearTimeout(timer);
   }

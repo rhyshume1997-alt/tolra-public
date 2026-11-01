@@ -136,14 +136,18 @@ describe("the refusal reaches the person as a refusal", () => {
     await executeClockOp(op, client as never, "o1");
     expect(calls).not.toContain("record_clock_in_refusal");
   });
-  it("128: reportClockInRefusal never throws and gives up after its timeout", async () => {
-    expect(await reportClockInRefusal(null, { clientOpId: "k", action: "in" })).toBe(false);
-    expect(await reportClockInRefusal({ rpc: () => { throw new Error("boom"); } }, { clientOpId: "k", action: "in" })).toBe(false);
+  it("128: reportClockInRefusal never throws: sent on any answer, network on no answer or after its timeout", async () => {
+    const op = { clientOpId: "k", action: "in" };
+    expect(await reportClockInRefusal(null, op)).toBe("none");
+    expect(await reportClockInRefusal({ rpc: async () => ({ data: { recorded: true }, error: null }) }, op)).toBe("sent");
+    expect(await reportClockInRefusal({ rpc: async () => ({ data: null, error: { code: "22023", hint: "not_refused", message: "no" } }) }, op)).toBe("sent");
+    expect(await reportClockInRefusal({ rpc: async () => ({ data: null, error: { message: "TypeError: Failed to fetch" } }) }, op)).toBe("network");
+    expect(await reportClockInRefusal({ rpc: () => { throw new Error("boom"); } }, op)).toBe("network");
     vi.useFakeTimers();
     try {
-      const pending = reportClockInRefusal({ rpc: () => new Promise(() => {}) }, { clientOpId: "k", action: "in" });
+      const pending = reportClockInRefusal({ rpc: () => new Promise(() => {}) }, op);
       await vi.advanceTimersByTimeAsync(REFUSAL_REPORT_TIMEOUT_MS);
-      expect(await pending).toBe(false);
+      expect(await pending).toBe("network");
     } finally {
       vi.useRealTimers();
     }

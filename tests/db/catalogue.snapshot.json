@@ -1577,7 +1577,7 @@
  {
   "kind": "function",
   "object": "public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)",
-  "detail": "definer search_path=pg_catalog, public acd7971d739eeaceddc03e607f15852b"
+  "detail": "definer search_path=pg_catalog, public 32e8bee43f9b692314cb36b6f1488ca3"
  },
  {
   "kind": "function",
@@ -4946,6 +4946,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.site_network_names :: site_network_names rbac select",
+  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
   "object": "public.site_network_settings :: site_network_settings rbac select",
   "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
  },
@@ -5621,6 +5626,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.site_network_names",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.site_network_ops",
   "detail": "enabled"
  },
@@ -6092,6 +6102,11 @@
  {
   "kind": "table-grant",
   "object": "public.site_network_members :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.site_network_names :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -8021,6 +8036,21 @@
  },
  {
   "kind": "trigger",
+  "object": "public.site_network_names :: admin_mfa",
+  "detail": "O efc4bd73743d541442be38f6c82ba386"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.site_network_names :: audit_site_network_names_changes",
+  "detail": "O fc5d3b025a489267b2d24eaef5e1a872"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.site_network_names :: support_read_only",
+  "detail": "O d2f5dc31cb3abbd96a3d46d6b508e53a"
+ },
+ {
+  "kind": "trigger",
   "object": "public.site_network_ops :: admin_mfa",
   "detail": "O cce21a8fb648a51bbe80ff8c629d6ef5"
  },
@@ -8558,6 +8588,11 @@
   "kind": "unique-index",
   "object": "public.site_network_members :: site_network_members_id_key",
   "detail": "441a79c95637d7723f41c93e0abd9554"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.site_network_names :: site_network_names_id_key",
+  "detail": "a7c55feff944eea77985eee94eff1fd0"
  },
  {
   "kind": "unique-index",

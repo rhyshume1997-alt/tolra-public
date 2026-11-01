@@ -502,10 +502,11 @@ async function expect076(db: Client, present: boolean) {
 
 /** Removes 052, 051 and 050 (in that order) inside the caller's transaction, data included: only ever rolled back. */
 const TIME_TEARDOWN = [
-  // 128 first (it needs 075, 078 and 114; its refusal table references none of their tables).
+  // 128 first (it needs 075, 078 and 114; its name table references 075's site_networks).
   ...["rename_site_network(uuid,uuid,text)", "record_clock_in_refusal(uuid,text)", "clock_in_refusal_ip_purge(uuid,integer)",
     "clock_in_refusal_answer(clock_in_network_refusals,boolean)"].map((f) => `drop function if exists public.${f}`),
   "drop table if exists public.clock_in_network_refusals",
+  "drop table if exists public.site_network_names", // references 075's site_networks
   // 114 first (its marks reference attendance_events; its triggers are on it; it needs 075).
   "drop trigger if exists clock_in_network_lock on public.attendance_events",
   "drop trigger if exists zz_clock_in_network_unverified on public.attendance_events",

@@ -8,8 +8,8 @@ import { type JobWorksheet, saveWorksheet, WorksheetConflictError, WorksheetMiss
 import { type StartStage, stagesBeforeStart } from "@/lib/job-actions";
 import { PHOTO_MIME } from "@/lib/photo-image";
 import { type BenchStartAnswer, type RunStartAnswer, SERVER_UPGRADE_CODE, SERVER_UPGRADE_REASON, benchStartOutcome, isServerTooOld, missingRunsReason, replayedStartClashReason, requestedRunsPresent, runRefusal, runTimeConflictReason, timeConflictsOf } from "@/lib/machine-runs";
-import { readAttachment, rejectedEntries, replayOutbox, requeueHeldRunOps, withReplayLock, type ClockOp, type LabourOp, type OutboxOp, type PauseOp, type PhotoOp, type ReplayOutcome, type RunPauseOp, type RunStartOp, type CustomerSignOffOp, type InspectOp, type InternalSignOffOp, type SignOffOp, type StartOp } from "@/lib/offline/outbox";
-import { offlineScope, outboxState, refreshCounts, reportOffline, suspendOfflineAccess } from "@/lib/offline/scope";
+import { CLOCK_REFUSAL_LANE, readAttachment, rejectedEntries, replayOutbox, requeueHeldRunOps, withReplayLock, type ClockOp, type ClockRefusalOp, type LabourOp, type OutboxOp, type PauseOp, type PhotoOp, type ReplayOutcome, type RunPauseOp, type RunStartOp, type CustomerSignOffOp, type InspectOp, type InternalSignOffOp, type SignOffOp, type StartOp } from "@/lib/offline/outbox";
+import { offlineScope, outboxState, queueOffline, refreshCounts, reportOffline, suspendOfflineAccess } from "@/lib/offline/scope";
 import { organizationSwitchAffects } from "@/lib/access-recheck";
 import { parseSessionInfo, offlineCopyAllowed } from "@/lib/session-info";
 import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
@@ -261,8 +261,11 @@ async function clockOutcome(op: ClockOp, client: Rpc, expectedOrg: string | null
   if (hint === CLOCK_WRONG_COMPANY) return { status: "blocked", code: CLOCK_WRONG_COMPANY, reason: CLOCK_WRONG_COMPANY_REASON };
   if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${clockLabel(op.action)} at ${new Date(op.at).toLocaleString("en-GB", { timeZone: "Europe/London" })} is more than 14 days old, so it wasn't recorded. Ask an admin to add it to your sheet.` };
   if (hint === "client_op_reused" || hint === "not_allowed" || hint === "bad_action" || hint === "week_approved") return { status: "rejected", code: hint, reason: error.message };
-  // 128: refused by the network lock (114). Reported for the admin's banner (best effort; the outcome below is unchanged).
-  if (hint === CLOCK_IN_NETWORK_LOCKED) await reportClockInRefusal(client, op);
+  // 128: refused by the network lock (114). Reported for the admin's banner; a report that can't reach the server is queued and sent
+  // once on reconnect (executeClockRefusalOp). The outcome below is unchanged either way.
+  if (hint === CLOCK_IN_NETWORK_LOCKED && (await reportClockInRefusal(client, op)) === "network") {
+    await queueOffline({ kind: "clock_refusal", v: 1, action: op.action, clientOpId: op.clientOpId, jobRef: CLOCK_REFUSAL_LANE, jobNo: op.jobNo }).catch(() => false);
+  }
   return { status: "rejected", code: "refused", reason: friendlyError(error, "The server refused this clock action.") };
 }
 /**
@@ -352,8 +355,17 @@ async function advanceStartStage(client: NonNullable<typeof supabase>, jobId: st
   await client.from("jobs").update({ stage: to }).eq("id", jobId).is("stage", null);
 }
 
+/**
+ * 128: a queued report of a clock action the network lock refused (see ClockRefusalOp). No answer: stays queued. Any answer (recorded,
+ * replayed, or refused, e.g. not_refused once the device is back on the workshop network): done, never held for the person.
+ */
+export async function executeClockRefusalOp(op: ClockRefusalOp, client: Rpc): Promise<ReplayOutcome> {
+  return (await reportClockInRefusal(client, op)) === "sent" ? { status: "applied" } : { status: "network" };
+}
+
 export async function executeOutboxOp(op: OutboxOp, orgId: string | null = offlineScope()?.orgId ?? null): Promise<ReplayOutcome> {
   if (!supabase) return { status: "network" };
+  if (op.kind === "clock_refusal") return executeClockRefusalOp(op, supabase);
   if (op.kind === "clock") {
     try {
       return await executeClockOp(op, supabase, orgId);

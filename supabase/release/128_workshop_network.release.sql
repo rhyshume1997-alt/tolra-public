@@ -31,9 +31,10 @@ BEGIN;
 --   e. public.rename_site_network(key, id, label): admin only, second step where required (075's site_network_admin_org), the
 --      caller's company only, under the company's lock, keyed (075's site_network_replay: the same key and request answer the first
 --      result; another request under the key is client_op_reused). The label is trimmed, 1 to 60 characters (bad_label). Audited
---      (SITE_NETWORK_RENAMED: network, before, after) when the name changes. The network itself never changes.
--- AFTER 128, 078's verify row only_admin_adds_site_networks reads FALSE by design (rename_site_network also updates site_networks, the
--- label only); 128's verify restates the rule as only_admin_saves_site_networks. No other earlier verify row changes.
+--      (SITE_NETWORK_RENAMED: network, before, after) when the name changes. The network row itself is never written: the name is
+--      kept in public.site_network_names (one row per network, removed with it; read by admin and office as site_networks; audited),
+--      shown in place of site_networks.label. 075's add_site_network stays the only writer of site_networks (078's rule).
+-- Every earlier verify file stays TRUE after 128 (078's only_admin_adds_site_networks included: rename never writes site_networks).
 -- GUARD (section 0): 075, 078 and 114 are there, and 078's two purge functions are 078's (or already this file's), md5 with every
 -- whitespace character removed. Safe to run more than once. SELF-CHECK (section 6). Verify: supabase/verify/workshop_network_128.sql
 -- (every row TRUE). Rollback: supabase/release/128_workshop_network.rollback.sql (only with Rhys's approval).
@@ -276,7 +277,35 @@ REVOKE ALL ON FUNCTION public.purge_site_network_ips(BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.purge_site_network_ips(BOOLEAN) TO authenticated;
 
 -- -----------------------------------------------------------------------------------------------------
--- 5. Rename a saved workshop network (admin, two-step, keyed, audited). The address never changes.
+-- 5. Rename a saved workshop network (admin, two-step, keyed, audited). The address never changes, and neither does site_networks:
+--    the name an admin gives is kept in site_network_names (one row per network, removed with it), shown in place of the saved label.
+--    So 075's add_site_network stays the only function that writes site_networks (078's rule: a seen address never becomes a site
+--    network by itself; 078's verify row only_admin_adds_site_networks stays TRUE).
+CREATE TABLE IF NOT EXISTS public.site_network_names (
+  network_id      UUID PRIMARY KEY REFERENCES public.site_networks(id) ON DELETE CASCADE,
+  id              UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  label           TEXT NOT NULL CHECK (label = btrim(label) AND length(label) BETWEEN 1 AND 60),
+  renamed_by      UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  renamed_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+ALTER TABLE public.site_network_names ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "site_network_names rbac select" ON public.site_network_names;
+CREATE POLICY "site_network_names rbac select" ON public.site_network_names FOR SELECT TO authenticated
+  USING (organization_id = public.current_user_organization_id() AND public.has_org_role(ARRAY['admin', 'office']));
+REVOKE ALL ON public.site_network_names FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.site_network_names TO authenticated;
+-- Audit (row changes), support read-only and admin two-step, as site_networks (075).
+DROP TRIGGER IF EXISTS audit_site_network_names_changes ON public.site_network_names;
+CREATE TRIGGER audit_site_network_names_changes AFTER INSERT OR UPDATE OR DELETE ON public.site_network_names
+  FOR EACH ROW EXECUTE FUNCTION security_audit.log_row_change();
+DROP TRIGGER IF EXISTS support_read_only ON public.site_network_names;
+CREATE TRIGGER support_read_only BEFORE INSERT OR UPDATE OR DELETE ON public.site_network_names
+  FOR EACH STATEMENT EXECUTE FUNCTION public.support_readonly_guard();
+DROP TRIGGER IF EXISTS admin_mfa ON public.site_network_names;
+CREATE TRIGGER admin_mfa BEFORE INSERT OR UPDATE OR DELETE ON public.site_network_names
+  FOR EACH STATEMENT EXECUTE FUNCTION public.require_admin_mfa_guard();
+
 CREATE OR REPLACE FUNCTION public.rename_site_network(p_client_op_id UUID, p_id UUID, p_label TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -289,6 +318,7 @@ DECLARE
   v_request JSONB;
   v_replay  JSONB;
   v_row     public.site_networks%ROWTYPE;
+  v_before  TEXT;
   v_result  JSONB;
 BEGIN
   IF v_label IS NULL OR length(v_label) < 1 OR length(v_label) > 60 THEN
@@ -300,16 +330,20 @@ BEGIN
   IF v_replay IS NOT NULL THEN
     RETURN v_replay;
   END IF;
+  -- The network row is locked against a removal in flight; it is read, never written.
   SELECT * INTO v_row FROM public.site_networks n WHERE n.organization_id = v_org AND n.id = p_id FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'That site network was not found.' USING ERRCODE = 'P0002', HINT = 'network_missing';
   END IF;
-  IF v_row.label IS DISTINCT FROM v_label THEN
-    UPDATE public.site_networks SET label = v_label WHERE organization_id = v_org AND id = p_id;
+  SELECT coalesce((SELECT s.label FROM public.site_network_names s WHERE s.network_id = p_id), v_row.label) INTO v_before;
+  IF v_before IS DISTINCT FROM v_label THEN
+    INSERT INTO public.site_network_names (network_id, organization_id, label, renamed_by)
+    VALUES (p_id, v_org, v_label, auth.uid())
+    ON CONFLICT (network_id) DO UPDATE SET label = EXCLUDED.label, renamed_by = EXCLUDED.renamed_by, renamed_at = clock_timestamp();
     PERFORM security_audit.log_named_event(v_org, 'SITE_NETWORK_RENAMED', 'site_networks', v_row.id::TEXT,
-      jsonb_build_object('network', v_row.network::TEXT, 'before', v_row.label, 'after', v_label));
+      jsonb_build_object('network', v_row.network::TEXT, 'before', v_before, 'after', v_label));
   END IF;
-  v_result := jsonb_build_object('id', v_row.id, 'network', v_row.network::TEXT, 'label', v_label, 'renamed', v_row.label IS DISTINCT FROM v_label);
+  v_result := jsonb_build_object('id', v_row.id, 'network', v_row.network::TEXT, 'label', v_label, 'renamed', v_before IS DISTINCT FROM v_label);
   INSERT INTO public.site_network_ops (organization_id, client_op_id, kind, request, result, created_by)
   VALUES (v_org, p_client_op_id, 'rename', v_request, v_result, auth.uid());
   RETURN v_result || jsonb_build_object('replayed', FALSE);
@@ -324,8 +358,20 @@ DO $$
 DECLARE
   v_fn TEXT;
 BEGIN
-  IF NOT (SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = 'public.clock_in_network_refusals'::regclass) THEN
-    RAISE EXCEPTION '128: clock_in_network_refusals has row level security off';
+  IF NOT (SELECT bool_and(c.relrowsecurity) AND count(*) = 2 FROM pg_class c
+          WHERE c.oid IN ('public.clock_in_network_refusals'::regclass, 'public.site_network_names'::regclass)) THEN
+    RAISE EXCEPTION '128: a table is missing or has row level security off';
+  END IF;
+  IF EXISTS (SELECT 1 FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) p
+             WHERE has_table_privilege(r, 'public.site_network_names', p))
+     OR has_table_privilege('anon', 'public.site_network_names', 'SELECT') THEN
+    RAISE EXCEPTION '128: an API role can write site_network_names, or anon can read it';
+  END IF;
+  -- 078's rule: add_site_network is still the only function that writes site_networks.
+  IF (SELECT array_agg(p.oid::regprocedure::TEXT ORDER BY 1) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname IN ('public', 'security_audit') AND p.prosrc ~* '(insert\s+into|update)\s+(public\.)?site_networks\M')
+     IS DISTINCT FROM ARRAY['add_site_network(uuid,text,text)'] THEN
+    RAISE EXCEPTION '128: a function other than add_site_network writes site_networks';
   END IF;
   IF EXISTS (SELECT 1 FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) p
              WHERE has_table_privilege(r, 'public.clock_in_network_refusals', p))

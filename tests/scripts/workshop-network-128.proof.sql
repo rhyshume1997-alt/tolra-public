@@ -115,8 +115,13 @@ SET LOCAL session_replication_role = origin;
 SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7', 'aal1');
 SELECT pg_temp.expect_refused($$SELECT public.rename_site_network(gen_random_uuid(), (SELECT id FROM proof_ids WHERE k = 'netA'), 'Before two-step')$$, '1o admin at aal1 (two-step required)', 'mfa_required');
 RESET ROLE;
-SELECT pg_temp.ok((SELECT label = 'Main workshop' AND network = '203.0.113.7/32' FROM public.site_networks WHERE id = (SELECT id FROM proof_ids WHERE k = 'netA')),
-                  '1p A''s network: the last saved name, the same address');
+SELECT pg_temp.ok((SELECT label = 'Workshop' AND network = '203.0.113.7/32' FROM public.site_networks WHERE id = (SELECT id FROM proof_ids WHERE k = 'netA'))
+                  AND (SELECT label = 'Main workshop' AND organization_id = '12800000-0000-0000-0000-0000000000a0' AND renamed_by = '12800000-0000-0000-0000-00000000a001'
+                       FROM public.site_network_names WHERE network_id = (SELECT id FROM proof_ids WHERE k = 'netA')),
+                  '1p A''s network row never written (saved label and address as added); the last name is in site_network_names');
+SELECT pg_temp.ok((SELECT array_agg(p.oid::regprocedure::TEXT ORDER BY 1) = ARRAY['add_site_network(uuid,text,text)'] FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+                   WHERE n.nspname IN ('public', 'security_audit') AND p.prosrc ~* '(insert\s+into|update)\s+(public\.)?site_networks\M'),
+                  '1p2 078''s rule holds: add_site_network is still the only function writing site_networks');
 SELECT pg_temp.ok((SELECT label = 'B yard' FROM public.site_networks WHERE id = (SELECT id FROM proof_ids WHERE k = 'netB')), '1q B''s network untouched');
 SELECT pg_temp.ok((SELECT count(*) = 3 FROM security_audit.audit_log WHERE organization_id = '12800000-0000-0000-0000-0000000000a0' AND action = 'SITE_NETWORK_RENAMED'
                    AND entity_id = (SELECT id::TEXT FROM proof_ids WHERE k = 'netA') AND metadata ->> 'network' = '203.0.113.7/32')
@@ -127,6 +132,26 @@ SELECT pg_temp.ok((SELECT count(*) = 0 FROM security_audit.audit_log WHERE organ
                   '1s nothing audited in B');
 SELECT pg_temp.ok((SELECT count(*) = 4 FROM public.site_network_ops WHERE organization_id = '12800000-0000-0000-0000-0000000000a0' AND kind = 'rename'),
                   '1t four keyed rename saves kept in A (refused calls keep none)');
+SELECT pg_temp.ok((SELECT count(*) = 3 FROM security_audit.audit_log WHERE organization_id = '12800000-0000-0000-0000-0000000000a0' AND entity_table = 'site_network_names'),
+                  '1t2 the name row changes are audited (insert + 2 updates)');
+
+-- 1u. The names are read as site_networks: admin and office of the company; not workshop, not another company; no API writes.
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a003', '203.0.113.7');
+SELECT pg_temp.ok((SELECT count(*) = 1 FROM public.site_network_names), '1u office A reads A''s name');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a004', '203.0.113.7');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_network_names), '1v workshop reads none');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000b001', '198.51.100.20');
+SELECT pg_temp.ok((SELECT count(*) = 0 FROM public.site_network_names), '1w admin B reads none of A''s');
+SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7');
+SELECT pg_temp.expect_refused($$UPDATE public.site_network_names SET label = 'Direct'$$, '1x admin direct update of a name', NULL, '%permission denied%');
+-- A removed network takes its name with it.
+DO $$ DECLARE v UUID; BEGIN
+  v := (public.add_site_network(gen_random_uuid(), '192.0.2.0/24', 'Second site') ->> 'id')::UUID;
+  PERFORM public.rename_site_network(gen_random_uuid(), v, 'Unit 2');
+  PERFORM public.remove_site_network(gen_random_uuid(), v);
+  PERFORM pg_temp.ok(NOT EXISTS (SELECT 1 FROM public.site_network_names WHERE network_id = v), '1y removing a network removes its name');
+END $$;
+RESET ROLE;
 
 -- 2. Refused clock actions reach the record. A locks clock-in to 203.0.113.7 (114); w2 may clock in off site.
 SELECT pg_temp.sign_in('12800000-0000-0000-0000-00000000a001', '203.0.113.7');

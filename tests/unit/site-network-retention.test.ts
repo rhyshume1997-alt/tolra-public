@@ -63,10 +63,19 @@ describe("retention", () => {
     expect(card).toContain("onClick={() => setConfirmPurgeAll(true)}");
   });
 
-  it("128: Rename shows only when the database has 128 (its table answers; a missing table or any error reads as no)", async () => {
+  it("128: Rename shows only when the database has 128 (its name table answers; a missing table or any error reads as no)", async () => {
     const base = { site_network_settings: { data: null, error: null }, site_networks: { data: [], error: null } };
-    expect((await loadSiteNetworks(fakeClient({ ...base, clock_in_network_refusals: { data: null, error: { code: "PGRST205", message: "missing" } } }))).canRename).toBe(false);
-    expect((await loadSiteNetworks(fakeClient({ ...base, clock_in_network_refusals: { data: [], error: null } }))).canRename).toBe(true);
+    expect((await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: null, error: { code: "PGRST205", message: "missing" } } }))).canRename).toBe(false);
+    expect((await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: [], error: null } }))).canRename).toBe(true);
+  });
+
+  it("128: a name given to a network is shown in place of its saved label; others keep theirs", async () => {
+    const nets = [{ id: "n1", network: "203.0.113.7/32", label: "Site network", created_at: "x" }, { id: "n2", network: "198.51.100.0/24", label: "Yard", created_at: "y" }];
+    const base = { site_network_settings: { data: null, error: null }, site_networks: { data: nets, error: null } };
+    const got = await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: [{ network_id: "n1", label: "Main workshop" }], error: null } }));
+    expect(got.networks.map((n) => n.label)).toEqual(["Main workshop", "Yard"]);
+    const before = await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: null, error: { code: "PGRST205", message: "missing" } } }));
+    expect(before.networks.map((n) => n.label)).toEqual(["Site network", "Yard"]);
   });
 
   it("128: renameSiteNetwork calls rename_site_network with the key, the id and the trimmed name", async () => {

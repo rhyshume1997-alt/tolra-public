@@ -1,5 +1,5 @@
 -- Migration 128 (Settings > Workshop network: rename, refused clock actions recorded for the admin's banner). Read only: every row
--- should be TRUE (7). Bodies are compared with every whitespace character removed (an SQL-editor paste may store CRLF).
+-- should be TRUE (8). Bodies are compared with every whitespace character removed (an SQL-editor paste may store CRLF).
 WITH fn(sig, oid, secdef, config, body) AS (
   SELECT x.sig, p.oid, p.prosecdef, p.proconfig, md5(regexp_replace(p.prosrc, '\s', '', 'g'))
   FROM unnest(ARRAY['public.rename_site_network(uuid,uuid,text)', 'public.record_clock_in_refusal(uuid,text)', 'public.purge_site_network_ips(boolean)',
@@ -30,7 +30,7 @@ UNION ALL SELECT 'callable_functions', (
            AND has_function_privilege('authenticated', f.oid, 'EXECUTE') AND NOT has_function_privilege('anon', f.oid, 'EXECUTE')
            AND NOT EXISTS (SELECT 1 FROM pg_proc p, aclexplode(p.proacl) a WHERE p.oid = f.oid AND a.grantee = 0 AND a.privilege_type = 'EXECUTE'))
   FROM fn f WHERE f.sig IN ('public.rename_site_network(uuid,uuid,text)', 'public.record_clock_in_refusal(uuid,text)', 'public.purge_site_network_ips(boolean)'))
-  AND (SELECT body = '235122cd4d464c5aa867f9d449ac82f0' FROM fn WHERE sig = 'public.rename_site_network(uuid,uuid,text)')
+  AND (SELECT body = 'ec837861a819fa3582206f5679b4cc3f' FROM fn WHERE sig = 'public.rename_site_network(uuid,uuid,text)')
   AND (SELECT body = '5d7deffec96d2be139b5b1586d480856' FROM fn WHERE sig = 'public.record_clock_in_refusal(uuid,text)')
   AND (SELECT body = '8bf4c2dbdb1b11618cabc6a1520ebd75' FROM fn WHERE sig = 'public.purge_site_network_ips(boolean)')
 -- The internal ones: invoker, pinned, no API role (the ip-purge cron calls site_network_ip_purge as the service role).
@@ -42,16 +42,28 @@ UNION ALL SELECT 'internal_functions', (
   AND (SELECT body = '53348dc930741ac3eae1ec3258337871' FROM fn WHERE sig = 'public.site_network_ip_purge(uuid,integer)')
   AND (SELECT body = '480ad265498cee457e7ccf0344fe596a' FROM fn WHERE sig = 'public.clock_in_refusal_ip_purge(uuid,integer)')
   AND has_function_privilege('service_role', 'public.site_network_ip_purge(uuid,integer)'::regprocedure, 'EXECUTE')
--- A seen address never becomes a site network by itself (078's rule; 078's verify row only_admin_adds_site_networks reads FALSE after 128
--- by design, because rename_site_network also updates site_networks): the only writers are add_site_network (an admin's explicit save)
--- and rename_site_network, whose one UPDATE changes the label only.
+-- A seen address never becomes a site network by itself (078's rule, unchanged: add_site_network is still the only writer of
+-- site_networks); a rename writes the name table only, never the network.
 UNION ALL SELECT 'only_admin_saves_site_networks', coalesce((
-  SELECT array_agg(p.oid::regprocedure::TEXT ORDER BY 1) = ARRAY['add_site_network(uuid,text,text)', 'rename_site_network(uuid,uuid,text)']
+  SELECT array_agg(p.oid::regprocedure::TEXT ORDER BY 1) = ARRAY['add_site_network(uuid,text,text)']
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname IN ('public', 'security_audit') AND p.prosrc ~* '(insert\s+into|update)\s+(public\.)?site_networks\M')
-  AND (SELECT p.prosrc LIKE '%site_network_admin_org()%' AND p.prosrc LIKE '%UPDATE public.site_networks SET label = v_label WHERE organization_id = v_org AND id = p_id;%'
-              AND (length(p.prosrc) - length(replace(p.prosrc, 'UPDATE public.site_networks', ''))) = length('UPDATE public.site_networks')
-       FROM pg_proc p WHERE p.oid = to_regprocedure('public.rename_site_network(uuid,uuid,text)')), FALSE)
+  AND (SELECT array_agg(p.oid::regprocedure::TEXT ORDER BY 1) = ARRAY['rename_site_network(uuid,uuid,text)']
+       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname IN ('public', 'security_audit') AND p.prosrc ~* '(insert\s+into|update)\s+(public\.)?site_network_names\M')
+  AND (SELECT p.prosrc LIKE '%site_network_admin_org()%' FROM pg_proc p WHERE p.oid = to_regprocedure('public.rename_site_network(uuid,uuid,text)')), FALSE)
+-- The names: RLS on, admin and office of the company read them (as site_networks), no API writes, audited, removed with the network.
+UNION ALL SELECT 'names_table_rules', coalesce((
+  SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = to_regclass('public.site_network_names'))
+  AND NOT EXISTS (SELECT 1 FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) p
+                  WHERE has_table_privilege(r, 'public.site_network_names', p))
+  AND NOT has_table_privilege('anon', 'public.site_network_names', 'SELECT')
+  AND (SELECT count(*) = 1 AND bool_and(p.cmd = 'SELECT' AND p.qual LIKE '%current_user_organization_id()%' AND p.qual LIKE '%''office''%')
+       FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'site_network_names')
+  AND (SELECT count(*) = 3 FROM pg_trigger g WHERE g.tgrelid = to_regclass('public.site_network_names') AND g.tgenabled = 'O'
+         AND g.tgname IN ('audit_site_network_names_changes', 'support_read_only', 'admin_mfa'))
+  AND EXISTS (SELECT 1 FROM pg_constraint k WHERE k.conrelid = to_regclass('public.site_network_names') AND k.contype = 'f'
+              AND k.confrelid = to_regclass('public.site_networks') AND k.confdeltype = 'c'), FALSE)
 -- No refusal address older than the retention period is still kept (the purge has run since; informational on a fresh project: TRUE).
 UNION ALL SELECT 'no_expired_refusal_address', coalesce(NOT EXISTS (
   SELECT 1 FROM public.clock_in_network_refusals r WHERE r.ip IS NOT NULL AND r.attempted_at < now() - public.site_network_ip_retention() - INTERVAL '2 days'), FALSE);
