@@ -225,8 +225,10 @@ for (const role of ["office", "workshop"] as const) {
     const user = company[role];
     const { context, page } = await openAs(browser, user, canControl() ? LOCK_IP : null);
     try {
+      // The middleware is the real gate (ROUTE_ROLES: /settings is admin only): the page is never served, the browser is sent to the
+      // dashboard (as roles.spec.ts asserts). The "Access Denied" heading is only the cosmetic RoleGate fallback, never reached here.
       await page.goto("/settings");
-      await expect(page.getByRole("heading", { name: "Access Denied" })).toBeVisible();
+      await expect(page).toHaveURL(/\/dashboard/);
       await expect(page.getByTestId("clock-in-lock-card")).toHaveCount(0);
       await expect(page.getByText("Clock-in network lock")).toHaveCount(0);
     } finally {
@@ -387,7 +389,7 @@ test("Admin > Users: the admin toggles Can clock in off site for the workshop us
   const office = await openAs(browser, company.office, null);
   try {
     await office.page.goto("/admin/users");
-    await expect(office.page.getByRole("heading", { name: "Access Denied" })).toBeVisible();
+    await expect(office.page).toHaveURL(/\/dashboard/); // /admin is admin only in the middleware: sent to the dashboard, not served
     await expect(office.page.getByTestId("clock-in-off-site")).toHaveCount(0);
   } finally {
     await office.context.close();

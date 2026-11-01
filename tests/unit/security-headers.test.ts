@@ -43,9 +43,18 @@ beforeEach(() => vi.unstubAllEnvs());
 afterEach(() => vi.unstubAllEnvs());
 
 describe("next.config.mjs security headers (production)", () => {
-  it("applies one rule to every path", async () => {
+  it("applies one rule to every path, plus one narrower rule that carries only the accountant's-link CSP", async () => {
     const { rules } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
-    expect(rules.map((rule) => rule.source)).toEqual(["/(.*)"]);
+    expect(rules.map((rule) => rule.source)).toEqual(["/(.*)", "/api/integrations/invite/:token([A-Za-z0-9_-]{43})"]);
+    expect(rules[1].headers.map((header) => header.key)).toEqual(["Content-Security-Policy"]);
+  });
+
+  it("the accountant's link CSP is the global CSP with https://login.xero.com added to form-action and nothing else", async () => {
+    const { rules, get } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
+    const global = get("Content-Security-Policy") ?? "";
+    const invite = rules[1].headers[0].value;
+    expect(invite).not.toBe(global);
+    expect(invite).toBe(global.replace("form-action 'self'", "form-action 'self' https://login.xero.com"));
   });
 
   it("HSTS: includeSubDomains and at least 180 days", async () => {
