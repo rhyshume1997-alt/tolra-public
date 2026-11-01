@@ -76,9 +76,9 @@ describe("year-end export with payments of unknown amount", () => {
     expect(row("INV-0004")).toMatchObject({ paid: 120, balance: 0 });
     expect(pdfData["INV-0004"]).toMatchObject({ payments: 120, paid: true, paymentUnknown: false });
 
-    expect(problems.filter((p) => /payment unknown/.test(p))).toHaveLength(2);
-    expect(strFromU8(files["problems.txt"])).toMatch(/Invoice INV-0001: payment unknown[^\r\n]*no payment amount was ever recorded/);
-    expect(strFromU8(files["problems.txt"])).toMatch(/Invoice INV-0002: payment unknown[^\r\n]*still to be confirmed/);
+    expect(problems.filter((p) => /payment to confirm/.test(p))).toHaveLength(2);
+    expect(strFromU8(files["problems.txt"])).toMatch(/Invoice INV-0001: payment to confirm[^\r\n]*no payment amount was ever recorded/);
+    expect(strFromU8(files["problems.txt"])).toMatch(/Invoice INV-0002: payment to confirm[^\r\n]*still to be confirmed/);
     const csv = strFromU8(files["summary.csv"]);
     expect(csv).toMatch(/Invoice,INV-0001,[^\r\n]*,100\.00,20\.00,120\.00,,,2026-03-10,paid,/);
     const payments = strFromU8(files["payments.csv"]);

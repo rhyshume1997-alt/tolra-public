@@ -83,7 +83,7 @@ export function invoicePaidFigures(r: Row): { paid: number | null; balance: numb
   const paid = knownPaid(r);
   if (paid === null) {
     const why = r.payment_unverified ? "imported without payment details and still to be confirmed" : "marked paid but no payment amount was ever recorded";
-    return { paid: null, balance: null, problem: `Invoice ${ref}: payment unknown (${why}). Paid and balance due are left blank in summary.csv; nothing has been guessed.` };
+    return { paid: null, balance: null, problem: `Invoice ${ref}: payment to confirm (${why}). Paid and balance due are left blank in summary.csv; nothing has been guessed.` };
   }
   const closed = invoiceLifecycle(r.status as string | null) === "closed";
   return { paid, balance: closed ? 0 : balanceDue(Number(r.total || 0), paid, Number(r.credited_amount || 0), Number(r.refunded_amount || 0)), problem: null };
