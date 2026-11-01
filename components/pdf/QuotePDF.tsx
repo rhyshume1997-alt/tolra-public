@@ -1,5 +1,6 @@
 import { BaseDocumentPDF, type PdfDocumentData, type PdfKeyValue, type PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
+import { customerPoKeyValue } from "@/lib/customer-po";
 
 export type QuotePdfData = {
   /** QUO-####. */
@@ -21,16 +22,22 @@ export type QuotePdfData = {
   validUntil?: string;
   /** Customer-facing scope of work (the quote's description). */
   scope?: string;
+  /** The customer's own PO (migration 123): printed as "Customer PO" beside the quote number, only when there is one. */
+  customerPo?: string;
   company?: CompanyProfile;
   logoSrc?: string;
   /** Stored totals of the record: rendering refuses lines that don't add up to them (lib/document-integrity). */
   storedTotals?: PdfDocumentData["storedTotals"];
 };
 
-/** Header rows of a quote: number, date, validity (only when a date is stored: never "Not set" beside "Valid for N days") and terms. */
-export function quoteKeyValues(data: Pick<QuotePdfData, "number" | "date" | "validUntil" | "terms">, company: Pick<CompanyProfile, "defaultQuoteTerms">): PdfKeyValue[] {
+/**
+ * Header rows of a quote: number, the customer's PO (only when there is one), date, validity (only when a date is stored: never "Not
+ * set" beside "Valid for N days") and terms. At most five rows, the key/value box's room.
+ */
+export function quoteKeyValues(data: Pick<QuotePdfData, "number" | "date" | "validUntil" | "terms" | "customerPo">, company: Pick<CompanyProfile, "defaultQuoteTerms">): PdfKeyValue[] {
   return [
     { label: "Our Quote No.", value: data.number },
+    ...customerPoKeyValue(data.customerPo),
     { label: "Date", value: data.date },
     ...(data.validUntil?.trim() ? [{ label: "Valid Until", value: data.validUntil }] : []),
     { label: "Terms", value: data.terms || company.defaultQuoteTerms },

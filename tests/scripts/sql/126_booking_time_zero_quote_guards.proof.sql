@@ -145,3 +145,41 @@ SELECT bool_and(q.status IS NOT DISTINCT FROM s.status AND q.accepted_at IS NOT 
        (SELECT count(*) FROM public.sales_orders so WHERE so.quote_id IN (SELECT id FROM proof.qsnap WHERE id NOT IN (proof.id('q_penny'), proof.id('q_ok')))) = 0 AS no_order_for_refused,
        (SELECT count(*) FROM public.sales_orders so WHERE so.quote_id = proof.id('q_ok')) = 1 AS control_order_made
 FROM public.quotes q JOIN proof.qsnap s ON s.id = q.id;
+
+-- ---- Part 3 (with 123 applied: quotes.customer_po): 126's accept_quote keeps 123's PO default; a 0.00 quote with a PO is refused ----
+-- 123 does not replace accept_quote: its create_sales_order_from_quote takes the quote's customer_po when the dialog gives none. So
+-- 126's accept_quote (068's body plus the 0.00 check) must still pass the dialog's PO through, and refuse 0.00 before any order.
+TRUNCATE proof.res;
+DO $$
+DECLARE o UUID := proof.id('o'); q UUID; k TEXT; st TEXT; tv NUMERIC; po TEXT;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'quotes' AND column_name = 'customer_po') THEN
+    RAISE NOTICE 'Part 3 skipped: 123 (quotes.customer_po) is not applied';
+    RETURN;
+  END IF;
+  FOR k, st, tv, po IN SELECT * FROM (VALUES ('q_po', 'sent', 100::numeric, 'CUST-PO-1'), ('q_po_dialog', 'sent', 100, 'CUST-PO-2'),
+      ('q_po_zero', 'sent', 0, 'CUST-PO-0'), ('q_po_zero_draft', 'draft', 0, 'CUST-PO-00')) v(k, st, tv, po) LOOP
+    EXECUTE 'INSERT INTO public.quotes (organization_id, quote_ref, customer, status, total_value, vat_enabled, customer_po)
+             VALUES ($1, $2, $3, $4, $5, FALSE, $6) RETURNING id' INTO q USING o, 'QUO-P-' || k, 'Synthetic Co', st, tv, po;
+    INSERT INTO public.quote_line_items (organization_id, quote_id, position, description, quantity, unit_price, vat_pct, vat_exempt)
+      VALUES (o, q, 0, 'Line', 1, tv, 20, FALSE);
+    INSERT INTO proof.ids VALUES (k, q);
+  END LOOP;
+END $$;
+SELECT proof.as_user('office'); SET ROLE authenticated;
+SELECT proof.attempt('P1 office: quote with customer PO, dialog empty: accepted', 'ok', format('SELECT public.accept_quote(%L, NULL, NULL)', proof.id('q_po')))
+  WHERE proof.id('q_po') IS NOT NULL;
+SELECT proof.attempt('P2 office: quote with customer PO, dialog PO given: accepted', 'ok', format('SELECT public.accept_quote(%L, %L, NULL)', proof.id('q_po_dialog'), 'DIALOG-9'))
+  WHERE proof.id('q_po_dialog') IS NOT NULL;
+SELECT proof.attempt('P3 office: sent 0.00 quote with customer PO, dialog empty', '22023/quote_zero_value', format('SELECT public.accept_quote(%L, NULL, NULL)', proof.id('q_po_zero')))
+  WHERE proof.id('q_po_zero') IS NOT NULL;
+SELECT proof.attempt('P4 office: draft 0.00 quote with customer PO, dialog PO given', '22023/quote_zero_value', format('SELECT public.accept_quote(%L, %L, NULL)', proof.id('q_po_zero_draft'), 'DIALOG-0'))
+  WHERE proof.id('q_po_zero_draft') IS NOT NULL;
+RESET ROLE;
+SELECT n, path, expect, got, ok, msg FROM proof.res ORDER BY n;
+SELECT count(*) FILTER (WHERE ok) AS pass, count(*) FILTER (WHERE NOT ok) AS fail FROM proof.res;
+SELECT (SELECT count(*) FROM public.sales_orders so WHERE so.quote_id = proof.id('q_po') AND so.customer_po = 'CUST-PO-1') = 1 AS order_po_from_quote,
+       (SELECT count(*) FROM public.sales_orders so WHERE so.quote_id = proof.id('q_po_dialog') AND so.customer_po = 'DIALOG-9') = 1 AS dialog_po_wins,
+       (SELECT count(*) FROM public.sales_orders so WHERE so.quote_id IN (proof.id('q_po_zero'), proof.id('q_po_zero_draft'))) = 0 AS no_order_for_zero,
+       (SELECT array_agg(q.status ORDER BY q.quote_ref) FROM public.quotes q WHERE q.id IN (proof.id('q_po_zero'), proof.id('q_po_zero_draft'))) = ARRAY['sent', 'draft'] AS zero_quotes_unchanged
+WHERE proof.id('q_po') IS NOT NULL;
