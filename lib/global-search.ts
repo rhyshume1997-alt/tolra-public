@@ -17,19 +17,18 @@ export const GROUP_LIMIT = 5;
 /** A read that takes longer than this is left out of the answer (the group is reported as unavailable), not waited for. */
 export const SEARCH_TIMEOUT_MS = 4000;
 
-export type GroupKey = "quotes" | "invoices" | "jobs" | "purchase_orders" | "customers" | "lines";
+export type GroupKey = "quotes" | "invoices" | "jobs" | "purchase_orders" | "customers";
 export const GROUP_LABELS: Record<GroupKey, string> = {
   quotes: "Quotes",
   invoices: "Invoices",
   jobs: "Jobs",
   purchase_orders: "Supplier purchase orders",
   customers: "Customers",
-  lines: "Line text",
 };
-export const GROUP_ORDER: GroupKey[] = ["quotes", "invoices", "jobs", "purchase_orders", "customers", "lines"];
+export const GROUP_ORDER: GroupKey[] = ["quotes", "invoices", "jobs", "purchase_orders", "customers"];
 
 /** The roles that may open each group's page (middleware ROUTE_ROLES) and the page-access section an admin can hide it under. */
-const GROUP_ACCESS: Record<Exclude<GroupKey, "lines">, { roles: string[]; section: string }> = {
+const GROUP_ACCESS: Record<GroupKey, { roles: string[]; section: string }> = {
   quotes: { roles: ["admin", "office"], section: "quotes" },
   invoices: { roles: ["admin", "office"], section: "invoices" },
   jobs: { roles: ["admin", "office", "workshop", "viewer"], section: "jobs" },
@@ -65,14 +64,10 @@ export function likePattern(term: string): string {
 /** The groups this person's roles and page access let them search, in display order. */
 export function allowedGroups(roles: ReadonlyArray<string | null | undefined>, hiddenSections: ReadonlyArray<string> = []): GroupKey[] {
   const held = roles.filter(Boolean) as string[];
-  const open = (group: Exclude<GroupKey, "lines">) => {
-    const access = GROUP_ACCESS[group];
+  return GROUP_ORDER.filter((key) => {
+    const access = GROUP_ACCESS[key];
     return access.roles.some((role) => held.includes(role)) && !hiddenSections.includes(access.section);
-  };
-  const allowed = GROUP_ORDER.filter((key): key is Exclude<GroupKey, "lines"> => key !== "lines" && open(key));
-  // Line text belongs to a quote or an invoice, so it needs access to one of those pages.
-  const lines = open("quotes") || open("invoices");
-  return GROUP_ORDER.filter((key) => (key === "lines" ? lines : allowed.includes(key)));
+  });
 }
 
 type Reply = PromiseLike<{ data: unknown; error: { code?: string | null; message?: string | null } | null }>;
@@ -81,7 +76,6 @@ export type SearchQuery = {
   select(columns: string): SearchQuery;
   eq(column: string, value: unknown): SearchQuery;
   or(filter: string): SearchQuery;
-  ilike(column: string, pattern: string): SearchQuery;
   order(column: string, options: { ascending: boolean }): SearchQuery;
   limit(n: number): Reply;
 };
@@ -117,7 +111,7 @@ const orFilter = (columns: string[], pattern: string) => columns.map((column) =>
 
 type Finder = (db: SearchClient, org: string, pattern: string) => Promise<SearchResult[]>;
 
-const FINDERS: Record<Exclude<GroupKey, "lines">, Finder> = {
+const FINDERS: Record<GroupKey, Finder> = {
   quotes: async (db, org, pattern) => {
     const rows = await withOptionalPo((withPo) =>
       db.from("quotes").select(withPo ? "id, quote_ref, customer, customer_po" : "id, quote_ref, customer")
@@ -153,39 +147,6 @@ const FINDERS: Record<Exclude<GroupKey, "lines">, Finder> = {
   },
 };
 
-/** The parent a line item's read embedded (PostgREST returns one object, or a one-item array). */
-function parentOf(row: Row, table: string): Row | null {
-  const value = row[table];
-  const one = Array.isArray(value) ? value[0] : value;
-  return one && typeof one === "object" ? (one as Row) : null;
-}
-
-const clip = (value: string, max = 80) => (value.length > max ? `${value.slice(0, max - 1)}\u2026` : value);
-
-/** Quote and invoice line descriptions, each result pointing at its parent document. Only the documents the person may open are read. */
-async function findLines(db: SearchClient, org: string, pattern: string, kinds: Array<"quotes" | "invoices">): Promise<SearchResult[]> {
-  const reads = kinds.map(async (kind): Promise<SearchResult[]> => {
-    const lineTable = kind === "quotes" ? "quote_line_items" : "invoice_line_items";
-    const parentKey = kind === "quotes" ? "quote_id" : "invoice_id";
-    const refKey = kind === "quotes" ? "quote_ref" : "invoice_ref";
-    const rows = await read(db.from(lineTable).select(`id, ${parentKey}, description, ${kind}(id, ${refKey}, customer)`)
-      .eq("organization_id", org).ilike("description", pattern).order("created_at", { ascending: false }).limit(GROUP_LIMIT));
-    return rows.flatMap((row): SearchResult[] => {
-      const parent = parentOf(row, kind);
-      const parentId = text(parent?.id) || text(row[parentKey]);
-      if (!parentId) return [];
-      const label = kind === "quotes" ? "Quote" : "Invoice";
-      const ref = text(parent?.[refKey]) || (kind === "quotes" ? "" : "draft");
-      return [{ id: text(row.id), title: clip(text(row.description)), subtitle: joinParts(`${label} ${ref}`.trim(), text(parent?.customer)), href: kind === "quotes" ? quoteHref(parentId) : invoiceHref(parentId) }];
-    });
-  });
-  const settled = await Promise.allSettled(reads);
-  const ok = settled.flatMap((s) => (s.status === "fulfilled" ? [s.value] : []));
-  // Every read failed: the group is unavailable rather than quietly empty.
-  if (!ok.length) throw (settled[0] as PromiseRejectedResult).reason;
-  return ok.flat().slice(0, GROUP_LIMIT);
-}
-
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("search timed out")), ms); });
@@ -200,11 +161,7 @@ export async function runSearch(db: SearchClient, org: string, rawQuery: string,
   const query = normaliseQuery(rawQuery);
   if (query.length < MIN_QUERY || !allowed.length) return { query, groups: [], unavailable: [] };
   const pattern = likePattern(query);
-  const lineKinds = (["quotes", "invoices"] as const).filter((kind) => allowed.includes(kind));
-  const settled = await Promise.allSettled(allowed.map((key) => withTimeout(
-    key === "lines" ? findLines(db, org, pattern, lineKinds) : FINDERS[key](db, org, pattern),
-    timeoutMs,
-  )));
+  const settled = await Promise.allSettled(allowed.map((key) => withTimeout(FINDERS[key](db, org, pattern), timeoutMs)));
   const groups: SearchGroup[] = [];
   const unavailable: GroupKey[] = [];
   settled.forEach((outcome, index) => {

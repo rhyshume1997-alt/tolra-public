@@ -1,7 +1,7 @@
 /**
  * The global search route (GET /api/search) and lib/global-search.ts:
  *   - same-origin and signed-in only; any role, but each role only gets the groups its pages allow (workshop and viewer: Jobs only);
- *     an admin's hidden page hides its group (and line text when both quotes and invoices are hidden);
+ *     an admin's hidden page hides its group;
  *   - reads go through the caller's own client only (the service role is never created), filtered to the caller's company;
  *   - ilike wildcards the person typed are escaped; filter-structure characters cannot add conditions; length cap 100;
  *   - under 2 characters reads nothing; at most 5 per group; groups come back in order, empty ones left out;
@@ -13,7 +13,7 @@ import { NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;
-type Call = { table: string; select: string; eq: Array<[string, unknown]>; or?: string; ilike?: [string, string]; limit?: number };
+type Call = { table: string; select: string; eq: Array<[string, unknown]>; or?: string; limit?: number };
 
 const db = vi.hoisted(() => ({
   calls: [] as Call[],
@@ -29,7 +29,6 @@ function builder(table: string) {
     select: (cols: string) => { call.select = cols; return q; },
     eq: (column: string, value: unknown) => { call.eq.push([column, value]); return q; },
     or: (filter: string) => { call.or = filter; return q; },
-    ilike: (column: string, pattern: string) => { call.ilike = [column, pattern]; return q; },
     order: () => q,
     limit: (n: number) => {
       call.limit = n;
@@ -59,7 +58,8 @@ vi.mock("@/lib/server/auth", () => ({
     };
   }),
 }));
-vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => { throw new Error("service role used"); } }));
+const admin = vi.hoisted(() => ({ created: vi.fn() }));
+vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => { admin.created(); throw new Error("service role used"); } }));
 
 import { GET } from "@/app/api/search/route";
 import { allowedGroups, likePattern, missingColumn, normaliseQuery, runSearch, type SearchClient } from "@/lib/global-search";
@@ -78,8 +78,6 @@ beforeEach(() => {
     jobs: [{ id: "j1", job_no: "J-3001", customer: "Acme Ltd", description: "Gland nut" }],
     purchase_orders: [{ id: "p1", po_ref: "PO-0001", po_number: "PO-0001", supplier: "Steel Co" }],
     customers: [{ id: "c1", name: "Acme Ltd", email: "buyer@acme.test" }],
-    quote_line_items: [{ id: "ql1", quote_id: "q1", description: "Acme bracket", quotes: { id: "q1", quote_ref: "QUO-1001", customer: "Acme Ltd" } }],
-    invoice_line_items: [{ id: "il1", invoice_id: "i1", description: "Acme bracket", invoices: [{ id: "i1", invoice_ref: "INV-2001", customer: "Acme Ltd" }] }],
   };
   auth.role = "office"; auth.secondary = null; auth.hidden = []; auth.support = false; auth.sameOrigin = true; auth.status = 200;
 });
@@ -98,10 +96,10 @@ describe("guards", () => {
 });
 
 describe("what each role searches", () => {
-  it("admin and office: every group, in order, with line text", async () => {
+  it("admin and office: every group, in order", async () => {
     for (const role of ["admin", "office"]) {
       auth.role = role;
-      expect((await answer("acme")).groups.map((g) => g.key), role).toEqual(["quotes", "invoices", "jobs", "purchase_orders", "customers", "lines"]);
+      expect((await answer("acme")).groups.map((g) => g.key), role).toEqual(["quotes", "invoices", "jobs", "purchase_orders", "customers"]);
     }
   });
   it("workshop and viewer: Jobs only, and nothing else is even read", async () => {
@@ -115,19 +113,23 @@ describe("what each role searches", () => {
     auth.role = "workshop"; auth.secondary = "office";
     expect((await answer("acme")).groups.map((g) => g.key)).toContain("quotes");
   });
-  it("a page hidden from the person hides its group; line text needs quotes or invoices", () => {
-    expect(allowedGroups(["office"], ["quotes"])).toEqual(["invoices", "jobs", "purchase_orders", "customers", "lines"]);
+  it("a page hidden from the person hides its group", () => {
+    expect(allowedGroups(["office"], ["quotes"])).toEqual(["invoices", "jobs", "purchase_orders", "customers"]);
     expect(allowedGroups(["office"], ["quotes", "invoices"])).toEqual(["jobs", "purchase_orders", "customers"]);
-    expect(allowedGroups(["office"], ["jobs", "purchase-orders", "customers"])).toEqual(["quotes", "invoices", "lines"]);
+    expect(allowedGroups(["office"], ["jobs", "purchase-orders", "customers"])).toEqual(["quotes", "invoices"]);
     expect(allowedGroups([null, undefined])).toEqual([]);
   });
-  it("line text reads only the line tables the person may open", async () => {
-    auth.hidden = ["invoices"]; db.calls = [];
-    await answer("acme");
-    const tables = db.calls.map((c) => c.table);
-    expect(tables).toContain("quote_line_items");
-    expect(tables).not.toContain("invoice_line_items");
-    expect(tables).not.toContain("invoices");
+  it("a hidden page's table is never read", async () => {
+    auth.hidden = ["invoices", "purchase-orders"]; db.calls = [];
+    expect((await answer("acme")).groups.map((g) => g.key)).toEqual(["quotes", "jobs", "customers"]);
+    expect(db.calls.map((c) => c.table).sort()).toEqual(["customers", "jobs", "quotes"]);
+  });
+  it("admin and office read exactly the five record tables, never a line-item table", async () => {
+    for (const role of ["admin", "office"]) {
+      auth.role = role; db.calls = [];
+      await answer("acme");
+      expect(db.calls.map((c) => c.table).sort(), role).toEqual(["customers", "invoices", "jobs", "purchase_orders", "quotes"]);
+    }
   });
   it("a support session reads the same way (read only: no write method exists on the stand-in client)", async () => {
     auth.support = true;
@@ -137,8 +139,9 @@ describe("what each role searches", () => {
 
 describe("company scoping and the caller's own client", () => {
   it("every read is filtered to the session's company, through the caller's client (the service role throws if created)", async () => {
-    await answer("acme");
-    expect(db.calls.length).toBeGreaterThanOrEqual(7);
+    expect((await get("acme")).status).toBe(200);
+    expect(admin.created).not.toHaveBeenCalled();
+    expect(db.calls).toHaveLength(5);
     for (const call of db.calls) expect(call.eq, call.table).toContainEqual(["organization_id", "org-1"]);
   });
 });
@@ -186,14 +189,11 @@ describe("grouping and links", () => {
     expect(href("jobs")).toEqual(["/jobs?job=j1"]);
     expect(href("purchase_orders")).toEqual(["/purchase-orders?po=p1"]);
     expect(href("customers")).toEqual(["/customers?customer=c1"]);
-    // Line text points at the parent document, quote or invoice.
-    expect(href("lines")).toEqual(["/quotes?quote=q1", "/invoices?invoice=i1"]);
   });
   it("shows the ref, the customer and the customer's PO; a draft invoice has no number", async () => {
     const { groups } = await answer("acme");
     expect(groups.find((g) => g.key === "quotes")!.results[0]).toMatchObject({ title: "QUO-1001", subtitle: "Acme Ltd · PO PO-77" });
     expect(groups.find((g) => g.key === "invoices")!.results.map((r) => r.title)).toEqual(["INV-2001", "Draft invoice"]);
-    expect(groups.find((g) => g.key === "lines")!.results[0]).toMatchObject({ title: "Acme bracket", subtitle: "Quote QUO-1001 · Acme Ltd" });
   });
   it("groups with no match are left out; labels are the page names", async () => {
     db.rows.quotes = []; db.rows.customers = [];
@@ -201,12 +201,10 @@ describe("grouping and links", () => {
     expect(groups.map((g) => g.key)).not.toContain("quotes");
     expect(groups.find((g) => g.key === "purchase_orders")!.label).toBe("Supplier purchase orders");
   });
-  it("never more than 5 in a group, and line text totals 5 across quotes and invoices", async () => {
+  it("never more than 5 in a group", async () => {
     db.rows.jobs = Array.from({ length: 9 }, (_, i) => ({ id: `j${i}`, job_no: `J-${i}` }));
-    db.rows.quote_line_items = Array.from({ length: 5 }, (_, i) => ({ id: `ql${i}`, quote_id: `q${i}`, description: "d", quotes: { id: `q${i}`, quote_ref: `Q${i}` } }));
     const { groups } = await answer("acme");
     expect(groups.find((g) => g.key === "jobs")!.results).toHaveLength(5);
-    expect(groups.find((g) => g.key === "lines")!.results).toHaveLength(5);
   });
 });
 
@@ -240,11 +238,5 @@ describe("failure and time-out", () => {
     const result = await runSearch(supabase as unknown as SearchClient, "org-1", "acme", allowedGroups(["office"]), 20);
     expect(result.unavailable).toEqual(["customers"]);
     expect(result.groups.map((g) => g.key)).toContain("quotes");
-  });
-  it("line text is unavailable only when every line read failed", async () => {
-    db.failWhen = [{ table: "quote_line_items", includes: "id", error: { code: "XX000", message: "boom" } }];
-    expect((await answer("acme")).groups.map((g) => g.key)).toContain("lines");
-    db.failWhen.push({ table: "invoice_line_items", includes: "id", error: { code: "XX000", message: "boom" } });
-    expect((await answer("acme")).unavailable).toEqual(["lines"]);
   });
 });
