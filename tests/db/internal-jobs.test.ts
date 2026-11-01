@@ -337,12 +337,15 @@ describe("the table, the second step and dates", () => {
   });
 
   it("the date required and every start must fall in 2000..2100", async () => {
+    // A machine used only here: a not-complete booking from 2000-01-01 runs until now + its hours (042 booking_intervals), so on the
+    // shared mill it would clash with this file's own November bookings once the clock passes them.
+    const edge = (await adminClient().from("machines").insert({ organization_id: world.tenants.alpha.id, name: `Edge ${world.runId}` }).select("id").single()).data!.id as string;
     expect((await create(as.admin, { p_required: "1999-12-31" })).error?.code).toBe("22023");
     expect((await create(as.admin, { p_required: "2101-01-01" })).error?.code).toBe("22023");
-    expect((await create(as.admin, { p_machines: [{ machine_id: mill, hours: 1, start_at: "1999-12-31T23:00:00Z" }] })).error?.code).toBe("22023");
-    expect((await create(as.admin, { p_machines: [{ machine_id: mill, hours: 1, start_at: "2101-01-01T00:00:00Z" }] })).error?.code).toBe("22023");
-    expect((await create(as.admin, { p_required: "2100-12-31", p_machines: [{ machine_id: mill, hours: 1, start_at: "2100-12-31T08:00:00Z" }] })).error).toBeNull();
-    expect((await create(as.admin, { p_required: "2000-01-01", p_machines: [{ machine_id: mill, hours: 1, start_at: "2000-01-01T00:00:00Z" }] })).error).toBeNull();
+    expect((await create(as.admin, { p_machines: [{ machine_id: edge, hours: 1, start_at: "1999-12-31T23:00:00Z" }] })).error?.code).toBe("22023");
+    expect((await create(as.admin, { p_machines: [{ machine_id: edge, hours: 1, start_at: "2101-01-01T00:00:00Z" }] })).error?.code).toBe("22023");
+    expect((await create(as.admin, { p_required: "2100-12-31", p_machines: [{ machine_id: edge, hours: 1, start_at: "2100-12-31T08:00:00Z" }] })).error).toBeNull();
+    expect((await create(as.admin, { p_required: "2000-01-01", p_machines: [{ machine_id: edge, hours: 1, start_at: "2000-01-01T00:00:00Z" }] })).error).toBeNull();
   });
 });
 
