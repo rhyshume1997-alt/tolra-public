@@ -30,7 +30,7 @@ export type Permission = { scope: string; text: string };
 
 /**
  * The permissions the administrator approves, in plain words. `.default` approves every permission on the app registration, so the
- * default is the registration's exact list (MICROSOFT_REGISTRATION_SCOPES: offline_access, User.Read, Mail.Send, Mail.Read).
+ * default is the registration's exact list (MICROSOFT_REGISTRATION_SCOPES, the same list Connect asks for: offline_access, User.Read, Mail.Send, Mail.Read).
  */
 export function permissionsFor(scopes: readonly string[] = MICROSOFT_REGISTRATION_SCOPES): Permission[] {
   return scopes.map((scope) => ({ scope, text: SCOPE_WORDS[scope] ?? scope }));

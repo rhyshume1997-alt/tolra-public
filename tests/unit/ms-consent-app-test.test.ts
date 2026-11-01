@@ -118,6 +118,8 @@ describe("the admin-consent URL and the permissions", () => {
     expect(Object.fromEntries(list.map((p) => [p.scope, p.text]))).toEqual({ offline_access: "Stay signed in", "User.Read": "Read your profile", "Mail.Send": "Send mail as you", "Mail.Read": "Read your mail" });
     // The sign-in asks for a subset of the registration, never something the administrator was not shown.
     for (const scope of MICROSOFT_SCOPES) expect(MICROSOFT_REGISTRATION_SCOPES as readonly string[], scope).toContain(scope);
+    // One list (C1 added Mail.Read to Connect): the registration is exactly what Connect asks for, so the two can never drift apart.
+    expect([...MICROSOFT_REGISTRATION_SCOPES]).toEqual([...MICROSOFT_SCOPES]);
     // An unknown scope is shown by its own name.
     expect(permissionsFor([...MICROSOFT_REGISTRATION_SCOPES, "Calendars.Read"]).slice(-1)).toEqual([{ scope: "Calendars.Read", text: "Calendars.Read" }]);
   });

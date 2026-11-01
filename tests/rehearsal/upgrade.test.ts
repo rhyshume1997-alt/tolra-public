@@ -345,7 +345,12 @@ const F078 = later.find(IS_078);
 const F092 = later.find((file) => file.endsWith("_release_ends_session.sql"));
 /** 114 (clock-in network lock) adds two triggers on attendance_events and a table referencing it: torn down first, re-applied last. */
 const F114 = later.find((file) => file.endsWith("_clock_in_network_lock.sql"));
-const TIME_FILES_WITH_074 = [...TIME_FILES, ...(F074 ? [F074] : []), ...(F075 ? [F075] : []), ...(F078 ? [F078] : []), ...(F092 ? [F092] : []), ...(F114 ? [F114] : [])];
+/**
+ * 128 (workshop network: rename, refused clock actions) widens 075's site_network_ops CHECK and replaces 078's two purge functions: the
+ * teardown drops those, so 128 is re-applied after 114 (its guard accepts 078's bodies).
+ */
+const F128 = later.find((file) => file.endsWith("_workshop_network.sql"));
+const TIME_FILES_WITH_074 = [...TIME_FILES, ...(F074 ? [F074] : []), ...(F075 ? [F075] : []), ...(F078 ? [F078] : []), ...(F092 ? [F092] : []), ...(F114 ? [F114] : []), ...(F128 ? [F128] : [])];
 
 /** Every function 050 to 052 create, and whether the API roles may run it (all others internal: no API role). */
 const TIME_FUNCTIONS: Record<"050" | "051" | "052", { internal: string[]; callable: string[] }> = {
@@ -497,6 +502,11 @@ async function expect076(db: Client, present: boolean) {
 
 /** Removes 052, 051 and 050 (in that order) inside the caller's transaction, data included: only ever rolled back. */
 const TIME_TEARDOWN = [
+  // 128 first (it needs 075, 078 and 114; its name table references 075's site_networks).
+  ...["rename_site_network(uuid,uuid,text)", "record_clock_in_refusal(uuid,text)", "clock_in_refusal_ip_purge(uuid,integer)",
+    "clock_in_refusal_answer(clock_in_network_refusals,boolean)"].map((f) => `drop function if exists public.${f}`),
+  "drop table if exists public.clock_in_network_refusals",
+  "drop table if exists public.site_network_names", // references 075's site_networks
   // 114 first (its marks reference attendance_events; its triggers are on it; it needs 075).
   "drop trigger if exists clock_in_network_lock on public.attendance_events",
   "drop trigger if exists zz_clock_in_network_unverified on public.attendance_events",

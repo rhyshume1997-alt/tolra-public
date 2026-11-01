@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate, fmtTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { ADMIN_CONSENT_STATEMENT, NEEDS_107, cardStatusLabel, connectCardView, microsoftOutcomeMessage, type IntegrationOverview } from "@/lib/integrations/overview";
+import { ADMIN_CONSENT_STATEMENT, NEEDS_107, RECONNECT_FOR_MAIL, cardStatusLabel, connectCardView, mailSyncLine, microsoftOutcomeMessage, type IntegrationOverview, type MailboxSyncStatus } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 
 export type ConnectStatus = { db107: boolean; xero: { configured: boolean; problem?: string | null }; microsoft: { configured: boolean } };
@@ -27,10 +27,13 @@ export async function postIntegration(path: string): Promise<{ ok: true; body: R
  * them back here with ?microsoft=connected and the card says "All connected" with the mailbox and since when. Disconnect (confirmed) and
  * Test ("Working: <mailbox>" or Microsoft's exact reason). Connect is disabled until the platform owner has entered the app details.
  * Before 107 is applied the card says so and does nothing else.
+ * Inbox reading (C1, migration 127's mailbox_sync_status): "Last checked 10:42", or "Couldn't check mail: <plain reason>", or, for a
+ * connection made before C1 (sending only), "Reconnect to allow reading mail" (sending keeps working meanwhile). Before 127 nothing extra.
  */
 export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null }) {
   const params = useSearchParams();
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
+  const [sync, setSync] = useState<MailboxSyncStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
@@ -43,6 +46,9 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
     const { data, error } = await supabase.rpc("integration_overview", { p_provider: "microsoft" });
     if (error) return toast.error(friendlyError(error, "Couldn't load Microsoft 365."));
     setOverview(data as IntegrationOverview);
+    // 127 not applied (or not an admin): no inbox line.
+    const mail = await supabase.rpc("mailbox_sync_status");
+    setSync(mail.error ? null : (mail.data as MailboxSyncStatus));
   }, []);
 
   useEffect(() => { if (available) void load(); }, [available, load]);
@@ -115,11 +121,12 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
   }
 
   const linked = overview?.status === "connected" || overview?.status === "needs_reconnect";
+  const mailLine = overview?.status === "connected" ? mailSyncLine(sync, (iso) => fmtTime(iso)) : null;
   return (
     <Card data-testid="microsoft-card">
       <CardHeader>
         <CardTitle>Microsoft 365</CardTitle>
-        <CardDescription>Send Tolra&apos;s e-mails from this company&apos;s own mailbox. Someone with that mailbox signs in at Microsoft once and approves.</CardDescription>
+        <CardDescription>Send Tolra&apos;s e-mails from this company&apos;s own mailbox, and read its inbox into RFQs (read only: Tolra never marks, moves or deletes mail). Someone with that mailbox signs in at Microsoft once and approves.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {status === null ? <p className="text-sm text-slate-500">Loading…</p> : !available ? (
@@ -133,6 +140,10 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
             </p>
             {overview.status === "needs_reconnect" ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">{overview.status_reason ?? "Microsoft 365 needs to be connected again."}</p>
+            ) : null}
+            {mailLine ? (
+              <p role={mailLine.tone === "error" ? "alert" : "status"} data-testid="microsoft-mail-sync"
+                 className={`text-sm ${mailLine.tone === "ok" ? "text-slate-600" : mailLine.tone === "warn" ? "rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900" : "text-red-700"}`}>{mailLine.text}</p>
             ) : null}
             {view.notSetUp && overview.status !== "connected" ? (
               <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="microsoft-not-set-up">{view.message}</p>
@@ -164,7 +175,9 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
             ) : null}
             <div className="flex flex-wrap gap-2">
               {overview.status !== "connected" ? (
-                <Button onClick={connect} disabled={busy || view.connectDisabled}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect Microsoft 365"}</Button>
+                <Button onClick={connect} disabled={busy || view.connectDisabled}>{overview.status === "needs_reconnect" ? "Reconnect" : "Connect Microsoft 365"}</Button>
+              ) : mailLine?.reconnect ? (
+                <Button onClick={connect} disabled={busy || view.connectDisabled} data-testid="microsoft-reconnect-mail">{sync?.mail_read ? "Reconnect" : RECONNECT_FOR_MAIL}</Button>
               ) : null}
               {overview.status === "connected" ? <Button variant="outline" onClick={runTest} disabled={busy}>Test</Button> : null}
               {linked ? <Button variant="outline" onClick={() => setConfirm(true)} disabled={busy}>Disconnect</Button> : null}
