@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtDate } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { NEEDS_107, cardStatusLabel, connectCardView, microsoftOutcomeMessage, type IntegrationOverview } from "@/lib/integrations/overview";
+import { ADMIN_CONSENT_STATEMENT, NEEDS_107, cardStatusLabel, connectCardView, microsoftOutcomeMessage, type IntegrationOverview } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 
 export type ConnectStatus = { db107: boolean; xero: { configured: boolean; problem?: string | null }; microsoft: { configured: boolean } };
@@ -148,7 +148,7 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
                   <Button variant="outline" onClick={makeApproveLink} disabled={busy}>Get the link for your Microsoft admin</Button>
                 ) : (
                   <div className="space-y-2" data-testid="microsoft-approve-link">
-                    <p>Tolra asks for these permissions only:</p>
+                    <p data-testid="microsoft-approve-statement">{ADMIN_CONSENT_STATEMENT}</p>
                     <ul className="list-disc space-y-0.5 pl-5" data-testid="microsoft-approve-permissions">
                       {approve.permissions.map((p) => <li key={p.scope}>{p.text}</li>)}
                     </ul>

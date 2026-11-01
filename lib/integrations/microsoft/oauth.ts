@@ -11,6 +11,12 @@ import type { AppCredentials } from "@/lib/integrations/app-credentials";
 
 export const MICROSOFT_LOGIN = "https://login.microsoftonline.com";
 export const MICROSOFT_SCOPES = ["offline_access", "Mail.Send", "User.Read"] as const;
+/**
+ * EVERY permission on Tolra's Microsoft app registration (Microsoft Graph, Delegated), and nothing else: the sign-in's MICROSOFT_SCOPES
+ * plus Mail.Read. The administrator's approval link uses Graph's `.default` scope, which approves every permission the registration
+ * lists, so this is what the approval page shows in plain words and what Platform > App connections says to register (runbook 29).
+ */
+export const MICROSOFT_REGISTRATION_SCOPES = ["offline_access", "User.Read", "Mail.Send", "Mail.Read"] as const;
 const TIMEOUT_MS = 15_000;
 
 export type MicrosoftConfig = { clientId: string; clientSecret: string; redirectUri: string; tenant: string };

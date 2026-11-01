@@ -7,6 +7,8 @@
  *  - Test connection: a real round trip's outcomes in plain words; nothing is stored.
  */
 import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -106,16 +108,50 @@ describe("the admin-consent URL and the permissions", () => {
     expect([...url.searchParams.keys()].sort()).toEqual(["client_id", "redirect_uri", "scope", "state"]);
   });
 
-  it("the permission list is derived from the scope constant, in order, in plain words; a new scope is shown, never hidden", async () => {
+  it("the permission list is derived from the registration's scope constant, in order, in plain words; a new scope is shown, never hidden", async () => {
     const { permissionsFor, SCOPE_WORDS } = await import("@/lib/integrations/microsoft/consent");
-    const { MICROSOFT_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
+    const { MICROSOFT_REGISTRATION_SCOPES, MICROSOFT_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
     const list = permissionsFor();
-    expect(list.map((p) => p.scope)).toEqual([...MICROSOFT_SCOPES]);
-    // Every scope the sign-in asks for has plain words of its own (so the page can never fall back to a bare scope name unnoticed).
-    for (const scope of MICROSOFT_SCOPES) expect(SCOPE_WORDS[scope], scope).toBeTruthy();
-    expect(Object.fromEntries(list.map((p) => [p.scope, p.text]))).toMatchObject({ offline_access: "Stay signed in", "Mail.Send": "Send mail as you", "User.Read": "Read your profile" });
-    // Once Mail.Read is added to the constant the same code says "Read your mail"; an unknown scope is shown by its own name.
-    expect(permissionsFor([...MICROSOFT_SCOPES, "Mail.Read", "Calendars.Read"]).slice(-2)).toEqual([{ scope: "Mail.Read", text: "Read your mail" }, { scope: "Calendars.Read", text: "Calendars.Read" }]);
+    expect(list.map((p) => p.scope)).toEqual([...MICROSOFT_REGISTRATION_SCOPES]);
+    // Every permission on the registration has plain words of its own (so the page can never fall back to a bare scope name unnoticed).
+    for (const scope of MICROSOFT_REGISTRATION_SCOPES) expect(SCOPE_WORDS[scope], scope).toBeTruthy();
+    expect(Object.fromEntries(list.map((p) => [p.scope, p.text]))).toEqual({ offline_access: "Stay signed in", "User.Read": "Read your profile", "Mail.Send": "Send mail as you", "Mail.Read": "Read your mail" });
+    // The sign-in asks for a subset of the registration, never something the administrator was not shown.
+    for (const scope of MICROSOFT_SCOPES) expect(MICROSOFT_REGISTRATION_SCOPES as readonly string[], scope).toContain(scope);
+    // An unknown scope is shown by its own name.
+    expect(permissionsFor([...MICROSOFT_REGISTRATION_SCOPES, "Calendars.Read"]).slice(-1)).toEqual([{ scope: "Calendars.Read", text: "Calendars.Read" }]);
+  });
+
+  it(".default approves EVERY permission on the registration: exactly offline_access, User.Read, Mail.Send and Mail.Read, nothing else", async () => {
+    const { MICROSOFT_REGISTRATION_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
+    expect([...MICROSOFT_REGISTRATION_SCOPES].sort()).toEqual(["Mail.Read", "Mail.Send", "User.Read", "offline_access"]);
+    expect(new Set(MICROSOFT_REGISTRATION_SCOPES).size).toBe(4);
+    const { ADMIN_CONSENT_STATEMENT } = await import("@/lib/integrations/overview");
+    expect(ADMIN_CONSENT_STATEMENT).toMatch(/\.default/);
+    expect(ADMIN_CONSENT_STATEMENT).toMatch(/approves EVERY permission on Tolra's app registration/);
+    expect(ADMIN_CONSENT_STATEMENT).toMatch(/exactly these, and nothing else/);
+  });
+
+  it("drift: the plain-words list on the consent page (route answer, card, e-mail) equals the scope constant, item for item", async () => {
+    const { MICROSOFT_REGISTRATION_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
+    const { SCOPE_WORDS } = await import("@/lib/integrations/microsoft/consent");
+    const { ADMIN_CONSENT_STATEMENT } = await import("@/lib/integrations/overview");
+    const { POST } = await import("@/app/api/integrations/microsoft/admin-consent/route");
+    const body = await (await POST(post("/api/integrations/microsoft/admin-consent"))).json() as { permissions: { scope: string; text: string }[]; mailto: string };
+    // What the card lists (it renders body.permissions, one <li> per item, in order).
+    expect(body.permissions).toEqual(MICROSOFT_REGISTRATION_SCOPES.map((scope) => ({ scope, text: SCOPE_WORDS[scope] })));
+    expect(body.permissions.map((p) => p.text)).toEqual(["Stay signed in", "Read your profile", "Send mail as you", "Read your mail"]);
+    // The e-mail to the administrator: the statement, then exactly those lines, nothing more.
+    const mail = decodeURIComponent(body.mailto.split("&body=")[1]);
+    const lines = mail.split("\n");
+    const at = lines.indexOf(ADMIN_CONSENT_STATEMENT);
+    expect(at).toBeGreaterThan(-1);
+    expect(lines.slice(at + 1, at + 1 + body.permissions.length + 1)).toEqual([...body.permissions.map((p) => `- ${p.text}`), ""]);
+    // The card shows the statement and maps the route's list (never a list of its own).
+    const card = readFileSync(path.resolve(__dirname, "../../components/microsoft-connect-card.tsx"), "utf8");
+    expect(card).toContain("{ADMIN_CONSENT_STATEMENT}");
+    expect(card).toContain("approve.permissions.map((p) => <li key={p.scope}>{p.text}</li>)");
+    expect(card).not.toContain("Tolra asks for these permissions only");
   });
 
   it("a new link: signed, bound to the company, 24 hours, with the plain-words permissions in the mailto", async () => {
@@ -266,7 +302,7 @@ describe("the admin's 'approve' link route (admin only)", () => {
     expect(res.status).toBe(200);
     expect(body.url).toContain("https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=ms-client");
     expect(body.mailto).toMatch(/^mailto:\?subject=/);
-    expect(body.permissions.map((p: { scope: string }) => p.scope)).toEqual(["offline_access", "Mail.Send", "User.Read"]);
+    expect(body.permissions.map((p: { scope: string }) => p.scope)).toEqual(["offline_access", "User.Read", "Mail.Send", "Mail.Read"]);
     expect(requireProfile).toHaveBeenCalledWith(["admin"]);
     expect(service.rpc).not.toHaveBeenCalled();
   });
@@ -495,6 +531,12 @@ describe("Test connection (Platform > App connections)", () => {
 });
 
 describe("Platform > App connections shows what to register", () => {
+  it("Xero's Test connection: the card says it leaves a connection on the owner's own Xero side, removable in Xero > Settings > Connected apps", async () => {
+    const { XERO_TEST_CONNECTION_NOTE } = await import("@/lib/integrations/app-test-messages");
+    expect(XERO_TEST_CONNECTION_NOTE).toBe("Xero's Test connection leaves a connection on your own Xero side (Tolra keeps nothing). You can remove it in Xero > Settings > Connected apps.");
+    const card = readFileSync(path.resolve(__dirname, "../../components/platform/app-credentials-card.tsx"), "utf8");
+    expect(card).toContain('{p.provider === "xero" ? <p className="text-xs text-slate-500" data-testid="app-credentials-xero-test-note">{XERO_TEST_CONNECTION_NOTE}</p> : null}');
+  });
   it("the redirect URIs and scopes come from the code's own constants", async () => {
     vi.stubEnv("NEXT_PUBLIC_SITE_URL", SITE);
     vi.doMock("@/lib/server/platform", () => ({ requirePlatformOwner: async () => ({ supabase: { rpc: async () => ({ data: [], error: null }) }, user: { id: "o" }, companies: [], admin: service }) }));
@@ -504,10 +546,75 @@ describe("Platform > App connections shows what to register", () => {
     expect(by.xero.redirectUris).toEqual([`${SITE}/api/integrations/xero/callback`, `${SITE}/api/integrations/invite/callback`]);
     expect(by.microsoft.redirectUris).toEqual([`${SITE}/api/integrations/microsoft/callback`]);
     const { XERO_SCOPES } = await import("@/lib/integrations/xero/oauth");
-    const { MICROSOFT_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
+    const { MICROSOFT_REGISTRATION_SCOPES } = await import("@/lib/integrations/microsoft/oauth");
     expect(by.xero.scopes.map((s: { scope: string }) => s.scope)).toEqual([...XERO_SCOPES]);
-    expect(by.microsoft.scopes.map((s: { scope: string }) => s.scope)).toEqual([...MICROSOFT_SCOPES]);
-    expect(by.microsoft.scopes.map((s: { text: string }) => s.text)).toEqual(["Stay signed in", "Send mail as you", "Read your profile"]);
+    // The registration's exact list (the admin approval's .default approves all of it), not only the sign-in's.
+    expect(by.microsoft.scopes.map((s: { scope: string }) => s.scope)).toEqual([...MICROSOFT_REGISTRATION_SCOPES]);
+    expect(by.microsoft.scopes.map((s: { text: string }) => s.text)).toEqual(["Stay signed in", "Read your profile", "Send mail as you", "Read your mail"]);
     vi.unstubAllEnvs();
+  });
+});
+
+describe("the 503 not_configured answers expose no configuration: the exact JSON body of every route", () => {
+  // Every setting these routes read, set to values that would be recognisable anywhere in a body. The readiness checks are mocked "not
+  // set up", so each route answers its 503; a set-but-unusable Xero redirect URI is the one setting a route used to put in the body.
+  const SETTINGS: Record<string, string> = {
+    XERO_CLIENT_ID: "XEROID-sentinel-1", XERO_CLIENT_SECRET: "XEROSECRET-sentinel-2", XERO_REDIRECT_URI: "http://wrong.sentinel.example.test/cb?x=1",
+    MS_CLIENT_ID: "MSID-sentinel-3", MS_CLIENT_SECRET: "MSSECRET-sentinel-4", MS_TENANT_ID: "TENANT-sentinel-5", MS_MAILBOX: "mailbox@sentinel.example.test",
+    MS_ORGANIZATION_ID: "ORG-sentinel-6", NEXT_PUBLIC_SITE_URL: "https://site.sentinel.example.test", INTEGRATIONS_ENCRYPTION_KEY: "KEY-sentinel-7",
+  };
+  const expected = (name: string) => ({ error: `Not set up yet: Tolra's ${name} connection is switched on at go-live. Nothing to do here.`, code: "not_configured" });
+  /** Nothing of a setting: no setting's name, no value, no URL, no client id, secret, tenant or redirect wording. */
+  const leaks = (text: string) => [
+    ...Object.keys(SETTINGS).filter((name) => text.includes(name)),
+    ...Object.values(SETTINGS).filter((value) => text.includes(value)),
+    ...[/sentinel/i, /https?:\/\//i, /\b(XERO|MS|MICROSOFT|SUPABASE|NEXT_PUBLIC)_[A-Z_]+/, /client.?id/i, /secret/i, /tenant/i, /redirect/i, /\.env\b/i, /problem/i]
+      .filter((pattern) => pattern.test(text)).map(String),
+  ];
+
+  beforeEach(() => {
+    for (const [name, value] of Object.entries(SETTINGS)) vi.stubEnv(name, value);
+    msReady = null;
+    xeroReadyValue = null;
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  const cases: [string, "Xero" | "Microsoft 365", () => Promise<Response>][] = [
+    ["POST /api/integrations/microsoft/connect", "Microsoft 365", async () => (await import("@/app/api/integrations/microsoft/connect/route")).POST(post("/api/integrations/microsoft/connect"))],
+    ["POST /api/integrations/microsoft/test", "Microsoft 365", async () => (await import("@/app/api/integrations/microsoft/test/route")).POST(post("/api/integrations/microsoft/test"))],
+    ["POST /api/integrations/microsoft/admin-consent", "Microsoft 365", async () => (await import("@/app/api/integrations/microsoft/admin-consent/route")).POST(post("/api/integrations/microsoft/admin-consent"))],
+    ["GET /api/integrations/microsoft/callback", "Microsoft 365", async () => (await import("@/app/api/integrations/microsoft/callback/route")).GET(get("/api/integrations/microsoft/callback", `?code=c&state=${"a".repeat(43)}`))],
+    ["GET /api/integrations/microsoft/return", "Microsoft 365", async () => (await import("@/app/api/integrations/microsoft/return/route")).GET(get("/api/integrations/microsoft/return", `?state=${SHAPED}`))],
+    ["POST /api/integrations/xero/connect", "Xero", async () => (await import("@/app/api/integrations/xero/connect/route")).POST(post("/api/integrations/xero/connect"))],
+    ["POST /api/integrations/xero/test", "Xero", async () => (await import("@/app/api/integrations/xero/test/route")).POST(post("/api/integrations/xero/test"))],
+    ["GET /api/integrations/xero/callback", "Xero", async () => (await import("@/app/api/integrations/xero/callback/route")).GET(get("/api/integrations/xero/callback", `?code=c&state=${"a".repeat(43)}`))],
+    ["GET /api/integrations/xero/return", "Xero", async () => (await import("@/app/api/integrations/xero/return/route")).GET(get("/api/integrations/xero/return", `?code=c&state=${SHAPED}`))],
+    ["POST /api/integrations/invite", "Xero", async () => (await import("@/app/api/integrations/invite/route")).POST(post("/api/integrations/invite"))],
+    ["POST /api/integrations/app-credentials/test (xero)", "Xero", async () => (await import("@/app/api/integrations/app-credentials/test/route")).POST(post("/api/integrations/app-credentials/test", { provider: "xero" }))],
+    ["POST /api/integrations/app-credentials/test (microsoft)", "Microsoft 365", async () => (await import("@/app/api/integrations/app-credentials/test/route")).POST(post("/api/integrations/app-credentials/test", { provider: "microsoft" }))],
+  ];
+  for (const [label, name, call] of cases) {
+    it(`${label}: 503, exactly { error, code }, nothing of the configuration`, async () => {
+      const res = await call();
+      expect(res.status).toBe(503);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      const text = await res.text();
+      expect(JSON.parse(text)).toStrictEqual(expected(name));
+      expect(Object.keys(JSON.parse(text))).toEqual(["error", "code"]);
+      expect(leaks(text)).toEqual([]);
+    });
+  }
+
+  it("Xero connect with a set-but-unusable redirect URI logs that on the server (no value) and answers the same body", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const res = await (await import("@/app/api/integrations/xero/connect/route")).POST(post("/api/integrations/xero/connect"));
+      expect(await res.json()).toStrictEqual(expected("Xero"));
+      const logged = errors.mock.calls.flat().map(String).join(" ");
+      expect(logged).toContain("redirect URI setting is unusable");
+      expect(logged).not.toContain(SETTINGS.XERO_REDIRECT_URI);
+    } finally {
+      errors.mockRestore();
+    }
   });
 });

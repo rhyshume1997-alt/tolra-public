@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { fmtDate } from "@/lib/dates";
-import { APP_TEST_NOTE, appTestMessage, isAppTestOutcome } from "@/lib/integrations/app-test-messages";
+import { APP_TEST_NOTE, XERO_TEST_CONNECTION_NOTE, appTestMessage, isAppTestOutcome } from "@/lib/integrations/app-test-messages";
 
 type ProviderRow = {
   provider: "xero" | "microsoft";
@@ -168,6 +168,7 @@ export function AppCredentialsCard() {
                     <p role={testResult.ok ? "status" : "alert"} className={`text-sm ${testResult.ok ? "text-emerald-700" : "text-red-700"}`} data-testid={`app-credentials-${p.provider}-test-result`}>{testResult.text}</p>
                   ) : null}
                   {p.stored || p.fromEnvironment ? <p className="text-xs text-slate-500">{APP_TEST_NOTE}</p> : null}
+                  {p.provider === "xero" ? <p className="text-xs text-slate-500" data-testid="app-credentials-xero-test-note">{XERO_TEST_CONNECTION_NOTE}</p> : null}
                 </div>
                 {answer?.db107 ? (
                   <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); void save(p); }}>

@@ -16,7 +16,10 @@
 -- other company as it was; an existing member keeps their role (never raised or changed); a switched-off membership is not revived.
 -- Revoke: admin of the company only; another company's admin gets FALSE and reads none of its invites. Sign-up trigger: a valid
 -- accountant invite becomes a viewer membership and is marked used; expired and revoked ones are skipped (no membership, row kept);
--- ordinary invites exactly as 007 (membership with the invite's role, invite deleted). Every action writes its audit row.
+-- ordinary invites exactly as 007 (membership with the invite's role, invite deleted). add_member (service role, Settings > Users) is
+-- never blocked by an accountant invite: the requested role every time; an open accountant invite is revoked (existing login) or becomes
+-- the ordinary invite (no login yet), audited ACCOUNTANT_INVITE_SUPERSEDED; ordinary invites before or after an accountant invite work.
+-- Every action writes its audit row.
 -- =====================================================================================================================================
 BEGIN;
 
@@ -261,13 +264,88 @@ BEGIN
   PERFORM pg_temp.ok('mixed: viewer of A (accountant), office of B (ordinary)', pg_temp.member('12900000-0000-4000-8000-00000000c007', A) || ' ' || pg_temp.member('12900000-0000-4000-8000-00000000c007', B), 'viewer:true office:true');
   PERFORM pg_temp.ok('mixed: the ordinary invite deleted, the accountant one kept as used', (SELECT string_agg(organization_id::TEXT || ':' || (used_at IS NOT NULL)::TEXT, ',') FROM public.organization_invites WHERE email = 'mix.129@example.test'), A::TEXT || ':true');
 
-  -- The platform owner's add_member on an e-mail with an OPEN accountant invite is refused by the CHECK (it would make it another role).
+  -- ===== 5b. add_member (platform owner / Settings > Users) is never blocked by an accountant invite, and supersedes it (audited) =====
+  -- (i) No login yet, an OPEN accountant invite: add_member succeeds with the requested role; the row becomes the ordinary invite.
   PERFORM pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('clash.129@example.test', pg_temp.h('t-clash'))::TEXT$q$);
-  PERFORM pg_temp.ok('add_member cannot turn an accountant invite into another role', pg_temp.owner_try(format('SELECT public.add_member(%L, %L, %L)', A, 'clash.129@example.test', 'admin')), 'ERR:23514');
+  PERFORM set_config('role', 'service_role', TRUE);
+  v := public.add_member(A, 'Clash.129@example.test', 'admin');
+  PERFORM set_config('role', 'postgres', TRUE);
+  PERFORM pg_temp.ok('add_member (service role) on an e-mail with an open accountant invite: invited', v, 'invited');
+  PERFORM pg_temp.ok('one row, now the ordinary invite with the requested role (no token, expiry or state)', (SELECT count(*)::TEXT || ' ' || string_agg(role || ':' ||
+      (token_hash IS NULL AND expires_at IS NULL AND used_at IS NULL AND revoked_at IS NULL AND created_by IS NULL)::TEXT, ',')
+    FROM public.organization_invites WHERE organization_id = A AND lower(email) = 'clash.129@example.test'), '1 admin:true');
+  PERFORM pg_temp.ok('ACCOUNTANT_INVITE_SUPERSEDED written (ordinary_invite, was open, the role)', (SELECT count(*)::TEXT || ' ' || string_agg((metadata ->> 'outcome') || ':' || (metadata ->> 'was_open') || ':' || (metadata ->> 'role'), ',')
+    FROM security_audit.audit_log WHERE organization_id = A AND action = 'ACCOUNTANT_INVITE_SUPERSEDED' AND metadata ->> 'email' = 'clash.129@example.test'), '1 ordinary_invite:true:admin');
+  PERFORM pg_temp.ok('the superseded accountant link no longer peeks', coalesce(public.accountant_invite_peek(pg_temp.h('t-clash'))::TEXT, 'NULL'), 'NULL');
+  PERFORM pg_temp.ok('an accountant invite for that e-mail now: refused (an ordinary invite is waiting), the ordinary invite untouched',
+    pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('clash.129@example.test', pg_temp.h('t-clash2'))::TEXT$q$)
+    || ' ' || (SELECT role || ':' || (token_hash IS NULL)::TEXT FROM public.organization_invites WHERE organization_id = A AND lower(email) = 'clash.129@example.test'), 'ERR:23505:already_invited admin:true');
+  INSERT INTO auth.users (id, email) VALUES ('12900000-0000-4000-8000-00000000c009', 'clash.129@example.test');
+  INSERT INTO proof_people (key, id, email) VALUES ('clash', '12900000-0000-4000-8000-00000000c009', 'clash.129@example.test');
+  PERFORM pg_temp.ok('sign-up: the requested role (admin of A), the ordinary invite deleted', pg_temp.member('12900000-0000-4000-8000-00000000c009', A) || ' '
+    || (SELECT count(*)::TEXT FROM public.organization_invites WHERE lower(email) = 'clash.129@example.test'), 'admin:true 0');
+  PERFORM pg_temp.ok('the old accountant token can''t be redeemed by that login', pg_temp.as_('clash', $q$SELECT public.redeem_accountant_invite(pg_temp.h('t-clash'))::TEXT$q$), 'ERR:42501:invite_invalid');
+
+  -- (ii) An existing login (office of B) with an OPEN accountant invite to A: add_member gives the requested role and revokes the invite.
+  INSERT INTO auth.users (id, email) VALUES ('12900000-0000-4000-8000-00000000c008', 'acct2.129@example.test');
+  INSERT INTO proof_people (key, id, email) VALUES ('acct2', '12900000-0000-4000-8000-00000000c008', 'acct2.129@example.test');
+  INSERT INTO public.user_profiles (id, email, full_name, role, organization_id, active, must_change_password)
+  VALUES ('12900000-0000-4000-8000-00000000c008', 'acct2.129@example.test', 'Acct Two', 'office', B, TRUE, FALSE)
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, organization_id = EXCLUDED.organization_id;
+  INSERT INTO public.organization_members (user_id, organization_id, role, active) VALUES ('12900000-0000-4000-8000-00000000c008', B, 'office', TRUE);
+  v := pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('acct2.129@example.test', pg_temp.h('t-acct2b'))::TEXT$q$);
+  v_inv := (v::JSONB ->> 'id')::UUID;
+  PERFORM set_config('role', 'service_role', TRUE);
+  v := public.add_member(A, 'acct2.129@example.test', 'office');
+  PERFORM set_config('role', 'postgres', TRUE);
+  PERFORM pg_temp.ok('add_member on an existing login with an open accountant invite: member, with the requested role (office of A)', v || ' ' || pg_temp.member('12900000-0000-4000-8000-00000000c008', A), 'member office:true');
+  PERFORM pg_temp.ok('the accountant invite is revoked (kept, not used)', (SELECT (revoked_at IS NOT NULL)::TEXT || ' ' || (used_at IS NULL)::TEXT FROM public.organization_invites WHERE id = v_inv), 'true true');
+  PERFORM pg_temp.ok('ACCOUNTANT_INVITE_SUPERSEDED written (revoked, the role)', (SELECT count(*)::TEXT || ' ' || string_agg((metadata ->> 'outcome') || ':' || (metadata ->> 'role'), ',')
+    FROM security_audit.audit_log WHERE organization_id = A AND action = 'ACCOUNTANT_INVITE_SUPERSEDED' AND entity_id = v_inv::TEXT), '1 revoked:office');
+  PERFORM pg_temp.ok('redeeming the revoked link afterwards: refused, and the office role stays', pg_temp.as_('acct2', $q$SELECT public.redeem_accountant_invite(pg_temp.h('t-acct2b'))::TEXT$q$)
+    || ' ' || pg_temp.member('12900000-0000-4000-8000-00000000c008', A), 'ERR:42501:invite_invalid office:true');
+  PERFORM pg_temp.ok('their own company (B) unchanged', pg_temp.member('12900000-0000-4000-8000-00000000c008', B), 'office:true');
+
+  -- (iii) An EXPIRED accountant invite, no login: add_member succeeds; superseded (was_open false), audited.
+  PERFORM pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('old.129@example.test', pg_temp.h('t-old129'))::TEXT$q$);
+  UPDATE public.organization_invites SET expires_at = now() - interval '1 second' WHERE organization_id = A AND email = 'old.129@example.test';
+  PERFORM set_config('role', 'service_role', TRUE);
+  v := public.add_member(A, 'old.129@example.test', 'workshop');
+  PERFORM set_config('role', 'postgres', TRUE);
+  PERFORM pg_temp.ok('add_member on an e-mail with an expired accountant invite: invited, workshop, ordinary', v || ' ' || (SELECT role || ':' || (token_hash IS NULL AND expires_at IS NULL)::TEXT
+    FROM public.organization_invites WHERE organization_id = A AND email = 'old.129@example.test'), 'invited workshop:true');
+  PERFORM pg_temp.ok('superseded audit for it says it was not open', (SELECT string_agg(metadata ->> 'was_open', ',') FROM security_audit.audit_log
+    WHERE organization_id = A AND action = 'ACCOUNTANT_INVITE_SUPERSEDED' AND metadata ->> 'email' = 'old.129@example.test'), 'false');
+
+  -- (iv) Settings > Users makes the login first (Auth createUser: the sign-up trigger runs) and then calls add_member: the requested role.
+  PERFORM pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('app.129@example.test', pg_temp.h('t-app'))::TEXT$q$);
+  INSERT INTO auth.users (id, email) VALUES ('12900000-0000-4000-8000-00000000c00a', 'app.129@example.test');
+  PERFORM set_config('role', 'service_role', TRUE);
+  v := public.add_member(A, 'app.129@example.test', 'office');
+  PERFORM set_config('role', 'postgres', TRUE);
+  PERFORM pg_temp.ok('login made first, then add_member: member with the requested role (office), not viewer', v || ' ' || pg_temp.member('12900000-0000-4000-8000-00000000c00a', A), 'member office:true');
+
+  -- (v) Ordinary invites before and after accountant invites are never blocked: add_member again on an ordinary invite, and on a fresh
+  -- e-mail after an accountant invite to ANOTHER e-mail, both answer invited with the role asked for.
+  PERFORM set_config('role', 'service_role', TRUE);
+  PERFORM public.add_member(A, 'before.129@example.test', 'office');
+  v := public.add_member(A, 'before.129@example.test', 'workshop');
+  PERFORM set_config('role', 'postgres', TRUE);
+  PERFORM pg_temp.ok('an ordinary invite made BEFORE: an accountant invite for it is refused, add_member on it still works (role changed)',
+    pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('before.129@example.test', pg_temp.h('t-before'))::TEXT$q$) || ' ' || v || ' '
+    || (SELECT role || ':' || (token_hash IS NULL)::TEXT FROM public.organization_invites WHERE organization_id = A AND email = 'before.129@example.test'), 'ERR:23505:already_invited invited workshop:true');
+  PERFORM pg_temp.as_('adminA', $q$SELECT public.create_accountant_invite('acct3.129@example.test', pg_temp.h('t-acct3'))::TEXT$q$);
+  PERFORM set_config('role', 'service_role', TRUE);
+  v := public.add_member(A, 'after.129@example.test', 'office');
+  PERFORM set_config('role', 'postgres', TRUE);
+  PERFORM pg_temp.ok('an ordinary invite made AFTER an accountant invite (other e-mail): invited, untouched accountant invite', v || ' '
+    || (SELECT role || ':' || (token_hash IS NOT NULL AND revoked_at IS NULL)::TEXT FROM public.organization_invites WHERE organization_id = A AND email = 'acct3.129@example.test'), 'invited viewer:true');
+  PERFORM pg_temp.ok('add_member is still service-role only (a signed-in admin is refused)', pg_temp.as_('adminA', format('SELECT public.add_member(%L, %L, %L)', A, 'x9.129@example.test', 'admin')), 'ERR:42501:');
 
   -- ===== 6. Audit totals for A, and the role of every accountant row =====
   PERFORM pg_temp.ok('every accountant invite row is viewer', (SELECT string_agg(DISTINCT role, ',') FROM public.organization_invites WHERE token_hash IS NOT NULL), 'viewer');
-  PERFORM pg_temp.ok('ACCOUNTANT_INVITE_CREATED: one per create (acct, late, exp, rev, again x2, mix, clash)', pg_temp.events('ACCOUNTANT_INVITE_CREATED'), '8');
+  PERFORM pg_temp.ok('ACCOUNTANT_INVITE_CREATED: one per create (acct, late, exp, rev, again x2, mix, clash, acct2, old, app, acct3)', pg_temp.events('ACCOUNTANT_INVITE_CREATED'), '12');
+  PERFORM pg_temp.ok('ACCOUNTANT_INVITE_SUPERSEDED: one per superseded invite (clash, acct2, old)', pg_temp.events('ACCOUNTANT_INVITE_SUPERSEDED'), '3');
   PERFORM pg_temp.ok('no audit row carries a token or a hash', (SELECT count(*)::TEXT FROM security_audit.audit_log WHERE action LIKE 'ACCOUNTANT_INVITE_%'
     AND (metadata::TEXT LIKE '%' || pg_temp.h('t-acct') || '%' OR metadata::TEXT LIKE '%t-acct%' OR metadata ? 'token_hash')), '0');
 END

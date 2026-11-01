@@ -79,6 +79,14 @@ export function notSetUpMessage(provider: "xero" | "microsoft"): string {
   return `Not set up yet: Tolra's ${provider === "xero" ? "Xero" : "Microsoft 365"} connection is switched on at go-live. Nothing to do here.`;
 }
 
+/**
+ * What the Microsoft admin's approval panel (Admin > Integrations) and its e-mail say before the plain-words permissions: the approval
+ * link uses Graph's `.default` scope, which approves EVERY permission on Tolra's app registration, so the registration holds exactly
+ * MICROSOFT_REGISTRATION_SCOPES (offline_access, User.Read, Mail.Send, Mail.Read) and nothing else.
+ */
+export const ADMIN_CONSENT_STATEMENT =
+  "Microsoft's approval uses the .default scope, which approves EVERY permission on Tolra's app registration. The registration has exactly these, and nothing else:";
+
 /** The `code` the connect, callback, test and invite routes answer (HTTP 503) while the app details are missing. */
 export const NOT_CONFIGURED_CODE = "not_configured";
 

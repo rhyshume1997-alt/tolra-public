@@ -1,11 +1,13 @@
 import "server-only";
 
-import { MICROSOFT_LOGIN, MICROSOFT_SCOPES } from "@/lib/integrations/microsoft/oauth";
+import { MICROSOFT_LOGIN, MICROSOFT_REGISTRATION_SCOPES } from "@/lib/integrations/microsoft/oauth";
+import { ADMIN_CONSENT_STATEMENT } from "@/lib/integrations/overview";
 import { ADMIN_CONSENT_TTL_SECONDS, signState } from "@/lib/integrations/signed-state";
 
 // "Ask your Microsoft admin to approve" (C2). When a company's own Microsoft sign-in is stopped because an administrator must approve
 // Tolra first, the admin gets a link for the company's Microsoft administrator. The link is Microsoft's admin-consent page for Tolra's
-// app (scope https://graph.microsoft.com/.default, as the v2 endpoint requires; the plain words come from MICROSOFT_SCOPES), and it comes back to the one callback
+// app (scope https://graph.microsoft.com/.default, as the v2 endpoint requires: it approves EVERY permission on the app registration, so
+// the plain words come from MICROSOFT_REGISTRATION_SCOPES, the registration's exact list), and it comes back to the one callback
 // Microsoft already knows (/api/integrations/microsoft/callback) carrying a signed, company-bound, expiring, one-use state.
 
 /** Microsoft's own wording for "an administrator must approve this app first", wherever it shows (error, error_description). */
@@ -26,15 +28,19 @@ export const SCOPE_WORDS: Readonly<Record<string, string>> = {
 
 export type Permission = { scope: string; text: string };
 
-/** The permissions the administrator is asked to approve, in plain words, from the SAME constant the sign-in uses. */
-export function permissionsFor(scopes: readonly string[] = MICROSOFT_SCOPES): Permission[] {
+/**
+ * The permissions the administrator approves, in plain words. `.default` approves every permission on the app registration, so the
+ * default is the registration's exact list (MICROSOFT_REGISTRATION_SCOPES: offline_access, User.Read, Mail.Send, Mail.Read).
+ */
+export function permissionsFor(scopes: readonly string[] = MICROSOFT_REGISTRATION_SCOPES): Permission[] {
   return scopes.map((scope) => ({ scope, text: SCOPE_WORDS[scope] ?? scope }));
 }
 
 /**
- * Microsoft's v2 adminconsent endpoint takes ONE scope of the form `<resource>/.default`: the administrator approves every permission
- * the app registration lists for Microsoft Graph. Individual scopes (Mail.Send, offline_access) are not accepted there. The plain-words
- * list shown to the administrator is still derived from MICROSOFT_SCOPES (permissionsFor), which the sign-in asks for.
+ * Microsoft's v2 adminconsent endpoint takes ONE scope of the form `<resource>/.default`: the administrator approves EVERY permission
+ * the app registration lists for Microsoft Graph, not only the ones the sign-in asks for. Individual scopes (Mail.Send, offline_access)
+ * are not accepted there. So the registration must hold exactly MICROSOFT_REGISTRATION_SCOPES and nothing else, and that list, in plain
+ * words (permissionsFor), is what the administrator is shown.
  */
 export const ADMIN_CONSENT_SCOPE = "https://graph.microsoft.com/.default";
 
@@ -54,7 +60,7 @@ export function consentMailto(url: string, company: string | null, permissions: 
   const body = [
     "Hello,", "",
     `Tolra (our business software) needs a Microsoft 365 administrator to approve it once, so it can use ${company ?? "our company"}'s mailbox.`, "",
-    "It asks for these permissions only:", ...permissions.map((p) => `- ${p.text}`), "",
+    ADMIN_CONSENT_STATEMENT, ...permissions.map((p) => `- ${p.text}`), "",
     "Please open this link and choose Accept:", url, "",
     "The link works once and expires in 24 hours. Thank you.",
   ].join("\n");

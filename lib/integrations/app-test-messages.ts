@@ -25,3 +25,10 @@ export function appTestMessage(provider: "xero" | "microsoft", outcome: AppTestO
 
 /** Shown under the button: Microsoft and Xero show their own error page (and never come back) when the redirect address isn't registered. */
 export const APP_TEST_NOTE = "If the provider shows an error page and does not bring you back, the redirect URI above is not registered there exactly as shown. Nothing is saved by a test.";
+
+/**
+ * Shown under Xero's Test connection: the test is a real sign-in to the platform owner's own Xero, which leaves Tolra listed as a
+ * connection on that Xero side (Tolra stores nothing). Removable at Xero.
+ */
+export const XERO_TEST_CONNECTION_NOTE =
+  "Xero's Test connection leaves a connection on your own Xero side (Tolra keeps nothing). You can remove it in Xero > Settings > Connected apps.";

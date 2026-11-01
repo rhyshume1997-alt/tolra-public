@@ -24,11 +24,18 @@ BEGIN;
 --      membership and is marked used (kept, not deleted). Ordinary invites: exactly as before (membership with the invite's role, the
 --      invite deleted).
 --   g. Signed-in admins read their company's invites as before (same policy), but no longer the token_hash column (column grant).
--- AUDIT: named events ACCOUNTANT_INVITE_CREATED, ACCOUNTANT_INVITE_USED (redeem, or sign-up through the trigger) and
--- ACCOUNTANT_INVITE_REVOKED on the company's log (entity organization_invites). Never a token or its hash.
+--   h. add_member (007's, platform owner / service role; Settings > Users calls it) is never blocked by an accountant invite: it always
+--      gives the e-mail the requested role. An accountant invite of that company and e-mail is SUPERSEDED, audited
+--      (ACCOUNTANT_INVITE_SUPERSEDED): for an existing login an open one is revoked (the membership is the requested role); with no login
+--      yet the row becomes the ordinary invite with the requested role (token, expiry and state cleared, so the old link stops working).
+--      Same lock as create_accountant_invite (company and e-mail). Ordinary invites, before or after an accountant invite: as 007.
+-- AUDIT: named events ACCOUNTANT_INVITE_CREATED, ACCOUNTANT_INVITE_USED (redeem, or sign-up through the trigger),
+-- ACCOUNTANT_INVITE_REVOKED and ACCOUNTANT_INVITE_SUPERSEDED (add_member) on the company's log (entity organization_invites). Never a
+-- token or its hash.
 -- Needs 000, 007 (organization_invites, _ensure_member, handle_new_auth_user), 033 (assert_privileged_aal), 035 (log_named_event),
 -- 036 (_session_membership, current_user_organization_id, has_org_role) and 084 (integration_connections, read by the peek).
--- Replaces one existing function: public.handle_new_auth_user (007's body is guarded below and given back by the rollback).
+-- Replaces two existing functions: public.handle_new_auth_user and public.add_member (007's bodies are guarded below and given back by
+-- the rollback).
 -- Verify: supabase/verify/accountant_invite_129.sql (every row TRUE). Rollback: supabase/release/129_accountant_invite.rollback.sql.
 -- Safe to run again.
 -- =====================================================================================================
@@ -52,6 +59,11 @@ BEGIN
   IF v_body IS DISTINCT FROM '06b94b76c311ed711fbecbce0da0580b' AND NOT EXISTS (
        SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public.handle_new_auth_user()') AND position('ACCOUNTANT_INVITE_USED' IN prosrc) > 0) THEN
     RAISE EXCEPTION '129: public.handle_new_auth_user is not 007''s body (%): stop and report', v_body;
+  END IF;
+  SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) INTO v_body FROM pg_proc WHERE oid = to_regprocedure('public.add_member(uuid,text,text)');
+  IF v_body IS DISTINCT FROM 'c0b056c408679a74605dac6c93436182' AND NOT EXISTS (
+       SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public.add_member(uuid,text,text)') AND position('ACCOUNTANT_INVITE_SUPERSEDED' IN prosrc) > 0) THEN
+    RAISE EXCEPTION '129: public.add_member is not 007''s body (%): stop and report', coalesce(v_body, 'missing');
   END IF;
 END
 $$;
@@ -316,5 +328,65 @@ END
 $fn$;
 
 REVOKE ALL ON FUNCTION public.handle_new_auth_user() FROM PUBLIC, anon, authenticated;
+
+-- -----------------------------------------------------------------------------------------------------
+-- 8. add_member (007's, platform owner / service role only; Settings > Users calls it): never blocked by an accountant invite. 007's
+-- checks and answers ('member' or 'invited'). An accountant invite of the company and e-mail is superseded and audited: an existing
+-- login gets the requested role and an open accountant invite is revoked; with no login yet the row becomes the ordinary invite with the
+-- requested role (token, expiry and state cleared: the old link stops working). Ordinary invites exactly as 007.
+CREATE OR REPLACE FUNCTION public.add_member(p_org UUID, p_email TEXT, p_role TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $fn$
+DECLARE
+  v_email TEXT := lower(btrim(p_email));
+  v_user  UUID;
+  v_acct  UUID;
+  v_open  BOOLEAN;
+BEGIN
+  IF p_org IS NULL OR NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org) THEN
+    RAISE EXCEPTION 'add_member: organisation % does not exist', p_org;
+  END IF;
+  IF v_email IS NULL OR v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' THEN
+    RAISE EXCEPTION 'add_member: a valid e-mail is required (got %)', p_email;
+  END IF;
+  IF p_role IS NULL OR p_role NOT IN ('admin', 'office', 'workshop', 'viewer') THEN
+    RAISE EXCEPTION 'add_member: role must be admin, office, workshop or viewer (got %)', p_role;
+  END IF;
+
+  -- 129: the same lock as create_accountant_invite, so an accountant invite can't appear between the look and the write.
+  PERFORM pg_advisory_xact_lock(hashtextextended('accountant_invite:' || p_org::TEXT || ':' || v_email, 0));
+  SELECT i.id, (i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now()) INTO v_acct, v_open
+  FROM public.organization_invites i
+  WHERE i.organization_id = p_org AND lower(i.email) = v_email AND i.token_hash IS NOT NULL
+  FOR UPDATE;
+
+  SELECT u.id INTO v_user FROM auth.users u WHERE lower(u.email) = v_email ORDER BY u.created_at LIMIT 1;
+  IF v_user IS NOT NULL THEN
+    IF v_acct IS NOT NULL AND v_open THEN
+      UPDATE public.organization_invites SET revoked_at = now() WHERE id = v_acct;
+      PERFORM security_audit.log_named_event(p_org, 'ACCOUNTANT_INVITE_SUPERSEDED', 'organization_invites', v_acct::TEXT,
+        jsonb_build_object('email', v_email, 'role', p_role, 'by', 'add_member', 'outcome', 'revoked'));
+    END IF;
+    PERFORM public._ensure_member(v_user, v_email, p_org, p_role);
+    RETURN 'member';
+  END IF;
+  IF v_acct IS NOT NULL THEN
+    UPDATE public.organization_invites
+    SET role = p_role, token_hash = NULL, expires_at = NULL, used_at = NULL, revoked_at = NULL, created_by = NULL, created_at = now()
+    WHERE id = v_acct;
+    PERFORM security_audit.log_named_event(p_org, 'ACCOUNTANT_INVITE_SUPERSEDED', 'organization_invites', v_acct::TEXT,
+      jsonb_build_object('email', v_email, 'role', p_role, 'by', 'add_member', 'outcome', 'ordinary_invite', 'was_open', v_open));
+    RETURN 'invited';
+  END IF;
+  INSERT INTO public.organization_invites (organization_id, email, role) VALUES (p_org, v_email, p_role)
+  ON CONFLICT (organization_id, lower(email)) DO UPDATE SET role = EXCLUDED.role;
+  RETURN 'invited';
+END
+$fn$;
+REVOKE ALL ON FUNCTION public.add_member(UUID, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.add_member(UUID, TEXT, TEXT) TO service_role;
 
 COMMIT;

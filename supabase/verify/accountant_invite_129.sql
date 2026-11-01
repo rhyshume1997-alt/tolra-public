@@ -49,4 +49,10 @@ UNION ALL SELECT 'sign_up_trigger_skips_closed_accountant_invites',
   coalesce((SELECT position('i.token_hash IS NULL OR (i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now())' IN prosrc) > 0
                    AND position('AND token_hash IS NULL;' IN prosrc) > 0 AND position('ACCOUNTANT_INVITE_USED' IN prosrc) > 0
             FROM pg_proc WHERE oid = to_regprocedure('public.handle_new_auth_user()')), FALSE)
-  AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('auth.users') AND tgname = 'on_auth_user_created_apply_invite' AND tgenabled <> 'D');
+  AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('auth.users') AND tgname = 'on_auth_user_created_apply_invite' AND tgenabled <> 'D')
+-- add_member (service role only) supersedes an accountant invite (audited) instead of failing on it, under create's lock.
+UNION ALL SELECT 'add_member_supersedes_accountant_invite',
+  coalesce((SELECT p.prosecdef AND position('ACCOUNTANT_INVITE_SUPERSEDED' IN p.prosrc) > 0 AND position('token_hash = NULL' IN p.prosrc) > 0
+                   AND position('revoked_at = now()' IN p.prosrc) > 0 AND position('accountant_invite:' IN p.prosrc) > 0
+                   AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+            FROM pg_proc p WHERE p.oid = to_regprocedure('public.add_member(uuid,text,text)')), FALSE);

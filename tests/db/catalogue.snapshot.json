@@ -77,7 +77,7 @@
  {
   "kind": "function",
   "object": "public.add_member(p_org uuid, p_email text, p_role text)",
-  "detail": "definer search_path=pg_catalog, public 5b5d6d53445673976307a6619d3a14a8"
+  "detail": "definer search_path=pg_catalog, public 37e214481608ef8578e73dd485a611a1"
  },
  {
   "kind": "function",

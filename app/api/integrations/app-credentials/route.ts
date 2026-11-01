@@ -5,7 +5,7 @@ import {
 } from "@/lib/integrations/app-credentials";
 import { KEY_VERSION, encryptSecret, encryptionKey } from "@/lib/integrations/crypto";
 import { permissionsFor } from "@/lib/integrations/microsoft/consent";
-import { MICROSOFT_SCOPES } from "@/lib/integrations/microsoft/oauth";
+import { MICROSOFT_REGISTRATION_SCOPES } from "@/lib/integrations/microsoft/oauth";
 import { XERO_SCOPES } from "@/lib/integrations/xero/oauth";
 import { isErrorResponse, jsonError, mfaRequired, readJson } from "@/lib/server/auth";
 import { requirePlatformOwner } from "@/lib/server/platform";
@@ -26,9 +26,12 @@ function redirects(provider: AppProvider): string[] {
   return [own, provider === "xero" && origin ? `${origin}${INVITE_CALLBACK_PATH}` : null].filter((v): v is string => Boolean(v));
 }
 
-/** The exact scopes to tick at the provider: the constants the sign-in itself sends (never a second list), with Microsoft's in plain words. */
+/**
+ * The exact scopes to tick at the provider, from the code's constants: Xero's the sign-in sends; Microsoft's the registration's exact list
+ * (MICROSOFT_REGISTRATION_SCOPES, which the admin approval's `.default` approves in full), in plain words.
+ */
 function scopes(provider: AppProvider): Array<{ scope: string; text: string | null }> {
-  return provider === "xero" ? XERO_SCOPES.map((scope) => ({ scope, text: null })) : permissionsFor(MICROSOFT_SCOPES);
+  return provider === "xero" ? XERO_SCOPES.map((scope) => ({ scope, text: null })) : permissionsFor(MICROSOFT_REGISTRATION_SCOPES);
 }
 
 function dbRefusal(error: { code?: string; message?: string; hint?: string }) {

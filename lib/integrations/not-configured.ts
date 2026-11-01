@@ -4,9 +4,9 @@ import { NOT_CONFIGURED_CODE, notSetUpMessage } from "@/lib/integrations/overvie
 
 /**
  * The answer of every connect, callback, test and invite route while a provider's app details don't exist yet (they are entered at
- * go-live): a clean 503 with the card's own words and a stable `code`, never a 500. `problem` (optional) names a setting that is wrong
- * when one is set but unusable.
+ * go-live): a clean 503 with the card's own words and a stable `code`, never a 500. Exactly { error, code }: never a setting's name,
+ * a client id, a secret or a URL (a setting that is set but unusable is logged on the server by the route, not answered).
  */
-export function notConfiguredResponse(provider: "xero" | "microsoft", problem?: string | null): NextResponse {
-  return NextResponse.json({ error: notSetUpMessage(provider), code: NOT_CONFIGURED_CODE, ...(problem ? { problem } : {}) }, { status: 503, headers: { "cache-control": "no-store" } });
+export function notConfiguredResponse(provider: "xero" | "microsoft"): NextResponse {
+  return NextResponse.json({ error: notSetUpMessage(provider), code: NOT_CONFIGURED_CODE }, { status: 503, headers: { "cache-control": "no-store" } });
 }

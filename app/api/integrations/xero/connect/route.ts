@@ -16,7 +16,11 @@ export async function POST(request: Request) {
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
   const ready = await xeroReady();
-  if (!ready) return notConfiguredResponse("xero", xeroEnvProblem());
+  if (!ready) {
+    // A redirect URI that is set but unusable is logged here for the platform owner, never answered (the 503 names no setting).
+    if (xeroEnvProblem()) console.error("[integrations] Xero is not set up: the redirect URI setting is unusable");
+    return notConfiguredResponse("xero");
+  }
   try {
     return NextResponse.json({ url: await beginConnect(auth.supabase, auth.profile.organization_id, ready) });
   } catch (err) {
