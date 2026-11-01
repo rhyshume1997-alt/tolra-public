@@ -5,8 +5,8 @@
  *   - The workshop person sees Whole floor with a row per machine in its state (Running, Paused, Idle) and the late job marked Late.
  *   - Every row is at least 56px tall, and every dot has a visible word beside it.
  *   - The page never scrolls sideways at 390, 768, 820 and 1280.
- *   - Hiding it in the Dashboard's display settings (the same Columns list; the Dashboard's own Columns button is admin and office
- *     only) hides it for the workshop, and showing it again brings it back.
+ *   - Hiding it in the Dashboard's display settings (the same Columns list; the Dashboard's own Columns button changes the company
+ *     setting for admin and office only) hides it for the workshop, and showing it again brings it back.
  * Screenshots of the card at tablet (820) and phone (390) go to test-results/whole-floor-screenshots (WHOLE_FLOOR_SHOTS_DIR keeps a copy).
  */
 import { randomUUID } from "node:crypto";
