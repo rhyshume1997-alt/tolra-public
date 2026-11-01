@@ -353,7 +353,7 @@ test("with the lock on, a workshop clock action from another network is refused 
   try {
     await pressClock(on.page, "clock-in");
     await expect(on.page.getByTestId("clock-state")).toContainText("Clocked in since");
-    expect(await actionsOf(company.workshop.id)).toEqual(["in"]);
+    await expect.poll(() => actionsOf(company.workshop.id), { timeout: 15_000, message: "the server has the clock action (the sheet shows it from the device outbox before the send lands)" }).toEqual(["in"]);
   } finally {
     await on.context.close();
   }
@@ -419,7 +419,7 @@ test("the exemption: with Can clock in off site ticked the workshop user clocks 
     try {
       await pressClock(off.page, "clock-out");
       await expect(off.page.getByTestId("clock-state")).toHaveText("Not clocked in");
-      expect(await actionsOf(company.workshop.id)).toEqual(["in", "out"]);
+      await expect.poll(() => actionsOf(company.workshop.id), { timeout: 15_000, message: "the server has the clock action (the sheet shows it from the device outbox before the send lands)" }).toEqual(["in", "out"]);
     } finally {
       await off.context.close();
     }
@@ -451,10 +451,10 @@ test("no address while locked: the clock-in is accepted, marked network_unverifi
   try {
     await pressClock(worker.page, "clock-in");
     await expect(worker.page.getByTestId("clock-state")).toContainText("Clocked in since");
+    await expect.poll(() => actionsOf(person.id), { timeout: 15_000, message: "the server has the clock action (the sheet shows it from the device outbox before the send lands)" }).toEqual(["in"]);
   } finally {
     await worker.context.close();
   }
-  expect(await actionsOf(person.id)).toEqual(["in"]);
   const marks = await withDb(async (db) => (await db.query<{ user_id: string; action: string; reason: string }>(
     "select user_id, action, reason from public.clock_in_network_unverified where organization_id = $1", [company.id])).rows);
   expect(marks).toEqual([{ user_id: person.id, action: "in", reason: "address_unknown" }]);
