@@ -1211,6 +1211,11 @@
  },
  {
   "kind": "function",
+  "object": "public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)",
+  "detail": "definer search_path=pg_catalog, public 8bc19b0227a80107506726cf307fc283"
+ },
+ {
+  "kind": "function",
   "object": "public.lock_clock_in_network()",
   "detail": "definer search_path=pg_catalog, public 033b8cc7cd2d8be785c197d904bfe2f0"
  },
@@ -3252,6 +3257,11 @@
  {
   "kind": "function-grant",
   "object": "public.link_delivery_note_to_invoice(p_note uuid, p_invoice uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -6678,6 +6688,16 @@
   "kind": "trigger",
   "object": "public.inbound_emails :: support_read_only",
   "detail": "O 854654550a3346cff7fd11689681534d"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.inbound_emails :: zz_same_org_linked_purchase_order_id",
+  "detail": "O b65bcc84fd2754b53649ef29c13b36a6"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.inbound_emails :: zz_same_org_linked_quote_id",
+  "detail": "O 6746638f3c651b7b2c11070b4ed4e741"
  },
  {
   "kind": "trigger",

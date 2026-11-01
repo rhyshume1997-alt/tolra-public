@@ -276,9 +276,11 @@ describe("what the pages do with it", () => {
     expect(read("app/(dashboard)/jobs/page.tsx")).toContain('<BoughtInProfit kind="job"');
   });
 
-  it("the preflight's markers are in numeric order and 124's is the last", () => {
+  it("the preflight's markers are in numeric order, 124's straight after 123's (later migrations follow it)", () => {
     const markers = [...read("supabase/verify/release_preflight.sql").matchAll(/^\s+\('(\d{3}) [^']+',/gm)].map((m) => m[1]);
     expect(markers).toEqual([...markers].sort());
-    expect(markers.slice(-2)).toEqual(["123", "124"]);
+    const at = markers.indexOf("124");
+    expect(markers.slice(at - 1, at + 1)).toEqual(["123", "124"]);
+    expect(markers.slice(at + 1).every((n) => Number(n) > 124)).toBe(true);
   });
 });

@@ -161,7 +161,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'purchase_orders' AND column_name = 'quote_id')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'purchase_orders' AND column_name = 'job_id')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_same_org_job_id' AND tgrelid = to_regclass('public.purchase_orders'))
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'purchase_order_issue_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '9f903e888bca6d55322cc877488c1019'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'purchase_order_issue_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '9f903e888bca6d55322cc877488c1019')),
+    ('125 inbound email links',           EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.link_inbound_email(uuid, text, uuid, text, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2f7a1169a7087cf17a3f872a8f08a088')
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'inbound_emails' AND column_name = 'link_suggestions'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

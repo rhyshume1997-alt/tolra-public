@@ -4,6 +4,7 @@ import { StatTile } from "@/components/stat-tile";
 import { EmptyList } from "@/components/empty-list";
 import { quotesEmptyHint } from "@/lib/empty-hints";
 import { ActivityPanel } from "@/components/activity-panel";
+import { QuoteLinkedEmails } from "@/components/inbound-email-links";
 import { BoughtInProfit } from "@/components/bought-in-profit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -1285,6 +1286,8 @@ export default function QuotesPage() {
               ) : null}
               {/* Every version shares the quote's attachments, filed under its own number (068). */}
               <QuoteAttachments quoteRef={baseQuoteRef(viewingQuote.ref, viewingQuote.version)} />
+              {/* 125: the customer PO e-mail linked to this quote, or e-mails that may be its PO (Link); nothing without 125. */}
+              <QuoteLinkedEmails quoteId={viewingQuote.id} quoteRef={viewingQuote.ref} />
               <div data-testid="quote-actions" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                 {viewingQuote.rawStatus === "draft" ? <Button variant="outline" className="w-full sm:w-auto" onClick={() => void openFromQuote(viewingQuote, "edit")}>Edit Draft</Button> : null}
                 <Button variant="outline" className="w-full sm:w-auto" onClick={() => void openFromQuote(viewingQuote, "copy")}>Copy</Button>

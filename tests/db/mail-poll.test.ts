@@ -127,15 +127,18 @@ describe("the test's own clock", () => {
   });
 });
 
+/** 125: the poll also reports PO matching. These test messages carry no PO number, so matching is skipped (lib/po-capture-load.ts:84). */
+const NO_PO = { status: "skipped", customerPo: null, checked: 0, suggested: 0, failed: 0 };
+
 describe("polling", () => {
   it("a batch with one timestamp that is bigger than a page is read in full, and polling again adds nothing", async () => {
     const p = `a${world.runId}`;
     inbox = messages(p, 8, at(0));
     const first = await run();
-    expect(first).toEqual({ status: 200, body: { read: 8, inserted: 8, duplicates: 0, more: false } });
+    expect(first).toEqual({ status: 200, body: { read: 8, inserted: 8, duplicates: 0, more: false, poCapture: NO_PO } });
     expect(graphPages).toBe(3); // 3 + 3 + 2
     const second = await run();
-    expect(second.body).toEqual({ read: 8, inserted: 0, duplicates: 8, more: false });
+    expect(second.body).toEqual({ read: 8, inserted: 0, duplicates: 8, more: false, poCapture: NO_PO });
     expect(await rfqsFor(p)).toHaveLength(8);
     // A later message is picked up from the checkpoint (the newest stored time).
     inbox.push({ id: `${p}-late`, receivedDateTime: at(5) });
@@ -165,7 +168,7 @@ describe("polling", () => {
     process.env.MS_PAGE_SIZE = "1";
     inbox = Array.from({ length: 25 }, (_, i) => ({ id: `${p}-${String(i).padStart(2, "0")}`, receivedDateTime: at(20, i) }));
     const first = await run();
-    expect(first.body).toEqual({ read: 20, inserted: 20, duplicates: 0, more: true });
+    expect(first.body).toEqual({ read: 20, inserted: 20, duplicates: 0, more: true, poCapture: NO_PO });
     const second = await run();
     expect(second.body).toMatchObject({ inserted: 5, more: false });
     expect(await rfqsFor(p)).toHaveLength(25);
@@ -203,7 +206,7 @@ describe("long runs of messages with one timestamp", () => {
     inbox = messages(p, 4, at(50));
     await withDb((db) => db.query("update public.mail_poll_state set next_link = $2 where organization_id = $1", [world.tenants.alpha.id, `${GRAPH}?snap=gone&offset=3&$top=3`]));
     const r = await run();
-    expect(r).toEqual({ status: 200, body: { read: 4, inserted: 4, duplicates: 0, more: false } });
+    expect(r).toEqual({ status: 200, body: { read: 4, inserted: 4, duplicates: 0, more: false, poCapture: NO_PO } });
     const state = await adminClient().from("mail_poll_state").select("next_link").eq("organization_id", world.tenants.alpha.id).single();
     expect(state.data!.next_link).toBeNull();
     expect(await rfqsFor(p)).toHaveLength(4);
