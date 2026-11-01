@@ -52,7 +52,7 @@ export function mfaRequired() {
 
 /** 403 for an admin whose authenticator code is too old for a password change: they enter a fresh one by signing in again. */
 export function mfaRecentRequired() {
-  return NextResponse.json({ error: "For your security, sign out and sign back in with your authenticator code, then change your password.", code: MFA_RECENT_CODE }, { status: 403 });
+  return NextResponse.json({ error: "For your security, enter a fresh code from your authenticator app to change your password.", code: MFA_RECENT_CODE }, { status: 403 });
 }
 
 /** 403 with a server log line naming which check refused (codes only, never personal data). */
