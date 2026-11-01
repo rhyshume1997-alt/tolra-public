@@ -5,7 +5,7 @@ import { AiFinanceCheckPanel } from "@/components/ai-finance-check-panel";
 import { EmptyList } from "@/components/empty-list";
 import { DocumentAttachments } from "@/components/document-attachments";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CircleCheck, Plus, ShoppingCart, TriangleAlert } from "lucide-react";
 
@@ -36,6 +36,7 @@ import { fmtDate, nowIso, toDateInput } from "@/lib/dates";
 import { downloadPdf, pdfBlob } from "@/lib/download-pdf";
 import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
 import { friendlyError } from "@/lib/friendly-error";
+import { linkedRecordId } from "@/lib/record-link";
 import { type SupplierStatus, supplierKey, supplierOrderNotice } from "@/lib/supplier-status";
 import { esc } from "@/lib/html";
 import { documentTotals, gbp } from "@/lib/money";
@@ -202,6 +203,19 @@ export default function PurchaseOrdersPage() {
     void loadSuppliers();
     void loadPurchaseOrders();
   }, [loadPurchaseOrders, loadSuppliers]);
+
+  // A link from the global search names an order as /purchase-orders?po=<id>: once the list has loaded, open that order's detail (once).
+  const linkedPoDone = useRef(false);
+  useEffect(() => {
+    if (linkedPoDone.current || loading) return;
+    linkedPoDone.current = true;
+    const id = linkedRecordId(window.location.search, "po");
+    if (!id) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const found = purchaseOrders.find((po) => po.id === id);
+    if (found) setViewing(found);
+    else toast.info("That purchase order isn't in your list any more.");
+  }, [loading, purchaseOrders]);
 
   function setNewPoOpen(open: boolean) {
     setNewOpen(open);
