@@ -15,7 +15,8 @@ const supabase = supabaseOrigins();
 // Next injects inline bootstrap scripts and styles and this app doesn't use nonces, so 'unsafe-inline' is required.
 // 'wasm-unsafe-eval' lets @react-pdf/renderer compile its layout engine (WebAssembly) without allowing JS eval.
 // 'unsafe-eval' is only added for the dev server (React Refresh).
-const csp = [
+/** The policy for every page; `formAction` is the one directive a route may widen (see the accountant's link below). */
+const policy = (formAction) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isProd ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
@@ -24,12 +25,17 @@ const csp = [
   `connect-src 'self' ${supabase.https} ${supabase.wss}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  `form-action ${formAction}`,
   "object-src 'none'",
   // Installable app: the service worker (/sw.js) and the per-company manifest are same-origin only.
   "worker-src 'self'",
   "manifest-src 'self'",
 ].join("; ");
+const csp = policy("'self'");
+// The accountant's connect link (/api/integrations/invite/<43-character token>): its Continue button is a form POST answered with a
+// redirect to Xero, and a browser checks form-action against the redirect target too. Same policy, plus Xero's sign-in address in
+// form-action and nowhere else. (The callback path is shorter than a token, so it keeps the plain policy.)
+const inviteCsp = policy("'self' https://login.xero.com");
 
 // Stamped into the service worker so browsers notice each deploy (Vercel sets the commit SHA; local builds use the time).
 const appVersion = (process.env.VERCEL_GIT_COMMIT_SHA || `local-${Date.now()}`).slice(0, 12);
@@ -54,6 +60,11 @@ const nextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "Content-Security-Policy", value: csp },
         ],
+      },
+      // Later rule wins for the same key (Next documents this): every other header above still applies to this path.
+      {
+        source: "/api/integrations/invite/:token([A-Za-z0-9_-]{43})",
+        headers: [{ key: "Content-Security-Policy", value: inviteCsp }],
       },
     ];
   },
