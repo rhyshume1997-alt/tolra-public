@@ -304,9 +304,9 @@ export function pauseSeconds(nextAttemptAt: string | null | undefined, now: numb
 // ---------------------------------------------------------------------------------------------------------------------------------------
 // Documents issued before Xero was connected may already be in Xero (from SliQ, or by hand); a first attempt does not look first.
 
-/** The page's default From: the day Xero was connected, else 1 January of this year. */
-export function defaultFrom(connectedOn: string | null | undefined, today: string): string {
-  return parseIsoDate(connectedOn) ?? `${today.slice(0, 4)}-01-01`;
+/** The page's default From: 1 January of this year (Rhys, 30 Oct: earlier documents are offered, with the tick box starting ticked). */
+export function defaultFrom(today: string): string {
+  return `${today.slice(0, 4)}-01-01`;
 }
 
 /** A range starting before the connection day needs the explicit "include earlier documents" tick (the server refuses it without). */

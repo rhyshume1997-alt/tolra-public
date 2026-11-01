@@ -149,10 +149,9 @@ describe("the summary", () => {
 });
 
 describe("the pre-connection default", () => {
-  it("From defaults to the day Xero was connected, else 1 January", () => {
-    expect(defaultFrom("2026-10-12", "2026-10-30")).toBe("2026-10-12");
-    expect(defaultFrom(null, "2026-10-30")).toBe("2026-01-01");
-    expect(defaultFrom("garbage", "2026-10-30")).toBe("2026-01-01");
+  it("From defaults to 1 January of this year, whenever Xero was connected (earlier documents are offered, ticked)", () => {
+    expect(defaultFrom("2026-10-30")).toBe("2026-01-01");
+    expect(defaultFrom("2027-02-03")).toBe("2027-01-01");
   });
   it("an earlier From needs the tick; the connection day itself does not", () => {
     expect(startsBeforeConnection("2026-10-11", "2026-10-12")).toBe(true);
