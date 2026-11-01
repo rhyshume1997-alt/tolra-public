@@ -47,7 +47,7 @@
  {
   "kind": "function",
   "object": "public.accept_quote(p_quote uuid, p_customer_po text, p_delivery_date date, p_lines uuid[])",
-  "detail": "definer search_path=pg_catalog, public d66d688180517d0cbc2714f93d37402a"
+  "detail": "definer search_path=pg_catalog, public 4d983617099fc67cde53f22c8de4d2c8"
  },
  {
   "kind": "function",
@@ -457,7 +457,7 @@
  {
   "kind": "function",
   "object": "public.delete_machine_booking(p_id uuid)",
-  "detail": "definer search_path=pg_catalog, public 4df08bdae16726d72575b07863582a84"
+  "detail": "definer search_path=pg_catalog, public 2f5bbd6037f83dd1f660abb8303040bb"
  },
  {
   "kind": "function",
