@@ -86,7 +86,9 @@ test("purchase order: saved as a draft, issued explicitly, sending recorded sepa
   await row.getByRole("button", { name: "Edit" }).click();
   const edit = page.getByRole("dialog", { name: `Edit ${ref}` });
   await expect(edit.getByText("Issued: the supplier, items and value are fixed")).toBeVisible();
-  await expect(edit.getByRole("combobox")).toBeDisabled();
+  await expect(edit.getByRole("combobox", { name: "Supplier" })).toBeDisabled();
+  // 124: the quote/job link is not one of the fixed fields, so it stays editable after issue.
+  await expect(edit.getByTestId("po-link-picker")).toBeEnabled();
   await page.keyboard.press("Escape");
 
   await row.getByRole("button", { name: "Record Sent" }).click();
