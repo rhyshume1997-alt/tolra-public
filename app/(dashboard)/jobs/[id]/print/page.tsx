@@ -52,13 +52,15 @@ export default function JobSheetPrintPage() {
   // On a screen narrower than A4 the sheet is shrunk to fit, so the page never pans sideways on a phone (Rhys, 1 Nov). Print is full size.
   const sheetBox = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(1);
+  // The box only exists once the worksheet has loaded, so observe it then (an effect that ran once on mount found no box and never observed).
+  const sheetShown = Boolean(worksheet && layout);
   useEffect(() => {
     const box = sheetBox.current;
     if (!box) return;
     const observer = new ResizeObserver(([entry]) => setFit(Math.min(1, entry.contentRect.width / A4_PX)));
     observer.observe(box);
     return () => observer.disconnect();
-  }, []);
+  }, [sheetShown]);
 
   const load = useCallback(async () => {
     setError(null);
