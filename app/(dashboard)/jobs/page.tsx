@@ -519,8 +519,10 @@ export default function JobsPage() {
     if (worksheetDirty) setConfirmDiscard(true);
     else setWorksheetJob(null);
   };
-  // Job Board view: one line per job by default (fits the screen), full table or cards on request (lib/view-mode).
-  const [view, setView] = useViewMode("jobs", "list");
+  // Job Board view: one line per job by default (fits the screen), full table or cards on request (lib/view-mode). The List and the Table are wide tables with sticky columns, so up to 1024px they show as Cards.
+  const [view, setView] = useViewMode("jobs", "list", { listNeedsWide: true });
+  /** Phone width: the phone card list shows, and the wider card list does not (one card list in the page at a time). */
+  const phone = useIsPhone();
   // The Columns picker (admin and office): which of the shared columns Table, List and Cards show. Job No, Due and Actions always.
   const { isVisible: columnOn } = useColumnVisibility("jobs");
   const jobColumns = useMemo(() => shownJobColumns(columnOn), [columnOn]);
@@ -793,10 +795,10 @@ export default function JobsPage() {
   /** Reopen (081): who may, with a reason; the server checks again (and refuses once it has gone out or been invoiced). */
   const [reopenFor, setReopenFor] = useState<WorkshopJob | null>(null);
   const reopenOf = (job: WorkshopJob) => reopenCheck(job, { role: activeRole, me: profile?.id });
-  function onReopened(job: WorkshopJob) {
+  function onReopened(job: WorkshopJob, message?: string) {
     setJobs((current) => current.map((item) => (item.id === job.id ? { ...item, finished_at: "", finished_by: undefined, inspected_at: "", inspected_by: "", stage: ["inspection", "complete"].includes(item.stage) ? "machining" : item.stage } : item)));
     setReopenFor(null);
-    toast.success(`${job.job_no} reopened: back to ${JOB_STATUS_LABELS[jobStatusOf({ ...job, finished_at: "", inspected_at: "" })]}`);
+    toast.success(message ?? `${job.job_no} reopened: back to ${JOB_STATUS_LABELS[jobStatusOf({ ...job, finished_at: "", inspected_at: "" })]}`);
   }
   /** An admin's early release (081), from the job's details: with a reason; the server checks again and records it. */
   const [releaseFor, setReleaseFor] = useState<WorkshopJob | null>(null);
@@ -1588,7 +1590,7 @@ export default function JobsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <ColumnToggle tableKey="jobs" />
-          <ViewSwitcher value={view} onChange={setView} buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
+          <ViewSwitcher value={view} onChange={setView} hideListBelowDesk buttonClassName={workshop ? "pointer-coarse:min-h-12 pointer-coarse:min-w-12" : ""} />
           {isViewer ? null : <Button className={cn("min-h-11 bg-brand text-brand-ink", secondaryTouch)} onClick={() => setNewJobOpen(true)}><Plus className="size-4" /> New job</Button>}
         </div>
       </div>
@@ -1768,7 +1770,7 @@ export default function JobsPage() {
         </Card>
       ) : null}
 
-      {view === "cards" ? (
+      {view === "cards" && !phone ? (
         <div className="hidden space-y-4 md:block">
           {sections.map((section) => (
             <div key={section.key} className="space-y-2">
@@ -1779,14 +1781,17 @@ export default function JobsPage() {
         </div>
       ) : null}
 
-      <div className="space-y-3 md:hidden">
-        {sections.map((section) => (
-          <div key={section.key} className="space-y-3">
-            {section.title ? <h2 className="px-1">{groupHeading(section.title, section.jobs.length)}</h2> : null}
-            {section.jobs.map((job) => jobCard(job, true))}
-          </div>
-        ))}
-      </div>
+      {/* One card list at a time: this one on a phone, the one above from 768px, so a job's card is in the page once. */}
+      {phone ? (
+        <div className="space-y-3 md:hidden">
+          {sections.map((section) => (
+            <div key={section.key} className="space-y-3">
+              {section.title ? <h2 className="px-1">{groupHeading(section.title, section.jobs.length)}</h2> : null}
+              {section.jobs.map((job) => jobCard(job, true))}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(confirmOne && confirmOneJob)}
@@ -1827,8 +1832,16 @@ export default function JobsPage() {
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(worksheetJob)} onOpenChange={(open) => !open && closeWorksheet()}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle><DialogDescription>Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription></DialogHeader>
+        {/* The Close X now comes first in the sticky header, so opening would focus it: start on the first field instead, or on the
+            dialog itself while the form is still loading. */}
+        <DialogContent className="max-w-4xl" hideClose onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const content = event.currentTarget as HTMLElement | null;
+          const first = content?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])");
+          (first ?? content)?.focus();
+        }}>
+          <DialogHeader stickyClose><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle></DialogHeader>
+          <DialogDescription className="-mt-6">Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription>
           {worksheetJob && !worksheetJob.finished_at && (benchPaused(worksheetJob) || benchRunning(worksheetJob)) ? (
             <p data-testid="worksheet-bench" className="text-sm"><span className={cn("rounded-none px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide", benchPaused(worksheetJob) ? "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100")}>{benchPaused(worksheetJob) ? "Paused" : "Running"}</span> <span className="text-slate-600 dark:text-slate-300">{benchPaused(worksheetJob) ? "Start on the board resumes it." : "On the bench (no machine)."}</span></p>
           ) : null}
@@ -1903,7 +1916,7 @@ export default function JobsPage() {
 
       <ReworkDialog job={reworkJob} role={activeRole} onClose={() => setReworkJob(null)} onChanged={() => setAttempt((n) => n + 1)} />
 
-      <ReopenJobDialog job={reopenFor} onClose={() => setReopenFor(null)} onReopened={(job) => onReopened(job as WorkshopJob)} />
+      <ReopenJobDialog job={reopenFor} onClose={() => setReopenFor(null)} onReopened={(job, message) => onReopened(job as WorkshopJob, message)} onWaiting={(_job, message) => { setReopenFor(null); toast.info(message); }} />
       <ReleaseEarlyDialog job={releaseFor} onClose={() => setReleaseFor(null)} onReleased={(message) => { setReleaseFor(null); toast.success(message); }} />
       <InspectionDialog job={inspectJob} isAdmin={activeRole === "admin"} onClose={() => setInspectJob(null)} onRecorded={(done) => inspectJob && onInspected(inspectJob, done)} />
 

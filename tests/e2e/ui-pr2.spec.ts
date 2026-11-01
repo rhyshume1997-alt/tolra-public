@@ -343,7 +343,7 @@ test("shell: when the connection is lost the top bar and the drawer say Offline 
 // 3. Records: cards below 768, cards or compact lists to 1024, dense tables above
 // ---------------------------------------------------------------------------------------------------------------------
 
-test("lists: Job Board and list pages never show a dense table up to 1024px (the choice returns on a wide screen)", async ({ page }) => {
+test("lists: Job Board and list pages never show a dense table up to 1024px (the choice returns on a wide screen); the Job Board shows no List there either", async ({ page }) => {
   await guardNetwork(page.context());
   await signIn(page, alpha().users.admin);
   await page.setViewportSize({ width: 1280, height: 800 });
@@ -358,7 +358,7 @@ test("lists: Job Board and list pages never show a dense table up to 1024px (the
     await expect(page.locator('[data-testid="job-card"]:visible').first(), `jobs @${width}: cards instead`).toBeVisible();
     await expect(page.getByRole("button", { name: "Table", exact: true }), `jobs @${width}: no Table option`).toBeHidden();
     await expect(page.getByRole("button", { name: "Cards", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByRole("button", { name: "List", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "List", exact: true }), `jobs @${width}: no List option (it is a wide table too)`).toBeHidden();
     await noSidewaysScroll(page, `jobs table choice @${width}`);
   }
   await page.setViewportSize({ width: 1280, height: 800 });

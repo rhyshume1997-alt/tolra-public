@@ -264,7 +264,7 @@ describe("every app/api route handler guards itself (middleware lets /api/ throu
   });
 
   it("the routes that use the service role on a company's behalf, or send e-mail, are guarded, not public", () => {
-    for (const key of ["admin/alert-test:POST", "send-job:POST", "mail/send:POST", "cron/ip-purge:GET", "job-photos/[id]:GET", "integrations/xero/send:POST", "integrations/xero/after-issue:POST", "integrations/xero/callback:GET",
+    for (const key of ["admin/alert-test:POST", "send-job:POST", "mail/send:POST", "cron/ip-purge:GET", "cron/daily:GET", "cron/nightly:GET", "job-photos/[id]:GET", "integrations/xero/send:POST", "integrations/xero/after-issue:POST", "integrations/xero/callback:GET",
       "integrations/xero/disconnect:POST", "admin/users:POST", "admin/users:PATCH", "admin/users/sign-in:GET", "admin/users/sign-in:POST",
       "admin/users/password:POST", "admin/users/mfa-reset:POST", "admin/users/companies:POST", "platform/organizations:POST"]) {
       expect(PUBLIC_ROUTES[key]).toBeUndefined();

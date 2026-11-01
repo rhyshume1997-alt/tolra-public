@@ -86,8 +86,8 @@ describe("GET /api/cron/overview-snapshot: the capture", () => {
 });
 
 describe("vercel.json", () => {
-  it("runs the snapshot once a day at 22:00 UTC, which is still the same London day in winter and summer", () => {
+  it("runs the snapshot once a day at 22:00 UTC (inside the nightly pass), which is still the same London day in winter and summer", () => {
     const config = JSON.parse(readFileSync("vercel.json", "utf8")) as { crons: { path: string; schedule: string }[] };
-    expect(config.crons).toContainEqual({ path: "/api/cron/overview-snapshot", schedule: "0 22 * * *" });
+    expect(config.crons).toContainEqual({ path: "/api/cron/nightly", schedule: "0 22 * * *" });
   });
 });

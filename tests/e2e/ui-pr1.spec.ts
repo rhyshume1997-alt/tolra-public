@@ -581,32 +581,34 @@ test("phone, workshop: Start and Finish are at least 64px high, secondary contro
   await context.close();
 });
 
-test("tablet: the compact list keeps 44px targets with visible labels; admin and office are 44px, workshop 64/48", async ({ browser }) => {
+// The Job Board's List is a wide table with sticky columns that scrolls sideways inside its card, so up to 1024px (a tablet) it is shown as
+// Cards (lib/view-mode listNeedsWide): the touch targets are checked on the cards, which have the same controls and the same sizes.
+test("tablet: the job cards keep 44px targets with visible labels; admin and office are 44px, workshop 64/48", async ({ browser }) => {
   for (const [who, user] of [["office", alpha().users.office], ["admin", alpha().users.admin], ["workshop", alpha().users.workshop]] as const) {
     const { context, page } = await device(browser, TABLET);
     await signIn(page, user);
     await openJobs(page);
-    // The list view is the default on a tablet.
-    const row = rowOf(page, JOBS.started);
-    await expect(row).toBeVisible();
+    // Cards are what a tablet shows (the List needs the desk layout), and there is no wide table in the page.
+    const card = cardOf(page, JOBS.started);
+    await expect(card).toBeVisible();
+    await expect(page.locator("table:visible")).toHaveCount(0);
     const startH = who === "workshop" ? 64 : 44;
     const secondH = who === "workshop" ? 48 : 44;
-    const start = row.getByRole("button", { name: "Start" });
-    const finish = row.getByRole("button", { name: "Finish" });
-    await expectTarget(`tablet/${who}`, "list Start", start, 44, startH);
-    await expectTarget(`tablet/${who}`, "list Finish", finish, 44, startH);
+    const start = playControl(card, JOBS.started);
+    const finish = card.getByRole("button", { name: "Finish" });
+    await expectTarget(`tablet/${who}`, "card Start", start, 44, startH);
+    await expectTarget(`tablet/${who}`, "card Finish", finish, 44, startH);
     // Labelled on touch: the word is on screen, the accessible name is unchanged.
     await expect(finish).toContainText("Finish");
-    await expect(row.getByRole("link", { name: "Print" })).toContainText("Print");
-    for (const name of ["Worksheet"]) await expectTarget(`tablet/${who}`, `list ${name}`, row.getByRole("button", { name }), 44, secondH);
-    await expectTarget(`tablet/${who}`, "list Print", row.getByRole("link", { name: "Print" }), 44, secondH);
-    await expectTarget(`tablet/${who}`, "list expand", row.getByRole("button", { name: `Show details for ${JOBS.started}` }), 44, secondH);
-    await expectTarget(`tablet/${who}`, "list checkbox", hitArea(row.getByRole("checkbox", { name: `Select ${JOBS.started}` })), 44, secondH);
-    await expectTarget(`tablet/${who}`, "header checkbox", hitArea(page.getByRole("checkbox", { name: /^Select all \d+ filtered jobs$/ })), 44, secondH);
+    await expect(card.getByRole("link", { name: "Print" })).toContainText("Print");
+    for (const name of ["Worksheet"]) await expectTarget(`tablet/${who}`, `card ${name}`, card.getByRole("button", { name }), 44, secondH);
+    await expectTarget(`tablet/${who}`, "card Print", card.getByRole("link", { name: "Print" }), 44, secondH);
+    await expectTarget(`tablet/${who}`, "card checkbox", hitArea(card.getByRole("checkbox", { name: `Select ${JOBS.started}` })), 44, secondH);
+    await expectTarget(`tablet/${who}`, "Select all filtered", page.getByRole("button", { name: /^Select all \d+ filtered$/ }), 44, secondH);
     await expectTarget(`tablet/${who}`, "view switcher Cards", page.getByRole("button", { name: "Cards", exact: true }), 44, secondH);
     await expectTarget(`tablet/${who}`, "Hours/Days toggle", page.getByRole("button", { name: "Hours", exact: true }), 44, secondH);
     // Touch it for real.
-    await row.getByRole("checkbox", { name: `Select ${JOBS.started}` }).tap();
+    await card.getByRole("checkbox", { name: `Select ${JOBS.started}` }).tap();
     await expect(page.getByTestId("selection-summary")).toContainText("1 selected");
     await context.close();
   }

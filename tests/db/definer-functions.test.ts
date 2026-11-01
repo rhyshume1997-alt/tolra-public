@@ -123,6 +123,8 @@ beforeAll(async () => {
   if ((await service.from("integration_contacts").insert({ organization_id: org, provider: "xero", customer_name: `${MARKER} Customer`, state: "problem", problem: "Two contacts" })).error) throw new Error("beta integration contact");
 
   // 101: an AI helper suggestion of beta's, waiting for a decision, for settle and decide to be pointed at (written as its functions would).
+  // 113: a reopen of beta's job waiting for an admin, for decide_reopen_request to be pointed at (written as reopen_record would).
+  beta.reopenRequest = (await service.from("reopen_requests").insert({ organization_id: org, record_type: "job", record_id: beta.job, record_ref: `J-${MARKER}`, requested_by: world.tenants.beta.users.office.id, reason: `${MARKER} reopen reason`, approval_mode: "admin_present", notified_at: new Date().toISOString(), status: "pending" }).select("id").single()).data!.id;
   beta.aiRequest = (await service.from("ai_helper_requests").insert({ organization_id: org, user_id: beta.adminId, feature: "rfq", month: `${new Date().toISOString().slice(0, 7)}-01`, status: "suggested", input_digest: "a".repeat(64), input_bytes: 10, output: { kind: "rfq", lines: [] } }).select("id").single()).data!.id;
 
   // A photo reserved on beta's job by beta's admin (040), for finalise and remove to be pointed at.
@@ -332,6 +334,10 @@ function attempts(): Attempt[] {
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
     ["public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)", () => alpha.rpc("ai_helper_decide", { p_request: beta.aiRequest, p_decision: "rejected", p_quote: null }), "refused"],
+    // 113: previewing or reopening beta's job, and deciding beta's waiting request, are refused (beta's job and request stay as they are).
+    ["public.reopen_preview(p_record_type text, p_record_id uuid)", () => alpha.rpc("reopen_preview", { p_record_type: "job", p_record_id: beta.job }), "refused"],
+    ["public.reopen_record(p_record_type text, p_record_id uuid, p_reason text, p_mode text)", () => alpha.rpc("reopen_record", { p_record_type: "job", p_record_id: beta.job, p_reason: "Cross-company attempt", p_mode: "admin_present" }), "refused"],
+    ["public.decide_reopen_request(p_request uuid, p_decision text, p_note text)", () => alpha.rpc("decide_reopen_request", { p_request: beta.reopenRequest, p_decision: "approve", p_note: null }), "refused"],
     // 102: whether a profile is one the caller may change: asked about beta's person, FALSE (nothing of beta's is revealed or touched).
     ["public.admin_may_edit_profile(p_user uuid)", () => alpha.rpc("admin_may_edit_profile", { p_user: world.tenants.beta.users.office.id }), "nothing of beta's"],
     ["public.admin_may_read_profile(p_user uuid)", () => alpha.rpc("admin_may_read_profile", { p_user: world.tenants.beta.users.office.id }), "nothing of beta's"],

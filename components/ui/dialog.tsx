@@ -47,6 +47,19 @@ function DialogOverlay({
 }
 
 /**
+ * The corner X. Positioned against the nearest positioned ancestor: the dialog itself, or a sticky DialogHeader that carries it.
+ * 44px square on a touch screen.
+ */
+function DialogCloseButton() {
+  return (
+    <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-lg text-slate-500 transition outline-none hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-3 focus-visible:ring-brand-accent/35 pointer-coarse:size-11">
+      <X className="size-4" />
+      <span className="sr-only">Close</span>
+    </DialogPrimitive.Close>
+  );
+}
+
+/**
  * Bounded by the viewport and scrolls inside, so every control stays reachable on small screens (audit D30). Callers
  * set the width (max-w-*) and nothing else about the bound: a max-h-[..vh] override would undermine the dvh limit below.
  * One column that can't grow past the dialog, and long unbroken values (an e-mail, a part number) wrap instead of overflowing.
@@ -54,8 +67,9 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  hideClose = false,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { hideClose?: boolean }) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -68,25 +82,37 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-lg text-slate-500 transition outline-none hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-3 focus-visible:ring-brand-accent/35 pointer-coarse:size-11">
-          <X className="size-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {hideClose ? null : <DialogCloseButton />}
       </DialogPrimitive.Content>
     </DialogPortal>
   );
 }
 
+/**
+ * With stickyClose, the header (and the X, which moves into it) stays at the top of a long dialog while the body scrolls under it. Use it
+ * with `hideClose` on the DialogContent so there is only one X. It must be the first child of the DialogContent: the negative margins pull
+ * it out over the dialog's padding, and the negative top offset cancels that padding, which a sticky box would otherwise respect.
+ */
 function DialogHeader({
   className,
+  stickyClose = false,
+  children,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { stickyClose?: boolean }) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5 text-left", className)}
+      data-sticky-close={stickyClose ? "" : undefined}
+      className={cn(
+        "flex flex-col gap-1.5 text-left",
+        stickyClose && "sticky -top-5 z-10 -mx-5 -mt-5 bg-surface px-5 pb-3 pt-5 pr-14 sm:-top-7 sm:-mx-7 sm:-mt-7 sm:px-7 sm:pt-7 sm:pr-16",
+        className
+      )}
       {...props}
-    />
+    >
+      {children}
+      {stickyClose ? <DialogCloseButton /> : null}
+    </div>
   );
 }
 

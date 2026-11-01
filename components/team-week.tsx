@@ -65,35 +65,35 @@ export function TeamWeek() {
       ) : !rows.length ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Nobody has clocked in this week yet.</p>
       ) : (
-        <div className="-mx-4 overflow-x-auto">
-          <table className="w-full min-w-[44rem] text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-[0.8125rem] text-muted-foreground">
-                <th className="px-4 py-2 font-medium">Person</th>
-                <th className="px-2 py-2 font-medium">Right now</th>
-                <th className="w-[30%] px-2 py-2 font-medium">Time on jobs</th>
-                <th className="px-2 py-2 text-right font-medium">Paid hours</th>
-                <th className="px-2 py-2 text-right font-medium" title="Share of clocked time spent on jobs">On jobs</th>
-                <th className="px-4 py-2 text-right font-medium">Jobs finished</th>
+        <div className="-mx-4">
+          <table role="table" className="w-full text-sm desk:min-w-[44rem]" data-tablet-cards>
+            <thead role="rowgroup" className="hidden md:table-header-group">
+              <tr role="row" className="border-b border-line text-left text-[0.8125rem] text-muted-foreground">
+                <th role="columnheader" className="px-4 py-2 font-medium">Person</th>
+                <th role="columnheader" className="px-2 py-2 font-medium">Right now</th>
+                <th role="columnheader" className="w-[30%] px-2 py-2 font-medium">Time on jobs</th>
+                <th role="columnheader" className="px-2 py-2 text-right font-medium">Paid hours</th>
+                <th role="columnheader" className="px-2 py-2 text-right font-medium" title="Share of clocked time spent on jobs">On jobs</th>
+                <th role="columnheader" className="px-4 py-2 text-right font-medium">Jobs finished</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-line/70">
+            <tbody role="rowgroup" className="divide-y divide-line/70">
               {rows.map((row) => (
-                <tr key={row.userId}>
-                  <td className="px-4 py-2.5 font-semibold text-ink">
+                <tr role="row" key={row.userId} className="block md:table-row">
+                  <td role="cell" className="block px-4 py-2.5 font-semibold text-ink md:table-cell">
                     {row.name}
                     <span className="block text-xs font-normal text-muted-foreground">{row.daysWorked} day{row.daysWorked === 1 ? "" : "s"} worked</span>
                   </td>
-                  <td className="px-2 py-2.5"><span className="inline-flex items-center gap-2 text-ink"><LightDot light={NOW_LIGHT[row.now.state]} />{nowText(row.now)}</span></td>
-                  <td className="px-2 py-2.5">
+                  <td role="cell" data-label="Right now" className="block px-4 py-2.5 md:table-cell desk:px-2"><span className="inline-flex items-center gap-2 text-ink"><LightDot light={NOW_LIGHT[row.now.state]} />{nowText(row.now)}</span></td>
+                  <td role="cell" data-label="Time on jobs" className="block px-4 py-2.5 md:table-cell desk:px-2">
                     <span className="flex items-center gap-2">
                       <span className="h-3 flex-1 bg-canvas"><span className="block h-full bg-brand" style={{ width: `${most ? (row.jobMinutes / most) * 100 : 0}%` }} /></span>
                       <span className="w-14 text-right font-semibold tabular-nums text-ink">{hm(row.jobMinutes)}</span>
                     </span>
                   </td>
-                  <td className="px-2 py-2.5 text-right tabular-nums text-ink">{hm(row.paidMinutes)}</td>
-                  <td className="px-2 py-2.5 text-right tabular-nums text-ink">{row.onJobsPercent === null ? "—" : `${row.onJobsPercent}%`}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-ink">{row.jobsFinished}</td>
+                  <td role="cell" data-label="Paid hours" className="block px-4 py-2.5 tabular-nums text-ink md:table-cell desk:px-2 desk:text-right">{hm(row.paidMinutes)}</td>
+                  <td role="cell" data-label="On jobs" className="block px-4 py-2.5 tabular-nums text-ink md:table-cell desk:px-2 desk:text-right">{row.onJobsPercent === null ? "—" : `${row.onJobsPercent}%`}</td>
+                  <td role="cell" data-label="Jobs finished" className="block px-4 py-2.5 font-semibold tabular-nums text-ink md:table-cell desk:text-right">{row.jobsFinished}</td>
                 </tr>
               ))}
             </tbody>

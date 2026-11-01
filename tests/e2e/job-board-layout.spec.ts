@@ -96,7 +96,7 @@ async function expectStageClearOfMachine(page: Page, no: string, label: string) 
   expect(stage.x + stage.width, `${label} ${no}: Stage cell does not reach the Machine cell`).toBeLessThanOrEqual(machine.x + 1);
 }
 
-for (const width of [1280, 1024, 820]) {
+for (const width of [1280]) { // Up to 1024px the List is shown as Cards (below).
   test(`List view at ${width}px: the Stage cell's status line stays out of the Machine cell`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await signIn(page, w.tenants.alpha.users.office);
@@ -150,6 +150,21 @@ test("Cards at 390px: no sideways page scroll", async ({ page }) => {
   expect(cardWords.y + cardWords.height, "cards@390: the released words end above the Planned line").toBeLessThanOrEqual(cardPlanned.y + 1);
   expect(cardWords.x + cardWords.width, "cards@390: the released words stay inside the card").toBeLessThanOrEqual(page.viewportSize()!.width);
 });
+
+for (const width of [1024, 820]) {
+  test(`List (the default view) at ${width}px is shown as Cards: no table, nothing scrolls sideways`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await signIn(page, w.tenants.alpha.users.office);
+    await page.goto("/jobs");
+    for (const no of Object.values(J)) await expect(page.locator(`[data-testid="job-card"][data-job-id="${ids[no]}"]:visible`)).toBeVisible();
+    await expect(page.locator("table:visible")).toHaveCount(0);
+    // The switcher offers Cards only here (no List, no Table): the wide tables need more than 1024px.
+    const choices = page.getByRole("group", { name: "View" });
+    await expect(choices.getByRole("button", { name: "Cards", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(choices.getByRole("button", { name: "List", exact: true })).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1), `the page scrolls sideways at ${width}`).toBe(false);
+  });
+}
 
 for (const width of [1280, 820]) {
   test(`Quotes at ${width}px: a Superseded status badge stays inside its cell`, async ({ page }) => {
