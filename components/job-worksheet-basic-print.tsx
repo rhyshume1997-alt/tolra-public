@@ -83,7 +83,7 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
           <Field label="Drawing no." value={ws.drawing_no} />
         </div>
         <div>
-          <Field label="Customer order no." value={ws.customer_po} />
+          <Field label="Customer PO" value={ws.customer_po} />
           <Field label="Date required" value={fmtDate(ws.date_required)} />
           <Field label="Quantity" value={ws.quantity_required} />
         </div>
@@ -101,7 +101,7 @@ export function BasicWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custo
 
       <div className="mt-2"><Heading>Description</Heading><div className="border border-t-0 border-black px-2 py-1 text-[12px] break-words whitespace-pre-wrap" style={{ minHeight: "24mm" }}>{ws.description}</div></div>
 
-      {customerPos.length ? <p className="mt-1 text-[10px] break-words"><strong>Customer order attached:</strong> {customerPos.join(", ")}</p> : null}
+      {customerPos.length ? <p className="mt-1 text-[10px] break-words"><strong>Customer PO attached:</strong> {customerPos.join(", ")}</p> : null}
       {drawings.length ? <p className="mt-1 text-[10px] break-words"><strong>Drawings:</strong> {drawings.join(", ")}</p> : null}
 
       <div className="mt-2">
@@ -199,7 +199,7 @@ export function BasicWorksheetPackPrint({ sheets }: { sheets: BasicPackSheet[] }
           <tr>
             <th className={th} style={{ width: "10%" }}>Job no.</th>
             <th className={th} style={{ width: "13%" }}>Customer</th>
-            <th className={th} style={{ width: "10%" }}>Customer order no.</th>
+            <th className={th} style={{ width: "10%" }}>Customer PO</th>
             <th className={th} style={{ width: "24%" }}>Description</th>
             <th className={th} style={{ width: "10%" }}>Drawing no.</th>
             <th className={th} style={{ width: "6%" }}>Qty</th>

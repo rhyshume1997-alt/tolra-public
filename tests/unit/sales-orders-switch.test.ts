@@ -90,7 +90,7 @@ describe("the page guard", () => {
 describe("accepting a quote with Sales Orders off", () => {
   it("job made: says the job only, links to the job, never to Sales Orders", () => {
     const told = acceptOutcome(base, "QUO-0101", false);
-    expect(told.message).toBe("QUO-0101 accepted. Job J-0101 made, not started. Its customer PO can be added once Sales Orders is switched on.");
+    expect(told.message).toBe("QUO-0101 accepted. Job J-0101 made, not started. No customer PO yet: add it on the quote when it arrives.");
     expect(told.link).toEqual({ label: "Open job J-0101", href: "/jobs?job=j1" });
     expect(told.message).not.toMatch(/sales order SO/i);
   });
@@ -126,7 +126,7 @@ describe("accepting a quote with Sales Orders off", () => {
   });
 
   it("on (the default argument) is exactly as before", () => {
-    expect(acceptOutcome(base).message).toBe("QUO-0101 accepted. Sales order SO-0007 created (a provisional number: add the customer's PO on Sales Orders when it arrives) and job J-0101 made, not started.");
+    expect(acceptOutcome(base).message).toBe("QUO-0101 accepted. Sales order SO-0007 created (no customer PO yet: add it on the quote when it arrives) and job J-0101 made, not started.");
     expect(acceptOutcome({ ...base, job_id: null, job_no: null, auto_convert: false }).link).toEqual({ label: "Open Sales Orders", href: "/sales-orders" });
   });
 });

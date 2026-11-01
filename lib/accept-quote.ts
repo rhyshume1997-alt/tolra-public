@@ -37,7 +37,7 @@ export type AcceptOutcome = {
   link: { label: string; href: string } | null;
 };
 
-/** Customer PO typed on the Confirm Accepted dialog: trimmed; empty means none yet (a provisional number). */
+/** Customer PO typed on the Confirm Accepted dialog (it starts as the quote's own, 123): trimmed; empty means none yet. */
 export function customerPoInput(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
@@ -91,9 +91,9 @@ export function acceptOutcome(result: AcceptQuoteResult, ref = result.quote_ref 
   const declined = result.lines_declined ?? 0;
   const partial = result.accepted && ordered && declined ? ` for ${ordered} of ${ordered + declined} lines` : "";
   const order = `sales order ${result.so_number ?? ""}`.trim() + partial;
-  const provisional = result.provisional ? " (a provisional number: add the customer's PO on Sales Orders when it arrives)" : "";
-  // Off: the order exists but has no screen, so it is not named; the PO can only be added once an admin switches Sales Orders on.
-  const poLater = result.provisional ? " Its customer PO can be added once Sales Orders is switched on." : "";
+  const provisional = result.provisional ? " (no customer PO yet: add it on the quote when it arrives)" : "";
+  // Off: the order exists but has no screen, so it is not named; the PO lives on the quote (123), so it can still be added there.
+  const poLater = result.provisional ? " No customer PO yet: add it on the quote when it arrives." : "";
   if (!result.accepted) {
     const job = result.job_no ? ` and job ${result.job_no}` : "";
     const has = salesOrdersOn ? `it has ${order}${job}` : result.job_no ? `it has job ${result.job_no}` : "its order is already made";

@@ -1,5 +1,6 @@
 import { BaseDocumentPDF } from "@/components/pdf/BaseDocumentPDF";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
+import { customerPoKeyValue } from "@/lib/customer-po";
 import type { PdfCustomerSignOff } from "@/lib/customer-signoff-print";
 
 export type DeliveryNotePdfData = {
@@ -11,6 +12,8 @@ export type DeliveryNotePdfData = {
   billTo: string[];
   deliverTo?: string[];
   items: Array<{ description: string; quantity: number }>;
+  /** The customer's PO of the note's order (migration 123): printed as "Customer PO" only when there is one. */
+  customerPo?: string;
   customerMessage?: string[];
   /** The job's customer sign-off (072), when it has one: a small block under the message box. */
   customerSignOff?: PdfCustomerSignOff;
@@ -29,6 +32,7 @@ export function DeliveryNotePDF({ data }: { data: DeliveryNotePdfData }) {
           { label: "Tax Date", value: data.taxDate },
           { label: "Ship Date", value: data.shipDate },
           { label: "Ship Via", value: data.shipVia ?? "" },
+          ...customerPoKeyValue(data.customerPo),
         ],
         billToLabel: "Invoice To:",
         billTo: data.billTo,
