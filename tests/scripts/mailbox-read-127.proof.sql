@@ -199,6 +199,30 @@ BEGIN
   SELECT * INTO s FROM public.integration_mailbox_sync WHERE organization_id = A;
   IF substr(r, 4)::JSONB <> '{"resumed": false, "mail_read": true}'::JSONB OR s.checkpoint IS NOT NULL OR s.next_link IS NOT NULL THEN RAISE EXCEPTION 'FAIL 9 fresh: %', row_to_json(s); END IF;
   RAISE NOTICE 'PASS 9 disconnected is not polled; a new mailbox starts with no cursor';
+
+  -- 10. The throttle (mailbox_sync_claim): one real check per company per interval, whatever the number of callers; the API can't call it.
+  -- (Two callers at the same moment, on two connections: tests/scripts/mailbox-claim-127.race.sh.)
+  r := pg_temp.svc(format('SELECT public.mailbox_sync_claim(%L, 90)::TEXT', A));
+  IF substr(r, 4)::JSONB ->> 'state' <> 'claimed' OR substr(r, 4)::JSONB ? 'last_error' THEN RAISE EXCEPTION 'FAIL 10 first claim: %', r; END IF;
+  r := pg_temp.svc(format('SELECT public.mailbox_sync_claim(%L, 90)::TEXT', A));
+  IF substr(r, 4)::JSONB ->> 'state' <> 'recent' OR r LIKE '%next_link%' OR r LIKE '%checkpoint%' THEN RAISE EXCEPTION 'FAIL 10 second claim: %', r; END IF;
+  -- B's claim is B's own: A's claim does not throttle B.
+  PERFORM pg_temp.svc(format('SELECT public.mailbox_sync_connected(%L, ''mbx-b'', TRUE)::TEXT', B));
+  r := pg_temp.svc(format('SELECT public.mailbox_sync_claim(%L, 90)::TEXT', B));
+  IF substr(r, 4)::JSONB ->> 'state' <> 'claimed' THEN RAISE EXCEPTION 'FAIL 10 B throttled by A: %', r; END IF;
+  -- Once the interval has passed, a claim starts a check again (a check that never finished holds nothing).
+  UPDATE public.integration_mailbox_sync SET claimed_at = now() - interval '91 seconds' WHERE organization_id = A;
+  r := pg_temp.svc(format('SELECT public.mailbox_sync_claim(%L, 90)::TEXT', A));
+  IF substr(r, 4)::JSONB ->> 'state' <> 'claimed' THEN RAISE EXCEPTION 'FAIL 10 after interval: %', r; END IF;
+  -- A company whose mailbox can't be read is never claimed: needs_reconnect, no Mail.Read, unknown.
+  PERFORM pg_temp.svc(format('SELECT public.integration_mark_needs_reconnect(%L, ''microsoft'', ''refused'')::TEXT', C));
+  IF pg_temp.svc(format('SELECT public.mailbox_sync_claim(%L, 90)::TEXT', C)) <> 'ok:{"state": "not_readable"}'
+     OR pg_temp.svc('SELECT public.mailbox_sync_claim(''12700000-0000-0000-0000-0000000000ff'', 90)::TEXT') <> 'ok:{"state": "not_readable"}' THEN RAISE EXCEPTION 'FAIL 10 not readable'; END IF;
+  IF (SELECT claimed_at FROM public.integration_mailbox_sync WHERE organization_id = C) IS NOT NULL THEN RAISE EXCEPTION 'FAIL 10 C claimed'; END IF;
+  IF pg_temp.svc(format('SELECT public.mailbox_sync_claim(%L, -1)::TEXT', A)) NOT LIKE '22023/%' OR pg_temp.svc('SELECT public.mailbox_sync_claim(NULL, 90)::TEXT') NOT LIKE '22023/%' THEN RAISE EXCEPTION 'FAIL 10 bad args'; END IF;
+  r := format('SELECT public.mailbox_sync_claim(%L, 0)::TEXT', A);
+  IF pg_temp.as_user(A_ADMIN, r) NOT LIKE '42501/%' OR pg_temp.as_user(A_OFFICE, r) NOT LIKE '42501/%' OR pg_temp.as_user(NULL, r) NOT LIKE '42501/%' THEN RAISE EXCEPTION 'FAIL 10 API may claim'; END IF;
+  RAISE NOTICE 'PASS 10 claim: once per interval per company (B separate), again after it; never for an unreadable company; not callable through the API';
 END
 $$;
 ROLLBACK;

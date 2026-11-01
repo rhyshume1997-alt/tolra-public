@@ -156,7 +156,8 @@ markers(migration, present) AS (
     ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2')),
     ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_status()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3ef44c838451b46ea14030164d9b1384')),
     ('127 mailbox read',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4a7ede00d54804941fc17a291bde6b4c')
-                                          AND to_regclass('public.integration_mailbox_sync') IS NOT NULL)
+                                          AND to_regclass('public.integration_mailbox_sync') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mailbox_sync_claim(uuid,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a9985b00301c4579f1f6797205c21834'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

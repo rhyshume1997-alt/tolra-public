@@ -16,6 +16,8 @@ BEGIN;
 --        checkpoint, next_link   where the inbox check is up to (the newest received time stored; Microsoft's paging link)
 --        last_sync_at, last_attempt_at, last_error, error_count   the last good check, the last try, and why it failed (a fixed code,
 --                      never Microsoft's text, a token or a message; the app turns the code into plain words)
+--        claimed_at    when a check last started (mailbox_sync_claim): the throttle, so open tabs, users and the server never check
+--                      one company more often than once a minimum interval (the app asks for 90 seconds)
 --      RLS on, no policy, no grant to anon or authenticated: only these functions read or write it.
 --   b. Functions (SECURITY DEFINER, search_path pinned):
 --      server only (service role): mailbox_sync_connected (after Connect stores the sign-in: whether Mail.Read was granted; the same
@@ -23,6 +25,8 @@ BEGIN;
 --        check: connected, Mail.Read, the same mailbox; all, or one company), mailbox_sync_result (a check's outcome for ONE company),
 --        mailbox_record_inbound (one message for ONE company, as 031's record_inbound_email: the same UNIQUE, ON CONFLICT DO NOTHING,
 --        and the same new RFQ; refused unless that company's connection may read mail).
+--        mailbox_sync_claim (start a check for ONE company: at most one per minimum interval, whatever the number of callers; the row
+--        lock makes two callers at once give one 'claimed' and one 'recent').
 --      signed in: mailbox_sync_status (the caller's own company's reading status, admins only; never the cursor).
 -- ISOLATION: every server function takes the company and touches only that company's rows; mailbox_record_inbound writes only the
 -- organization_id it is given, and only when that company's own connection is connected with Mail.Read.
@@ -54,7 +58,8 @@ BEGIN
                           ('public.mailbox_sync_due(uuid)', 'f166b13165a5e3f45a8ee96ed9563ab2'),
                           ('public.mailbox_sync_result(uuid,text,text,timestamp with time zone)', 'bc91232dd7936719831735c19703274c'),
                           ('public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)', '4a7ede00d54804941fc17a291bde6b4c'),
-                          ('public.mailbox_sync_status()', '2d190567cfe9f2bd8fa6c6d055b7df45')) AS f(sig, body)
+                          ('public.mailbox_sync_status()', '2d190567cfe9f2bd8fa6c6d055b7df45'),
+                          ('public.mailbox_sync_claim(uuid,integer)', 'a9985b00301c4579f1f6797205c21834')) AS f(sig, body)
                ON p.oid = to_regprocedure(f.sig)
              WHERE md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> f.body) THEN
     RAISE EXCEPTION '127: a function 127 creates already exists with another body; stop and compare it first';
@@ -75,8 +80,10 @@ CREATE TABLE IF NOT EXISTS public.integration_mailbox_sync (
   last_attempt_at TIMESTAMPTZ,
   last_error      TEXT CHECK (last_error IS NULL OR last_error IN ('reconnect', 'consent', 'signin', 'busy', 'unavailable', 'store_failed')),
   error_count     INTEGER NOT NULL DEFAULT 0 CHECK (error_count >= 0),
+  claimed_at      TIMESTAMPTZ,
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE public.integration_mailbox_sync ADD COLUMN IF NOT EXISTS claimed_at TIMESTAMPTZ;
 
 ALTER TABLE public.integration_mailbox_sync ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.integration_mailbox_sync FROM PUBLIC, anon, authenticated;
@@ -217,6 +224,40 @@ $$;
 REVOKE ALL ON FUNCTION public.mailbox_record_inbound(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.mailbox_record_inbound(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT) TO service_role;
 
+-- 3e. Start one check for ONE company (the throttle). 'claimed' with the cursor when its mailbox may be read and no check started in the
+-- last p_min_seconds; 'recent' (with the last good check and failure code) when one did; 'not_readable' when it can't be read (not
+-- connected, needs reconnect, no Mail.Read, another mailbox, an inactive company). The UPDATE takes the row lock and re-checks claimed_at
+-- after a concurrent claim commits, so two callers at once (two tabs, two office users, the server's pass) start one check, not two.
+-- A check that never finishes holds nothing: the next claim after the interval starts again (031's UNIQUE skips what was stored).
+CREATE OR REPLACE FUNCTION public.mailbox_sync_claim(p_org UUID, p_min_seconds INTEGER)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_row public.integration_mailbox_sync%ROWTYPE;
+BEGIN
+  IF p_org IS NULL OR p_min_seconds IS NULL OR p_min_seconds < 0 OR p_min_seconds > 3600 THEN
+    RAISE EXCEPTION 'a company and an interval of 0 to 3600 seconds are required' USING ERRCODE = '22023';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.mailbox_sync_due(p_org)) THEN
+    RETURN jsonb_build_object('state', 'not_readable');
+  END IF;
+  UPDATE public.integration_mailbox_sync s SET claimed_at = now()
+  WHERE s.organization_id = p_org AND (s.claimed_at IS NULL OR s.claimed_at <= now() - make_interval(secs => p_min_seconds))
+  RETURNING s.* INTO v_row;
+  IF NOT FOUND THEN
+    SELECT s.* INTO v_row FROM public.integration_mailbox_sync s WHERE s.organization_id = p_org;
+    RETURN jsonb_build_object('state', 'recent', 'last_sync_at', v_row.last_sync_at, 'last_error', v_row.last_error);
+  END IF;
+  RETURN jsonb_build_object('state', 'claimed', 'checkpoint', v_row.checkpoint, 'next_link', v_row.next_link);
+END
+$$;
+REVOKE ALL ON FUNCTION public.mailbox_sync_claim(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mailbox_sync_claim(UUID, INTEGER) TO service_role;
+
 -- -----------------------------------------------------------------------------------------------------
 -- 4. Signed in: the caller's own company's inbox reading, for the Microsoft 365 card (admins only). Never the cursor or the mailbox id.
 CREATE OR REPLACE FUNCTION public.mailbox_sync_status()
@@ -255,7 +296,8 @@ BEGIN
   END IF;
   FOREACH v_sig IN ARRAY ARRAY['public.mailbox_sync_connected(uuid,text,boolean)', 'public.mailbox_sync_due(uuid)',
                                'public.mailbox_sync_result(uuid,text,text,timestamp with time zone)',
-                               'public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)'] LOOP
+                               'public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)',
+                               'public.mailbox_sync_claim(uuid,integer)'] LOOP
     IF has_function_privilege('authenticated', v_sig, 'EXECUTE') OR has_function_privilege('anon', v_sig, 'EXECUTE')
        OR NOT has_function_privilege('service_role', v_sig, 'EXECUTE') THEN
       RAISE EXCEPTION '127 self-check: % is not the service role''s only', v_sig;

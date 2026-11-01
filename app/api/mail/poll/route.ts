@@ -1,33 +1,21 @@
 import { NextResponse } from "next/server";
 
-import { delegatedMailbox, microsoftReady, microsoftTokenSource } from "@/lib/integrations/microsoft/client";
-import { pollMailbox, recordAsAdmin, saveResultFor } from "@/lib/integrations/microsoft/inbox";
-import { mailSyncReason } from "@/lib/integrations/overview";
-import { DbError } from "@/lib/integrations/server";
 import { GraphError, isGraphLink, listInboxSince, MAX_PAGES } from "@/lib/m365/graph";
-import { graphFailure, legacyMailContext } from "@/lib/m365/route";
-import { type AuthContext, forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
-import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
+import { graphFailure, mailGuard } from "@/lib/m365/route";
+import { isErrorResponse, jsonError } from "@/lib/server/auth";
 
 /** With nothing stored yet, the first check looks back this far (24 hours). */
 const FIRST_LOOKBACK_MS = 24 * 3600_000;
 
 /**
- * Picks up new inbox messages (GET only: the mailbox is not changed or marked read). The company's own delegated Microsoft 365
- * connection is used when it may read mail (C1); otherwise the LEGACY app-only mailbox (MS_* env vars). A message is stored once,
+ * Picks up new inbox messages (GET only: the mailbox is not changed or marked read). A message is stored once,
  * whatever the number of polls (record_inbound_email, migration 031), and each new one becomes an RFQ.
  * Returns { read, inserted, duplicates, more }; more = true when the page limit stopped the check. The place it stopped
  * (Microsoft's paging link) is kept per company (mail_poll_state), so the next check carries on from there, however many
  * messages share one time.
  */
 export async function POST(request: Request) {
-  if (!sameOrigin(request)) return forbiddenOrigin();
-  const auth = await requireProfile(["admin"]);
-  if (isErrorResponse(auth)) return auth;
-  // C1: this company's own delegated connection, when it may read mail, is preferred; otherwise the legacy app-only mailbox below.
-  const delegated = await delegatedPoll(auth);
-  if (delegated) return delegated;
-  const ctx = legacyMailContext(auth);
+  const ctx = await mailGuard(request);
   if (isErrorResponse(ctx)) return ctx;
   const { supabase, profile } = ctx.auth;
   const saveState = (nextLink: string | null, checkpoint: string | null) => supabase.rpc("save_mail_poll_state", { p_next_link: nextLink, p_checkpoint: checkpoint });
@@ -99,35 +87,4 @@ export async function POST(request: Request) {
   const { error: saveError } = await saveState(more ? nextLink : null, newest);
   if (saveError) console.error("[mail/poll] state not saved", saveError.code);
   return NextResponse.json({ read: messages.length, inserted, duplicates, more });
-}
-
-/**
- * The signed-in admin's company's own mailbox, through its delegated Microsoft 365 connection (C1, migration 127), or null when it has
- * none that may read mail (then the legacy path answers). The company is the admin's own (the session's); its token, cursor and status
- * are that company's only, and each message is stored with 031's record_inbound_email as the admin. GET only at Microsoft.
- */
-async function delegatedPoll(auth: AuthContext): Promise<NextResponse | null> {
-  const service = createSupabaseAdminClient();
-  if (!service) return null;
-  const org = auth.profile.organization_id;
-  let cursor: Awaited<ReturnType<typeof delegatedMailbox>>;
-  try {
-    cursor = await delegatedMailbox(service, org);
-  } catch (err) {
-    console.error("[mail/poll] delegated lookup failed", err instanceof DbError ? err.code : "error");
-    return jsonError("Could not check the inbox", 500);
-  }
-  if (!cursor) return null;
-  const ready = await microsoftReady(service);
-  if (!ready) return null;
-  const tokens = microsoftTokenSource(service, ready);
-  const outcome = await pollMailbox({
-    cursor,
-    accessToken: (opts) => tokens(org, opts),
-    record: recordAsAdmin(auth.supabase),
-    saveResult: saveResultFor(service, org),
-  });
-  const counts = { read: outcome.read, inserted: outcome.inserted, duplicates: outcome.duplicates, more: outcome.more };
-  if (outcome.error) return NextResponse.json({ error: `Couldn't check mail: ${mailSyncReason(outcome.error)}`, ...counts }, { status: outcome.error === "busy" ? 429 : 502 });
-  return NextResponse.json(counts);
 }

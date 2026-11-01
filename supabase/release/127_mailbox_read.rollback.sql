@@ -1,4 +1,4 @@
--- 127 rollback: ONLY with Rhys's approval. Removes inbox reading through the delegated connection: the five functions 127 created and
+-- 127 rollback: ONLY with Rhys's approval. Removes inbox reading through the delegated connection: the six functions 127 created and
 -- public.integration_mailbox_sync (each company's cursor and last-check status). Nothing else is touched: the inbox e-mails and RFQs
 -- already stored stay (031's tables), every Microsoft 365 connection stays connected and keeps sending, and 031's record_inbound_email
 -- and the legacy app-only path are unchanged. The app then reads no inbox through the delegated connection (127 missing reads as "off").
@@ -15,7 +15,8 @@ BEGIN
                ('public.mailbox_sync_due(uuid)', 'f166b13165a5e3f45a8ee96ed9563ab2'),
                ('public.mailbox_sync_result(uuid,text,text,timestamp with time zone)', 'bc91232dd7936719831735c19703274c'),
                ('public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)', '4a7ede00d54804941fc17a291bde6b4c'),
-               ('public.mailbox_sync_status()', '2d190567cfe9f2bd8fa6c6d055b7df45')) AS f(sig, body)
+               ('public.mailbox_sync_status()', '2d190567cfe9f2bd8fa6c6d055b7df45'),
+               ('public.mailbox_sync_claim(uuid,integer)', 'a9985b00301c4579f1f6797205c21834')) AS f(sig, body)
   JOIN pg_proc p ON p.oid = to_regprocedure(f.sig)
   WHERE md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> f.body;
   IF v_bad IS NOT NULL THEN
@@ -25,6 +26,7 @@ END
 $$;
 
 DROP FUNCTION IF EXISTS public.mailbox_sync_status();
+DROP FUNCTION IF EXISTS public.mailbox_sync_claim(UUID, INTEGER);
 DROP FUNCTION IF EXISTS public.mailbox_record_inbound(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.mailbox_sync_result(UUID, TEXT, TEXT, TIMESTAMPTZ);
 DROP FUNCTION IF EXISTS public.mailbox_sync_due(UUID);

@@ -18,11 +18,6 @@ export async function mailGuard(request: Request): Promise<MailContext | NextRes
   if (!sameOrigin(request)) return forbiddenOrigin();
   const auth = await requireProfile(["admin"]);
   if (isErrorResponse(auth)) return auth;
-  return legacyMailContext(auth);
-}
-
-/** The legacy app-only mailbox (LEGACY, lib/m365/graph.ts) for an admin already checked: configured, and theirs. */
-export function legacyMailContext(auth: AuthContext): MailContext | NextResponse {
   let config: MailConfig | null;
   try {
     config = mailConfig();

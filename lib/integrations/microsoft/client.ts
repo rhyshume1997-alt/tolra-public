@@ -49,14 +49,32 @@ export async function delegatedMailbox(service: SupabaseClient, org: string): Pr
  * The company's Microsoft 365 access token, renewed when due; null when it must connect again. A renewal asks for exactly what this
  * company's connection consented to: with Mail.Read once it allowed reading mail (127), otherwise sending only (a connection made before
  * C1), so an old connection's sending never breaks.
+ *
+ * REVOKED READING, SENDING KEPT: one refresh token covers both. When Microsoft refuses a renewal that asks for Mail.Read (invalid_grant or
+ * interaction_required: reading was withdrawn, e.g. an admin removed that permission), it is asked once more for sending only. If that
+ * works, reading is switched off for this company (127's mailbox_sync_result 'consent': mail_read FALSE, so the checks stop and the card
+ * asks to reconnect to allow reading mail) and the sending-only token is used: sending goes on. If that is refused too, the whole sign-in
+ * is gone: the token source marks the connection needs_reconnect (reading and sending through Microsoft both stop; the mailer then makes
+ * a draft or uses its next provider, lib/email/send-company-email.ts).
  */
 export function microsoftTokenSource(service: SupabaseClient, ready: MicrosoftReady, fetchImpl: typeof fetch = fetch) {
+  const refused = (err: unknown) => err instanceof MicrosoftAuthError && (err.code === "invalid_grant" || err.code === "interaction_required");
   const source = createTokenSource({
     db: serviceDb(service),
     key: ready.key,
-    refresh: async (refreshToken, org) => refreshTokens(ready.config, refreshToken, fetchImpl, Date.now,
-                                                        (await delegatedMailbox(service, org)) ? MICROSOFT_SCOPES : MICROSOFT_SEND_SCOPES),
-    isRefused: (err) => err instanceof MicrosoftAuthError && (err.code === "invalid_grant" || err.code === "interaction_required"),
+    refresh: async (refreshToken, org) => {
+      if (!(await delegatedMailbox(service, org))) return refreshTokens(ready.config, refreshToken, fetchImpl, Date.now, MICROSOFT_SEND_SCOPES);
+      try {
+        return await refreshTokens(ready.config, refreshToken, fetchImpl, Date.now, MICROSOFT_SCOPES);
+      } catch (err) {
+        if (!refused(err)) throw err;
+        const set = await refreshTokens(ready.config, refreshToken, fetchImpl, Date.now, MICROSOFT_SEND_SCOPES);
+        const { error } = await service.rpc("mailbox_sync_result", { p_org: org, p_error: "consent", p_next_link: null, p_checkpoint: null });
+        if (error) console.error("[microsoft] reading not switched off", error.code);
+        return set;
+      }
+    },
+    isRefused: refused,
     label: "Microsoft 365",
   });
   return (org: string, opts?: { force?: boolean }) => source(org, "microsoft", opts);

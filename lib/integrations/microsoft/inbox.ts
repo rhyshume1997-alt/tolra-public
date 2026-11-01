@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { missingDbObject } from "@/lib/integrations/app-credentials";
 import { GRAPH_BASE, type MicrosoftReady, microsoftTokenSource } from "@/lib/integrations/microsoft/client";
-import type { MailSyncCode } from "@/lib/integrations/overview";
+import { type MailSyncCode, mailSyncReason } from "@/lib/integrations/overview";
 import { DbError } from "@/lib/integrations/server";
 import { type GraphMessage, INBOX_SELECT, type InboxMessage, isGraphLink, toInboxMessage } from "@/lib/m365/graph";
 
@@ -15,8 +15,9 @@ import { type GraphMessage, INBOX_SELECT, type InboxMessage, isGraphLink, toInbo
 // ISOLATION: one company at a time. Its token comes from its own connection (decrypted only under its own context), every message read
 // with it is recorded for that company only, and its cursor and status are saved for that company only. A failure is stored as a fixed
 // code (overview.ts turns it into plain words): never Microsoft's text, a token or a message.
-// IDEMPOTENT: 031's UNIQUE (organization_id, graph_message_id) through record_inbound_email (the admin's Check inbox) or 127's
-// mailbox_record_inbound (the server's pass): the same page read twice stores nothing new.
+// IDEMPOTENT: 031's UNIQUE (organization_id, graph_message_id) through 127's mailbox_record_inbound (the browser check, the Check inbox
+// button and the server's pass alike): the same page read twice stores nothing new.
+// THROTTLED: one real check per company per MIN_CHECK_INTERVAL_S (127's mailbox_sync_claim), whoever asks.
 
 const TIMEOUT_MS = 15_000;
 export const MAX_PAGES = 20;
@@ -169,17 +170,7 @@ const recordArgs = (m: InboxMessage) => ({
   p_received_at: m.receivedAt, p_body_preview: m.bodyPreview, p_body_text: m.bodyText,
 });
 
-/** As the signed-in admin (Check inbox): 031's record_inbound_email, which takes the company from the session. */
-export function recordAsAdmin(userClient: SupabaseClient) {
-  return async (m: InboxMessage): Promise<Recorded> => {
-    const { data, error } = await userClient.rpc("record_inbound_email", recordArgs(m));
-    if (error) throw new DbError(error.message, error.code);
-    const row = data as { inserted?: boolean; inbound_email_id?: string | null } | null;
-    return { inserted: row?.inserted === true, inboundEmailId: row?.inbound_email_id ?? null };
-  };
-}
-
-/** As the server (the background pass): 127's mailbox_record_inbound for this one company. */
+/** As the server, for this one company (its caller authorised for it): 127's mailbox_record_inbound. */
 export function recordForCompany(service: SupabaseClient, org: string) {
   return async (m: InboxMessage): Promise<Recorded> => {
     const { data, error } = await service.rpc("mailbox_record_inbound", { p_org: org, ...recordArgs(m) });
@@ -197,17 +188,85 @@ export function saveResultFor(service: SupabaseClient, org: string) {
   };
 }
 
-export type MailboxPassSummary = { companies: number; checked: number; read: number; inserted: number; duplicates: number; failed: number; skipped?: string };
+/** One real inbox check per company per this long, whatever the number of open tabs, users or passes (127's mailbox_sync_claim). */
+export const MIN_CHECK_INTERVAL_S = 90;
+
+export type Claim =
+  | { state: "claimed"; checkpoint: string | null; nextLink: string | null }
+  | { state: "recent"; lastSyncAt: string | null; lastError: MailSyncCode | null }
+  | { state: "not_readable" };
+
+/**
+ * Start one check of THIS company's inbox (127's mailbox_sync_claim): "claimed" with its cursor, "recent" when a check started within
+ * minSeconds (two callers at once get one "claimed" between them: the row lock), "not_readable" when its mailbox can't be read now (or
+ * 127 isn't applied). Any other database failure throws.
+ */
+export async function claimMailbox(service: SupabaseClient, org: string, minSeconds = MIN_CHECK_INTERVAL_S): Promise<Claim> {
+  const { data, error } = await service.rpc("mailbox_sync_claim", { p_org: org, p_min_seconds: minSeconds });
+  if (error) {
+    if (missingDbObject(error)) return { state: "not_readable" };
+    throw new DbError(error.message, error.code);
+  }
+  const row = (data ?? {}) as { state?: unknown; checkpoint?: unknown; next_link?: unknown; last_sync_at?: unknown; last_error?: unknown };
+  const text = (v: unknown) => (typeof v === "string" ? v : null);
+  if (row.state === "claimed") return { state: "claimed", checkpoint: text(row.checkpoint), nextLink: text(row.next_link) };
+  if (row.state === "recent") return { state: "recent", lastSyncAt: text(row.last_sync_at), lastError: text(row.last_error) as MailSyncCode | null };
+  return { state: "not_readable" };
+}
+
+/** What the browser is told about one company's inbox check (the browser check and the Check inbox button): nothing else. */
+export type InboxCheckStatus = "checked" | "recent" | "needs_reconnect" | "failed" | "not_connected";
+export type InboxCheckSummary = { checked_at: string | null; new: number; status: InboxCheckStatus; reason: string };
+
+export const NOT_CONNECTED_REASON = "Tolra isn't reading this company's inbox. An admin can connect Microsoft 365 in Settings.";
+const RECENT_REASON = "The inbox was checked a moment ago. Tolra checks it again in a few minutes.";
+const needsReconnect = (code: MailSyncCode | null) => code === "reconnect" || code === "consent";
+
+/** The summary for a check that failed with this code (a plain reason; never Microsoft's text). */
+function failedSummary(code: MailSyncCode, at: string | null): InboxCheckSummary {
+  return { checked_at: at, new: 0, status: needsReconnect(code) ? "needs_reconnect" : "failed", reason: `Couldn't check mail: ${mailSyncReason(code)}` };
+}
+
+/**
+ * One company's inbox check for a signed-in office or admin user (the caller has already authorised them for THIS company): the same
+ * delegated poll as the server's pass, throttled per company (claimMailbox), each message stored with 127's mailbox_record_inbound for
+ * this company only (031's UNIQUE: a message read twice is stored once). Returns the browser's summary only.
+ */
+export async function checkCompanyInbox(deps: { service: SupabaseClient; ready: MicrosoftReady; org: string; fetchImpl?: typeof fetch; now?: () => number; minIntervalSeconds?: number }): Promise<InboxCheckSummary> {
+  const now = deps.now ?? Date.now;
+  const claim = await claimMailbox(deps.service, deps.org, deps.minIntervalSeconds ?? MIN_CHECK_INTERVAL_S);
+  if (claim.state === "not_readable") return { checked_at: null, new: 0, status: "not_connected", reason: NOT_CONNECTED_REASON };
+  if (claim.state === "recent") {
+    if (claim.lastError) return failedSummary(claim.lastError, claim.lastSyncAt);
+    return { checked_at: claim.lastSyncAt, new: 0, status: "recent", reason: RECENT_REASON };
+  }
+  const tokens = microsoftTokenSource(deps.service, deps.ready, deps.fetchImpl);
+  const outcome = await pollMailbox({
+    cursor: { checkpoint: claim.checkpoint, nextLink: claim.nextLink },
+    accessToken: (opts) => tokens(deps.org, opts),
+    record: recordForCompany(deps.service, deps.org),
+    saveResult: saveResultFor(deps.service, deps.org),
+    fetchImpl: deps.fetchImpl,
+    now,
+  });
+  const at = new Date(now()).toISOString();
+  if (outcome.error) return failedSummary(outcome.error, at);
+  const n = outcome.inserted;
+  return { checked_at: at, new: n, status: "checked", reason: n ? `Inbox checked: ${n} new e-mail${n === 1 ? "" : "s"}.` : "Inbox checked: nothing new." };
+}
+
+export type MailboxPassSummary = { companies: number; checked: number; read: number; inserted: number; duplicates: number; failed: number; throttled: number; skipped?: string };
 
 /**
  * The background pass: every connection whose inbox may be read now (127's mailbox_sync_due: connected, Mail.Read, the same mailbox),
- * one company at a time, each with only its own token, rows and cursor. A company that fails (or must reconnect) never stops the next.
+ * one company at a time, each with only its own token, rows and cursor, each claimed first (claimMailbox: one check per company per
+ * interval, so the pass and the browser checks never double up). A company that fails (or must reconnect) never stops the next.
  * Counts only in the result. Stops starting new companies after budgetMs.
  */
-export async function runMailboxPollPass(deps: { service: SupabaseClient; ready: MicrosoftReady; fetchImpl?: typeof fetch; now?: () => number; budgetMs?: number }): Promise<MailboxPassSummary> {
+export async function runMailboxPollPass(deps: { service: SupabaseClient; ready: MicrosoftReady; fetchImpl?: typeof fetch; now?: () => number; budgetMs?: number; minIntervalSeconds?: number }): Promise<MailboxPassSummary> {
   const now = deps.now ?? Date.now;
   const started = now();
-  const summary: MailboxPassSummary = { companies: 0, checked: 0, read: 0, inserted: 0, duplicates: 0, failed: 0 };
+  const summary: MailboxPassSummary = { companies: 0, checked: 0, read: 0, inserted: 0, duplicates: 0, failed: 0, throttled: 0 };
   const { data, error } = await deps.service.rpc("mailbox_sync_due", { p_org: null });
   if (error) {
     if (missingDbObject(error)) return { ...summary, skipped: "database update 127 is not applied" };
@@ -219,8 +278,14 @@ export async function runMailboxPollPass(deps: { service: SupabaseClient; ready:
   for (const row of rows) {
     if (deps.budgetMs !== undefined && now() - started > deps.budgetMs) break;
     const org = row.organization_id;
+    // The same throttle as the browser check: a company checked within the interval (by a tab, a user or another pass) is left alone.
+    const claim = await claimMailbox(deps.service, org, deps.minIntervalSeconds ?? MIN_CHECK_INTERVAL_S);
+    if (claim.state !== "claimed") {
+      summary.throttled += 1;
+      continue;
+    }
     const outcome = await pollMailbox({
-      cursor: { checkpoint: row.checkpoint, nextLink: row.next_link },
+      cursor: { checkpoint: claim.checkpoint, nextLink: claim.nextLink },
       accessToken: (opts) => tokens(org, opts),
       record: recordForCompany(deps.service, org),
       saveResult: saveResultFor(deps.service, org),

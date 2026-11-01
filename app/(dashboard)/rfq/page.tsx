@@ -38,6 +38,7 @@ import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
 import { useUser } from "@/lib/use-user";
+import { INBOX_CHECK_URL, INBOX_NEW_EVENT, type InboxCheckReply, runsInboxCheck } from "@/lib/inbox-auto-check";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { logRfqClarification, rfqClarificationToast } from "@/lib/rfq-clarification";
 import { type LinkedQuote, type RfqStage, linkedQuotes, matchesStatusFilter, rfqFigures, rfqSpec, rfqStage, rfqStageLabel, showsStatusBadge } from "@/lib/rfq-stage";
@@ -115,8 +116,10 @@ export default function RfqPage() {
   const [inboundByRfq, setInboundByRfq] = useState<Map<string, string>>(new Map());
   const [mailLinksFailed, setMailLinksFailed] = useState(false);
   const [checking, setChecking] = useState(false);
-  // null until the server says whether Microsoft 365 mail is switched on; there is no Check inbox button until it is (hidden until built, Rhys Tue 20 Oct).
-  const [mailConfigured, setMailConfigured] = useState<boolean | null>(null);
+  // null until the server says how this company's inbox is read; there is no Check inbox button until it can be (hidden until built, Rhys
+  // Tue 20 Oct). "delegated": its own Microsoft 365 connection (C1, /api/mail/check: admin and office); "legacy": the app-only mailbox
+  // (/api/mail/poll: admins only).
+  const [mailCheck, setMailCheck] = useState<"delegated" | "legacy" | null>(null);
   const [mailing, setMailing] = useState<{ rfq: RfqRow; mode: "reply" | "forward" } | null>(null);
   const [mailTo, setMailTo] = useState("");
   const [mailComment, setMailComment] = useState("");
@@ -140,15 +143,21 @@ export default function RfqPage() {
     setClarifying(rfq);
   }, [signOffName, clarifyOverride]);
 
+  const checksInbox = runsInboxCheck(profile);
+  const holdsAdmin = profile?.role === "admin" || profile?.secondary_role === "admin";
   useEffect(() => {
-    if (profile?.role !== "admin") return;
+    if (!checksInbox) return;
     let live = true;
-    fetch("/api/mail/status")
-      .then((res) => (res.ok ? res.json() : { configured: false }))
-      .then((result: { configured?: boolean }) => { if (live) setMailConfigured(result.configured === true); })
-      .catch(() => { if (live) setMailConfigured(false); });
+    const answer = (res: Response) => (res.ok ? res.json() : {});
+    void (async () => {
+      const delegated = (await fetch(INBOX_CHECK_URL).then(answer).catch(() => ({}))) as { available?: boolean };
+      if (delegated.available === true) { if (live) setMailCheck("delegated"); return; }
+      if (!holdsAdmin) return;
+      const legacy = (await fetch("/api/mail/status").then(answer).catch(() => ({}))) as { configured?: boolean };
+      if (live && legacy.configured === true) setMailCheck("legacy");
+    })();
     return () => { live = false; };
-  }, [profile?.role]);
+  }, [checksInbox, holdsAdmin]);
 
   const loadRfqs = useCallback(async () => {
     setLoading(true);
@@ -194,6 +203,12 @@ export default function RfqPage() {
   }, []);
 
   useEffect(() => { void loadRfqs(); }, [loadRfqs]);
+  // The browser check (lib/inbox-auto-check.ts) stored new e-mails: show their RFQs.
+  useEffect(() => {
+    const reload = () => void loadRfqs();
+    window.addEventListener(INBOX_NEW_EVENT, reload);
+    return () => window.removeEventListener(INBOX_NEW_EVENT, reload);
+  }, [loadRfqs]);
 
   const stageOf = useCallback((rfq: RfqRow) => rfqStage(rfq, linked.get(rfq.id)), [linked]);
   const visible = useMemo(() => rfqs.filter((rfq) => (listFilter ? stageOf(rfq) === "outstanding" && rfq.status === "clarification" : (stage === "all" || stageOf(rfq) === stage) && matchesStatusFilter(filters, stageOf(rfq), rfq.status))), [filters, listFilter, rfqs, stage, stageOf]);
@@ -237,6 +252,17 @@ export default function RfqPage() {
   async function checkInbox() {
     setChecking(true);
     try {
+      if (mailCheck === "delegated") {
+        // The same endpoint and throttle as the browser check: a check a moment ago answers "recent" instead of reading again.
+        const res = await fetch(INBOX_CHECK_URL, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+        const reply = (await res.json().catch(() => null)) as (InboxCheckReply & { error?: string }) | null;
+        if (!reply?.status) throw new Error(reply?.error || "Couldn't check the inbox.");
+        if (reply.status === "checked") toast.success(reply.reason);
+        else if (reply.status === "recent") toast.info(reply.reason);
+        else toast.error(reply.reason);
+        if (reply.new) await loadRfqs();
+        return;
+      }
       const res = await fetch("/api/mail/poll", { method: "POST" });
       const result = (await res.json().catch(() => ({}))) as { error?: string; read?: number; inserted?: number; duplicates?: number };
       if (!res.ok) throw new Error(result.error || "Couldn't check the inbox.");
@@ -316,7 +342,7 @@ export default function RfqPage() {
         </div>
         <div className="flex flex-wrap gap-2">
         <ColumnToggle tableKey={RFQ_DISPLAY_KEY} />
-        {profile?.role === "admin" && mailConfigured ? <Button variant="outline" disabled={checking} onClick={() => void checkInbox()}><MailCheck className="size-4" /> {checking ? "Checking\u2026" : "Check inbox"}</Button> : null}
+        {mailCheck ? <Button variant="outline" disabled={checking} onClick={() => void checkInbox()}><MailCheck className="size-4" /> {checking ? "Checking\u2026" : "Check inbox"}</Button> : null}
         <Dialog open={creating} onOpenChange={setCreating}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New RFQ</Button></DialogTrigger>
           <DialogContent>

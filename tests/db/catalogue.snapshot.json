@@ -1286,6 +1286,11 @@
  },
  {
   "kind": "function",
+  "object": "public.mailbox_sync_claim(p_org uuid, p_min_seconds integer)",
+  "detail": "definer search_path=pg_catalog, public c4634b832a1a5ec5313225eee40f0ae0"
+ },
+ {
+  "kind": "function",
   "object": "public.mailbox_sync_connected(p_org uuid, p_mailbox_id text, p_mail_read boolean)",
   "detail": "definer search_path=pg_catalog, public 73195c47a3f0a8213482cdd4fcdaa16f"
  },
@@ -3347,6 +3352,11 @@
  {
   "kind": "function-grant",
   "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_sync_claim(p_org uuid, p_min_seconds integer)",
   "detail": "service_role"
  },
  {

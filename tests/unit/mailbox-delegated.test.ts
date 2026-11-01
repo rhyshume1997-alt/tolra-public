@@ -3,7 +3,10 @@
  * and the database are faked (the fake database keeps 127's rules: due = connected + Mail.Read + same mailbox; one row per company and
  * Graph id); nothing reaches the network. Covers: scopes (Mail.Read only, never ReadWrite; an old connection's refresh asks for sending
  * only), token and row isolation between companies, idempotency (the same page twice: 0 new rows), invalid_grant leading to needs
- * reconnect, reconnect resuming from the cursor, the legacy path kept and the delegated one preferred, and error text with no secrets.
+ * reconnect, reconnect resuming from the cursor, error text with no secrets; and (option D) the server endpoint behind the browser check
+ * and the Check inbox button (/api/mail/check: admin and office of the session's company only; throttled per company with 127's
+ * mailbox_sync_claim; the browser gets { checked_at, new, status, reason } only), revoked reading with sending kept, Graph paging and
+ * token renewal. The browser schedule itself is tests/unit/inbox-auto-check.test.ts.
  */
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -26,18 +29,29 @@ const SITE = "https://app.example.test";
 const msReady = { config: { clientId: "mid", clientSecret: "msecret", redirectUri: `${SITE}/api/integrations/microsoft/callback`, tenant: "organizations" }, key };
 const ctx = (org: string, purpose: "refresh" | "access" | "pkce") => ({ organizationId: org, provider: "microsoft", purpose });
 
-type Sync = { mailbox_id: string; mail_read: boolean; checkpoint: string | null; next_link: string | null; last_sync_at: string | null; last_error: MailSyncCode | null; error_count: number };
+type Sync = { mailbox_id: string; mail_read: boolean; checkpoint: string | null; next_link: string | null; last_sync_at: string | null; last_error: MailSyncCode | null; error_count: number; claimed_at?: number | null };
 type Company = { status: "connected" | "needs_reconnect" | "disconnected"; tenant_id: string; refresh_enc: string; access_enc: string | null; expires: string | null; sync?: Sync };
 
 /** A fake service-role database keeping 084's lease and 127's rules, every rpc recorded. */
 function fakeDb(companies: Record<string, Company>) {
   const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+  /** The database's clock for the throttle (ms): advance it to pass the interval. */
+  const clock = { now: Date.parse("2026-11-01T10:00:00Z") };
   const inbound = new Map<string, { org: string; id: string; subject: string | null }>();
   const due = (org: string | null) => Object.entries(companies)
     .filter(([o, c]) => (org === null || o === org) && c.status === "connected" && c.sync?.mail_read && c.sync.mailbox_id === c.tenant_id)
     .map(([o, c]) => ({ organization_id: o, checkpoint: c.sync!.checkpoint, next_link: c.sync!.next_link }));
   const handlers: Record<string, (a: Record<string, unknown>) => { data?: unknown; error?: { code: string; message: string } }> = {
     mailbox_sync_due: (a) => ({ data: due((a.p_org as string | null) ?? null) }),
+    // 127's claim: not_readable unless due; recent within p_min_seconds of the last claim; else claimed (with the cursor).
+    mailbox_sync_claim: (a) => {
+      const org = a.p_org as string;
+      if (!due(org).length) return { data: { state: "not_readable" } };
+      const sync = companies[org].sync!;
+      if (sync.claimed_at != null && clock.now - sync.claimed_at < Number(a.p_min_seconds) * 1000) return { data: { state: "recent", last_sync_at: sync.last_sync_at, last_error: sync.last_error } };
+      sync.claimed_at = clock.now;
+      return { data: { state: "claimed", checkpoint: sync.checkpoint, next_link: sync.next_link } };
+    },
     integration_token_lease: (a) => {
       const c = companies[a.p_org as string];
       if (!c || c.status === "disconnected") return { data: null };
@@ -88,9 +102,24 @@ function fakeDb(companies: Record<string, Company>) {
       return { data: { status: "connected" } };
     },
   };
+  // integration_connections' status, read as lib/integrations/microsoft/token-source.ts does (from().select().eq().eq().maybeSingle()).
+  const from = (table: string) => {
+    const filters: Record<string, unknown> = {};
+    const q = {
+      select: () => q,
+      eq: (col: string, val: unknown) => { filters[col] = val; return q; },
+      maybeSingle: async () => {
+        calls.push({ fn: `from:${table}`, args: { ...filters } });
+        const c = table === "integration_connections" && filters.provider === "microsoft" ? companies[filters.organization_id as string] : undefined;
+        return { data: c ? { status: c.status } : null, error: null };
+      },
+    };
+    return q;
+  };
   return {
-    calls, inbound, companies,
+    calls, inbound, companies, clock,
     client: {
+      from,
       rpc: async (fn: string, args: Record<string, unknown>) => {
         calls.push({ fn, args });
         const h = handlers[fn];
@@ -116,7 +145,7 @@ const msg = (id: string, at: string, subject = `RFQ ${id}`) => ({ id, internetMe
 
 type Seen = { url: string; method: string; auth: string | null; body?: string };
 /** Microsoft: a token endpoint and a Graph that answers by the bearer token (each token sees its own mailbox only). */
-function fakeMicrosoft(mailboxes: Record<string, { status?: number; body?: unknown; pages?: unknown[] }>, token?: (form: URLSearchParams) => Response) {
+function fakeMicrosoft(mailboxes: Record<string, { status?: number; body?: unknown; pages?: unknown[] }>, token?: (form: URLSearchParams) => Response, sendable = new Set<string>()) {
   const seen: Seen[] = [];
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
@@ -127,6 +156,7 @@ function fakeMicrosoft(mailboxes: Record<string, { status?: number; body?: unkno
       const rt = form.get("refresh_token") ?? "";
       return new Response(JSON.stringify({ access_token: rt.replace(/^RT-/, ""), refresh_token: rt, expires_in: 3600, scope: form.get("scope") }), { status: 200 });
     }
+    if (String(url) === "https://graph.microsoft.com/v1.0/me/sendMail") return new Response(null, { status: sendable.has((headers.get("authorization") ?? "").replace(/^Bearer /, "")) ? 202 : 401 });
     const box = mailboxes[(headers.get("authorization") ?? "").replace(/^Bearer /, "")];
     if (!box) return new Response(JSON.stringify({ error: { code: "InvalidAuthenticationToken" } }), { status: 401 });
     if (box.status && box.status !== 200) return new Response(JSON.stringify(box.body ?? {}), { status: box.status });
@@ -211,7 +241,7 @@ describe("isolation: each company's token is used only for that company, and its
     const db = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B") });
     const ms = fakeMicrosoft({ "AT-A": { body: PAGE_A }, "AT-B": { body: PAGE_B } });
     const summary = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl });
-    expect(summary).toEqual({ companies: 2, checked: 2, read: 3, inserted: 3, duplicates: 0, failed: 0 });
+    expect(summary).toEqual({ companies: 2, checked: 2, read: 3, inserted: 3, duplicates: 0, failed: 0, throttled: 0 });
     expect([...db.inbound.values()].map((r) => `${r.org === A ? "A" : "B"}:${r.id}`).sort()).toEqual(["A:a-1", "A:a-2", "B:b-1"]);
     for (const c of db.calls.filter((x) => x.fn === "mailbox_record_inbound")) {
       expect(String(c.args.p_graph_message_id).startsWith(c.args.p_org === A ? "a-" : "b-")).toBe(true);
@@ -257,6 +287,9 @@ describe("idempotent ingestion", () => {
     const db = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
     const ms = fakeMicrosoft({ "AT-A": { body: PAGE_A } });
     const first = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl });
+    // Within 90 seconds the company is not checked again (the throttle); after it, it is.
+    expect(await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl })).toMatchObject({ companies: 1, checked: 0, throttled: 1 });
+    db.clock.now += 91_000;
     const second = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl });
     expect([first.inserted, first.duplicates]).toEqual([2, 0]);
     expect([second.inserted, second.duplicates]).toEqual([0, 2]);
@@ -317,6 +350,7 @@ describe("expired consent: invalid_grant marks needs reconnect, polling stops, r
       : String(url).includes("/me?") ? new Response(JSON.stringify({ id: "oid-a", mail: "office@a.example.test" }), { status: 200 }) : ms.fetchImpl(url, init)));
     expect(await finishMicrosoftConnect(db.client, A, ADMIN, "st", "code", msReady, { fetchImpl: connectFetch as never })).toMatchObject({ ok: true, mailRead: true });
     expect(db.companies[A].sync).toMatchObject({ checkpoint: "2026-11-01T09:05:00Z", last_error: null, error_count: 0 });
+    db.clock.now += 91_000;
     const resumed = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl });
     expect(resumed).toMatchObject({ checked: 1, inserted: 1, duplicates: 2, failed: 0 });
     expect([...db.inbound.keys()].sort()).toEqual([`${A}|a-1`, `${A}|a-2`, `${A}|a-3`]);
@@ -368,10 +402,184 @@ describe("sync failures in plain words, never a token or Microsoft's text", () =
   });
 });
 
+
 // ------------------------------------------------------------------------------------------------------------------------------------
-// The route: the admin's Check inbox prefers the company's own delegated mailbox; the legacy app-only path stays behind its env vars.
+// Graph paging and token renewal (ChatGPT condition 6), against a mocked Graph and Microsoft sign-in.
+describe("Graph paging: @odata.nextLink over several pages, a page limit with more, and resuming", () => {
+  const P = [[msg("p-1", "2026-11-01T09:00:00Z")], [msg("p-2", "2026-11-01T09:01:00Z")], [msg("p-3", "2026-11-01T09:02:00Z")]];
+  const link = (n: number) => `https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=${n}`;
+
+  it("follows every nextLink to the end (3 pages, 3 GETs), more = false", async () => {
+    const ms = fakeMicrosoft({ "AT-A": { pages: P } });
+    const r = await listMyInbox("AT-A", { since: "2026-11-01T00:00:00Z" }, ms.fetchImpl);
+    expect(r).toMatchObject({ more: false, nextLink: null });
+    expect(r.messages.map((m) => m.id)).toEqual(["p-1", "p-2", "p-3"]);
+    expect(ms.seen.map((x) => x.url)).toEqual([expect.stringContaining("$top=50"), link(1), link(2)]);
+  });
+
+  it("stops at the page limit with more = true and the link to carry on from; resuming reads only what is left", async () => {
+    const ms = fakeMicrosoft({ "AT-A": { pages: P } });
+    const first = await listMyInbox("AT-A", { since: "2026-11-01T00:00:00Z", maxPages: 2 }, ms.fetchImpl);
+    expect(first).toMatchObject({ more: true, nextLink: link(2) });
+    expect(first.messages.map((m) => m.id)).toEqual(["p-1", "p-2"]);
+    expect(ms.seen).toHaveLength(2); // the third page was not fetched
+    const rest = await listMyInbox("AT-A", { since: "2026-11-01T00:00:00Z", resumeLink: first.nextLink, maxPages: 2 }, ms.fetchImpl);
+    expect(rest).toMatchObject({ more: false, nextLink: null });
+    expect(rest.messages.map((m) => m.id)).toEqual(["p-3"]);
+    expect(ms.seen.at(-1)!.url).toBe(link(2));
+  });
+
+  it("through the cron pass: the stored link resumes the next pass, and no message is stored twice", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    const ms = fakeMicrosoft({ "AT-A": { pages: P } });
+    const { recordForCompany, saveResultFor } = await import("@/lib/integrations/microsoft/inbox");
+    const run = () => pollMailbox({ cursor: { checkpoint: db.companies[A].sync!.checkpoint, nextLink: db.companies[A].sync!.next_link }, accessToken: async () => "AT-A",
+                                    record: recordForCompany(db.client, A), saveResult: saveResultFor(db.client, A), fetchImpl: ms.fetchImpl, maxPages: 2 });
+    expect(await run()).toMatchObject({ read: 2, inserted: 2, more: true });
+    expect(db.companies[A].sync!.next_link).toBe(link(2));
+    expect(await run()).toMatchObject({ read: 1, inserted: 1, more: false });
+    expect(db.companies[A].sync).toMatchObject({ next_link: null, checkpoint: "2026-11-01T09:02:00Z" });
+    expect([...db.inbound.keys()].sort()).toEqual([`${A}|p-1`, `${A}|p-2`, `${A}|p-3`]);
+  });
+
+  it("a stored paging link Microsoft no longer accepts (400) is dropped and the check starts again from the checkpoint", async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      seen.push(String(url));
+      return String(url).includes("skiptoken=9") ? new Response("{}", { status: 400 }) : new Response(JSON.stringify({ value: P[0] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const out = await pollMailbox({ cursor: { checkpoint: "2026-11-01T08:00:00Z", nextLink: link(9) }, accessToken: async () => "AT-A", fetchImpl,
+      record: async () => ({ inserted: true, inboundEmailId: "x" }), saveResult: async () => undefined });
+    expect(out).toMatchObject({ error: null, inserted: 1 });
+    expect(seen[0]).toBe(link(9));
+    expect(seen[1]).toContain(encodeURIComponent("receivedDateTime ge 2026-11-01T08:00:00.000Z"));
+  });
+});
+
+describe("token renewal: an expired access token is renewed once, the new refresh token stored; a refused renewal means reconnect", () => {
+  it("expired: one refresh_token call, the NEW refresh token is what is stored, the new access token reads; the next check needs no call", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A", { access_enc: null, expires: new Date(Date.now() - 60_000).toISOString() }) });
+    const ms = fakeMicrosoft({ "AT-NEW": { body: PAGE_A } }, () => new Response(JSON.stringify({ access_token: "AT-NEW", refresh_token: "RT-NEW", expires_in: 3600, scope: "Mail.Read Mail.Send" }), { status: 200 }));
+    const { checkCompanyInbox } = await import("@/lib/integrations/microsoft/inbox");
+    expect(await checkCompanyInbox({ service: db.client, ready: msReady, org: A, fetchImpl: ms.fetchImpl })).toMatchObject({ status: "checked", new: 2 });
+    const tokenCalls = ms.seen.filter((x) => x.url.includes("/oauth2/v2.0/token"));
+    expect(tokenCalls).toHaveLength(1);
+    const form = new URLSearchParams(tokenCalls[0].body);
+    expect([form.get("grant_type"), form.get("refresh_token")]).toEqual(["refresh_token", "RT-AT-A"]);
+    const { decryptSecret } = await import("@/lib/integrations/crypto");
+    expect(decryptSecret(db.companies[A].refresh_enc, ctx(A, "refresh"), key)).toBe("RT-NEW");
+    expect(decryptSecret(db.companies[A].access_enc!, ctx(A, "access"), key)).toBe("AT-NEW");
+    expect(ms.seen.filter((x) => x.url.includes("graph.microsoft.com")).every((x) => x.auth === "Bearer AT-NEW")).toBe(true);
+    db.clock.now += 91_000;
+    await checkCompanyInbox({ service: db.client, ready: msReady, org: A, fetchImpl: ms.fetchImpl });
+    expect(ms.seen.filter((x) => x.url.includes("/oauth2/v2.0/token"))).toHaveLength(1);
+  });
+
+  it("Graph refuses the token twice (401, 401): renewed once only, then the check fails as 'signin' (no loop)", async () => {
+    const tokens: Array<boolean | undefined> = [];
+    const ms = fakeMicrosoft({});
+    const out = await pollMailbox({ cursor: { checkpoint: null, nextLink: null }, fetchImpl: ms.fetchImpl,
+      accessToken: async (o) => { tokens.push(o?.force); return "AT-unknown"; },
+      record: async () => ({ inserted: true, inboundEmailId: "x" }), saveResult: async () => undefined });
+    expect(out.error).toBe("signin");
+    expect(tokens).toEqual([undefined, true]);
+    expect(ms.seen).toHaveLength(2);
+  });
+
+  it("a refused renewal (invalid_grant) marks the connection needs_reconnect and the check answers needs_reconnect in plain words", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A", { access_enc: null, expires: null }) });
+    const ms = fakeMicrosoft({}, () => new Response(JSON.stringify({ error: "invalid_grant", error_description: "AADSTS50173 boss@a.example" }), { status: 400 }));
+    const { checkCompanyInbox } = await import("@/lib/integrations/microsoft/inbox");
+    const reply = await checkCompanyInbox({ service: db.client, ready: msReady, org: A, fetchImpl: ms.fetchImpl });
+    expect(reply).toEqual({ checked_at: expect.any(String), new: 0, status: "needs_reconnect", reason: "Couldn't check mail: Microsoft needs you to sign in again. Click Reconnect." });
+    expect(db.companies[A].status).toBe("needs_reconnect");
+    expect(JSON.stringify(reply)).not.toMatch(/AADSTS|boss@/);
+  });
+});
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// Revoked consent stops reading without breaking sending (ChatGPT condition 5). ONE refresh token covers reading and sending.
+describe("revoked reading: polling stops, sending goes on where the sign-in still allows it; a fully revoked sign-in fails sending clearly", () => {
+  const email = { to: ["buyer@example.test"], cc: [], subject: "Quote Q-1", text: "Hello", attachments: [] };
+  const ENV = ["INTEGRATIONS_ENCRYPTION_KEY"];
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const k of ENV) saved[k] = process.env[k];
+    process.env.INTEGRATIONS_ENCRYPTION_KEY = key.toString("base64");
+  });
+  afterEach(() => {
+    for (const k of ENV) if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k];
+    service = null;
+  });
+
+  it("Mail.Read withdrawn, Mail.Send kept: the renewal for reading is refused, the sending-only one works; reading stops, sending works", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A", { access_enc: null, expires: null }) });
+    service = db;
+    // Microsoft: a renewal asking for Mail.Read is refused (invalid_grant); one asking for sending only is granted (a Mail.Send token).
+    const ms = fakeMicrosoft({ "AT-SEND": { status: 403, body: { error: { code: "ErrorAccessDenied", message: "AT-SEND boss@a.example" } } } },
+      (form) => (form.get("scope")!.includes("Mail.Read")
+        ? new Response(JSON.stringify({ error: "invalid_grant", error_description: "AADSTS65001 consent" }), { status: 400 })
+        : new Response(JSON.stringify({ access_token: "AT-SEND", refresh_token: "RT-SEND", expires_in: 3600, scope: "Mail.Send User.Read" }), { status: 200 })),
+      new Set(["AT-SEND"]));
+    const { checkCompanyInbox } = await import("@/lib/integrations/microsoft/inbox");
+    const reply = await checkCompanyInbox({ service: db.client, ready: msReady, org: A, fetchImpl: ms.fetchImpl });
+    expect(reply).toEqual({ checked_at: expect.any(String), new: 0, status: "needs_reconnect", reason: "Couldn't check mail: Tolra isn't allowed to read this mailbox. Click Reconnect to allow reading mail." });
+    expect(ms.seen.filter((x) => x.url.includes("/token")).map((x) => new URLSearchParams(x.body).get("scope"))).toEqual(["offline_access Mail.Send Mail.Read User.Read", "offline_access Mail.Send User.Read"]);
+    expect(db.companies[A].status).toBe("connected"); // the connection is NOT needs_reconnect: sending is still allowed
+    expect(db.companies[A].sync).toMatchObject({ mail_read: false, last_error: "consent" });
+    expect(db.inbound.size).toBe(0);
+    // Polling stops: the next check (after the interval) reads nothing, and neither does the cron pass.
+    db.clock.now += 91_000;
+    const graphReads = () => ms.seen.filter((x) => x.url.includes("/mailFolders/")).length;
+    const reads = graphReads();
+    expect(await checkCompanyInbox({ service: db.client, ready: msReady, org: A, fetchImpl: ms.fetchImpl })).toMatchObject({ status: "not_connected" });
+    expect(await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl })).toMatchObject({ companies: 0 });
+    expect(graphReads()).toBe(reads);
+    // Sending: the company mailer gets the stored Mail.Send token and Graph accepts the e-mail.
+    const { selectProvider } = await import("@/lib/email/send-company-email");
+    const { microsoftProvider } = await import("@/lib/email/providers/microsoft");
+    const provider = await selectProvider(A, { env: {}, providers: { microsoft: (t) => microsoftProvider(t, ms.fetchImpl) } });
+    expect(provider && provider !== "refused" ? provider.name : provider).toBe("microsoft");
+    expect(await (provider as { send: (e: typeof email) => Promise<{ outcome: string }> }).send(email)).toMatchObject({ outcome: "accepted" });
+    // Its access token expires: the renewal now asks for sending only (reading is off), and is granted. Still connected.
+    db.companies[A].expires = new Date(Date.now() - 60_000).toISOString();
+    const { getDelegatedAccessToken } = await import("@/lib/integrations/microsoft/token-source");
+    vi.stubGlobal("fetch", ms.fetchImpl);
+    try {
+      expect(await getDelegatedAccessToken(A)).toBe("AT-SEND");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(new URLSearchParams(ms.seen.filter((x) => x.url.includes("/token")).at(-1)!.body).get("scope")).toBe("offline_access Mail.Send User.Read");
+    expect(db.companies[A].status).toBe("connected");
+    expect(JSON.stringify(reply)).not.toMatch(/AT-SEND|boss@|AADSTS/);
+  });
+
+  it("the whole sign-in revoked (the one token covers both): reading stops AND Microsoft sending stops, and the mailer says so (draft, or its next provider)", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A", { access_enc: null, expires: null }) });
+    service = db;
+    const ms = fakeMicrosoft({}, () => new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }), new Set(["AT-A"]));
+    const { checkCompanyInbox } = await import("@/lib/integrations/microsoft/inbox");
+    expect(await checkCompanyInbox({ service: db.client, ready: msReady, org: A, fetchImpl: ms.fetchImpl })).toMatchObject({ status: "needs_reconnect" });
+    // Both renewals were tried (reading, then sending only), both refused: the connection needs reconnecting.
+    expect(ms.seen.filter((x) => x.url.includes("/token"))).toHaveLength(2);
+    expect(db.companies[A].status).toBe("needs_reconnect");
+    const { getDelegatedAccessToken } = await import("@/lib/integrations/microsoft/token-source");
+    expect(await getDelegatedAccessToken(A)).toBeNull(); // no Microsoft token for sending
+    const { selectProvider } = await import("@/lib/email/send-company-email");
+    // No other provider: null = the e-mail is saved as a draft for Approvals (mode "drafted"), never reported as sent.
+    expect(await selectProvider(A, { env: {} })).toBeNull();
+    // With Resend set up it goes through Resend instead (from EMAIL_FROM, not the company's mailbox).
+    const resend = await selectProvider(A, { env: { RESEND_API_KEY: "re_test", EMAIL_FROM: "Tolra <noreply@example.test>" } });
+    expect(resend && resend !== "refused" ? resend.name : resend).toBe("resend");
+    expect(ms.seen.some((x) => x.url.endsWith("/me/sendMail"))).toBe(false);
+  });
+});
+
+// ------------------------------------------------------------------------------------------------------------------------------------
+// The route behind the browser check and the Check inbox button: /api/mail/check (ChatGPT conditions 1, 2, 3, 7).
 let service: ReturnType<typeof fakeDb> | null = null;
-let who = { role: "admin", org: A };
+let who: { role: string; org: string; sessionOrg?: string; member?: boolean; aal?: "aal1" | "aal2" } = { role: "admin", org: A };
 const userRpc: Array<{ fn: string; args: Record<string, unknown> }> = [];
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => service?.client ?? null }));
 vi.mock("@/lib/integrations/app-credentials", async (orig) => ({
@@ -386,96 +594,177 @@ vi.mock("@supabase/ssr", () => {
   };
   return {
     createServerClient: () => ({
-      auth: { getUser: async () => ({ data: { user: { id: ADMIN } }, error: null }) },
+      auth: {
+        getUser: async () => ({ data: { user: { id: ADMIN } }, error: null }),
+        mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: who.aal ?? "aal2" }, error: null }) },
+      },
       from: (table: string) => (table === "user_profiles"
         ? chain({ id: ADMIN, email: "a@example.test", full_name: "A", role: who.role, secondary_role: null, organization_id: who.org, active: true, must_change_password: false })
         : chain(null)),
       rpc: async (fn: string, args: Record<string, unknown>) => {
         userRpc.push({ fn, args });
-        if (fn === "current_user_organization_id") return { data: who.org, error: null };
-        if (fn === "has_org_role") return { data: (args.allowed_roles as string[]).includes(who.role), error: null };
-        if (fn === "record_inbound_email") {
-          // 031: the company comes from the session (the admin's own).
-          const r = await service!.client.rpc("mailbox_record_inbound", { ...args, p_org: who.org });
-          return r;
-        }
+        if (fn === "current_user_organization_id") return { data: who.sessionOrg ?? who.org, error: null };
+        if (fn === "has_org_role") return { data: who.member !== false && (args.allowed_roles as string[]).includes(who.role), error: null };
         return { data: null, error: null };
       },
     }),
   };
 });
 
-describe("/api/mail/poll and /api/mail/status prefer the delegated connection; legacy kept", () => {
-  const ENV = ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET", "MS_MAILBOX", "MS_ORGANIZATION_ID", "INTEGRATIONS_ENCRYPTION_KEY", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"];
+describe("/api/mail/check: admin and office of the session's company only; one real check per company per 90 s; a summary only", () => {
+  const ENV = ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET", "MS_MAILBOX", "MS_ORGANIZATION_ID", "INTEGRATIONS_ENCRYPTION_KEY", "NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "REQUIRE_ADMIN_MFA"];
   const saved: Record<string, string | undefined> = {};
   let ms: ReturnType<typeof fakeMicrosoft>;
   beforeEach(() => {
     for (const k of ENV) saved[k] = process.env[k];
     Object.assign(process.env, { NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:1", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon", INTEGRATIONS_ENCRYPTION_KEY: key.toString("base64"),
-      // The legacy app-only mailbox is configured for A too: the delegated one must still be preferred.
+      // The legacy app-only mailbox is configured for A too: this endpoint never uses it (that stays on /api/mail/poll).
       MS_TENANT_ID: "t", MS_CLIENT_ID: "c", MS_CLIENT_SECRET: "s", MS_MAILBOX: "legacy@a.example.test", MS_ORGANIZATION_ID: A });
-    who = { role: "admin", org: A };
+    delete process.env.REQUIRE_ADMIN_MFA;
+    who = { role: "office", org: A };
     userRpc.length = 0;
     ms = fakeMicrosoft({ "AT-A": { body: PAGE_A }, "AT-B": { body: PAGE_B } });
     vi.stubGlobal("fetch", ms.fetchImpl);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
   afterEach(() => {
     for (const k of ENV) if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k];
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     service = null;
   });
-  const post = () => new Request("https://app.test/api/mail/poll", { method: "POST", body: "{}" });
+  const post = (body = "{}", headers: Record<string, string> = {}) => new Request("https://app.test/api/mail/check", { method: "POST", body, headers });
+  const graphReads = () => ms.seen.filter((x) => x.url.includes("graph.microsoft.com/v1.0/me/mailFolders/")).length;
+  const SECRETS = /AT-A|AT-B|RT-|oid-|skiptoken|Bearer|msecret|service|graph\.microsoft|login\.microsoftonline/;
 
-  it("A's admin: A's mailbox through /me with A's token, stored with 031's record_inbound_email; a second click stores nothing new", async () => {
+  it("A's office user: the server reads A's mailbox with A's token and stores it for A; the browser gets { checked_at, new, status, reason } only", async () => {
     service = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B") });
-    const { POST } = await import("@/app/api/mail/poll/route");
+    const { POST } = await import("@/app/api/mail/check/route");
     const res = await POST(post());
-    expect(await res.json()).toEqual({ read: 2, inserted: 2, duplicates: 0, more: false });
-    expect(ms.seen.every((s) => s.url.startsWith("https://graph.microsoft.com/v1.0/me/") && s.auth === "Bearer AT-A" && s.method === "GET")).toBe(true);
-    expect(ms.seen.some((s) => s.url.includes("login.microsoftonline.com") || s.url.includes("/users/"))).toBe(false); // no app-only token, no legacy mailbox
-    expect(userRpc.filter((c) => c.fn === "record_inbound_email")).toHaveLength(2);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    const body = await res.json();
+    expect(body).toEqual({ checked_at: expect.any(String), new: 2, status: "checked", reason: "Inbox checked: 2 new e-mails." });
+    expect(Object.keys(body).sort()).toEqual(["checked_at", "new", "reason", "status"]);
+    expect(JSON.stringify(body)).not.toMatch(SECRETS);
+    expect(ms.seen.every((x) => x.url.startsWith("https://graph.microsoft.com/v1.0/me/") && x.auth === "Bearer AT-A" && x.method === "GET")).toBe(true);
+    expect(ms.seen.some((x) => x.url.includes("login.microsoftonline.com") || x.url.includes("/users/"))).toBe(false); // no app-only token, no legacy mailbox
+    expect(service.calls.filter((c) => c.fn === "mailbox_record_inbound").every((c) => c.args.p_org === A)).toBe(true);
     expect([...service.inbound.values()].every((r) => r.org === A)).toBe(true);
-    expect(await (await POST(post())).json()).toEqual({ read: 2, inserted: 0, duplicates: 2, more: false });
+    expect(userRpc.some((c) => c.fn === "record_inbound_email")).toBe(false); // office can't call 031's admin function: the server stores it
   });
 
-  it("B's admin reaches only B's mailbox; B never sees A's messages", async () => {
+  it("throttle: another check within 90 s (another tab, the admin, the button) reads nothing and answers recent; after 90 s it reads again, storing nothing twice", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    const { POST } = await import("@/app/api/mail/check/route");
+    await POST(post());
+    expect(graphReads()).toBe(1);
+    service.clock.now += 30_000;
+    who = { role: "admin", org: A };
+    const recent = await (await POST(post())).json();
+    expect(recent).toEqual({ checked_at: "2026-11-01T10:42:00Z", new: 0, status: "recent", reason: "The inbox was checked a moment ago. Tolra checks it again in a few minutes." });
+    expect(graphReads()).toBe(1);
+    service.clock.now += 61_000;
+    expect(await (await POST(post())).json()).toMatchObject({ status: "checked", new: 0 });
+    expect(graphReads()).toBe(2);
+    expect(service.inbound.size).toBe(2);
+  });
+
+  it("two users at the same moment: one real poll between them", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    const { POST } = await import("@/app/api/mail/check/route");
+    const replies = await Promise.all([POST(post()), POST(post()), POST(post())].map(async (r) => (await r).json()));
+    expect(replies.map((r) => r.status).sort()).toEqual(["checked", "recent", "recent"]);
+    expect(graphReads()).toBe(1);
+    expect(service.calls.filter((c) => c.fn === "mailbox_sync_claim")).toHaveLength(3);
+  });
+
+  it("B's user reaches only B's mailbox; a company named in the request is ignored (the company is always the session's)", async () => {
     service = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B") });
-    who = { role: "admin", org: B };
-    const { POST } = await import("@/app/api/mail/poll/route");
-    expect(await (await POST(post())).json()).toEqual({ read: 1, inserted: 1, duplicates: 0, more: false });
-    expect(new Set(ms.seen.map((s) => s.auth))).toEqual(new Set(["Bearer AT-B"]));
+    who = { role: "office", org: B };
+    const { POST } = await import("@/app/api/mail/check/route");
+    expect(await (await POST(post(JSON.stringify({ organization_id: A, p_org: A })))).json()).toMatchObject({ status: "checked", new: 1 });
+    expect(new Set(ms.seen.map((x) => x.auth))).toEqual(new Set(["Bearer AT-B"]));
     expect([...service.inbound.values()].map((r) => r.org)).toEqual([B]);
+    expect(service.calls.some((c) => c.args.p_org === A)).toBe(false);
   });
 
-  it("a delegated failure answers with the plain reason only", async () => {
+  it.each(["workshop", "viewer"])("%s: 403 on POST and GET; no claim, no token, nothing read", async (role) => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    who = { role, org: A };
+    const { GET, POST } = await import("@/app/api/mail/check/route");
+    expect((await POST(post())).status).toBe(403);
+    expect((await GET()).status).toBe(403);
+    expect(service.calls).toHaveLength(0);
+    expect(ms.seen).toHaveLength(0);
+  });
+
+  it("an admin on aal1 where the app requires the second step (aal2): 403 mfa_required, nothing read; on aal2: allowed", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    who = { role: "admin", org: A, aal: "aal1" };
+    const { POST } = await import("@/app/api/mail/check/route");
+    const res = await POST(post());
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "mfa_required" });
+    expect(service.calls).toHaveLength(0);
+    who = { role: "admin", org: A, aal: "aal2" };
+    expect(await (await POST(post())).json()).toMatchObject({ status: "checked" });
+  });
+
+  it("another company's user is refused: a session for another company than the person's, or no active membership in it (403, nothing read)", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B") });
+    const { POST } = await import("@/app/api/mail/check/route");
+    who = { role: "office", org: B, sessionOrg: A };
+    expect((await POST(post())).status).toBe(403);
+    who = { role: "office", org: A, member: false };
+    expect((await POST(post())).status).toBe(403);
+    expect(service.calls).toHaveLength(0);
+    expect(ms.seen).toHaveLength(0);
+  });
+
+  it("a cross-site request is refused before anything else", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    const { POST } = await import("@/app/api/mail/check/route");
+    expect((await POST(post("{}", { origin: "https://evil.example", host: "app.test" }))).status).toBe(403);
+    expect(userRpc).toHaveLength(0);
+    expect(service.calls).toHaveLength(0);
+  });
+
+  it("GET: available for a company whose inbox can be read; not for one without Mail.Read, or with no server set-up; reads nothing", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B", {}, { mail_read: false }) });
+    const { GET } = await import("@/app/api/mail/check/route");
+    expect(await (await GET()).json()).toEqual({ available: true });
+    who = { role: "admin", org: B };
+    expect(await (await GET()).json()).toEqual({ available: false });
+    service = null;
+    expect(await (await GET()).json()).toEqual({ available: false });
+    expect(ms.seen).toHaveLength(0);
+  });
+
+  it("not connected (no Mail.Read, or no service role on the server): not_connected in plain words, nothing read", async () => {
+    service = fakeDb({ [A]: company(A, "oid-a", "AT-A", {}, { mail_read: false }) });
+    const { POST } = await import("@/app/api/mail/check/route");
+    expect(await (await POST(post())).json()).toEqual({ checked_at: null, new: 0, status: "not_connected", reason: "Tolra isn't reading this company's inbox. An admin can connect Microsoft 365 in Settings." });
+    service = null;
+    expect(await (await POST(post())).json()).toMatchObject({ status: "not_connected" });
+    expect(ms.seen).toHaveLength(0);
+  });
+
+  it("a Graph failure answers with the plain reason only; a database failure is a 500 with the same small shape", async () => {
     service = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
     ms = fakeMicrosoft({ "AT-A": { status: 429, body: { error: { message: "AT-A throttled boss@a.example" } } } });
     vi.stubGlobal("fetch", ms.fetchImpl);
-    const { POST } = await import("@/app/api/mail/poll/route");
-    const res = await POST(post());
-    expect(res.status).toBe(429);
-    const body = await res.json();
-    expect(body.error).toBe("Couldn't check mail: Microsoft 365 is busy. Tolra will try again shortly.");
+    const { POST } = await import("@/app/api/mail/check/route");
+    const body = await (await POST(post())).json();
+    expect(body).toEqual({ checked_at: expect.any(String), new: 0, status: "failed", reason: "Couldn't check mail: Microsoft 365 is busy. Tolra will try again shortly." });
     expect(JSON.stringify(body)).not.toMatch(/AT-A|boss@/);
-  });
-
-  it("no delegated mailbox that may read (a connection made before C1): the legacy app-only path answers, as before", async () => {
-    service = fakeDb({ [A]: company(A, "oid-a", "AT-A", {}, { mail_read: false }) });
-    const { POST } = await import("@/app/api/mail/poll/route");
-    await POST(post());
-    expect(ms.seen.some((s) => s.url.includes("login.microsoftonline.com/t/oauth2/v2.0/token"))).toBe(true);
-    expect(ms.seen.some((s) => s.url.includes("/users/legacy%40a.example.test/"))).toBe(true);
-  });
-
-  it("status: on for a company with a delegated mailbox that may read, even with no legacy mailbox; off for a non-admin", async () => {
-    for (const k of ["MS_TENANT_ID", "MS_MAILBOX", "MS_ORGANIZATION_ID"]) delete process.env[k];
-    service = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B", {}, { mail_read: false }) });
-    const { GET } = await import("@/app/api/mail/status/route");
-    expect(await (await GET()).json()).toEqual({ configured: true });
-    who = { role: "admin", org: B };
-    expect(await (await GET()).json()).toEqual({ configured: false });
-    who = { role: "office", org: A };
-    expect((await GET()).status).toBe(403);
-    expect(ms.seen).toHaveLength(0);
+    const broken = { rpc: async (fn: string, args: Record<string, unknown>) => (fn === "mailbox_sync_claim" ? { data: null, error: { code: "57014", message: "canceling statement due to statement timeout: secret" } } : service!.client.rpc(fn, args)) };
+    service = { ...service, client: broken as unknown as SupabaseClient };
+    const res = await POST(post());
+    expect(res.status).toBe(500);
+    const failed = await res.json();
+    expect(Object.keys(failed).sort()).toEqual(["checked_at", "new", "reason", "status"]);
+    expect(JSON.stringify(failed)).not.toMatch(/secret|57014/);
   });
 });
