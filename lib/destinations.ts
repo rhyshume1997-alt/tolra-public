@@ -1,3 +1,4 @@
+import { isSalesOrdersPath, salesOrdersEnabled } from "@/lib/sales-orders-switch";
 import { MEMBER_SECTIONS, sectionForPath } from "@/lib/sections";
 import type { UserRole } from "@/types";
 
@@ -9,7 +10,8 @@ import type { UserRole } from "@/types";
  * - the active view's role is allowed on it (the role view switcher decides what is on screen; the middleware
  *   checks the person's real roles, and the active view is always one of them), and
  * - an admin has not hidden that section from this person (Admin > Users > Page access), and
- * - the company has not hidden it from the menu (Settings > Menu).
+ * - the company has not hidden it from the menu (Settings > Menu). Sales Orders is hidden unless an admin switched it on there
+ *   (lib/sales-orders-switch): with no menu settings passed, it is off.
  *
  * The middleware and the database stay the real gate; this only stops the interface offering a link that would
  * end in "Access denied" or a "blocked" redirect.
@@ -45,6 +47,7 @@ export function canOpenDestination(target: string, access: DestinationAccess): b
   if (!roles || !roles.includes(access.activeRole)) return false;
   const section = sectionForPath(href);
   if (section && access.hiddenSections.includes(section)) return false;
+  if (isSalesOrdersPath(href) && !salesOrdersEnabled(access.hiddenNav)) return false;
   if (access.hiddenNav && href !== "/dashboard" && href !== "/settings" && access.hiddenNav.includes(href.replace(/^\//, ""))) return false;
   return true;
 }
