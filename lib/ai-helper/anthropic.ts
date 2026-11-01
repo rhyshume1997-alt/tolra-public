@@ -8,7 +8,11 @@ import { type AiCompletion, type AiCompletionRequest, type AiHelperProvider, AiP
 export type MessagesClient = { messages: Pick<Anthropic["messages"], "create"> };
 export type MakeClient = (apiKey: string, timeoutMs: number) => MessagesClient;
 
-const makeClient: MakeClient = (apiKey, timeoutMs) => new Anthropic({ apiKey, timeout: timeoutMs, maxRetries: 1 });
+// No SDK retries (E9 Q4): one reservation pays for one attempt. A retry after a timeout or a 5xx could be a second billed request.
+const makeClient: MakeClient = (apiKey, timeoutMs) => new Anthropic({ apiKey, timeout: timeoutMs, maxRetries: 0 });
+
+/** Statuses that mean the provider refused the request before any work (nothing billed): bad request, key, permission, not found, too large, rate. */
+const REJECTED_BEFORE_WORK = new Set([400, 401, 403, 404, 413, 429]);
 
 /**
  * The company's own Anthropic account, through the official SDK. One Messages request: no tools, a fixed system prompt, the data as the
@@ -29,10 +33,13 @@ export function anthropicProvider(make: MakeClient = makeClient): AiHelperProvid
           output_config: { effort: req.effort, format: { type: "json_schema", schema: req.schema } },
         });
       } catch (error) {
-        if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) throw new AiProviderError("unavailable", undefined, "auth");
-        if (error instanceof Anthropic.RateLimitError) throw new AiProviderError("unavailable", undefined, "rate");
+        // A connection error or timeout has no status: never a certain rejection.
+        const status = error instanceof Anthropic.APIError && !(error instanceof Anthropic.APIConnectionError) ? error.status : undefined;
+        const rejected = typeof status === "number" && REJECTED_BEFORE_WORK.has(status);
+        if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) throw new AiProviderError("unavailable", undefined, "auth", rejected);
+        if (error instanceof Anthropic.RateLimitError) throw new AiProviderError("unavailable", undefined, "rate", rejected);
         // Server errors, timeouts, connection failures and anything else: the model is not available right now.
-        throw new AiProviderError("unavailable");
+        throw new AiProviderError("unavailable", undefined, undefined, rejected);
       }
       const usage: AiUsage = {
         inputTokens: (response.usage?.input_tokens ?? 0) + (response.usage?.cache_creation_input_tokens ?? 0) + (response.usage?.cache_read_input_tokens ?? 0),

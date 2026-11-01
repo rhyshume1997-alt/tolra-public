@@ -150,10 +150,10 @@ vi.mock("@/lib/server/supabase-admin", () => ({
   },
 }));
 
-const model = vi.hoisted(() => ({ calls: 0 }));
+const model = vi.hoisted(() => ({ calls: 0, lastRequest: null as null | { model: string; system: string; data: string; schema: unknown; maxOutputTokens: number } }));
 vi.mock("@/lib/ai-helper/mock", async (original) => {
   const real = await original<typeof import("@/lib/ai-helper/mock")>();
-  return { mockProvider: () => { const p = real.mockProvider(); return { id: p.id, complete: (r: Parameters<typeof p.complete>[0]) => { model.calls += 1; return p.complete(r); } }; } };
+  return { mockProvider: () => { const p = real.mockProvider(); return { id: p.id, complete: (r: Parameters<typeof p.complete>[0]) => { model.calls += 1; model.lastRequest = r; return p.complete(r); } }; } };
 });
 
 const attention = vi.hoisted(() => ({ roles: [] as string[], sections: [] as unknown[] }));
@@ -166,6 +166,7 @@ import { POST as roundup } from "@/app/api/ai-helper/roundup/route";
 import { POST as rfq } from "@/app/api/ai-helper/rfq/route";
 import { POST as decide } from "@/app/api/ai-helper/rfq/decision/route";
 import { AI_HELPER_FLAG } from "@/lib/ai-helper/flag";
+import { estimatePence } from "@/lib/ai-helper/limits";
 import { ATTACHMENTS_REFUSED } from "@/lib/ai-helper/rfq";
 import { encryptSecret } from "@/lib/integrations/crypto";
 
@@ -192,6 +193,7 @@ beforeEach(() => {
   service.keyEnc = encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" });
   auth.role = "office"; auth.support = false; auth.calls = 0; auth.roles = [];
   model.calls = 0;
+  model.lastRequest = null;
   attention.roles = []; attention.sections = [];
   logs.length = 0;
   vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => { logs.push(args.map(String).join(" ")); });
@@ -344,13 +346,42 @@ describe("RFQ email to draft quote", () => {
     }
   });
 
+  it("E9 Q4: a failure that may have been billed is settled at the FULL reservation; only a certain rejection (or known usage) costs less", async () => {
+    const reserved = () => db.rpcs.find((r) => r.fn === "ai_helper_reserve")?.args.p_estimate_pence as number;
+    // Down (timeout, 5xx, connection): nobody knows whether the provider worked and billed: the whole reservation is spent.
+    db.rpcs = [];
+    await rfq(post({ text: "Customer: Acme\n- 1 x Part [mock:down]" }));
+    expect(reserved()).toBeGreaterThan(0);
+    expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable", p_cost_pence: reserved() });
+    // Rejected before any work (400/401/403/404/413/429): nothing billed, the reservation comes back.
+    db.rpcs = [];
+    const res = await rfq(post({ text: "Customer: Acme\n- 1 x Part [mock:rejected]" }));
+    expect(res.status).toBe(503);
+    expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable", p_cost_pence: 0 });
+    // Refused / garbage: the provider answered and said what it used: that, never more than the reservation.
+    db.rpcs = [];
+    await rfq(post({ text: "Customer: Acme\n- 1 x Part [mock:refuse]" }));
+    expect(settleCall()?.p_cost_pence).toBeLessThanOrEqual(reserved());
+  });
+
+  it("E9 Q4: the reservation counts every byte sent, the answer's JSON schema included", async () => {
+    db.rpcs = [];
+    await rfq(post({ text: GOOD_RFQ }));
+    const args = db.rpcs.find((r) => r.fn === "ai_helper_reserve")!.args;
+    const sent = model.lastRequest!;
+    const bytes = Buffer.byteLength(sent.system + sent.data + JSON.stringify(sent.schema), "utf8");
+    expect(args.p_estimate_pence).toBe(estimatePence(sent.model, bytes, sent.maxOutputTokens));
+    expect(JSON.stringify(sent.schema).length).toBeGreaterThan(500);
+  });
+
   it("a key that can't be decrypted on this server: not available, settled as failed, no model call", async () => {
     service.keyEnc = encryptSecret("sk-ant-x", { organizationId: "another-company", provider: "anthropic", purpose: "api_key" });
     const res = await rfq(post({ text: GOOD_RFQ }));
     expect(res.status).toBe(503);
     expect((await res.json()).code).toBe("key_unreadable");
     expect(model.calls).toBe(0);
-    expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable" });
+    // No model call was made: certainly nothing billed, the reservation comes back (E9 Q4).
+    expect(settleCall()).toMatchObject({ p_status: "failed", p_failure: "unavailable", p_cost_pence: 0 });
   });
 
   it("103: the key is read with the service role, for the caller's company only, after the reservation passed; settle is the service role's", async () => {

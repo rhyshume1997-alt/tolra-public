@@ -1,8 +1,8 @@
 /**
  * Fixed limits for the AI admin helper: models, sizes, output caps and the price table the monthly cap is reserved from.
  *
- * COST. The cap (migration 101, pence) is reserved BEFORE each request from an upper bound: every byte of the system prompt and the
- * data counted as one input token (a token always covers at least one byte), plus framing, plus the full output cap (thinking included:
+ * COST. The cap (migration 101, pence) is reserved BEFORE each request from an upper bound: every byte of the system prompt, the
+ * data and the answer's JSON schema (sent with the request, E9 Q4) counted as one input token (a token always covers at least one byte), plus framing, plus the full output cap (thinking included:
  * max_tokens bounds all output). The request is sent with that output cap, so the provider's own usage can never exceed the estimate,
  * and the database never settles above the reservation either. Prices are the provider's list prices in US dollars per million tokens;
  * one US cent is counted as one penny, which over-counts while a pound is worth more than a dollar (the cap errs on the safe side).
@@ -30,7 +30,7 @@ export const RFQ_MAX_LINES = 20;
 /** Past quote lines sent as examples (this company's own, read with the person's session). */
 export const RFQ_PAST_LINES = 20;
 
-/** One model request, end to end (the SDK retries once inside it). */
+/** One model request, end to end. The SDK makes ONE attempt (maxRetries 0, E9 Q4): one reservation never pays for two billed calls. */
 export const AI_REQUEST_TIMEOUT_MS = 30_000;
 
 const PRICES_USD_PER_MTOK: Record<string, { input: number; output: number }> = {

@@ -116,8 +116,13 @@
  },
  {
   "kind": "function",
+  "object": "public.ai_helper_purge_requests(p_limit integer)",
+  "detail": "definer search_path=pg_catalog, public 81215b1445dd8ebe90996e632adf0bb5"
+ },
+ {
+  "kind": "function",
   "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
-  "detail": "definer search_path=pg_catalog, public 012e00f0b0e1c85b4319e4a00c529d39"
+  "detail": "definer search_path=pg_catalog, public 8fcfe676db47cd0f12a644889b5ef27d"
  },
  {
   "kind": "function",
@@ -137,7 +142,7 @@
  {
   "kind": "function",
   "object": "public.ai_helper_settle(p_request uuid, p_status text, p_failure text, p_cost_pence integer, p_model text, p_output jsonb)",
-  "detail": "definer search_path=pg_catalog, public 43633f7f5e88ca0d9259128d8ad6ce8a"
+  "detail": "definer search_path=pg_catalog, public a1297251032c981f71cfe3c169fb2ce9"
  },
  {
   "kind": "function",
@@ -2163,6 +2168,11 @@
   "kind": "function-grant",
   "object": "public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_purge_requests(p_limit integer)",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",

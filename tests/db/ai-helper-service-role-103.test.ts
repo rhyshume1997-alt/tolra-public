@@ -208,7 +208,12 @@ describe("103 release files on the local stack", () => {
   it("the verify script answers TRUE on every row, and so does 101's", async () => {
     const result = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_service_role_103.sql"))).rows);
     expect(result).toHaveLength(4);
-    expect(result.filter((r) => !r.ok)).toEqual([]);
+    // 133 (AI-PRE, E9 Q4) replaces 103's reserve and settle bodies, so 103's two body rows read FALSE by design; 133's own verify checks
+    // the new bodies and the same properties (no key in reserve's answer, settle the service role's only).
+    expect(result.filter((r) => !r.ok).map((r) => r.check_name)).toEqual(["reserve_returns_no_key", "settle_service_role_only"]);
+    const v133 = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_pre_enable_133.sql"))).rows);
+    expect(v133.length).toBeGreaterThan(0);
+    expect(v133.filter((r) => !r.ok)).toEqual([]);
     const v101 = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_101.sql"))).rows);
     // 122 makes the cap default 500, so 101's off_by_default row reads FALSE by design; 122's own verify checks the new default.
     expect(v101.filter((r) => !r.ok).map((r) => r.check_name)).toEqual(["off_by_default"]);
@@ -221,7 +226,9 @@ describe("103 release files on the local stack", () => {
     await withDb(async (db) => {
       await db.query("begin");
       try {
-        // 122 (cap default 500) sits on top of 101: take it away first, as 101's own verify (cap default 0) is checked below.
+        // 133 (AI-PRE) sits on top of 103 and 122 (cap default 500) on top of 101: take them away first, as 103's and 101's own verify
+        // scripts are checked below.
+        await db.query(unwrapped(read("supabase/release/133_ai_helper_pre_enable.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/122_ai_helper_cap_default.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/103_ai_helper_service_role.rollback.sql")));
         const after = Object.fromEntries((await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_service_role_103.sql"))).rows.map((r) => [r.check_name, r.ok]));

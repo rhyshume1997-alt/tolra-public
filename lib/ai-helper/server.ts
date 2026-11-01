@@ -69,7 +69,8 @@ const digest = (text: string) => createHash("sha256").update(text, "utf8").diges
 export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>> {
   const model = AI_HELPER_MODELS[input.feature];
   const maxOutputTokens = MAX_OUTPUT_TOKENS[input.feature];
-  const estimate = estimatePence(model, Buffer.byteLength(input.system + input.data, "utf8"), maxOutputTokens);
+  // Every byte sent counts (E9 Q4): the system prompt, the data and the JSON schema the answer must follow.
+  const estimate = estimatePence(model, Buffer.byteLength(input.system + input.data + JSON.stringify(input.schema), "utf8"), maxOutputTokens);
   // Without the service role nothing could be settled: refuse before anything is reserved.
   const service = createSupabaseAdminClient();
   if (!service) {
@@ -89,9 +90,10 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
   const requestId = answer.request_id;
   if (!answer.ok) return answer.reason === "cap" ? { kind: "cap", requestId } : { kind: "no_key", requestId };
 
-  const settle = async (status: "suggested" | "failed", failure: AiFailure | null, usage: AiUsage, usedModel: string | null, output: Record<string, unknown> | null) => {
+  // costPence: the actual cost from the provider's usage, unless given (the full reservation for an attempt that may have been billed).
+  const settle = async (status: "suggested" | "failed", failure: AiFailure | null, usage: AiUsage, usedModel: string | null, output: Record<string, unknown> | null, costPence?: number) => {
     const { error: settleError } = await service.rpc("ai_helper_settle", {
-      p_request: requestId, p_status: status, p_failure: failure, p_cost_pence: actualPence(model, usage), p_model: usedModel, p_output: output,
+      p_request: requestId, p_status: status, p_failure: failure, p_cost_pence: costPence ?? actualPence(model, usage), p_model: usedModel, p_output: output,
     });
     if (settleError) console.error("[ai-helper] settle refused", settleError.code ?? "error");
     return !settleError;
@@ -121,7 +123,10 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     const failure: AiFailure = err instanceof AiProviderError ? err.kind : "unavailable";
     const usage = err instanceof AiProviderError ? err.usage : none;
     console.error("[ai-helper] model call failed", failure, err instanceof AiProviderError ? err.detail ?? "" : "");
-    await settle("failed", failure, usage, model, null);
+    // E9 Q4: given back only when the provider certainly did no work (it rejected the request, or answered and told us its usage:
+    // refused / invalid). Anything else (timeout, 5xx, connection, unknown) may have been billed: settled at the full reservation.
+    const certain = err instanceof AiProviderError && (err.rejectedBeforeWork || err.kind !== "unavailable");
+    await settle("failed", failure, usage, model, null, certain ? undefined : estimate);
     return { kind: "failed", failure, detail: err instanceof AiProviderError ? err.detail : undefined };
   }
 
