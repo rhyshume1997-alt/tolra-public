@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Trash2, Wifi } from "lucide-react";
+import { Pencil, Trash2, Wifi } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import { Input } from "@/components/ui/input";
 import { friendlyError } from "@/lib/friendly-error";
 import { newClientOpId } from "@/lib/machine-runs";
 import {
-  type RequestNetwork, type SavedNetwork, type SiteNetworkMode, addSiteNetwork, loadSiteNetworks,
-  SITE_NETWORK_IP_RETENTION_DAYS, myRequestNetwork, purgeSiteNetworkIps, removeSiteNetwork, setSiteNetworkCheck,
+  type RequestNetwork, type SavedNetwork, type SiteNetworkMode, addSiteNetwork, loadSiteNetworks, renameSiteNetwork,
+  SITE_NETWORK_IP_RETENTION_DAYS, SITE_NETWORK_LABEL_MAX, myRequestNetwork, purgeSiteNetworkIps, removeSiteNetwork, setSiteNetworkCheck,
 } from "@/lib/site-network";
 import { supabase } from "@/lib/supabase";
 import { useDatabaseHas075 } from "@/lib/use-database-has-075";
@@ -24,6 +24,7 @@ import { useDatabaseHas075 } from "@/lib/use-database-has-075";
  * browser to the database, so it is this device's network). With 078 the card says how long a checked clock action's address is kept
  * and lets the admin delete the expired addresses now (the default) or, after a confirmation naming what goes, all of them. Admin only
  * (the Settings page is; the database refuses anyone else). A network is only ever saved by the button below (never automatically).
+ * With 128 each saved network has Rename (admin, two-step, keyed; 1 to 60 characters; the address never changes).
  */
 export function SiteNetworkCard() {
   const has075 = useDatabaseHas075() === true;
@@ -31,6 +32,8 @@ export function SiteNetworkCard() {
   const [networks, setNetworks] = useState<SavedNetwork[]>([]);
   const [here, setHere] = useState<RequestNetwork | null>(null);
   const [ipRetention, setIpRetention] = useState(false);
+  const [canRename, setCanRename] = useState(false);
+  const [renaming, setRenaming] = useState<{ id: string; label: string; key: string } | null>(null);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmPurgeAll, setConfirmPurgeAll] = useState(false);
@@ -43,6 +46,7 @@ export function SiteNetworkCard() {
       setMode(state.mode);
       setNetworks(state.networks);
       setIpRetention(state.ipRetention);
+      setCanRename(state.canRename);
       setHere(await myRequestNetwork(supabase).catch(() => null));
       setError(null);
     } catch (err) {
@@ -97,12 +101,36 @@ export function SiteNetworkCard() {
           {networks.length ? (
             <ul className="space-y-1">
               {networks.map((n) => (
-                <li key={n.id} className="flex items-center justify-between gap-2 rounded-none border p-2" data-testid="site-network-row">
-                  <span><span className="font-medium">{n.label}</span> <span className="font-mono text-slate-600">{n.network}</span></span>
-                  <Button size="sm" variant="outline" disabled={busy} aria-label={`Remove ${n.label}`}
-                    onClick={() => supabase && void run(() => removeSiteNetwork(supabase!, newClientOpId(), n.id), `${n.label} removed.`, "Couldn't remove it.")}>
-                    <Trash2 className="size-4" />
-                  </Button>
+                <li key={n.id} className="flex flex-wrap items-center justify-between gap-2 rounded-none border p-2" data-testid="site-network-row">
+                  {renaming?.id === n.id ? (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Input className="max-w-48" value={renaming.label} maxLength={SITE_NETWORK_LABEL_MAX} aria-label={`New name for ${n.label}`} data-testid="site-network-rename-input"
+                        onChange={(e) => setRenaming({ ...renaming, label: e.target.value, key: newClientOpId() })} />
+                      <span className="font-mono text-slate-600">{n.network}</span>
+                    </span>
+                  ) : (
+                    <span><span className="font-medium">{n.label}</span> <span className="font-mono text-slate-600">{n.network}</span></span>
+                  )}
+                  <span className="flex gap-2">
+                    {renaming?.id === n.id ? (
+                      <>
+                        <Button size="sm" disabled={busy || !renaming.label.trim() || renaming.label.trim().length > SITE_NETWORK_LABEL_MAX} data-testid="site-network-rename-save"
+                          onClick={() => supabase && void run(() => renameSiteNetwork(supabase!, renaming.key, n.id, renaming.label), "Network renamed.", "Couldn't rename it.").then((ok) => ok && setRenaming(null))}>
+                          Save name
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => setRenaming(null)}>Cancel</Button>
+                      </>
+                    ) : canRename ? (
+                      <Button size="sm" variant="outline" disabled={busy} aria-label={`Rename ${n.label}`} data-testid="site-network-rename"
+                        onClick={() => setRenaming({ id: n.id, label: n.label, key: newClientOpId() })}>
+                        <Pencil className="size-4" />
+                      </Button>
+                    ) : null}
+                    <Button size="sm" variant="outline" disabled={busy} aria-label={`Remove ${n.label}`}
+                      onClick={() => supabase && void run(() => removeSiteNetwork(supabase!, newClientOpId(), n.id), `${n.label} removed.`, "Couldn't remove it.")}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </span>
                 </li>
               ))}
             </ul>

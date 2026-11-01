@@ -10,9 +10,9 @@
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { CLOCK_IN_NETWORK_LOCKED, type LockDecisionInput, clockInLockDecision } from "@/lib/clock-in-lock";
+import { CLOCK_IN_NETWORK_LOCKED, type LockDecisionInput, REFUSAL_REPORT_TIMEOUT_MS, clockInLockDecision, reportClockInRefusal } from "@/lib/clock-in-lock";
 import { friendlyError } from "@/lib/friendly-error";
 import type { ClockOp } from "@/lib/offline/outbox";
 import { isNetworkError } from "@/lib/offline/store";
@@ -119,5 +119,33 @@ describe("the refusal reaches the person as a refusal", () => {
     const op: ClockOp = { kind: "clock", v: 1, action: "in", at: now.toISOString(), clientOpId: "00000000-0000-0000-0000-000000000114", device: "Phone", jobNo: "Daily job sheet" };
     const outcome = await executeClockOp(op, client as never, "o1");
     expect(outcome).toMatchObject({ status: "rejected", reason: message });
+  });
+  it("128: the refusal is reported (record_clock_in_refusal, the action's own key) and the outcome is the same whatever the report answers", async () => {
+    const op: ClockOp = { kind: "clock", v: 1, action: "break_start", at: now.toISOString(), clientOpId: "00000000-0000-0000-0000-000000000128", device: "Phone", jobNo: "Daily job sheet" };
+    for (const report of [{ data: { recorded: true }, error: null }, { data: null, error: { code: "PGRST202", message: "no function" } }]) {
+      const calls: [string, unknown][] = [];
+      const client = { rpc: async (fn: string, args: unknown) => { calls.push([fn, args]); return fn === "record_clock_in_refusal" ? report : { data: null, error }; } };
+      expect(await executeClockOp(op, client as never, "o1")).toMatchObject({ status: "rejected", code: "refused", reason: message });
+      expect(calls.filter(([fn]) => fn === "record_clock_in_refusal")).toEqual([["record_clock_in_refusal", { p_client_op_id: op.clientOpId, p_action: "break_start" }]]);
+    }
+  });
+  it("128: no report for any other refusal", async () => {
+    const calls: string[] = [];
+    const client = { rpc: async (fn: string) => { calls.push(fn); return { data: null, error: { code: "22023", hint: "bad_action", message: "Unknown" } }; } };
+    const op: ClockOp = { kind: "clock", v: 1, action: "in", at: now.toISOString(), clientOpId: "00000000-0000-0000-0000-000000000129", device: "Phone", jobNo: "Daily job sheet" };
+    await executeClockOp(op, client as never, "o1");
+    expect(calls).not.toContain("record_clock_in_refusal");
+  });
+  it("128: reportClockInRefusal never throws and gives up after its timeout", async () => {
+    expect(await reportClockInRefusal(null, { clientOpId: "k", action: "in" })).toBe(false);
+    expect(await reportClockInRefusal({ rpc: () => { throw new Error("boom"); } }, { clientOpId: "k", action: "in" })).toBe(false);
+    vi.useFakeTimers();
+    try {
+      const pending = reportClockInRefusal({ rpc: () => new Promise(() => {}) }, { clientOpId: "k", action: "in" });
+      await vi.advanceTimersByTimeAsync(REFUSAL_REPORT_TIMEOUT_MS);
+      expect(await pending).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

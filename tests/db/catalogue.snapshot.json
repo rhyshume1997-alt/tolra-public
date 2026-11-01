@@ -336,6 +336,16 @@
  },
  {
   "kind": "function",
+  "object": "public.clock_in_refusal_answer(p_row clock_in_network_refusals, p_replayed boolean)",
+  "detail": "invoker search_path=pg_catalog, public 16b824fe1af14553c2abb164183e70b3"
+ },
+ {
+  "kind": "function",
+  "object": "public.clock_in_refusal_ip_purge(p_org uuid, p_limit integer)",
+  "detail": "invoker search_path=pg_catalog, public 891bd0942c318b8c4d3d98e620885eff"
+ },
+ {
+  "kind": "function",
   "object": "public.company_people()",
   "detail": "definer search_path=pg_catalog, public 955357228d87d29eaa462af8ece27806"
  },
@@ -1447,7 +1457,7 @@
  {
   "kind": "function",
   "object": "public.purge_site_network_ips(p_all boolean)",
-  "detail": "definer search_path=pg_catalog, public 89d9acdfd1de30f58faf332665671ca4"
+  "detail": "definer search_path=pg_catalog, public d871abfce6ce33b35298ac75e892934e"
  },
  {
   "kind": "function",
@@ -1511,6 +1521,11 @@
  },
  {
   "kind": "function",
+  "object": "public.record_clock_in_refusal(p_client_op_id uuid, p_action text)",
+  "detail": "definer search_path=pg_catalog, public 1fda54e6fe632fe46a9cd171d2a1d70d"
+ },
+ {
+  "kind": "function",
   "object": "public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
   "detail": "definer search_path=pg_catalog, public 787d370c49c3033950c1f0dda63ad63b"
  },
@@ -1558,6 +1573,11 @@
   "kind": "function",
   "object": "public.remove_site_network(p_client_op_id uuid, p_id uuid)",
   "detail": "definer search_path=pg_catalog, public dfdd4fce93d7adb88ac7a68a45679733"
+ },
+ {
+  "kind": "function",
+  "object": "public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)",
+  "detail": "definer search_path=pg_catalog, public acd7971d739eeaceddc03e607f15852b"
  },
  {
   "kind": "function",
@@ -1802,7 +1822,7 @@
  {
   "kind": "function",
   "object": "public.site_network_ip_purge(p_org uuid, p_limit integer)",
-  "detail": "invoker search_path=pg_catalog, public ebdf35dddb2d55f6e54ef40b9eb9f6bf"
+  "detail": "invoker search_path=pg_catalog, public 87b381854626379f4ece70dcd38576e5"
  },
  {
   "kind": "function",
@@ -2372,6 +2392,16 @@
  {
   "kind": "function-grant",
   "object": "public.clock_in_network_unverified_record()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.clock_in_refusal_answer(p_row clock_in_network_refusals, p_replayed boolean)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.clock_in_refusal_ip_purge(p_org uuid, p_limit integer)",
   "detail": "service_role"
  },
  {
@@ -3551,6 +3581,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.record_clock_in_refusal(p_client_op_id uuid, p_action text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
   "detail": "authenticated,service_role"
  },
@@ -3597,6 +3632,11 @@
  {
   "kind": "function-grant",
   "object": "public.remove_site_network(p_client_op_id uuid, p_id uuid)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -4123,6 +4163,11 @@
   "kind": "policy",
   "object": "public.clock_in_network_locks :: clock_in_network_locks rbac select",
   "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
+  "object": "public.clock_in_network_refusals :: clock_in_network_refusals admin select",
+  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
  },
  {
   "kind": "policy",
@@ -5211,6 +5256,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.clock_in_network_refusals",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.clock_in_network_unverified",
   "detail": "enabled"
  },
@@ -5727,6 +5777,11 @@
  {
   "kind": "table-grant",
   "object": "public.clock_in_network_locks :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.clock_in_network_refusals :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -6253,6 +6308,16 @@
   "kind": "trigger",
   "object": "public.clock_in_network_locks :: support_read_only",
   "detail": "O 2caf693d383aff3f25b54872e97d8e90"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_refusals :: admin_mfa",
+  "detail": "O 19b0c9915f6040597b8479f60cdc4f51"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.clock_in_network_refusals :: support_read_only",
+  "detail": "O 88f41bccd0787cd04af0a1e958a97905"
  },
  {
   "kind": "trigger",
@@ -8218,6 +8283,11 @@
   "kind": "unique-index",
   "object": "public.clock_in_network_locks :: clock_in_network_locks_id_key",
   "detail": "8c99a2928039d1cb660f7bfc9847b545"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.clock_in_network_refusals :: clock_in_network_refusals_one_per_key",
+  "detail": "0f3b39a2ffd5876394e6e8b97de97987"
  },
  {
   "kind": "unique-index",

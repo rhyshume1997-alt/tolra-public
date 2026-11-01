@@ -120,6 +120,8 @@ beforeAll(async () => {
 
   // 084: a failed Xero send and a contact problem of beta's, for retry and resolve to be pointed at (written as the server would).
   beta.integrationSend = (await service.from("integration_sends").insert({ organization_id: org, provider: "xero", doc_type: "invoice", doc_id: beta.invoice, action: "create", status: "failed", last_error: "x" }).select("id").single()).data!.id;
+  // 128: a saved workshop network of beta's, for rename_site_network pointed at it from alpha.
+  beta.siteNetwork = (await service.from("site_networks").insert({ organization_id: org, network: "198.51.100.0/24", label: `${MARKER} Yard` }).select("id").single()).data!.id;
   if ((await service.from("integration_contacts").insert({ organization_id: org, provider: "xero", customer_name: `${MARKER} Customer`, state: "problem", problem: "Two contacts" })).error) throw new Error("beta integration contact");
 
   // 101: an AI helper suggestion of beta's, waiting for a decision, for settle and decide to be pointed at (written as its functions would).
@@ -264,6 +266,10 @@ function attempts(): Attempt[] {
     ["public.unlock_clock_in_network()", () => alpha.rpc("unlock_clock_in_network"), "nothing of beta's"],
     // 114: beta's person can't be given the off-site exception (not in the caller's company).
     ["public.set_clock_in_off_site_allowed(p_user uuid, p_allowed boolean)", () => alpha.rpc("set_clock_in_off_site_allowed", { p_user: beta.adminId, p_allowed: true }), "refused"],
+    // 128: renaming a network id of beta's is not found in the caller's company; a refusal report is the caller's own clock action in the
+    // caller's company only (alpha is not locked, so it is refused as not_refused; nothing of beta's either way).
+    ["public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)", () => alpha.rpc("rename_site_network", { p_client_op_id: randomUUID(), p_id: beta.siteNetwork, p_label: "Cross-company attempt" }), "refused"],
+    ["public.record_clock_in_refusal(p_client_op_id uuid, p_action text)", () => alpha.rpc("record_clock_in_refusal", { p_client_op_id: randomUUID(), p_action: "in" }), "nothing of beta's"],
     // 084: beta's send and beta's contact problem are not found in alpha; alpha (not connected) has nothing to disconnect; a Connect start
     // and a mapping are written for alpha only.
     ["public.integration_retry_send(p_send uuid)", () => alpha.rpc("integration_retry_send", { p_send: beta.integrationSend }), "refused"],

@@ -38,21 +38,37 @@ describe("unrecognisedBannerText", () => {
 });
 
 describe("loadUnrecognisedClockActions", () => {
+  const chain = (calls: [string, ...unknown[]][], table: string, result: unknown) => {
+    const c: Record<string, unknown> = {};
+    for (const m of ["select", "eq", "gte", "order", "limit"]) c[m] = (...a: unknown[]) => { calls.push([`${table}.${m}`, ...a]); return c; };
+    c.then = (ok: (r: unknown) => unknown) => Promise.resolve(result).then(ok);
+    return c;
+  };
+  const client = (answers: Record<string, unknown>, calls: [string, ...unknown[]][] = []) =>
+    ({ from: (t: string) => { calls.push(["from", t]); return chain(calls, t, answers[t] ?? { data: [], error: null }); } }) as unknown as SupabaseClient;
+
   it("asks for off_site checks of the last 7 days, newest first, and throws on a read error", async () => {
     const calls: [string, ...unknown[]][] = [];
-    const chain = (result: unknown) => {
-      const c: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "gte", "order", "limit"]) c[m] = (...a: unknown[]) => { calls.push([m, ...a]); return c; };
-      c.then = (ok: (r: unknown) => unknown) => Promise.resolve(result).then(ok);
-      return c;
-    };
-    const ok = { from: (t: string) => { calls.push(["from", t]); return chain({ data: rows, error: null }); } } as unknown as SupabaseClient;
-    expect(await loadUnrecognisedClockActions(ok, new Date("2026-10-31T12:00:00Z"))).toEqual(rows);
+    expect(await loadUnrecognisedClockActions(client({ attendance_event_networks: { data: rows, error: null } }, calls), new Date("2026-10-31T12:00:00Z"))).toEqual(rows);
     expect(calls).toContainEqual(["from", "attendance_event_networks"]);
-    expect(calls).toContainEqual(["eq", "status", "off_site"]);
-    expect(calls).toContainEqual(["gte", "checked_at", "2026-10-24T12:00:00.000Z"]);
-    const bad = { from: () => chain({ data: null, error: { code: "42501", message: "no" } }) } as unknown as SupabaseClient;
-    await expect(loadUnrecognisedClockActions(bad)).rejects.toMatchObject({ code: "42501" });
+    expect(calls).toContainEqual(["attendance_event_networks.eq", "status", "off_site"]);
+    expect(calls).toContainEqual(["attendance_event_networks.gte", "checked_at", "2026-10-24T12:00:00.000Z"]);
+    await expect(loadUnrecognisedClockActions(client({ attendance_event_networks: { data: null, error: { code: "42501", message: "no" } } }))).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("128: adds the clock actions the network lock refused (refused_unrecognised, last 7 days), merged newest first", async () => {
+    const calls: [string, ...unknown[]][] = [];
+    const refused = { data: [{ id: "r1", attempted_at: "2026-10-31T08:00:00Z" }, { id: "r2", attempted_at: "2026-10-29T12:00:00Z" }], error: null };
+    const got = await loadUnrecognisedClockActions(client({ attendance_event_networks: { data: rows, error: null }, clock_in_network_refusals: refused }, calls), new Date("2026-10-31T12:00:00Z"));
+    expect(got.map((r) => r.event_id)).toEqual(["r1", "c", "r2", "b", "a"]);
+    expect(calls).toContainEqual(["clock_in_network_refusals.eq", "status", "refused_unrecognised"]);
+    expect(calls).toContainEqual(["clock_in_network_refusals.gte", "attempted_at", "2026-10-24T12:00:00.000Z"]);
+    expect(unrecognisedBatch(got, null)).toEqual({ count: 5, latest: "2026-10-31T08:00:00Z" });
+  });
+
+  it("128: before 128 (the refusal table missing) the checks alone still show", async () => {
+    const missing = { data: null, error: { code: "PGRST205", message: "missing" } };
+    expect(await loadUnrecognisedClockActions(client({ attendance_event_networks: { data: rows, error: null }, clock_in_network_refusals: missing }))).toEqual(rows);
   });
 });
 

@@ -128,6 +128,31 @@ export async function loadOffSiteAllowed(client: Db): Promise<Set<string>> {
   return new Set(((data ?? []) as { user_id: string }[]).map((r) => r.user_id));
 }
 
+// ----- 128: a refused clock action reported for the admin's "unrecognised network" banner ------------------------------------------------
+/** How long a clock sync waits for the report's answer before carrying on (it may still land; a repeat of the key is answered). */
+export const REFUSAL_REPORT_TIMEOUT_MS = 5_000;
+type ReportRpc = { rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> };
+/**
+ * Tells the database about this device's own clock action that 114 refused (record_clock_in_refusal, keyed by the action's client_op_id).
+ * Sent straight after the refusal, from the browser, so the database sees the same address and re-checks that it would refuse it; it
+ * records nothing otherwise. Best effort: never throws and never changes the clock action's outcome; a database without 128, no
+ * connection, or any refusal of the report (not_refused, too_many_refusals, ...) is ignored.
+ */
+export async function reportClockInRefusal(client: ReportRpc | null | undefined, op: { clientOpId: string; action: string }): Promise<boolean> {
+  if (!client) return false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(client.rpc("record_clock_in_refusal", { p_client_op_id: op.clientOpId, p_action: op.action })).then(({ error }) => !error, () => false),
+      new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(false), REFUSAL_REPORT_TIMEOUT_MS); }),
+    ]);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** The week's clock actions the lock could not check, [from, to). Admin and office see the company's; a person their own. Throws on error. */
 export async function loadUnverifiedClockActions(client: Db, from: Date, to: Date): Promise<UnverifiedClockAction[]> {
   const { data, error } = await client.from("clock_in_network_unverified")

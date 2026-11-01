@@ -16,6 +16,7 @@ import { CONFIRMED_USER_REUSE_MS, confirmedUser } from "@/lib/confirmed-user";
 import { authSessionGone, sessionEndedError } from "@/lib/session-end";
 import { isNetworkError, scopeKey } from "@/lib/offline/store";
 import { supabase } from "@/lib/supabase";
+import { CLOCK_IN_NETWORK_LOCKED, reportClockInRefusal } from "@/lib/clock-in-lock";
 import { reportHeldTimeRejections, reportTimeSyncRejection } from "@/lib/time-sync-rejections";
 
 export const PHOTOS_BUCKET = "job-photos";
@@ -260,6 +261,8 @@ async function clockOutcome(op: ClockOp, client: Rpc, expectedOrg: string | null
   if (hint === CLOCK_WRONG_COMPANY) return { status: "blocked", code: CLOCK_WRONG_COMPANY, reason: CLOCK_WRONG_COMPANY_REASON };
   if (hint === "time_too_old") return { status: "rejected", code: hint, reason: `${clockLabel(op.action)} at ${new Date(op.at).toLocaleString("en-GB", { timeZone: "Europe/London" })} is more than 14 days old, so it wasn't recorded. Ask an admin to add it to your sheet.` };
   if (hint === "client_op_reused" || hint === "not_allowed" || hint === "bad_action" || hint === "week_approved") return { status: "rejected", code: hint, reason: error.message };
+  // 128: refused by the network lock (114). Reported for the admin's banner (best effort; the outcome below is unchanged).
+  if (hint === CLOCK_IN_NETWORK_LOCKED) await reportClockInRefusal(client, op);
   return { status: "rejected", code: "refused", reason: friendlyError(error, "The server refused this clock action.") };
 }
 /**
