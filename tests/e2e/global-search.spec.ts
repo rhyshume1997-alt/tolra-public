@@ -48,8 +48,11 @@ test("search a quote by its customer and open it", async ({ page }) => {
 test("search an invoice by its number and open it; / focuses the box", async ({ page }) => {
   const { invoiceRef } = await seed();
   await signIn(page, w.tenants.alpha.users.office);
-  await page.keyboard.press("/");
-  await expect(searchBox(page)).toBeFocused();
+  // The "/" listener is attached once the top bar has hydrated, which can be just after the dashboard URL appears: press until it focuses.
+  await expect(async () => {
+    await page.keyboard.press("/");
+    await expect(searchBox(page)).toBeFocused({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
   await page.keyboard.type(invoiceRef);
   const group = page.getByTestId("global-search-group-invoices");
   await expect(group).toContainText(invoiceRef);
