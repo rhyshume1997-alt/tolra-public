@@ -66,7 +66,7 @@ async function chooseOnCard(page: Page, layout: "basic" | "jnr", toastText: stri
 test("admin sees the Print layout card with Basic by default and what the JNR sheet prints; office and workshop never reach it", async ({ page, browser }) => {
   await signIn(page, solo.admin);
   const select = await openSettings(page);
-  await expect(page.locator('[data-slot="card-title"]').filter({ hasText: /^Print layout$/ })).toBeVisible(); // CardTitle is a div, not a heading
+  await expect(page.locator('[data-slot="card-title"]').filter({ hasText: /^\s*Print layout\s*$/ })).toBeVisible(); // CardTitle is a div, not a heading; its text is " Print layout" (icon, then a space), and a regex hasText is matched without trimming
   await expect(select).toHaveValue("basic");
   await expect(select.locator("option")).toHaveText(["Basic", "JNR sheet"]);
   await expect(page.getByText("The JNR sheet prints material cert, heat/cast, machines and the part checklist; Basic prints only the traceability numbers, and only on traceable jobs.")).toBeVisible();

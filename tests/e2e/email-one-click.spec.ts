@@ -28,9 +28,11 @@ async function issuedInvoice(label: string) {
   const ref = `INV-OC-${label}-${w.runId}`;
   const service = adminClient();
   expect((await service.from("customers").insert({ organization_id: org, name: customer, email })).error).toBeNull();
-  const { data: invoice, error } = await service.from("invoices").insert({ organization_id: org, invoice_ref: ref, customer, status: "issued", subtotal: 100, vat: 20, total: 120, vat_enabled: true, due_date: "2099-01-31", description: "Bush" }).select("id").single();
+  // Lines go on while it is a draft; once issued the lines are locked (019), so issue it last (the same order year-end.spec uses).
+  const { data: invoice, error } = await service.from("invoices").insert({ organization_id: org, invoice_ref: null, customer, status: "draft", subtotal: 100, vat: 20, total: 120, vat_enabled: true, due_date: "2099-01-31", description: "Bush" }).select("id").single();
   expect(error).toBeNull();
   expect((await service.from("invoice_line_items").insert({ organization_id: org, invoice_id: invoice!.id, position: 0, description: "Bush", quantity: 1, unit_price: 100, vat_pct: 20 })).error).toBeNull();
+  expect((await service.from("invoices").update({ invoice_ref: ref, status: "issued" }).eq("id", invoice!.id)).error).toBeNull();
   return { id: invoice!.id as string, ref, customer, email };
 }
 
