@@ -12,8 +12,10 @@ BEGIN;
 --     The PO is the real customer_po field, trimmed; never so_number (058/068/123 make so_number the PO only when the order was made
 --     with one; an order whose PO came later, or was typed apart from its reference, keeps its SO number).
 --   * No PO on the order or its quote: exactly as before, 'Sales order <so_number>; ...'.
---   Everything after the first line (delivery date, the quote's ordered lines), the job's number, description, customer_po column,
---   value, drawings, files, machines and the returned JSON are unchanged.
+--   * The job's own customer_po takes the same PO: the order's first, then the quote's. With a PO on the order it is the order's, as
+--     before; with a PO only on the quote it is now the quote's (was empty); with no PO it stays empty.
+--   Everything after the first line (delivery date, the quote's ordered lines), the job's number, description, value, drawings,
+--   files, machines and the returned JSON are unchanged.
 -- Keeps name, signature, SECURITY INVOKER, VOLATILE, search_path, owner and grants (signed-in only). Not a definer function.
 -- GUARD (section 1): the body must be 080's (or already this file's), md5 with every whitespace character removed.
 -- Safe to run again. SELF-CHECK (section 3). Verify: supabase/verify/job_spec_customer_po_134.sql (every row TRUE).
@@ -31,8 +33,8 @@ BEGIN
     RAISE EXCEPTION '134: 123''s quotes.customer_po (or sales_orders.customer_po) is missing; apply 123 first';
   END IF;
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') INTO v_md5;
-  -- dc8165549871bd15047765ac4fba811e: 080's convert_sales_order; 19ea0511f08e5c4439332dc7ee110bad: this file's (section 2).
-  IF v_md5 IS NULL OR v_md5 NOT IN ('dc8165549871bd15047765ac4fba811e', '19ea0511f08e5c4439332dc7ee110bad') THEN
+  -- dc8165549871bd15047765ac4fba811e: 080's convert_sales_order; 5c32fec88493cce71da2cd55f83ff7b4: this file's (section 2).
+  IF v_md5 IS NULL OR v_md5 NOT IN ('dc8165549871bd15047765ac4fba811e', '5c32fec88493cce71da2cd55f83ff7b4') THEN
     RAISE EXCEPTION '134: public.convert_sales_order is not 080''s (md5 without whitespace %); stop and compare it first', coalesce(v_md5, 'missing');
   END IF;
 END
@@ -121,8 +123,9 @@ BEGIN
     FROM public.quote_line_items l
     WHERE l.quote_id = v_order.quote_id AND l.organization_id = v_org AND NOT l.declined;
   END IF;
-  -- 134: the job sheet names the customer's PO when there is one: the order's customer_po (what the job takes, below), else its quote's
-  -- (123). Not so_number: that is the PO only when the order was made with it. 'Customer PO <po>'; with no PO it reads as before.
+  -- 134: the job sheet names the customer's PO when there is one: the order's customer_po, else its quote's (123); the job's own
+  -- customer_po takes the same PO (below). Not so_number: that is the PO only when the order was made with it. 'Customer PO <po>';
+  -- with no PO it reads as before and the job's customer_po stays empty.
   v_po := nullif(btrim(coalesce(v_order.customer_po, '')), '');
   IF v_po IS NULL AND v_order.quote_id IS NOT NULL THEN
     SELECT nullif(btrim(coalesce(q.customer_po, '')), '') INTO v_po FROM public.quotes q WHERE q.id = v_order.quote_id AND q.organization_id = v_org;
@@ -148,7 +151,7 @@ BEGIN
   VALUES (
     v_org, v_job_no, v_order.quote_id, v_order.customer, coalesce(v_work, 'Converted from ' || v_order.so_number), 'material',
     v_order.delivery_date, 'on_track', v_spec, '[]'::JSONB,
-    nullif(btrim(coalesce(v_order.customer_po, '')), ''), nullif(v_quote, ''), v_order.order_date, v_order.delivery_date,
+    v_po, nullif(v_quote, ''), v_order.order_date, v_order.delivery_date,
     CASE WHEN v_count = 1 AND v_qty >= 1 AND v_qty = trunc(v_qty) THEN v_qty::INT END,
     CASE WHEN v_count = 1 THEN v_drawing END,
     p_order, v_now)
@@ -184,7 +187,7 @@ GRANT EXECUTE ON FUNCTION public.convert_sales_order(UUID) TO authenticated;
 DO $$
 BEGIN
   IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)'))
-       IS DISTINCT FROM '19ea0511f08e5c4439332dc7ee110bad' THEN
+       IS DISTINCT FROM '5c32fec88493cce71da2cd55f83ff7b4' THEN
     RAISE EXCEPTION '134: convert_sales_order is not this file''s body';
   END IF;
   IF (SELECT p.prosecdef OR p.provolatile <> 'v' OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']

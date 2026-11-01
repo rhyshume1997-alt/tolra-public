@@ -362,7 +362,7 @@
  {
   "kind": "function",
   "object": "public.convert_sales_order(p_order uuid)",
-  "detail": "invoker search_path=pg_catalog, public 6d6db6739ed247727f5f0dc6651daf04"
+  "detail": "invoker search_path=pg_catalog, public 4f1c7d97c79a6a49b8570b3c74bc3536"
  },
  {
   "kind": "function",

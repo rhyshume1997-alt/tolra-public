@@ -166,7 +166,7 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'inbound_emails' AND column_name = 'link_suggestions')),
     ('126 booking time zero quote guards', EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delete_machine_booking(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1fee96ce68caa2bcbf89f416587e75ba')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.accept_quote(uuid, text, date, uuid[])') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4f354d3878197aabe53db19807f99305')),
-    ('134 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '19ea0511f08e5c4439332dc7ee110bad'))
+    ('134 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5c32fec88493cce71da2cd55f83ff7b4'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

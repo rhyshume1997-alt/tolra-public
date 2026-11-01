@@ -1,15 +1,15 @@
 -- 134 rollback: ONLY with Rhys's approval. Puts back 080's public.convert_sales_order(uuid) byte for byte (same signature, security,
--- search_path and grants). No row is changed: jobs made while 134 was applied keep their 'Customer PO ...' specification; jobs made
--- after this rollback read 'Sales order <so_number> ...' again. Run the whole text as one transaction, then the release preflight
--- (marker 134 shows "not applied").
+-- search_path and grants). No row is changed: jobs made while 134 was applied keep their 'Customer PO ...' specification and
+-- customer_po; jobs made after this rollback read 'Sales order <so_number> ...' again and take only the order's PO. Run the whole
+-- text as one transaction, then the release preflight (marker 134 shows "not applied").
 BEGIN;
 DO $$
 DECLARE
   v_md5 TEXT;
 BEGIN
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') INTO v_md5;
-  -- 19ea0511...: 134's convert_sales_order; dc816554...: 080's (a second run of this rollback).
-  IF v_md5 IS NULL OR v_md5 NOT IN ('19ea0511f08e5c4439332dc7ee110bad', 'dc8165549871bd15047765ac4fba811e') THEN
+  -- 5c32fec8...: 134's convert_sales_order; dc816554...: 080's (a second run of this rollback).
+  IF v_md5 IS NULL OR v_md5 NOT IN ('5c32fec88493cce71da2cd55f83ff7b4', 'dc8165549871bd15047765ac4fba811e') THEN
     RAISE EXCEPTION '134 rollback: convert_sales_order (md5 %) is neither 134''s nor 080''s; stop and compare', coalesce(v_md5, 'missing');
   END IF;
 END
