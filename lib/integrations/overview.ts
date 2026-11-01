@@ -98,3 +98,36 @@ export function microsoftOutcomeMessage(outcome: string): string {
     default: return "Connecting Microsoft 365 didn't work. Nothing changed. Try again.";
   }
 }
+
+// Inbox reading (C1, migration 127's mailbox_sync_status: never the cursor, the mailbox id, a token or Microsoft's text).
+/** Why the last inbox check failed: a fixed code (127's CHECK allows only these), shown in the plain words below. */
+export type MailSyncCode = "reconnect" | "consent" | "signin" | "busy" | "unavailable" | "store_failed";
+export type MailboxSyncStatus = { mail_read: boolean; last_sync_at: string | null; last_error: MailSyncCode | null; error_count: number };
+
+const MAIL_SYNC_REASONS: Record<MailSyncCode, string> = {
+  reconnect: "Microsoft needs you to sign in again. Click Reconnect.",
+  consent: "Tolra isn't allowed to read this mailbox. Click Reconnect to allow reading mail.",
+  signin: "Microsoft didn't accept the sign-in. Tolra will try again; if it keeps happening, click Reconnect.",
+  busy: "Microsoft 365 is busy. Tolra will try again shortly.",
+  unavailable: "Microsoft 365 didn't answer. Tolra will try again shortly.",
+  store_failed: "Some messages couldn't be saved. Tolra will try again.",
+};
+
+/** The plain reason for a failure code (anything else reads as "didn't answer": nothing unknown is ever shown). */
+export function mailSyncReason(code: string | null | undefined): string {
+  return MAIL_SYNC_REASONS[(code ?? "") as MailSyncCode] ?? MAIL_SYNC_REASONS.unavailable;
+}
+
+export const RECONNECT_FOR_MAIL = "Reconnect to allow reading mail";
+
+/**
+ * The card's inbox line for a connected mailbox: "Last checked 10:42", "Couldn't check mail: <plain reason>", or (a connection made
+ * before C1, or Microsoft refused reading) the ask to reconnect. null when there is nothing to say yet. `time` formats the UK time.
+ */
+export function mailSyncLine(sync: MailboxSyncStatus | null, time: (iso: string) => string): { tone: "ok" | "warn" | "error"; text: string; reconnect: boolean } | null {
+  if (!sync) return null;
+  if (!sync.mail_read) return { tone: "warn", text: `${RECONNECT_FOR_MAIL}: Tolra can send from this mailbox but not read its inbox yet. Sending keeps working.`, reconnect: true };
+  if (sync.last_error) return { tone: "error", text: `Couldn't check mail: ${mailSyncReason(sync.last_error)}`, reconnect: sync.last_error === "reconnect" };
+  if (sync.last_sync_at) return { tone: "ok", text: `Last checked ${time(sync.last_sync_at)}`, reconnect: false };
+  return { tone: "ok", text: "Reading the inbox: not checked yet.", reconnect: false };
+}

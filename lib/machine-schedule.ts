@@ -779,7 +779,8 @@ export async function deleteBooking(id: string) {
   if (!supabase) throw new Error("Supabase is not configured.");
   // The database removes the row or says why it didn't (already removed, or not this company's); nothing deletes the table directly.
   const { error } = await supabase.rpc("delete_machine_booking", { p_id: id });
-  if (error) throw new Error(error.message);
+  // The hint goes with it, so friendlyError shows 126's "recorded machine time" refusal (hint booking_has_runs) instead of the fallback.
+  if (error) throw Object.assign(new Error(error.message), { hint: error.hint });
 }
 
 /** One machine on a new job (Job Board "New job", migration 042): the hours it runs and, if chosen by hand, its start. */

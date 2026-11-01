@@ -48,6 +48,9 @@ const CALLER_ONLY = [
   "public.jobs_awaiting_despatch_or_invoice()",
   // 101: the caller's own company's AI helper switches, cap and spend (office and admin; never the key).
   "public.ai_helper_status()",
+  // 127: the caller's own company's inbox reading status (admins only; never the cursor or the mailbox id). 127's other six functions
+  // are the service role's only, so they are not listed here.
+  "public.mailbox_sync_status()",
 ];
 
 beforeAll(async () => {
@@ -138,6 +141,11 @@ beforeAll(async () => {
   const problem = await betaAdmin.rpc("report_job_problem", { p_job: beta.job, p_reason: "material", p_note: `${MARKER} problem`, p_request_id: randomUUID() });
   if (problem.error) throw new Error(problem.error.message);
   beta.problem = problem.data as string;
+
+  // 125: an inbox e-mail of beta's (and one of alpha's), for link_inbound_email to be pointed at beta's e-mail, quote and order.
+  beta.inbound = (await service.from("inbound_emails").insert({ organization_id: org, graph_message_id: `beta-125-${world.runId}`, received_at: "2026-11-01T09:00:00Z", subject: "Beta PO 7777" }).select("id").single()).data!.id;
+  beta.alphaInbound = (await service.from("inbound_emails").insert({ organization_id: world.tenants.alpha.id, graph_message_id: `alpha-125-${world.runId}`, received_at: "2026-11-01T09:00:00Z", subject: "Alpha PO 7777" }).select("id").single()).data!.id;
+  beta.purchaseOrder = (await service.from("purchase_orders").insert({ organization_id: org, po_ref: `PO-${MARKER}-125`, po_number: `PO-${MARKER}-125`, supplier: `${MARKER} Supplier` }).select("id").single()).data!.id;
 });
 
 afterAll(async () => {
@@ -231,6 +239,8 @@ function attempts(): Attempt[] {
     // 068: revising beta's sent quote is refused (and beta's quote stays as it is).
     ["public.revise_quote(p_quote uuid)", () => alpha.rpc("revise_quote", { p_quote: beta.quote }), "refused"],
     ["public.set_sales_order_customer_po(p_order uuid, p_customer_po text)", () => alpha.rpc("set_sales_order_customer_po", { p_order: beta.order, p_customer_po: "PO-X" }), "refused"],
+    // 123: setting the customer PO on beta's quote is refused (and beta's quote, order, job and invoices stay as they are).
+    ["public.set_quote_customer_po(p_quote uuid, p_customer_po text)", () => alpha.rpc("set_quote_customer_po", { p_quote: beta.quote, p_customer_po: "PO-X" }), "refused"],
     ["public.set_auto_convert_sales_orders(p_on boolean)", () => alpha.rpc("set_auto_convert_sales_orders", { p_on: true }), "nothing of beta's"],
     // 050: a clock action is the caller's own (no target); a correction pointed at beta's person is refused; settings are the caller's company's.
     ["public.record_attendance_event(p_client_op_id uuid, p_action text, p_at timestamp with time zone, p_device text DEFAULT NULL::text)", () => alpha.rpc("record_attendance_event", { p_client_op_id: randomUUID(), p_action: "in", p_at: null }), "nothing of beta's"],
@@ -349,6 +359,10 @@ function attempts(): Attempt[] {
     ["public.record_activity(p_table text, p_id uuid, p_limit integer)", () => alpha.rpc("record_activity", { p_table: "jobs", p_id: beta.job, p_limit: 50 }), "nothing of beta's"],
     ["public.org_activity(p_from timestamp with time zone, p_to timestamp with time zone, p_actor uuid, p_table text, p_before timestamp with time zone, p_before_id uuid, p_limit integer)", () => alpha.rpc("org_activity", { p_from: null, p_to: null, p_actor: world.tenants.beta.users.admin.id, p_table: null, p_before: null, p_before_id: null, p_limit: 50 }), "nothing of beta's"],
     ["public.record_inbound_email(p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)", () => alpha.rpc("record_inbound_email", { p_graph_message_id: `AAA-${randomUUID()}`, p_internet_message_id: null, p_from_address: "a@example.test", p_from_name: null, p_subject: `Re: ${MARKER}`, p_received_at: day, p_body_preview: "", p_body_text: "" }), "nothing of beta's"],
+    // 125: linking or suggesting beta's e-mail, or alpha's e-mail to beta's quote or order, reads "not found"; beta's rows stay as they are.
+    ["public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)", () => alpha.rpc("link_inbound_email", { p_email: beta.inbound, p_kind: "quote", p_target: beta.quote, p_po: "7777", p_how: "manual" }), "refused"],
+    ["public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)", () => alpha.rpc("link_inbound_email", { p_email: beta.alphaInbound, p_kind: "quote", p_target: beta.quote, p_po: "7777", p_how: "suggested" }), "refused"],
+    ["public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)", () => alpha.rpc("link_inbound_email", { p_email: beta.alphaInbound, p_kind: "purchase_order", p_target: beta.purchaseOrder, p_po: null, p_how: "manual" }), "refused"],
     ["public.save_mail_poll_state(p_next_link text, p_checkpoint timestamp with time zone)", () => alpha.rpc("save_mail_poll_state", { p_next_link: null, p_checkpoint: day }), "nothing of beta's"],
     // 101: the AI helper. Settings and key change the caller's own company only; reserve answers from the caller's company (alpha's
     // features are off, so it refuses); decide pointed at beta's suggestion refuses. Settle is the service role's only from 103 (no

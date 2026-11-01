@@ -83,7 +83,7 @@ export function invoicePaidFigures(r: Row): { paid: number | null; balance: numb
   const paid = knownPaid(r);
   if (paid === null) {
     const why = r.payment_unverified ? "imported without payment details and still to be confirmed" : "marked paid but no payment amount was ever recorded";
-    return { paid: null, balance: null, problem: `Invoice ${ref}: payment unknown (${why}). Paid and balance due are left blank in summary.csv; nothing has been guessed.` };
+    return { paid: null, balance: null, problem: `Invoice ${ref}: payment to confirm (${why}). Paid and balance due are left blank in summary.csv; nothing has been guessed.` };
   }
   const closed = invoiceLifecycle(r.status as string | null) === "closed";
   return { paid, balance: closed ? 0 : balanceDue(Number(r.total || 0), paid, Number(r.credited_amount || 0), Number(r.refunded_amount || 0)), problem: null };
@@ -310,7 +310,7 @@ export async function buildYearEndZip(from: string, to: string, company: Company
         files[path] = await render(<QuotePDF data={{
           storedTotals: { reference: ref, issued: true, total: Number(r.total_value || 0) },
           number: ref, date: fmtDate(day(r.created_at)), terms: r.terms || profile.defaultQuoteTerms, validUntil: r.valid_until ? fmtDate(day(r.valid_until)) : "",
-          scope: r.description || undefined, billTo, lineItems: items, vatEnabled: r.vat_enabled !== false,
+          scope: r.description || undefined, customerPo: r.customer_po ? String(r.customer_po) : undefined, billTo, lineItems: items, vatEnabled: r.vat_enabled !== false,
           customerMessage: r.customer_notes ? [...profile.defaultCustomerMessage, String(r.customer_notes)] : undefined, company: profile,
         }} />);
         row.pdf = path;

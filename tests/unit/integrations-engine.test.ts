@@ -273,7 +273,8 @@ describe("the token lease (refresh tokens rotate: stored before use)", () => {
     const { db, calls } = leaseDb({ refresh_token_enc: enc("old-refresh", "refresh"), access_token_enc: enc("a", "access"), access_expires_at: new Date(NOW + 60_000).toISOString(), key_version: 1 });
     const s = source(db);
     expect(await s.get(ORG, "xero")).toBe("new-access");
-    expect(s.refresh).toHaveBeenCalledWith("old-refresh");
+    // The company is passed too (C1: Microsoft 365 asks for the scopes that company consented to); Xero ignores it.
+    expect(s.refresh).toHaveBeenCalledWith("old-refresh", ORG);
     expect(calls.map((c) => c.fn)).toEqual(["integration_token_lease", "integration_token_store", "integration_token_release"]);
     const store = calls[1].args;
     expect(store.p_holder).toBe(calls[0].args.p_holder);

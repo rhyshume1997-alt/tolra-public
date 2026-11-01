@@ -4,6 +4,7 @@ import { StatTile } from "@/components/stat-tile";
 import { StatusBadge } from "@/components/status-badge";
 import { COLOUR_CLASSES } from "@/lib/status-colours";
 import { ActivityPanel } from "@/components/activity-panel";
+import { BoughtInProfit } from "@/components/bought-in-profit";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -1842,6 +1843,7 @@ export default function JobsPage() {
         }}>
           <DialogHeader stickyClose><DialogTitle>Worksheet - {worksheetJob?.job_no}</DialogTitle></DialogHeader>
           <DialogDescription className="-mt-6">Single part worksheet. Fill in the shop-floor fields and save.</DialogDescription>
+          {worksheetJob ? <BoughtInProfit kind="job" id={worksheetJob.id} /> : null}
           {worksheetJob && !worksheetJob.finished_at && (benchPaused(worksheetJob) || benchRunning(worksheetJob)) ? (
             <p data-testid="worksheet-bench" className="text-sm"><span className={cn("rounded-none px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide", benchPaused(worksheetJob) ? "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" : "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100")}>{benchPaused(worksheetJob) ? "Paused" : "Running"}</span> <span className="text-slate-600 dark:text-slate-300">{benchPaused(worksheetJob) ? "Start on the board resumes it." : "On the bench (no machine)."}</span></p>
           ) : null}
