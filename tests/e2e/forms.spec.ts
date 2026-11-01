@@ -156,7 +156,7 @@ test.describe("office records persist through the browser (admin, tenant alpha)"
     await page.getByRole("button", { name: /New invoice/ }).first().click();
     const dialog = page.getByRole("dialog", { name: "Create Invoice" });
     await dialog.getByRole("combobox").first().selectOption({ label: customer });
-    await dialog.getByPlaceholder("Customer order no.").fill(ref);
+    await dialog.getByPlaceholder("Customer PO", { exact: true }).fill(ref);
     await dialog.getByRole("textbox", { name: "Description" }).fill("Machined flange");
     await dialog.getByRole("spinbutton", { name: "Quantity" }).fill("4");
     await dialog.getByRole("spinbutton", { name: "Unit price (ex VAT)" }).fill("37.5");
