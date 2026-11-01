@@ -1,9 +1,11 @@
 -- 131 PRECHECK (read only: one SELECT, writes nothing, changes no setting). Run on production BEFORE pasting
 -- supabase/release/131_rls_select_wrap.release.sql, and paste only if every row's ok is TRUE. It prints, for each of the 182 policies 131
 -- rewrites, the text md5 131's guard expects (main's, or 131's if already applied) next to the live one, so a PG17 difference in how
--- policy text is printed shows here and not as a refused paste. Rows: 1 to 4 summary, then one row per policy (n >= 10).
+-- policy text is printed shows here and not as a refused paste. Rows: 1 to 5 summary, then one row per policy (n >= 10).
 -- The md5 is of pg_policies' USING and WITH CHECK text, exactly as the guard takes it; it does not depend on the search path while public is
 -- on it (row 2). Expected before the paste: row 3 says "182 main, 0 131, 0 other" and every row TRUE. After the paste: "0 main, 182 131".
+-- Row 5 is public.legacy_audit_log's one policy, which supabase/import/import_legacy_tenant.sql made (no migration does): "main" (the
+-- import script's text) before the paste and "131 already" after it on a project that ran the legacy import (production), "no table" elsewhere.
 WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_main, md5_131) AS (VALUES
     ('public', 'ai_helper_requests', 'ai_helper_requests office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
     ('public', 'ai_helper_settings', 'ai_helper_settings office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '55ca9a2d4469b23ea4d522e94be4f1a9', '6a18e9fed9ee8dd956c314df2b296562'),
@@ -204,13 +206,27 @@ cmp AS (
   FROM want w
   LEFT JOIN have h ON h.schemaname = w.schema_name AND h.tablename = w.table_name AND h.policyname = w.policy_name
 ),
--- Policies outside 131's list that call a role or company helper outside a sub-select: 131's self-check would refuse them (0 expected).
+-- public.legacy_audit_log's one policy (row 5), where the legacy import made the table: 131 rewrites it too (and its guard takes only these two).
+leg AS (
+  SELECT h.m,
+         CASE WHEN to_regclass('public.legacy_audit_log') IS NULL THEN 'no table (no legacy import here)'
+              WHEN h.policyname IS NULL THEN 'MISSING'
+              WHEN h.permissive <> 'PERMISSIVE' OR h.cmd <> 'SELECT' OR h.roles <> '{authenticated}'
+                THEN 'COMMAND, ROLES OR KIND DIFFER (live ' || h.permissive || ' ' || h.cmd || ' ' || h.roles || ')'
+              WHEN h.m = 'd52d07dfca8db97c66ed1573ebd3a6c1' THEN 'main'
+              WHEN h.m = '0c3f9197b8141c8b66f15268b935ae94' THEN '131 already'
+              ELSE 'TEXT DIFFERS' END AS state
+  FROM (SELECT 1) AS one
+  LEFT JOIN have h ON h.schemaname = 'public' AND h.tablename = 'legacy_audit_log' AND h.policyname = 'legacy_audit_log admins read'
+),
+-- Policies outside 131's list and row 5 that call a role or company helper outside a sub-select: 131's self-check would refuse them (0 expected).
 per_row AS (
   SELECT p.schemaname || '.' || p.tablename || ' :: ' || p.policyname AS k
   FROM pg_catalog.pg_policies p
   WHERE (p.schemaname = 'public' OR (p.schemaname, p.tablename) IN (('storage', 'objects'), ('security_audit', 'audit_log')))
     AND (p.schemaname, p.tablename, p.policyname) NOT IN (('public', 'user_profiles', 'Users update own profile'), ('public', 'email_history', 'email_history rbac insert'))
     AND NOT EXISTS (SELECT 1 FROM want w WHERE w.schema_name = p.schemaname AND w.table_name = p.tablename AND w.policy_name = p.policyname)
+    AND (p.schemaname, p.tablename, p.policyname) <> ('public', 'legacy_audit_log', 'legacy_audit_log admins read')
     AND regexp_replace(coalesce(p.qual, '') || ' | ' || coalesce(p.with_check, ''), '\( SELECT (auth\.)?[a-z_]+\([^()]*\) AS [a-z_]+\)', '', 'g')
         ~ '(^|[^a-z_.])(has_org_role|section_allowed|current_user_organization_id|user_organization_id|current_user_role|current_user_secondary_role|session_read_only|session_is_active)\(|auth\.(uid|jwt|role)\('
 )
@@ -224,6 +240,9 @@ UNION ALL SELECT 3, 'the 182 policies 131 rewrites', '182', NULL,
        (SELECT count(*) = 182 AND bool_and(state IN ('main', '131 already')) FROM cmp)
 UNION ALL SELECT 4, 'other policies calling a helper once per row', '0', NULL, (SELECT count(*)::TEXT FROM per_row),
        (SELECT string_agg(k, '; ' ORDER BY k) FROM per_row), NOT EXISTS (SELECT 1 FROM per_row)
+UNION ALL SELECT 5, 'public.legacy_audit_log :: legacy_audit_log admins read (made by the legacy import script, not a migration)',
+       'd52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94', (SELECT m FROM leg), (SELECT state FROM leg),
+       (SELECT state IN ('no table (no legacy import here)', 'main', '131 already') FROM leg)
 UNION ALL SELECT * FROM (
   SELECT (10 + row_number() OVER (ORDER BY schema_name, table_name, policy_name))::INT, schema_name || '.' || table_name || ' :: ' || policy_name,
          md5_main, md5_131, live_md5, state, state IN ('main', '131 already')

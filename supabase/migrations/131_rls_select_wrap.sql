@@ -29,6 +29,11 @@
 -- (security_guards_102.sql: USING is exactly (auth.uid() = id); the policy is not touched) and the auth.uid() of "email_history rbac insert"
 -- (email_history_drafted_by_120.sql: "drafted_by = auth.uid()"; its other calls are wrapped). Both are one-row writes: no per-row cost
 -- to speak of. The per-row check below leaves these two policies out (the second is in 131's list, its text pinned by md5).
+-- ALSO, only where it is there: public.legacy_audit_log's one policy, "legacy_audit_log admins read". No migration makes that table:
+-- supabase/import/import_legacy_tenant.sql does, on a project that ran the legacy import (production did; a fresh build and CI have no
+-- such table, and 131 does nothing there). Its text is the import script's, the same text as security_audit.audit_log :: "audit admins read org",
+-- and it is rewritten the same way (section 2c). The guard takes only the import script's text (as it was before 131) or 131's; the
+-- import script now writes 131's, so running it again at cutover gives the same policy.
 -- PROOF (local): after 131, every policy's text with each "( SELECT call AS name)" put back to "call" is main's text exactly (all
 -- 218); the catalogue changes only in those 182 policies' expression md5; the rollback gives main's catalogue back exactly.
 --
@@ -245,6 +250,18 @@ BEGIN
   INTO v_bad;
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION '131: these policies are not main''s (nor 131''s); stop and compare: %', v_bad;
+  END IF;
+  -- public.legacy_audit_log is not made by a migration (supabase/import/import_legacy_tenant.sql makes it, with its one policy, on a project
+  -- that ran the legacy import). Where the table is there, that policy must be there with the import script's command, roles and kind.
+  IF to_regclass('public.legacy_audit_log') IS NOT NULL THEN
+    SELECT CASE WHEN p.policyname IS NULL THEN 'missing' WHEN p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' THEN 'command, roles or kind differ'
+                ELSE 'text md5 ' || md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) END
+    FROM (SELECT 1) AS one LEFT JOIN pg_catalog.pg_policies p ON p.schemaname = 'public' AND p.tablename = 'legacy_audit_log' AND p.policyname = 'legacy_audit_log admins read'
+    WHERE p.policyname IS NULL OR p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' OR md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) NOT IN ('d52d07dfca8db97c66ed1573ebd3a6c1', '0c3f9197b8141c8b66f15268b935ae94')
+    INTO v_bad;
+    IF v_bad IS NOT NULL THEN
+      RAISE EXCEPTION '131: public.legacy_audit_log :: legacy_audit_log admins read is not the import script''s (nor 131''s); stop and compare: %', v_bad;
+    END IF;
   END IF;
 END
 $$;
@@ -668,8 +685,22 @@ ALTER POLICY "quote-attachments referenced by jobs" ON storage.objects
   WHERE ((f.organization_id = (SELECT current_user_organization_id())) AND (f.storage_bucket = 'quote-attachments'::text) AND (f.storage_path = objects.name))))));
 
 -- -----------------------------------------------------------------------------------------------------
--- 3. Self-check before COMMIT: every policy is 131's (same command, roles, kind; 131's text), and no policy on these tables still
---    calls one of the helpers outside a sub-select.
+-- 2c. public.legacy_audit_log's one policy, only where that table is there (made by supabase/import/import_legacy_tenant.sql on a project that
+--     ran the legacy import; a fresh build or CI has no such table, and this does nothing): the import script's text with its two calls
+--     written (SELECT <call>), exactly as 2b writes the same text for security_audit.audit_log :: "audit admins read org".
+DO $$
+BEGIN
+  IF to_regclass('public.legacy_audit_log') IS NOT NULL THEN
+    -- The import script's text (before 131), ((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text])), with each call written (SELECT <call>).
+    ALTER POLICY "legacy_audit_log admins read" ON public.legacy_audit_log
+      USING (((organization_id = (SELECT current_user_organization_id())) AND (SELECT has_org_role(ARRAY['admin'::text]))));
+  END IF;
+END
+$$;
+
+-- -----------------------------------------------------------------------------------------------------
+-- 3. Self-check before COMMIT: every policy is 131's (same command, roles, kind; 131's text; legacy_audit_log's too where it is there),
+--    and no policy on these tables still calls one of the helpers outside a sub-select.
 DO $$
 DECLARE
   v_bad TEXT;
@@ -869,6 +900,16 @@ BEGIN
   INTO v_bad;
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION '131: not 131''s after the rewrite: %', v_bad;
+  END IF;
+  IF to_regclass('public.legacy_audit_log') IS NOT NULL THEN
+    SELECT CASE WHEN p.policyname IS NULL THEN 'missing' WHEN p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' THEN 'command, roles or kind differ'
+                ELSE 'text md5 ' || md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) END
+    FROM (SELECT 1) AS one LEFT JOIN pg_catalog.pg_policies p ON p.schemaname = 'public' AND p.tablename = 'legacy_audit_log' AND p.policyname = 'legacy_audit_log admins read'
+    WHERE p.policyname IS NULL OR p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' OR md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) NOT IN ('0c3f9197b8141c8b66f15268b935ae94')
+    INTO v_bad;
+    IF v_bad IS NOT NULL THEN
+      RAISE EXCEPTION '131: public.legacy_audit_log :: legacy_audit_log admins read is not 131''s after the rewrite: %', v_bad;
+    END IF;
   END IF;
   IF (SELECT count(*) FROM pg_catalog.pg_policies p
            WHERE (p.schemaname = 'public' OR (p.schemaname, p.tablename) IN (('storage', 'objects'), ('security_audit', 'audit_log')))

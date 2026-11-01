@@ -1,5 +1,6 @@
 -- 131 rollback: ONLY with Rhys's approval. Puts back main's USING / WITH CHECK text in the 182 policies 131 rewrote (each helper
--- call per row again). Names, commands, roles and kinds were never changed. Every policy answers exactly as with 131; only the
+-- call per row again) and, where public.legacy_audit_log is there (the legacy import ran), the import script's text before 131 in its one
+-- policy. Names, commands, roles and kinds were never changed. Every policy answers exactly as with 131; only the
 -- per-row cost returns. Run the whole text as one transaction, then the release preflight (marker 131 shows "not applied").
 BEGIN;
 SELECT pg_catalog.set_config('search_path', 'public, extensions', TRUE);
@@ -204,6 +205,18 @@ BEGIN
   INTO v_bad;
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION '131 rollback: these policies are neither 131''s nor main''s; stop and compare: %', v_bad;
+  END IF;
+  -- public.legacy_audit_log is not made by a migration (supabase/import/import_legacy_tenant.sql makes it, with its one policy, on a project
+  -- that ran the legacy import). Where the table is there, that policy must be there with the import script's command, roles and kind.
+  IF to_regclass('public.legacy_audit_log') IS NOT NULL THEN
+    SELECT CASE WHEN p.policyname IS NULL THEN 'missing' WHEN p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' THEN 'command, roles or kind differ'
+                ELSE 'text md5 ' || md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) END
+    FROM (SELECT 1) AS one LEFT JOIN pg_catalog.pg_policies p ON p.schemaname = 'public' AND p.tablename = 'legacy_audit_log' AND p.policyname = 'legacy_audit_log admins read'
+    WHERE p.policyname IS NULL OR p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' OR md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) NOT IN ('0c3f9197b8141c8b66f15268b935ae94', 'd52d07dfca8db97c66ed1573ebd3a6c1')
+    INTO v_bad;
+    IF v_bad IS NOT NULL THEN
+      RAISE EXCEPTION '131 rollback: public.legacy_audit_log :: legacy_audit_log admins read is neither 131''s nor the import script''s; stop and compare: %', v_bad;
+    END IF;
   END IF;
 END
 $$;
@@ -621,6 +634,17 @@ ALTER POLICY "quote-attachments referenced by jobs" ON storage.objects
    FROM job_files f
   WHERE ((f.organization_id = current_user_organization_id()) AND (f.storage_bucket = 'quote-attachments'::text) AND (f.storage_path = objects.name))))));
 
+-- public.legacy_audit_log's policy, only where that table is there (the legacy import ran): the text production had before 131.
+DO $$
+BEGIN
+  IF to_regclass('public.legacy_audit_log') IS NOT NULL THEN
+    -- The import script's text as it was before 131 (production's), each call per row again.
+    ALTER POLICY "legacy_audit_log admins read" ON public.legacy_audit_log
+      USING (((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text])));
+  END IF;
+END
+$$;
+
 DO $$
 DECLARE
   v_bad TEXT;
@@ -820,6 +844,16 @@ BEGIN
   INTO v_bad;
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION '131 rollback: not main''s after the rollback: %', v_bad;
+  END IF;
+  IF to_regclass('public.legacy_audit_log') IS NOT NULL THEN
+    SELECT CASE WHEN p.policyname IS NULL THEN 'missing' WHEN p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' THEN 'command, roles or kind differ'
+                ELSE 'text md5 ' || md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) END
+    FROM (SELECT 1) AS one LEFT JOIN pg_catalog.pg_policies p ON p.schemaname = 'public' AND p.tablename = 'legacy_audit_log' AND p.policyname = 'legacy_audit_log admins read'
+    WHERE p.policyname IS NULL OR p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}' OR md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) NOT IN ('d52d07dfca8db97c66ed1573ebd3a6c1')
+    INTO v_bad;
+    IF v_bad IS NOT NULL THEN
+      RAISE EXCEPTION '131 rollback: public.legacy_audit_log :: legacy_audit_log admins read is not the import script''s after the rollback: %', v_bad;
+    END IF;
   END IF;
 END
 $$;

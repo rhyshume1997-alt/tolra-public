@@ -51,7 +51,8 @@ describe("131 rls select wrap (supabase/release)", () => {
     const statements = outside.split(/;\s*$/m).map((s) => s.trim()).filter(Boolean);
     const kinds = statements.map((s) => (s.startsWith("ALTER POLICY ") ? "alter" : s.startsWith("DO $$") ? "do" : s));
     expect(kinds.filter((k) => k !== "alter" && k !== "do")).toEqual(["SELECT pg_catalog.set_config('search_path', 'public, extensions', TRUE)"]);
-    expect(kinds.filter((k) => k === "do")).toHaveLength(2);
+    // The guard, 2c (public.legacy_audit_log's policy, only where the legacy import made that table) and the self-check.
+    expect(kinds.filter((k) => k === "do")).toHaveLength(3);
     expect(alters(m131())).toHaveLength(COUNT);
     expect(outside).not.toMatch(/^\s+TO\s/m);
   });
@@ -80,7 +81,8 @@ describe("131 rls select wrap (supabase/release)", () => {
   it("guard, self-check, rollback and verify name the same 182 policies once each; their md5s and attributes are the catalogue's", () => {
     const keys = alters(m131()).map((a) => a.key).sort();
     expect(new Set(keys).size).toBe(COUNT);
-    const lists = [...m131().split("DO $$").slice(1), ...rollback().split("DO $$").slice(1)].map(listed);
+    // The DO blocks that carry a list (the two that set legacy_audit_log's policy carry none).
+    const lists = [...m131().split("DO $$").slice(1), ...rollback().split("DO $$").slice(1)].map(listed).filter((l) => l.length);
     expect(lists).toHaveLength(4);
     for (const l of lists) expect(l.map((x) => x.key).sort()).toEqual(keys);
     const ver = listed(verify());
@@ -100,6 +102,31 @@ describe("131 rls select wrap (supabase/release)", () => {
       expect(snap.get(x.key), x.key).toBe(`${x.prefix} ${x.md5s[0]}`);
     }
     expect(inSnapshot).toBe(COUNT - 1);
+  });
+
+  it("public.legacy_audit_log (the legacy import's table, no migration's): rewritten only where it is there, as the import script now writes it", () => {
+    const LEG = /DO \$\$\nBEGIN\n {2}IF to_regclass\('public\.legacy_audit_log'\) IS NOT NULL THEN\n {4}-- [^\n]*\n {4}ALTER POLICY "legacy_audit_log admins read" ON public\.legacy_audit_log\n {6}USING \(([^\n]*)\);\n {2}END IF;\nEND\n\$\$;/g;
+    const set = [...m131().matchAll(LEG)].map((m) => m[1]);
+    const back = [...rollback().matchAll(LEG)].map((m) => m[1]);
+    expect(set).toHaveLength(1);
+    expect(back).toHaveLength(1);
+    // The rollback's text is how pg_policies prints the import script's text before 131 (the same text as the live audit log's admin read).
+    expect(back[0]).toBe("((organization_id = current_user_organization_id()) AND has_org_role(ARRAY['admin'::text]))");
+    expect(unwrap(set[0])).toBe(back[0]);
+    expect([...set[0].matchAll(HELPER)].map((m) => m[1])).toEqual(["current_user_organization_id()", "has_org_role(ARRAY['admin'::text])"]);
+    const audit = alters(m131()).find((a) => a.key === "security_audit.audit_log :: audit admins read org")!;
+    expect(audit.using).toBe(set[0]);
+    // Guard (both md5s), self-check (131's) and the rollback's guard and self-check (main's) check the policy where the table is there.
+    const md5s = listed(m131().split("DO $$")[1]).find((x) => x.key === "security_audit.audit_log :: audit admins read org")!.md5s;
+    for (const [text, okList] of [[m131(), [md5s.join("', '"), md5s[1]]], [rollback(), [[...md5s].reverse().join("', '"), md5s[0]]]] as const) {
+      for (const ok of okList) expect(text).toContain(`WHERE {ATTR} OR md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) NOT IN ('${ok}')`.replace("{ATTR}", "p.policyname IS NULL OR p.permissive <> 'PERMISSIVE' OR p.cmd <> 'SELECT' OR p.roles::TEXT <> '{authenticated}'"));
+    }
+    // The import script writes 131's form (schema-qualified), and verify's legacy row wants 131's md5.
+    const imp = read("supabase/import/import_legacy_tenant.sql");
+    expect(imp).toContain(`CREATE POLICY "legacy_audit_log admins read" ON public.legacy_audit_log FOR SELECT TO authenticated
+  USING (organization_id = (SELECT public.current_user_organization_id()) AND (SELECT public.has_org_role(ARRAY['admin'])));`);
+    expect(verify()).toContain(`AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '${md5s[1]}');`);
+    expect(read("supabase/verify/rls_select_wrap_131_precheck.sql")).toContain(`'${md5s[0]}', '${md5s[1]}', (SELECT m FROM leg), (SELECT state FROM leg),`);
   });
 
   it("the production precheck is one read-only SELECT over the same 182 policies and md5 pairs", () => {

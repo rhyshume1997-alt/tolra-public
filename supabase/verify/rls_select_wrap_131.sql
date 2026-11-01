@@ -1,4 +1,4 @@
--- Migration 131 (row-level-security helpers asked once per statement). Read only: every row should be TRUE (3). The text md5s are
+-- Migration 131 (row-level-security helpers asked once per statement). Read only: every row should be TRUE (4). The text md5s are
 -- of pg_policies' USING and WITH CHECK as the catalogue takes them (supabase/verify/catalogue.sql).
 WITH want(schema_name, table_name, policy_name, permissive, cmd, roles, md5_131) AS (VALUES
     ('public', 'ai_helper_requests', 'ai_helper_requests office select', 'PERMISSIVE', 'SELECT', '{authenticated}', '6a18e9fed9ee8dd956c314df2b296562'),
@@ -207,4 +207,12 @@ UNION ALL SELECT 'wrapped_helpers_are_stable',
   (SELECT count(*) = 11 AND bool_and(p.provolatile = 's') FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
    WHERE (n.nspname = 'public' AND p.proname IN ('has_org_role', 'section_allowed', 'current_user_organization_id', 'user_organization_id',
                                                  'current_user_role', 'current_user_secondary_role', 'session_read_only', 'session_is_active'))
-      OR (n.nspname = 'auth' AND p.proname IN ('uid', 'jwt', 'role')));
+      OR (n.nspname = 'auth' AND p.proname IN ('uid', 'jwt', 'role')))
+-- public.legacy_audit_log is made by supabase/import/import_legacy_tenant.sql where the legacy import ran, never by a migration: the table is
+-- not there (a fresh build, CI), or its one policy has the import script's command, roles and kind and 131's text.
+UNION ALL SELECT 'legacy_audit_log_policy_wrapped',
+  to_regclass('public.legacy_audit_log') IS NULL
+  OR EXISTS (SELECT 1 FROM pg_catalog.pg_policies p
+             WHERE p.schemaname = 'public' AND p.tablename = 'legacy_audit_log' AND p.policyname = 'legacy_audit_log admins read'
+               AND p.permissive = 'PERMISSIVE' AND p.cmd = 'SELECT' AND p.roles::TEXT = '{authenticated}'
+               AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '0c3f9197b8141c8b66f15268b935ae94');

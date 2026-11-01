@@ -84,8 +84,10 @@ ALTER TABLE public.legacy_audit_log ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.legacy_audit_log FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.legacy_audit_log TO authenticated;
 DROP POLICY IF EXISTS "legacy_audit_log admins read" ON public.legacy_audit_log;
+-- Each helper written (SELECT ...) so PostgreSQL asks it once per statement, not once per row: the form migration 131 gives every policy
+-- (131 rewrites this one too where the table is there, and its guard takes this text or the text before it).
 CREATE POLICY "legacy_audit_log admins read" ON public.legacy_audit_log FOR SELECT TO authenticated
-  USING (organization_id = public.current_user_organization_id() AND public.has_org_role(ARRAY['admin']));
+  USING (organization_id = (SELECT public.current_user_organization_id()) AND (SELECT public.has_org_role(ARRAY['admin'])));
 
 -- Read-only for everyone, owner included (same rule as the live audit log).
 DROP TRIGGER IF EXISTS legacy_audit_log_prevent_mutation ON public.legacy_audit_log;
