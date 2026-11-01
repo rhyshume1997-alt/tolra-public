@@ -3,9 +3,12 @@
  * the company's sent and accepted quotes and its purchase orders, and the candidates are saved as SUGGESTIONS only
  * (link_inbound_email p_how 'suggested'). Nothing is linked and nothing downstream changes until a person clicks Link.
  *
- * It never fails or blocks the inbox check: every error is caught and reported in the result. It reads only the company's own records
- * through the signed-in admin's session (row level security applies). Without 125 it does nothing (status "off"); without 123
- * (quotes.customer_po) customer POs are matched only by the quote's number or the customer's open quotes (customerPo false).
+ * It never fails or blocks the inbox check: every error is caught and reported in the result. It reads only the company's own records:
+ * through the signed-in admin's session (row level security applies; /api/mail/poll), or, for a server check of ONE company's delegated
+ * inbox (C1, migration 127: /api/mail/check and the background pass), through the server's client with every read filtered to that
+ * company and each suggestion saved with 127's mailbox_suggest_email_link for that company only (suggestions only: it cannot link).
+ * Without 125 it does nothing (status "off"); without 123 (quotes.customer_po) customer POs are matched only by the quote's number or the
+ * customer's open quotes (customerPo false).
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -16,23 +19,31 @@ import { type InboundForMatch, type PurchaseOrderCandidate, type QuoteCandidate,
 export type PoCaptureContext = { customerPo: boolean; quotes: QuoteCandidate[]; purchaseOrders: PurchaseOrderCandidate[] };
 export type PoCaptureSummary = { status: "ok" | "off" | "failed" | "skipped"; customerPo: boolean | null; checked: number; suggested: number; failed: number };
 export type StoredMessage = { inboundEmailId: string; email: InboundForMatch };
+/** A server check of ONE company (the service role's client, which row level security does not limit): every read and write is this company's. */
+export type PoCaptureScope = { org: string };
 
 type Row = Record<string, unknown>;
 const text = (v: unknown) => (v == null ? "" : String(v));
 const key = (v: unknown) => text(v).trim().toLowerCase();
 
 /** Is 125 applied? A one-row GET of the new column (a missing column means no). Any other failure is not an answer: treated as no. */
-export async function hasEmailLinks(db: SupabaseClient): Promise<boolean> {
-  const { error } = await db.from("inbound_emails").select("link_status").limit(1);
+export async function hasEmailLinks(db: SupabaseClient, scope?: PoCaptureScope): Promise<boolean> {
+  const q = db.from("inbound_emails").select("link_status");
+  const { error } = await (scope ? q.eq("organization_id", scope.org) : q).limit(1);
   return !error;
 }
 
 /** The company's quotes (sent, accepted) and purchase orders (not draft), with the addresses we hold for their customer or supplier. */
-export async function loadPoCaptureContext(db: SupabaseClient): Promise<PoCaptureContext> {
+export async function loadPoCaptureContext(db: SupabaseClient, scope?: PoCaptureScope): Promise<PoCaptureContext> {
+  // With a scope (the server's client), every read is filtered to that one company.
+  const own = (table: string, columns: string) => {
+    const q = db.from(table).select(columns);
+    return scope ? q.eq("organization_id", scope.org) : q;
+  };
   let customerPo = true;
   const quoteColumns = (withPo: boolean) => `id, quote_ref, customer, status, rfq_id${withPo ? ", customer_po" : ""}`;
   const quotePage = (withPo: boolean) => (from: number, to: number) =>
-    db.from("quotes").select(quoteColumns(withPo)).in("status", ["sent", "accepted"]).order("created_at", { ascending: false }).order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>;
+    own("quotes", quoteColumns(withPo)).in("status", ["sent", "accepted"]).order("created_at", { ascending: false }).order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>;
   let quotes: Row[];
   try {
     quotes = (await fetchAll<Row>(quotePage(true))).rows;
@@ -41,16 +52,16 @@ export async function loadPoCaptureContext(db: SupabaseClient): Promise<PoCaptur
     customerPo = false; // 123 not applied: no quotes.customer_po
     quotes = (await fetchAll<Row>(quotePage(false))).rows;
   }
-  const customers = (await fetchAll<Row>((from, to) => db.from("customers").select("id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
+  const customers = (await fetchAll<Row>((from, to) => own("customers", "id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
   const rfqIds = [...new Set(quotes.map((q) => text(q.rfq_id)).filter(Boolean))];
   const rfqEmail = new Map<string, string>();
   for (let i = 0; i < rfqIds.length; i += 200) {
-    const { data, error } = await db.from("rfqs").select("id, email").in("id", rfqIds.slice(i, i + 200));
+    const { data, error } = await own("rfqs", "id, email").in("id", rfqIds.slice(i, i + 200));
     if (error) throw error;
-    for (const r of (data ?? []) as Row[]) rfqEmail.set(text(r.id), text(r.email));
+    for (const r of (data ?? []) as unknown as Row[]) rfqEmail.set(text(r.id), text(r.email));
   }
-  const orders = (await fetchAll<Row>((from, to) => db.from("purchase_orders").select("id, po_ref, po_number, supplier, status").neq("status", "draft").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
-  const suppliers = (await fetchAll<Row>((from, to) => db.from("suppliers").select("id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
+  const orders = (await fetchAll<Row>((from, to) => own("purchase_orders", "id, po_ref, po_number, supplier, status").neq("status", "draft").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
+  const suppliers = (await fetchAll<Row>((from, to) => own("suppliers", "id, name, email").order("id").range(from, to) as unknown as PromiseLike<{ data: Row[] | null; error: unknown }>)).rows;
 
   const byName = (rows: Row[]) => {
     const map = new Map<string, string[]>();
@@ -75,15 +86,16 @@ export async function loadPoCaptureContext(db: SupabaseClient): Promise<PoCaptur
 
 /**
  * Matches the newly stored messages and saves their suggestions. Only messages that carry a PO number load anything; the context is
- * loaded once per check. Never throws.
+ * loaded once per check. Never throws. Without a scope: the signed-in admin's session and 125's link_inbound_email (p_how 'suggested').
+ * With a scope: the server's client for that one company and 127's mailbox_suggest_email_link (it has no way to link).
  */
-export async function suggestPoLinks(db: SupabaseClient, stored: readonly StoredMessage[]): Promise<PoCaptureSummary> {
+export async function suggestPoLinks(db: SupabaseClient, stored: readonly StoredMessage[], scope?: PoCaptureScope): Promise<PoCaptureSummary> {
   const summary: PoCaptureSummary = { status: "ok", customerPo: null, checked: 0, suggested: 0, failed: 0 };
   try {
     const withPo = stored.filter((m) => extractPoNumbers(m.email).length > 0);
     if (!withPo.length) return { ...summary, status: "skipped" };
-    if (!(await hasEmailLinks(db))) return { ...summary, status: "off" };
-    const ctx = await loadPoCaptureContext(db);
+    if (!(await hasEmailLinks(db, scope))) return { ...summary, status: "off" };
+    const ctx = await loadPoCaptureContext(db, scope);
     summary.customerPo = ctx.customerPo;
     for (const m of withPo) {
       summary.checked += 1;
@@ -95,7 +107,9 @@ export async function suggestPoLinks(db: SupabaseClient, stored: readonly Stored
         continue;
       }
       for (const s of suggestions) {
-        const { error } = await db.rpc("link_inbound_email", { p_email: m.inboundEmailId, p_kind: s.kind, p_target: s.id, p_po: s.po, p_how: "suggested" });
+        const { error } = scope
+          ? await db.rpc("mailbox_suggest_email_link", { p_org: scope.org, p_email: m.inboundEmailId, p_kind: s.kind, p_target: s.id, p_po: s.po })
+          : await db.rpc("link_inbound_email", { p_email: m.inboundEmailId, p_kind: s.kind, p_target: s.id, p_po: s.po, p_how: "suggested" });
         if (error) {
           summary.failed += 1;
           console.error("[mail/poll] PO suggestion not saved", error.code);

@@ -48,6 +48,9 @@ const CALLER_ONLY = [
   "public.jobs_awaiting_despatch_or_invoice()",
   // 101: the caller's own company's AI helper switches, cap and spend (office and admin; never the key).
   "public.ai_helper_status()",
+  // 127: the caller's own company's inbox reading status (admins only; never the cursor or the mailbox id). 127's other six functions
+  // are the service role's only, so they are not listed here.
+  "public.mailbox_sync_status()",
 ];
 
 beforeAll(async () => {
@@ -120,6 +123,8 @@ beforeAll(async () => {
 
   // 084: a failed Xero send and a contact problem of beta's, for retry and resolve to be pointed at (written as the server would).
   beta.integrationSend = (await service.from("integration_sends").insert({ organization_id: org, provider: "xero", doc_type: "invoice", doc_id: beta.invoice, action: "create", status: "failed", last_error: "x" }).select("id").single()).data!.id;
+  // 128: a saved workshop network of beta's, for rename_site_network pointed at it from alpha.
+  beta.siteNetwork = (await service.from("site_networks").insert({ organization_id: org, network: "198.51.100.0/24", label: `${MARKER} Yard` }).select("id").single()).data!.id;
   if ((await service.from("integration_contacts").insert({ organization_id: org, provider: "xero", customer_name: `${MARKER} Customer`, state: "problem", problem: "Two contacts" })).error) throw new Error("beta integration contact");
 
   // 101: an AI helper suggestion of beta's, waiting for a decision, for settle and decide to be pointed at (written as its functions would).
@@ -141,6 +146,13 @@ beforeAll(async () => {
   beta.inbound = (await service.from("inbound_emails").insert({ organization_id: org, graph_message_id: `beta-125-${world.runId}`, received_at: "2026-11-01T09:00:00Z", subject: "Beta PO 7777" }).select("id").single()).data!.id;
   beta.alphaInbound = (await service.from("inbound_emails").insert({ organization_id: world.tenants.alpha.id, graph_message_id: `alpha-125-${world.runId}`, received_at: "2026-11-01T09:00:00Z", subject: "Alpha PO 7777" }).select("id").single()).data!.id;
   beta.purchaseOrder = (await service.from("purchase_orders").insert({ organization_id: org, po_ref: `PO-${MARKER}-125`, po_number: `PO-${MARKER}-125`, supplier: `${MARKER} Supplier` }).select("id").single()).data!.id;
+
+  // 129: an open accountant invite of beta's, for someone who is not alpha's admin, for redeem and revoke to be pointed at.
+  beta.accountantToken = randomBytes(32).toString("hex");
+  const accountant = await service.from("organization_invites").insert({ organization_id: org, email: `accountant.${MARKER.toLowerCase()}@example.test`, role: "viewer",
+    expires_at: new Date(Date.now() + 86_400_000).toISOString(), token_hash: beta.accountantToken }).select("id").single();
+  if (accountant.error) throw new Error(accountant.error.message);
+  beta.accountantInvite = accountant.data.id as string;
 });
 
 afterAll(async () => {
@@ -271,6 +283,10 @@ function attempts(): Attempt[] {
     ["public.unlock_clock_in_network()", () => alpha.rpc("unlock_clock_in_network"), "nothing of beta's"],
     // 114: beta's person can't be given the off-site exception (not in the caller's company).
     ["public.set_clock_in_off_site_allowed(p_user uuid, p_allowed boolean)", () => alpha.rpc("set_clock_in_off_site_allowed", { p_user: beta.adminId, p_allowed: true }), "refused"],
+    // 128: renaming a network id of beta's is not found in the caller's company; a refusal report is the caller's own clock action in the
+    // caller's company only (alpha is not locked, so it is refused as not_refused; nothing of beta's either way).
+    ["public.rename_site_network(p_client_op_id uuid, p_id uuid, p_label text)", () => alpha.rpc("rename_site_network", { p_client_op_id: randomUUID(), p_id: beta.siteNetwork, p_label: "Cross-company attempt" }), "refused"],
+    ["public.record_clock_in_refusal(p_client_op_id uuid, p_action text)", () => alpha.rpc("record_clock_in_refusal", { p_client_op_id: randomUUID(), p_action: "in" }), "nothing of beta's"],
     // 084: beta's send and beta's contact problem are not found in alpha; alpha (not connected) has nothing to disconnect; a Connect start
     // and a mapping are written for alpha only.
     ["public.integration_retry_send(p_send uuid)", () => alpha.rpc("integration_retry_send", { p_send: beta.integrationSend }), "refused"],
@@ -283,6 +299,11 @@ function attempts(): Attempt[] {
     ["public.integration_invite_create(p_provider text, p_token_hash text)", () => alpha.rpc("integration_invite_create", { p_provider: "xero", p_token_hash: randomBytes(32).toString("hex") }), "nothing of beta's"],
     ["public.integration_invites_open(p_provider text)", () => alpha.rpc("integration_invites_open", { p_provider: "xero" }), "nothing of beta's"],
     ["public.integration_invite_revoke(p_invite uuid)", () => alpha.rpc("integration_invite_revoke", { p_invite: randomUUID() }), "nothing of beta's"],
+    // 129: an accountant invite is the caller's own company's (create has no company argument); beta's invite is neither redeemed by
+    // alpha's admin (another e-mail) nor revoked from alpha (FALSE, beta's fingerprint unchanged).
+    ["public.create_accountant_invite(p_email text, p_token_hash text)", () => alpha.rpc("create_accountant_invite", { p_email: `cross.${randomUUID().slice(0, 8)}@example.test`, p_token_hash: randomBytes(32).toString("hex") }), "nothing of beta's"],
+    ["public.redeem_accountant_invite(p_token_hash text)", () => alpha.rpc("redeem_accountant_invite", { p_token_hash: beta.accountantToken }), "refused"],
+    ["public.revoke_accountant_invite(p_invite uuid)", () => alpha.rpc("revoke_accountant_invite", { p_invite: beta.accountantInvite }), "nothing of beta's"],
     ["public.integration_disconnect_revoke(p_provider text)", () => alpha.rpc("integration_disconnect_revoke", { p_provider: "xero" }), "nothing of beta's"],
     ["public.integration_app_credentials_save(p_provider text, p_client_id text, p_secret_enc text, p_secret_last4 text, p_redirect_uri text, p_key_version integer)", () => alpha.rpc("integration_app_credentials_save", { p_provider: "xero", p_client_id: "cross", p_secret_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}`, p_secret_last4: "abcd", p_redirect_uri: null, p_key_version: 1 }), "refused"],
     ["public.integration_app_credentials_remove(p_provider text)", () => alpha.rpc("integration_app_credentials_remove", { p_provider: "xero" }), "refused"],

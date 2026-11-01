@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { xeroEnvProblem } from "@/lib/integrations/app-credentials";
+import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { DbError, beginConnect, xeroReady } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
@@ -15,7 +16,11 @@ export async function POST(request: Request) {
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
   const ready = await xeroReady();
-  if (!ready) return jsonError(["Xero is not set up on this server yet.", xeroEnvProblem()].filter(Boolean).join(" "), 503);
+  if (!ready) {
+    // A redirect URI that is set but unusable is logged here for the platform owner, never answered (the 503 names no setting).
+    if (xeroEnvProblem()) console.error("[integrations] Xero is not set up: the redirect URI setting is unusable");
+    return notConfiguredResponse("xero");
+  }
   try {
     return NextResponse.json({ url: await beginConnect(auth.supabase, auth.profile.organization_id, ready) });
   } catch (err) {

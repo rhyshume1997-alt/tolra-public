@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { finishConnect, xeroReady } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { isErrorResponse, requireProfile } from "@/lib/server/auth";
@@ -11,13 +12,15 @@ export const dynamic = "force-dynamic";
  * Xero sends the admin back here after they consent. The state must be the one this admin started for this company in the last 10
  * minutes (single use; the database checks), and the admin must still be an admin; the code is exchanged server-side (client secret,
  * PKCE), the tokens are encrypted and stored, and the admin is sent back to Admin > Integrations with the outcome. No token, code or state
- * appears in the redirect or in any log.
+ * appears in the redirect or in any log. A return that carries a SIGNED state (the platform owner's app test) is passed on, unchanged, to
+ * ./return, which verifies it and stores nothing. While Xero isn't set up (before go-live) the answer is a clean 503.
  */
 export async function GET(request: Request) {
   const back = (outcome: string) => NextResponse.redirect(new URL(`/admin/integrations?xero=${encodeURIComponent(outcome)}`, request.url), 303);
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  if (state && /\./.test(state)) return NextResponse.redirect(new URL(`/api/integrations/xero/return${url.search}`, request.url), 307);
   if (url.searchParams.get("error")) return back("cancelled");
   if (!code || !state || code.length > 2000 || state.length > 200) return back("invalid");
 
@@ -25,7 +28,7 @@ export async function GET(request: Request) {
   if (isErrorResponse(auth)) return back(auth.status === 401 ? "signed_out" : "forbidden");
   const ready = await xeroReady();
   const service = createSupabaseAdminClient();
-  if (!ready || !service) return back("not_configured");
+  if (!ready || !service) return notConfiguredResponse("xero");
   try {
     const outcome = await finishConnect(service, auth.profile.organization_id, auth.user.id, state, code, ready);
     return back(outcome.ok ? "connected" : outcome.reason);

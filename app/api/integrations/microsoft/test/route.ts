@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { microsoftReady } from "@/lib/integrations/microsoft/client";
 import { testMicrosoft } from "@/lib/integrations/microsoft/connect";
+import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { ProviderError } from "@/lib/integrations/types";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   if (auth.session?.support) return jsonError("Support access can't change Microsoft 365 settings.", 403);
   const service = createSupabaseAdminClient();
   const ready = await microsoftReady(service);
-  if (!ready || !service) return jsonError("Not set up yet: the owner must enter the Microsoft 365 app details.", 503);
+  if (!ready || !service) return notConfiguredResponse("microsoft");
   try {
     const result = await testMicrosoft(service, auth.profile.organization_id, ready);
     if (!result) return jsonError("Not connected: connect this company to Microsoft 365 first (or connect again).", 409);

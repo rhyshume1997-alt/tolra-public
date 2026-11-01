@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 
 import { siteOrigin } from "@/lib/integrations/app-credentials";
 import { newInviteToken } from "@/lib/integrations/invite";
-import { DbError } from "@/lib/integrations/server";
+import { notConfiguredResponse } from "@/lib/integrations/not-configured";
+import { DbError, xeroReady } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
+  // No Xero app details yet (they are entered at go-live): no link is made, so none can be handed out that opens onto nothing.
+  if (!(await xeroReady())) return notConfiguredResponse("xero");
   const origin = siteOrigin();
   if (!origin) return jsonError("Not set up yet: the server's site address (NEXT_PUBLIC_SITE_URL) is missing.", 503);
   const { token, tokenHash } = newInviteToken();
