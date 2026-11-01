@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { MFA_REQUIRED_CODE, adminMfaRequired, holdsAdmin } from "@/lib/mfa-policy";
+import { MFA_RECENT_CODE, MFA_REQUIRED_CODE, adminMfaRequired, holdsAdmin } from "@/lib/mfa-policy";
 import { type SessionInfo, parseSessionInfo } from "@/lib/session-info";
 import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 
@@ -48,6 +48,11 @@ export function passwordChangeRequired() {
 /** 403 for an admin session that hasn't passed the second step; the code lets the browser send them to /mfa. */
 export function mfaRequired() {
   return NextResponse.json({ error: "Confirm your authenticator code first.", code: MFA_REQUIRED_CODE }, { status: 403 });
+}
+
+/** 403 for an admin whose authenticator code is too old for a password change: they enter a fresh one by signing in again. */
+export function mfaRecentRequired() {
+  return NextResponse.json({ error: "For your security, sign out and sign back in with your authenticator code, then change your password.", code: MFA_RECENT_CODE }, { status: 403 });
 }
 
 /** 403 with a server log line naming which check refused (codes only, never personal data). */

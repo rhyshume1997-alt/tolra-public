@@ -5,8 +5,8 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { isUnreachableError } from "@/lib/auth-errors";
-import { adminMfaRequired, holdsAdmin } from "@/lib/mfa-policy";
-import { forbiddenOrigin, jsonError, mfaRequired, readJson, sameOrigin } from "@/lib/server/auth";
+import { adminMfaRequired, holdsAdmin, recentSecondStep } from "@/lib/mfa-policy";
+import { forbiddenOrigin, jsonError, mfaRecentRequired, mfaRequired, readJson, sameOrigin } from "@/lib/server/auth";
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
 import { changedAfterTemporary, markers, persist, recentLinkSignIn, setMustChange } from "@/lib/server/password-setup";
 import { isBreachedPassword } from "@/lib/server/breached-password";
@@ -22,8 +22,9 @@ import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 // change; that is only allowed once the login's own markers prove the temporary password was replaced.
 //
 // Who may change it (audit Z7/C9): the current password is checked, unless an admin set a temporary one (must change password) or
-// a reset or invite link signed this session in within the hour; and an admin needs the second step (aal2) when REQUIRE_ADMIN_MFA is
-// on, except while choosing their own password in place of a temporary one (the middleware sends them here before /mfa).
+// a reset or invite link signed this session in within the hour; and an admin needs the second step (aal2), entered within the last 15
+// minutes, when REQUIRE_ADMIN_MFA is on, except while choosing their own password in place of a
+// temporary one (the middleware sends them here before /mfa).
 
 const schema = z.union([
   z.object({ password: z.string().max(PASSWORD_MAX), current_password: z.string().max(256).optional() }),
@@ -94,9 +95,14 @@ export async function POST(request: Request) {
   const { data: profile, error: profileError } = await admin.from("user_profiles").select("must_change_password").eq("id", user.id).maybeSingle();
   const mustChange = !profileError && profile?.must_change_password === true;
   const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (adminMfaRequired() && !mustChange && assurance?.currentLevel !== "aal2") {
+  // An admin needs the second step, and a recent one, to change a password, whenever it is required for admins (REQUIRE_ADMIN_MFA). While
+  // the switch is off nobody is asked for a code at sign-in, so there is no way to give one and nothing is asked here either.
+  if (adminMfaRequired() && !mustChange) {
     const { data: memberships, error: membershipError } = await admin.from("organization_members").select("role, secondary_role").eq("user_id", user.id).eq("active", true);
-    if (membershipError || (memberships ?? []).some((membership) => holdsAdmin(membership))) return mfaRequired();
+    if (membershipError || (memberships ?? []).some((membership) => holdsAdmin(membership))) {
+      if (assurance?.currentLevel !== "aal2") return mfaRequired();
+      if (!recentSecondStep(assurance?.currentAuthenticationMethods)) return mfaRecentRequired();
+    }
   }
   if (!mustChange && !recentLinkSignIn(assurance?.currentAuthenticationMethods)) {
     if (!current_password) return jsonError("Enter your current password.", 400);

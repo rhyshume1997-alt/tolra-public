@@ -2,7 +2,8 @@
  * Audit Z7/C9: POST /api/auth/change-password took a new password from any signed-in session: no current password and no second
  * step. Now the current password is checked (a sign-in that is never stored) unless an admin set a temporary one (must change
  * password) or a reset or invite link signed the session in within the hour; and an admin needs aal2 when REQUIRE_ADMIN_MFA is on,
- * except while replacing a temporary password (the middleware sends them to set-up before /mfa). The breached-password check and
+ * except while replacing a temporary password (the middleware sends them to set-up before /mfa). G1: that code must be from the last 15
+ * minutes. The breached-password check and
  * clearing must_change_password are unchanged.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +23,7 @@ const state = {
   memberships: [] as Array<{ role: string; secondary_role: string | null }>,
   membershipError: false,
   level: "aal1",
+  next: null as string | null,
   amr: [] as unknown[],
   unreachable: false,
   checks: [] as string[],
@@ -51,7 +53,7 @@ vi.mock("@supabase/ssr", () => ({
     auth: {
       getUser: async () => ({ data: { user: { id: USER, email: EMAIL, app_metadata: {} } }, error: null }),
       updateUser: async ({ password }: { password: string }) => { state.updates.push(password); return { error: null }; },
-      mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: state.level, currentAuthenticationMethods: state.amr }, error: null }) },
+      mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: state.next ?? state.level, currentAuthenticationMethods: state.amr }, error: null }) },
     },
     rpc: async () => ({ data: null, error: null }),
   }),
@@ -80,6 +82,7 @@ vi.mock("@supabase/supabase-js", async (original) => {
 
 const { POST } = await import("@/app/api/auth/change-password/route");
 const { recentLinkSignIn } = await import("@/lib/server/password-setup");
+const { recentSecondStep } = await import("@/lib/mfa-policy");
 
 const change = (body: Record<string, unknown>) =>
   POST(new Request("http://localhost/api/auth/change-password", { method: "POST", headers: { "content-type": "application/json", origin: "http://localhost", host: "localhost" }, body: JSON.stringify(body) }));
@@ -91,7 +94,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
   process.env.BREACHED_PASSWORD_CHECK = "off";
-  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [] });
+  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", next: null, amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [] });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -176,6 +179,7 @@ describe("an admin needs the second step when REQUIRE_ADMIN_MFA is on", () => {
   it("on, at aal2: changed with the current password", async () => {
     process.env.REQUIRE_ADMIN_MFA = "true";
     state.level = "aal2";
+    state.amr = [{ method: "password", timestamp: now() - 60 }, { method: "totp", timestamp: now() - 30 }];
     expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
   });
   it("on, while replacing a temporary password: no aal2 asked (set-up comes before /mfa), no current password", async () => {
@@ -194,6 +198,85 @@ describe("an admin needs the second step when REQUIRE_ADMIN_MFA is on", () => {
     process.env.REQUIRE_ADMIN_MFA = "true";
     state.memberships = [{ role: "office", secondary_role: null }];
     expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+});
+
+describe("an admin's authenticator code must be recent (15 minutes) when the switch is on", () => {
+  beforeEach(() => { state.memberships = [{ role: "admin", secondary_role: null }]; });
+  const fresh = () => [{ method: "password", timestamp: now() - 600 }, { method: "totp", timestamp: now() - 300 }];
+  const stale = () => [{ method: "password", timestamp: now() - 7200 }, { method: "totp", timestamp: now() - 3600 }];
+
+  it("switch on, aal2 but the code is older than 15 minutes: refused with mfa_recent_required; nothing checked or changed", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.amr = stale();
+    const response = await change({ password: NEW, current_password: CURRENT });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.checks).toEqual([]);
+    expect(state.updates).toEqual([]);
+  });
+  it("switch on, aal2 with no time on the code, or no totp entry at all: refused", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    for (const amr of [[{ method: "totp" }], [{ method: "password", timestamp: now() }], []]) {
+      state.amr = amr;
+      expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
+    }
+    expect(state.updates).toEqual([]);
+  });
+  it("switch on, aal2 with a code from the last 15 minutes: changed with the current password", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.amr = fresh();
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+    expect(state.updates).toEqual([NEW]);
+  });
+  it("switch OFF: an admin is never asked (nobody is asked for a code at sign-in), authenticator set up or not", async () => {
+    for (const next of [null, "aal2"]) {
+      state.next = next;
+      state.amr = stale();
+      expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+    }
+  });
+  it("switch on: office staff are never asked for a recent code", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.amr = stale();
+    state.memberships = [{ role: "office", secondary_role: null }];
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+  it("switch on, replacing a temporary password: no second step asked, however old the code", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.amr = stale();
+    state.mustChange = true;
+    expect((await change({ password: NEW })).status).toBe(200);
+  });
+  it("switch on, aal2, memberships unreadable: refused if the code is stale (as if admin), changed if it is fresh", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.membershipError = true;
+    state.memberships = [];
+    state.amr = stale();
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
+    state.amr = fresh();
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+});
+
+describe("recentSecondStep", () => {
+  const t = 1_800_000_000;
+  it("a totp entry within 15 minutes", () => {
+    expect(recentSecondStep([{ method: "totp", timestamp: t - 899 }], t)).toBe(true);
+    expect(recentSecondStep([{ method: "password", timestamp: t - 5000 }, { method: "mfa/totp", timestamp: t - 10 }], t)).toBe(true);
+  });
+  it("not: too old, from the future, a password or link sign-in, no time, or not a list", () => {
+    expect(recentSecondStep([{ method: "totp", timestamp: t - 901 }], t)).toBe(false);
+    expect(recentSecondStep([{ method: "totp", timestamp: t + 3600 }], t)).toBe(false);
+    expect(recentSecondStep([{ method: "password", timestamp: t }, { method: "recovery", timestamp: t }], t)).toBe(false);
+    expect(recentSecondStep([{ method: "totp" }], t)).toBe(false);
+    expect(recentSecondStep(["totp"], t)).toBe(false);
+    expect(recentSecondStep(undefined, t)).toBe(false);
   });
 });
 

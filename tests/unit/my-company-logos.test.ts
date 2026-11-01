@@ -1,19 +1,22 @@
 /**
  * /api/my-company-logos (the company picker's logos): signed out gets 401 and no data; only the ids my_organizations() returns for the
  * caller are looked up; a logo path outside the company's own folder, or a file that is not PNG/JPEG, answers null; nothing but the
- * data URL leaves the route.
+ * data URL leaves the route; a deactivated login (user_profiles.active not true, or unreadable) gets 403 before anything else is read.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
 let signedIn = true;
+let profileActive: boolean | null = true;
+let profileError = false;
 let mine: Array<{ organization_id: string }> = [];
 let settings: Array<{ organization_id: string; company_profile: Record<string, unknown> | null }> = [];
 let files: Record<string, Uint8Array>;
 let askedIds: string[][] = [];
 let downloaded: string[] = [];
 let rpcCalls: string[] = [];
+let fromCalls: string[] = [];
 
 vi.mock("@/lib/server/auth", async () => {
   const { NextResponse } = await import("next/server");
@@ -21,6 +24,7 @@ vi.mock("@/lib/server/auth", async () => {
     jsonError: (message: string, status: number, init?: { headers?: Record<string, string> }) => NextResponse.json({ error: message }, { status, headers: init?.headers }),
     createSupabaseServerClient: async () => ({
       auth: { getUser: async () => (signedIn ? { data: { user: { id: "user-1" } }, error: null } : { data: { user: null }, error: { message: "no session" } }) },
+      from: (table: string) => { fromCalls.push(table); return { select: () => ({ eq: () => ({ maybeSingle: async () => (profileError ? { data: null, error: { code: "XX000" } } : { data: profileActive === null ? null : { active: profileActive }, error: null }) }) }) }; },
       rpc: async (name: string) => { rpcCalls.push(name); return { data: mine, error: null }; },
     }),
   };
@@ -54,6 +58,9 @@ beforeEach(() => {
   askedIds = [];
   downloaded = [];
   rpcCalls = [];
+  fromCalls = [];
+  profileActive = true;
+  profileError = false;
 });
 
 describe("GET /api/my-company-logos", () => {
@@ -64,6 +71,22 @@ describe("GET /api/my-company-logos", () => {
     expect(await response.json()).toEqual({ error: "Unauthorized" });
     expect(rpcCalls).toEqual([]);
     expect(askedIds).toEqual([]);
+  });
+
+  it.each([
+    ["a deactivated login", () => { profileActive = false; }],
+    ["no profile row", () => { profileActive = null; }],
+    ["a profile that can't be read", () => { profileError = true; }],
+  ])("answers 403 with no data for %s: no company list, no service-role read", async (_name, arrange) => {
+    arrange();
+    const response = await GET();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Forbidden" });
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(fromCalls).toEqual(["user_profiles"]);
+    expect(rpcCalls).toEqual([]);
+    expect(askedIds).toEqual([]);
+    expect(downloaded).toEqual([]);
   });
 
   it("loads only the companies my_organizations() returned for the caller, as private no-store JSON", async () => {
