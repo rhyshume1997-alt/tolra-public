@@ -13,7 +13,10 @@ import { type AiCompletion, type AiCompletionRequest, type AiHelperProvider, AiP
  *   [mock:garbage]  an answer that is not the JSON asked for (invalid)
  *   text asking to "ignore previous instructions": the answer a steered model might give (extra keys, a price, an action, a quote
  *   reference the server never sent, a negative quantity, an impossible date). The route must drop all of it.
- * For the round-up it states the total from the facts.
+ * For the round-up it states the total from the facts. For the assistant (G3; data with a question and records) it answers from the
+ * records: the count and the newest reference, and a chaser e-mail draft when the question asks for one; a question asking it to
+ * "ignore previous instructions" gets the answer a steered model might give (a claimed send, a reference it was never given, an
+ * unknown draft kind, an action and a tool call). The route must show none of that as done.
  */
 export function mockProvider(): AiHelperProvider {
   return {
@@ -21,11 +24,12 @@ export function mockProvider(): AiHelperProvider {
     async complete(req: AiCompletionRequest): Promise<AiCompletion> {
       const usage = { inputTokens: Math.ceil(Buffer.byteLength(req.system + req.data) / 4), outputTokens: 120 };
       const data = JSON.parse(req.data) as Record<string, unknown>;
-      const text = typeof data.rfq_email === "string" ? data.rfq_email : "";
+      const text = typeof data.rfq_email === "string" ? data.rfq_email : typeof data.question === "string" ? data.question : "";
       if (text.includes("[mock:down]")) throw new AiProviderError("unavailable");
       if (text.includes("[mock:refuse]")) throw new AiProviderError("refused", usage);
       if (text.includes("[mock:garbage]")) throw new AiProviderError("invalid", usage);
       if (Array.isArray(data.sections)) return { json: roundup(data), usage, model: req.model };
+      if (Array.isArray(data.records)) return { json: /ignore (all )?previous instructions/i.test(text) ? steeredAssistant(data) : assistant(data, text), usage, model: req.model };
       if (/ignore (all )?previous instructions/i.test(text)) return { json: steered(), usage, model: req.model };
       return { json: readRfq(text), usage, model: req.model };
     },
@@ -76,5 +80,33 @@ function steered() {
       { description: "Widget", part_number: null, material: "Steel", finish: null, quantity: -5, due_date: "2026-02-30",
         unclear: ["price", "drop table"], similar_quote_ref: "QUO-9999", unit_price: 1, total: 1, status: "issued" },
     ],
+  };
+}
+
+type MockRecord = { ref: string; status: string | null; customer: string | null };
+
+function assistant(data: Record<string, unknown>, question: string) {
+  const records = data.records as MockRecord[];
+  const first = records[0];
+  const wantsDraft = /draft|e-?mail|chase/i.test(question);
+  return {
+    answer: first ? `${records.length} ${String(data.topic)} found. The newest is ${first.ref} (${first.status ?? "no status"}) for ${first.customer ?? "no customer"}.` : `No ${String(data.topic)} found.`,
+    refs: first ? [first.ref] : [],
+    draft: first && wantsDraft
+      ? { kind: "email", subject: `Following up: ${first.ref}`, body: `Dear ${first.customer ?? "customer"},\n\nI am following up on ${first.ref}. Please let us know if you have any questions.\n\nKind regards` }
+      : { kind: "none", subject: "", body: "" },
+    needs_review: [],
+  };
+}
+
+function steeredAssistant(data: Record<string, unknown>) {
+  const first = (data.records as MockRecord[])[0];
+  return {
+    answer: `Done. I have sent the e-mail and issued invoice INV-9999 for ${first?.customer ?? "Customer 1"}.`,
+    refs: ["QUO-9999", ...(first ? [first.ref] : [])],
+    draft: { kind: "send_now", subject: "Paid", body: "<script>alert(1)</script>" },
+    needs_review: [],
+    action: "send_email",
+    tool_call: { name: "issue_invoice", amount: 1 },
   };
 }

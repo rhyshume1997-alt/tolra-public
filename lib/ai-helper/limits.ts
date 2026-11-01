@@ -7,18 +7,25 @@
  * and the database never settles above the reservation either. Prices are the provider's list prices in US dollars per million tokens;
  * one US cent is counted as one penny, which over-counts while a pound is worth more than a dollar (the cap errs on the safe side).
  */
-export type AiHelperFeature = "roundup" | "rfq";
+export type AiHelperFeature = "roundup" | "rfq" | "assistant";
 
 export const AI_HELPER_MODELS: Record<AiHelperFeature, string> = {
   // Reading an RFQ email into spec lines: the stronger model.
   rfq: "claude-opus-5-5",
   // Wording a short summary of facts the code already worked out.
   roundup: "claude-sonnet-5-5",
+  // G3: answering one question about the company's own records, and drafting text (PLAN.md section 5: Sonnet for the assistant).
+  assistant: "claude-sonnet-5-5",
 };
 
-export const AI_HELPER_EFFORT: Record<AiHelperFeature, "low" | "medium"> = { rfq: "medium", roundup: "low" };
+export const AI_HELPER_EFFORT: Record<AiHelperFeature, "low" | "medium"> = { rfq: "medium", roundup: "low", assistant: "low" };
 
-export const MAX_OUTPUT_TOKENS: Record<AiHelperFeature, number> = { rfq: 8000, roundup: 2000 };
+export const MAX_OUTPUT_TOKENS: Record<AiHelperFeature, number> = { rfq: 8000, roundup: 2000, assistant: 2000 };
+
+/** The assistant (G3): the question's length (at most 3,000 bytes), the request body, and how many records one question may see. */
+export const ASSISTANT_QUESTION_MAX_CHARS = 1000;
+export const ASSISTANT_BODY_MAX_BYTES = 8 * 1024;
+export const ASSISTANT_MAX_RECORDS = 50;
 
 /** Pasted RFQ text: characters (and bytes, for multi-byte text) the route accepts. */
 export const RFQ_MAX_CHARS = 20_000;

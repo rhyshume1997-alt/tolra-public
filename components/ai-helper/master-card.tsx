@@ -13,6 +13,7 @@ export const FEATURE_LABELS: Record<AiFeatureKey, { title: string; hint: string 
   roundup: { title: "Round-up of what is late, waiting or unbilled", hint: "A daily or weekly summary. Read-only." },
   rfq: { title: "RFQ email to draft quote", hint: "Turns a pasted customer e-mail into a draft quote. Prices come from your fixed calculation." },
   financeCheck: { title: "Check before issue (finance check)", hint: "Suggestions on a draft invoice, purchase order or credit note before it is issued." },
+  assistant: { title: "Assistant (questions and drafts)", hint: "Answers questions about your quotes and jobs and drafts text for you to copy. Suggestions only." },
 };
 
 /**
@@ -56,7 +57,8 @@ export function AiMasterCard({ status, onStatus }: { status: AiHelperStatus; onS
           <span className="ml-auto text-xs font-normal text-slate-600" data-testid="ai-master-state">{masterLabel(state)}</span>
         </label>
         <div className="grid gap-2 sm:grid-cols-2">
-          {(Object.keys(FEATURE_LABELS) as AiFeatureKey[]).map((key) => {
+          {/* The assistant (G3) is left out entirely until this server and the database offer it: built off, it shows nothing. */}
+          {(Object.keys(FEATURE_LABELS) as AiFeatureKey[]).filter((key) => key !== "assistant" || states.assistant !== null).map((key) => {
             const value = states[key];
             return (
               <label key={key} className="flex items-start gap-3 rounded-lg border p-3 text-sm">

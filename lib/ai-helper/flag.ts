@@ -12,3 +12,15 @@ export function aiHelperEnabled(env: Record<string, string | undefined> = proces
 
 /** Roles that may use the helper: office and admin only (the database's functions check the same, migration 101). */
 export const AI_HELPER_ROLES = ["admin", "office"] as const;
+
+/**
+ * G3, the in-app assistant: its own server-wide switch, OFF unless exactly "true", on top of AI_HELPER_ENABLED (both must be on). So
+ * turning the round-up or RFQ helper on for a server never makes the assistant reachable. The route compares the same name inline,
+ * before any other work. Each company also has its own switch (migration 133, ai_helper_settings.assistant_enabled, off by default,
+ * admin only), and the database refuses to reserve an assistant request while that is off.
+ */
+export const AI_ASSISTANT_FLAG = "AI_ASSISTANT_ENABLED";
+
+export function aiAssistantEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return aiHelperEnabled(env) && env[AI_ASSISTANT_FLAG] === "true";
+}

@@ -117,12 +117,17 @@
  {
   "kind": "function",
   "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
-  "detail": "definer search_path=pg_catalog, public 012e00f0b0e1c85b4319e4a00c529d39"
+  "detail": "definer search_path=pg_catalog, public 45e14af461a998dda3d36e01483e1d96"
  },
  {
   "kind": "function",
   "object": "public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)",
   "detail": "definer search_path=pg_catalog, public a8ab54c5c90053d65ef4e5137c28fef7"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_set_assistant(p_enabled boolean)",
+  "detail": "definer search_path=pg_catalog, public da11c72ec1a9c22124a4f4ac34f0859d"
  },
  {
   "kind": "function",
@@ -2172,6 +2177,11 @@
  {
   "kind": "function-grant",
   "object": "public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_set_assistant(p_enabled boolean)",
   "detail": "authenticated,service_role"
  },
  {

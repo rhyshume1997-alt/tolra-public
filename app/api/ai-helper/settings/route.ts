@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { readCompanyFinanceCheck } from "@/lib/ai/finance-check/flag";
+import { readCompanyAssistant } from "@/lib/ai-helper/assistant";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
 const settingsSchema = z.object({
@@ -9,6 +10,8 @@ const settingsSchema = z.object({
   rfqEnabled: z.boolean(),
   // The finance check's per-company switch (migration 106). Left out when the database has no such column yet.
   financeCheckEnabled: z.boolean().optional(),
+  // The assistant's per-company switch (G3, migration 133). Left out when this server or the database has no assistant.
+  assistantEnabled: z.boolean().optional(),
   monthlyCapPence: z.number().int().min(0).max(100_000),
 }).strict();
 
@@ -50,6 +53,24 @@ export async function POST(request: Request) {
         : "Saved, but the finance check switch could not be changed. Try again.";
     }
   }
+  // The assistant last, the same way (admin only, through ai_helper_set_assistant as the caller). Never written while this server has
+  // the assistant off: the switch would do nothing and the person is told so.
+  const assistantOn = process.env.AI_ASSISTANT_ENABLED === "true";
+  if (parsed.data.assistantEnabled !== undefined) {
+    if (!assistantOn) {
+      warning = "Saved, but the assistant is not available on this server, so its switch was not changed.";
+    } else {
+      const { error: assistantError } = await auth.supabase.rpc("ai_helper_set_assistant", { p_enabled: parsed.data.assistantEnabled });
+      if (assistantError) {
+        if (!MISSING_FINANCE_SWITCH.has(assistantError.code ?? "")) console.error("[ai-helper] assistant switch refused", assistantError.code ?? "error");
+        warning = MISSING_FINANCE_SWITCH.has(assistantError.code ?? "")
+          ? "Saved, but the assistant could not be changed yet: the database has not been updated for it."
+          : "Saved, but the assistant switch could not be changed. Try again.";
+      }
+    }
+  }
   const finance = await readCompanyFinanceCheck(auth.supabase, auth.profile.organization_id);
-  return NextResponse.json({ ...(data as Record<string, unknown>), finance_check_enabled: finance.enabled, finance_check_available: finance.available, ...(warning ? { warning } : {}) });
+  const assistant = assistantOn ? await readCompanyAssistant(auth.supabase, auth.profile.organization_id) : { available: false, enabled: false };
+  return NextResponse.json({ ...(data as Record<string, unknown>), finance_check_enabled: finance.enabled, finance_check_available: finance.available,
+    assistant_enabled: assistant.enabled, assistant_available: assistant.available, ...(warning ? { warning } : {}) });
 }
