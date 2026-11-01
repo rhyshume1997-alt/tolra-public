@@ -362,8 +362,9 @@ function attempts(): Attempt[] {
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
     // 106: the finance-check switch is the caller's own company's; the company e-mail ledger refuses a caller naming another company.
     ["public.ai_helper_set_finance_check(p_enabled boolean)", () => alpha.rpc("ai_helper_set_finance_check", { p_enabled: false }), "nothing of beta's"],
-    // 133: the assistant's switch, for the caller's own company only (admin).
+    // 133: the assistant's switch and its own reserve, for the caller's own company only (alpha's assistant is off, so reserve refuses).
     ["public.ai_helper_set_assistant(p_enabled boolean)", () => alpha.rpc("ai_helper_set_assistant", { p_enabled: false }), "nothing of beta's"],
+    ["public.ai_helper_reserve_assistant(p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve_assistant", { p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
     ["public.reserve_company_email(p_org uuid, p_user uuid, p_key text, p_to text, p_subject text, p_body text, p_related_type text, p_related_id text, p_mode text)", () => alpha.rpc("reserve_company_email", { p_org: world.tenants.beta.id, p_user: world.tenants.beta.users.admin.id, p_key: randomBytes(32).toString("hex"), p_to: "x@example.test", p_subject: "S", p_body: "B", p_related_type: "general", p_related_id: null, p_mode: "sending" }), "refused"],
     ["public.complete_company_email(p_org uuid, p_user uuid, p_send uuid, p_outcome text)", () => alpha.rpc("complete_company_email", { p_org: world.tenants.beta.id, p_user: world.tenants.beta.users.admin.id, p_send: randomUUID(), p_outcome: "failed" }), "refused"],
     // 105: writing off, and reversing a write-off, go through functions that re-check the company; beta's invoice is refused untouched.

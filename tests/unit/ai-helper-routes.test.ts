@@ -669,7 +669,7 @@ describe("never-do list (source)", () => {
       if (f !== path.join("lib", "ai-helper", "mock.ts")) expect(source(f), f).not.toMatch(/issue_invoice|issue_credit_note|replace_draft|void_invoice|record_payment|send_quote|mark_paid/);
     }
     const rpcs = files.flatMap((f) => [...source(f).matchAll(/\.rpc\("([a-z_]+)"/g)].map((m) => `${f}:${m[1]}`));
-    const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_finance_check", "ai_helper_set_assistant", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_settle", "ai_helper_decide"]);
+    const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_finance_check", "ai_helper_set_assistant", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_reserve_assistant", "ai_helper_settle", "ai_helper_decide"]);
     for (const call of rpcs) {
       const [file, fn] = call.split(":");
       expect(allowed.has(fn) || (["next_doc_number", "create_with_lines"].includes(fn) && file === path.join("lib", "ai-helper", "approve.ts")), call).toBe(true);

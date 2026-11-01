@@ -117,7 +117,12 @@
  {
   "kind": "function",
   "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
-  "detail": "definer search_path=pg_catalog, public 45e14af461a998dda3d36e01483e1d96"
+  "detail": "definer search_path=pg_catalog, public 012e00f0b0e1c85b4319e4a00c529d39"
+ },
+ {
+  "kind": "function",
+  "object": "public.ai_helper_reserve_assistant(p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
+  "detail": "definer search_path=pg_catalog, public 16045c84033f594569f4c71707b04ba4"
  },
  {
   "kind": "function",
@@ -2172,6 +2177,11 @@
  {
   "kind": "function-grant",
   "object": "public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.ai_helper_reserve_assistant(p_estimate_pence integer, p_input_digest text, p_input_bytes integer)",
   "detail": "authenticated,service_role"
  },
  {

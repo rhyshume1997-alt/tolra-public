@@ -76,9 +76,11 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     console.error("[ai-helper] service role not configured");
     return { kind: "unavailable" };
   }
-  const { data: reserved, error } = await input.supabase.rpc("ai_helper_reserve", {
-    p_feature: input.feature, p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8"),
-  });
+  const reserveArgs = { p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8") };
+  // The assistant (G3) reserves through its own function (migration 133), so 103's ai_helper_reserve stays exactly as it is.
+  const { data: reserved, error } = input.feature === "assistant"
+    ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
+    : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
   if (error) {
     if (error.hint === "ai_helper_off") return { kind: "off" };
     console.error("[ai-helper] reserve refused", error.code ?? "error");

@@ -208,12 +208,7 @@ describe("103 release files on the local stack", () => {
   it("the verify script answers TRUE on every row, and so does 101's", async () => {
     const result = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_service_role_103.sql"))).rows);
     expect(result).toHaveLength(4);
-    // 133 (the assistant) replaces reserve with 103's body plus its own switch, so 103's md5 row reads FALSE by design; 133's own
-    // verify checks the new body (no key in its answer included).
-    expect(result.filter((r) => !r.ok).map((r) => r.check_name)).toEqual(["reserve_returns_no_key"]);
-    const v133 = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_assistant_133.sql"))).rows);
-    expect(v133).toHaveLength(7);
-    expect(v133.filter((r) => !r.ok)).toEqual([]);
+    expect(result.filter((r) => !r.ok)).toEqual([]);
     const v101 = await withDb(async (db) => (await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_101.sql"))).rows);
     // 122 makes the cap default 500, so 101's off_by_default row reads FALSE by design; 122's own verify checks the new default.
     expect(v101.filter((r) => !r.ok).map((r) => r.check_name)).toEqual(["off_by_default"]);
@@ -226,8 +221,7 @@ describe("103 release files on the local stack", () => {
     await withDb(async (db) => {
       await db.query("begin");
       try {
-        // 133 (the assistant) sits on top of 103's reserve, and 122 (cap default 500) on top of 101: take them away first, newest first.
-        await db.query(unwrapped(read("supabase/release/133_ai_assistant.rollback.sql")));
+        // 122 (cap default 500) sits on top of 101: take it away first, as 101's own verify (cap default 0) is checked below.
         await db.query(unwrapped(read("supabase/release/122_ai_helper_cap_default.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/103_ai_helper_service_role.rollback.sql")));
         const after = Object.fromEntries((await db.query<{ check_name: string; ok: boolean }>(read("supabase/verify/ai_helper_service_role_103.sql"))).rows.map((r) => [r.check_name, r.ok]));

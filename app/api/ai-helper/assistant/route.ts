@@ -18,7 +18,7 @@ const OFF = "The AI assistant is off for this company.";
 
 /**
  * G3, the in-app assistant (SUGGEST ONLY, built OFF). POST { topic, question }: one answer about the caller's own company's records,
- * and maybe a draft for the person to copy. It writes nothing but the request's own log, cost and audit rows (ai_helper_reserve and
+ * and maybe a draft for the person to copy. It writes nothing but the request's own log, cost and audit rows (ai_helper_reserve_assistant and
  * ai_helper_settle); every link it gives opens an existing page, where the person acts by hand.
  *
  * Off (404) unless BOTH AI_HELPER_ENABLED and AI_ASSISTANT_ENABLED are exactly "true", before any other work. Then: office and admin

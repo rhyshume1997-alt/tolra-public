@@ -62,11 +62,13 @@ function builder(table: string) {
   };
   return q;
 }
+const userRpcs: string[] = [];
 const supabase = {
   from: (table: string) => builder(table),
   rpc: async (fn: string, args: Record<string, unknown>) => {
     db.rpcs.push({ fn, args });
-    if (fn === "ai_helper_reserve") return db.reserve!(args);
+    userRpcs.push(fn);
+    if (fn === "ai_helper_reserve_assistant") return db.reserve!(args);
     if (db.rpcError[fn]) return { data: null, error: db.rpcError[fn] };
     if (fn === "ai_helper_status") return { data: { roundup_enabled: false, rfq_enabled: false, monthly_cap_pence: 500, can_manage: true }, error: null };
     return { data: fn === "ai_helper_save_settings" ? { roundup_enabled: false, rfq_enabled: false } : null, error: null };
@@ -93,12 +95,13 @@ vi.mock("@/lib/server/auth", () => ({
 }));
 
 /** The service role (103): only inside runAiHelper, after a reservation, to read this company's key and settle. */
-const service = vi.hoisted(() => ({ created: 0, reads: [] as Array<{ table: string; filters: Array<[string, unknown]> }>, keyEnc: "" }));
+const service = vi.hoisted(() => ({ created: 0, tables: [] as string[], rpcs: [] as string[], reads: [] as Array<{ table: string; filters: Array<[string, unknown]> }>, keyEnc: "" }));
 vi.mock("@/lib/server/supabase-admin", () => ({
   createSupabaseAdminClient: () => {
     service.created += 1;
     return {
       from: (table: string) => {
+        service.tables.push(table);
         const read = { table, filters: [] as Array<[string, unknown]> };
         const q = {
           select: () => q,
@@ -111,7 +114,7 @@ vi.mock("@/lib/server/supabase-admin", () => ({
         };
         return q;
       },
-      rpc: async (fn: string, args: Record<string, unknown>) => { db.rpcs.push({ fn, args }); return { data: null, error: null }; },
+      rpc: async (fn: string, args: Record<string, unknown>) => { db.rpcs.push({ fn, args }); service.rpcs.push(fn); return { data: null, error: null }; },
     };
   },
 }));
@@ -145,10 +148,10 @@ beforeEach(() => {
   process.env.AI_HELPER_PROVIDER = "mock";
   delete process.env.VERCEL_ENV;
   process.env.INTEGRATIONS_ENCRYPTION_KEY = randomBytes(32).toString("base64");
-  db.rpcs = []; db.reads = []; db.settings = { assistant_enabled: true }; db.settingsError = null; db.readError = null; db.rpcError = {};
+  db.rpcs = []; db.reads = []; userRpcs.length = 0; db.settings = { assistant_enabled: true }; db.settingsError = null; db.readError = null; db.rpcError = {};
   db.rows = { quotes: QUOTES.map((r) => ({ ...r })), jobs: [] };
   db.reserve = () => ({ data: { ok: true, request_id: REQ }, error: null });
-  service.created = 0; service.reads = [];
+  service.created = 0; service.reads = []; service.tables = []; service.rpcs = [];
   service.keyEnc = encryptSecret("sk-ant-test-not-a-real-key-000000", { organizationId: ORG, provider: "anthropic", purpose: "api_key" });
   auth.role = "office"; auth.support = false; auth.calls = 0; auth.roles = [];
   model.calls = 0; model.anthropic = 0; model.last = null;
@@ -198,7 +201,7 @@ describe("off means nothing reaches the AI provider", () => {
     db.reserve = () => ({ data: null, error: { code: "42501", hint: "ai_helper_off" } });
     const res = await ask(post(QUESTION));
     expect(res.status).toBe(404);
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve"]);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve_assistant"]);
     expect(service.reads).toEqual([]);
     noProviderCall();
   });
@@ -269,9 +272,11 @@ describe("an answer, from the caller's own company's records", () => {
     const res = await ask(post(QUESTION));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve", "ai_helper_settle"]);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve_assistant", "ai_helper_settle"]);
     const reserve = db.rpcs[0].args;
-    expect(reserve).toMatchObject({ p_feature: "assistant" });
+    // Its own reserve (133): 103's ai_helper_reserve is never called for the assistant and takes no 'assistant' feature.
+    expect(reserve).not.toHaveProperty("p_feature");
+    expect(Object.keys(reserve).sort()).toEqual(["p_estimate_pence", "p_input_bytes", "p_input_digest"]);
     expect(reserve.p_input_digest).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(reserve)).not.toContain("chaser");
     expect(settleCall()).toMatchObject({ p_request: REQ, p_status: "suggested", p_failure: null, p_model: "claude-sonnet-5-5" });
@@ -283,6 +288,28 @@ describe("an answer, from the caller's own company's records", () => {
     expect(body).toMatchObject({ requestId: REQ, records: 2, refs: [{ ref: "QUO-0102", kind: "quote", href: "/quotes?quote=q-1" }] });
     expect(body.draft).toMatchObject({ kind: "email", subject: "Following up: QUO-0102" });
     expect(body.notice).toMatch(/Nothing was sent, saved or changed/);
+  });
+
+  it("the data comes through the signed-in user's RLS session, never the service role (quotes and jobs)", async () => {
+    db.rows.jobs = [{ id: "j-1", organization_id: ORG, job_no: "J-0042", customer: "Acme Engineering Ltd", stage: "in_progress", created_at: "2026-10-01T08:00:00Z" }];
+    for (const topic of ["quotes", "jobs"] as const) {
+      db.reads = []; service.tables = []; service.rpcs = []; userRpcs.length = 0;
+      expect((await ask(post({ topic, question: "What is waiting?" }))).status).toBe(200);
+      // The user client read the company's switch and the records, for the caller's company.
+      expect(db.reads.map((r) => r.table)).toEqual(["ai_helper_settings", topic]);
+      expect(db.reads.every((r) => r.filters.some(([c, v]) => c === "organization_id" && v === ORG))).toBe(true);
+      // The service client touched only the key table and settle (103), never a record table, and never reserved.
+      expect(service.tables).toEqual(["ai_helper_secrets"]);
+      expect(service.rpcs).toEqual(["ai_helper_settle"]);
+      expect(userRpcs).toEqual(["ai_helper_reserve_assistant"]);
+    }
+    // And in the source: the read helper takes the caller's client; the route passes auth.supabase, never an admin client.
+    const route = readFileSync(path.resolve(__dirname, "../../app/api/ai-helper/assistant/route.ts"), "utf8");
+    expect(route).toMatch(/loadAssistantRows\(auth\.supabase,/);
+    expect(route).toMatch(/readCompanyAssistant\(auth\.supabase,/);
+    for (const f of ["app/api/ai-helper/assistant/route.ts", "lib/ai-helper/assistant-load.ts", "lib/ai-helper/assistant.ts"]) {
+      expect(readFileSync(path.resolve(__dirname, "../..", f), "utf8"), f).not.toMatch(/supabase-admin|createSupabaseAdminClient|SERVICE_ROLE|service_role/);
+    }
   });
 
   it("customer names never reach the model: labels go out, the person sees the names, the log keeps labels", async () => {
@@ -379,7 +406,7 @@ describe("suggest only: nothing is written, sent or done", () => {
     expect(body.refs).toEqual([{ ref: "QUO-0102", kind: "quote", href: "/quotes?quote=q-1" }]);
     expect(body.review).toEqual(expect.arrayContaining([REVIEW_CLAIMED_ACTION, REVIEW_DROPPED_DRAFT, REVIEW_UNKNOWN_REF("QUO-9999"), REVIEW_UNKNOWN_REF("INV-9999")]));
     expect(JSON.stringify(body)).not.toMatch(/send_email|issue_invoice|tool_call|"action"|<script>/);
-    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve", "ai_helper_settle"]);
+    expect(db.rpcs.map((r) => r.fn)).toEqual(["ai_helper_reserve_assistant", "ai_helper_settle"]);
     expect(JSON.stringify(settleCall()?.p_output)).not.toMatch(/send_email|issue_invoice|tool_call/);
   });
 

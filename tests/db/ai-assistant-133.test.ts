@@ -1,7 +1,7 @@
 /**
  * Migration 133 (working number): G3, the AI assistant, a third feature of the AI helper (101/103/122), on the local stack.
  *
- *   - Off by default: every company reads assistant_enabled FALSE; reserve('assistant') is refused (ai_helper_off) even with the
+ *   - Off by default: every company reads assistant_enabled FALSE; ai_helper_reserve_assistant is refused (ai_helper_off) even with the
  *     round-up and RFQ on, a key set and room under the cap, and nothing is reserved or logged as requested.
  *   - Only an admin switches it on (ai_helper_set_assistant through 101's caller check): office, workshop, viewer, a support session and
  *     an admin without the second step (company requires it) are refused; the change is audited (ai_helper_settings_updated).
@@ -11,6 +11,7 @@
  *     or no key is a 'refused' request; 20 at once against room for 10 give exactly 10.
  *   - Two companies: one company's switch changes nothing of the other's; a reserve is always the caller's own company.
  *   - No write path: a signed-in user still cannot write any AI helper table directly, settle stays the service role's.
+ *   - 103's ai_helper_reserve is untouched (its body and its two features): 133 replaces no existing function.
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), as the 101 suite does.
  */
@@ -94,7 +95,10 @@ async function call(p: Person, sql: string, params: unknown[] = []): Promise<Res
 const setAssistant = (p: Person, on: boolean | null) => call(p, "public.ai_helper_set_assistant($1)", [on]);
 const save = (p: Person, roundup: boolean, rfq: boolean, cap: number) => call(p, "public.ai_helper_save_settings($1, $2, $3)", [roundup, rfq, cap]);
 const setKey = (p: Person, enc: string | null, last4: string | null) => call(p, "public.ai_helper_set_key($1, $2)", [enc, last4]);
+/** 103's reserve, unchanged by 133 (roundup and rfq only). */
 const reserve = (p: Person, feature: string, estimate: number) => call(p, "public.ai_helper_reserve($1, $2, $3, $4)", [feature, estimate, DIGEST, 100]);
+/** 133's reserve for the assistant. */
+const reserveAssistant = (p: Person, estimate: number) => call(p, "public.ai_helper_reserve_assistant($1, $2, $3)", [estimate, DIGEST, 100]);
 
 const sql = <T extends Record<string, unknown>>(text: string, params: unknown[] = []) => withDb(async (db) => (await db.query<T>(text, params)).rows);
 const switches = async (org: string) => (await sql<{ roundup_enabled: boolean; rfq_enabled: boolean; assistant_enabled: boolean }>(
@@ -154,11 +158,11 @@ describe("133: the assistant is off by default and only an admin switches it on"
     expect(await sql("select 1 from public.ai_helper_settings where assistant_enabled")).toHaveLength(0);
   });
 
-  it("off: reserve('assistant') refused even with the round-up and RFQ on, a key and room under the cap; nothing is reserved", async () => {
+  it("off: ai_helper_reserve_assistant refused even with the round-up and RFQ on, a key and room under the cap; nothing is reserved", async () => {
     expect(await save(A.admin, true, true, 500)).toMatchObject({ ok: true });
     expect(await setKey(A.admin, KEY_ENC, "WXYZ")).toMatchObject({ ok: true });
     expect(await switches(orgA)).toEqual({ roundup_enabled: true, rfq_enabled: true, assistant_enabled: false });
-    for (const p of [A.admin, A.office]) expect(await reserve(p, "assistant", 5)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    for (const p of [A.admin, A.office]) expect(await reserveAssistant(p, 5)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
     expect(await requests(orgA, "assistant")).toEqual([]);
     expect(await audit(orgA, "ai_helper_requested")).toEqual([]);
     // The other two features still reserve (control).
@@ -185,13 +189,13 @@ describe("133: the assistant is off by default and only an admin switches it on"
   });
 });
 
-describe("133: asking (reserve) once it is on", () => {
+describe("133: asking (ai_helper_reserve_assistant) once it is on", () => {
   it("office and admin reserve an assistant request; workshop and viewer cannot", async () => {
-    const r = await reserve(A.office, "assistant", 5);
+    const r = await reserveAssistant(A.office, 5);
     expect(r).toMatchObject({ ok: true, value: { ok: true } });
     expect(JSON.stringify(r)).not.toContain("key_enc");
-    expect(await reserve(A.admin, "assistant", 5)).toMatchObject({ ok: true, value: { ok: true } });
-    for (const p of [A.workshop, A.viewer, A.support]) expect(await reserve(p, "assistant", 5)).toMatchObject({ ok: false, code: "42501" });
+    expect(await reserveAssistant(A.admin, 5)).toMatchObject({ ok: true, value: { ok: true } });
+    for (const p of [A.workshop, A.viewer, A.support]) expect(await reserveAssistant(p, 5)).toMatchObject({ ok: false, code: "42501" });
     expect((await requests(orgA, "assistant")).map((x) => x.status)).toEqual(["reserved", "reserved"]);
     expect((await audit(orgA, "ai_helper_requested")).filter((e) => e.metadata.feature === "assistant")).toHaveLength(2);
   });
@@ -201,8 +205,8 @@ describe("133: asking (reserve) once it is on", () => {
     await sql("update public.ai_helper_usage set reserved_pence = 0, spent_pence = 0 where organization_id = $1", [orgA]);
     expect(await save(A.admin, false, false, 10)).toMatchObject({ ok: true });
     const before = (await requests(orgA, "assistant")).length;
-    expect(await reserve(A.office, "assistant", 11)).toMatchObject({ ok: true, value: { ok: false, reason: "cap" } });
-    const results = await Promise.all(Array.from({ length: 20 }, () => reserve(A.office, "assistant", 1)));
+    expect(await reserveAssistant(A.office, 11)).toMatchObject({ ok: true, value: { ok: false, reason: "cap" } });
+    const results = await Promise.all(Array.from({ length: 20 }, () => reserveAssistant(A.office, 1)));
     expect(results.filter((x) => x.ok && x.value?.ok === true)).toHaveLength(10);
     expect(results.filter((x) => x.ok && x.value?.reason === "cap")).toHaveLength(10);
     const ledger = (await sql<{ reserved_pence: number; spent_pence: number }>("select reserved_pence, spent_pence from public.ai_helper_usage where organization_id = $1", [orgA]))[0];
@@ -213,14 +217,14 @@ describe("133: asking (reserve) once it is on", () => {
 
   it("no key: a refused request (no_key), nothing reserved", async () => {
     expect(await setKey(A.admin, null, null)).toMatchObject({ ok: true });
-    expect(await reserve(A.office, "assistant", 1)).toMatchObject({ ok: true, value: { ok: false, reason: "no_key" } });
+    expect(await reserveAssistant(A.office, 1)).toMatchObject({ ok: true, value: { ok: false, reason: "no_key" } });
   });
 });
 
 describe("133: two companies, no write path", () => {
   it("company A's switch changes nothing of B's; B's office is refused while B is off; reserve is always the caller's company", async () => {
     expect(await switches(orgB)).toBeNull();
-    expect(await reserve(B.office, "assistant", 1)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    expect(await reserveAssistant(B.office, 1)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
     expect(await setAssistant(B.admin, true)).toMatchObject({ ok: true });
     expect((await switches(orgA))?.assistant_enabled).toBe(true);
     expect(await setAssistant(B.admin, false)).toMatchObject({ ok: true });
@@ -239,7 +243,10 @@ describe("133: two companies, no write path", () => {
     expect((await switches(orgB))?.assistant_enabled).toBe(false);
   });
 
-  it("an unknown feature is still refused", async () => {
+  it("103's ai_helper_reserve is untouched: it still refuses 'assistant' (and any unknown feature) as invalid", async () => {
+    expect(await reserve(A.office, "assistant", 1)).toMatchObject({ ok: false, code: "22023" });
     expect(await reserve(A.office, "chat", 1)).toMatchObject({ ok: false, code: "22023" });
+    expect((await sql<{ v: string }>("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as v from pg_proc where oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')"))[0].v)
+      .toBe("c75e470a73e4d0e7508a27125f6f9e9c");
   });
 });
