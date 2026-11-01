@@ -50,7 +50,7 @@ export function mfaRequired() {
   return NextResponse.json({ error: "Confirm your authenticator code first.", code: MFA_REQUIRED_CODE }, { status: 403 });
 }
 
-/** 403 for an admin whose authenticator code is too old for a password change: they enter a fresh one by signing in again. */
+/** 403 for an admin whose authenticator code is too old for a password change: the browser asks for a fresh one (components/authenticator-code-dialog.tsx). */
 export function mfaRecentRequired() {
   return NextResponse.json({ error: "For your security, enter a fresh code from your authenticator app to change your password.", code: MFA_RECENT_CODE }, { status: 403 });
 }
