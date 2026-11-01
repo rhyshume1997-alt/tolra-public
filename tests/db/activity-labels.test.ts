@@ -98,8 +98,10 @@ describe("Activity log record numbers (080)", () => {
       "insert into public.sales_orders (organization_id, so_number, customer, status, total_value) values ($1, $2, 'No Quote Co', 'confirmed', 0) returning id",
       [alpha().id, soNumber])).rows[0].id as string);
     const made = (await q<{ r: { job_id: string; job_no: string } }>(office(), "select public.convert_sales_order($1) as r", [soId]))[0].r;
-    const job = await withDb(async (db) => (await db.query("select description from public.jobs where id = $1", [made.job_id])).rows[0]);
+    const job = await withDb(async (db) => (await db.query("select description, specification from public.jobs where id = $1", [made.job_id])).rows[0]);
     expect(job.description).toBe(`Converted from ${soNumber}`);
+    // No customer PO: the job sheet still names the sales order (134 changes only orders with a PO).
+    expect(job.specification).toBe(`Sales order ${soNumber}.`);
     const rows = (await activity()).filter((r) => r.record_table === "jobs" && r.record_id === made.job_id);
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.map((r) => recordLabel(r))).toEqual(rows.map(() => made.job_no));

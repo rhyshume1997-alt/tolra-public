@@ -165,7 +165,8 @@ markers(migration, present) AS (
     ('125 inbound email links',           EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.link_inbound_email(uuid, text, uuid, text, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2f7a1169a7087cf17a3f872a8f08a088')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'inbound_emails' AND column_name = 'link_suggestions')),
     ('126 booking time zero quote guards', EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delete_machine_booking(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1fee96ce68caa2bcbf89f416587e75ba')
-                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.accept_quote(uuid, text, date, uuid[])') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4f354d3878197aabe53db19807f99305'))
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.accept_quote(uuid, text, date, uuid[])') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4f354d3878197aabe53db19807f99305')),
+    ('134 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '19ea0511f08e5c4439332dc7ee110bad'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
