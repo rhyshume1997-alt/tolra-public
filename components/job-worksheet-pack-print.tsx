@@ -82,7 +82,7 @@ export function JobWorksheetPackPrint({ sheets }: { sheets: PackSheet[] }) {
             return (
               <tr key={id} className="align-top" style={{ breakInside: "avoid" }}>
                 <td className="border border-black px-1 py-1"><p className="font-mono text-[10.5px] font-bold">{ws.job_no}</p><p>{ws.customer}</p></td>
-                <td className="border border-black px-1 py-1"><Pair a={["PO", ws.customer_po]} b={["Quote", ws.quote_ref]} /></td>
+                <td className="border border-black px-1 py-1"><Pair a={["Customer PO", ws.customer_po]} b={["Quote", ws.quote_ref]} /></td>
                 <td className="border border-black px-1 py-1"><Pair a={["In", fmtDate(ws.date_received)]} b={["Req", fmtDate(ws.date_required)]} /></td>
                 <td className="border border-black px-1 py-1 break-words whitespace-pre-wrap">{ws.description}</td>
                 <td className="border border-black px-1 py-1 break-words"><Pair a={["Dwg", ws.drawing_no]} b={["Qty", ws.quantity_required]} /></td>

@@ -61,6 +61,7 @@ import { ValidationError, deliveryNoteEditSchema, deliveryNoteSaveSchema, parseO
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
 import { type NoteSource, defaultNoteSource } from "@/lib/delivery-note-source";
 import { REASON_LABEL, isMissingFunction, toUninvoiced } from "@/lib/uninvoiced";
+import { customerPoText } from "@/lib/customer-po";
 
 const DN_FILTER_LABELS: Record<string, string> = { "awaiting-old": "Delivery notes awaiting for over a day", "not-invoiced": "Delivery notes despatched with no invoice" };
 
@@ -89,6 +90,8 @@ type DeliveryNoteRow = {
   shipDate?: string;
   shipVia?: string;
   items?: Array<{ description: string; quantity: number }>;
+  /** The sales order the note was made from (034), whose customer PO the PDF prints (123). */
+  salesOrderId?: string;
   /** True for sample rows that exist only in demo mode. */
   demo?: boolean;
 };
@@ -211,6 +214,7 @@ export default function DeliveryNotesPage() {
         taxDate: row.tax_date || "",
         shipDate: row.ship_date || row.delivery_date || "",
         shipVia: row.ship_via || "",
+        salesOrderId: row.sales_order_id ? String(row.sales_order_id) : undefined,
       })));
     } catch (err) {
       setLoadError(friendlyError(err, "Couldn't load delivery notes."));
@@ -471,6 +475,10 @@ export default function DeliveryNotesPage() {
     const shipDate = note.shipDate || note.date;
     // The job's customer sign-off (072), when it has one; none (or 072 not applied) leaves the note as it was.
     const customerSignOff = supabase && !note.demo ? await deliveryNoteCustomerSignOff(supabase, note.id) : undefined;
+    // The customer's PO of the note's order (123), printed as "Customer PO" when it has one. A failed read prints none, as before.
+    const customerPo = supabase && !note.demo && note.salesOrderId
+      ? customerPoText((await supabase.from("sales_orders").select("customer_po").eq("id", note.salesOrderId).maybeSingle()).data?.customer_po as string | null | undefined) ?? undefined
+      : undefined;
     // The PDF code is loaded when a PDF is made, not with the page.
     const { DeliveryNotePDF } = await import("@/components/pdf/DeliveryNotePDF");
     return (
@@ -482,6 +490,7 @@ export default function DeliveryNotesPage() {
           shipVia: note.shipVia,
           billTo,
           items,
+          customerPo,
           customerSignOff,
           company: profile,
         }}
