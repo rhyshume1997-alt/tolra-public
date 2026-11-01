@@ -71,35 +71,46 @@ export function awaitsCustomerPo(order: { customerPo?: string | null; ref: strin
   return !order.customerPo?.trim() && /^SO-\d{4,}$/.test(order.ref);
 }
 
-export function acceptOutcome(result: AcceptQuoteResult, ref = result.quote_ref ?? "The quote"): AcceptOutcome {
-  const salesOrders = { label: "Open Sales Orders", href: "/sales-orders" };
+/** Said to staff when Sales Orders is off and an order has to be entered or converted by hand, which only the Sales Orders screen can do. */
+const SWITCH_ON_HINT = "An admin needs to switch Sales Orders on in Settings > Menu first.";
+
+/**
+ * What to tell staff after Mark accepted. `salesOrdersOn` is false while Sales Orders is switched off for the company (the default,
+ * lib/sales-orders-switch): the order is still made behind the scenes, so the wording stops pointing at a screen nobody can open, and
+ * a case that does need that screen says so plainly instead of linking to it.
+ */
+export function acceptOutcome(result: AcceptQuoteResult, ref = result.quote_ref ?? "The quote", salesOrdersOn = true): AcceptOutcome {
+  const salesOrders = salesOrdersOn ? { label: "Open Sales Orders", href: "/sales-orders" } : null;
+  const state = result.accepted ? "accepted" : "is accepted";
   if (!result.so_id) {
     const why = result.reason ?? "No sales order could be made from it.";
-    return {
-      tone: "warning",
-      message: `${ref} ${result.accepted ? "accepted" : "is accepted"}, but it needs a sales order by hand. ${why}`,
-      link: salesOrders,
-    };
+    if (!salesOrdersOn) return { tone: "warning", message: `${ref} ${state}, but its order has to be entered by hand. ${why} ${SWITCH_ON_HINT}`, link: null };
+    return { tone: "warning", message: `${ref} ${state}, but it needs a sales order by hand. ${why}`, link: salesOrders };
   }
   const ordered = result.lines_ordered ?? 0;
   const declined = result.lines_declined ?? 0;
   const partial = result.accepted && ordered && declined ? ` for ${ordered} of ${ordered + declined} lines` : "";
   const order = `sales order ${result.so_number ?? ""}`.trim() + partial;
   const provisional = result.provisional ? " (a provisional number: add the customer's PO on Sales Orders when it arrives)" : "";
+  // Off: the order exists but has no screen, so it is not named; the PO can only be added once an admin switches Sales Orders on.
+  const poLater = result.provisional ? " Its customer PO can be added once Sales Orders is switched on." : "";
   if (!result.accepted) {
     const job = result.job_no ? ` and job ${result.job_no}` : "";
-    return { tone: "info", message: `${ref} was already accepted: it has ${order}${job}. Nothing was changed.`, link: result.job_no ? jobLink(result, result.job_no) : salesOrders };
+    const has = salesOrdersOn ? `it has ${order}${job}` : result.job_no ? `it has job ${result.job_no}` : "its order is already made";
+    return { tone: "info", message: `${ref} was already accepted: ${has}. Nothing was changed.`, link: result.job_no ? jobLink(result, result.job_no) : salesOrders };
   }
   if (result.job_no) {
     return {
       tone: "success",
-      message: `${ref} accepted. ${capitalise(order)} created${provisional} and job ${result.job_no} made, not started.`,
+      message: salesOrdersOn ? `${ref} accepted. ${capitalise(order)} created${provisional} and job ${result.job_no} made, not started.` : `${ref} accepted. Job ${result.job_no} made, not started.${poLater}`,
       link: jobLink(result, result.job_no),
     };
   }
   if (result.job_reason) {
-    return { tone: "warning", message: `${ref} accepted. ${capitalise(order)} created${provisional}. ${result.job_reason}`, link: salesOrders };
+    const message = salesOrdersOn ? `${ref} accepted. ${capitalise(order)} created${provisional}. ${result.job_reason}` : `${ref} accepted, but its job was not made. ${result.job_reason} ${SWITCH_ON_HINT}`;
+    return { tone: "warning", message, link: salesOrders };
   }
+  if (!salesOrdersOn) return { tone: "warning", message: `${ref} accepted, but no job was made: your company turns orders into jobs by hand. ${SWITCH_ON_HINT}`, link: null };
   return {
     tone: "success",
     message: `${ref} accepted. ${capitalise(order)} created${provisional}. Convert it to a job on Sales Orders when you're ready.`,
