@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { GraphError, isGraphLink, listInboxSince, MAX_PAGES } from "@/lib/m365/graph";
 import { graphFailure, mailGuard } from "@/lib/m365/route";
+import { type StoredMessage, suggestPoLinks } from "@/lib/po-capture-load";
 import { isErrorResponse, jsonError } from "@/lib/server/auth";
 
 /** With nothing stored yet, the first check looks back this far (24 hours). */
@@ -13,6 +14,9 @@ const FIRST_LOOKBACK_MS = 24 * 3600_000;
  * Returns { read, inserted, duplicates, more }; more = true when the page limit stopped the check. The place it stopped
  * (Microsoft's paging link) is kept per company (mail_poll_state), so the next check carries on from there, however many
  * messages share one time.
+ * Each NEW message that carries a PO number is then matched against the company's quotes and purchase orders and the candidates are saved
+ * as suggestions only (lib/po-capture-load, migration 125): nothing is linked until a person clicks Link, and a failure there never fails
+ * the check (reported as poCapture). The mailbox is only read.
  */
 export async function POST(request: Request) {
   const ctx = await mailGuard(request);
@@ -62,6 +66,7 @@ export async function POST(request: Request) {
 
   let inserted = 0;
   let duplicates = 0;
+  const stored: StoredMessage[] = [];
   for (const m of messages) {
     const { data, error } = await supabase.rpc("record_inbound_email", {
       p_graph_message_id: m.id,
@@ -77,8 +82,11 @@ export async function POST(request: Request) {
       console.error("[mail/poll] store failed", error.code);
       return NextResponse.json({ error: "Could not store some messages", read: messages.length, inserted, duplicates, more }, { status: 500 });
     }
-    if ((data as { inserted?: boolean } | null)?.inserted) inserted += 1;
-    else duplicates += 1;
+    const row = data as { inserted?: boolean; inbound_email_id?: string | null } | null;
+    if (row?.inserted) {
+      inserted += 1;
+      if (row.inbound_email_id) stored.push({ inboundEmailId: row.inbound_email_id, email: { fromAddress: m.from, subject: m.subject, bodyText: m.bodyText } });
+    } else duplicates += 1;
   }
 
   // Stopped at the page limit: keep the link to carry on from. Reached the end: clear it and move the checkpoint on to the
@@ -86,5 +94,7 @@ export async function POST(request: Request) {
   const newest = messages.length ? messages[messages.length - 1].receivedAt : null;
   const { error: saveError } = await saveState(more ? nextLink : null, newest);
   if (saveError) console.error("[mail/poll] state not saved", saveError.code);
-  return NextResponse.json({ read: messages.length, inserted, duplicates, more });
+  // Suggestions only, after the messages and the paging state are saved; never fails the check.
+  const poCapture = await suggestPoLinks(supabase, stored);
+  return NextResponse.json({ read: messages.length, inserted, duplicates, more, poCapture });
 }
