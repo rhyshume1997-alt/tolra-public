@@ -60,7 +60,7 @@ test("Create Invoice: picking a job fills the customer, quote and PO and links t
   const customerSelect = dialog.locator("select[name=customer]");
   const jobSelect = dialog.locator("select[name=job]");
   const quoteInput = dialog.getByPlaceholder("Our quote no. (QUO-0123)");
-  const poInput = dialog.getByPlaceholder("Customer order no.");
+  const poInput = dialog.getByPlaceholder("Customer PO", { exact: true });
 
   // The job is searched by its number; picking it fills the three fields from the job.
   await dialog.getByLabel("Search by number or customer").fill(jobOne.job_no);

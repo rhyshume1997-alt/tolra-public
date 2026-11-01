@@ -7,6 +7,7 @@ import { GRAPH_BASE, type MicrosoftReady, microsoftTokenSource } from "@/lib/int
 import { type MailSyncCode, mailSyncReason } from "@/lib/integrations/overview";
 import { DbError } from "@/lib/integrations/server";
 import { type GraphMessage, INBOX_SELECT, type InboxMessage, isGraphLink, toInboxMessage } from "@/lib/m365/graph";
+import { type PoCaptureSummary, suggestPoLinks } from "@/lib/po-capture-load";
 
 // Reading the company's own inbox with its delegated Microsoft 365 sign-in (C1, migration 127). No tenant id, mailbox setting or Exchange
 // step: the connected user's own mailbox through /me, with delegated Mail.Read. Read only: GET requests only (reading does not mark a
@@ -18,6 +19,9 @@ import { type GraphMessage, INBOX_SELECT, type InboxMessage, isGraphLink, toInbo
 // IDEMPOTENT: 031's UNIQUE (organization_id, graph_message_id) through 127's mailbox_record_inbound (the browser check, the Check inbox
 // button and the server's pass alike): the same page read twice stores nothing new.
 // THROTTLED: one real check per company per MIN_CHECK_INTERVAL_S (127's mailbox_sync_claim), whoever asks.
+// PO CAPTURE (125): after a check, the messages it stored for the first time go through the same suggest-only PO matching as the legacy
+// check (lib/po-capture-load), for that company only (every read filtered to it; 127's mailbox_suggest_email_link, which cannot link).
+// It never fails the check and nothing is linked until a person clicks Link.
 
 const TIMEOUT_MS = 15_000;
 export const MAX_PAGES = 20;
@@ -214,6 +218,12 @@ export async function claimMailbox(service: SupabaseClient, org: string, minSeco
   return { state: "not_readable" };
 }
 
+/** 125's suggest-only PO matching on the messages one company's check stored for the first time, for that company only. Never throws. */
+export function suggestForCompany(service: SupabaseClient, org: string, outcome: PollOutcome): Promise<PoCaptureSummary> {
+  const stored = outcome.stored.map((s) => ({ inboundEmailId: s.inboundEmailId, email: { fromAddress: s.message.from, subject: s.message.subject, bodyText: s.message.bodyText } }));
+  return suggestPoLinks(service, stored, { org });
+}
+
 /** What the browser is told about one company's inbox check (the browser check and the Check inbox button): nothing else. */
 export type InboxCheckStatus = "checked" | "recent" | "needs_reconnect" | "failed" | "not_connected";
 export type InboxCheckSummary = { checked_at: string | null; new: number; status: InboxCheckStatus; reason: string };
@@ -249,24 +259,31 @@ export async function checkCompanyInbox(deps: { service: SupabaseClient; ready: 
     fetchImpl: deps.fetchImpl,
     now,
   });
+  // Suggestions only, after the messages and the cursor are saved; the browser is told nothing more (the summary below only).
+  await suggestForCompany(deps.service, deps.org, outcome);
   const at = new Date(now()).toISOString();
   if (outcome.error) return failedSummary(outcome.error, at);
   const n = outcome.inserted;
   return { checked_at: at, new: n, status: "checked", reason: n ? `Inbox checked: ${n} new e-mail${n === 1 ? "" : "s"}.` : "Inbox checked: nothing new." };
 }
 
-export type MailboxPassSummary = { companies: number; checked: number; read: number; inserted: number; duplicates: number; failed: number; throttled: number; skipped?: string };
+/** poSuggested: PO suggestions saved (125, suggestions only); poFailed: companies whose PO step had a failure (their check still counts). */
+export type MailboxPassSummary = {
+  companies: number; checked: number; read: number; inserted: number; duplicates: number; failed: number; throttled: number;
+  poSuggested: number; poFailed: number; skipped?: string;
+};
 
 /**
  * The background pass: every connection whose inbox may be read now (127's mailbox_sync_due: connected, Mail.Read, the same mailbox),
  * one company at a time, each with only its own token, rows and cursor, each claimed first (claimMailbox: one check per company per
- * interval, so the pass and the browser checks never double up). A company that fails (or must reconnect) never stops the next.
+ * interval, so the pass and the browser checks never double up), then its new messages' PO suggestions (125, that company only). A
+ * company that fails (or must reconnect) never stops the next.
  * Counts only in the result. Stops starting new companies after budgetMs.
  */
 export async function runMailboxPollPass(deps: { service: SupabaseClient; ready: MicrosoftReady; fetchImpl?: typeof fetch; now?: () => number; budgetMs?: number; minIntervalSeconds?: number }): Promise<MailboxPassSummary> {
   const now = deps.now ?? Date.now;
   const started = now();
-  const summary: MailboxPassSummary = { companies: 0, checked: 0, read: 0, inserted: 0, duplicates: 0, failed: 0, throttled: 0 };
+  const summary: MailboxPassSummary = { companies: 0, checked: 0, read: 0, inserted: 0, duplicates: 0, failed: 0, throttled: 0, poSuggested: 0, poFailed: 0 };
   const { data, error } = await deps.service.rpc("mailbox_sync_due", { p_org: null });
   if (error) {
     if (missingDbObject(error)) return { ...summary, skipped: "database update 127 is not applied" };
@@ -297,6 +314,9 @@ export async function runMailboxPollPass(deps: { service: SupabaseClient; ready:
     summary.inserted += outcome.inserted;
     summary.duplicates += outcome.duplicates;
     if (outcome.error) summary.failed += 1;
+    const po = await suggestForCompany(deps.service, org, outcome);
+    summary.poSuggested += po.suggested;
+    if (po.status === "failed" || po.failed > 0) summary.poFailed += 1;
   }
   return summary;
 }

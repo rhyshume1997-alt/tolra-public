@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyList } from "@/components/empty-list";
+import { EmailLinkPanel, EmailViewer, type LinkedEmail, loadLinkedEmails } from "@/components/inbound-email-links";
 import { rfqEmptyHint } from "@/lib/empty-hints";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -115,6 +116,16 @@ export default function RfqPage() {
   // Microsoft 365 mail (admin only): RFQs made from an e-mail (rfq id -> stored message id), and the reply / forward dialog.
   const [inboundByRfq, setInboundByRfq] = useState<Map<string, string>>(new Map());
   const [mailLinksFailed, setMailLinksFailed] = useState(false);
+  // Customer PO / supplier e-mails linked or suggested (migration 125; empty without it), by RFQ, and the e-mail open in the viewer.
+  const [emailLinks, setEmailLinks] = useState<Map<string, LinkedEmail>>(new Map());
+  const [viewEmail, setViewEmail] = useState<string | null>(null);
+  // /rfq?email=<id> (the quote screen's "View email"): open that stored e-mail once.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("email");
+    if (!id) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    setViewEmail(id);
+  }, []);
   const [checking, setChecking] = useState(false);
   // null until the server says how this company's inbox is read; there is no Check inbox button until it can be (hidden until built, Rhys
   // Tue 20 Oct). "delegated": its own Microsoft 365 connection (C1, /api/mail/check: admin and office); "legacy": the app-only mailbox
@@ -181,6 +192,8 @@ export default function RfqPage() {
       const { data: inboundRows, error: inboundError } = await supabase.from("inbound_emails").select("id, rfq_id").not("rfq_id", "is", null);
       setMailLinksFailed(Boolean(inboundError));
       setInboundByRfq(new Map((inboundRows ?? []).map((row) => [String(row.rfq_id), String(row.id)])));
+      // Never holds the list up and never an error: without 125 (or if this read fails) there is simply nothing to show.
+      void loadLinkedEmails().then((rows) => setEmailLinks(new Map((rows ?? []).filter((email) => email.rfqId).map((email) => [email.rfqId!, email]))));
       setLinked(linkedQuotes(quoteRows ?? []));
       setRfqs((data as Array<Record<string, unknown>>).map((rfq) => ({
         id: String(rfq.id),
@@ -408,6 +421,7 @@ export default function RfqPage() {
                           ))}
                         </p>
                       ) : null}
+                      {emailLinks.get(rfq.id) ? <div className="mt-3"><EmailLinkPanel email={emailLinks.get(rfq.id)!} onViewEmail={setViewEmail} onLinked={() => void loadRfqs()} /></div> : null}
                     </div>
                   </div>
                   <div data-rfq-field="actions" className="flex flex-wrap gap-2">
@@ -425,6 +439,7 @@ export default function RfqPage() {
       <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
         <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Full RFQ information</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p>{rfqSpec(viewing.quantity, viewing.material).quantity ? <p><strong>Quantity:</strong> {rfqSpec(viewing.quantity, viewing.material).quantity}</p> : null}{rfqSpec(viewing.quantity, viewing.material).material ? <p className="break-words"><strong>Material:</strong> {rfqSpec(viewing.quantity, viewing.material).material}</p> : null}<p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
       </Dialog>
+      <EmailViewer emailId={viewEmail} onClose={() => setViewEmail(null)} />
       <Dialog open={Boolean(mailing)} onOpenChange={(open) => !open && setMailing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>{mailing?.mode === "forward" ? "Forward email" : "Reply to email"}</DialogTitle><DialogDescription>{mailing?.rfq.customer}{mailing?.mode === "reply" && mailing.rfq.email ? ` (${mailing.rfq.email})` : ""}. Sent from the connected Microsoft 365 mailbox.</DialogDescription></DialogHeader>

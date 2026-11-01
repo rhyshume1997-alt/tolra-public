@@ -74,7 +74,7 @@ DECLARE
   C CONSTANT UUID := '12700000-0000-0000-0000-0000000000c0';
   A_ADMIN CONSTANT UUID := '12700000-0000-0000-0000-0000000000a1'; A_OFFICE CONSTANT UUID := '12700000-0000-0000-0000-0000000000a2';
   B_ADMIN CONSTANT UUID := '12700000-0000-0000-0000-0000000000b1'; C_ADMIN CONSTANT UUID := '12700000-0000-0000-0000-0000000000c1';
-  r TEXT; s public.integration_mailbox_sync%ROWTYPE; b_before TEXT; b_after TEXT; n INT;
+  r TEXT; s public.integration_mailbox_sync%ROWTYPE; b_before TEXT; b_after TEXT; n INT; ea UUID; eb UUID;
 BEGIN
   -- 1. The table and the server functions are closed to the API.
   IF has_table_privilege('authenticated', 'public.integration_mailbox_sync', 'SELECT') OR has_table_privilege('anon', 'public.integration_mailbox_sync', 'SELECT') THEN
@@ -223,6 +223,59 @@ BEGIN
   r := format('SELECT public.mailbox_sync_claim(%L, 0)::TEXT', A);
   IF pg_temp.as_user(A_ADMIN, r) NOT LIKE '42501/%' OR pg_temp.as_user(A_OFFICE, r) NOT LIKE '42501/%' OR pg_temp.as_user(NULL, r) NOT LIKE '42501/%' THEN RAISE EXCEPTION 'FAIL 10 API may claim'; END IF;
   RAISE NOTICE 'PASS 10 claim: once per interval per company (B separate), again after it; never for an unreadable company; not callable through the API';
+
+  -- 11. 125's PO capture on a server check (mailbox_suggest_email_link): a SUGGESTION for the given company's own new e-mail only; it
+  -- never links (no quote PO, no linked ids); another company's e-mail, quote or order reads "not found"; a person's link stands; the
+  -- API can't call it; an unreadable company is refused.
+  INSERT INTO public.quotes (id, organization_id, quote_ref, customer, status) VALUES
+    ('12700000-0000-0000-0000-00000000c0a1', A, 'QUO-P127-A', 'Acme Ltd', 'sent'),
+    ('12700000-0000-0000-0000-00000000c0b1', B, 'QUO-P127-B', 'B Ltd', 'sent');
+  INSERT INTO public.purchase_orders (id, organization_id, po_ref, po_number, supplier, status) VALUES
+    ('12700000-0000-0000-0000-00000000d0a1', A, 'PO-P127-A', 'PO-P127-A', 'Steel Co', 'sent');
+  r := pg_temp.rec(A, 'po-a-1');
+  ea := (substr(r, 4)::JSONB ->> 'inbound_email_id')::UUID;
+  r := pg_temp.rec(B, 'po-b-1');
+  eb := (substr(r, 4)::JSONB ->> 'inbound_email_id')::UUID;
+  IF ea IS NULL OR eb IS NULL THEN RAISE EXCEPTION 'FAIL 11 fixture: %', r; END IF;
+  b_before := (SELECT string_agg(row_to_json(x)::TEXT, '|' ORDER BY x.id) FROM public.inbound_emails x WHERE x.organization_id = B);
+  r := pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, ''4471'')::TEXT', A, ea, '12700000-0000-0000-0000-00000000c0a1'));
+  IF substr(r, 4)::JSONB ->> 'changed' <> 'true' OR substr(r, 4)::JSONB ->> 'link_status' <> 'suggested' THEN RAISE EXCEPTION 'FAIL 11 suggest: %', r; END IF;
+  r := pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''purchase_order'', %L, NULL)::TEXT', A, ea, '12700000-0000-0000-0000-00000000d0a1'));
+  IF substr(r, 4)::JSONB ->> 'changed' <> 'true' THEN RAISE EXCEPTION 'FAIL 11 suggest order: %', r; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.inbound_emails x WHERE x.id = ea AND x.link_status = 'suggested' AND jsonb_array_length(x.link_suggestions) = 2
+                 AND x.linked_quote_id IS NULL AND x.linked_purchase_order_id IS NULL AND x.linked_po_number IS NULL
+                 AND x.link_suggestions -> 0 = '{"kind": "quote", "id": "12700000-0000-0000-0000-00000000c0a1", "ref": "QUO-P127-A", "po": "4471"}'::JSONB) THEN
+    RAISE EXCEPTION 'FAIL 11 suggestions not stored as suggestions only'; END IF;
+  IF (SELECT customer_po FROM public.quotes WHERE id = '12700000-0000-0000-0000-00000000c0a1') IS NOT NULL THEN RAISE EXCEPTION 'FAIL 11 quote PO written'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM security_audit.audit_log l WHERE l.action = 'SUGGEST_EMAIL_LINK' AND l.entity_id = ea::TEXT AND l.organization_id = A
+                 AND l.actor_user_id IS NULL AND l.metadata ->> 'via' = 'inbox_check' AND l.metadata ->> 'target_ref' = 'QUO-P127-A') THEN RAISE EXCEPTION 'FAIL 11 audit'; END IF;
+  -- The same candidate again adds nothing.
+  r := pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, ''4471'')::TEXT', A, ea, '12700000-0000-0000-0000-00000000c0a1'));
+  IF substr(r, 4)::JSONB ->> 'changed' <> 'false' OR (SELECT jsonb_array_length(link_suggestions) FROM public.inbound_emails WHERE id = ea) <> 2 THEN RAISE EXCEPTION 'FAIL 11 again: %', r; END IF;
+  -- Another company's quote, another company's e-mail, an e-mail pointed at through the wrong company: not found.
+  IF pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, ''4471'')::TEXT', A, ea, '12700000-0000-0000-0000-00000000c0b1')) NOT LIKE 'P0002/%'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, ''4471'')::TEXT', A, eb, '12700000-0000-0000-0000-00000000c0a1')) NOT LIKE 'P0002/%'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, ''4471'')::TEXT', B, ea, '12700000-0000-0000-0000-00000000c0b1')) NOT LIKE 'P0002/%'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''purchase_order'', %L, NULL)::TEXT', B, eb, '12700000-0000-0000-0000-00000000d0a1')) NOT LIKE 'P0002/%' THEN
+    RAISE EXCEPTION 'FAIL 11 cross-company not refused'; END IF;
+  b_after := (SELECT string_agg(row_to_json(x)::TEXT, '|' ORDER BY x.id) FROM public.inbound_emails x WHERE x.organization_id = B);
+  IF b_after IS DISTINCT FROM b_before THEN RAISE EXCEPTION 'FAIL 11 B changed'; END IF;
+  -- Bad arguments; an unreadable company (C needs reconnect; unknown) is refused.
+  IF pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''auto'', %L, NULL)::TEXT', A, ea, '12700000-0000-0000-0000-00000000c0a1')) NOT LIKE '22023/%'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, NULL, ''quote'', %L, NULL)::TEXT', A, '12700000-0000-0000-0000-00000000c0a1')) NOT LIKE '22023/%'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, %L)::TEXT', A, ea, '12700000-0000-0000-0000-00000000c0a1', repeat('9', 101))) NOT LIKE '22023/%'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, NULL)::TEXT', C, ea, '12700000-0000-0000-0000-00000000c0a1')) <> '42501/mailbox_not_readable'
+     OR pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(NULL, %L, ''quote'', %L, NULL)::TEXT', ea, '12700000-0000-0000-0000-00000000c0a1')) <> '42501/mailbox_not_readable' THEN
+    RAISE EXCEPTION 'FAIL 11 bad args or unreadable company accepted'; END IF;
+  -- A person's link stands: once linked by hand, a server suggestion changes nothing.
+  UPDATE public.inbound_emails SET link_status = 'manual', linked_quote_id = '12700000-0000-0000-0000-00000000c0a1', link_suggestions = '[]' WHERE id = ea;
+  r := pg_temp.svc(format('SELECT public.mailbox_suggest_email_link(%L, %L, ''purchase_order'', %L, NULL)::TEXT', A, ea, '12700000-0000-0000-0000-00000000d0a1'));
+  IF substr(r, 4)::JSONB ->> 'changed' <> 'false' OR (SELECT link_status FROM public.inbound_emails WHERE id = ea) <> 'manual'
+     OR (SELECT jsonb_array_length(link_suggestions) FROM public.inbound_emails WHERE id = ea) <> 0 THEN RAISE EXCEPTION 'FAIL 11 manual overridden: %', r; END IF;
+  -- Not callable through the API (a signed-in admin or office user, or anon).
+  r := format('SELECT public.mailbox_suggest_email_link(%L, %L, ''quote'', %L, NULL)::TEXT', A, ea, '12700000-0000-0000-0000-00000000c0a1');
+  IF pg_temp.as_user(A_ADMIN, r) NOT LIKE '42501/%' OR pg_temp.as_user(A_OFFICE, r) NOT LIKE '42501/%' OR pg_temp.as_user(NULL, r) NOT LIKE '42501/%' THEN RAISE EXCEPTION 'FAIL 11 API may suggest'; END IF;
+  RAISE NOTICE 'PASS 11 server PO suggestion: own company''s e-mail and records only, suggestion only (no link, no quote PO), once per candidate, a person''s link stands, not callable through the API';
 END
 $$;
 ROLLBACK;

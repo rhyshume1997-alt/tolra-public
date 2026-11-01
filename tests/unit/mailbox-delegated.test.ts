@@ -13,6 +13,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// 125's PO step, kept as it is (tests/unit/po-capture-poll.test.ts covers it): only watched, to see what each check hands it.
+vi.mock("@/lib/po-capture-load", async (orig) => {
+  const m = await orig<typeof import("@/lib/po-capture-load")>();
+  return { ...m, suggestPoLinks: vi.fn(m.suggestPoLinks) };
+});
 
 import { encryptSecret } from "@/lib/integrations/crypto";
 import { finishMicrosoftConnect } from "@/lib/integrations/microsoft/connect";
@@ -20,6 +25,8 @@ import { MailReadError, listMyInbox, pollMailbox, runMailboxPollPass } from "@/l
 import { MICROSOFT_SCOPES, authorizeUrl, grantsMailRead, refreshTokens } from "@/lib/integrations/microsoft/oauth";
 import { type MailSyncCode, mailSyncLine, mailSyncReason } from "@/lib/integrations/overview";
 import { hashState } from "@/lib/integrations/xero/oauth";
+import { toInboxMessage } from "@/lib/m365/graph";
+import { suggestPoLinks } from "@/lib/po-capture-load";
 
 const A = "aaaaaaaa-0000-4000-8000-00000000000a";
 const B = "bbbbbbbb-0000-4000-8000-00000000000b";
@@ -241,7 +248,7 @@ describe("isolation: each company's token is used only for that company, and its
     const db = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B") });
     const ms = fakeMicrosoft({ "AT-A": { body: PAGE_A }, "AT-B": { body: PAGE_B } });
     const summary = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl });
-    expect(summary).toEqual({ companies: 2, checked: 2, read: 3, inserted: 3, duplicates: 0, failed: 0, throttled: 0 });
+    expect(summary).toEqual({ companies: 2, checked: 2, read: 3, inserted: 3, duplicates: 0, failed: 0, throttled: 0, poSuggested: 0, poFailed: 0 });
     expect([...db.inbound.values()].map((r) => `${r.org === A ? "A" : "B"}:${r.id}`).sort()).toEqual(["A:a-1", "A:a-2", "B:b-1"]);
     for (const c of db.calls.filter((x) => x.fn === "mailbox_record_inbound")) {
       expect(String(c.args.p_graph_message_id).startsWith(c.args.p_org === A ? "a-" : "b-")).toBe(true);
@@ -652,6 +659,12 @@ describe("/api/mail/check: admin and office of the session's company only; one r
     expect(service.calls.filter((c) => c.fn === "mailbox_record_inbound").every((c) => c.args.p_org === A)).toBe(true);
     expect([...service.inbound.values()].every((r) => r.org === A)).toBe(true);
     expect(userRpc.some((c) => c.fn === "record_inbound_email")).toBe(false); // office can't call 031's admin function: the server stores it
+    // 125's PO step ran on the server's client for A only, on A's two new messages; nothing of it reaches the browser (the shape above).
+    const [poClient, poStored, poScope] = vi.mocked(suggestPoLinks).mock.calls.at(-1)!;
+    expect(poClient).toBe(service.client);
+    expect(poScope).toEqual({ org: A });
+    expect(poStored.map((m) => m.inboundEmailId)).toEqual(["ie-1", "ie-2"]);
+    expect(userRpc.some((c) => c.fn === "link_inbound_email")).toBe(false);
   });
 
   it("throttle: another check within 90 s (another tab, the admin, the button) reads nothing and answers recent; after 90 s it reads again, storing nothing twice", async () => {
@@ -766,5 +779,67 @@ describe("/api/mail/check: admin and office of the session's company only; one r
     const failed = await res.json();
     expect(Object.keys(failed).sort()).toEqual(["checked_at", "new", "reason", "status"]);
     expect(JSON.stringify(failed)).not.toMatch(/secret|57014/);
+  });
+});
+
+describe("PO capture (125) on the delegated check: suggest only, for that company only, never failing the check", () => {
+  const poSpy = vi.mocked(suggestPoLinks);
+  const SUMMARY = { status: "ok" as const, customerPo: true, checked: 1, suggested: 1, failed: 0 };
+  beforeEach(() => poSpy.mockClear());
+
+  it("the pass hands each company only the messages it stored for the first time, scoped to that company; counts in the summary", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A"), [B]: company(B, "oid-b", "AT-B") });
+    const ms = fakeMicrosoft({ "AT-A": { body: [msg("a-1", "2026-11-01T09:00:00Z", "PO 4471 for QUO-0012")] }, "AT-B": { body: PAGE_B } });
+    poSpy.mockResolvedValueOnce(SUMMARY).mockResolvedValueOnce({ ...SUMMARY, status: "failed", suggested: 0 });
+    const summary = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl });
+    expect(summary).toMatchObject({ checked: 2, inserted: 2, failed: 0, poSuggested: 1, poFailed: 1 });
+    expect(poSpy).toHaveBeenCalledTimes(2);
+    const byOrg = new Map(poSpy.mock.calls.map(([client, stored, scope]) => [scope!.org, { client, stored }]));
+    expect([...byOrg.keys()].sort()).toEqual([A, B]);
+    expect(byOrg.get(A)!.client).toBe(db.client);
+    expect(byOrg.get(A)!.stored).toEqual([{ inboundEmailId: "ie-1", email: { fromAddress: "buyer@example.test", subject: "PO 4471 for QUO-0012", bodyText: expect.anything() } }]);
+    expect(byOrg.get(B)!.stored.map((m) => m.email.subject)).toEqual(["B secret project"]);
+  });
+
+  it("a message read again (already stored) is not matched again, and the check stands", async () => {
+    const db = fakeDb({ [A]: company(A, "oid-a", "AT-A") });
+    const ms = fakeMicrosoft({ "AT-A": { body: PAGE_A } });
+    await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl, minIntervalSeconds: 0 });
+    poSpy.mockClear();
+    const again = await runMailboxPollPass({ service: db.client, ready: msReady, fetchImpl: ms.fetchImpl, minIntervalSeconds: 0 });
+    expect(again).toMatchObject({ checked: 1, inserted: 0, duplicates: 2, failed: 0, poSuggested: 0, poFailed: 0 });
+    expect(poSpy.mock.calls.map(([, stored, scope]) => [stored.length, scope])).toEqual([[0, { org: A }]]);
+    // The real step with this fake database (no PO tables): nothing to match, so skipped, and the check stands.
+    expect(await poSpy.mock.results[0].value).toMatchObject({ status: "skipped", suggested: 0 });
+  });
+
+  it("the real step on the server's client: every read is the company's and the only write is 127's suggestion (no link_inbound_email)", async () => {
+    const reads: Array<{ table: string; filters: Record<string, unknown> }> = [];
+    const rpcs: Array<{ fn: string; args: Record<string, unknown> }> = [];
+    const rows: Record<string, unknown[]> = {
+      inbound_emails: [{ link_status: null }], quotes: [{ id: "q1", quote_ref: "QUO-0012", customer: "Acme Ltd", status: "sent", rfq_id: null, customer_po: null }],
+      customers: [{ id: "c1", name: "Acme Ltd", email: "buyer@example.test" }], rfqs: [], purchase_orders: [], suppliers: [],
+    };
+    const client = {
+      from: (table: string) => {
+        const filters: Record<string, unknown> = {};
+        const done = (data: unknown) => { reads.push({ table, filters }); return Promise.resolve({ data, error: null }); };
+        const q: Record<string, unknown> = {
+          select: () => q, in: () => q, neq: () => q, order: () => q,
+          eq: (c: string, v: unknown) => { filters[c] = v; return q; },
+          limit: () => done(rows[table]),
+          range: (from: number) => done(from > 0 ? [] : rows[table]),
+        };
+        return q;
+      },
+      rpc: async (fn: string, args: Record<string, unknown>) => { rpcs.push({ fn, args }); return { data: { changed: true }, error: null }; },
+    } as unknown as SupabaseClient;
+    const { suggestForCompany } = await import("@/lib/integrations/microsoft/inbox");
+    const out = await suggestForCompany(client, A, { read: 1, inserted: 1, duplicates: 0, more: false, error: null,
+      stored: [{ inboundEmailId: "ie-1", message: toInboxMessage(msg("a-1", "2026-11-01T09:00:00Z", "PO 4471 for QUO-0012") as never) }] });
+    expect(out).toMatchObject({ status: "ok", suggested: 1, failed: 0 });
+    expect(reads.length).toBeGreaterThan(0);
+    expect(reads.every((r) => r.filters.organization_id === A)).toBe(true);
+    expect(rpcs).toEqual([{ fn: "mailbox_suggest_email_link", args: { p_org: A, p_email: "ie-1", p_kind: "quote", p_target: "q1", p_po: "4471" } }]);
   });
 });

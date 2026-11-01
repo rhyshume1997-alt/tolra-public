@@ -319,7 +319,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
           <Field label="Job Time Quoted (hr)" bg={BG.peach}>{text("job_time_quoted_hr", { type: "number", step: "0.25", min: "0" })}</Field>
         </div>
         <div>
-          <Field label="Purchase Order #" bg={BG.grey}>{text("customer_po")}</Field>
+          <Field label="Customer PO" bg={BG.grey}>{text("customer_po")}</Field>
           <Field label="Date Required" bg={BG.paleYellow}>{text("date_required", { type: "date" })}</Field>
           <Field label="Dimension Report #" bg={BG.green}>{text("dimension_report_no")}</Field>
           <Field label="Heat / Cast #" bg={BG.yellow}>{text("heat_cast_no")}</Field>

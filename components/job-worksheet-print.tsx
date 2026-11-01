@@ -68,7 +68,7 @@ export function JobWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custome
           <Row bg={COLOURS.peach} label="Job Time Quoted" value={hours(ws.job_time_quoted_hr)} />
         </div>
         <div>
-          <Row bg={COLOURS.grey} label="Purchase Order #" value={ws.customer_po} />
+          <Row bg={COLOURS.grey} label="Customer PO" value={ws.customer_po} />
           <Row bg={COLOURS.paleYellow} label="Date Required" value={fmtDate(ws.date_required)} />
           <Row bg={COLOURS.green} label="Dimension Report #" value={ws.dimension_report_no} />
           <Row bg={COLOURS.yellow} label="Heat / Cast #" value={ws.heat_cast_no} />

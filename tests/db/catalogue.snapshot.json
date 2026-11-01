@@ -47,7 +47,7 @@
  {
   "kind": "function",
   "object": "public.accept_quote(p_quote uuid, p_customer_po text, p_delivery_date date, p_lines uuid[])",
-  "detail": "definer search_path=pg_catalog, public d66d688180517d0cbc2714f93d37402a"
+  "detail": "definer search_path=pg_catalog, public 4d983617099fc67cde53f22c8de4d2c8"
  },
  {
   "kind": "function",
@@ -402,7 +402,7 @@
  {
   "kind": "function",
   "object": "public.create_sales_order_from_quote(p_quote uuid, p_customer_po text, p_delivery_date date)",
-  "detail": "definer search_path=pg_catalog, public b77291f815feeb869b2edc58c1c8f16b"
+  "detail": "definer search_path=pg_catalog, public 83ce560cde4943454864a3cb8906bea9"
  },
  {
   "kind": "function",
@@ -457,7 +457,7 @@
  {
   "kind": "function",
   "object": "public.delete_machine_booking(p_id uuid)",
-  "detail": "definer search_path=pg_catalog, public 4df08bdae16726d72575b07863582a84"
+  "detail": "definer search_path=pg_catalog, public 2f5bbd6037f83dd1f660abb8303040bb"
  },
  {
   "kind": "function",
@@ -1211,6 +1211,11 @@
  },
  {
   "kind": "function",
+  "object": "public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)",
+  "detail": "definer search_path=pg_catalog, public 8bc19b0227a80107506726cf307fc283"
+ },
+ {
+  "kind": "function",
   "object": "public.lock_clock_in_network()",
   "detail": "definer search_path=pg_catalog, public 033b8cc7cd2d8be785c197d904bfe2f0"
  },
@@ -1283,6 +1288,11 @@
   "kind": "function",
   "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
   "detail": "definer search_path=pg_catalog, public 7904bd5cdd3aafb723f319905b3c265c"
+ },
+ {
+  "kind": "function",
+  "object": "public.mailbox_suggest_email_link(p_org uuid, p_email uuid, p_kind text, p_target uuid, p_po text)",
+  "detail": "definer search_path=pg_catalog, public a4e8abe77a66865bec1462324fee9c0c"
  },
  {
   "kind": "function",
@@ -1467,7 +1477,7 @@
  {
   "kind": "function",
   "object": "public.purchase_order_issue_lock()",
-  "detail": "invoker search_path=pg_catalog, public af1519a03e670609e644cd03a3f45304"
+  "detail": "invoker search_path=pg_catalog, public 2c858209878abe6cff01c9d05b5ab60a"
  },
  {
   "kind": "function",
@@ -1497,7 +1507,7 @@
  {
   "kind": "function",
   "object": "public.quote_lifecycle_guard()",
-  "detail": "invoker search_path=pg_catalog, public 36ba5b31ac3afd8b89214cc9a926ef05"
+  "detail": "invoker search_path=pg_catalog, public 739ce743ead2a48205b983e23bb53d7a"
  },
  {
   "kind": "function",
@@ -1692,7 +1702,7 @@
  {
   "kind": "function",
   "object": "public.revise_quote(p_quote uuid)",
-  "detail": "definer search_path=pg_catalog, public 542e94a9a6bb80a0613172f623736b4f"
+  "detail": "definer search_path=pg_catalog, public 9aa0305edd9bafbf590af61600d33698"
  },
  {
   "kind": "function",
@@ -1788,6 +1798,11 @@
   "kind": "function",
   "object": "public.set_member_on_site_only(p_client_op_id uuid, p_user uuid, p_on_site_only boolean)",
   "detail": "definer search_path=pg_catalog, public ac1f92af16d9c2c58b78c54f905aec9b"
+ },
+ {
+  "kind": "function",
+  "object": "public.set_quote_customer_po(p_quote uuid, p_customer_po text)",
+  "detail": "definer search_path=pg_catalog, public 566be453cc622e3c2d5fd2e49646168f"
  },
  {
   "kind": "function",
@@ -3281,6 +3296,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.link_inbound_email(p_email uuid, p_kind text, p_target uuid, p_po text, p_how text)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.lock_clock_in_network()",
   "detail": "authenticated,service_role"
  },
@@ -3352,6 +3372,11 @@
  {
   "kind": "function-grant",
   "object": "public.mailbox_record_inbound(p_org uuid, p_graph_message_id text, p_internet_message_id text, p_from_address text, p_from_name text, p_subject text, p_received_at timestamp with time zone, p_body_preview text, p_body_text text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mailbox_suggest_email_link(p_org uuid, p_email uuid, p_kind text, p_target uuid, p_po text)",
   "detail": "service_role"
  },
  {
@@ -3857,6 +3882,11 @@
  {
   "kind": "function-grant",
   "object": "public.set_member_on_site_only(p_client_op_id uuid, p_user uuid, p_on_site_only boolean)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.set_quote_customer_po(p_quote uuid, p_customer_po text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -6736,6 +6766,16 @@
  },
  {
   "kind": "trigger",
+  "object": "public.inbound_emails :: zz_same_org_linked_purchase_order_id",
+  "detail": "O b65bcc84fd2754b53649ef29c13b36a6"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.inbound_emails :: zz_same_org_linked_quote_id",
+  "detail": "O 6746638f3c651b7b2c11070b4ed4e741"
+ },
+ {
+  "kind": "trigger",
   "object": "public.inspector_authorisations :: admin_mfa",
   "detail": "O d7f3339b47f18d13ce29acabcca51217"
  },
@@ -7758,6 +7798,16 @@
   "kind": "trigger",
   "object": "public.purchase_orders :: support_read_only",
   "detail": "O 9f0bc0d1ee2bb17b71191337a0d62d45"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.purchase_orders :: zz_same_org_job_id",
+  "detail": "O b787cd1c959b9d2d3db223d0b15f00a2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.purchase_orders :: zz_same_org_quote_id",
+  "detail": "O 31e1346bccbd920d0e782fbd99e13c78"
  },
  {
   "kind": "trigger",

@@ -34,7 +34,7 @@ describe("InvoicePDF delivery notes row", () => {
     expect(pages(pdf)).toBe(1);
   });
 
-  it("five rows already (Invoice No., Date, Terms, Our Quote No., Your Order No.): the row is dropped and the page is unchanged", async () => {
+  it("five rows already (Invoice No., Date, Terms, Our Quote No., Customer PO): the row is dropped and the page is unchanged", async () => {
     const full = { ...base, quoteRef: "QUO-0042", customerPo: "PO-9" };
     const without = pdfText(await render(full));
     const pdf = await render({ ...full, deliveryNotes: "DLN-0001, DLN-0002" });

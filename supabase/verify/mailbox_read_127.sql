@@ -8,7 +8,8 @@ WITH fn AS (
                ('public.mailbox_sync_result(uuid,text,text,timestamp with time zone)', 'bc91232dd7936719831735c19703274c', 'server'),
                ('public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)', '4a7ede00d54804941fc17a291bde6b4c', 'server'),
                ('public.mailbox_sync_status()', '2d190567cfe9f2bd8fa6c6d055b7df45', 'signed_in'),
-               ('public.mailbox_sync_claim(uuid,integer)', 'a9985b00301c4579f1f6797205c21834', 'server')) AS f(sig, body, who)
+               ('public.mailbox_sync_claim(uuid,integer)', 'a9985b00301c4579f1f6797205c21834', 'server'),
+               ('public.mailbox_suggest_email_link(uuid,uuid,text,uuid,text)', '2ad8ea7f269f532b082e3db31e58f7ed', 'server')) AS f(sig, body, who)
   LEFT JOIN pg_proc p ON p.oid = to_regprocedure(f.sig)
 ), server_fn AS (
   SELECT * FROM fn WHERE sig <> 'public.mailbox_sync_status()'
@@ -27,10 +28,10 @@ UNION ALL SELECT 'error_codes_and_links_only',
 UNION ALL SELECT 'guards_no_row_audit',
   (SELECT count(*) = 2 AND bool_and(g.tgname IN ('support_read_only', 'admin_mfa')) FROM pg_trigger g
    WHERE NOT g.tgisinternal AND g.tgrelid = to_regclass('public.integration_mailbox_sync'))
--- All six functions are 127's, definer, search_path pinned.
+-- All seven functions are 127's, definer, search_path pinned.
 UNION ALL SELECT 'functions_are_127',
-  (SELECT count(*) = 6 AND bool_and(oid IS NOT NULL AND same AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']) FROM fn)
--- The five server functions: the service role's only (not anon, not authenticated, not PUBLIC).
+  (SELECT count(*) = 7 AND bool_and(oid IS NOT NULL AND same AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']) FROM fn)
+-- The six server functions: the service role's only (not anon, not authenticated, not PUBLIC).
 UNION ALL SELECT 'server_functions_service_role_only',
   (SELECT bool_and(oid IS NOT NULL AND has_function_privilege('service_role', oid, 'EXECUTE') AND NOT has_function_privilege('authenticated', oid, 'EXECUTE')
                    AND NOT has_function_privilege('anon', oid, 'EXECUTE')

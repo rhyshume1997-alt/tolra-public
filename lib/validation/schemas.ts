@@ -63,6 +63,8 @@ export const quoteSaveSchema = z.object({
   internalNotes: optionalNote,
   terms: z.string().trim().max(200, "Terms are too long"),
   validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date").or(z.literal("")),
+  // The customer's PO (migration 123): optional; trimmed, at most 100 characters (as on the order).
+  customerPo: z.string().trim().max(100, "Order number is too long").default(""),
   lines: z.array(documentLineSchema).min(1, "Add at least one line item"),
 });
 

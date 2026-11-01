@@ -27,6 +27,9 @@ BEGIN;
 --        and the same new RFQ; refused unless that company's connection may read mail).
 --        mailbox_sync_claim (start a check for ONE company: at most one per minimum interval, whatever the number of callers; the row
 --        lock makes two callers at once give one 'claimed' and one 'recent').
+--        mailbox_suggest_email_link (125's PO capture on a server check: one SUGGESTION for ONE company's new e-mail, as 125's
+--        link_inbound_email with p_how 'suggested'; it can never link. Needs 125's columns when called: the app calls it only when 125
+--        is applied).
 --      signed in: mailbox_sync_status (the caller's own company's reading status, admins only; never the cursor).
 -- ISOLATION: every server function takes the company and touches only that company's rows; mailbox_record_inbound writes only the
 -- organization_id it is given, and only when that company's own connection is connected with Mail.Read.
@@ -59,7 +62,8 @@ BEGIN
                           ('public.mailbox_sync_result(uuid,text,text,timestamp with time zone)', 'bc91232dd7936719831735c19703274c'),
                           ('public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)', '4a7ede00d54804941fc17a291bde6b4c'),
                           ('public.mailbox_sync_status()', '2d190567cfe9f2bd8fa6c6d055b7df45'),
-                          ('public.mailbox_sync_claim(uuid,integer)', 'a9985b00301c4579f1f6797205c21834')) AS f(sig, body)
+                          ('public.mailbox_sync_claim(uuid,integer)', 'a9985b00301c4579f1f6797205c21834'),
+                          ('public.mailbox_suggest_email_link(uuid,uuid,text,uuid,text)', '2ad8ea7f269f532b082e3db31e58f7ed')) AS f(sig, body)
                ON p.oid = to_regprocedure(f.sig)
              WHERE md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> f.body) THEN
     RAISE EXCEPTION '127: a function 127 creates already exists with another body; stop and compare it first';
@@ -258,6 +262,64 @@ $$;
 REVOKE ALL ON FUNCTION public.mailbox_sync_claim(UUID, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.mailbox_sync_claim(UUID, INTEGER) TO service_role;
 
+-- 3f. 125's PO capture for the server's inbox check (the browser check, the Check inbox button and the background pass): ONE suggestion
+-- for ONE company's newly stored e-mail, as 125's link_inbound_email does with p_how 'suggested' (no signed-in admin on a server check).
+-- SUGGEST ONLY: there is no way to link here (no p_how; never 'manual' or 'auto'): linked_quote_id, linked_purchase_order_id and
+-- linked_po_number are never written and no quote's customer PO is set; a person's Link click (125) stays the only way to link.
+-- The e-mail and the quote or purchase order must both be p_org's (another company's reads "not found"); refused unless that company's
+-- connection may read mail. A person's link stands, a candidate already listed or a full list (10) adds nothing, as in 125.
+CREATE OR REPLACE FUNCTION public.mailbox_suggest_email_link(p_org UUID, p_email UUID, p_kind TEXT, p_target UUID, p_po TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_po    TEXT := nullif(btrim(coalesce(p_po, '')), '');
+  v_mail  public.inbound_emails%ROWTYPE;
+  v_ref   TEXT;
+  v_entry JSONB;
+BEGIN
+  IF p_org IS NULL OR NOT EXISTS (SELECT 1 FROM public.mailbox_sync_due(p_org)) THEN
+    RAISE EXCEPTION 'This company''s mailbox can''t be read.' USING ERRCODE = '42501', HINT = 'mailbox_not_readable';
+  END IF;
+  IF p_kind IS NULL OR p_kind NOT IN ('quote', 'purchase_order') OR p_email IS NULL OR p_target IS NULL THEN
+    RAISE EXCEPTION 'Invalid e-mail link' USING ERRCODE = '22023';
+  END IF;
+  IF v_po IS NOT NULL AND char_length(v_po) > 100 THEN
+    RAISE EXCEPTION 'Order number is too long' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT * INTO v_mail FROM public.inbound_emails e WHERE e.id = p_email AND e.organization_id = p_org FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'E-mail not found' USING ERRCODE = 'P0002';
+  END IF;
+  IF p_kind = 'quote' THEN
+    SELECT q.quote_ref INTO v_ref FROM public.quotes q WHERE q.id = p_target AND q.organization_id = p_org;
+  ELSE
+    SELECT coalesce(o.po_ref, o.po_number, '') INTO v_ref FROM public.purchase_orders o WHERE o.id = p_target AND o.organization_id = p_org;
+  END IF;
+  IF v_ref IS NULL THEN
+    RAISE EXCEPTION '% not found', CASE p_kind WHEN 'quote' THEN 'Quote' ELSE 'Purchase order' END USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_mail.link_status IN ('manual', 'auto')
+     OR v_mail.link_suggestions @> jsonb_build_array(jsonb_build_object('kind', p_kind, 'id', p_target, 'po', v_po))
+     OR jsonb_array_length(v_mail.link_suggestions) >= 10 THEN
+    RETURN jsonb_build_object('email', p_email, 'changed', FALSE, 'link_status', v_mail.link_status);
+  END IF;
+  v_entry := jsonb_build_object('kind', p_kind, 'id', p_target, 'ref', v_ref, 'po', v_po);
+  UPDATE public.inbound_emails SET link_suggestions = link_suggestions || jsonb_build_array(v_entry), link_status = 'suggested'
+  WHERE id = p_email AND organization_id = p_org;
+  PERFORM security_audit.log_named_event(p_org, 'SUGGEST_EMAIL_LINK', 'inbound_emails', p_email::TEXT,
+    jsonb_build_object('kind', p_kind, 'target_id', p_target, 'target_ref', v_ref, 'po_number', v_po, 'via', 'inbox_check'));
+  RETURN jsonb_build_object('email', p_email, 'changed', TRUE, 'link_status', 'suggested', 'kind', p_kind, 'target', p_target, 'ref', v_ref);
+END
+$$;
+REVOKE ALL ON FUNCTION public.mailbox_suggest_email_link(UUID, UUID, TEXT, UUID, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mailbox_suggest_email_link(UUID, UUID, TEXT, UUID, TEXT) TO service_role;
+
 -- -----------------------------------------------------------------------------------------------------
 -- 4. Signed in: the caller's own company's inbox reading, for the Microsoft 365 card (admins only). Never the cursor or the mailbox id.
 CREATE OR REPLACE FUNCTION public.mailbox_sync_status()
@@ -297,7 +359,7 @@ BEGIN
   FOREACH v_sig IN ARRAY ARRAY['public.mailbox_sync_connected(uuid,text,boolean)', 'public.mailbox_sync_due(uuid)',
                                'public.mailbox_sync_result(uuid,text,text,timestamp with time zone)',
                                'public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)',
-                               'public.mailbox_sync_claim(uuid,integer)'] LOOP
+                               'public.mailbox_sync_claim(uuid,integer)', 'public.mailbox_suggest_email_link(uuid,uuid,text,uuid,text)'] LOOP
     IF has_function_privilege('authenticated', v_sig, 'EXECUTE') OR has_function_privilege('anon', v_sig, 'EXECUTE')
        OR NOT has_function_privilege('service_role', v_sig, 'EXECUTE') THEN
       RAISE EXCEPTION '127 self-check: % is not the service role''s only', v_sig;

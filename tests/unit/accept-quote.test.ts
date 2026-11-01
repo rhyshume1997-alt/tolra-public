@@ -30,7 +30,7 @@ describe("acceptOutcome", () => {
   it("order and job made: says both, the job is not started, links to the job", () => {
     const told = acceptOutcome(base);
     expect(told.tone).toBe("success");
-    expect(told.message).toBe("QUO-0101 accepted. Sales order SO-0007 created (a provisional number: add the customer's PO on Sales Orders when it arrives) and job J-0101 made, not started.");
+    expect(told.message).toBe("QUO-0101 accepted. Sales order SO-0007 created (no customer PO yet: add it on the quote when it arrives) and job J-0101 made, not started.");
     expect(told.link).toEqual({ label: "Open job J-0101", href: "/jobs?job=j1" });
   });
 
