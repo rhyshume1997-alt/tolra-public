@@ -118,8 +118,9 @@ describe("migration 123's files", () => {
     expect(migration).toMatch(/v_from IN \('sent', 'accepted'\) AND v_to = v_from\s+AND current_setting\('quoteflow\.set_quote_customer_po', TRUE\) = OLD\.id::TEXT/);
   });
 
-  it("the preflight's last marker is 123's", () => {
+  it("the preflight has 123's marker, in numeric order (a later migration's marker goes after it)", () => {
     const markers = [...read("supabase/verify/release_preflight.sql").matchAll(/^\s+\('(\d{3}) [^']+',/gm)].map((m) => m[1]);
-    expect(markers.at(-1)).toBe("123");
+    expect(markers).toContain("123");
+    expect(markers).toEqual([...markers].sort());
   });
 });

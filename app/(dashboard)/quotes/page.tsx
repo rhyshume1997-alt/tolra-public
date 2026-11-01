@@ -4,6 +4,8 @@ import { StatTile } from "@/components/stat-tile";
 import { EmptyList } from "@/components/empty-list";
 import { quotesEmptyHint } from "@/lib/empty-hints";
 import { ActivityPanel } from "@/components/activity-panel";
+import { QuoteLinkedEmails } from "@/components/inbound-email-links";
+import { BoughtInProfit } from "@/components/bought-in-profit";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -1274,6 +1276,7 @@ export default function QuotesPage() {
                 )}
               </div>
               {viewProblem ? <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">{viewProblem.message}</div> : null}
+              <BoughtInProfit kind="quote" id={viewingQuote.id} quoteLines={viewItemsLoading || viewItemsError ? undefined : viewItems} />
               {viewingQuote.customerNotes ? <div className="rounded-lg border p-4 text-sm"><p className="font-semibold text-slate-950">Notes for customer</p><p className="mt-1 whitespace-pre-wrap text-slate-700">{viewingQuote.customerNotes}</p></div> : null}
               {viewingQuote.internalNotes ? (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">
@@ -1283,6 +1286,8 @@ export default function QuotesPage() {
               ) : null}
               {/* Every version shares the quote's attachments, filed under its own number (068). */}
               <QuoteAttachments quoteRef={baseQuoteRef(viewingQuote.ref, viewingQuote.version)} />
+              {/* 125: the customer PO e-mail linked to this quote, or e-mails that may be its PO (Link); nothing without 125. */}
+              <QuoteLinkedEmails quoteId={viewingQuote.id} quoteRef={viewingQuote.ref} />
               <div data-testid="quote-actions" className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
                 {viewingQuote.rawStatus === "draft" ? <Button variant="outline" className="w-full sm:w-auto" onClick={() => void openFromQuote(viewingQuote, "edit")}>Edit Draft</Button> : null}
                 <Button variant="outline" className="w-full sm:w-auto" onClick={() => void openFromQuote(viewingQuote, "copy")}>Copy</Button>
