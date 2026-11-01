@@ -144,3 +144,24 @@ export function createXeroClient(opts: { accessToken: string; tenantId: string; 
     },
   };
 }
+
+/** Admin > Integrations > Test (107): the connected organisation's name, read from Xero now (GET /Organisation). Read only. */
+export async function readOrganisationName(accessToken: string, tenantId: string, fetchImpl: typeof fetch = fetch, apiBase: string = XERO_API_BASE): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${apiBase}/Organisation`, {
+      headers: { authorization: `Bearer ${accessToken}`, "xero-tenant-id": tenantId, accept: "application/json" },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    throw new ProviderError("No answer from Xero (timeout or network error)", "unknown", 0);
+  }
+  const json = await res.json().catch(() => null);
+  if (res.status === 401) throw new ProviderError("Xero refused the access token", "unauthorized", 401);
+  if (res.status === 403) throw new ProviderError("Xero refused access to this organisation (the connection may have been removed in Xero): connect again", "forbidden", 403);
+  if (res.status === 429) throw new ProviderError("Xero's rate limit was reached", "rate_limited", 429, retryAfterMs(res));
+  if (!res.ok) throw new ProviderError(`Xero refused it: ${xeroMessage(json, res.status)}`, res.status >= 500 ? "unknown" : "failed", res.status);
+  const name = (json as { Organisations?: Array<{ Name?: unknown }> } | null)?.Organisations?.[0]?.Name;
+  if (typeof name !== "string" || !name.trim()) throw new ProviderError("Xero answered without the organisation's name", "unknown", res.status);
+  return name.replace(/[\r\n\t]+/g, " ").slice(0, 200);
+}

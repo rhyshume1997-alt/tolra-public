@@ -10,7 +10,7 @@ import { CompanyProfileMissingError, requireCompanyProfile } from "@/lib/company
 import { PDF_OFFLINE_MESSAGE, pdfCodeUnreachable } from "@/lib/download-pdf";
 import { esc } from "@/lib/html";
 import { friendlyError } from "@/lib/friendly-error";
-import { toDateInput } from "@/lib/dates";
+import { fmtDate, toDateInput } from "@/lib/dates";
 import { CSV_TYPE, XLSX_TYPE, downloadFile, toCsv, toXlsx, type SheetColumn } from "@/lib/spreadsheet";
 
 /**
@@ -76,7 +76,7 @@ export async function exportRows(format: "word" | "pdf" | "print", filename: str
         data: {
           title: filename,
           documentNumber: new Date().toISOString().slice(0, 10),
-          keyValues: [{ label: "Date", value: new Intl.DateTimeFormat("en-GB").format(new Date()) }, { label: "Records", value: String(rows.length) }],
+          keyValues: [{ label: "Date", value: fmtDate(new Date()) }, { label: "Records", value: String(rows.length) }],
           billToLabel: "Export For:",
           billTo: [company.name],
           deliverToLabel: "Prepared By:",

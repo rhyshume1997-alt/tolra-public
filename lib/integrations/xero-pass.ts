@@ -9,7 +9,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 /** The sweep's counts, or why it did nothing (Xero not set up on this server; the integrations tables not in the database). */
 export async function runXeroSweepPass(): Promise<SweepSummary | { skipped: string }> {
-  const ready = xeroReady();
+  const ready = await xeroReady();
   if (!ready) return { skipped: "xero not configured" };
   const admin = createSupabaseAdminClient();
   if (!admin) throw new PassFailure("no service client");

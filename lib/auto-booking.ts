@@ -3,6 +3,7 @@
  * next free slot; an order's planned machines too when it becomes a job). Pure helpers for the dialogs' messages. Times are UK time
  * (Europe/London), whatever the device's zone.
  */
+import { fmtDayDateTime } from "@/lib/dates";
 
 /** One machine of set_job_machines' answer (043 keys; 061 adds auto_booked and finish_at). */
 export type SavedJobMachine = {
@@ -17,10 +18,7 @@ export type SavedJobMachine = {
 
 /** "Tue 20 Oct 10:00" in UK time. */
 export function ukDateTime(value: string | Date): string {
-  const at = typeof value === "string" ? new Date(value) : value;
-  const day = at.toLocaleDateString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short" });
-  const time = at.toLocaleTimeString("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" });
-  return `${day} ${time}`;
+  return fmtDayDateTime(value);
 }
 
 /** The database answered with 061's keys: it books a machine just picked by itself. An older database (before 061) does not. */

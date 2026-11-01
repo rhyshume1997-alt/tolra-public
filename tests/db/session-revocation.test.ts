@@ -9,8 +9,9 @@
  *   * the REQUEST HOOK (017/033, check_request_session -> session_is_active): the token's session no longer exists or is past
  *     its not_after. SQLSTATE 28000 "Your session has ended. Sign in again.". Deliberately not in the row helpers, so a plain SQL
  *     select with a dead session still returns rows here: the hook is what refuses every REST/RPC request (and Storage, 033).
- *   * NOT in the database: a sign-in ban (auth.users.banned_until) is Auth's. The SQL proof records that the database ignores it
- *     (case 3); it is not asserted here because what an already-issued token does at the REST layer is the Auth service's to say.
+ *   * a sign-in ban (auth.users.banned_until in the future, Admin > Users "Disable sign-in"), from migration 119: session_is_active is
+ *     false, so the request hook refuses the live token with 28000, and _session_membership gives nothing, so every row rule
+ *     refuses too (case 3; SQL proof tests/scripts/ban-ends-session-119.proof.sql).
  *
  * Plain SQL with synthetic rows and forged session claims (no Auth API), like company-access.test.ts, plus one test through the
  * real API: a signed-in token whose session row is deleted is refused by PostgREST at once.
@@ -179,11 +180,36 @@ describe("2. the session itself ends (sign-out, password change, timeout): the r
   });
 });
 
-describe("3. a sign-in ban is not a database signal; Deactivate (membership off) is", () => {
-  it("banned_until alone leaves the database answering (Auth refuses sign-in and refresh); with the membership off it refuses", async () => {
-    const ban = "update auth.users set banned_until = now() + interval '100 years' where id = $U";
-    expect(await asToken(W.U, {}, [ban], probe)).toEqual(live(2, "A", "admin"));
-    expect(await asToken(W.U, {}, [ban, "update public.organization_members set active = false where user_id = $U and organization_id = $A"], probe)).toEqual(nothing);
+describe("3. a sign-in ban ends the session at once (119); Deactivate (membership off) is unchanged", () => {
+  const ban = (who = "$U") => `update auth.users set banned_until = now() + interval '100 years' where id = ${who}`;
+  const off = "update public.organization_members set active = false where user_id = $U and organization_id = $A";
+  const ended: Probe = { ...nothing, sessionActive: false, hook: "28000" };
+  /** Rows _session_membership() gives this token (no API role may call it, so asked as the owner with the same claims). */
+  const membership = async (db: Client) => {
+    await db.query("reset role");
+    const n = Number((await db.query<{ n: string }>("select count(*)::text as n from public._session_membership()")).rows[0].n);
+    await db.query("set local role authenticated");
+    return n;
+  };
+
+  it("banned_until alone (membership kept): the hook refuses the live token (28000), no membership, no rows, writes refused", async () => {
+    expect(await asToken(W.U, {}, [ban()], async (db) => [await probe(db), await membership(db), await insertCode(db, W.A)])).toEqual([ended, 0, "42501"]);
+    expect(await asToken(W.U, {}, [], membership)).toBe(1);
+  });
+  it("a ban that has run out, or is lifted (banned_until NULL), gives the same token everything back", async () => {
+    expect(await asToken(W.U, {}, ["update auth.users set banned_until = now() - interval '1 second' where id = $U"], probe)).toEqual(live(2, "A", "admin"));
+    expect(await asToken(W.U, {}, [ban(), "update auth.users set banned_until = null where id = $U"], async (db) => [await probe(db), await insertCode(db, W.A)]))
+      .toEqual([live(2, "A", "admin"), "inserted"]);
+  });
+  it("membership off alone is unchanged (session live, nothing resolves); with the ban on top the hook refuses too", async () => {
+    expect(await asToken(W.U, {}, [off], probe)).toEqual(nothing);
+    expect(await asToken(W.U, {}, [ban(), off], probe)).toEqual(ended);
+  });
+  it("only the banned login: V and the support session are unchanged; the platform owner's own ban ends the support session", async () => {
+    expect(await asToken(W.V, {}, [ban()], probe)).toEqual(live(1, "B", "admin"));
+    expect(await asToken(W.P, { aal: "aal2" }, [ban()], probe)).toEqual(live(2, "A", "admin"));
+    expect(await asToken(W.P, { aal: "aal2" }, [ban("$P"), "update security_audit.session_company set elevated_until = now() + interval '30 minutes' where session_id = $SP"],
+      async (db) => [await probe(db), await insertCode(db, W.A)])).toEqual([ended, "42501"]);
   });
 });
 

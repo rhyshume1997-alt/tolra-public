@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fmtDate } from "@/lib/dates";
 
 export function DateRangeFields({ from = "2026-05-01", to = "2026-05-31", onApply }: { from?: string; to?: string; onApply?: (range: { from: string; to: string }) => void }) {
   const [fromValue, setFromValue] = useState(from);
@@ -15,7 +16,7 @@ export function DateRangeFields({ from = "2026-05-01", to = "2026-05-31", onAppl
     const range = { from: fromValue, to: toValue };
     setApplied(range);
     onApply?.(range);
-    toast.success(`Date range applied: ${new Date(fromValue).toLocaleDateString("en-GB")} to ${new Date(toValue).toLocaleDateString("en-GB")}`);
+    toast.success(`Date range applied: ${fmtDate(fromValue)} to ${fmtDate(toValue)}`);
   }
 
   return (
@@ -34,7 +35,7 @@ export function DateRangeFields({ from = "2026-05-01", to = "2026-05-31", onAppl
         </Button>
       </div>
       <p className="text-xs text-slate-500">
-        Showing: {new Date(applied.from).toLocaleDateString("en-GB")} to {new Date(applied.to).toLocaleDateString("en-GB")}
+        Showing: {fmtDate(applied.from)} to {fmtDate(applied.to)}
       </p>
     </div>
   );

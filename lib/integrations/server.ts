@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { getAppCredentials } from "@/lib/integrations/app-credentials";
 import { KEY_VERSION, encryptSecret, encryptionKey, decryptSecret } from "@/lib/integrations/crypto";
 import { type EngineDb, type EngineDeps, type RunSummary, runSends } from "@/lib/integrations/engine";
 import { createTokenSource } from "@/lib/integrations/tokens";
@@ -9,8 +10,9 @@ import type { AccountingProvider, Mappings, ProviderId } from "@/lib/integration
 import { createXeroClient } from "@/lib/integrations/xero/client";
 import {
   type XeroConfig, type XeroConnection, XeroAuthError, authorizeUrl, chooseConnection, deleteConnection, exchangeCode, hashState, listConnections,
-  newAuthorisation, refreshTokens, removableConnections, xeroConfig,
+  newAuthorisation, refreshTokens, removableConnections,
 } from "@/lib/integrations/xero/oauth";
+import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 // The server's side of the integrations layer: the service-role database (migration 084's server-only functions), the encryption key and
 // the Xero configuration, put together for the routes under app/api/integrations. The browser never receives a token, a code or a key.
@@ -49,15 +51,20 @@ export function serviceDb(client: SupabaseClient): EngineDb {
   };
 }
 
-/** Xero is usable on this server: the app's configuration and the encryption key are both set (names only; Rhys sets the values). */
-export function xeroReady(env: Record<string, string | undefined> = process.env): { config: XeroConfig; key: Buffer } | null {
-  const config = xeroConfig(env);
-  if (!config) return null;
+/**
+ * Xero is usable on this server: the app's credentials (the platform owner's stored ones, else XERO_CLIENT_ID / _SECRET / _REDIRECT_URI:
+ * lib/integrations/app-credentials.ts) and the encryption key are both set. Before migration 107 only the environment is read, as before.
+ */
+export async function xeroReady(env: Record<string, string | undefined> = process.env, service: SupabaseClient | null = createSupabaseAdminClient()): Promise<{ config: XeroConfig; key: Buffer } | null> {
+  let key: Buffer;
   try {
-    return { config, key: encryptionKey(env) };
+    key = encryptionKey(env);
   } catch {
     return null;
   }
+  const creds = await getAppCredentials("xero", { service, env, key }).catch(() => null);
+  if (!creds) return null;
+  return { config: { clientId: creds.clientId, clientSecret: creds.clientSecret, redirectUri: creds.redirectUri }, key };
 }
 
 function engineDeps(db: EngineDb, ready: { config: XeroConfig; key: Buffer }): EngineDeps {
@@ -84,6 +91,16 @@ export async function companyProvider(service: SupabaseClient, org: string, read
   const deps = engineDeps(serviceDb(service), ready);
   const token = await deps.accessToken(org, "xero");
   return token ? deps.provider(token, conn.tenant_id) : null;
+}
+
+/** The company's Xero access token and organisation, for Test (read the organisation's name): null when not connected (or must connect again). */
+export async function companyXeroToken(service: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer }): Promise<{ token: string; tenantId: string } | null> {
+  const { data, error } = await service.from("integration_connections").select("status, tenant_id").eq("organization_id", org).eq("provider", "xero").maybeSingle();
+  if (error) throw new DbError(error.message, error.code);
+  const conn = data as { status: string; tenant_id: string | null } | null;
+  if (!conn || conn.status !== "connected" || !conn.tenant_id) return null;
+  const token = await engineDeps(serviceDb(service), ready).accessToken(org, "xero");
+  return token ? { token, tenantId: conn.tenant_id } : null;
 }
 
 /** Sends what one company has queued (bounded: a few documents per call; the rest go on the next call). */
@@ -115,9 +132,20 @@ export type ConnectOutcome = { ok: true; tenantName: string } | { ok: false; rea
 export async function finishConnect(service: SupabaseClient, org: string, userId: string, state: string, code: string, ready: { config: XeroConfig; key: Buffer },
                                     deps: { fetchImpl?: typeof fetch; now?: () => number } = {}): Promise<ConnectOutcome> {
   const db = serviceDb(service);
-  const fetchImpl = deps.fetchImpl ?? fetch;
   const consumed = await db.rpc<{ verifier_enc: string }>("integration_oauth_consume", { p_org: org, p_user: userId, p_provider: "xero", p_state_hash: hashState(state) });
   const verifier = decryptSecret(consumed.verifier_enc, { organizationId: org, provider: "xero", purpose: "pkce" }, ready.key);
+  return completeConnect(service, org, userId, verifier, code, ready, deps);
+}
+
+/**
+ * Connect, step 3, once the state is used up (the admin's own callback above, or the accountant's link: app/api/integrations/invite):
+ * the code is exchanged with the verifier at the redirect URI the authorisation was sent with (ready.config.redirectUri), the
+ * organisation chosen, the tokens stored for `org` as `userId` (the database checks that person is still an active admin of it).
+ */
+export async function completeConnect(service: SupabaseClient, org: string, userId: string, verifier: string, code: string, ready: { config: XeroConfig; key: Buffer },
+                                      deps: { fetchImpl?: typeof fetch; now?: () => number } = {}): Promise<ConnectOutcome> {
+  const db = serviceDb(service);
+  const fetchImpl = deps.fetchImpl ?? fetch;
   const tokens = await exchangeCode(ready.config, code, verifier, fetchImpl);
   const chosen = chooseConnection(await listConnections(tokens.accessToken, fetchImpl), tokens.authEventId);
   const cleanUp = async (touched: XeroConnection[]) => {
@@ -160,6 +188,16 @@ async function linkedTenantIds(service: SupabaseClient): Promise<Set<string> | n
 }
 
 /**
+ * Disconnect as the signed-in admin, and cancel every open connect link (107's integration_disconnect_revoke, which calls 084's
+ * integration_disconnect). Before 107 is applied: 084's integration_disconnect alone, exactly as before.
+ */
+export async function disconnectAndRevoke(userClient: SupabaseClient, provider: "xero" | "microsoft"): Promise<void> {
+  let { error } = await userClient.rpc("integration_disconnect_revoke", { p_provider: provider });
+  if (error && (error.code === "PGRST202" || error.code === "42883")) ({ error } = await userClient.rpc("integration_disconnect", { p_provider: provider }));
+  if (error) throw new DbError(error.message, error.code, (error as { hint?: string }).hint);
+}
+
+/**
  * Disconnect: the token is taken under the lease first (server side), then the database disconnects as the signed-in admin (admin and
  * two-step checked there; the tokens are deleted), then this app's connection to that one organisation is removed at Xero (best effort).
  */
@@ -169,8 +207,7 @@ export async function disconnectCompany(userClient: SupabaseClient, service: Sup
   if (ready && conn && (conn as { status: string }).status !== "disconnected") {
     token = await engineDeps(serviceDb(service), ready).accessToken(org, "xero").catch(() => null);
   }
-  const { error } = await userClient.rpc("integration_disconnect", { p_provider: "xero" });
-  if (error) throw new DbError(error.message, error.code, (error as { hint?: string }).hint);
+  await disconnectAndRevoke(userClient, "xero");
   const connectionId = (conn as { external_connection_id: string | null } | null)?.external_connection_id;
   return { removedAtXero: token && connectionId ? await deleteConnection(token, connectionId) : false };
 }
@@ -180,7 +217,8 @@ export function sweepDeps(service: SupabaseClient, ready: { config: XeroConfig; 
   const deps = engineDeps(serviceDb(service), ready);
   return {
     async connected() {
-      const { data, error } = await service.from("integration_connections").select("organization_id, provider").eq("status", "connected");
+      // Accounting providers only: a Microsoft 365 connection (107) is renewed by its own token source when mail is sent.
+      const { data, error } = await service.from("integration_connections").select("organization_id, provider").eq("status", "connected").eq("provider", "xero");
       if (error) throw new DbError(error.message, error.code);
       return ((data ?? []) as Array<{ organization_id: string; provider: ProviderId }>).map((r) => ({ organizationId: r.organization_id, provider: r.provider }));
     },

@@ -90,9 +90,9 @@ describe("year-end payments reconcile with the summary", () => {
     const csv = csvRows(strFromU8(files["summary.csv"]));
     expect(csv[0].slice(0, 11)).toEqual(["Type", "Number", "Date", "Customer / supplier", "Net", "VAT", "Gross", "Paid", "Balance due", "Paid date", "Status"]);
     const byNumber = Object.fromEntries(csv.slice(1).map((r) => [r[1], r]));
-    expect(byNumber["INV-0103"][2]).toBe("01/04/2026"); // created 23:30 UTC on 31 March: 1 April in London
-    expect(byNumber["INV-0107"][9]).toBe("01/10/2026"); // paid 23:30 UTC on 30 September: 1 October in London
-    expect(byNumber["INV-0101"][9]).toBe("02/04/2026");
+    expect(byNumber["INV-0103"][2]).toBe("2026-04-01"); // created 23:30 UTC on 31 March: 1 April in London
+    expect(byNumber["INV-0107"][9]).toBe("2026-10-01"); // paid 23:30 UTC on 30 September: 1 October in London
+    expect(byNumber["INV-0101"][9]).toBe("2026-04-02");
   });
 
   it("Paid and Balance agree with payments.csv invoice by invoice, reversals included, and in total", async () => {
@@ -108,8 +108,8 @@ describe("year-end payments reconcile with the summary", () => {
     expect(body.map((r) => r[4])).not.toContain("R-px");
 
     // Boundary dates are shown as paid: the first day, the next, and the last.
-    expect(body.filter((r) => r[0] === "INV-0101").map((r) => [r[1], r[2]])).toEqual([["01/04/2026", "50.00"], ["02/04/2026", "70.00"]]);
-    expect(body.filter((r) => r[0] === "INV-0102").map((r) => [r[1], r[2], r[6]])).toEqual([["30/09/2026", "60.00", "Yes"], ["30/09/2026", "-60.00", "Reversal: Entered in error"]]);
+    expect(body.filter((r) => r[0] === "INV-0101").map((r) => [r[1], r[2]])).toEqual([["2026-04-01", "50.00"], ["2026-04-02", "70.00"]]);
+    expect(body.filter((r) => r[0] === "INV-0102").map((r) => [r[1], r[2], r[6]])).toEqual([["2026-09-30", "60.00", "Yes"], ["2026-09-30", "-60.00", "Reversal: Entered in error"]]);
 
     // For every invoice: summary Paid = sum of its payment rows (a reversal cancels its payment); Balance = Gross - Paid.
     let summaryPaid = 0;

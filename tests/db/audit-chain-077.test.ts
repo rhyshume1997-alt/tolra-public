@@ -93,6 +93,14 @@ describe("077: the previous-hash lookup is served by audit_log_org_created_idx",
   it("the plans: an Index Cond on organization_id (= the company, or IS NULL), no Sort", async () => {
     const plans = await rolledBack(async (db) => {
       await db.query("set local enable_seqscan = off");
+      // Give both chains a real history and fresh statistics. A company the statistics have never seen is estimated at one row, where
+      // the index scan and a bitmap scan plus Sort cost within a fraction of a percent of each other and whichever the planner picks
+      // depends on what earlier test files left in the log. With the rows counted the index scan is many times cheaper, as on a real
+      // log. In-transaction only: the rows and the column statistics roll back with it.
+      await db.query(
+        `insert into security_audit.audit_log (organization_id, action, entity_table)
+         select c, 'AUDIT_077_PLAN', 'audit_chain_077' from (values ($1::uuid), (null)) v(c), generate_series(1, 50)`, [alpha()]);
+      await db.query("analyze security_audit.audit_log");
       const plan = async (text: string) => JSON.stringify((await db.query(`explain (format json, costs off) ${text}`)).rows[0]["QUERY PLAN"]);
       return {
         company: await plan(`select hash from security_audit.audit_log where organization_id = '${alpha()}' order by organization_id, created_at desc limit 1`),

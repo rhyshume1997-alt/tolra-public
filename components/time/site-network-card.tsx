@@ -76,8 +76,8 @@ export function SiteNetworkCard() {
         <p className="text-slate-600 dark:text-slate-300">
           A phone can&apos;t tell Tolra which Wi-Fi it is on. Tolra sees the public internet address a clock in comes from: every device on the
           site Wi-Fi shares the router&apos;s one address. With the check on <strong>Flag</strong>, clock actions of people marked{" "}
-          <strong>On site only</strong> (Admin &gt; Users) that come from another network are flagged for the office. <strong>Nothing is ever
-          refused.</strong> Clock actions saved offline and synced later show &ldquo;synced later, network unknown&rdquo;. Off: nothing is checked
+          <strong>On site only</strong> (Admin &gt; Users) that come from another network are flagged for the office. <strong>The Flag check never
+          refuses; the network lock below does.</strong> Clock actions saved offline and synced later show &ldquo;synced later, network unknown&rdquo;. Off: nothing is checked
           or recorded. If the broadband provider changes the address, every check shows &ldquo;not on the site network&rdquo; until you save the
           new one here; ask the provider for a fixed (static) address.
         </p>

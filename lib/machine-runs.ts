@@ -2,7 +2,7 @@
  * Live machine use and operator assignment (migration 044): the pure parts the Job Board, the schedule and the offline replay share.
  * The database holds the guarantee (one open run per machine); these helpers only shape what it returns and what the app sends.
  */
-import { fmtDateTime } from "@/lib/dates";
+import { fmtDateText, fmtDateTime, fmtDateTimeText } from "@/lib/dates";
 
 /** One open run, as machines_in_use() returns it: names only, never an e-mail. */
 export type InUseRow = {
@@ -128,7 +128,7 @@ export function timeConflictsOf(data: unknown): RunTimeConflict[] {
 
 /** What the person is told when an offline Start, Pause or Finish synced but its device time would have overlapped the machine's record. */
 export function runTimeConflictReason(jobNo: string, action: "Start" | "Pause" | "Finish", conflicts: RunTimeConflict[]): string {
-  const at = (v: string | null) => (v ? new Date(v).toLocaleString("en-GB", { timeZone: "Europe/London", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "now");
+  const at = (v: string | null) => (v ? fmtDateTimeText(v, { numberAs: "number" }) : "now");
   const bench = (c: RunTimeConflict) => c.bench === true || c.machine_id === null;
   const parts = conflicts.map((c) => `${bench(c) ? "the bench" : c.machine ?? "the machine"}: ${c.what === "start" ? "started" : "ended"} at ${at(c.used_at)} instead of ${at(c.device_at)}`);
   const starts = conflicts.filter((c) => c.what === "start");
@@ -304,7 +304,7 @@ export function pausedWarningText(row: Pick<PausedRow, "job_no" | "operator_name
   const when = new Date(row.paused_at);
   const time = when.toLocaleTimeString("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" });
   const sameDay = when.toLocaleDateString("en-GB", { timeZone: "Europe/London" }) === now.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
-  const day = sameDay ? "today" : `on ${when.toLocaleDateString("en-GB", { timeZone: "Europe/London", day: "2-digit", month: "2-digit" })}`;
+  const day = sameDay ? "today" : `on ${fmtDateText(when, { numberAs: "number" })}`;
   const operator = row.operator_name ?? "the operator";
   const by = row.paused_by_name && row.paused_by_name !== row.operator_name ? ` (paused by ${row.paused_by_name})` : "";
   const job = row.job_no || "another job";

@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const service = createSupabaseAdminClient();
   if (!service) return jsonError("Service unavailable", 503);
   try {
-    const result = await disconnectCompany(auth.supabase, service, auth.profile.organization_id, xeroReady());
+    const result = await disconnectCompany(auth.supabase, service, auth.profile.organization_id, await xeroReady());
     return NextResponse.json({ status: "disconnected", removedAtXero: result.removedAtXero });
   } catch (err) {
     if (err instanceof DbError && err.code === "42501") return jsonError(err.hint === "mfa_required" ? "Confirm your authenticator code first." : "Forbidden", 403);

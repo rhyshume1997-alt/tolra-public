@@ -11,7 +11,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 export const KEY_VERSION = 1;
 const FORMAT = /^v(\d{1,3})\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/;
 
-export type SecretPurpose = "refresh" | "access" | "pkce" | "api_key";
+export type SecretPurpose = "refresh" | "access" | "pkce" | "api_key" | "client_secret";
 
 export class IntegrationCryptoError extends Error {
   constructor(message: string, readonly code: "key_missing" | "key_invalid" | "format" | "version" | "decrypt") {

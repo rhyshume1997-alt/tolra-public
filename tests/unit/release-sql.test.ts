@@ -1158,3 +1158,67 @@ describe("prepared release text for the customer archive (supabase/release, 100)
     for (const h of ["0b3bc80a57f0e0e16e4f0d7f42c5eccf", "4b31a2b95d2c7c52e9c31fe660a7e61b"]) expect(rollback).toContain(`'${h}'`);
   });
 });
+
+describe("prepared release text for a disabled sign-in ending the session (supabase/release, 119)", () => {
+  const root = path.resolve(__dirname, "../..");
+  const read = (file: string) => readFileSync(path.join(root, file), "utf8");
+  const file = "119_ban_ends_session.sql";
+  const md5 = (text: string) => createHash("md5").update(text.replace(/\s/g, "")).digest("hex");
+  const definition = (sql: string, name: string, end: string) => {
+    const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${name}()`);
+    return sql.slice(start, sql.indexOf(end, start) + end.length);
+  };
+  const body = (def: string) => {
+    const start = def.indexOf("AS $$") + "AS $$".length;
+    return def.slice(start, def.indexOf("$$;", start));
+  };
+  const ACTIVE_END = "GRANT EXECUTE ON FUNCTION public.session_is_active() TO authenticated, service_role;";
+  const MEMBER_END = "REVOKE ALL ON FUNCTION public._session_membership() FROM PUBLIC, anon, authenticated;";
+  const BAN = "AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = ";
+  const m017 = () => definition(read("supabase/migrations/017_session_and_deferred_link_checks.sql"), "session_is_active", ACTIVE_END);
+  const m036 = () => definition(read("supabase/migrations/036_two_level_access.sql"), "_session_membership", MEMBER_END);
+
+  it("is exactly what release-sql.mjs produces from the migration file", () => {
+    expect(read("supabase/release/119_ban_ends_session.release.sql")).toBe(releaseSql(read(`supabase/migrations/${file}`), file));
+  });
+
+  it("replaces only session_is_active (017's plus the ban test) and _session_membership (036's plus the same test); nothing else", () => {
+    const sql = read(`supabase/migrations/${file}`);
+    expect([...sql.matchAll(/CREATE OR REPLACE FUNCTION ([\w.]+)\(/g)].map((m) => m[1])).toEqual(["public.session_is_active", "public._session_membership"]);
+    const active = definition(sql, "session_is_active", ACTIVE_END);
+    const member = definition(sql, "_session_membership", MEMBER_END);
+    // Each is the earlier text with exactly one added line (the ban test) and, in 036's, one comment line extended.
+    const added = (def: string) => def.split("\n").filter((l) => l.includes("banned_until"));
+    expect(added(active)).toEqual(["      AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = s.user_id AND u.banned_until > now())"]);
+    expect(added(member)).toEqual(["      AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id = p.id AND u.banned_until > now())"]);
+    expect(active.split("\n").filter((l) => !l.includes(BAN)).join("\n")).toBe(m017());
+    expect(member.split("\n").filter((l) => !l.includes(BAN)).join("\n")
+      .replace(" A login whose sign-in is disabled (banned in Auth) works in none either (119).", "")).toBe(m036());
+    const outside = sql.replace(/\$\$[\s\S]*?\$\$/g, "$$$$");
+    expect(outside).not.toMatch(/^\s*(CREATE TABLE|ALTER TABLE|CREATE POLICY|DROP POLICY|ALTER POLICY|CREATE TRIGGER|DROP TRIGGER|UPDATE |INSERT INTO|DELETE FROM|DROP FUNCTION|ALTER ROLE)/m);
+    expect(sql.replace(ACTIVE_END, "").replace(MEMBER_END, "").replace("REVOKE ALL ON FUNCTION public.session_is_active() FROM PUBLIC, anon;", "")).not.toMatch(/\b(GRANT|REVOKE) [A-Z, ]+ ON\b/);
+    expect(md5(body(m017()))).toBe("19fe21959a87cd880feb0fb0190980eb");
+    expect(md5(body(m036()))).toBe("a15c6833cefc4b752ceafce0a10730b2");
+    expect(md5(body(active))).toBe("af6457cae4d8b89cd34b5963574fbe58");
+    expect(md5(body(member))).toBe("dd70574344856582b9819431b45e6c5c");
+    expect(read("supabase/verify/ban_ends_session_119.sql")).toContain("body = 'af6457cae4d8b89cd34b5963574fbe58'");
+    expect(read("supabase/verify/ban_ends_session_119.sql")).toContain("body = 'dd70574344856582b9819431b45e6c5c'");
+    const preflight = read("supabase/verify/release_preflight.sql");
+    expect(preflight).toContain("('119 ban ends session'");
+    for (const h of ["af6457cae4d8b89cd34b5963574fbe58", "dd70574344856582b9819431b45e6c5c", "19fe21959a87cd880feb0fb0190980eb", "a15c6833cefc4b752ceafce0a10730b2"]) {
+      expect(preflight).toContain(`'${h}'`);
+    }
+  });
+
+  it("its rollback puts back 017's and 036's functions exactly (with their grants), guarded by both bodies", () => {
+    const rollback = read("supabase/release/119_ban_ends_session.rollback.sql");
+    expect(rollback.match(/^BEGIN;$/gm)).toHaveLength(1);
+    expect(rollback.trimEnd().endsWith("COMMIT;")).toBe(true);
+    expect(rollback).toContain(m017());
+    expect(rollback).toContain(m036());
+    expect(rollback).not.toContain(BAN);
+    for (const h of ["af6457cae4d8b89cd34b5963574fbe58", "dd70574344856582b9819431b45e6c5c", "19fe21959a87cd880feb0fb0190980eb", "a15c6833cefc4b752ceafce0a10730b2"]) {
+      expect(rollback).toContain(`'${h}'`);
+    }
+  });
+});

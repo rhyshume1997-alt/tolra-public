@@ -33,7 +33,8 @@ import { DEMO_MODE } from "@/lib/demo";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
 import { purchaseOrderMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, nowIso, toDateInput } from "@/lib/dates";
-import { downloadPdf } from "@/lib/download-pdf";
+import { downloadPdf, pdfBlob } from "@/lib/download-pdf";
+import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
 import { friendlyError } from "@/lib/friendly-error";
 import { type SupplierStatus, supplierKey, supplierOrderNotice } from "@/lib/supplier-status";
 import { esc } from "@/lib/html";
@@ -120,6 +121,7 @@ export default function PurchaseOrdersPage() {
   const [editing, setEditing] = useState<PurchaseOrderRow | null>(null);
   // Issue a draft, or confirm an issued order was sent to the supplier: both asked for explicitly.
   const [poAction, setPoAction] = useState<{ po: PurchaseOrderRow; kind: "issue" | "sent" } | null>(null);
+  const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
   /** A purchase order is raised when its draft is issued (082): the Issue dialog warns on a conditional supplier and stops a blocked one. */
   const issueNotice = poAction?.kind === "issue" ? supplierOrderNotice(supplierStatuses.get(supplierKey(poAction.po.supplier))) : null;
   const [editDraft, setEditDraft] = useState({ supplier: "", delivery: "", value: "", notes: "", vatOn: false });
@@ -379,31 +381,50 @@ export default function PurchaseOrdersPage() {
   }
 
   async function downloadPurchaseOrderPdf(po: PurchaseOrderRow) {
-    await downloadPdf(async () => {
-      const profile = await requireCompanyProfile();
-      const saved = (po.items || []).filter((item) => item.description);
-      // Real line items when the PO has them, otherwise one line carrying the whole stored value.
-      const lineItems = saved.length
-        ? saved.map((item) => ({ description: String(item.description), quantity: Number(item.qty || 1), unitPrice: Number(item.unit_price || 0), vatPct: item.vat_pct === undefined ? undefined : Number(item.vat_pct), vatExempt: Boolean(item.vat_exempt) }))
-        : [{ description: `Materials ordered from ${po.supplier}`, quantity: 1, unitPrice: po.value }];
-      // The PDF code is loaded when a PDF is made, not with the page.
-      const { PurchaseOrderPDF } = await import("@/components/pdf/PurchaseOrderPDF");
-      return (
-        <PurchaseOrderPDF
-          data={{
-            number: po.ref,
-            date: fmtDate(po.date),
-            requiredBy: fmtDate(po.delivery),
-            supplier: [po.supplier],
-            deliverTo: [profile.documentName, ...profile.addressLines],
-            lineItems,
-            vatEnabled: Boolean(po.vatEnabled),
-            notes: po.notes ? [po.notes] : undefined,
-            company: profile,
-          }}
-        />
-      );
-    }, `purchase-order-${po.ref}.pdf`, { entityTable: "purchase_orders", entityId: po.ref });
+    await downloadPdf(() => buildPurchaseOrderPdf(po), `purchase-order-${po.ref}.pdf`, { entityTable: "purchase_orders", entityId: po.ref });
+  }
+
+  /** One-click send (E8) to the supplier's address on file, the PDF attached; once it has gone, the sent time is recorded. */
+  async function emailPurchaseOrder(po: PurchaseOrderRow) {
+    if (po.status === "draft") return void toast.error("Issue the purchase order before sending it.");
+    if (po.id.startsWith("demo-") || DEMO_MODE || !supabase) return void toast.error("Sending isn't available in the demo. Download the PDF instead.");
+    const { data: found } = await supabase.from("suppliers").select("email").eq("name", po.supplier).limit(1).maybeSingle();
+    const to = typeof found?.email === "string" ? found.email : "";
+    if (!to) toast.info(`No email address on file for ${po.supplier}. Add one on the Suppliers page, or type it into the email.`);
+    const profile = await requireCompanyProfile();
+    setEmailRequest({
+      kind: "purchase_order", recordId: po.id, templateKey: "purchase_order", to,
+      vars: { document_number: po.ref, company_name: profile.name, customer_name: po.supplier, total: currency(po.value), due_date: po.delivery ? fmtDate(po.delivery) : "" },
+      pdf: { filename: `purchase-order-${po.ref}.pdf`, build: async () => pdfBlob(await buildPurchaseOrderPdf(po)) },
+      onSent: () => { if (!po.sentAt) void applyPoAction({ po, kind: "sent" }); },
+    });
+  }
+
+  /** The purchase order's PDF element (Download and the one-click send attach the same). */
+  async function buildPurchaseOrderPdf(po: PurchaseOrderRow) {
+    const profile = await requireCompanyProfile();
+    const saved = (po.items || []).filter((item) => item.description);
+    // Real line items when the PO has them, otherwise one line carrying the whole stored value.
+    const lineItems = saved.length
+      ? saved.map((item) => ({ description: String(item.description), quantity: Number(item.qty || 1), unitPrice: Number(item.unit_price || 0), vatPct: item.vat_pct === undefined ? undefined : Number(item.vat_pct), vatExempt: Boolean(item.vat_exempt) }))
+      : [{ description: `Materials ordered from ${po.supplier}`, quantity: 1, unitPrice: po.value }];
+    // The PDF code is loaded when a PDF is made, not with the page.
+    const { PurchaseOrderPDF } = await import("@/components/pdf/PurchaseOrderPDF");
+    return (
+      <PurchaseOrderPDF
+        data={{
+          number: po.ref,
+          date: fmtDate(po.date),
+          requiredBy: fmtDate(po.delivery),
+          supplier: [po.supplier],
+          deliverTo: [profile.documentName, ...profile.addressLines],
+          lineItems,
+          vatEnabled: Boolean(po.vatEnabled),
+          notes: po.notes ? [po.notes] : undefined,
+          company: profile,
+        }}
+      />
+    );
   }
 
   const editHasItems = Boolean(editing?.items?.some((item) => item.description));
@@ -516,7 +537,8 @@ export default function PurchaseOrdersPage() {
             ))}</TableBody>
           </Table></CardContent></Card>
         )}
-        <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button></div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
+        <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
+        <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}><DialogContent><DialogHeader><DialogTitle>{viewing?.ref}</DialogTitle><DialogDescription>Purchase order detail</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p><strong>Supplier:</strong> {viewing.supplier}</p><p><strong>Order date:</strong> {fmtDate(viewing.date)}</p><p><strong>Expected delivery:</strong> {fmtDate(viewing.delivery) || "Not set"}</p><p><strong>Value:</strong> {currency(viewing.value)}</p><p><strong>Status:</strong> {viewing.status}</p>{viewing.receivedAt ? <p><strong>Received:</strong> {fmtDate(viewing.receivedAt)}</p> : null}{viewing.notes ? <p><strong>Notes:</strong> {viewing.notes}</p> : null}<div className="flex flex-wrap gap-2"><Button onClick={() => window.open(`/purchase-orders/${encodeURIComponent(viewing.id)}/print`, "_blank")} className="bg-brand text-brand-ink">Print</Button><Button variant="outline" onClick={() => void downloadPurchaseOrderPdf(viewing)}>Download PDF</Button>{viewing.status !== "draft" && !viewing.id.startsWith("demo-") ? <Button variant="outline" onClick={() => void emailPurchaseOrder(viewing)}>Email to supplier</Button> : null}</div>{viewing.id.startsWith("demo-") ? null : <DocumentAttachments parent={{ kind: "purchase_order", id: viewing.id }} canRemove />}</div> : null}<ActivityPanel table="purchase_orders" recordId={viewing?.id} className="mt-4" /></DialogContent></Dialog>
         <Dialog open={Boolean(poAction)} onOpenChange={(open) => !open && setPoAction(null)}>
           <DialogContent>
             <DialogHeader>

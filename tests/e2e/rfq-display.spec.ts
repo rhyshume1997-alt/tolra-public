@@ -23,6 +23,17 @@ test.beforeAll(async () => {
 });
 
 const card = (page: import("@playwright/test").Page) => page.locator('[data-slot="card"]', { hasText: customer() });
+/**
+ * The company's saved RFQ hidden list, read from the database. A Columns tick redraws the card at once and saves in the
+ * background (lib/org-settings.ts enqueue -> persistChange: look up the company, re-read the row, then upsert), so a reload
+ * straight after the redraw can cut that save off. Wait on this before a reload that must show the saved choice.
+ */
+const savedHidden = async (): Promise<"hidden" | "shown" | "missing"> => {
+  const { data, error } = await adminClient().from("organization_settings").select("hidden_columns").eq("organization_id", solo.id).maybeSingle();
+  if (error) throw new Error(`organization_settings read failed: ${error.message}`);
+  if (!data) return "missing";
+  return ((data.hidden_columns as Record<string, string[]> | null)?.rfq ?? []).includes("received") ? "hidden" : "shown";
+};
 
 for (const width of [1280, 390]) {
   test(`hide Received at ${width}: the card drops it, and it stays hidden after a reload`, async ({ page }) => {
@@ -46,6 +57,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole("menuitemcheckbox", { name: "Actions" })).toBeDisabled();
     await page.keyboard.press("Escape");
 
+    await expect.poll(savedHidden, { timeout: 15_000 }).toBe("hidden");
     await page.reload();
     await expect(card(page)).toContainText("Outstanding");
     await expect(card(page)).not.toContainText("Received:");
@@ -56,7 +68,9 @@ for (const width of [1280, 390]) {
     await page.getByRole("menuitemcheckbox", { name: "Received" }).click();
     await page.keyboard.press("Escape");
     await expect(card(page)).toContainText("Received:");
-    // The save runs after the screen updates; reload so the next test starts only once it has reached the database.
+    // The save runs after the screen updates: wait until it has reached the database, then reload to show it was kept.
+    // The row must exist and say Received is shown again: a missing row is not a pass.
+    await expect.poll(savedHidden, { timeout: 15_000 }).toBe("shown");
     await page.reload();
     await expect(card(page)).toContainText("Received:");
   });
@@ -119,6 +133,12 @@ test("Outstanding -> Quoted still works with Stage hidden (checked via the Quote
   await page.getByRole("button", { name: /^Quoted \(/ }).click();
   await expect(stageCard()).toHaveCount(1); // in the Quoted list
   await expect(stageCard().locator('[data-rfq-field="stage"]')).toHaveCount(0);
-  await stageCard().getByRole("link", { name: `Open ${quote.quote_ref}` }).click();
-  await expect(page).toHaveURL(new RegExp(`quote=${quote.id}`));
+  // The link names the quote. The Quotes page reads ?quote=<id> once its list has loaded, opens that quote and
+  // tidies the address back to /quotes (app/(dashboard)/quotes/page.tsx), so the ?quote= address is only there for a
+  // moment: check the link's target, then that the right quote opened, not the address after the page has used it.
+  const open = stageCard().getByRole("link", { name: `Open ${quote.quote_ref}` });
+  await expect(open).toHaveAttribute("href", `/quotes?quote=${quote.id}`);
+  await open.click();
+  await expect(page.getByRole("dialog", { name: `${quote.quote_ref} quote details` })).toBeVisible();
+  await expect(page).toHaveURL(/\/quotes$/);
 });

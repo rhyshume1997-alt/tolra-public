@@ -120,11 +120,25 @@ markers(migration, present) AS (
     ('102 security guards',               EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_may_edit_profile')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'organization_settings_guard_nav' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '99579bb09f2fcf9458103b3128af20c8')),
     ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'ca5166191666584107491f95ccce4702')),
+    ('105 invoice write-off',             EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_off_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'c7449f4564711533d43a1aa252eddfdf')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reverse_write_off' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4750ac042335694164b634edca559f23')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = 'public.invoices'::regclass)),
+    ('106 email templates',               to_regclass('public.email_templates') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'finance_check_enabled')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_set_finance_check')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reserve_company_email')),
+    ('107 integrations connect',          to_regclass('public.integration_app_credentials') IS NOT NULL AND to_regclass('public.integration_connect_invites') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'integration_invite_redeem')),
     ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
                                           AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
+    ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'user_preferences' AND column_name = 'date_format')),
+    ('110 rfq clarification in one step',  EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_rfq_clarification')),
     ('113 reopen sign-off',               to_regclass('public.reopen_requests') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reopen_record')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'decide_reopen_request')),
+    ('114 clock-in network lock',         to_regclass('public.clock_in_network_locks') IS NOT NULL AND to_regclass('public.clock_in_network_unverified') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'clock_in_network_lock' AND tgrelid = to_regclass('public.attendance_events'))),
     ('115 browser error alert budget',    to_regclass('security_audit.browser_error_alerts') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'claim_browser_error_alert')),
     ('116 overview owed snapshots',       to_regclass('public.overview_owed_snapshots') IS NOT NULL
@@ -134,7 +148,12 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'resolve_job_problem')),
     ('118 job part logs',                 to_regclass('public.job_part_logs') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'log_job_parts')
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_parts_done'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_parts_done')),
+    ('119 ban ends session',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'session_is_active' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('dd70574344856582b9819431b45e6c5c', '4fa415c7b3222def6c37e93353e804c2'))),
+    ('120 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass)),
+    ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -359,6 +378,33 @@ checks(n, check_name, value, expected) AS (
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing'),
     '081 before and after 113 (other or missing: stop and report)'
+  UNION ALL SELECT 48, '107 needs: the integrations layer (084) and is_platform_admin / assert_platform_aal (036)',
+    (to_regclass('public.integration_connections') IS NOT NULL AND to_regprocedure('public.integration_oauth_consume(uuid,uuid,text,text)') IS NOT NULL
+     AND to_regprocedure('public.is_platform_admin()') IS NOT NULL AND to_regprocedure('public.assert_platform_aal()') IS NOT NULL)::TEXT,
+    'true (107 replaces no existing function; it widens three provider checks to add microsoft and adds two tables)'
+  UNION ALL SELECT 49, '119 needs: public.session_is_active is 017''s and _session_membership 036''s (or already 119''s); may read auth.users.banned_until',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '19fe21959a87cd880feb0fb0190980eb' THEN '017' WHEN 'af6457cae4d8b89cd34b5963574fbe58' THEN '119' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'session_is_active'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'a15c6833cefc4b752ceafce0a10730b2' THEN '036' WHEN 'dd70574344856582b9819431b45e6c5c' THEN '119' WHEN '4fa415c7b3222def6c37e93353e804c2' THEN '121' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = '_session_membership'), 'missing')
+    || ' / ' || CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until')
+                     THEN has_column_privilege(current_user, 'auth.users', 'banned_until', 'SELECT')::TEXT ELSE 'no banned_until column' END,
+    '017 / 036 / true before 119, 119 / 119 / true after (119 / 121 / true once 121 is applied; other: stop, 119 refuses to replace it)'
+  UNION ALL SELECT 50, '119 (informational): logins banned now that still hold an active membership (their open tokens stop working when 119 is applied)',
+    CASE WHEN NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users' AND column_name = 'banned_until') THEN 'n/a'
+         ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(DISTINCT u.id) AS n FROM auth.users u JOIN public.organization_members m ON m.user_id = u.id
+                WHERE u.banned_until > now() AND m.active$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
+    'informational: report the figure (119 changes no row; those people already cannot sign in)'
+  UNION ALL SELECT 51, '105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)',
+    CASE WHEN NOT EXISTS (SELECT 1 FROM col WHERE table_name = 'invoices' AND column_name = 'status') THEN 'n/a'
+         ELSE coalesce((xpath('/row/n/text()', query_to_xml($q$SELECT count(*) || ' / ' || count(*) FILTER (WHERE NOT EXISTS (SELECT 1 FROM security_audit.audit_log a
+                WHERE a.action = 'WRITE_OFF_INVOICE' AND a.entity_table = 'invoices' AND a.entity_id = i.id::TEXT)) AS n
+                FROM public.invoices i WHERE lower(regexp_replace(coalesce(i.status, ''), '[^[:alpha:]]', '', 'g')) = 'writtenoff'$q$, FALSE, TRUE, '')))[1]::TEXT, '?') END,
+    'informational, the same before and after 105 (105 changes no invoice): report both figures; from 105 a write-off is made only with Write off'
+  UNION ALL SELECT 52, '121 needs: public._session_membership is 119''s (or already 121''s)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'dd70574344856582b9819431b45e6c5c' THEN '119' WHEN '4fa415c7b3222def6c37e93353e804c2' THEN '121' WHEN 'a15c6833cefc4b752ceafce0a10730b2' THEN '036' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = '_session_membership'), 'missing'),
+    '119 before 121, 121 after (036: apply 119 first; other: stop, 121 refuses to replace it)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

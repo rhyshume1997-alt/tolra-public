@@ -52,7 +52,7 @@ export function overviewSummary(o: IntegrationOverview): { statusLabel: string; 
 /** The message for the callback's ?xero= outcome (the callback never puts a token, code or state in it). */
 export function connectOutcomeMessage(outcome: string): string {
   switch (outcome) {
-    case "connected": return "Connected to Xero.";
+    case "connected": return "All connected: Xero.";
     case "cancelled": return "Connecting to Xero was cancelled. Nothing changed.";
     case "expired": return "That Connect took too long or was started elsewhere. Click Connect to Xero again.";
     case "choose_one": return "Choose one Xero organisation only. Click Connect to Xero again and tick one.";
@@ -63,5 +63,38 @@ export function connectOutcomeMessage(outcome: string): string {
     case "forbidden": return "Only an admin who has confirmed their authenticator code can connect Xero.";
     case "signed_out": return "Sign in again, then connect Xero.";
     default: return "Connecting to Xero didn't work. Nothing changed. Try again.";
+  }
+}
+
+/** The status line's words on Admin > Integrations (107): "All connected" once connected (Rhys, Fri 30 Oct), otherwise as overviewSummary. */
+export function cardStatusLabel(o: Pick<IntegrationOverview, "status">, provider: "xero" | "microsoft" = "xero"): string {
+  if (o.status === "connected") return "All connected";
+  // Microsoft 365's own words, so the page never shows "Not connected" twice (the Xero card's line).
+  if (provider === "microsoft" && o.status === "not_connected") return "No mailbox connected";
+  return STATUS[o.status] ?? o.status;
+}
+
+/** What the page says when the app details are missing (Connect stays disabled until the platform owner enters them). */
+export function notSetUpMessage(provider: "xero" | "microsoft"): string {
+  return `Not set up yet: the owner must enter the ${provider === "xero" ? "Xero" : "Microsoft 365"} app details.`;
+}
+
+/** Shown in place of what needs migration 107 while it is not applied (the Xero card keeps working as before). */
+export const NEEDS_107 = "Not available until database update 107 is applied.";
+
+/** The message for the Microsoft 365 callback's ?microsoft= outcome (never a token, code or state in it). */
+export function microsoftOutcomeMessage(outcome: string): string {
+  switch (outcome) {
+    case "connected": return "All connected: Microsoft 365.";
+    case "cancelled": return "Connecting Microsoft 365 was cancelled. Nothing changed.";
+    case "refused": return "Microsoft refused the sign-in (the app may need admin consent in that Microsoft 365 tenant). Nothing changed.";
+    case "expired": return "That Connect took too long or was started elsewhere. Click Connect Microsoft 365 again.";
+    case "mailbox_in_use": return "That mailbox is already connected to another company in Tolra.";
+    case "disconnect_first": return "This company is connected to another mailbox. Disconnect it first.";
+    case "no_mailbox": return "That Microsoft account has no mailbox. Sign in with an account that has one.";
+    case "not_configured": return notSetUpMessage("microsoft");
+    case "forbidden": return "Only an admin who has confirmed their authenticator code can connect Microsoft 365.";
+    case "signed_out": return "Sign in again, then connect Microsoft 365.";
+    default: return "Connecting Microsoft 365 didn't work. Nothing changed. Try again.";
   }
 }

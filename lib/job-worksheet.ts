@@ -1,3 +1,4 @@
+import { fmtDateTime } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { quoteNumberForJob } from "@/lib/numbering";
 import { loadOfflineSnapshot, queueOffline, reportOffline, saveOfflineSnapshot } from "@/lib/offline/scope";
@@ -92,7 +93,7 @@ const NUMBER_FIELDS = ["job_time_quoted_hr", "job_time_taken_hr", "quantity_requ
  */
 export function signOffState(ws: Pick<JobWorksheet, "signed_off_by" | "signed_off_at">): { status: "signed"; name: string; at: string } | { status: "unsigned"; name: string } | { status: "blank" } {
   const name = ws.signed_off_by.trim();
-  if (ws.signed_off_at) return { status: "signed", name, at: formatDateTimeGB(ws.signed_off_at) };
+  if (ws.signed_off_at) return { status: "signed", name, at: fmtDateTime(ws.signed_off_at) };
   return name ? { status: "unsigned", name } : { status: "blank" };
 }
 
@@ -140,18 +141,6 @@ export function isOverrun(ws: Pick<JobWorksheet, "job_time_quoted_hr" | "job_tim
   const quoted = parseFloat(ws.job_time_quoted_hr);
   const taken = parseFloat(ws.job_time_taken_hr);
   return Number.isFinite(quoted) && Number.isFinite(taken) && taken > quoted;
-}
-
-export function formatDateGB(value: string) {
-  if (!value) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("en-GB");
-}
-
-export function formatDateTimeGB(value: string) {
-  if (!value) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" });
 }
 
 export type LoadWorksheetResult =

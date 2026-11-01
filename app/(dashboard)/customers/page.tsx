@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { type Phase, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { auditEvent } from "@/lib/audit";
-import { fetchKnownCustomers, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
+import { CUSTOMER_CHANGED, fetchKnownCustomers, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { friendlyError } from "@/lib/friendly-error";
 import { exportSpreadsheet } from "@/lib/export-records";
@@ -100,6 +100,8 @@ export default function CustomersPage() {
     const form = new FormData(event.currentTarget);
     const next: CustomerRecord = {
       id: editing.id,
+      // The version it was read at: the save is refused if someone else changed it since (lib/customers saveCustomer).
+      ...(editing.updatedAt ? { updatedAt: editing.updatedAt } : {}),
       name: String(form.get("name") || "").trim(),
       contactName: String(form.get("contact_name") || ""),
       email: String(form.get("email") || ""),
@@ -121,6 +123,11 @@ export default function CustomersPage() {
         await load();
       } catch (err) {
         toast.error(err instanceof ValidationError ? err.message : friendlyError(err, "Could not save customer"));
+        // Someone else changed it since it was read (E6): show what they saved; the edit is made again on the fresh record.
+        if (err instanceof ValidationError && err.message === CUSTOMER_CHANGED) {
+          setEditing(null);
+          await load();
+        }
       }
     });
   }

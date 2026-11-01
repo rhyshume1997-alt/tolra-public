@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const state = vi.hoisted(() => ({
+  xeroReady: true,
   role: "admin" as string,
   support: false,
   adminClients: 0,
@@ -45,7 +46,7 @@ function query(table: string) {
   return q;
 }
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => { state.adminClients += 1; return { from: query }; } }));
-vi.mock("@/lib/integrations/server", () => ({ xeroReady: () => ({ config: {}, key: Buffer.alloc(32) }) }));
+vi.mock("@/lib/integrations/server", () => ({ xeroReady: async () => (state.xeroReady ? { config: {}, key: Buffer.alloc(32) } : null) }));
 vi.mock("@/lib/integrations/xero/batch-deps", () => ({ batchDeps: () => ({}) }));
 vi.mock("@/lib/integrations/xero/batch-server", async (orig) => ({
   ...(await orig<typeof import("@/lib/integrations/xero/batch-server")>()),
@@ -57,7 +58,7 @@ const get = (qs: string) => new Request(`https://app.example.test/x?${qs}`);
 const ID = "11111111-1111-4111-8111-111111111111";
 const SEND = { action: "send", mode: "unsent", items: [{ doc_type: "invoice", doc_id: ID }] };
 
-beforeEach(() => { state.role = "admin"; state.support = false; state.adminClients = 0; state.filters = []; state.chunkCalls = 0; state.chunkOptions = []; });
+beforeEach(() => { state.xeroReady = true; state.role = "admin"; state.support = false; state.adminClients = 0; state.filters = []; state.chunkCalls = 0; state.chunkOptions = []; });
 
 describe("batch route guards", () => {
   it.each(["office", "workshop", "viewer"])("%s gets 403 before any service-role client or send", async (role) => {
@@ -67,6 +68,17 @@ describe("batch route guards", () => {
       expect((await POST(post(body))).status).toBe(403);
     }
     expect(state.adminClients).toBe(0);
+    expect(state.chunkCalls).toBe(0);
+  });
+
+  it("Xero not set up on this server (no client config or key): 503 and nothing is sent", async () => {
+    state.xeroReady = false;
+    const { POST } = await import("@/app/api/integrations/xero/batch/route");
+    for (const body of [SEND, { action: "preview", from: "2026-10-01", to: "2026-10-31", mode: "unsent" }]) {
+      const res = await POST(post(body));
+      expect(res.status).toBe(503);
+      expect(((await res.json()) as { error?: string }).error).toBe("Xero is not set up on this server yet.");
+    }
     expect(state.chunkCalls).toBe(0);
   });
 
