@@ -17,7 +17,8 @@ import { FilterBar } from "@/components/filter-bar";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ListToolbar } from "@/components/list-toolbar";
 import { ViewSwitcher } from "@/components/view-switcher";
-import { useColumnVisibility } from "@/lib/org-settings";
+import { useColumnVisibility, useOrgSettings } from "@/lib/org-settings";
+import { salesOrdersEnabled } from "@/lib/sales-orders-switch";
 import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { phaseOf, type PhaseFilterValue, useArchive } from "@/lib/archive";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -330,6 +331,8 @@ export default function QuotesPage() {
   // Revise (068): asked first, "Revise QUO-0123 as v2?".
   const [reviseAsk, setReviseAsk] = useState<QuoteRow | null>(null);
   const router = useRouter();
+  // Sales Orders is off until an admin switches it on (Settings > Menu): the wording and links after Mark accepted follow it.
+  const salesOrdersOn = salesOrdersEnabled(useOrgSettings().hiddenNav);
   // A prepared e-mail waiting for "I've sent it": opening a draft or downloading the PDF doesn't prove it went.
   const [sendConfirm, setSendConfirm] = useState<QuoteRow | null>(null);
   const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
@@ -972,7 +975,7 @@ export default function QuotesPage() {
           setDecision(null);
           setDecisionPo("");
           setDecisionDue("");
-          const told = acceptOutcome(result, quote.ref);
+          const told = acceptOutcome(result, quote.ref, salesOrdersOn);
           // With a job to open, the quote's dialog closes: its overlay would otherwise block the toast's "Open job" button.
           if (told.link) setViewingQuote(null);
           const options = told.link ? { duration: 12_000, action: { label: told.link.label, onClick: () => router.push(told.link!.href) } } : undefined;
@@ -1405,7 +1408,7 @@ export default function QuotesPage() {
           ) : null}
           {has068 && decision?.outcome === "accepted" && viewItems.filter((item) => item.id).length > 1 ? (
             <fieldset className="grid gap-2 text-sm" data-testid="accept-lines">
-              <legend className="mb-1 text-xs text-slate-500">Lines the customer ordered. Untick any their PO doesn&apos;t cover: only ticked lines go on the sales order, job and invoice.</legend>
+              <legend className="mb-1 text-xs text-slate-500">Lines the customer ordered. Untick any their PO doesn&apos;t cover: only ticked lines go on the {salesOrdersOn ? "sales order" : "order"}, job and invoice.</legend>
               {viewItems.map((item) => item.id ? (
                 <label key={item.id} className="flex items-start gap-2 pointer-coarse:min-h-11">
                   <SelectBox aria-label={`Ordered: ${item.description}`} checked={!decisionUnticked.has(item.id)} onChange={(event) => { const id = item.id!; const on = event.target.checked; setDecisionUnticked((current) => { const next = new Set(current); if (on) next.delete(id); else next.add(id); return next; }); }} />

@@ -26,6 +26,7 @@ import { useUser } from "@/lib/use-user";
 import { hexOr, isHexColour, PRODUCT_BRANDING, textOn } from "@/lib/branding";
 import { NAV_TOGGLES, resetHiddenColumns, saveOrgSettings, screensByGroup, setColumnHidden, setItemShown, setNavHidden, shownCount, type SaveResult, useOrgSettings } from "@/lib/org-settings";
 import { PRODUCT } from "@/lib/product";
+import { SALES_ORDERS_KEY, salesOrdersEnabled, salesOrdersSwitchChange } from "@/lib/sales-orders-switch";
 import { WEEKDAY_OPTIONS } from "@/lib/machine-schedule";
 import { BREAK_MINUTES, LUNCH_MINUTES, MIN_DAY_HOURS, formatHoursMinutes, paidDay, paidWeek } from "@/lib/working-hours";
 import { TimeSettingsCard } from "@/components/time/time-settings-card";
@@ -612,7 +613,9 @@ export default function SettingsPage() {
 
   function toggleNav(key: string, label: string, visible: boolean) {
     const oldData = { hiddenNav: settings.hiddenNav };
-    const next = visible ? settings.hiddenNav.filter((item) => item !== key) : Array.from(new Set([...settings.hiddenNav, key]));
+    // Sales Orders is off until switched on (a marker in the list, lib/sales-orders-switch); every other item is hidden by its key.
+    const change = key === SALES_ORDERS_KEY ? salesOrdersSwitchChange(visible) : { add: visible ? [] : [key], remove: visible ? [key] : [] };
+    const next = Array.from(new Set([...settings.hiddenNav.filter((item) => !change.remove.includes(item)), ...change.add]));
     void persist(setNavHidden(key, !visible), "Menu settings", oldData, { hiddenNav: next }, { item: label, visible });
   }
 
@@ -660,10 +663,12 @@ export default function SettingsPage() {
                 <p className="pb-2 text-[0.8125rem] font-semibold text-slate-500">{section}</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {NAV_TOGGLES.filter((item) => item.section === section).map((item) => {
-                    const visible = !settings.hiddenNav.includes(item.key);
+                    const visible = item.key === SALES_ORDERS_KEY ? salesOrdersEnabled(settings.hiddenNav) : !settings.hiddenNav.includes(item.key);
                     return (
                       <div key={item.key} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                        <span className="text-sm font-medium text-slate-800">{item.label}</span>
+                        <span className="min-w-0 text-sm font-medium text-slate-800">{item.label}
+                          {item.key === SALES_ORDERS_KEY ? <span className="block text-xs font-normal text-slate-500">Off to start with. Accepted quotes still make their order and job in the background.</span> : null}
+                        </span>
                         <Switch checked={visible} label={`Show ${item.label}`} onChange={(checked) => toggleNav(item.key, item.label, checked)} />
                       </div>
                     );
