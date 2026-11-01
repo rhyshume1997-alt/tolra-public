@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { microsoftReady } from "@/lib/integrations/microsoft/client";
+import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { beginMicrosoftConnect } from "@/lib/integrations/microsoft/connect";
 import { DbError } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change Microsoft 365 settings.", 403);
   const ready = await microsoftReady(createSupabaseAdminClient());
-  if (!ready) return jsonError("Not set up yet: the owner must enter the Microsoft 365 app details.", 503);
+  if (!ready) return notConfiguredResponse("microsoft");
   try {
     return NextResponse.json({ url: await beginMicrosoftConnect(auth.supabase, auth.profile.organization_id, ready) });
   } catch (err) {

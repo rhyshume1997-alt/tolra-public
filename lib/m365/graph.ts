@@ -1,5 +1,9 @@
 import "server-only";
 
+// LEGACY (C1, migration 127): the app-only path, kept working behind its env vars and never removed here. A company that has connected
+// Microsoft 365 with the one-click delegated sign-in and allowed reading mail is read through lib/integrations/microsoft/inbox.ts (its
+// own mailbox through /me, no tenant id, mailbox or Exchange step); /api/mail/poll prefers that connection when it exists.
+//
 // One Microsoft 365 mailbox through Microsoft Graph, with the app's own (client credentials) identity.
 //
 // Access is granted to the app in Exchange Online (RBAC for Applications: "Application Mail.Read" and "Application
@@ -140,7 +144,7 @@ export type InboxMessage = {
   hasAttachments: boolean;
 };
 
-type GraphMessage = {
+export type GraphMessage = {
   id: string;
   internetMessageId?: string;
   subject?: string;
@@ -153,8 +157,27 @@ type GraphMessage = {
   hasAttachments?: boolean;
 };
 
-const SELECT = "id,internetMessageId,subject,from,receivedDateTime,bodyPreview,body,isRead,parentFolderId,hasAttachments";
+/** The message fields read (shared with the delegated reader, lib/integrations/microsoft/inbox.ts). */
+export const INBOX_SELECT = "id,internetMessageId,subject,from,receivedDateTime,bodyPreview,body,isRead,parentFolderId,hasAttachments";
+const SELECT = INBOX_SELECT;
 const MAX_BODY = 20_000;
+
+/** One Graph message as stored (the body as text, cut to 20,000 characters). */
+export function toInboxMessage(m: GraphMessage): InboxMessage {
+  return {
+    id: m.id,
+    internetMessageId: m.internetMessageId ?? null,
+    subject: m.subject ?? null,
+    from: m.from?.emailAddress?.address?.toLowerCase() ?? null,
+    fromName: m.from?.emailAddress?.name ?? null,
+    receivedAt: m.receivedDateTime,
+    bodyPreview: m.bodyPreview ?? null,
+    bodyText: m.body?.content ? m.body.content.slice(0, MAX_BODY) : null,
+    isRead: m.isRead === true,
+    parentFolderId: m.parentFolderId ?? null,
+    hasAttachments: m.hasAttachments === true,
+  };
+}
 export const MAX_PAGES = 20;
 /** A paging link is only followed when it points at Microsoft Graph itself. */
 export const isGraphLink = (link: unknown): link is string => typeof link === "string" && link.startsWith(`${GRAPH}/`);
@@ -186,21 +209,7 @@ export async function listInboxSince(
     // Ask for the body as text so no HTML is stored.
     const json = (await graphUrl(config, url, { method: "GET", prefer: ['outlook.body-content-type="text"'] })) as { value?: GraphMessage[]; "@odata.nextLink"?: unknown } | null;
     pages += 1;
-    for (const m of json?.value ?? []) {
-      messages.push({
-        id: m.id,
-        internetMessageId: m.internetMessageId ?? null,
-        subject: m.subject ?? null,
-        from: m.from?.emailAddress?.address?.toLowerCase() ?? null,
-        fromName: m.from?.emailAddress?.name ?? null,
-        receivedAt: m.receivedDateTime,
-        bodyPreview: m.bodyPreview ?? null,
-        bodyText: m.body?.content ? m.body.content.slice(0, MAX_BODY) : null,
-        isRead: m.isRead === true,
-        parentFolderId: m.parentFolderId ?? null,
-        hasAttachments: m.hasAttachments === true,
-      });
-    }
+    for (const m of json?.value ?? []) messages.push(toInboxMessage(m));
     const next = json?.["@odata.nextLink"];
     if (next === undefined || next === null || next === "") url = null;
     else if (isGraphLink(next)) url = next;
