@@ -9,7 +9,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { missingDbObject } from "@/lib/db-features";
+import { missingDbObject } from "@/lib/db-missing";
 import { fetchAll } from "@/lib/fetch-all";
 import { type InboundForMatch, type PurchaseOrderCandidate, type QuoteCandidate, emailList, extractPoNumbers, matchInboundEmail } from "@/lib/po-capture";
 
