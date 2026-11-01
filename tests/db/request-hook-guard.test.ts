@@ -22,6 +22,7 @@ const QUOTE_TO_JOB_MIGRATION = readdirSync(path.resolve(__dirname, "../../supaba
 const AUTO_INVOICE_MIGRATION = readdirSync(path.resolve(__dirname, "../../supabase/migrations")).find((f) => f.endsWith("_delivery_note_auto_invoice.sql"))!.slice(0, 3);
 const AUTO_BOOK_MIGRATION = readdirSync(path.resolve(__dirname, "../../supabase/migrations")).find((f) => f.endsWith("_auto_book_next_free.sql"))!.slice(0, 3);
 const QUOTE_VERSIONS_MIGRATION = readdirSync(path.resolve(__dirname, "../../supabase/migrations")).find((f) => f.endsWith("_quote_versions.sql"))!.slice(0, 3);
+const DATE_FORMAT_MIGRATION = readdirSync(path.resolve(__dirname, "../../supabase/migrations")).find((f) => f.endsWith("_user_date_format.sql"))!.slice(0, 3);
 
 const sql017 = readFileSync(path.resolve(__dirname, "../../supabase/migrations/017_session_and_deferred_link_checks.sql"), "utf8");
 const hooks = (db: import("pg").Client) => db.query<{ cfg: string }>(
@@ -134,6 +135,7 @@ describe("release preflight (supabase/verify/release_preflight.sql)", () => {
         await db.query("drop function public.machine_next_free_start(uuid, uuid, numeric, timestamptz, timestamptz)");
         await db.query("drop function public.replace_draft_invoice(uuid, timestamptz, jsonb, jsonb)");
         await db.query("drop function public.void_invoice(uuid, text)");
+        await db.query("drop table public.user_preferences");
         return (await db.query<{ check: string; value: string }>(text)).rows;
       } finally {
         await db.query("rollback");
@@ -166,6 +168,7 @@ describe("release preflight (supabase/verify/release_preflight.sql)", () => {
     expect(value("073")).toBe("not applied");
     expect(value(AUTO_BOOK_MIGRATION)).toBe("not applied");
     expect(value(QUOTE_VERSIONS_MIGRATION)).toBe("not applied");
+    expect(value(DATE_FORMAT_MIGRATION)).toBe("not applied");
     expect(value("027")).toBe("applied");
     // And nothing changed: all are back.
     const back = await withDb(async (db) => (await db.query("select to_regprocedure('public.set_archive_state(text, uuid, text)') is not null as fn, to_regprocedure('public.org_vat_registered(uuid)') is not null as vat_fn, to_regprocedure('public.record_inbound_email(text, text, text, text, text, timestamptz, text, text)') is not null as inbound_fn, to_regprocedure('public.record_invoice_payment(uuid, numeric, date, text, text, uuid)') is not null as payment_fn, to_regprocedure('public.resolve_job_email(uuid, text)') is not null as job_email_fn, exists (select 1 from information_schema.columns where table_name = 'jobs' and column_name = 'inspected_at') as col")).rows[0]);

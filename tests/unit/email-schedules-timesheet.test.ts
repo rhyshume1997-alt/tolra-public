@@ -122,9 +122,9 @@ describe("running a period of timesheet e-mails", () => {
     expect(send).toHaveBeenCalledTimes(2);
     const [first, second] = send.mock.calls.map((c) => c[0]);
     expect(first).toMatchObject({ organizationId: ORG, kind: "timesheet", to: ["boss@jnr.test", "second@jnr.test"], recordType: "timesheet", recordId: `${A}:2026-10-19` });
-    expect(first.subject).toBe("Timesheet for week 43 (Mon 19 Oct to Sun 25 Oct 2026) from JNR Engineering");
-    expect(first.text).toContain("is ready: 23.25 hours recorded.");
-    expect(second.text).toContain("is ready: 3 hours recorded.");
+    expect(first.subject).toBe("Timesheet for Alex Ames, week 43 (Mon 19 Oct to Sun 25 Oct 2026) from JNR Engineering");
+    expect(first.text).toContain("\nRecorded hours: 23.25\n");
+    expect(second.text).toContain("\nRecorded hours: 3\n");
     expect(first.idempotencyKey).toBe(scheduleEmailKey("timesheet", "sch-2", occurrence.periodKey, A));
     expect(first.idempotencyKey).toMatch(/^[A-Za-z0-9_-]{8,100}$/);
     expect(second.idempotencyKey).not.toBe(first.idempotencyKey);

@@ -7,8 +7,10 @@ import { randomUUID } from "node:crypto";
 
 import { IntegrationCryptoError, KEY_VERSION, decryptSecret, encryptSecret } from "@/lib/integrations/crypto";
 import type { EngineDb } from "@/lib/integrations/engine";
-import type { ProviderId } from "@/lib/integrations/types";
-import type { TokenSet } from "@/lib/integrations/xero/oauth";
+import type { ConnectProviderId } from "@/lib/integrations/types";
+
+/** What a refresh returns (Xero's TokenSet; Microsoft 365's has the same shape). */
+export type RefreshedTokens = { accessToken: string; refreshToken: string; expiresAt: Date };
 
 type Lease = { refresh_token_enc: string; access_token_enc: string | null; access_expires_at: string | null; key_version: number };
 
@@ -18,10 +20,12 @@ export const REFRESH_MARGIN_MS = 2 * 60_000;
 export type TokenSourceDeps = {
   db: EngineDb;
   key: Buffer;
-  /** Xero's refresh call (lib/integrations/xero/oauth.ts refreshTokens with the app's configuration). */
-  refresh(refreshToken: string): Promise<TokenSet>;
-  /** true for "the refresh token was refused: connect again" (XeroAuthError invalid_grant). */
+  /** The provider's refresh call (lib/integrations/xero/oauth.ts or microsoft/oauth.ts refreshTokens with the app's configuration). */
+  refresh(refreshToken: string): Promise<RefreshedTokens>;
+  /** true for "the refresh token was refused: connect again" (XeroAuthError / MicrosoftAuthError invalid_grant). */
   isRefused(err: unknown): boolean;
+  /** The provider's name in the reasons shown to the admin (default "Xero"). */
+  label?: string;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
 };
@@ -31,7 +35,8 @@ export function createTokenSource(deps: TokenSourceDeps) {
   const now = deps.now ?? Date.now;
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
 
-  return async function accessToken(org: string, provider: ProviderId, opts: { force?: boolean } = {}): Promise<string | null> {
+  const label = deps.label ?? "Xero";
+  return async function accessToken(org: string, provider: ConnectProviderId, opts: { force?: boolean } = {}): Promise<string | null> {
     const holder = randomUUID();
     let lease: Lease | null = null;
     // Another caller may be refreshing right now: wait for it (its lease is at most 60 seconds) rather than refresh twice.
@@ -46,12 +51,12 @@ export function createTokenSource(deps: TokenSourceDeps) {
         return decryptSecret(lease.access_token_enc, ctx("access"), deps.key);
       }
       const refreshToken = decryptSecret(lease.refresh_token_enc, ctx("refresh"), deps.key);
-      let set: TokenSet;
+      let set: RefreshedTokens;
       try {
         set = await deps.refresh(refreshToken);
       } catch (err) {
         if (deps.isRefused(err)) {
-          await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: "Xero refused the stored sign-in (it was revoked, or not used for 60 days): connect again." });
+          await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: deps.label ? `${label} refused the stored sign-in (it was revoked, or not used for too long): connect again.` : "Xero refused the stored sign-in (it was revoked, or not used for 60 days): connect again." });
           return null;
         }
         throw err;
@@ -63,14 +68,14 @@ export function createTokenSource(deps: TokenSourceDeps) {
         p_access_expires_at: set.expiresAt.toISOString(), p_key_version: KEY_VERSION,
       });
       if (!stored) {
-        // Another holder took the lease over while Xero answered: the new refresh token could not be kept, so the stored one is spent.
-        await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: "The Xero sign-in was renewed twice at once and could not be kept: connect again." });
+        // Another holder took the lease over while the provider answered: the new refresh token could not be kept, so the stored one is spent.
+        await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: `The ${label} sign-in was renewed twice at once and could not be kept: connect again.` });
         return null;
       }
       return set.accessToken;
     } catch (err) {
       if (err instanceof IntegrationCryptoError) {
-        await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: "The stored Xero sign-in can't be read with this server's key: connect again." });
+        await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: `The stored ${label} sign-in can't be read with this server's key: connect again.` });
         return null;
       }
       throw err;

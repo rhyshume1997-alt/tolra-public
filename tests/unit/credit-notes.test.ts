@@ -128,12 +128,12 @@ describe("year-end credits.csv", () => {
     ]);
   });
 
-  it("is a CSV with a BOM, CRLF line ends, UK dates, two-column money and neutralised text", () => {
+  it("is a CSV with a BOM, CRLF line ends, ISO dates, two-column money and neutralised text", () => {
     const csv = creditsCsv(creditExportRows(notes, invoices, allocations, "2026-04-01", "2026-09-30"));
     expect(csv.startsWith("﻿Credit note,Invoice,Date,Customer,Net,VAT,Gross,Applied,Left to apply,Last applied\r\n")).toBe(true);
     const lines = csv.trimEnd().split("\r\n");
     expect(lines).toHaveLength(3);
-    expect(lines[1]).toBe("CN-0001,INV-0001,01/04/2026,Credit Co,50.00,10.00,60.00,40.00,20.00,20/04/2026");
+    expect(lines[1]).toBe("CN-0001,INV-0001,2026-04-01,Credit Co,50.00,10.00,60.00,40.00,20.00,2026-04-20");
     expect(lines[2]).not.toMatch(/,=HYPERLINK/); // a formula in a customer name can't run
     expect(creditsCsv([])).toBe("﻿Credit note,Invoice,Date,Customer,Net,VAT,Gross,Applied,Left to apply,Last applied\r\n");
   });

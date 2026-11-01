@@ -80,10 +80,10 @@ describe("year-end export with payments of unknown amount", () => {
     expect(strFromU8(files["problems.txt"])).toMatch(/Invoice INV-0001: payment unknown[^\r\n]*no payment amount was ever recorded/);
     expect(strFromU8(files["problems.txt"])).toMatch(/Invoice INV-0002: payment unknown[^\r\n]*still to be confirmed/);
     const csv = strFromU8(files["summary.csv"]);
-    expect(csv).toMatch(/Invoice,INV-0001,[^\r\n]*,100\.00,20\.00,120\.00,,,10\/03\/2026,paid,/);
+    expect(csv).toMatch(/Invoice,INV-0001,[^\r\n]*,100\.00,20\.00,120\.00,,,2026-03-10,paid,/);
     const payments = strFromU8(files["payments.csv"]);
     expect(payments).not.toMatch(/INV-0001|INV-0002/);
-    expect(payments).toContain("INV-0003,05/03/2026,50.00,BACS,R3,recorded,No");
+    expect(payments).toContain("INV-0003,2026-03-05,50.00,BACS,R3,recorded,No");
   });
 
   it("the shared rule: only a known amount is printed", () => {

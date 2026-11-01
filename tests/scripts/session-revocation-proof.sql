@@ -17,8 +17,9 @@
 --   * the PostgREST request hook check_request_session -> session_is_active (017/033): the token's session row still exists and has
 --     not passed not_after. Deliberately NOT in the row helpers (8.5x slower on a 20,000-row read), so a plain SQL select with a dead
 --     session still returns rows here; the hook is what refuses it for every REST/RPC request (and Storage policies call it, 033).
---   * NOT in the database: a sign-in ban (auth.users.banned_until). That is Auth's: it refuses sign-in and token refresh. An access
---     token already issued keeps working at the REST API until it expires. Case 3 records that as it is.
+--   * a sign-in ban (auth.users.banned_until): Auth refuses sign-in and token refresh, and from migration 119 the database refuses
+--     too: a banned login resolves no membership (rows=0) and the request hook raises 28000, so an access token already issued
+--     stops working at once (before 119 it kept working until it expired: that was the documented gap). Case 3 records it.
 -- =====================================================================================================
 \set ON_ERROR_STOP on
 \pset tuples_only on
@@ -191,15 +192,15 @@ set local role authenticated; select set_config('request.jwt.claims', :'cU', tru
 select public.zz_check('2i login deleted: sessions cascade away, membership and profile with them', public.zz_probe(), 'rows=0 org=- role=- session_active=false hook=28000');
 rollback;
 
-\echo === 3. sign-in ban (auth.users.banned_until): NOT a database signal; Auth refuses sign-in and refresh, an issued token lives to its expiry ===
+\echo === 3. sign-in ban (auth.users.banned_until): with 119 the database refuses too (no rows, hook 28000); before 119 an issued token lived to its expiry ===
 begin; update auth.users set banned_until = now() + interval '100 years' where id = :'U';
 set local role authenticated; select set_config('request.jwt.claims', :'cU', true);
-select public.zz_check('3a banned_until set, nothing else: the database still answers (documented gap, see report)', public.zz_probe(), 'rows=2 org=a role=admin session_active=true hook=ok');
+select public.zz_check('3a banned_until set, nothing else: REFUSED with 119 (the former gap is closed)', public.zz_probe(), 'rows=0 org=- role=- session_active=false hook=28000');
 rollback;
 begin; update auth.users set banned_until = now() + interval '100 years' where id = :'U';
 update public.organization_members set active = false where user_id = :'U' and organization_id = :'A';
 set local role authenticated; select set_config('request.jwt.claims', :'cU', true);
-select public.zz_check('3b ban AND membership deactivated (what Deactivate does): refused', public.zz_probe(), 'rows=0 org=- role=- session_active=true hook=ok');
+select public.zz_check('3b ban AND membership deactivated (what Deactivate does): refused', public.zz_probe(), 'rows=0 org=- role=- session_active=false hook=28000');
 rollback;
 
 \echo === 4. two companies: one chosen for the session; revoking the chosen one must not fall through to data it should not see ===

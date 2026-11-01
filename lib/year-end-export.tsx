@@ -58,13 +58,18 @@ const inRange = (date: string, from: string, to: string) => Boolean(date) && dat
 const money = (n: unknown) => Math.round(Number(n || 0) * 100) / 100;
 const safe = (name: string) => name.replace(/[^\w.\- ]/g, "_");
 
+/**
+ * The CSVs' (and README's) dates are ISO YYYY-MM-DD whoever exports them (Rhys, Wed 21 Oct 2026): the same as every other export and
+ * the format Admin > Data import reads; never the person's own date format. The PDFs in the pack follow the person exporting, as
+ * anything they print does.
+ */
 /** CSV with quoting, a UTF-8 BOM (so Excel reads £ correctly) and CRLF line ends. */
 export function summaryCsv(rows: SummaryRow[]) {
   const header = ["Type", "Number", "Date", "Customer / supplier", "Net", "VAT", "Gross", "Paid", "Balance due", "Paid date", "Status", "PDF"];
   // Text fields starting with = + - @ (or a tab / carriage return) are neutralised so a hostile customer name can't run as a
   // formula in Excel; the money columns are numbers and stay plain numbers (lib/html csvField).
   const cell = csvField;
-  const body = rows.map((r) => [r.type, r.number, r.date ? fmtDate(r.date) : "", r.party, r.net, r.vat, r.gross, r.paid ?? null, r.balance ?? null, r.paidDate ? fmtDate(r.paidDate) : "", r.status, r.pdf].map(cell).join(","));
+  const body = rows.map((r) => [r.type, r.number, r.date ? calendarDate(r.date) : "", r.party, r.net, r.vat, r.gross, r.paid ?? null, r.balance ?? null, r.paidDate ? calendarDate(r.paidDate) : "", r.status, r.pdf].map(cell).join(","));
   return `﻿${[header.join(","), ...body].join("\r\n")}\r\n`;
 }
 
@@ -127,19 +132,19 @@ export function creditExportRows(creditNotes: Row[], invoices: Row[], allocation
     }));
 }
 
-/** credits.csv: same conventions as summary.csv (BOM, CRLF, quoting, UK dates, two decimals). Amounts are positive: a credit note reduces what an invoice is owed. */
+/** credits.csv: same conventions as summary.csv (BOM, CRLF, quoting, ISO dates, two decimals). Amounts are positive: a credit note reduces what an invoice is owed. */
 export function creditsCsv(rows: CreditExportRow[]) {
   const header = ["Credit note", "Invoice", "Date", "Customer", "Net", "VAT", "Gross", "Applied", "Left to apply", "Last applied"];
   const cell = csvField;
-  const body = rows.map((r) => [r.credit, r.invoice, r.date ? fmtDate(r.date) : "", r.customer, r.net, r.vat, r.gross, r.applied, r.left, r.lastApplied ? fmtDate(r.lastApplied) : ""].map(cell).join(","));
+  const body = rows.map((r) => [r.credit, r.invoice, r.date ? calendarDate(r.date) : "", r.customer, r.net, r.vat, r.gross, r.applied, r.left, r.lastApplied ? calendarDate(r.lastApplied) : ""].map(cell).join(","));
   return `\ufeff${[header.join(","), ...body].join("\r\n")}\r\n`;
 }
 
-/** payments.csv: same conventions as summary.csv (BOM, CRLF, quoting, UK dates, two decimals). */
+/** payments.csv: same conventions as summary.csv (BOM, CRLF, quoting, ISO dates, two decimals). */
 export function paymentsCsv(rows: PaymentExportRow[]) {
   const header = ["Invoice", "Paid on", "Amount", "Method", "Reference", "Source", "Reversed"];
   const cell = csvField;
-  const body = rows.map((r) => [r.invoice, r.paidOn ? fmtDate(r.paidOn) : "", r.amount, r.method, r.reference, r.source, r.reversed].map(cell).join(","));
+  const body = rows.map((r) => [r.invoice, r.paidOn ? calendarDate(r.paidOn) : "", r.amount, r.method, r.reference, r.source, r.reversed].map(cell).join(","));
   return `\ufeff${[header.join(","), ...body].join("\r\n")}\r\n`;
 }
 
@@ -241,7 +246,7 @@ export function exportReadme(companyName: string, from: string, to: string, coun
   const warning = counts.unresolved
     ? `WARNING: THIS EXPORT CONTAINS ${counts.unresolved} UNRESOLVED RECORD${counts.unresolved === 1 ? "" : "S"}. They are listed in summary.csv without amounts and without a PDF, and are not part of the reconciled figures. Details (stored amount, amount calculated from the lines, discrepancy) are in problems.txt. Resolve them before relying on this export.\r\n\r\n`
     : "";
-  return `${warning}${companyName} year-end export, ${fmtDate(from)} to ${fmtDate(to)}.\r\n${counts.documents} documents: ${counts.invoices} invoices, ${counts.quotes} quotes, ${counts.pos} purchase orders, ${counts.notes} delivery notes.\r\nsummary.csv opens in Excel; payments.csv lists the payments recorded on those invoices; credits.csv lists the credit notes issued in the period and how much of each has been applied. Drafts are not included.\r\n`;
+  return `${warning}${companyName} year-end export, ${calendarDate(from)} to ${calendarDate(to)}.\r\n${counts.documents} documents: ${counts.invoices} invoices, ${counts.quotes} quotes, ${counts.pos} purchase orders, ${counts.notes} delivery notes.\r\nsummary.csv opens in Excel; payments.csv lists the payments recorded on those invoices; credits.csv lists the credit notes issued in the period and how much of each has been applied. Drafts are not included.\r\n`;
 }
 
 /** Builds the zip for [from, to] (inclusive dates, YYYY-MM-DD) and returns it with the summary rows and problems. */

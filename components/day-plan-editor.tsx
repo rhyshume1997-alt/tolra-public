@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clockMinutes, hoursForDay, workStartOn, type WorkingHours } from "@/lib/company";
 import {
-  addDaysToDate, clockText, dayHoursSplit, estimateMinutes, formatMinutes, formatPlanDate, inputEnd, localDateString, localMoment, parseLocalDate,
+  addDaysToDate, clockText, dayHoursSplit, estimateMinutes, formatMinutes, inputEnd, localDateString, localMoment, parseLocalDate,
   isoWeekday, rowMinutes, storedEnd, validateDayPlan,
   type DayPlanCheck, type DayPlanEntry, type DayPlanRow,
 } from "@/lib/machine-schedule";
+import { fmtDateText } from "@/lib/dates";
 import { workingHoursLabel } from "@/lib/working-hours";
 
 /** "08:00-14:30": the working hours of the weekday `date` falls on. */
@@ -103,7 +104,7 @@ export function DayPlanField({ on, onToggle, rows, setRows, estimatedHours, chec
               <div key={index} className="grid gap-1" data-testid="day-plan-row">
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem] items-end gap-2 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_2.75rem]">
                   <label className="col-span-3 grid min-w-0 gap-1 text-xs font-medium text-slate-600 sm:col-span-1">
-                    {row.date && parseLocalDate(row.date) ? formatPlanDate(row.date) : `Day ${n}`}
+                    {row.date && parseLocalDate(row.date) ? fmtDateText(row.date, { weekday: "short" }) : `Day ${n}`}
                     <Input type="date" aria-label={`Day ${n} date`} className="h-11" value={row.date} onChange={(e) => update(index, { date: e.target.value })} />
                   </label>
                   <label className="grid min-w-0 gap-1 text-xs font-medium text-slate-600">Start

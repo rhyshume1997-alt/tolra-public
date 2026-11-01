@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(json.data);
   if (!parsed.success) return jsonError("Invalid request", 400);
   const body = parsed.data;
-  const ready = xeroReady();
+  const ready = await xeroReady();
   const service = createSupabaseAdminClient();
   if (!ready || !service) return jsonError("Xero is not set up on this server yet.", 503);
   const org = auth.profile.organization_id;

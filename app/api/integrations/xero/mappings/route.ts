@@ -20,7 +20,7 @@ function xeroReadError(err: unknown) {
 }
 
 async function xeroFor(org: string): Promise<{ provider: AccountingProvider } | { response: NextResponse }> {
-  const ready = xeroReady();
+  const ready = await xeroReady();
   const service = createSupabaseAdminClient();
   if (!ready || !service) return { response: jsonError("Xero is not set up on this server yet.", 503) };
   const provider = await companyProvider(service, org, ready);

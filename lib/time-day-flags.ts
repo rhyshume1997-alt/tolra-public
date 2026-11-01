@@ -24,6 +24,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { fmtWeekdayDay } from "@/lib/dates";
 import { featurePresent, missingDbObject } from "@/lib/time-features";
 import { TimeDataError } from "@/lib/time-data";
 import { type DayTotals, type WeekTotals, roundMinutes, weekdayOf } from "@/lib/time-sheet";
@@ -149,7 +150,7 @@ export function createDayFlagsLoader(deps: {
 }
 
 /** "Sat 24" for a local date. */
-export const shortDay = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" });
+export const shortDay = (date: string) => fmtWeekdayDay(date);
 
 /** "Sat, OT" for a day's ticks (empty when none). */
 export const flagsShort = (f: DayFlags) => DAY_FLAG_KEYS.filter((k) => f[k]).map((k) => DAY_FLAG_SHORT[k]).join(", ");

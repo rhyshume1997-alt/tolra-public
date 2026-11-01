@@ -40,7 +40,7 @@ test("Settings > Year-end export downloads a zip with the period's invoice PDF a
   expect(Object.keys(files)).toContain(`invoices/${ref}.pdf`);
   expect(strFromU8(files[`invoices/${ref}.pdf`].slice(0, 5))).toBe("%PDF-");
   const csv = strFromU8(files["summary.csv"]);
-  expect(csv).toContain(`Invoice,${ref},10/06/2025,Year End Co,100.00,20.00,120.00`);
+  expect(csv).toContain(`Invoice,${ref},2025-06-10,Year End Co,100.00,20.00,120.00`);
   expect(csv).not.toContain(other);
   expect(Object.keys(files).some((name) => name.includes("INV-YD"))).toBe(false);
   expect(Object.keys(files)).toContain("README.txt");
@@ -48,7 +48,7 @@ test("Settings > Year-end export downloads a zip with the period's invoice PDF a
   const credits = strFromU8(files["credits.csv"]).replace(/^\ufeff/, "").trimEnd().split("\r\n");
   expect(credits).toEqual([
     "Credit note,Invoice,Date,Customer,Net,VAT,Gross,Applied,Left to apply,Last applied",
-    `${creditRef},${ref},01/07/2025,Year End Co,50.00,10.00,60.00,40.00,20.00,02/07/2025`,
+    `${creditRef},${ref},2025-07-01,Year End Co,50.00,10.00,60.00,40.00,20.00,2025-07-02`,
   ]);
   expect(strFromU8(files["payments.csv"])).not.toContain(creditRef);
 });

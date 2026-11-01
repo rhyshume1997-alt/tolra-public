@@ -20,13 +20,16 @@ import { loadCompanyPeople } from "@/lib/company-people";
 import { friendlyError } from "@/lib/friendly-error";
 import { type PeopleMap, UNKNOWN } from "@/lib/people";
 import { NeedsDatabaseUpdate } from "@/components/time/needs-update";
+import { PayrollExport } from "@/components/time/payroll-export";
 import { SyncRejectionsNotice } from "@/components/time/sync-rejections-notice";
+import { NetworkUnverifiedNotice } from "@/components/time/network-unverified-notice";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { newClientOpId } from "@/lib/machine-runs";
 import { DAY_FLAG_KEYS, DAY_FLAG_LABEL, type WeekDayFlags, flagTotalsSnapshot, flagsShort, saveDayFlags, shortDay } from "@/lib/time-day-flags";
 import { databaseHasTime, missingDbObject } from "@/lib/time-features";
 import { type TimeSettings, FLAG_TEXT, ROUNDING_NOTE, addDays, approvalSnapshot, hm, hmSigned, localDateOf, weekStartOf } from "@/lib/time-sheet";
+import { fmtDateTime } from "@/lib/dates";
 import { type PersonWeek, WEEK_STATE_TEXT, loadWeek } from "@/lib/time-week";
 import { useUser } from "@/lib/use-user";
 
@@ -133,10 +136,12 @@ export function WeekReview() {
           <ColumnToggle tableKey="hours" />
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("csv")}>Export CSV</Button>
           <Button variant="outline" size="sm" disabled={!sorted.length} onClick={() => exportWeek("xlsx")}>Export Excel</Button>
+          {seesEveryone ? <PayrollExport week={week} names={names} /> : null}
           <Button asChild variant="outline" size="sm"><Link href={`/time/week/print?week=${week}${only ? `&user=${only}` : !seesEveryone && me ? `&user=${me}` : ""}`}><Printer className="size-4" /> Print</Link></Button>
         </div>
       </div>
       <SyncRejectionsNotice enabled={seesEveryone} nameOf={(id) => names[id] ?? UNKNOWN} />
+      <NetworkUnverifiedNotice enabled={seesEveryone} week={week} nameOf={(id) => names[id] ?? UNKNOWN} />
       {error ? <div className="flex items-center justify-between rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"><span>{error}</span><Button variant="outline" size="sm" onClick={() => void load()}>Retry</Button></div> : null}
       {people === null && !error ? <p className="text-sm text-slate-500">Loading…</p> : null}
       {people ? (
@@ -174,7 +179,7 @@ export function WeekReview() {
                     {isVisible("check") ? <td role="cell" data-label="Check" className="block px-3 py-2 text-xs text-amber-800 empty:max-md:hidden md:table-cell md:px-2">{p.week.flags.map((f) => FLAG_TEXT[f] ?? f).join("; ")}</td> : null}
                     {isVisible("approval") ? <td role="cell" data-label="Approval" className="block px-3 py-2 text-xs md:table-cell md:px-2" data-testid="week-state">
                       <span className={state === "approved" ? "text-emerald-700" : state === "changed_since_approval" ? "text-amber-700" : "text-slate-500"}>{WEEK_STATE_TEXT[state]}</span>
-                      {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {new Date(p.status.approved_at).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "short", timeStyle: "short" })}</div> : null}
+                      {p.status?.approved_at ? <div className="text-slate-500">{names[p.status.approved_by ?? ""] ?? UNKNOWN}, {fmtDateTime(p.status.approved_at)}</div> : null}
                     </td> : null}
                     <td role="cell" data-actions className="block px-3 py-2 text-left empty:max-md:hidden md:table-cell md:px-2 desk:text-right">
                       {showFlags && p.dayFlags?.anySuggested && seesEveryone ? <Button size="sm" variant="outline" className="mr-1" onClick={() => void saveSuggested(p)} data-testid="save-suggested-ticks">Save suggested ticks</Button> : null}

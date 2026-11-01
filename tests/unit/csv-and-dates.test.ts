@@ -73,7 +73,7 @@ describe("summary.csv and payments.csv with hostile names", () => {
 
   it("money columns stay plain numbers, negatives included", () => {
     const csv = summaryCsv([row("Ordinary Ltd", { net: -10, vat: -2, gross: -12, paid: null, balance: null })]);
-    expect(csv).toContain("Invoice,INV-0001,04/03/2026,Ordinary Ltd,-10.00,-2.00,-12.00,,,,issued,invoices/INV-0001.pdf\r\n");
+    expect(csv).toContain("Invoice,INV-0001,2026-03-04,Ordinary Ltd,-10.00,-2.00,-12.00,,,,issued,invoices/INV-0001.pdf\r\n");
   });
 
   it("payments.csv neutralises references and reasons; the amount and its reversal stay numbers", () => {
@@ -82,9 +82,9 @@ describe("summary.csv and payments.csv with hostile names", () => {
       paymentFromRow({ id: "p2", invoice_id: "i1", amount: -50, paid_on: "2026-03-06", method: "BACS", reference: "", source: "recorded", reverses_payment_id: "p1", void_reason: "=Entered in error", created_at: "2026-03-06T10:00:00Z" }),
     ];
     const csv = paymentsCsv(paymentExportRows([{ id: "i1", invoice_ref: "-INV-1" }], payments));
-    expect(csv).toContain(`'-INV-1,05/03/2026,50.00,BACS,'=cmd|' /C calc'!A0,recorded,Yes`);
+    expect(csv).toContain(`'-INV-1,2026-03-05,50.00,BACS,'=cmd|' /C calc'!A0,recorded,Yes`);
     // "Reversal: ..." starts with a letter, so the reason inside it is not a cell start.
-    expect(csv).toContain(`'-INV-1,06/03/2026,-50.00,BACS,,recorded,Reversal: =Entered in error`);
+    expect(csv).toContain(`'-INV-1,2026-03-06,-50.00,BACS,,recorded,Reversal: =Entered in error`);
   });
 });
 

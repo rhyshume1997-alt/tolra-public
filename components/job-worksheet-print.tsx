@@ -4,7 +4,8 @@ import type { CSSProperties } from "react";
 
 import { SignatureImage } from "@/components/signature-pad";
 import { CUSTOMER_SIGNOFF_STATEMENT, customerLine, formatSignedAt, hashPrefix, kindLabel, legacySignOffText, useCustomerSignOffSetting, usePrintedSignOffs } from "@/lib/job-signoff";
-import { CHECKLIST_ITEMS, type JobWorksheet, formatDateGB, isOverrun, signOffState } from "@/lib/job-worksheet";
+import { fmtDate } from "@/lib/dates";
+import { CHECKLIST_ITEMS, type JobWorksheet, isOverrun, signOffState } from "@/lib/job-worksheet";
 import { useCompanyProfile } from "@/lib/company";
 import { PrintLogo } from "@/components/print-logo";
 
@@ -44,7 +45,7 @@ export function JobWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custome
   const customers = signOff?.customer ?? [];
   const { profile: company } = useCompanyProfile();
   const hours = (v: string) => (v ? `${v} hr` : "");
-  const materialOrdered = [ws.material_ordered ? "YES" : "", ws.material_ordered_at ? formatDateGB(ws.material_ordered_at) : "", ws.material_ordered_notes].filter(Boolean).join(" - ");
+  const materialOrdered = [ws.material_ordered ? "YES" : "", ws.material_ordered_at ? fmtDate(ws.material_ordered_at) : "", ws.material_ordered_notes].filter(Boolean).join(" - ");
   const machine = (n: 1 | 2 | 3) => [ws[`machine_${n}`], ws[`program_${n}`] ? `Prog: ${ws[`program_${n}`]}` : ""].filter(Boolean).join("   ");
 
   return (
@@ -61,14 +62,14 @@ export function JobWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custome
       <div className="grid grid-cols-2 border border-black">
         <div className="border-r border-black">
           <Row bg={COLOURS.grey} label="Customer" value={ws.customer} />
-          <Row bg={COLOURS.paleYellow} label="Date Received" value={formatDateGB(ws.date_received)} />
+          <Row bg={COLOURS.paleYellow} label="Date Received" value={fmtDate(ws.date_received)} />
           <Row bg={COLOURS.green} label="Quote #" value={ws.quote_ref} />
           <Row bg={COLOURS.yellow} label="Material Cert #" value={ws.material_cert_no} />
           <Row bg={COLOURS.peach} label="Job Time Quoted" value={hours(ws.job_time_quoted_hr)} />
         </div>
         <div>
           <Row bg={COLOURS.grey} label="Purchase Order #" value={ws.customer_po} />
-          <Row bg={COLOURS.paleYellow} label="Date Required" value={formatDateGB(ws.date_required)} />
+          <Row bg={COLOURS.paleYellow} label="Date Required" value={fmtDate(ws.date_required)} />
           <Row bg={COLOURS.green} label="Dimension Report #" value={ws.dimension_report_no} />
           <Row bg={COLOURS.yellow} label="Heat / Cast #" value={ws.heat_cast_no} />
           <Row bg={COLOURS.peach} label="Job Time Taken" value={hours(ws.job_time_taken_hr)} />
@@ -118,9 +119,9 @@ export function JobWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custome
         <div className="flex min-h-[10mm] items-end gap-2 border-t border-black px-2 py-1 text-[12px]">
           <strong className="text-[10px] uppercase">Name:</strong>
           <span className="min-w-[60mm] border-b border-black px-1" data-signoff={signOff === null ? "loading" : signOff.status === "signed" ? "signed" : legacyText ? "legacy" : "unsigned"}>
-            {signOff?.status === "signed" ? `${signOff.latest.initials} ${signOff.latest.signer_name} (signed ${formatDateGB(signOff.latest.signed_on)}, revision ${signOff.latest.worksheet_version}, sha256 ${hashPrefix(signOff.latest.snapshot_sha256)})` : null}
+            {signOff?.status === "signed" ? `${signOff.latest.initials} ${signOff.latest.signer_name} (signed ${fmtDate(signOff.latest.signed_on)}, revision ${signOff.latest.worksheet_version}, sha256 ${hashPrefix(signOff.latest.snapshot_sha256)})` : null}
             {signOff?.status === "signed" ? signOff.cosigns.map((row) => (
-              <span key={row.id} className="block text-[10px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)} co-signature: {row.initials} {row.signer_name} (signed {formatDateGB(row.signed_on)})</span>
+              <span key={row.id} className="block text-[10px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)} co-signature: {row.initials} {row.signer_name} (signed {fmtDate(row.signed_on)})</span>
             )) : null}
             {signOff?.status === "stale" ? <strong style={{ color: COLOURS.red, ...exact }}>NOT SIGNED OFF (revision {signOff.latest.worksheet_version} was signed; edited since)</strong> : null}
             {signOff?.status === "none" ? (legacyText ? <span className="text-[10px]">{legacyText}</span> : <strong style={{ color: COLOURS.red, ...exact }}>Not signed off</strong>) : null}
@@ -144,7 +145,7 @@ export function JobWorksheetPrint({ worksheet: ws, jobNo, drawings = [], custome
                 <p><strong>{customerLine(row)}</strong></p>
                 {row.statement ? <p className="italic">&ldquo;{row.statement}&rdquo;</p> : null}
                 {row.customer_comment ? <p className="whitespace-pre-wrap">Comment: {row.customer_comment}</p> : null}
-                <p className="text-[9px]">Signed {formatSignedAt(row.device_signed_at) || formatDateGB(row.signed_on)} (phone time); received {formatSignedAt(row.created_at)}; revision {row.worksheet_version}, sha256 {hashPrefix(row.record_sha256)}</p>
+                <p className="text-[9px]">Signed {formatSignedAt(row.device_signed_at) || fmtDate(row.signed_on)} (phone time); received {formatSignedAt(row.created_at)}; revision {row.worksheet_version}, sha256 {hashPrefix(row.record_sha256)}</p>
               </div>
               <span className="shrink-0 border-b border-black px-1">{row.signature_kind === "drawn" ? <SignatureImage path={row.signature_data} className="h-[12mm] w-[40mm]" /> : <span className="font-serif text-[14px] italic">{row.signature_data}</span>}</span>
             </div>

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!json.ok) return json.response;
   const parsed = schema.safeParse(json.data);
   if (!parsed.success) return jsonError("Invalid request", 400);
-  const ready = xeroReady();
+  const ready = await xeroReady();
   const service = createSupabaseAdminClient();
   if (!ready || !service) return NextResponse.json({ skipped: "not_configured" });
   try {

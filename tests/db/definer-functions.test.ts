@@ -259,12 +259,27 @@ function attempts(): Attempt[] {
     ["public.resolve_time_sync_rejection(p_id uuid, p_note text DEFAULT NULL::text)", () => alpha.rpc("resolve_time_sync_rejection", { p_id: randomUUID(), p_note: "Cross-company attempt" }), "refused"],
     // 078: deleting kept clock-in addresses is the caller's company's only (there is no target to point at beta).
     ["public.purge_site_network_ips(p_all boolean DEFAULT false)", () => alpha.rpc("purge_site_network_ips", { p_all: true }), "nothing of beta's"],
+    // 114: the clock-in network lock is the caller's company's only (no target to point at beta).
+    ["public.lock_clock_in_network()", () => alpha.rpc("lock_clock_in_network"), "nothing of beta's"],
+    ["public.unlock_clock_in_network()", () => alpha.rpc("unlock_clock_in_network"), "nothing of beta's"],
+    // 114: beta's person can't be given the off-site exception (not in the caller's company).
+    ["public.set_clock_in_off_site_allowed(p_user uuid, p_allowed boolean)", () => alpha.rpc("set_clock_in_off_site_allowed", { p_user: beta.adminId, p_allowed: true }), "refused"],
     // 084: beta's send and beta's contact problem are not found in alpha; alpha (not connected) has nothing to disconnect; a Connect start
     // and a mapping are written for alpha only.
     ["public.integration_retry_send(p_send uuid)", () => alpha.rpc("integration_retry_send", { p_send: beta.integrationSend }), "refused"],
     ["public.integration_resolve_contact(p_provider text, p_customer text, p_external_contact_id text)", () => alpha.rpc("integration_resolve_contact", { p_provider: "xero", p_customer: `${MARKER} Customer`, p_external_contact_id: "c-1" }), "refused"],
     ["public.integration_disconnect(p_provider text)", () => alpha.rpc("integration_disconnect", { p_provider: "xero" }), "refused"],
     ["public.integration_oauth_begin(p_provider text, p_state_hash text, p_verifier_enc text)", () => alpha.rpc("integration_oauth_begin", { p_provider: "xero", p_state_hash: randomBytes(32).toString("hex"), p_verifier_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}` }), "nothing of beta's"],
+    // 107: Connect (Xero or Microsoft 365) and the accountant's link are the caller's own company's (beta's fingerprint below is unchanged);
+    // the app-level credentials are the platform owner's: a company admin is refused.
+    ["public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)", () => alpha.rpc("integration_oauth_start", { p_provider: "microsoft", p_state_hash: randomBytes(32).toString("hex"), p_verifier_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}` }), "nothing of beta's"],
+    ["public.integration_invite_create(p_provider text, p_token_hash text)", () => alpha.rpc("integration_invite_create", { p_provider: "xero", p_token_hash: randomBytes(32).toString("hex") }), "nothing of beta's"],
+    ["public.integration_invites_open(p_provider text)", () => alpha.rpc("integration_invites_open", { p_provider: "xero" }), "nothing of beta's"],
+    ["public.integration_invite_revoke(p_invite uuid)", () => alpha.rpc("integration_invite_revoke", { p_invite: randomUUID() }), "nothing of beta's"],
+    ["public.integration_disconnect_revoke(p_provider text)", () => alpha.rpc("integration_disconnect_revoke", { p_provider: "xero" }), "nothing of beta's"],
+    ["public.integration_app_credentials_save(p_provider text, p_client_id text, p_secret_enc text, p_secret_last4 text, p_redirect_uri text, p_key_version integer)", () => alpha.rpc("integration_app_credentials_save", { p_provider: "xero", p_client_id: "cross", p_secret_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}`, p_secret_last4: "abcd", p_redirect_uri: null, p_key_version: 1 }), "refused"],
+    ["public.integration_app_credentials_remove(p_provider text)", () => alpha.rpc("integration_app_credentials_remove", { p_provider: "xero" }), "refused"],
+    ["public.integration_app_credentials_list()", () => alpha.rpc("integration_app_credentials_list"), "refused"],
     ["public.integration_set_mapping(p_provider text, p_kind text, p_tolra_key text, p_external_code text, p_external_name text)", () => alpha.rpc("integration_set_mapping", { p_provider: "xero", p_kind: "sales_account", p_tolra_key: null, p_external_code: "200", p_external_name: "Sales" }), "nothing of beta's"],
     // 076: the import writes into the caller's session company only (the payload can't name a company); a dry run here.
     ["public.import_company_data(p_payload jsonb, p_dry_run boolean, p_client_op_id uuid)", () => alpha.rpc("import_company_data", { p_payload: { customers: [{ name: "Cross-company attempt" }] }, p_dry_run: true, p_client_op_id: randomUUID() }), "nothing of beta's"],
@@ -319,6 +334,8 @@ function attempts(): Attempt[] {
     // 039: a company admin creating a company through the platform function is refused (and nothing is created; the slug is synthetic).
     ["public.platform_create_organization(p_name text, p_slug text, p_admin_email text)", () => alpha.rpc("platform_create_organization", { p_name: `${MARKER} Company`, p_slug: `t-${world.runId}-definer`, p_admin_email: "x@example.test" }), "refused"],
     // Record the caller's own work and ignore a foreign target: nothing of beta's is touched or returned.
+    // 110: the clarification is logged against the caller's own company's RFQ only; beta's RFQ is refused untouched.
+    ["public.log_rfq_clarification(p_rfq_id uuid, p_subject text, p_body text)", () => alpha.rpc("log_rfq_clarification", { p_rfq_id: beta.rfq, p_subject: "S", p_body: "B" }), "refused"],
     ["public.reserve_mail_send(p_kind text, p_key text, p_recipients text[], p_subject text, p_body text, p_rfq uuid)", () => alpha.rpc("reserve_mail_send", { p_kind: "send", p_key: randomBytes(32).toString("hex"), p_recipients: ["x@example.test"], p_subject: "S", p_body: "B", p_rfq: beta.rfq }), "nothing of beta's"],
     // 040: an admin marks stale photo reservations abandoned in their own company only (beta's fingerprint below is unchanged).
     ["public.abandon_stale_job_photos(p_hours integer)", () => alpha.rpc("abandon_stale_job_photos", { p_hours: 24 }), "nothing of beta's"],
@@ -332,6 +349,13 @@ function attempts(): Attempt[] {
     // longer callable by a signed-in user, so not listed here; tests/db/ai-helper-service-role-103.test.ts).
     ["public.ai_helper_save_settings(p_roundup boolean, p_rfq boolean, p_cap_pence integer)", () => alpha.rpc("ai_helper_save_settings", { p_roundup: false, p_rfq: false, p_cap_pence: 0 }), "nothing of beta's"],
     ["public.ai_helper_set_key(p_key_enc text, p_last4 text)", () => alpha.rpc("ai_helper_set_key", { p_key_enc: null, p_last4: null }), "nothing of beta's"],
+    // 106: the finance-check switch is the caller's own company's; the company e-mail ledger refuses a caller naming another company.
+    ["public.ai_helper_set_finance_check(p_enabled boolean)", () => alpha.rpc("ai_helper_set_finance_check", { p_enabled: false }), "nothing of beta's"],
+    ["public.reserve_company_email(p_org uuid, p_user uuid, p_key text, p_to text, p_subject text, p_body text, p_related_type text, p_related_id text, p_mode text)", () => alpha.rpc("reserve_company_email", { p_org: world.tenants.beta.id, p_user: world.tenants.beta.users.admin.id, p_key: randomBytes(32).toString("hex"), p_to: "x@example.test", p_subject: "S", p_body: "B", p_related_type: "general", p_related_id: null, p_mode: "sending" }), "refused"],
+    ["public.complete_company_email(p_org uuid, p_user uuid, p_send uuid, p_outcome text)", () => alpha.rpc("complete_company_email", { p_org: world.tenants.beta.id, p_user: world.tenants.beta.users.admin.id, p_send: randomUUID(), p_outcome: "failed" }), "refused"],
+    // 105: writing off, and reversing a write-off, go through functions that re-check the company; beta's invoice is refused untouched.
+    ["public.write_off_invoice(p_invoice_id uuid, p_reason text)", () => alpha.rpc("write_off_invoice", { p_invoice_id: beta.invoice, p_reason: "cross-company attempt" }), "refused"],
+    ["public.reverse_write_off(p_invoice_id uuid, p_reason text)", () => alpha.rpc("reverse_write_off", { p_invoice_id: beta.invoice, p_reason: "cross-company attempt" }), "refused"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
     ["public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)", () => alpha.rpc("ai_helper_decide", { p_request: beta.aiRequest, p_decision: "rejected", p_quote: null }), "refused"],
     // 113: previewing or reopening beta's job, and deciding beta's waiting request, are refused (beta's job and request stay as they are).

@@ -3,7 +3,8 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { type PrintedSignOff, customerLine, hashPrefix, kindLabel, legacySignOffText, usePrintedSignOffs } from "@/lib/job-signoff";
-import { CHECKLIST_ITEMS, type JobWorksheet, formatDateGB, isOverrun, signOffState } from "@/lib/job-worksheet";
+import { fmtDate } from "@/lib/dates";
+import { CHECKLIST_ITEMS, type JobWorksheet, isOverrun, signOffState } from "@/lib/job-worksheet";
 import { useCompanyProfile } from "@/lib/company";
 import { PrintLogo } from "@/components/print-logo";
 
@@ -82,12 +83,12 @@ export function JobWorksheetPackPrint({ sheets }: { sheets: PackSheet[] }) {
               <tr key={id} className="align-top" style={{ breakInside: "avoid" }}>
                 <td className="border border-black px-1 py-1"><p className="font-mono text-[10.5px] font-bold">{ws.job_no}</p><p>{ws.customer}</p></td>
                 <td className="border border-black px-1 py-1"><Pair a={["PO", ws.customer_po]} b={["Quote", ws.quote_ref]} /></td>
-                <td className="border border-black px-1 py-1"><Pair a={["In", formatDateGB(ws.date_received)]} b={["Req", formatDateGB(ws.date_required)]} /></td>
+                <td className="border border-black px-1 py-1"><Pair a={["In", fmtDate(ws.date_received)]} b={["Req", fmtDate(ws.date_required)]} /></td>
                 <td className="border border-black px-1 py-1 break-words whitespace-pre-wrap">{ws.description}</td>
                 <td className="border border-black px-1 py-1 break-words"><Pair a={["Dwg", ws.drawing_no]} b={["Qty", ws.quantity_required]} /></td>
                 <td className="border border-black px-1 py-1 break-words">
                   <Pair a={["Req", ws.material_required]} b={["Supp", ws.material_supplier]} />
-                  {ws.material_ordered || ws.material_ordered_at ? <p className="text-[8px]">Ordered{ws.material_ordered_at ? ` ${formatDateGB(ws.material_ordered_at)}` : ""}</p> : null}
+                  {ws.material_ordered || ws.material_ordered_at ? <p className="text-[8px]">Ordered{ws.material_ordered_at ? ` ${fmtDate(ws.material_ordered_at)}` : ""}</p> : null}
                 </td>
                 <td className="border border-black px-1 py-1 break-words"><Pair a={["Cert", ws.material_cert_no]} b={["Heat", ws.heat_cast_no]} /></td>
                 <td className="border border-black px-1 py-1 break-words">{machines.map((line) => <p key={line}>{line}</p>)}</td>
@@ -150,13 +151,13 @@ function legacyText(ws: JobWorksheet, signOffs: Map<string, PrintedSignOff> | nu
 function SignOff({ state, legacy }: { state: PrintedSignOff | null; legacy: string | null }) {
   if (state === null) return null;
   // A customer's sign-off (072), when the job has one: a line under the internal sign-off (jobs without one print as before).
-  const customer = state.customer?.length ? <p className="text-[8px]" data-customer-signoff-print="signed">Customer: {state.customer.map((row) => `${customerLine(row)}, ${formatDateGB(row.signed_on)}`).join("; ")}</p> : null;
+  const customer = state.customer?.length ? <p className="text-[8px]" data-customer-signoff-print="signed">Customer: {state.customer.map((row) => `${customerLine(row)}, ${fmtDate(row.signed_on)}`).join("; ")}</p> : null;
   return <>{internalSignOff(state, legacy)}{customer}</>;
 }
 
 function internalSignOff(state: PrintedSignOff, legacy: string | null) {
   if (legacy) return <span className="text-[8px]">{legacy}</span>;
-  if (state.status === "signed") return <>{state.latest.initials} {state.latest.signer_name}<p className="text-[8px]">Signed {formatDateGB(state.latest.signed_on)} (rev {state.latest.worksheet_version}, sha256 {hashPrefix(state.latest.snapshot_sha256)})</p>{state.cosigns.map((row) => <p key={row.id} className="text-[8px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)}: {row.initials} {row.signer_name}, {formatDateGB(row.signed_on)}</p>)}</>;
+  if (state.status === "signed") return <>{state.latest.initials} {state.latest.signer_name}<p className="text-[8px]">Signed {fmtDate(state.latest.signed_on)} (rev {state.latest.worksheet_version}, sha256 {hashPrefix(state.latest.snapshot_sha256)})</p>{state.cosigns.map((row) => <p key={row.id} className="text-[8px]" data-signoff-cosign={row.kind}>{kindLabel(row.kind)}: {row.initials} {row.signer_name}, {fmtDate(row.signed_on)}</p>)}</>;
   if (state.status === "stale") return <strong style={{ color: COLOURS.red }}>NOT SIGNED OFF<span className="block text-[8px] font-normal">(revision {state.latest.worksheet_version} was signed; edited since)</span></strong>;
   return <strong style={{ color: COLOURS.red }}>NOT SIGNED OFF</strong>;
 }

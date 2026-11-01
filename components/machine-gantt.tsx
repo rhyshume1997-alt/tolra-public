@@ -6,10 +6,11 @@ import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  formatDateTimeShort, formatHours, formatMinutes, formatPlanDate, isWorkingDay, localDateString, mondayOf, timeOf, windowFor, worksOn,
+  formatHours, formatMinutes, isWorkingDay, localDateString, mondayOf, timeOf, windowFor, worksOn,
   type BookingSegment, type Machine, type ScheduledBooking,
 } from "@/lib/machine-schedule";
 import { useColumnVisibility } from "@/lib/org-settings";
+import { fmtDateText, fmtDayDateTime } from "@/lib/dates";
 import type { PeopleMap } from "@/lib/people";
 import { SCHEDULE_FREE_FILL, SCHEDULE_ORDER, SCHEDULE_STATES, scheduleBlockClass, scheduleLegendText } from "@/lib/status-colours";
 import { runBarLabel, runBarsFor, uncoveredParts, type RunBar, type RunRow } from "@/lib/schedule-live";
@@ -99,10 +100,11 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
 
   /** The bar's tooltip and, with the labels hidden, its accessible name. */
   function bookingTitle(seg: Segment, machine: Machine) {
-    return `${seg.booking.jobNo} on ${machine.name}\nStart ${formatDateTimeShort(seg.booking.start)}\nEst. finish ${formatDateTimeShort(seg.booking.finish)}\n${liveLeftOf?.(seg.booking) ?? `${formatHours(seg.booking.hoursLeft)} left`} (${seg.booking.status})${seg.planned ? `\nSplit by day: ${formatPlanDate(seg.planned.date)} ${seg.planned.from}-${seg.planned.to} (${formatMinutes(seg.planned.minutes)})${seg.outOfHours ? `, partly or wholly outside ${machine.name}'s hours (drawn at the edge of the day)` : ""}` : ""}`;
+    return `${seg.booking.jobNo} on ${machine.name}\nStart ${fmtDayDateTime(seg.booking.start)}\nEst. finish ${fmtDayDateTime(seg.booking.finish)}\n${liveLeftOf?.(seg.booking) ?? `${formatHours(seg.booking.hoursLeft)} left`} (${seg.booking.status})${seg.planned ? `\nSplit by day: ${fmtDateText(seg.planned.date, { weekday: "short" })} ${seg.planned.from}-${seg.planned.to} (${formatMinutes(seg.planned.minutes)})${seg.outOfHours ? `, partly or wholly outside ${machine.name}'s hours (drawn at the edge of the day)` : ""}` : ""}`;
   }
 
-  const rangeLabel = `${days[0].toLocaleDateString("en-GB", { day: "numeric", month: "short" })} - ${days[days.length - 1].toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`;
+  // Days are this device's calendar days (localDateString), shown in the person's date format.
+  const rangeLabel = `${fmtDateText(localDateString(days[0]))} - ${fmtDateText(localDateString(days[days.length - 1]), { year: true })}`;
 
   return (
     <Card>
@@ -139,7 +141,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                   return (
                     <div key={i} data-testid="day-header" data-today={isToday ? "true" : undefined} className={`border-l border-slate-100 px-1 py-1.5 text-center text-[11px] leading-tight ${isToday ? "bg-brand font-semibold text-white" : weekend ? "bg-slate-50 text-slate-400" : "text-slate-600"}`}>
                       <div>{day.toLocaleDateString("en-GB", { weekday: "short" })}</div>
-                      <div>{day.toLocaleDateString("en-GB", { day: "numeric", month: span >= 28 ? undefined : "short" })}</div>
+                      <div>{span >= 28 ? day.getDate() : fmtDateText(localDateString(day))}</div>
                     </div>
                   );
                 })}
@@ -160,7 +162,7 @@ export function MachineGantt({ machines, bookings, now, liveLeftOf, onSelect, ru
                       <div
                         key={i}
                         className={`relative h-12 border-l border-slate-100 ${working ? SCHEDULE_FREE_FILL : "bg-slate-100 [background-image:repeating-linear-gradient(135deg,transparent,transparent_4px,rgba(100,116,139,0.18)_4px,rgba(100,116,139,0.18)_5px)]"}`}
-                        title={working ? `${machine.name}, ${day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}${segments.length ? "" : ": free"}` : `${day.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}: not normally worked`}
+                        title={working ? `${machine.name}, ${fmtDateText(localDateString(day), { weekday: "long", numberAs: "full" })}${segments.length ? "" : ": free"}` : `${fmtDateText(localDateString(day), { weekday: "long", numberAs: "full" })}: not normally worked`}
                       >
                         {segments.flatMap((seg) => {
                           // Hours with actual machine use show the use block (drawn below); the booking shows only the rest, in blue.

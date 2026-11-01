@@ -54,7 +54,10 @@ import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice
 import { DRAFT_INVOICE_DAYS, DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
 import { draftInvoiceCounts, invoiceMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
-import { downloadPdf, openMailDraft, pdfErrorMessage } from "@/lib/download-pdf";
+import { downloadPdf, openMailDraft, pdfBlob, pdfErrorMessage } from "@/lib/download-pdf";
+import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
+import { type TemplateVars, invoiceReminderVars, renderTemplate } from "@/lib/email/templates/defaults";
+import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { INVOICE_COLUMNS, PAYMENT_COLUMNS, paymentExportRows } from "@/lib/import-columns";
 import { exportScopeRows, exportScopeTitle } from "@/lib/spreadsheet";
@@ -70,8 +73,10 @@ import { DraftInvoiceEditor } from "@/components/draft-invoice-editor";
 import { useDatabaseHas067 } from "@/lib/use-database-has-067";
 import { useDatabaseHas073 } from "@/lib/use-database-has-073";
 import { VoidInvoiceDialog } from "@/components/void-invoice-dialog";
+import { WriteOffInvoiceDialog } from "@/components/write-off-invoice-dialog";
 import { chipsForPhase } from "@/lib/invoice-phase-filters";
 import { isVoid, voidOffered } from "@/lib/invoice-void";
+import { type WriteOffMode, isWrittenOff, writeOffOffered } from "@/lib/invoice-write-off";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
 import { InvoiceFromDeliveryNotes } from "@/components/invoice-from-delivery-notes";
 import { deliveryNotesPrintedLine, fetchInvoiceNotes, type InvoiceNote } from "@/lib/invoice-delivery-notes";
@@ -178,6 +183,11 @@ type InvoiceRow = InvoiceBase & {
 };
 
 const currency = (value: number) => gbp(value, 2);
+
+/** The invoice e-mail's values (Settings > Email templates; lib/email/templates). */
+function invoiceEmailVars(invoice: InvoiceRow, companyName: string): TemplateVars {
+  return { document_number: invoice.reference, company_name: companyName, customer_name: invoice.customer, total: currency(invoice.amount), due_date: invoice.dueDate ? fmtDate(invoice.dueDate) : "" };
+}
 
 /** Whether a payment with this request id exists on the invoice (and the invoice's figures if so); `error` when it can't be asked. */
 async function findPaymentOutcome(invoiceId: string, requestId: string): Promise<{ outcome: PaymentOutcome | null; error: unknown }> {
@@ -346,6 +356,8 @@ export default function InvoicesPage() {
   const has073 = useDatabaseHas073() === true;
   /** The invoice being voided (asks for the reason). */
   const [voidFor, setVoidFor] = useState<InvoiceRow | null>(null);
+  /** The invoice being written off, or whose write-off is being reversed (migration 105; asks for the reason). */
+  const [writeOffFor, setWriteOffFor] = useState<{ invoice: InvoiceRow; mode: WriteOffMode } | null>(null);
   const isAdmin = hasRole("admin");
   /** "Issue & send" on a draft: admin and office (workshop and viewer never issue or send). */
   const canIssueAndSend = isAdmin || hasRole("office");
@@ -364,6 +376,7 @@ export default function InvoicesPage() {
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceRow | null>(null);
   // A prepared e-mail waiting for "I've sent it": opening a draft or downloading the PDF doesn't prove it went.
   const [sendConfirm, setSendConfirm] = useState<InvoiceRow | null>(null);
+  const [emailRequest, setEmailRequest] = useState<SendEmailRequest | null>(null);
   const [issueConfirm, setIssueConfirm] = useState<InvoiceRow | null>(null);
   /** The issue confirmation was opened from "Issue & send": send it to the customer straight after issuing. */
   const [issueThenSend, setIssueThenSend] = useState(false);
@@ -999,16 +1012,23 @@ export default function InvoicesPage() {
         const alreadyDrafted = new Set((existing ?? []).map((row) => String(row.related_to_id)));
         let noEmail = 0;
         const drafts = [];
+        // The company's own reminder text (Settings > Email templates), or the default when none is saved or 106 isn't applied.
+        const override = await loadTemplateOverride(supabase, "invoice_reminder");
         for (const invoice of withIds) {
           if (alreadyDrafted.has(invoice.id as string)) continue;
           const customer = findCustomer(customers, invoice.customer);
           if (!customer?.email) { noEmail += 1; continue; }
+          const email = renderTemplate("invoice_reminder", invoiceReminderVars({
+            reference: invoice.reference, total: currency(invoice.amount), dueDate: fmtDate(invoice.dueDate), daysOverdue: invoice.daysOverdue,
+            companyName: profile.name, customerName: customer.name, contactName: customer.contactName,
+            amountPaid: invoice.amountPaid, paidText: currency(invoice.amountPaid), balanceText: currency(invoice.balance),
+          }), override);
           drafts.push({
             organization_id: organizationId,
             to_email: customer.email,
             to_name: customer.contactName || customer.name,
-            subject: `Overdue invoice ${invoice.reference} from ${profile.name}`,
-            body: `Hello${customer.contactName ? ` ${customer.contactName}` : ""},\n\nOur records show invoice ${invoice.reference} for ${currency(invoice.amount)} was due on ${fmtDate(invoice.dueDate)} and is now ${invoice.daysOverdue} day${invoice.daysOverdue === 1 ? "" : "s"} overdue.${invoice.amountPaid > 0 ? ` We have received ${currency(invoice.amountPaid)}, leaving ${currency(invoice.balance)} to pay.` : ""}\n\nPlease arrange payment, or let us know if there is a problem with the invoice.\n\nKind regards,\n${profile.name}`,
+            subject: email.subject,
+            body: email.text,
             status: "drafted",
             related_to_type: "invoice",
             related_to_id: invoice.id,
@@ -1077,23 +1097,37 @@ export default function InvoicesPage() {
     await downloadPdf(async () => buildInvoicePdf(invoice, await requireCompanyProfile()), `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference });
   }
 
-  /** Opens an email draft to the customer and downloads the PDF to attach. Recording it as sent is a separate step. */
-  async function sendInvoice(invoice: InvoiceRow) {
+  /**
+   * Opens an email draft to the customer and downloads the PDF to attach ("Send to Customer"; recording it as sent is a separate
+   * step), or, with `oneClick` ("Email now"), the send dialog: sent from here with the PDF attached, the sent date recorded once it has gone.
+   */
+  async function sendInvoice(invoice: InvoiceRow, oneClick = false) {
     await run(async () => {
       try {
         const profile = await requireCompanyProfile();
         const element = await buildInvoicePdf(invoice, profile);
         const customer = await resolveCustomer(invoice.customer);
         if (!customer?.email) toast.info(`No email address on file for ${invoice.customer}. Add one on the Customers page, or type it into the email.`);
-        openMailDraft(
-          customer?.email ?? "",
-          `Invoice ${invoice.reference} from ${profile.name}`,
-          `Hello,\n\nPlease find our invoice ${invoice.reference} attached as a PDF.\n\nKind regards,\n${profile.name}`,
-        );
-        const ok = await downloadPdf(element, `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference }, { silent: true });
-        if (!ok) return;
-        toast.success("PDF downloaded \u2014 attach it to the email that just opened");
-        setSendConfirm(invoice);
+        // The old way (also the "Open in my mail app" link): the person's own mail app, the PDF downloaded to attach, then "has it gone?".
+        const mailApp = async (subject: string, body: string) => {
+          openMailDraft(customer?.email ?? "", subject, body);
+          const ok = await downloadPdf(element, `invoice-${invoice.reference}.pdf`, { entityTable: "invoices", entityId: invoice.reference }, { silent: true });
+          if (!ok) return;
+          toast.success("PDF downloaded \u2014 attach it to the email that just opened");
+          setSendConfirm(invoice);
+        };
+        if (!oneClick || !invoice.id || DEMO_MODE) {
+          const email = renderTemplate("invoice", invoiceEmailVars(invoice, profile.name), await loadTemplateOverride(supabase, "invoice"));
+          await mailApp(email.subject, email.text);
+          return;
+        }
+        // One-click send (E8): the dialog sends it with the PDF attached; once it has gone, the sent date is recorded.
+        setEmailRequest({
+          kind: "invoice", recordId: invoice.id, templateKey: "invoice", to: customer?.email, vars: invoiceEmailVars(invoice, profile.name),
+          pdf: { filename: `invoice-${invoice.reference}.pdf`, build: () => pdfBlob(element) },
+          onOpenMailApp: (subject, body) => { setEmailRequest(null); void mailApp(subject, body); },
+          onSent: () => void confirmInvoiceSent(invoice),
+        });
       } catch (err) {
         toast.error(err instanceof ValidationError ? err.message : pdfErrorMessage(err));
       }
@@ -1419,6 +1453,7 @@ export default function InvoicesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
       <Dialog open={Boolean(sendConfirm)} onOpenChange={(nextOpen) => !nextOpen && setSendConfirm(null)}>
         <DialogContent>
           <DialogHeader>
@@ -1651,9 +1686,12 @@ export default function InvoicesPage() {
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <p className="mr-auto text-sm text-slate-600">{isVoid(viewingInvoice.rawStatus) ? "Void: not owed." : viewingInvoice.sentAt ? `Sent ${fmtDateTime(viewingInvoice.sentAt)}` : "Not recorded as sent yet"}</p>
+                  <p className="mr-auto text-sm text-slate-600">{isVoid(viewingInvoice.rawStatus) ? "Void: not owed." : isWrittenOff(viewingInvoice.rawStatus) ? "Written off: not owed." : viewingInvoice.sentAt ? `Sent ${fmtDateTime(viewingInvoice.sentAt)}` : "Not recorded as sent yet"}</p>
                   {has073 && viewingInvoice.id && voidOffered(viewingInvoice) ? <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" disabled={saving} onClick={() => setVoidFor(viewingInvoice)}>Void Invoice</Button> : null}
+                  {canIssueAndSend && viewingInvoice.id && writeOffOffered(viewingInvoice) ? <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" disabled={saving} onClick={() => setWriteOffFor({ invoice: viewingInvoice, mode: "write_off" })}>Write off</Button> : null}
+                  {canIssueAndSend && viewingInvoice.id && isWrittenOff(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving} onClick={() => setWriteOffFor({ invoice: viewingInvoice, mode: "reverse" })}>Reverse write-off</Button> : null}
                   <Button variant="outline" disabled={Boolean(viewProblem)} onClick={() => void downloadInvoicePdf(viewingInvoice)}>Download PDF</Button>
+                  {viewingInvoice.id && !DEMO_MODE && !isVoid(viewingInvoice.rawStatus) ? <Button variant="outline" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice, true)}>Email now</Button> : null}
                   <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || Boolean(viewProblem)} onClick={() => void sendInvoice(viewingInvoice)}>{saving ? "Sending…" : "Send to Customer"}</Button>
                 </div>
               )}
@@ -1666,6 +1704,15 @@ export default function InvoicesPage() {
           invoice={{ id: voidFor.id, reference: voidFor.reference, customer: voidFor.customer }}
           onClose={() => setVoidFor(null)}
           onVoided={() => { const voidedId = voidFor.id ?? null; setVoidFor(null); void loadInvoices().then((loaded) => { if (loaded) setReopenId(voidedId); else setViewingInvoice(null); }); }}
+        />
+      ) : null}
+      {writeOffFor?.invoice.id ? (
+        <WriteOffInvoiceDialog
+          open
+          mode={writeOffFor.mode}
+          invoice={{ id: writeOffFor.invoice.id, reference: writeOffFor.invoice.reference, customer: writeOffFor.invoice.customer }}
+          onClose={() => setWriteOffFor(null)}
+          onDone={() => { const doneId = writeOffFor.invoice.id ?? null; setWriteOffFor(null); void loadInvoices().then((loaded) => { if (loaded) setReopenId(doneId); else setViewingInvoice(null); }); }}
         />
       ) : null}
       <ConfirmDialog
