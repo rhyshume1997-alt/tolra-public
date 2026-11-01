@@ -5,21 +5,9 @@
  */
 import { supabase } from "@/lib/supabase";
 
-/**
- * PostgREST / Postgres codes for a function, table or column that doesn't exist (yet):
- * PGRST202 function not in the schema cache, PGRST204 column not in the schema cache, PGRST205 table not in the schema cache,
- * 42883 undefined function, 42P01 undefined table, 42703 undefined column.
- */
-export const MISSING_DB_OBJECT_CODES: ReadonlySet<string> = new Set(["PGRST202", "PGRST204", "PGRST205", "42883", "42P01", "42703"]);
+import { MISSING_DB_OBJECT_CODES, NEEDS_DATABASE_UPDATE, missingDbObject } from "@/lib/db-missing";
 
-export const NEEDS_DATABASE_UPDATE = "This needs a database update that hasn't been applied yet.";
-
-/** True when the error says the database doesn't have the function, table or column (the migration isn't applied). */
-export function missingDbObject(error: { code?: string | null; message?: string | null } | null | undefined): boolean {
-  if (!error) return false;
-  if (error.code && MISSING_DB_OBJECT_CODES.has(error.code)) return true;
-  return /could not find the .* in the schema cache|(function|relation|column) .* does not exist/i.test(error.message ?? "");
-}
+export { MISSING_DB_OBJECT_CODES, NEEDS_DATABASE_UPDATE, missingDbObject };
 
 /**
  * The answer to "does the database have 067?" from a probe that reads at most one row of document_attachments (as a GET), which 067
@@ -169,6 +157,33 @@ export async function databaseHas084(): Promise<boolean> {
   return pending084;
 }
 
+/**
+ * Does the database have 124 (a supplier purchase order linked to the customer quote or job it was bought for, with the part of its value
+ * that is for it)? A GET of purchase_orders.linked_net, at most one row (never a head-only count: see the 067 probe above), a column 124
+ * adds in the same transaction as quote_id, job_id and their same-company triggers. Only admin and office read purchase orders (others get
+ * 0 rows, which is still "present"). A missing column means "not yet": the PO form shows no link field, the PO list reads only what existed
+ * before, and the quote and job show no Bought in / Profit line. Any other failure is not an answer: hidden for that call, asked again next.
+ */
+let cached124: boolean | null = null;
+let pending124: Promise<boolean> | null = null;
+
+export async function databaseHas124(): Promise<boolean> {
+  if (cached124 !== null) return cached124;
+  if (!supabase) return false;
+  pending124 ??= (async () => {
+    try {
+      const present = featurePresent(await supabase!.from("purchase_orders").select("linked_net").limit(1));
+      if (present !== null) cached124 = present;
+      return present ?? false;
+    } catch {
+      return false;
+    } finally {
+      pending124 = null;
+    }
+  })();
+  return pending124;
+}
+
 /** For tests: forget the cached answers. */
 export function resetDatabaseFeatureCache() {
   cached067 = null;
@@ -181,4 +196,6 @@ export function resetDatabaseFeatureCache() {
   pending075 = null;
   cached084 = null;
   pending084 = null;
+  cached124 = null;
+  pending124 = null;
 }

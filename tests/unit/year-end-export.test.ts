@@ -31,7 +31,7 @@ describe("year-end paid and balance (migration 032)", () => {
   it("never guesses: an unverified invoice, or one marked paid with no amount held, is blank with a problems.txt line", () => {
     const unverified = invoicePaidFigures({ invoice_ref: "INV-5", status: "sent", total: 120, amount_paid: 0, payment_unverified: true });
     expect(unverified).toMatchObject({ paid: null, balance: null });
-    expect(unverified.problem).toContain("Invoice INV-5: payment unknown");
+    expect(unverified.problem).toContain("Invoice INV-5: payment to confirm");
     expect(unverified.problem).toContain("still to be confirmed");
     const paidNoAmount = invoicePaidFigures({ invoice_ref: "INV-6", status: "paid", total: 120, amount_paid: 0 });
     expect(paidNoAmount).toMatchObject({ paid: null, balance: null });

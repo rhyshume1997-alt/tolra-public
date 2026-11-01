@@ -160,3 +160,27 @@ test("on a phone, the worksheet's Close button stays on screen at the bottom of 
   await close.click();
   await expect(sheet).toBeHidden();
 });
+
+test("on a phone, Print shows the worksheet fitted to the screen with Close always on screen; the print itself stays full A4", async ({ page }) => {
+  const jobNo = `J-PRPH-${w.runId}`;
+  const id = await newJob(jobNo);
+  await page.setViewportSize({ width: 390, height: 700 });
+  await signIn(page, w.tenants.beta.users.admin);
+  await page.goto(`/jobs/${id}/print`);
+  await expect(page.getByTestId("print-sheet").getByText(jobNo, { exact: true }).first()).toBeVisible();
+  // Rhys, 1 Nov: the A4 sheet made the whole page pan around on his phone. The page must not scroll sideways.
+  const pan = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, inner: window.innerWidth }));
+  expect(pan.scroll, "the print page does not scroll sideways on a phone").toBeLessThanOrEqual(pan.inner + 1);
+  const close = page.getByTestId("print-toolbar").getByRole("link", { name: "Close" });
+  await expect(close).toBeInViewport();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(close).toBeInViewport();
+  const box = await close.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(40);
+  // Printing is not shrunk: the sheet is full size on paper.
+  await page.emulateMedia({ media: "print" });
+  expect(await page.locator(".sheet-fit").evaluate((el) => getComputedStyle(el).zoom)).toBe("1");
+  await page.emulateMedia({ media: "screen" });
+  await close.click();
+  await expect(page).toHaveURL(/\/jobs$/);
+});

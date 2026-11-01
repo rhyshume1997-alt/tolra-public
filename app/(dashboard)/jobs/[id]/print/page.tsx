@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Printer } from "lucide-react";
+import { Printer, X } from "lucide-react";
 
 import { PrintLayoutPicker, WorksheetInLayout } from "@/components/print-layout-picker";
 import { listCustomerPos } from "@/lib/job-files";
@@ -10,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { DEMO_MODE } from "@/lib/demo";
 import { type JobWorksheet, type WorksheetJobInfo, listDrawings, loadWorksheet } from "@/lib/job-worksheet";
 import { type PrintLayout, chosenPrintLayout, useCompanyPrintLayout } from "@/lib/print-layout";
+
+/** The A4 sheet's width in CSS px (210 mm). */
+const A4_PX = (210 * 96) / 25.4;
 
 type DemoJob = Omit<WorksheetJobInfo, "id"> & { drawings: string[] };
 
@@ -45,6 +49,18 @@ export default function JobSheetPrintPage() {
   const companyLayout = useCompanyPrintLayout();
   const [override, setOverride] = useState<PrintLayout | null>(null);
   const layout = chosenPrintLayout(companyLayout, override);
+  // On a screen narrower than A4 the sheet is shrunk to fit, so the page never pans sideways on a phone (Rhys, 1 Nov). Print is full size.
+  const sheetBox = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState(1);
+  // The box only exists once the worksheet has loaded, so observe it then (an effect that ran once on mount found no box and never observed).
+  const sheetShown = Boolean(worksheet && layout);
+  useEffect(() => {
+    const box = sheetBox.current;
+    if (!box) return;
+    const observer = new ResizeObserver(([entry]) => setFit(Math.min(1, entry.contentRect.width / A4_PX)));
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [sheetShown]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -74,14 +90,19 @@ export default function JobSheetPrintPage() {
           html, body { background:white!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
           @page { size:A4 portrait; margin:10mm; }
           * { box-shadow:none!important; }
+          .sheet-fit { zoom:1!important; }
         }
       `}</style>
-      <div className="no-print mx-auto mb-4 flex w-[210mm] max-w-full items-center justify-between">
-        <p className="text-sm text-slate-500">A4 portrait worksheet. Blank cells are left for handwriting.</p>
-        <div className="flex items-center gap-3">
-          <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} />
-          <Button className="bg-[#1E3472] text-white" disabled={!worksheet || !layout} onClick={() => window.print()}><Printer className="size-4" /> Print Now</Button>
+      {/* Sticks just below the app's top bar (components/topbar: sticky top-0, h-16), so Close stays on screen. */}
+      <div className="no-print sticky top-16 z-10 mx-auto mb-4 flex w-[210mm] max-w-full items-start gap-3 bg-white py-2" data-testid="print-toolbar">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">A4 portrait worksheet. Blank cells are left for handwriting.</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <PrintLayoutPicker company={companyLayout} value={override} onChange={setOverride} />
+            <Button className="bg-[#1E3472] text-white" disabled={!worksheet || !layout} onClick={() => window.print()}><Printer className="size-4" /> Print Now</Button>
+          </div>
         </div>
+        <Button asChild variant="outline" className="size-10 shrink-0 p-0"><Link href="/jobs" aria-label="Close"><X className="size-5" /></Link></Button>
       </div>
       {error ? (
         <div className="no-print mx-auto flex w-[210mm] max-w-full items-center justify-between gap-3 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
@@ -89,7 +110,11 @@ export default function JobSheetPrintPage() {
           <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>Retry</Button>
         </div>
       ) : worksheet && layout ? (
-        <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} traceable={traceable} />
+        <div ref={sheetBox} data-testid="print-sheet">
+          <div className="sheet-fit" style={{ zoom: fit }}>
+            <WorksheetInLayout layout={layout} worksheet={worksheet} jobNo={worksheet.job_no} drawings={drawings} customerPos={customerPos} traceable={traceable} />
+          </div>
+        </div>
       ) : (
         <p className="text-sm text-slate-500">Loading worksheet...</p>
       )}
