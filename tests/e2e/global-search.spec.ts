@@ -3,6 +3,8 @@
  * the app already uses: /quotes?quote=<id>, /invoices?invoice=<id>). Another company's rows never appear, and a workshop person
  * searching a quote's customer finds no quote.
  */
+import { randomUUID } from "node:crypto";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { adminClient } from "../support/fixtures";
@@ -13,15 +15,17 @@ const tag = () => w.runId.slice(0, 6);
 
 async function seed() {
   const admin = adminClient();
-  const customer = `Searchable ${tag()} Engineering`;
-  const quoteRef = `QUO-S${tag()}`;
-  const invoiceRef = `INV-S${tag()}`;
+  // Each test seeds its own rows: a fresh suffix per call, so the per-company unique quote and invoice numbers never collide.
+  const id = `${tag()}${randomUUID().slice(0, 4)}`;
+  const customer = `Searchable ${id} Engineering`;
+  const quoteRef = `QUO-S${id}`;
+  const invoiceRef = `INV-S${id}`;
   const { data: quote, error: quoteError } = await admin.from("quotes").insert({ organization_id: w.tenants.alpha.id, quote_ref: quoteRef, customer, total_value: 100, status: "draft", vat_enabled: false }).select("id").single();
   expect(quoteError).toBeNull();
   const { error: invoiceError } = await admin.from("invoices").insert({ organization_id: w.tenants.alpha.id, invoice_ref: invoiceRef, customer, status: "sent", subtotal: 100, vat: 0, total: 100, vat_enabled: false, due_date: "2099-01-31" });
   expect(invoiceError).toBeNull();
   // The same customer name in the other company: it must never show up.
-  const { error: otherError } = await admin.from("quotes").insert({ organization_id: w.tenants.beta.id, quote_ref: `QUO-O${tag()}`, customer, total_value: 1, status: "draft", vat_enabled: false });
+  const { error: otherError } = await admin.from("quotes").insert({ organization_id: w.tenants.beta.id, quote_ref: `QUO-O${id}`, customer, total_value: 1, status: "draft", vat_enabled: false });
   expect(otherError).toBeNull();
   return { customer, quoteRef, invoiceRef, quoteId: quote!.id as string };
 }
