@@ -23,6 +23,8 @@ export async function GET(request: Request) {
 
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return back(auth.status === 401 ? "signed_out" : "forbidden");
+  // Support access never finishes a connection either (see connect): refused before the service-role client is made.
+  if (auth.session?.support) return back("forbidden");
   const ready = await xeroReady();
   const service = createSupabaseAdminClient();
   if (!ready || !service) return back("not_configured");
