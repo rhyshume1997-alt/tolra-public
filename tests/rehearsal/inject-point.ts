@@ -192,6 +192,30 @@ function checkDefinitions(above: string): InjectCandidate[] {
 }
 
 /**
+ * Policies the part rewrites with `ALTER POLICY "name" ON schema.table` + `USING (...)` / `WITH CHECK (...)` (each clause on its own line, as
+ * 131 writes them), as their NEW TEXT, by the number of sub-selects in each clause the file sets (131 creates nothing: it writes helper calls
+ * as (SELECT ...)). PostgreSQL prints every sub-select with SELECT, so the stored clause holds exactly as many as the file's text once the
+ * ALTER has run: true mid-file; false before the file runs (fewer) and after a rollback.
+ */
+function policyDefinitions(above: string): InjectCandidate[] {
+  const count = (text: string) => (text.match(/\bSELECT\b/g) ?? []).length;
+  return [...above.matchAll(/^ALTER POLICY "((?:[^"]|"")+)" ON (\w+)\.(\w+)((?:\n  (?:USING|WITH CHECK) \([^;]*\))+);[ \t]*$/gm)].map((m) => {
+    const name = m[1].replace(/""/g, '"');
+    const clauses = m[4].split(/\n  (?=USING \(|WITH CHECK \()/).filter(Boolean);
+    const using = clauses.find((c) => c.startsWith("USING ("));
+    const check = clauses.find((c) => c.startsWith("WITH CHECK ("));
+    const selects = (column: string, clause: string | undefined) =>
+      clause === undefined ? "" : ` AND (SELECT count(*) FROM regexp_matches(coalesce(p.${column}, ''), '\\mSELECT\\M', 'g')) = ${count(clause)}`;
+    return {
+      index: m.index,
+      what: `policy "${name}" on ${m[2]}.${m[3]} as this file writes it`,
+      exists: `EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = '${m[2]}' AND p.tablename = '${m[3]}' AND p.policyname = '${name.replace(/'/g, "''")}'`
+        + `${selects("qual", using)}${selects("with_check", check)})`,
+    };
+  });
+}
+
+/**
  * The candidates for the rehearsal's probe in `above` (the text before the injection point), latest first: the functions, tables and
  * columns it creates, and (049) each signature it drops with `DROP FUNCTION IF EXISTS public.X(args)`. A dropped signature "exists" when it
  * is GONE (`to_regprocedure(...) IS NULL`): false before the file runs, true mid-file once the old form was dropped and replaced, false
@@ -202,7 +226,8 @@ function checkDefinitions(above: string): InjectCandidate[] {
  * Last, also fallbacks only: each CHECK constraint the part (re)adds with `ALTER TABLE public.T ADD CONSTRAINT name CHECK (...)` that
  * names string literals, as its NEW DEFINITION (100 creates nothing: it widens record_archive_state's check and replaces a function). It
  * "exists" when a check constraint of that name on that table holds exactly the file's set of string literals: false before the file
- * runs (the old check, without the new value), true mid-file, false after a rollback.
+ * runs (the old check, without the new value), true mid-file, false after a rollback. After those, each policy the part rewrites, as its
+ * new text (policyDefinitions; 131).
  */
 export function injectCandidates(above: string): InjectCandidate[] {
   const bodies = [...above.matchAll(/^CREATE OR REPLACE FUNCTION (\w+)\.(\w+)\([^)]*\)[^$]*?\bAS (\$\w*\$)([\s\S]*?)\3;/gm)].map((m) => ({
@@ -218,5 +243,6 @@ export function injectCandidates(above: string): InjectCandidate[] {
       const signature = `public.${m[1]}(${m[2].replace(/\s+/g, " ").trim()})`;
       return { index: m.index, what: `${signature} gone`, exists: `(to_regprocedure('${signature}') IS NULL)` };
     }),
-  ].sort((x, y) => y.index - x.index).concat(bodies.sort((x, y) => y.index - x.index), checkDefinitions(above).sort((x, y) => y.index - x.index));
+  ].sort((x, y) => y.index - x.index).concat(bodies.sort((x, y) => y.index - x.index), checkDefinitions(above).sort((x, y) => y.index - x.index),
+    policyDefinitions(above).sort((x, y) => y.index - x.index));
 }
