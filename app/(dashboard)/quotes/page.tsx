@@ -1275,7 +1275,7 @@ export default function QuotesPage() {
                 )}
               </div>
               {viewProblem ? <div role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">{viewProblem.message}</div> : null}
-              <BoughtInProfit kind="quote" id={viewingQuote.id} quoteLines={viewItemsLoading ? undefined : viewItems} />
+              <BoughtInProfit kind="quote" id={viewingQuote.id} quoteLines={viewItemsLoading || viewItemsError ? undefined : viewItems} />
               {viewingQuote.customerNotes ? <div className="rounded-lg border p-4 text-sm"><p className="font-semibold text-slate-950">Notes for customer</p><p className="mt-1 whitespace-pre-wrap text-slate-700">{viewingQuote.customerNotes}</p></div> : null}
               {viewingQuote.internalNotes ? (
                 <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm">

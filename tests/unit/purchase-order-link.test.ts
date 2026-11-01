@@ -10,7 +10,7 @@ import path from "node:path";
 
 import {
   LINK_PICKER_LIMIT, type LinkClient, boughtIn, boughtInText, findLinkTargets, invoicedSellPence, linkColumns, linkKey, linkLabel, linkedPoPence,
-  parseLinkKey, profitOf, profitText, quoteSellPence, sanitiseLinkTerm, suggestQuotesForItem,
+  parseLinkKey, profitFigure, profitText, quoteSellPence, sanitiseLinkTerm, suggestQuotesForItem,
 } from "@/lib/purchase-order-link";
 
 type Rows = Record<string, Record<string, unknown>[]>;
@@ -110,12 +110,19 @@ describe("Bought in: the linked supplier orders, ex VAT", () => {
     expect(boughtIn([{ id: "a", total_value: 0.1 }, { id: "b", total_value: 0.2 }])).toEqual({ pence: 30, count: 2 });
   });
 
-  it("only part of an order (several jobs on one order, or some lines): its allocated amount, never above the order or below 0", () => {
+  it("only part of an order (several jobs on one order, or some lines): its allocated amount, never above the order", () => {
     expect(linkedPoPence({ id: "a", total_value: 300, linked_net: 120.35 })).toBe(12035);
     expect(linkedPoPence({ id: "a", total_value: 300, linked_net: 0 })).toBe(0);
     expect(linkedPoPence({ id: "a", total_value: 300, linked_net: 450 })).toBe(30000);
-    expect(linkedPoPence({ id: "a", total_value: 300, linked_net: -5 })).toBe(0);
     expect(linkedPoPence({ id: "a", total_value: 300, linked_net: null })).toBe(30000);
+  });
+
+  it("an order whose value or allocated amount is missing or unreadable gives no figure (never read as 0)", () => {
+    for (const total_value of [null, undefined, "", "abc", -1, Number.NaN]) expect(linkedPoPence({ id: "a", status: "issued", total_value }), String(total_value)).toBeNull();
+    for (const linked_net of ["", "x", -5]) expect(linkedPoPence({ id: "a", total_value: 300, linked_net }), String(linked_net)).toBeNull();
+    expect(boughtIn([{ id: "a", total_value: 100 }, { id: "b", total_value: null }])).toBeNull();
+    // A cancelled order is not counted at all, so its figures don't matter.
+    expect(boughtIn([{ id: "a", total_value: 100 }, { id: "c", status: "cancelled", total_value: null }])).toEqual({ pence: 10000, count: 1 });
   });
 
   it("several orders add up; an order linked both to the quote and to its job counts once; a cancelled one not at all", () => {
@@ -124,9 +131,6 @@ describe("Bought in: the linked supplier orders, ex VAT", () => {
       { id: "a", status: "issued", total_value: 100 }, { id: "c", status: "Cancelled", total_value: 999 },
     ];
     expect(boughtIn(pos)).toEqual({ pence: 12025, count: 2 });
-    expect(boughtInText({ buyPence: 12025, count: 2 })).toBe("Bought in £120.25 (2 POs)");
-    expect(boughtInText({ buyPence: 5000, count: 1 })).toBe("Bought in £50.00 (1 PO)");
-    expect(boughtInText({ buyPence: boughtIn([]).pence, count: boughtIn([]).count })).toBe("Bought in £0.00 (no purchase orders linked)");
   });
 });
 
@@ -134,7 +138,14 @@ describe("Sell, ex VAT", () => {
   it("a quote: its ordered lines, quantity x unit price, pence-exact; a declined line is not counted; VAT and carriage play no part", () => {
     const lines = [{ quantity: 3, unitPrice: 0.335 }, { quantity: "2.5", unit_price: "10.10" }, { quantity: 1, unitPrice: 500, declined: true }];
     expect(quoteSellPence(lines)).toBe(101 + 2525);
-    expect(quoteSellPence([])).toBe(0);
+  });
+
+  it("a quote with no ordered line, or a line with no quantity or price, gives no figure", () => {
+    expect(quoteSellPence([])).toBeNull();
+    expect(quoteSellPence([{ quantity: 1, unitPrice: 5, declined: true }])).toBeNull();
+    expect(quoteSellPence([{ quantity: 1, unitPrice: 5 }, { quantity: null, unitPrice: 5 }])).toBeNull();
+    expect(quoteSellPence([{ quantity: 1, unit_price: null }])).toBeNull();
+    expect(quoteSellPence([{ quantity: "two", unitPrice: 5 }])).toBeNull();
   });
 
   it("a job once invoiced: the issued invoices' net MINUS the issued credit notes against them; drafts, voids and draft credits do not count", () => {
@@ -146,34 +157,97 @@ describe("Sell, ex VAT", () => {
       { invoice_id: "i1", status: "issued", subtotal: 200.25 }, { invoice_id: "i1", status: "draft", subtotal: 50 },
       { invoice_id: "i3", status: "issued", subtotal: 70 }, { invoice_id: "i5", status: "issued", subtotal: 100 }, { invoice_id: "other", status: "issued", subtotal: 1 },
     ];
-    expect(invoicedSellPence(invoices, credits)).toBe(100000 + 25050 + 10000 - 20025 - 10000);
-    expect(invoicedSellPence([{ id: "d", status: "draft", subtotal: 5 }], [])).toBeNull();
-    expect(invoicedSellPence([], [])).toBeNull();
+    expect(invoicedSellPence(invoices, credits)).toEqual({ issued: true, pence: 100000 + 25050 + 10000 - 20025 - 10000 });
+    expect(invoicedSellPence([{ id: "d", status: "draft", subtotal: 5 }], [])).toEqual({ issued: false });
+    expect(invoicedSellPence([], [])).toEqual({ issued: false });
+  });
+
+  it("an issued invoice, or an issued credit note against one, with no net gives no figure", () => {
+    expect(invoicedSellPence([{ id: "i", status: "sent", subtotal: null }], [])).toEqual({ issued: true, pence: null });
+    expect(invoicedSellPence([{ id: "i", status: "sent", subtotal: 100 }], [{ invoice_id: "i", status: "issued", subtotal: "" }])).toEqual({ issued: true, pence: null });
+    // A draft invoice or draft credit note without a net is not counted, so it doesn't matter.
+    expect(invoicedSellPence([{ id: "i", status: "sent", subtotal: 100 }, { id: "d", status: "draft", subtotal: null }], [{ invoice_id: "i", status: "draft", subtotal: null }])).toEqual({ issued: true, pence: 10000 });
   });
 });
 
-describe("Profit", () => {
-  it("sell minus buy and the margin on sell, one decimal place", () => {
-    const p = profitOf(20000, { pence: 12025, count: 2 }, "quote");
-    expect(p).toEqual({ sellPence: 20000, buyPence: 12025, count: 2, profitPence: 7975, marginPct: 39.9, basis: "quote" });
-    expect(profitText(p)).toBe("Profit £79.75 (39.9%)");
+describe("Profit: ESTIMATE from the quote, ACTUAL from the invoices, otherwise unavailable", () => {
+  const can = { invoices: true, quotes: true, purchaseOrders: true };
+  const pos = [{ id: "a", status: "issued", total_value: 100 }, { id: "b", status: "issued", total_value: 20.25 }];
+  const lines = [{ quantity: 2, unitPrice: 100 }];
+  const sent = [{ id: "i", status: "sent", subtotal: 300 }];
+
+  it("a quote: Estimate, sell as quoted minus bought in, margin on sell", () => {
+    const p = profitFigure({ kind: "quote", canRead: can, pos, quoteLines: lines });
+    expect(p).toEqual({ state: "estimate", sellPence: 20000, buyPence: 12025, count: 2, profitPence: 7975, marginPct: 39.9 });
+    expect(profitText(p)).toBe("Profit (estimate) £79.75 (39.9%)");
+    expect(boughtInText(p)).toBe("Bought in £120.25 (2 POs)");
   });
 
-  it("zero and a loss are shown as they are", () => {
-    expect(profitText(profitOf(5000, { pence: 5000, count: 1 }, "quote"))).toBe("Profit £0.00 (0.0%)");
-    expect(profitText(profitOf(10000, { pence: 11000, count: 1 }, "invoiced"))).toBe("Profit -£10.00 (-10.0%)");
+  it("a job with an issued invoice: Actual, sell as invoiced less issued credit notes (the quote is not used)", () => {
+    const p = profitFigure({ kind: "job", canRead: can, pos, invoices: sent, credits: [{ invoice_id: "i", status: "issued", subtotal: 50 }], quoteLines: lines });
+    expect(p).toMatchObject({ state: "actual", sellPence: 25000, buyPence: 12025, profitPence: 12975, marginPct: 51.9 });
+    expect(profitText(p)).toBe("Profit (actual) £129.75 (51.9%)");
   });
 
-  it("no sell price (0 or none yet): no % is made up", () => {
-    expect(profitText(profitOf(0, { pence: 3000, count: 1 }, "quote"))).toBe("Profit -£30.00");
-    const none = profitOf(null, { pence: 3000, count: 1 }, "quote");
-    expect(none.basis).toBe("none");
-    expect(profitText(none)).toBe("Profit: no sell price yet");
+  it("a job with no issued invoice yet (none, or drafts only): Estimate from its quote's lines", () => {
+    for (const invoices of [[], [{ id: "d", status: "draft", subtotal: 999 }]]) {
+      const p = profitFigure({ kind: "job", canRead: can, pos, invoices, credits: [], quoteLines: lines });
+      expect(p).toMatchObject({ state: "estimate", sellPence: 20000, profitPence: 7975 });
+    }
   });
 
-  it("a fully credited job reads as no sell, and its whole buy as the loss", () => {
-    const sell = invoicedSellPence([{ id: "i", status: "credited", subtotal: 100 }], [{ invoice_id: "i", status: "issued", subtotal: 100 }]);
-    expect(profitText(profitOf(sell, { pence: 4000, count: 1 }, "invoiced"))).toBe("Profit -£40.00");
+  it("zero and a loss are shown as they are; a sell of 0 has no %", () => {
+    expect(profitText(profitFigure({ kind: "quote", canRead: can, pos: [{ id: "a", total_value: 50 }], quoteLines: [{ quantity: 1, unitPrice: 50 }] }))).toBe("Profit (estimate) £0.00 (0.0%)");
+    expect(profitText(profitFigure({ kind: "job", canRead: can, pos: [{ id: "a", total_value: 110 }], invoices: [{ id: "i", status: "sent", subtotal: 100 }], credits: [], quoteLines: null }))).toBe("Profit (actual) -£10.00 (-10.0%)");
+    const credited = profitFigure({ kind: "job", canRead: can, pos: [{ id: "a", total_value: 40 }], invoices: [{ id: "i", status: "credited", subtotal: 100 }], credits: [{ invoice_id: "i", status: "issued", subtotal: 100 }], quoteLines: lines });
+    expect(profitText(credited)).toBe("Profit (actual) -£40.00");
+  });
+
+  it("no purchase orders linked: bought in £0.00, profit is the whole sell", () => {
+    const p = profitFigure({ kind: "quote", canRead: can, pos: [], quoteLines: lines });
+    expect(boughtInText(p)).toBe("Bought in £0.00 (no purchase orders linked)");
+    expect(profitText(p)).toBe("Profit (estimate) £200.00 (100.0%)");
+  });
+
+  it("a viewer who can't see invoices gets Profit unavailable on a quote and on a job: never the quote's figure instead", () => {
+    for (const invoices of [false, null]) {
+      const quote = profitFigure({ kind: "quote", canRead: { ...can, invoices }, pos, quoteLines: lines });
+      const job = profitFigure({ kind: "job", canRead: { ...can, invoices }, pos, invoices: [], credits: [], quoteLines: lines });
+      for (const p of [quote, job]) {
+        expect(p).toEqual({ state: "unavailable", reason: "you can't see invoices", buy: null });
+        expect(profitText(p)).toBe("Profit unavailable");
+        expect(profitText(p)).not.toMatch(/\d/);
+        expect(boughtInText(p)).toBe("Bought in unavailable");
+      }
+    }
+  });
+
+  it("a viewer who can't see quotes or purchase orders (or the check failed) gets Profit unavailable", () => {
+    expect(profitFigure({ kind: "quote", canRead: { ...can, quotes: false }, pos, quoteLines: lines })).toMatchObject({ state: "unavailable", reason: "you can't see quotes" });
+    expect(profitFigure({ kind: "job", canRead: { ...can, purchaseOrders: null }, pos, invoices: sent, credits: [], quoteLines: lines })).toMatchObject({ state: "unavailable", reason: "you can't see purchase orders" });
+  });
+
+  it("any input missing or unreadable: Profit unavailable, no number", () => {
+    const cases: [string, Parameters<typeof profitFigure>[0], string][] = [
+      ["orders not read", { kind: "quote", canRead: can, pos: null, quoteLines: lines }, "the linked purchase orders couldn't be read"],
+      ["an order with no value", { kind: "quote", canRead: can, pos: [{ id: "a", total_value: null }], quoteLines: lines }, "a linked purchase order has no usable value"],
+      ["quote lines not read", { kind: "quote", canRead: can, pos, quoteLines: null }, "the quote's lines couldn't be read"],
+      ["a quote with no lines", { kind: "quote", canRead: can, pos, quoteLines: [] }, "the quote has no ordered line with a quantity and price"],
+      ["a line with no price", { kind: "quote", canRead: can, pos, quoteLines: [{ quantity: 1, unitPrice: null }] }, "the quote has no ordered line with a quantity and price"],
+      ["invoices not read", { kind: "job", canRead: can, pos, invoices: null, credits: [], quoteLines: lines }, "the job's invoices couldn't be read"],
+      ["invoices not given", { kind: "job", canRead: can, pos, quoteLines: lines }, "the job's invoices couldn't be read"],
+      ["credit notes not read", { kind: "job", canRead: can, pos, invoices: sent, credits: null, quoteLines: lines }, "the credit notes couldn't be read"],
+      ["an issued invoice with no net", { kind: "job", canRead: can, pos, invoices: [{ id: "i", status: "sent", subtotal: null }], credits: [], quoteLines: lines }, "an issued invoice or credit note has no net amount"],
+      ["an issued credit note with no net", { kind: "job", canRead: can, pos, invoices: sent, credits: [{ invoice_id: "i", status: "issued", subtotal: null }], quoteLines: lines }, "an issued invoice or credit note has no net amount"],
+      ["no invoice and no quote", { kind: "job", canRead: can, pos, invoices: [], credits: [], quoteLines: null }, "no issued invoice, and no quote lines to estimate from"],
+    ];
+    for (const [name, input, reason] of cases) {
+      const p = profitFigure(input);
+      expect(p, name).toMatchObject({ state: "unavailable", reason });
+      expect(profitText(p), name).toBe("Profit unavailable");
+    }
+    // When only the sell is missing, what was bought in is still a real figure and is still shown.
+    expect(boughtInText(profitFigure({ kind: "job", canRead: can, pos, invoices: [], credits: [], quoteLines: null }))).toBe("Bought in £120.25 (2 POs)");
   });
 });
 
@@ -192,7 +266,19 @@ describe("what the pages do with it", () => {
     const panel = read("components/bought-in-profit.tsx");
     expect(panel).toContain('const OFFICE = new Set(["admin", "office"]);');
     expect(panel).toContain("if (!office || !has124 || !id");
+    // The viewer's access is asked of the database (section_allowed) for invoices, quotes and purchase orders before anything is read.
+    for (const section of ["invoices", "quotes", "purchase-orders"]) expect(panel).toContain(`allowed("${section}")`);
+    expect(panel).toContain("if (invoicesOk === true && quotesOk === true && posOk === true)");
+    // A failed read is null, never an empty list (which would read as 0).
+    expect(panel).toContain("return error || !Array.isArray(data) ? null : (data as T[]);");
+    expect(read("app/(dashboard)/quotes/page.tsx")).toContain("quoteLines={viewItemsLoading || viewItemsError ? undefined : viewItems}");
     expect(read("app/(dashboard)/quotes/page.tsx")).toContain('<BoughtInProfit kind="quote"');
     expect(read("app/(dashboard)/jobs/page.tsx")).toContain('<BoughtInProfit kind="job"');
+  });
+
+  it("the preflight's markers are in numeric order and 124's is the last", () => {
+    const markers = [...read("supabase/verify/release_preflight.sql").matchAll(/^\s+\('(\d{3}) [^']+',/gm)].map((m) => m[1]);
+    expect(markers).toEqual([...markers].sort());
+    expect(markers.slice(-2)).toEqual(["123", "124"]);
   });
 });

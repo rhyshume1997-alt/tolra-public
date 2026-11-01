@@ -3,15 +3,19 @@
  * "Bought in" (what was bought for it from suppliers) and "Profit" (sell minus buy). Office and admin only: the purchase orders, quotes and
  * invoices it reads are theirs by row rules, and the panels are not offered to workshop or viewer.
  *
- * THE PROFIT RULE (pence-exact, every figure ex VAT on both sides, carriage left out on both sides):
- *   sell  = the quote's ordered lines (a line the customer did not order, 068's "declined", is not counted), quantity x unit price;
- *           for a job, once it has an issued invoice: the issued invoices' net (subtotal) MINUS the net (subtotal) of every issued credit
- *           note against them. A draft, void or cancelled invoice, and a draft credit note, do not count. A job with no issued invoice
- *           uses its quote's ordered lines; a job with neither has no sell figure yet.
+ * THE PROFIT RULE (pence-exact, every figure ex VAT on both sides, carriage left out on both sides), shown as ESTIMATE or ACTUAL:
+ *   ESTIMATE: sell = the quote's ordered lines (a line the customer did not order, 068's "declined", is not counted), quantity x unit
+ *           price. A quote always; a job while it has no issued invoice (its quote's lines).
+ *   ACTUAL: a job once it has an issued invoice: sell = the issued invoices' net (subtotal) MINUS the net (subtotal) of every issued credit
+ *           note against them. A draft, void or cancelled invoice, and a draft credit note, do not count.
  *   buy   = the sum, over the linked supplier purchase orders that are not cancelled, of each order's ex-VAT value (total_value), or of the
  *           part of it allocated to this quote/job (linked_net) when only some of the order is for it. The allocated part is never more
- *           than the order's own value and never below 0. An order is counted once even when it is linked to both the quote and its job.
+ *           than the order's own value. An order is counted once even when it is linked to both the quote and its job.
  *   profit = sell - buy; margin % = profit / sell, one decimal place (none when sell is 0).
+ *   UNAVAILABLE (no number at all): the viewer can't read invoices, quotes or purchase orders (public.section_allowed), or any input is
+ *           missing or unreadable (a read failed, an order with no value, a line with no quantity or price, an issued invoice or credit
+ *           note with no net, no quote lines and no issued invoice). Nothing is read as 0, and the quote's figure is never shown in place
+ *           of the invoiced one to someone who can't see invoices.
  */
 import { fromPence, gbp, linePence, toPence } from "@/lib/money";
 
@@ -97,34 +101,64 @@ export async function suggestQuotesForItem(client: LinkClient, description: stri
 
 // ----- the profit maths -----------------------------------------------------------------------------------------
 
-export type LinkedPo = { id: string; status?: string | null; total_value?: number | string | null; linked_net?: number | string | null };
-
-const num = (value: unknown) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-};
-
-/** One linked order's ex-VAT cost to this quote/job, in pence: its value, or the allocated part of it (0 to the value). Cancelled: 0. */
-export function linkedPoPence(po: LinkedPo): number {
-  if (String(po.status ?? "").trim().toLowerCase() === "cancelled") return 0;
-  const value = Math.max(0, toPence(num(po.total_value)));
-  if (po.linked_net === null || po.linked_net === undefined || po.linked_net === "") return value;
-  return Math.min(value, Math.max(0, toPence(num(po.linked_net))));
+/** A money or quantity figure as stored, or null when it is missing or not a number (never read as 0). */
+function figure(value: unknown): number | null {
+  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) return null;
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(n) ? n : null;
 }
 
-/** Bought in: the sum over the linked orders (each counted once, cancelled ones left out) and how many orders that is. */
-export function boughtIn(pos: LinkedPo[]): { pence: number; count: number } {
+const isCancelled = (status: unknown) => String(status ?? "").trim().toLowerCase() === "cancelled";
+
+export type LinkedPo = { id: string; status?: string | null; total_value?: number | string | null; linked_net?: number | string | null };
+
+/**
+ * One linked order's ex-VAT cost to this quote/job, in pence: its value, or the allocated part of it (capped at the value). Cancelled: 0.
+ * null when the figure can't be trusted: no value, a value that is not a number or below 0, or an allocated amount that is not a number
+ * or below 0.
+ */
+export function linkedPoPence(po: LinkedPo): number | null {
+  if (isCancelled(po.status)) return 0;
+  const value = figure(po.total_value);
+  if (value === null || value < 0) return null;
+  const valuePence = toPence(value);
+  if (po.linked_net === null || po.linked_net === undefined) return valuePence;
+  const part = figure(po.linked_net);
+  if (part === null || part < 0) return null;
+  return Math.min(valuePence, toPence(part));
+}
+
+/** Bought in: the sum over the linked orders (each counted once, cancelled ones left out) and how many orders that is; null when any is unreadable. */
+export function boughtIn(pos: LinkedPo[]): { pence: number; count: number } | null {
   const seen = new Map<string, LinkedPo>();
   for (const po of pos) if (!seen.has(po.id)) seen.set(po.id, po);
-  const live = [...seen.values()].filter((po) => String(po.status ?? "").trim().toLowerCase() !== "cancelled");
-  return { pence: live.reduce((sum, po) => sum + linkedPoPence(po), 0), count: live.length };
+  const live = [...seen.values()].filter((po) => !isCancelled(po.status));
+  let pence = 0;
+  for (const po of live) {
+    const cost = linkedPoPence(po);
+    if (cost === null) return null;
+    pence += cost;
+  }
+  return { pence, count: live.length };
 }
 
 export type SellLine = { quantity: number | string | null; unit_price?: number | string | null; unitPrice?: number | string | null; declined?: boolean | null };
 
-/** A quote's sell: its ordered lines, quantity x unit price, ex VAT, in pence (declined lines are not counted). */
-export function quoteSellPence(lines: SellLine[]): number {
-  return lines.filter((line) => !line.declined).reduce((sum, line) => sum + linePence(num(line.quantity), num(line.unitPrice ?? line.unit_price)), 0);
+/**
+ * A quote's sell: its ordered lines, quantity x unit price, ex VAT, in pence (declined lines are not counted). null when there is no
+ * ordered line, or any ordered line has no quantity or no unit price.
+ */
+export function quoteSellPence(lines: SellLine[]): number | null {
+  const ordered = lines.filter((line) => !line.declined);
+  if (!ordered.length) return null;
+  let pence = 0;
+  for (const line of ordered) {
+    const quantity = figure(line.quantity);
+    const price = figure(line.unitPrice ?? line.unit_price);
+    if (quantity === null || price === null) return null;
+    pence += linePence(quantity, price);
+  }
+  return pence;
 }
 
 const NOT_ISSUED = new Set(["draft", "void", "voided", "cancelled", "canceled"]);
@@ -134,39 +168,99 @@ export type SellInvoice = { id: string; status?: string | null; subtotal?: numbe
 export type SellCredit = { invoice_id?: string | null; status?: string | null; subtotal?: number | string | null };
 
 /**
- * A job's invoiced sell, in pence: the issued invoices' net minus the net of the issued credit notes against those invoices. null when the
- * job has no issued invoice (then its quote is used).
+ * A job's invoiced sell, in pence: the issued invoices' net minus the net of the issued credit notes against those invoices.
+ * { issued: false } when the job has no issued invoice; pence null when an issued invoice or an issued credit note against one has no net.
  */
-export function invoicedSellPence(invoices: SellInvoice[], credits: SellCredit[]): number | null {
+export function invoicedSellPence(invoices: SellInvoice[], credits: SellCredit[]): { issued: false } | { issued: true; pence: number | null } {
   const issued = invoices.filter((inv) => invoiceCounts(inv.status));
-  if (!issued.length) return null;
+  if (!issued.length) return { issued: false };
   const ids = new Set(issued.map((inv) => inv.id));
-  const invoiced = issued.reduce((sum, inv) => sum + toPence(num(inv.subtotal)), 0);
-  const credited = credits
-    .filter((cn) => cn.invoice_id && ids.has(cn.invoice_id) && String(cn.status ?? "").trim().toLowerCase() === "issued")
-    .reduce((sum, cn) => sum + toPence(num(cn.subtotal)), 0);
-  return invoiced - credited;
+  let pence = 0;
+  for (const inv of issued) {
+    const net = figure(inv.subtotal);
+    if (net === null) return { issued: true, pence: null };
+    pence += toPence(net);
+  }
+  for (const cn of credits) {
+    if (!cn.invoice_id || !ids.has(cn.invoice_id) || String(cn.status ?? "").trim().toLowerCase() !== "issued") continue;
+    const net = figure(cn.subtotal);
+    if (net === null) return { issued: true, pence: null };
+    pence -= toPence(net);
+  }
+  return { issued: true, pence };
 }
 
-export type Profit = { sellPence: number | null; buyPence: number; count: number; profitPence: number | null; marginPct: number | null; basis: "quote" | "invoiced" | "none" };
+/**
+ * What the quote or the job reads, each null when it was not read or the read failed (never an empty list standing in for a failure).
+ * canRead: public.section_allowed for invoices, quotes and purchase orders; anything but true (hidden, not asked, the call failed) is "no".
+ */
+export type ProfitInputs = {
+  kind: LinkKind;
+  canRead: { invoices: boolean | null; quotes: boolean | null; purchaseOrders: boolean | null };
+  pos: LinkedPo[] | null;
+  /** A job: its invoices and the credit notes against them. Not used for a quote. */
+  invoices?: SellInvoice[] | null;
+  credits?: SellCredit[] | null;
+  /** The quote's lines (a quote; or a job's quote, used while the job has no issued invoice). null: no quote, or not read. */
+  quoteLines: SellLine[] | null;
+};
 
-export function profitOf(sellPence: number | null, buy: { pence: number; count: number }, basis: Profit["basis"]): Profit {
-  if (sellPence === null) return { sellPence: null, buyPence: buy.pence, count: buy.count, profitPence: null, marginPct: null, basis: "none" };
-  const profitPence = sellPence - buy.pence;
-  const marginPct = sellPence > 0 ? Math.round((profitPence * 1000) / sellPence) / 10 : null;
-  return { sellPence, buyPence: buy.pence, count: buy.count, profitPence, marginPct, basis };
+export type ProfitFigure =
+  | { state: "estimate" | "actual"; sellPence: number; buyPence: number; count: number; profitPence: number; marginPct: number | null }
+  | { state: "unavailable"; reason: string; buy: { pence: number; count: number } | null };
+
+const unavailable = (reason: string, buy: { pence: number; count: number } | null = null): ProfitFigure => ({ state: "unavailable", reason, buy });
+
+/**
+ * Profit, conservatively. ESTIMATE: sell from the quote's ordered lines. ACTUAL (a job with an issued invoice): sell from the issued
+ * invoices' net minus the issued credit notes against them. UNAVAILABLE, with no number, when the viewer can't read invoices, quotes or
+ * purchase orders, or any input is missing or unreadable. It never falls back to the quote's figure for someone who can't see invoices.
+ */
+export function profitFigure(input: ProfitInputs): ProfitFigure {
+  if (input.canRead.invoices !== true) return unavailable("you can't see invoices");
+  if (input.canRead.quotes !== true) return unavailable("you can't see quotes");
+  if (input.canRead.purchaseOrders !== true) return unavailable("you can't see purchase orders");
+  if (input.pos === null) return unavailable("the linked purchase orders couldn't be read");
+  const buy = boughtIn(input.pos);
+  if (buy === null) return unavailable("a linked purchase order has no usable value");
+
+  let sell: number | null;
+  let state: "estimate" | "actual" = "estimate";
+  if (input.kind === "job") {
+    if (!input.invoices) return unavailable("the job's invoices couldn't be read", buy);
+    if (!input.credits) return unavailable("the credit notes couldn't be read", buy);
+    const invoiced = invoicedSellPence(input.invoices, input.credits);
+    if (invoiced.issued) {
+      if (invoiced.pence === null) return unavailable("an issued invoice or credit note has no net amount", buy);
+      sell = invoiced.pence;
+      state = "actual";
+    } else {
+      if (!input.quoteLines) return unavailable("no issued invoice, and no quote lines to estimate from", buy);
+      sell = quoteSellPence(input.quoteLines);
+      if (sell === null) return unavailable("the quote has no ordered line with a quantity and price", buy);
+    }
+  } else {
+    if (!input.quoteLines) return unavailable("the quote's lines couldn't be read", buy);
+    sell = quoteSellPence(input.quoteLines);
+    if (sell === null) return unavailable("the quote has no ordered line with a quantity and price", buy);
+  }
+  const profitPence = sell - buy.pence;
+  const marginPct = sell > 0 ? Math.round((profitPence * 1000) / sell) / 10 : null;
+  return { state, sellPence: sell, buyPence: buy.pence, count: buy.count, profitPence, marginPct };
 }
 
 const money = (pence: number) => gbp(fromPence(pence), 2);
 
-/** "Bought in £120.00 (2 POs)"; "Bought in £0.00 (no purchase orders linked)". */
-export function boughtInText(profit: Pick<Profit, "buyPence" | "count">): string {
-  return `Bought in ${money(profit.buyPence)} (${profit.count === 0 ? "no purchase orders linked" : profit.count === 1 ? "1 PO" : `${profit.count} POs`})`;
+/** "Bought in £120.00 (2 POs)"; "Bought in £0.00 (no purchase orders linked)"; "Bought in unavailable" when it couldn't be worked out. */
+export function boughtInText(figure: ProfitFigure): string {
+  const buy = figure.state === "unavailable" ? figure.buy : { pence: figure.buyPence, count: figure.count };
+  if (!buy) return "Bought in unavailable";
+  return `Bought in ${money(buy.pence)} (${buy.count === 0 ? "no purchase orders linked" : buy.count === 1 ? "1 PO" : `${buy.count} POs`})`;
 }
 
-/** "Profit £80.00 (40.0%)"; a loss reads "Profit -£20.00 (-10.0%)"; no sell yet: "Profit: no sell price yet"; sell 0: no %. */
-export function profitText(profit: Pick<Profit, "profitPence" | "marginPct">): string {
-  if (profit.profitPence === null) return "Profit: no sell price yet";
-  const amount = profit.profitPence < 0 ? `-${money(-profit.profitPence)}` : money(profit.profitPence);
-  return `Profit ${amount}${profit.marginPct === null ? "" : ` (${profit.marginPct.toFixed(1)}%)`}`;
+/** "Profit (estimate) £80.00 (40.0%)"; "Profit (actual) -£20.00 (-10.0%)"; sell 0: no %; "Profit unavailable" with no number. */
+export function profitText(figure: ProfitFigure): string {
+  if (figure.state === "unavailable") return "Profit unavailable";
+  const amount = figure.profitPence < 0 ? `-${money(-figure.profitPence)}` : money(figure.profitPence);
+  return `Profit (${figure.state}) ${amount}${figure.marginPct === null ? "" : ` (${figure.marginPct.toFixed(1)}%)`}`;
 }
