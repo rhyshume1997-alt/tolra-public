@@ -302,7 +302,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
   expect(url.searchParams.get("client_id")).toBe(app.clientId);
   expect(url.searchParams.get("response_type")).toBe("code");
   expect(url.searchParams.get("redirect_uri")).toBe(`${origin}/api/integrations/microsoft/callback`);
-  expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send User.Read");
+  expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send Mail.Read User.Read"); // C1 (127): read-only inbox access too
   const state = url.searchParams.get("state") ?? "";
   expect(state.length).toBeGreaterThanOrEqual(20);
   expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
