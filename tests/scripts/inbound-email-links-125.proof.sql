@@ -1,5 +1,5 @@
 -- Local proof for migration 125 (inbox e-mails linked to a quote or purchase order; suggestions only). Run on a COPY of a database with
--- the chain applied plus 125 (and, for section 9, 123 too):
+-- the chain applied plus 125 (and, for sections 10 and 11, 123 too):
 --   createdb x -T <chain db>; psql -d x -f supabase/release/125_inbound_email_links.release.sql; psql -d x -f this
 -- Everything runs in one transaction that is rolled back. Each check prints PASS or raises FAIL.
 \set ON_ERROR_STOP 1
@@ -219,5 +219,52 @@ BEGIN
   r := pg_temp.link(A_OFFICE, '12500000-0000-0000-0000-00000000e0a1', 'quote', QA2, 'po-5555', 'manual');
   IF r NOT LIKE '%"po_state": "already_set"%' THEN RAISE EXCEPTION 'FAIL 10 already: %', r; END IF;
   RAISE NOTICE 'PASS 10 (123 applied): PO written through set_quote_customer_po (its SET_CUSTOMER_PO audit); a different PO never overwrites it';
+END $$;
+-- 11. ChatGPT P1 conditions, against the real 123. Dedupe by message id: the inbox check storing a message it already holds (the same
+--     Microsoft message id) adds no row, no RFQ, and leaves that e-mail's link and suggestions as they were. No automatic link ever: no
+--     e-mail of either company is 'auto', and every linked e-mail was linked by a person's Link click (LINK_INBOUND_EMAIL, manual).
+--     Never overwrite: a quote whose customer PO came another way (set_quote_customer_po, not from an e-mail) keeps it; a rejected
+--     quote (123 refuses its PO) refuses the whole Link click and nothing changes.
+DO $$
+DECLARE r JSONB; t TEXT; v_po TEXT; e_before TEXT; n_rows BIGINT; n_rfq BIGINT;
+  A_ADMIN CONSTANT UUID := '12500000-0000-0000-0000-0000000000a1'; A_OFFICE CONSTANT UUID := '12500000-0000-0000-0000-0000000000a2';
+  ORG_A CONSTANT UUID := '12500000-0000-0000-0000-0000000000a0';
+  EA1 CONSTANT UUID := '12500000-0000-0000-0000-00000000e0a1'; QA1 CONSTANT UUID := '12500000-0000-0000-0000-00000000c0a1';
+  QR CONSTANT UUID := '12500000-0000-0000-0000-00000000c0a9';
+BEGIN
+  SELECT row_to_json(x)::TEXT INTO e_before FROM public.inbound_emails x WHERE id = EA1;
+  SELECT count(*) INTO n_rows FROM public.inbound_emails WHERE organization_id = ORG_A;
+  SELECT count(*) INTO n_rfq FROM public.rfqs WHERE organization_id = ORG_A;
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', A_ADMIN, 'role', 'authenticated')::TEXT, true);
+  PERFORM set_config('request.jwt.claim.sub', A_ADMIN::TEXT, true);
+  SET LOCAL ROLE authenticated;
+  r := public.record_inbound_email('p125-a1', NULL, 'buyer@acme.example', 'Buyer', 'PO 4471 for QUO-P125-1 (again)', now(), 'Our PO 4471.', 'Our PO 4471.');
+  RESET ROLE;
+  IF (r->>'inserted')::BOOLEAN IS NOT FALSE
+     OR (SELECT count(*) FROM public.inbound_emails WHERE organization_id = ORG_A) <> n_rows
+     OR (SELECT count(*) FROM public.inbound_emails WHERE organization_id = ORG_A AND graph_message_id = 'p125-a1') <> 1
+     OR (SELECT count(*) FROM public.rfqs WHERE organization_id = ORG_A) <> n_rfq
+     OR (SELECT row_to_json(x)::TEXT FROM public.inbound_emails x WHERE id = EA1) <> e_before THEN
+    RAISE EXCEPTION 'FAIL 11 dedupe: %', r; END IF;
+  IF EXISTS (SELECT 1 FROM public.inbound_emails WHERE organization_id IN (ORG_A, '12500000-0000-0000-0000-0000000000b0') AND link_status = 'auto')
+     OR EXISTS (SELECT 1 FROM public.inbound_emails x WHERE x.organization_id = ORG_A AND (x.linked_quote_id IS NOT NULL OR x.linked_purchase_order_id IS NOT NULL)
+                  AND (x.link_status <> 'manual' OR NOT EXISTS (SELECT 1 FROM security_audit.audit_log l WHERE l.action = 'LINK_INBOUND_EMAIL' AND l.entity_id = x.id::TEXT))) THEN
+    RAISE EXCEPTION 'FAIL 11 auto link'; END IF;
+  -- A PO set on the quote by hand first (123's own call), then an e-mail with another PO linked to it: kept_existing, the quote keeps it.
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', A_OFFICE, 'role', 'authenticated')::TEXT, true);
+  PERFORM set_config('request.jwt.claim.sub', A_OFFICE::TEXT, true);
+  SET LOCAL ROLE authenticated;
+  PERFORM public.set_quote_customer_po('12500000-0000-0000-0000-000000001001', 'HAND-1');
+  RESET ROLE;
+  t := pg_temp.link(A_OFFICE, '12500000-0000-0000-0000-00000000e0a3', 'quote', '12500000-0000-0000-0000-000000001001', '5555', 'manual');
+  SELECT customer_po INTO v_po FROM public.quotes WHERE id = '12500000-0000-0000-0000-000000001001';
+  IF t NOT LIKE '%"po_state": "kept_existing"%' OR v_po <> 'HAND-1' THEN RAISE EXCEPTION 'FAIL 11 hand PO: % / %', t, v_po; END IF;
+  INSERT INTO public.quotes (id, organization_id, quote_ref, customer, status) VALUES (QR, ORG_A, 'QUO-P125-R', 'Acme Ltd', 'rejected');
+  SELECT row_to_json(x)::TEXT INTO e_before FROM public.inbound_emails x WHERE id = '12500000-0000-0000-0000-00000000e0a2';
+  t := pg_temp.link(A_OFFICE, '12500000-0000-0000-0000-00000000e0a2', 'quote', QR, '8888', 'manual');
+  IF t <> '22023/' OR (SELECT customer_po FROM public.quotes WHERE id = QR) IS NOT NULL
+     OR (SELECT row_to_json(x)::TEXT FROM public.inbound_emails x WHERE id = '12500000-0000-0000-0000-00000000e0a2') <> e_before THEN
+    RAISE EXCEPTION 'FAIL 11 rejected: %', t; END IF;
+  RAISE NOTICE 'PASS 11 same message id again: inserted false, no new row or RFQ, its link and suggestions unchanged; no auto link anywhere, every link a person''s; a PO set by hand is kept; a rejected quote refuses the Link whole (22023)';
 END $$;
 ROLLBACK;

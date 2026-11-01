@@ -155,6 +155,13 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass)),
     ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2')),
     ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_status()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3ef44c838451b46ea14030164d9b1384')),
+    ('123 quote customer po',             EXISTS (SELECT 1 FROM col WHERE table_name = 'quotes' AND column_name = 'customer_po')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_quote_customer_po(uuid, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '00f8488bd689f3e473209d520218d402')),
+    ('124 purchase order link',           to_regclass('public.purchase_orders') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'purchase_orders' AND column_name = 'quote_id')
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'purchase_orders' AND column_name = 'job_id')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_same_org_job_id' AND tgrelid = to_regclass('public.purchase_orders'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'purchase_order_issue_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '9f903e888bca6d55322cc877488c1019')),
     ('125 inbound email links',           EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.link_inbound_email(uuid, text, uuid, text, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2f7a1169a7087cf17a3f872a8f08a088')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'inbound_emails' AND column_name = 'link_suggestions'))
 ),
@@ -408,6 +415,20 @@ checks(n, check_name, value, expected) AS (
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'dd70574344856582b9819431b45e6c5c' THEN '119' WHEN '4fa415c7b3222def6c37e93353e804c2' THEN '121' WHEN 'a15c6833cefc4b752ceafce0a10730b2' THEN '036' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = '_session_membership'), 'missing'),
     '119 before 121, 121 after (036: apply 119 first; other: stop, 121 refuses to replace it)'
+  UNION ALL SELECT 53, '123 needs: quote_lifecycle_guard 076''s, create_sales_order_from_quote and revise_quote 068''s (or already 123''s)',
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '7aa38f2a95943427d522712998d84050' THEN '076' WHEN '3c01d528076221cdac11c72f7327ab02' THEN '123' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'quote_lifecycle_guard'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'ded57529317279dae221103631fe149a' THEN '068' WHEN 'a5371d31fde32e60ed7b2a23f40f1935' THEN '123' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'create_sales_order_from_quote'), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'd8e9f57c47c98731e57d66b699f7273c' THEN '068' WHEN 'dd78b559c44bf1effdc7e61109e1500c' THEN '123' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'revise_quote'), 'missing'),
+    '076 / 068 / 068 before 123, 123 / 123 / 123 after (other: stop, 123 refuses to replace it)'
+  UNION ALL SELECT 54, '124 needs: purchase_orders, quotes, jobs and enforce_same_org_parent; public.purchase_order_issue_lock is 076''s (or already 124''s)',
+    (to_regclass('public.purchase_orders') IS NOT NULL AND to_regclass('public.quotes') IS NOT NULL AND to_regclass('public.jobs') IS NOT NULL
+     AND to_regprocedure('public.enforce_same_org_parent()') IS NOT NULL)::TEXT
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '27924815917836092f18d3dd58d87c23' THEN '076' WHEN '9f903e888bca6d55322cc877488c1019' THEN '124' ELSE 'other' END
+              FROM fn WHERE nspname = 'public' AND proname = 'purchase_order_issue_lock'), 'missing'),
+    'true / 076 before 124, true / 124 after (other: stop, 124 refuses to replace it)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

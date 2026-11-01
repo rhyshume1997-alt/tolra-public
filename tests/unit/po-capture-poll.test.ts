@@ -88,6 +88,15 @@ describe("suggestPoLinks", () => {
     expect(rpcCalls.some((c) => c.args.p_how === "manual" || c.args.p_how === "auto")).toBe(false);
   });
 
+  it("a quote that already has its customer PO (123): still only a suggestion; the inbox check never writes a PO or links", async () => {
+    tableData.quotes = [{ ...acme, customer_po: "4471" }];
+    const out = await suggestPoLinks(db, [poEmail("e1", "Our PO 4471")]);
+    expect(out).toMatchObject({ status: "ok", customerPo: true, suggested: 1 });
+    expect(rpcCalls.map((c) => c.name)).toEqual(["link_inbound_email"]);
+    expect(rpcCalls.every((c) => c.args.p_how === "suggested")).toBe(true);
+    expect(rpcCalls.some((c) => c.name === "set_quote_customer_po")).toBe(false);
+  });
+
   it("messages without a PO number load nothing and call nothing", async () => {
     const out = await suggestPoLinks(db, [poEmail("e1", "RFQ: 50 brackets, drawing attached")]);
     expect(out.status).toBe("skipped");

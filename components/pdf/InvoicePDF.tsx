@@ -1,6 +1,7 @@
 import { BaseDocumentPDF, type PdfDocumentData, type PdfKeyValue, type PdfLineItem } from "@/components/pdf/BaseDocumentPDF";
 import { paymentDetailRows } from "@/lib/bank-details";
 import { type CompanyProfile, getCompanyProfile, invoiceMessage } from "@/lib/company";
+import { customerPoKeyValue } from "@/lib/customer-po";
 import type { PdfCustomerSignOff } from "@/lib/customer-signoff-print";
 import { gbp } from "@/lib/money";
 
@@ -60,7 +61,7 @@ export function InvoicePDF({ data }: { data: InvoicePdfData }) {
     ...(data.credits && data.credits > 0 && !data.paymentUnknown ? [{ label: "Less credit notes", value: gbp(data.credits, 2) }] : []),
     { label: "Terms", value: data.terms || company.defaultInvoiceTerms },
     ...(data.quoteRef ? [{ label: "Our Quote No.", value: data.quoteRef }] : []),
-    ...(data.customerPo ? [{ label: "Your Order No.", value: data.customerPo }] : []),
+    ...customerPoKeyValue(data.customerPo),
   ];
   // The key/value box is a fixed 17.3pt per row above the address blocks: five rows fill it, a sixth would overlap "Bill To".
   // So the delivery notes row is printed only when there is a free row, and is dropped otherwise.

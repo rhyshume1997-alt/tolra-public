@@ -234,6 +234,8 @@ function attempts(): Attempt[] {
     // 068: revising beta's sent quote is refused (and beta's quote stays as it is).
     ["public.revise_quote(p_quote uuid)", () => alpha.rpc("revise_quote", { p_quote: beta.quote }), "refused"],
     ["public.set_sales_order_customer_po(p_order uuid, p_customer_po text)", () => alpha.rpc("set_sales_order_customer_po", { p_order: beta.order, p_customer_po: "PO-X" }), "refused"],
+    // 123: setting the customer PO on beta's quote is refused (and beta's quote, order, job and invoices stay as they are).
+    ["public.set_quote_customer_po(p_quote uuid, p_customer_po text)", () => alpha.rpc("set_quote_customer_po", { p_quote: beta.quote, p_customer_po: "PO-X" }), "refused"],
     ["public.set_auto_convert_sales_orders(p_on boolean)", () => alpha.rpc("set_auto_convert_sales_orders", { p_on: true }), "nothing of beta's"],
     // 050: a clock action is the caller's own (no target); a correction pointed at beta's person is refused; settings are the caller's company's.
     ["public.record_attendance_event(p_client_op_id uuid, p_action text, p_at timestamp with time zone, p_device text DEFAULT NULL::text)", () => alpha.rpc("record_attendance_event", { p_client_op_id: randomUUID(), p_action: "in", p_at: null }), "nothing of beta's"],

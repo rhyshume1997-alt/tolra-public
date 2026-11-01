@@ -310,7 +310,7 @@ export async function buildYearEndZip(from: string, to: string, company: Company
         files[path] = await render(<QuotePDF data={{
           storedTotals: { reference: ref, issued: true, total: Number(r.total_value || 0) },
           number: ref, date: fmtDate(day(r.created_at)), terms: r.terms || profile.defaultQuoteTerms, validUntil: r.valid_until ? fmtDate(day(r.valid_until)) : "",
-          scope: r.description || undefined, billTo, lineItems: items, vatEnabled: r.vat_enabled !== false,
+          scope: r.description || undefined, customerPo: r.customer_po ? String(r.customer_po) : undefined, billTo, lineItems: items, vatEnabled: r.vat_enabled !== false,
           customerMessage: r.customer_notes ? [...profile.defaultCustomerMessage, String(r.customer_notes)] : undefined, company: profile,
         }} />);
         row.pdf = path;

@@ -2,7 +2,7 @@
 -- the five columns 125 added to public.inbound_emails: every link and every suggestion is lost (a NOTICE says how many). The e-mails
 -- themselves, their RFQs, and any customer PO that a Link wrote onto a quote through 123 stay as they are; the audit rows
 -- (SUGGEST_EMAIL_LINK, LINK_INBOUND_EMAIL, SET_CUSTOMER_PO) stay. Nothing else is touched. Run the whole text as one transaction, then the
--- release preflight (marker 125 shows "not applied") and supabase/verify/catalogue.sql (it matches the catalogue of 000 to 122 again).
+-- release preflight (marker 125 shows "not applied") and supabase/verify/catalogue.sql (it matches the catalogue of 000 to 124 again).
 BEGIN;
 DO $$
 DECLARE
