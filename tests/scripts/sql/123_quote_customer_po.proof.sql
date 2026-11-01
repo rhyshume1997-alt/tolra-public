@@ -136,6 +136,26 @@ BEGIN
   IF (SELECT customer_po FROM public.sales_orders WHERE id = so.id) IS DISTINCT FROM '4472' THEN RAISE EXCEPTION 'FAIL 6 order not changed'; END IF;
   RAISE NOTICE 'PASS 6 issued invoice keeps 4471 and the finished job keeps 4471; the quote and order take 4472';
 
+  -- 6b. Nothing else moves: a fingerprint of every row of quotes, sales orders, jobs and invoices (both companies) except the target
+  --     quote and its order, taken before and after a late PO on QUO-9001, whose job is finished and whose invoice is issued.
+  SELECT md5(string_agg(x, '|' ORDER BY x)) INTO r FROM (
+    SELECT 'q' || row_to_json(q)::TEXT AS x FROM public.quotes q WHERE q.id <> '12300000-0000-0000-0000-00000000c001'
+    UNION ALL SELECT 's' || row_to_json(o)::TEXT FROM public.sales_orders o WHERE o.id <> so.id
+    UNION ALL SELECT 'j' || row_to_json(t)::TEXT FROM public.jobs t
+    UNION ALL SELECT 'i' || row_to_json(n)::TEXT FROM public.invoices n) f;
+  j := (substr(pg_temp.as_user(A, $q$SELECT public.set_quote_customer_po('12300000-0000-0000-0000-00000000c001', '4473')::TEXT$q$), 4))::JSONB;
+  IF (j->>'changed')::BOOLEAN IS NOT TRUE OR (j->>'draft_invoices')::INT <> 0 OR (j->>'job_updated')::BOOLEAN THEN RAISE EXCEPTION 'FAIL 6b result %', j; END IF;
+  IF r IS DISTINCT FROM (SELECT md5(string_agg(x, '|' ORDER BY x)) FROM (
+    SELECT 'q' || row_to_json(q)::TEXT AS x FROM public.quotes q WHERE q.id <> '12300000-0000-0000-0000-00000000c001'
+    UNION ALL SELECT 's' || row_to_json(o)::TEXT FROM public.sales_orders o WHERE o.id <> so.id
+    UNION ALL SELECT 'j' || row_to_json(t)::TEXT FROM public.jobs t
+    UNION ALL SELECT 'i' || row_to_json(n)::TEXT FROM public.invoices n) f) THEN
+    RAISE EXCEPTION 'FAIL 6b another row changed (issued invoice, finished job, another quote''s or company''s)';
+  END IF;
+  IF (SELECT customer_po FROM public.quotes WHERE id = '12300000-0000-0000-0000-00000000c001') IS DISTINCT FROM '4473'
+     OR (SELECT customer_po FROM public.sales_orders WHERE id = so.id) IS DISTINCT FROM '4473' THEN RAISE EXCEPTION 'FAIL 6b target not changed'; END IF;
+  RAISE NOTICE 'PASS 6b late PO 4473 on QUO-9001: only its quote and order change; every other quote, order, job and invoice (its issued invoice, its finished job, other quotes'', company B''s) is byte-identical';
+
   -- 7. Refusals: another company's quote, the workshop, an empty PO once there is an order, over 100 characters.
   r := pg_temp.as_user(A, $q$SELECT public.set_quote_customer_po('12300000-0000-0000-0000-00000000c0b1', 'X')::TEXT$q$);
   IF r <> 'P0002' THEN RAISE EXCEPTION 'FAIL 7 cross-company: %', r; END IF;

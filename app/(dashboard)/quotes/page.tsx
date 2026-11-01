@@ -1186,7 +1186,7 @@ export default function QuotesPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {group.items.map((quote) => (
             <Card key={quote.id ?? quote.ref} className={selectedRefs.includes(quote.ref) ? "border-brand-accent/60 ring-1 ring-brand-accent/40" : undefined}>
-              {isVisible("ref") ? <CardHeader><CardTitle className="font-bold break-words">{quote.ref}</CardTitle></CardHeader> : null}
+              {isVisible("ref") ? <CardHeader><CardTitle className="font-bold break-words">{quote.ref}</CardTitle>{quote.customerPo ? <p data-testid="quote-customer-po" className="text-xs text-slate-500">{customerPoBeside(quote.customerPo)}</p> : null}</CardHeader> : null}
               <CardContent className="space-y-4">
                 <label className="flex items-center gap-2 text-sm text-slate-600 pointer-coarse:min-h-11"><input type="checkbox" className="pointer-coarse:size-6" checked={selectedRefs.includes(quote.ref)} onChange={() => setSelectedRefs((current) => current.includes(quote.ref) ? current.filter((ref) => ref !== quote.ref) : [...current, quote.ref])} /> Select for export</label>
                 {/* Labelled fields in the Quotes column order (Quote above; Actions below): Date, Customer, Description, Status, Value, Valid until. */}

@@ -70,6 +70,14 @@ async function finishAndDraft(orderId: string, jobId: string, customer: string) 
   });
 }
 
+/** md5 of every quotes, sales_orders, jobs and invoices row of this run's two companies, except one quote and its order. */
+const fingerprint = async (quoteId: string, orderId: string) => (await one<{ fp: string }>(`select md5(string_agg(x, '|' order by x)) as fp from (
+    select 'q' || row_to_json(q)::text as x from public.quotes q where q.organization_id = any($1) and q.id <> $2
+    union all select 's' || row_to_json(o)::text from public.sales_orders o where o.organization_id = any($1) and o.id <> $3
+    union all select 'j' || row_to_json(t)::text from public.jobs t where t.organization_id = any($1)
+    union all select 'i' || row_to_json(n)::text from public.invoices n where n.organization_id = any($1)) f`,
+  [[world.tenants.alpha.id, world.tenants.beta.id], quoteId, orderId])).fp;
+
 describe("the customer's PO on the quote (123)", () => {
   it("the whole chain: quote with Customer PO 4471 -> accept (dialog empty) -> order 4471 -> job 4471 -> draft invoice 4471", async () => {
     const q = await quote("4471");
@@ -114,9 +122,17 @@ describe("the customer's PO on the quote (123)", () => {
     await finishAndDraft(accepted.so_id, accepted.job_id, `PO Co ${seq}`);
     const invoice = (await one<{ id: string }>("select id from public.invoices where job_id = $1", [accepted.job_id])).id;
     await withDb((db) => db.query("update public.invoices set status = 'sent', invoice_ref = $2, issued_at = now() where id = $1", [invoice, `INV-PO-${world.runId}-${seq}`]));
+    // Another quote's order, job and draft invoice, and another company's quote, to prove they are not touched.
+    const other = await accept((await quote("OTHER-1")).id);
+    await one("insert into public.invoices (organization_id, customer, job_id, status, subtotal, vat, total, customer_po) values ($1, 'Other Co', $2, 'draft', 100, 0, 100, 'OTHER-1') returning id", [org(), other.job_id]);
+    await quote("B-PO", "beta");
+    const before = await fingerprint(q.id, accepted.so_id);
     const { data, error } = await as.office.rpc("set_quote_customer_po", { p_quote: q.id, p_customer_po: "4472" });
     expect(error).toBeNull();
     expect(data).toMatchObject({ changed: true, draft_invoices: 0, job_updated: false });
+    // Every row of both companies' quotes, orders, jobs and invoices but this quote and its order is byte-identical: the issued invoice,
+    // the finished job, the other quote's order, job and draft invoice, and company beta's quote.
+    expect(await fingerprint(q.id, accepted.so_id)).toBe(before);
     expect(await poOf("invoices", invoice)).toBe("4471");
     expect(await poOf("jobs", accepted.job_id)).toBe("4471");
     expect(await poOf("quotes", q.id)).toBe("4472");
