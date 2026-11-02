@@ -30,3 +30,21 @@ describe('matchStatementLines', () => {
     expect(result.filter(x => x.invoice)).toHaveLength(1);
   });
 });
+
+describe('malformed bank CSV', () => {
+  it.each(['"100.00', '"100.00\n', '"100.00\r\n'])('rejects an unclosed amount quote: %s', amount => {
+    const result = parseStatementCsv('Date,Description,Amount\n02/11/2026,INV001,' + amount);
+    expect(result.lines).toEqual([]);
+    expect(result.errors).toHaveLength(1);
+  });
+  it('does not return earlier transactions from a structurally broken statement', () => {
+    const result = parseStatementCsv('Date,Description,Amount\n02/11/2026,INV001,100.00\n03/11/2026,INV002,"200.00');
+    expect(result.lines).toEqual([]);
+    expect(result.errors).toHaveLength(1);
+  });
+  it('preserves escaped quotes and newlines inside valid quoted descriptions', () => {
+    const result = parseStatementCsv('Date,Description,Amount\r\n02/11/2026,"ACME ""Ltd""\nINV001","100.00"');
+    expect(result.errors).toEqual([]);
+    expect(result.lines).toEqual([{ date: '2026-11-02', description: 'ACME "Ltd"\nINV001', amountPence: 10000 }]);
+  });
+});
