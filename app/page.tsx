@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 
-import { BracketT } from "@/components/marketing/bracket-t";
 import { Cta } from "@/components/marketing/cta";
 import { JobFlow } from "@/components/marketing/job-flow";
+import { SiteFooter } from "@/components/marketing/site-footer";
+import { SiteHeader } from "@/components/marketing/site-header";
 import {
-  CLOSE_CALL_LINE, CLOSE_TITLE, CONTACT_EMAIL, FAQ, FAQ_TITLE, FEATURES, FOUNDER_NAME, FOUNDER_URL, HERO_SUBHEAD, PAIN_CARDS, PAIN_TITLE, PRIVACY_NOTE, PROOF_LINE, SEE_HOW_LABEL,
-  SITE_DESCRIPTION, SITE_TITLE, SITE_URL, START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
+  CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FOUNDER_NAME, FOUNDER_URL, HERO_SUBHEAD, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SEE_HOW_LABEL,
+  MARKETING_ICONS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL, START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
 } from "@/lib/marketing";
 
 // The public home page. Signed-in people never see it: the middleware sends them to /dashboard (middleware.ts).
@@ -18,15 +18,8 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/` },
   robots: { index: true, follow: true },
-  // Only this page links the new icon files; the app's pages keep the icon links from app/layout.tsx.
-  icons: {
-    icon: [
-      { url: "/icons/favicon.ico", sizes: "16x16 32x32 48x48" },
-      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
-  },
+  // The public pages link the new icon files; the app's pages keep the icon links from app/layout.tsx.
+  icons: MARKETING_ICONS,
   openGraph: { type: "website", url: `${SITE_URL}/`, siteName: "Tolra", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [OG_IMAGE] },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [OG_IMAGE.url] },
 };
@@ -45,17 +38,7 @@ export default function Home() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd()).replace(/</g, "\\u003c") }} />
 
-        <header className="bg-[#0b2a5b] text-white">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link href="/" className={`flex items-center gap-2 rounded-md text-xl font-bold tracking-tight ${focusDark}`}>
-            <BracketT variant="flat" size={32} />
-            <span>Tolra</span>
-          </Link>
-          <nav aria-label="Main">
-            <Link href="/login" className={`inline-flex min-h-11 items-center rounded-lg border border-white/50 px-4 text-sm font-semibold hover:bg-white/10 ${focusDark}`}>Sign in</Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
         <main id="main">
           <section aria-labelledby="hero-title" className="relative isolate overflow-hidden bg-gradient-to-b from-[#0b2a5b] to-[#1457b5] text-white">
@@ -203,19 +186,7 @@ export default function Home() {
           </section>
         </main>
 
-      <footer className="bg-[#08224a] py-10 text-sm text-blue-100">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 sm:px-6 md:flex-row md:items-start md:justify-between">
-            <div className="max-w-md space-y-2">
-              <p className="flex items-center gap-2 text-base font-bold text-white"><BracketT variant="flat" size={24} />Tolra</p>
-              {CONTACT_EMAIL ? <p>Email: <a href={`mailto:${CONTACT_EMAIL}`} className={`rounded font-semibold text-white underline underline-offset-4 ${focusDark}`}>{CONTACT_EMAIL}</a></p> : null}
-              <p>{PRIVACY_NOTE}</p>
-            </div>
-            <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <Link href="/login" className={`inline-flex min-h-11 items-center rounded font-semibold text-white underline underline-offset-4 ${focusDark}`}>Sign in</Link>
-            </nav>
-          </div>
-          <p className="mx-auto mt-6 w-full max-w-6xl px-4 sm:px-6">&copy; Tolra</p>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

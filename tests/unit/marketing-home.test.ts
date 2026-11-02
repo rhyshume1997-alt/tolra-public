@@ -122,9 +122,9 @@ describe("robots.txt and sitemap.xml sources", () => {
     expect(robots.sitemap).toBe("https://tolra.co.uk/sitemap.xml");
   });
 
-  it("the sitemap lists the home page only", async () => {
+  it("the sitemap lists the home page and the privacy page", async () => {
     const sitemap = (await import("@/app/sitemap")).default();
-    expect(sitemap.map((entry) => entry.url)).toEqual(["https://tolra.co.uk/"]);
+    expect(sitemap.map((entry) => entry.url)).toEqual(["https://tolra.co.uk/", "https://tolra.co.uk/privacy"]);
   });
 });
 
@@ -146,24 +146,28 @@ describe("round 2 sections", () => {
     expect(html.match(/<ol\b[^>]*>[\s\S]*?<\/ol>/g)!.some((list) => (list.match(/<li\b/g) ?? []).length === 3 && list.includes("A 20-minute chat"))).toBe(true);
   });
 
-  it("FAQ: only the four questions, native details/summary, and the FAQPage JSON-LD describes exactly those", async () => {
+  it("FAQ: only the six questions, native details/summary, and the FAQPage JSON-LD describes exactly those", async () => {
     const { html, marketing } = await render({});
-    expect(marketing.FAQ.map((item) => item.question)).toEqual(["How is it secured?", "Is there a phone app?", "Can I export my data?", "What does it cost?"]);
-    expect(html.match(/<details\b/g)).toHaveLength(4);
-    expect(html.match(/<summary\b/g)).toHaveLength(4);
+    expect(marketing.FAQ.map((item) => item.question)).toEqual([
+      "How is it secured?", "Where is my data hosted?", "Is there a phone app?", "Can I export my data?", "Does it work with Xero or Sage?", "What does it cost?",
+    ]);
+    expect(html.match(/<details\b/g)).toHaveLength(6);
+    expect(html.match(/<summary\b/g)).toHaveLength(6);
     const visible = text(html);
     expect(visible).toContain("I'll talk it through with you on the call.");
+    expect(visible).toContain("In the UK. The database, sign-ins and stored files are in London, and the app runs on servers in London.");
+    expect(visible).toContain("Xero is coming at launch. Sage isn't supported yet.");
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]!.replace(/\\u003c/g, "<"));
     const faq = ld.find((d: { "@type": string }) => d["@type"] === "FAQPage");
     expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(marketing.FAQ.map((item) => item.question));
     for (const item of marketing.FAQ) expect(visible).toContain(item.answer);
   });
 
-  it("leaves out everything not yet supplied or proven: no hosting, import, Xero/Sage, Not-for or privacy page", async () => {
+  it("leaves out what is not proven: no Not-for section, no import or setup claims, no backups or GitHub, and a Privacy link", async () => {
     const { html } = await render({});
     const visible = text(html);
-    expect(visible).not.toMatch(/\b(?:Xero|Sage|hosted|hosting|region|Not for|retention|controller)\b/i);
-    expect(html).not.toContain('href="/privacy"');
+    expect(visible).not.toMatch(/\b(?:Not for|import|imports|migrat\w*|we set up|set up for you|backups?|GitHub)\b/i);
+    expect(html).toMatch(/<a\b[^>]*href="\/privacy"[^>]*>Privacy<\/a>/);
   });
 
   it("first person everywhere: no we / our / us in the page's own words", async () => {

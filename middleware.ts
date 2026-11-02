@@ -104,6 +104,8 @@ export async function middleware(request: NextRequest) {
   if (isSetPassword) return response;
   // The public home page: signed-out visitors see it, a signed-in person goes straight to the dashboard (as "/" always did).
   if (path === "/") return data.user ? redirectTo("/dashboard") : response;
+  // The public privacy page: open to everyone, signed in or not (it is a plain page, so there is nothing to protect or redirect).
+  if (path === "/privacy") return response;
   if (!data.user && isLogin && request.nextUrl.searchParams.get("expired") !== "1" && expiredSignInRedirect({
     hasAuthCookie: hasSessionCookie,
     lastActive: request.cookies.get(LAST_ACTIVE_COOKIE)?.value,
