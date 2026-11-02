@@ -5,7 +5,7 @@
  *   - Pause and resume: on an invoice's details, Pause chasing (a reason) shows "Chasing paused" and the list marks it; Resume takes it off.
  *   - The scheduled pass (/api/cron/daily, the invoice_reminder schedule due now) makes DRAFTS only: one chase draft for the owed invoice,
  *     none for the paused one or the paid one, and the mock mailer receives nothing for this company.
- *   - Approvals: the chase draft has Approve and send; edited in the dialog and approved, it goes through the company mailer (the Resend
+ *   - Approvals: the chase draft has Approve and send; edited on the card and approved, it goes through the company mailer (the Resend
  *     mock, playwright.config.ts) with the edited text, leaves the queue, and chase_sends records who approved it and the sent e-mail.
  * The invoices are due in 3 days, so only the before-due step (-3) has been reached: one step, whatever the selection rule (lib/chasing/
  * steps.ts, TODO-CHATGPT) chooses between steps reached together. Not covered here (no way to switch the mailer off per test): the
@@ -20,6 +20,9 @@ import { adminClient, createSoloTenant } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 import { E2E_CRON_SECRET, E2E_MOCK_PORT } from "./paths";
 
+import { optionalBackendConfigured } from "../support/optional-backend";
+
+test.skip(!optionalBackendConfigured(), "No disposable test database configured.");
 const w = world();
 
 async function recordedMail(): Promise<RecordedEmail[]> {
@@ -74,7 +77,7 @@ test.describe("Chase steps in their own company", () => {
     await expect(steps.getByTestId("chase-step")).toHaveCount(4);
     expect((await adminClient().from("chase_steps").select("id").eq("organization_id", org.id)).data).toEqual([]);
     await steps.getByRole("button", { name: "Save chase steps" }).click();
-    await expect(page.getByText("Chase steps saved").first()).toBeVisible();
+    await expect(page.getByText("Chase steps saved.", { exact: true }).first()).toBeVisible();
     await expect.poll(async () => ((await adminClient().from("chase_steps").select("offset_days, tone").eq("organization_id", org.id).order("offset_days")).data ?? []))
       .toEqual([{ offset_days: -3, tone: "before_due" }, { offset_days: 7, tone: "friendly" }, { offset_days: 14, tone: "firm" }, { offset_days: 30, tone: "final" }]);
     await page.reload();
@@ -123,18 +126,18 @@ test.describe("Chase steps in their own company", () => {
     expect((await recordedMail()).slice(before).filter((m) => toOf(m).includes(address))).toEqual([]);
   });
 
-  test("Approve and send: edited in the dialog, sent through the mailer, off the queue, approval recorded", async () => {
+  test("Approve and send: edited on the card, sent through the mailer, off the queue, approval recorded", async () => {
     await page.goto("/approval");
-    const card = page.locator("div").filter({ has: page.getByRole("button", { name: "Approve and send" }) }).filter({ hasText: address }).last();
+    const card = page.locator('[data-slot="card"]').filter({ hasText: address });
     await expect(card).toBeVisible();
     const before = (await recordedMail()).length;
-    await card.getByRole("button", { name: "Approve and send" }).click();
-    const dialog = page.getByRole("dialog", { name: "Approve and send" });
-    await expect(dialog).toBeVisible();
-    const body = dialog.getByLabel("Body");
+    await card.getByRole("button", { name: "Edit", exact: true }).click();
+    const body = card.getByLabel("Message", { exact: true });
     await body.fill(`${await body.inputValue()}\n\nEdited before sending ${tag}`);
-    await dialog.getByRole("button", { name: "Approve and send" }).click();
-    await expect(page.getByText(/^Sent to /).first()).toBeVisible();
+    await card.getByRole("button", { name: "Save draft" }).click();
+    await expect(page.getByRole("button", { name: "Approve and send" })).toBeEnabled();
+    await page.getByRole("button", { name: "Approve and send" }).click();
+    await expect(page.getByRole("button", { name: "Approve and send" })).toHaveCount(0);
 
     await expect.poll(async () => (await recordedMail()).slice(before).filter((m) => toOf(m).includes(address)).length).toBe(1);
     const sent = (await recordedMail()).slice(before).find((m) => toOf(m).includes(address))!;
