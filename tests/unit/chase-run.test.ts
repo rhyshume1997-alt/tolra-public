@@ -2,8 +2,8 @@
 // due by date (a before-due step included), pauses, the right company, the tone's template and the job / parts wording.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Which steps are due is ChatGPT's (lib/chasing/steps.ts, TODO-CHATGPT): the pass drafts exactly what dueChaseSteps returns. The stub
-// runs by default; a test that needs a particular answer sets it.
+// Which step is due is ChatGPT's rule (lib/chase/steps.ts dueSteps, through the adapter lib/chasing/steps.ts dueChaseSteps): the pass drafts
+// exactly what dueChaseSteps returns. The real selection runs by default; a test that needs a particular answer sets it.
 const dueSpy = vi.hoisted(() => ({ override: null as null | ((...args: unknown[]) => unknown) }));
 vi.mock("@/lib/chasing/steps", async (importOriginal) => {
   const real = await importOriginal<typeof import("@/lib/chasing/steps")>();
@@ -56,9 +56,9 @@ describe("the chase pass drafts the step due today", () => {
     db.rows("chase_sends").push({ organization_id: ORG, invoice_id: "1", step_id: "b3", offset_days: -3 });
     db.rows("email_templates").push({ organization_id: ORG, key: "chase_firm", subject: "Firm {{document_number}}", body: "Firm text" });
     const seen: unknown[] = [];
-    dueSpy.override = (steps, daysFromDue, history) => { seen.push([daysFromDue, history]); return (steps as Array<{ id: string }>).filter((s) => s.id === "m14"); };
+    dueSpy.override = (steps, invoice, today, history) => { seen.push([(invoice as { dueDate: string }).dueDate, today, history]); return (steps as Array<{ id: string }>).filter((s) => s.id === "m14"); };
     await run("2026-11-19");
-    expect(seen).toEqual([[14, { stepIds: ["b3"], offsets: [-3] }]]);
+    expect(seen).toEqual([["2026-11-05", "2026-11-19", { stepIds: ["b3"], offsets: [-3] }]]);
     expect(createDraft).toHaveBeenCalledTimes(1);
     expect(createDraft.mock.calls[0][1]).toMatchObject({ stepId: "m14", subject: "Firm INV-1", body: "Firm text" });
   });
@@ -73,6 +73,52 @@ describe("the chase pass drafts the step due today", () => {
     dueSpy.override = (steps) => (steps as Array<{ id: string }>).filter((s) => s.id === "f7");
     createDraft.mockResolvedValueOnce({ created: false, reason: "invoice_paused" });
     expect(await run("2026-11-13")).toMatchObject({ drafted: 0, skipped: 1, reasons: { invoice_paused: 1 } });
+  });
+});
+
+describe("one step per invoice per run (ChatGPT's rule), through the real selection", () => {
+  // The database's side of chase_create_draft, as far as this needs: the step is recorded on the invoice, so the next run sees it.
+  const recording = () => createDraft.mockImplementation(async (_admin, args) => {
+    db.rows("chase_sends").push({ organization_id: ORG, invoice_id: args.invoiceId, step_id: args.stepId, offset_days: (db.rows("chase_steps").find((s) => s.id === args.stepId) as { offset_days: number }).offset_days });
+    return { created: true, history_id: `h-${args.invoiceId}-${args.stepId}` };
+  });
+  beforeEach(() => {
+    db.tables.chase_steps = [7, 14, 30].map((n, i) => ({ id: `s${n}`, organization_id: ORG, offset_days: n, tone: ["friendly", "firm", "final"][i] }));
+    db.tables.invoices = [inv("1", { due_date: "2026-10-01" })]; // 31 days late on 2026-11-01
+    recording();
+  });
+  it("31 days late with steps 7/14/30: one draft, the 30-day final in ChatGPT's wording; the next run drafts none", async () => {
+    expect(await run("2026-11-01")).toMatchObject({ drafted: 1, skipped: 0, failed: 0, error: null });
+    expect(createDraft).toHaveBeenCalledTimes(1);
+    const args = createDraft.mock.calls[0][1];
+    expect(args).toMatchObject({ invoiceId: "1", stepId: "s30", subject: "Final payment reminder: invoice INV-1" });
+    expect(args.body).toBe("Hello Acme Ltd,\n\nThis is our final reminder that invoice INV-1 remains unpaid, with £120.00 outstanding. Please contact us promptly to resolve this.\n\nIf you have already paid, please let us know so we can check our records.\n\nKind regards,\nJNR");
+    expect(await run("2026-11-01")).toMatchObject({ drafted: 0, skipped: 1, reasons: { no_step_due: 1 } });
+    expect(await run("2026-11-20")).toMatchObject({ drafted: 0, reasons: { no_step_due: 1 } });
+    expect(createDraft).toHaveBeenCalledTimes(1);
+  });
+  it("each tone's default is renderChase's: firm says how many days overdue; the job and parts lines come with a job", async () => {
+    db.tables.invoices = [inv("1", { due_date: "2026-10-18", job_id: "j1" })]; // 14 days late on 2026-11-01
+    db.rows("jobs").push({ id: "j1", organization_id: ORG, job_no: "J-0042", stage: "inspection", status: "on_track", finished_at: null, quote_id: null });
+    db.rows("purchase_orders").push({ id: "p1", organization_id: ORG, job_id: "j1", quote_id: null, status: "sent", received_at: null, expected_delivery: "2026-11-18" });
+    await run("2026-11-01");
+    const args = createDraft.mock.calls[0][1];
+    expect(args).toMatchObject({ stepId: "s14", subject: "Overdue invoice INV-1: payment requested" });
+    expect(args.body).toContain("Invoice INV-1 is 14 days overdue, with £120.00 outstanding.");
+    expect(args.body).toContain("Job reference: J-0042\nJob status: Inspection\nParts waiting: on order with the supplier\nSupplier expected date: 18/11/2026");
+  });
+  it("a company's own text for the tone replaces renderChase's", async () => {
+    db.rows("email_templates").push({ organization_id: ORG, key: "chase_final", subject: "Last call {{document_number}}", body: "Pay {{balance}} now." });
+    await run("2026-11-01");
+    expect(createDraft.mock.calls[0][1]).toMatchObject({ stepId: "s30", subject: "Last call INV-1", body: "Pay £120.00 now." });
+  });
+  it("a paused invoice, or one with a payment claim open: none", async () => {
+    db.rows("chase_pauses").push({ organization_id: ORG, invoice_id: "1", customer_id: null, paused_until: null });
+    expect(await run("2026-11-01")).toMatchObject({ drafted: 0, reasons: { invoice_paused: 1 } });
+    db.tables.chase_pauses = [];
+    db.tables.invoices = [inv("1", { due_date: "2026-10-01", payment_claimed_at: "2026-10-20T09:00:00Z" })];
+    expect((await run("2026-11-01")).drafted).toBe(0);
+    expect(createDraft).not.toHaveBeenCalled();
   });
 });
 

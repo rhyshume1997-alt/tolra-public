@@ -113,8 +113,9 @@ describe("running a period of reminders (138: chase drafts, never a send)", () =
     expect(createDraft).toHaveBeenCalledTimes(1);
     const args = createDraft.mock.calls[0][1];
     expect(args).toMatchObject({ organizationId: ORG, invoiceId: "1", stepId: "s7", to: "pay@acme.test", userId: null });
-    expect(args.subject).toBe("Overdue invoice INV-1 from JNR");
-    expect(args.body).toBe("Hi Acme Ltd\n\nA friendly reminder that invoice INV-1 was due on 01/10/2026, with £120.00 still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\nJNR");
+    // ChatGPT's renderChase wording (lib/chase/steps.ts) is the default for every tone.
+    expect(args.subject).toBe("Payment reminder: invoice INV-1");
+    expect(args.body).toBe("Hello Acme Ltd,\n\nOur records show £120.00 remains outstanding on invoice INV-1, due 01/10/2026.\n\nIf you have already paid, please let us know so we can check our records.\n\nKind regards,\nJNR");
     expect(db.rows("invoice_reminder_sends")).toHaveLength(0);
   });
 

@@ -1,11 +1,9 @@
-// THE CHASE STEP-SELECTION INTERFACE (migration 138). ChatGPT writes the real selection logic here (branch chatgpt/chase-steps, Rhys,
-// 2 Nov); this file is a minimal STUB so the joining-up (the pass, the database, Settings, Approvals) can be built and tested.
-//
-// TODO-CHATGPT: replace dueChaseSteps with the agreed algorithm. Keep the names and types below, or change the callers with it:
-//   lib/email/chase/run.ts (the scheduled pass and Chase All Overdue) drafts every step this returns for an invoice, in order.
-// The database (public.chase_create_draft) refuses whatever must never happen, whatever this returns: a step before its day, a step
-// already used on the invoice, an invoice that is paid / void / credited / written off / a draft / payment to confirm / no balance /
-// paused. It does NOT decide which of the steps reached is drafted: that is this function's job.
+// THE CHASE STEP-SELECTION ADAPTER (migration 138). The selection rule is ChatGPT's (lib/chase/steps.ts dueSteps, branch
+// chatgpt/chase-steps): at most ONE step per invoice per run, the latest one reached and not yet sent. This file only maps the app's
+// shapes onto it. The database (public.chase_create_draft) still refuses whatever must never happen, whatever this returns: a step before
+// its day, a step already used on the invoice, an invoice that is paid / void / credited / written off / a draft / payment to confirm /
+// no balance / paused.
+import { dueSteps } from "@/lib/chase/steps";
 
 export const CHASE_TONES = ["before_due", "friendly", "firm", "final"] as const;
 export type ChaseTone = (typeof CHASE_TONES)[number];
@@ -13,13 +11,21 @@ export type ChaseTone = (typeof CHASE_TONES)[number];
 export type ChaseStep = { id: string; offset_days: number; tone: ChaseTone };
 /** What has already been drafted (or sent) for one invoice (public.chase_sends): the step ids and their offsets as they were then. */
 export type ChaseHistory = { stepIds: string[]; offsets: number[] };
+/** The invoice facts the selection needs. `dueDate` and `today` are YYYY-MM-DD; `balancePence` is what is still owed. */
+export type ChaseInvoiceFacts = { id: string; dueDate: string; balancePence: number; paused: boolean };
 
 /**
- * The steps to draft today for one invoice. `daysFromDue`: today minus the invoice's due date in whole days (negative = not yet due).
- * TODO-CHATGPT. STUB ONLY: every step reached (offset <= daysFromDue) and not yet used on this invoice, earliest first. It does not
- * choose between several steps reached at once (a pass that starts late would draft each of them).
+ * The step to draft today for one invoice: none or exactly one. A step older than one already drafted or sent on the invoice is treated
+ * as used (history.offsets), so once the final reminder is out the earlier steps are not drafted after it.
  */
-export function dueChaseSteps(steps: readonly ChaseStep[], daysFromDue: number, history: ChaseHistory = { stepIds: [], offsets: [] }): ChaseStep[] {
-  if (!Number.isInteger(daysFromDue)) return [];
-  return steps.filter((s) => Number.isInteger(s.offset_days) && s.offset_days <= daysFromDue && !history.stepIds.includes(s.id)).sort((a, b) => a.offset_days - b.offset_days);
+export function dueChaseSteps(steps: readonly ChaseStep[], invoice: ChaseInvoiceFacts, today: string, history: ChaseHistory = { stepIds: [], offsets: [] }): ChaseStep[] {
+  const latestSent = history.offsets.filter((o) => Number.isInteger(o)).reduce((max, o) => Math.max(max, o), -Infinity);
+  const used = new Set(history.stepIds);
+  for (const s of steps) if (s.offset_days <= latestSent) used.add(s.id);
+  const picked = dueSteps(
+    steps.map((s) => ({ id: s.id, offsetDays: s.offset_days, tone: s.tone })),
+    { id: invoice.id, dueDate: invoice.dueDate, balancePence: invoice.balancePence, paused: invoice.paused, alreadySentStepIds: [...used] },
+    today,
+  );
+  return picked.flatMap((p) => steps.filter((s) => s.id === p.id));
 }

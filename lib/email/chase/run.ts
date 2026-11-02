@@ -1,13 +1,14 @@
-// One chase pass for one company (migration 138): for each invoice that is owed, the steps due today (lib/chasing/steps.ts dueChaseSteps,
-// TODO-CHATGPT), each rendered in its tone (the company's own wording or the default) and saved as a DRAFT for the Approvals queue through
-// public.chase_create_draft, which re-checks everything in the database and keeps each step to once per invoice. NOTHING IS SENT HERE:
+// One chase pass for one company (migration 138): for each invoice that is owed, the one step due today (lib/chasing/steps.ts dueChaseSteps,
+// ChatGPT's rule: at most one per invoice per run), rendered in its tone (the company's own wording, else ChatGPT's renderChase) and saved
+// as a DRAFT for the Approvals queue through public.chase_create_draft, which re-checks everything in the database and keeps each step
+// to once per invoice. NOTHING IS SENT HERE:
 // an office or admin user approves each draft (app/api/chase/approve). Used by the scheduled pass (108's invoice_reminder schedule,
 // lib/email/schedules/reminders.ts) and by Invoices > Chase All Overdue (app/api/chase/run). Counts only come out: never an address or
 // a document text.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { type ChaseStep, dueChaseSteps } from "@/lib/chasing/steps";
-import { CHASE_TONE_TEMPLATE, chaseJobVars } from "@/lib/chasing/templates";
+import { CHASE_TONE_TEMPLATE, chaseJobVars, defaultChaseMail } from "@/lib/chasing/templates";
 import { type ChaseJob, type ChaseOrder, chaseJobFacts } from "@/lib/email/chase/context";
 import { isChaseTone, pauseActive } from "@/lib/email/chase/steps";
 import { StoreError, isMissingTable, loadCompanyName, readAll } from "@/lib/email/schedules/store";
@@ -185,7 +186,7 @@ export async function runChase(
   for (const invoice of candidates) {
     if (pausedInvoices.has(invoice.id)) { skip("invoice_paused"); continue; }
     if (pausedNames.has(key(invoice.customer))) { skip("customer_paused"); continue; }
-    const due = dueChaseSteps(steps, invoice.daysFromDue, history.get(invoice.id));
+    const due = dueChaseSteps(steps, { id: invoice.id, dueDate: invoice.due_date as string, balancePence: toPence(invoice.balance), paused: false }, input.today, history.get(invoice.id));
     if (!due.length) { skip("no_step_due"); continue; }
     for (const step of due) planned.push({ invoice, step });
   }
@@ -203,19 +204,26 @@ export async function runChase(
     const jobVars = chaseJobVars(job ? chaseJobFacts(job, context.orders.get(invoice.job_id as string) ?? []) : null);
     const received = Number(invoice.amount_paid) || 0;
     const template = CHASE_TONE_TEMPLATE[step.tone];
-    const mail = renderTemplate(template, invoiceReminderVars({
-      reference: invoice.invoice_ref ?? "",
-      total: gbp(fromPence(toPence(invoice.balance) + toPence(received)), 2),
-      dueDate: fmtDate(invoice.due_date),
-      daysOverdue: Math.max(0, invoice.daysFromDue),
-      companyName,
-      customerName: invoice.customer,
-      contactName: customer?.contact_name,
-      amountPaid: received,
-      paidText: gbp(received, 2),
-      balanceText: gbp(invoice.balance, 2),
-      job: jobVars,
-    }), overrides[template]);
+    const dueDate = fmtDate(invoice.due_date);
+    const own = overrides[template];
+    const mail = own
+      ? renderTemplate(template, invoiceReminderVars({
+        reference: invoice.invoice_ref ?? "",
+        total: gbp(fromPence(toPence(invoice.balance) + toPence(received)), 2),
+        dueDate,
+        daysOverdue: Math.max(0, invoice.daysFromDue),
+        companyName,
+        customerName: invoice.customer,
+        contactName: customer?.contact_name,
+        amountPaid: received,
+        paidText: gbp(received, 2),
+        balanceText: gbp(invoice.balance, 2),
+        job: jobVars,
+      }), own)
+      : defaultChaseMail(step.tone, {
+        customerName: invoice.customer, invoiceRef: invoice.invoice_ref ?? "", balancePence: toPence(invoice.balance), dueDate,
+        daysOverdue: Math.max(0, invoice.daysFromDue), companyName,
+      }, job ? chaseJobFacts(job, context.orders.get(invoice.job_id as string) ?? []) : null);
     try {
       const answer = await createDraft(admin, {
         organizationId: org, invoiceId: invoice.id, stepId: step.id, to: to.join(", "), toName: fixed.length ? null : (customer?.contact_name?.trim() || customer?.name || null),
