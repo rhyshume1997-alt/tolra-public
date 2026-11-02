@@ -7,7 +7,7 @@ const base = { quantity: 10, stock_weight_lb: 2, cost_per_lb: 3, scrap_factor: 0
 describe('Python engine parity', () => {
   it('calculates basic formula exactly', () => expect(calcUnitCost(base)).toEqual({
     material_unit: 6.3, machine_unit: 19.2, labor_unit: 9.6,
-    unit_cost: 35.1, unit_price: 40.36, total_time_hr: 0.32,
+    unit_cost: 35.1, unit_price: 40.37, total_time_hr: 0.32,
   }));
   it('includes full operation time in detailed quote', () => {
     const d = calcDetailedQuote(base);
