@@ -82,4 +82,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 13 | builder2 | chatgpt2/plain-english-pass | DONE IN DRAFT PR | #139 |
 | 14 | builder2 | chatgpt2/costing-playwright | DONE IN DRAFT PR | #140 |
 | 15 | builder2 | chatgpt2/timesheet-email-tests | DONE IN DRAFT PR | #141 |
-| 16 | builder2 | chatgpt2/full-suite-run | BLOCKED: FULL-SUITE VERIFICATION INCOMPLETE | Pending |
+| 16 | builder2 | chatgpt2/full-suite-run | BLOCKED: FULL-SUITE VERIFICATION INCOMPLETE | #142 |
