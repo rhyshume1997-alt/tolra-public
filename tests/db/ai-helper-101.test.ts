@@ -7,7 +7,8 @@
  *     with the service role (settle below), and no signed-in person may call settle (settleAs); reserve hands back no key.
  *   - The cap: reserved BEFORE the call in one guarded UPDATE: 20 requests at once against room for 10 give exactly 10, and the ledger
  *     never passes the cap; settle moves the actual cost (never above the reservation) to spent; a reservation left open over 10
- *     minutes is released; no key or no room is a 'refused' request and no reservation.
+ *     minutes is charged in full (133: nobody knows whether it was billed) and its late answer adds nothing; no key or no room is a
+ *     'refused' request and no reservation.
  *   - Decisions: once; approved only with a draft quote of the same company made after the suggestion; one quote per suggestion.
  *   - Audit: every request, refusal, suggestion, failure, approval, rejection and settings change writes its event (ids, feature,
  *     pence, counts only); the app's write_audit still refuses these names, so a client can't make one up.
@@ -295,7 +296,7 @@ describe("101: the cap", () => {
     expect(after.reserved_pence + after.spent_pence).toBeLessThanOrEqual(100);
     expect(after.reserved_pence).toBe(passed.length * 10);
     expect((await audit(orgA, "ai_helper_refused")).length).toBeGreaterThanOrEqual(refused.length);
-    // Failed calls settle at what they cost (here nothing); the reservations come back.
+    // Failed calls settle at what they cost (here a certain rejection: nothing, E9 Q4); the reservations come back.
     for (const r of passed) await settle(A.office, (r as unknown as { value: { request_id: string } }).value.request_id, "failed", "unavailable", 0, null);
     expect((await usage(orgA))[0]).toEqual({ reserved_pence: 0, spent_pence: before.spent_pence });
     expect((await audit(orgA, "ai_helper_failed")).at(-1)?.metadata).toMatchObject({ reason: "unavailable", cost_pence: 0 });
@@ -317,15 +318,21 @@ describe("101: the cap", () => {
     expect(await save(A.admin, true, true, 100)).toMatchObject({ ok: true });
   });
 
-  it("a reservation left open over 10 minutes is released by the next reserve; its late answer still records the spend", async () => {
+  it("a reservation left open over 10 minutes is CHARGED IN FULL by the next reserve (133); its late answer is recorded at no extra cost", async () => {
+    const before = (await usage(orgA))[0];
     const r = await reserve(A.office, "roundup", 5);
     const id = (r as unknown as { value: { request_id: string } }).value.request_id;
     await sql("update public.ai_helper_requests set created_at = now() - interval '11 minutes' where id = $1", [id]);
     const next = await reserve(A.office, "roundup", 5);
-    expect((await sql<{ status: string }>("select status from public.ai_helper_requests where id = $1", [id]))[0].status).toBe("expired");
-    expect((await usage(orgA))[0].reserved_pence).toBe(5);
+    expect((await sql<{ status: string; cost_pence: number }>("select status, cost_pence from public.ai_helper_requests where id = $1", [id]))[0]).toEqual({ status: "expired", cost_pence: 5 });
+    // Its 5p moved from reserved into spent (nobody knows whether the provider billed it); only the next request's 5p is reserved.
+    expect((await usage(orgA))[0]).toEqual({ reserved_pence: 5, spent_pence: before.spent_pence + 5 });
+    // The late answer is still recorded, but the full charge stands: no refund down to its 3p, no second charge.
     expect(await settle(A.office, id, "suggested", null, 3, { kind: "roundup" })).toMatchObject({ ok: true });
-    expect((await usage(orgA))[0].reserved_pence).toBe(5);
+    expect((await usage(orgA))[0]).toEqual({ reserved_pence: 5, spent_pence: before.spent_pence + 5 });
+    expect((await sql<{ status: string; cost_pence: number }>("select status, cost_pence from public.ai_helper_requests where id = $1", [id]))[0]).toEqual({ status: "suggested", cost_pence: 5 });
+    // Once only.
+    expect(await settle(A.office, id, "failed", "invalid", 0, null)).toMatchObject({ ok: false, code: "42501" });
     await settle(A.office, (next as unknown as { value: { request_id: string } }).value.request_id, "failed", "unavailable", 0, null);
   });
 

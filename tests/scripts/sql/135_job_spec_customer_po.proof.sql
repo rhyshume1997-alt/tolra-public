@@ -1,10 +1,10 @@
--- Local proof for migration 134 (the job sheet names the customer's PO, not the sales order). Run on a COPY of a database with the
--- chain applied, once at 080's body and once with 134 (it leaves a proof schema and synthetic rows behind):
+-- Local proof for migration 135 (the job sheet names the customer's PO, not the sales order). Run on a COPY of a database with the
+-- chain applied, once at 080's body and once with 135 (it leaves a proof schema and synthetic rows behind):
 --   createdb p_before -T base; psql -d p_before -f this > before.out
---   createdb p_after -T base; psql -d p_after -f supabase/release/134_job_spec_customer_po.release.sql; psql -d p_after -f this > after.out
+--   createdb p_after -T base; psql -d p_after -f supabase/release/135_job_spec_customer_po.release.sql; psql -d p_after -f this > after.out
 --   diff before.out after.out    -- only spec of the PO cases and job_po of case C (PO on the quote only) differ; every rest md5 is the same
 -- The same inputs on both: one synthetic company, its users, quotes and sales orders, converted as the office user (the API's role).
--- Per case: the job's specification and its customer_po, whether both are what 080 and 134 each give (ok_080 / ok_134), and an md5 of
+-- Per case: the job's specification and its customer_po, whether both are what 080 and 135 each give (ok_080 / ok_135), and an md5 of
 -- everything else the conversion writes or returns (the job row without those two, ids and clock times; its value; its files; the order).
 \set ON_ERROR_STOP 1
 SET client_min_messages = warning;
@@ -85,11 +85,11 @@ INSERT INTO proof.res (k, so, result)
 
 -- ---- the report: one row per case ----
 WITH o AS (SELECT proof.id('o') AS id),
--- The job's customer_po: 080 took the order's only; 134 the order's, else the quote's (case C). F is trimmed by both.
-expected_po(k, po_080, po_134) AS (VALUES ('A', 'PO-A1', 'PO-A1'), ('A_again', 'PO-A1', 'PO-A1'), ('B', 'PO-B1', 'PO-B1'),
+-- The job's customer_po: 080 took the order's only; 135 the order's, else the quote's (case C). F is trimmed by both.
+expected_po(k, po_080, po_135) AS (VALUES ('A', 'PO-A1', 'PO-A1'), ('A_again', 'PO-A1', 'PO-A1'), ('B', 'PO-B1', 'PO-B1'),
   ('C', NULL, 'PO-C1'), ('D', NULL, NULL), ('E', NULL, NULL), ('F', 'PO-F1', 'PO-F1'), ('G', NULL, NULL), ('H', 'PO-H1', 'PO-H1'),
   ('W_refused', NULL, NULL)),
-expected(k, spec_080, spec_134) AS (VALUES
+expected(k, spec_080, spec_135) AS (VALUES
   ('A', E'Sales order PO-A1; customer delivery required 20/11/2026.\nQUO-9001:\n- Flange 80mm [Part FL-80; Dwg DWG-1 rev B] x 12\n- Spacer x 4',
         E'Customer PO PO-A1; customer delivery required 20/11/2026.\nQUO-9001:\n- Flange 80mm [Part FL-80; Dwg DWG-1 rev B] x 12\n- Spacer x 4'),
   ('A_again', E'Sales order PO-A1; customer delivery required 20/11/2026.\nQUO-9001:\n- Flange 80mm [Part FL-80; Dwg DWG-1 rev B] x 12\n- Spacer x 4',
@@ -106,7 +106,7 @@ expected(k, spec_080, spec_134) AS (VALUES
         E'Customer PO PO-H1; customer delivery required 09/12/2026.\nQUO-9008:\n- Collar x 6'),
   ('W_refused', NULL, NULL)),
 rows AS (
-  SELECT r.k, j.specification AS spec, e.spec_080, e.spec_134, j.customer_po AS job_po, ep.po_080, ep.po_134,
+  SELECT r.k, j.specification AS spec, e.spec_080, e.spec_135, j.customer_po AS job_po, ep.po_080, ep.po_135,
     jsonb_build_object(
       'result', r.result - 'job_id', 'job_is_returned', (r.result ->> 'job_id')::UUID IS NOT DISTINCT FROM j.id, 'err', r.err,
       'job', to_jsonb(j) - ARRAY['id', 'organization_id', 'specification', 'customer_po', 'created_at', 'updated_at', 'converted_at', 'converted_from_sales_order_id',
@@ -125,6 +125,6 @@ rows AS (
 )
 SELECT k AS case_key, spec, job_po,
   spec IS NOT DISTINCT FROM spec_080 AND job_po IS NOT DISTINCT FROM po_080 AS ok_080,
-  spec IS NOT DISTINCT FROM spec_134 AND job_po IS NOT DISTINCT FROM po_134 AS ok_134,
+  spec IS NOT DISTINCT FROM spec_135 AND job_po IS NOT DISTINCT FROM po_135 AS ok_135,
   md5(rest::text) AS rest_md5, rest::text AS rest
 FROM rows ORDER BY k;

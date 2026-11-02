@@ -1,5 +1,5 @@
 -- =====================================================================================================
--- 134 (provisional number; the final one is given at merge): the job sheet names the customer's PO, not the sales order (Rhys, 1 Nov).
+-- 135 (provisional number; the final one is given at merge): the job sheet names the customer's PO, not the sales order (Rhys, 1 Nov).
 -- Needs 080 (convert_sales_order, the newest body: no later migration replaces it) and 123 (quotes.customer_po). Touches no other
 -- migration's objects; NO ROW IS CHANGED: jobs already made keep their specification.
 --
@@ -15,8 +15,8 @@
 --   files, machines and the returned JSON are unchanged.
 -- Keeps name, signature, SECURITY INVOKER, VOLATILE, search_path, owner and grants (signed-in only). Not a definer function.
 -- GUARD (section 1): the body must be 080's (or already this file's), md5 with every whitespace character removed.
--- Safe to run again. SELF-CHECK (section 3). Verify: supabase/verify/job_spec_customer_po_134.sql (every row TRUE).
--- Rollback: supabase/release/134_job_spec_customer_po.rollback.sql (puts back 080's convert_sales_order; only with Rhys's approval).
+-- Safe to run again. SELF-CHECK (section 3). Verify: supabase/verify/job_spec_customer_po_135.sql (every row TRUE).
+-- Rollback: supabase/release/135_job_spec_customer_po.rollback.sql (puts back 080's convert_sales_order; only with Rhys's approval).
 -- =====================================================================================================
 
 -- -----------------------------------------------------------------------------------------------------
@@ -27,17 +27,16 @@ DECLARE
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'quotes' AND column_name = 'customer_po')
      OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales_orders' AND column_name = 'customer_po') THEN
-    RAISE EXCEPTION '134: 123''s quotes.customer_po (or sales_orders.customer_po) is missing; apply 123 first';
+    RAISE EXCEPTION '135: 123''s quotes.customer_po (or sales_orders.customer_po) is missing; apply 123 first';
   END IF;
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') INTO v_md5;
-  -- dc8165549871bd15047765ac4fba811e: 080's convert_sales_order; 5c32fec88493cce71da2cd55f83ff7b4: this file's (section 2).
-  IF v_md5 IS NULL OR v_md5 NOT IN ('dc8165549871bd15047765ac4fba811e', '5c32fec88493cce71da2cd55f83ff7b4') THEN
-    RAISE EXCEPTION '134: public.convert_sales_order is not 080''s (md5 without whitespace %); stop and compare it first', coalesce(v_md5, 'missing');
+  -- dc8165549871bd15047765ac4fba811e: 080's convert_sales_order; 9bde44b5ddf519640f1053bcf747c26d: this file's (section 2).
+  IF v_md5 IS NULL OR v_md5 NOT IN ('dc8165549871bd15047765ac4fba811e', '9bde44b5ddf519640f1053bcf747c26d') THEN
+    RAISE EXCEPTION '135: public.convert_sales_order is not 080''s (md5 without whitespace %); stop and compare it first', coalesce(v_md5, 'missing');
   END IF;
 END
 $$;
 
--- -----------------------------------------------------------------------------------------------------
 -- 2. convert_sales_order: 080's body; the specification's first line names the customer's PO when there is one.
 CREATE OR REPLACE FUNCTION public.convert_sales_order(p_order UUID)
 RETURNS JSONB
@@ -120,7 +119,7 @@ BEGIN
     FROM public.quote_line_items l
     WHERE l.quote_id = v_order.quote_id AND l.organization_id = v_org AND NOT l.declined;
   END IF;
-  -- 134: the job sheet names the customer's PO when there is one: the order's customer_po, else its quote's (123); the job's own
+  -- 135: the job sheet names the customer's PO when there is one: the order's customer_po, else its quote's (123); the job's own
   -- customer_po takes the same PO (below). Not so_number: that is the PO only when the order was made with it. 'Customer PO <po>';
   -- with no PO it reads as before and the job's customer_po stays empty.
   v_po := nullif(btrim(coalesce(v_order.customer_po, '')), '');
@@ -184,14 +183,14 @@ GRANT EXECUTE ON FUNCTION public.convert_sales_order(UUID) TO authenticated;
 DO $$
 BEGIN
   IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)'))
-       IS DISTINCT FROM '5c32fec88493cce71da2cd55f83ff7b4' THEN
-    RAISE EXCEPTION '134: convert_sales_order is not this file''s body';
+       IS DISTINCT FROM '9bde44b5ddf519640f1053bcf747c26d' THEN
+    RAISE EXCEPTION '135: convert_sales_order is not this file''s body';
   END IF;
   IF (SELECT p.prosecdef OR p.provolatile <> 'v' OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']
              OR NOT has_function_privilege('authenticated', p.oid, 'EXECUTE') OR has_function_privilege('anon', p.oid, 'EXECUTE')
              OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE')
       FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)')) IS NOT FALSE THEN
-    RAISE EXCEPTION '134: convert_sales_order is not invoker, volatile, pinned and signed-in only';
+    RAISE EXCEPTION '135: convert_sales_order is not invoker, volatile, pinned and signed-in only';
   END IF;
 END
 $$;

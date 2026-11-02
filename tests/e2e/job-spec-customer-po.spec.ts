@@ -1,5 +1,5 @@
 /**
- * Migration 134 (provisional), the whole Customer PO journey: the job sheet names the customer's PO, "Customer PO <n>", never "Sales order".
+ * Migration 135 (provisional), the whole Customer PO journey: the job sheet names the customer's PO, "Customer PO <n>", never "Sales order".
  *   (a) The PO is entered on the QUOTE only: accepted in the browser, the job's customer_po is the quote's PO and the Job Board's
  *       specification and the printed job sheet show "Customer PO <n>". The fallback itself (an order with no PO whose quote has one,
  *       converted with Convert to Job) takes the quote's PO too.

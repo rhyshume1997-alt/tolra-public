@@ -1,47 +1,21 @@
--- 134_job_spec_customer_po.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
+-- 135 rollback: ONLY with Rhys's approval. Puts back 080's public.convert_sales_order(uuid) byte for byte (same signature, security,
+-- search_path and grants). No row is changed: jobs made while 135 was applied keep their 'Customer PO ...' specification and
+-- customer_po; jobs made after this rollback read 'Sales order <so_number> ...' again and take only the order's PO. Run the whole
+-- text as one transaction, then the release preflight (marker 135 shows "not applied").
 BEGIN;
-
--- =====================================================================================================
--- 134 (provisional number; the final one is given at merge): the job sheet names the customer's PO, not the sales order (Rhys, 1 Nov).
--- Needs 080 (convert_sales_order, the newest body: no later migration replaces it) and 123 (quotes.customer_po). Touches no other
--- migration's objects; NO ROW IS CHANGED: jobs already made keep their specification.
---
--- WHAT CHANGES. public.convert_sales_order (080's body, one change): the first line of the job's specification.
---   * The order has a customer PO (sales_orders.customer_po), or else its quote has one (quotes.customer_po, 123):
---       'Customer PO <po>; customer delivery required DD/MM/YYYY.'  (was 'Sales order <so_number>; ...')
---     The PO is the real customer_po field, trimmed; never so_number (058/068/123 make so_number the PO only when the order was made
---     with one; an order whose PO came later, or was typed apart from its reference, keeps its SO number).
---   * No PO on the order or its quote: exactly as before, 'Sales order <so_number>; ...'.
---   * The job's own customer_po takes the same PO: the order's first, then the quote's. With a PO on the order it is the order's, as
---     before; with a PO only on the quote it is now the quote's (was empty); with no PO it stays empty.
---   Everything after the first line (delivery date, the quote's ordered lines), the job's number, description, value, drawings,
---   files, machines and the returned JSON are unchanged.
--- Keeps name, signature, SECURITY INVOKER, VOLATILE, search_path, owner and grants (signed-in only). Not a definer function.
--- GUARD (section 1): the body must be 080's (or already this file's), md5 with every whitespace character removed.
--- Safe to run again. SELF-CHECK (section 3). Verify: supabase/verify/job_spec_customer_po_134.sql (every row TRUE).
--- Rollback: supabase/release/134_job_spec_customer_po.rollback.sql (puts back 080's convert_sales_order; only with Rhys's approval).
--- =====================================================================================================
-
--- -----------------------------------------------------------------------------------------------------
--- 1. The guard: 123's quotes.customer_po is there, and convert_sales_order is 080's (or already this file's).
 DO $$
 DECLARE
   v_md5 TEXT;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'quotes' AND column_name = 'customer_po')
-     OR NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'sales_orders' AND column_name = 'customer_po') THEN
-    RAISE EXCEPTION '134: 123''s quotes.customer_po (or sales_orders.customer_po) is missing; apply 123 first';
-  END IF;
   SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') INTO v_md5;
-  -- dc8165549871bd15047765ac4fba811e: 080's convert_sales_order; 5c32fec88493cce71da2cd55f83ff7b4: this file's (section 2).
-  IF v_md5 IS NULL OR v_md5 NOT IN ('dc8165549871bd15047765ac4fba811e', '5c32fec88493cce71da2cd55f83ff7b4') THEN
-    RAISE EXCEPTION '134: public.convert_sales_order is not 080''s (md5 without whitespace %); stop and compare it first', coalesce(v_md5, 'missing');
+  -- 9bde44b5...: 135's convert_sales_order; dc816554...: 080's (a second run of this rollback).
+  IF v_md5 IS NULL OR v_md5 NOT IN ('9bde44b5ddf519640f1053bcf747c26d', 'dc8165549871bd15047765ac4fba811e') THEN
+    RAISE EXCEPTION '135 rollback: convert_sales_order (md5 %) is neither 135''s nor 080''s; stop and compare', coalesce(v_md5, 'missing');
   END IF;
 END
 $$;
 
--- -----------------------------------------------------------------------------------------------------
--- 2. convert_sales_order: 080's body; the specification's first line names the customer's PO when there is one.
+-- 080's convert_sales_order, verbatim (supabase/migrations/080_activity_labels_job_work.sql).
 CREATE OR REPLACE FUNCTION public.convert_sales_order(p_order UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -62,7 +36,6 @@ DECLARE
   v_drawing TEXT;
   v_spec    TEXT;
   v_work    TEXT;
-  v_po      TEXT;
   v_now     TIMESTAMPTZ := now();
 BEGIN
   PERFORM public.assert_privileged_aal();
@@ -123,14 +96,7 @@ BEGIN
     FROM public.quote_line_items l
     WHERE l.quote_id = v_order.quote_id AND l.organization_id = v_org AND NOT l.declined;
   END IF;
-  -- 134: the job sheet names the customer's PO when there is one: the order's customer_po, else its quote's (123); the job's own
-  -- customer_po takes the same PO (below). Not so_number: that is the PO only when the order was made with it. 'Customer PO <po>';
-  -- with no PO it reads as before and the job's customer_po stays empty.
-  v_po := nullif(btrim(coalesce(v_order.customer_po, '')), '');
-  IF v_po IS NULL AND v_order.quote_id IS NOT NULL THEN
-    SELECT nullif(btrim(coalesce(q.customer_po, '')), '') INTO v_po FROM public.quotes q WHERE q.id = v_order.quote_id AND q.organization_id = v_org;
-  END IF;
-  v_spec := CASE WHEN v_po IS NOT NULL THEN 'Customer PO ' || v_po ELSE 'Sales order ' || v_order.so_number END
+  v_spec := 'Sales order ' || v_order.so_number
     || CASE WHEN v_order.delivery_date IS NOT NULL THEN '; customer delivery required ' || to_char(v_order.delivery_date, 'DD/MM/YYYY') ELSE '' END
     || '.'
     || CASE WHEN v_lines IS NOT NULL THEN E'\n' || coalesce(v_quote, 'Quote') || E':\n' || v_lines ELSE '' END;
@@ -151,7 +117,7 @@ BEGIN
   VALUES (
     v_org, v_job_no, v_order.quote_id, v_order.customer, coalesce(v_work, 'Converted from ' || v_order.so_number), 'material',
     v_order.delivery_date, 'on_track', v_spec, '[]'::JSONB,
-    v_po, nullif(v_quote, ''), v_order.order_date, v_order.delivery_date,
+    nullif(btrim(coalesce(v_order.customer_po, '')), ''), nullif(v_quote, ''), v_order.order_date, v_order.delivery_date,
     CASE WHEN v_count = 1 AND v_qty >= 1 AND v_qty = trunc(v_qty) THEN v_qty::INT END,
     CASE WHEN v_count = 1 THEN v_drawing END,
     p_order, v_now)
@@ -182,21 +148,11 @@ $$;
 REVOKE ALL ON FUNCTION public.convert_sales_order(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.convert_sales_order(UUID) TO authenticated;
 
--- -----------------------------------------------------------------------------------------------------
--- 3. Self-check: the body is this file's, and it stays invoker, volatile, pinned and signed-in only.
 DO $$
 BEGIN
-  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)'))
-       IS DISTINCT FROM '5c32fec88493cce71da2cd55f83ff7b4' THEN
-    RAISE EXCEPTION '134: convert_sales_order is not this file''s body';
-  END IF;
-  IF (SELECT p.prosecdef OR p.provolatile <> 'v' OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public']
-             OR NOT has_function_privilege('authenticated', p.oid, 'EXECUTE') OR has_function_privilege('anon', p.oid, 'EXECUTE')
-             OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE')
-      FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)')) IS NOT FALSE THEN
-    RAISE EXCEPTION '134: convert_sales_order is not invoker, volatile, pinned and signed-in only';
+  IF (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.convert_sales_order(uuid)')) IS DISTINCT FROM 'dc8165549871bd15047765ac4fba811e' THEN
+    RAISE EXCEPTION '135 rollback: 080''s convert_sales_order is not back';
   END IF;
 END
 $$;
-
 COMMIT;

@@ -100,7 +100,7 @@ describe("Activity log record numbers (080)", () => {
     const made = (await q<{ r: { job_id: string; job_no: string } }>(office(), "select public.convert_sales_order($1) as r", [soId]))[0].r;
     const job = await withDb(async (db) => (await db.query("select description, specification from public.jobs where id = $1", [made.job_id])).rows[0]);
     expect(job.description).toBe(`Converted from ${soNumber}`);
-    // No customer PO: the job sheet still names the sales order (134 changes only orders with a PO).
+    // No customer PO: the job sheet still names the sales order (135 changes only orders with a PO).
     expect(job.specification).toBe(`Sales order ${soNumber}.`);
     const rows = (await activity()).filter((r) => r.record_table === "jobs" && r.record_id === made.job_id);
     expect(rows.length).toBeGreaterThan(0);

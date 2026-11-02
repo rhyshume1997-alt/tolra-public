@@ -117,7 +117,7 @@ describe("conversion", () => {
     expect(data.created).toBe(true);
     const [job] = await jobsFor(order);
     expect(job.quantity_required).toBeNull();
-    // 134: the job sheet names the customer's PO ('Customer PO <po>'), not the sales order.
+    // 135: the job sheet names the customer's PO ('Customer PO <po>'), not the sales order.
     expect(job.specification).toBe(`Customer PO PO-CUST-${n}; customer delivery required 20/11/2026.`);
   });
 
