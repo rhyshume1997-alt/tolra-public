@@ -236,6 +236,11 @@
  },
  {
   "kind": "function",
+  "object": "public.auth_users_password_change_ticket()",
+  "detail": "definer search_path=pg_catalog, public 357361bc77830ffda12b400a770d190b"
+ },
+ {
+  "kind": "function",
   "object": "public.bench_run_open(p_org uuid, p_job uuid, p_at timestamp with time zone, p_op uuid, p_uid uuid, p_stamped boolean)",
   "detail": "invoker search_path=pg_catalog, public 85c0aaaf1b5bc11c030c90eee7bf01de"
  },
@@ -1046,6 +1051,11 @@
  },
  {
   "kind": "function",
+  "object": "public.issue_password_change_ticket(p_user_id uuid, p_purpose text)",
+  "detail": "definer search_path=pg_catalog, public ce88f1e8879b6cbf214665d6f1ec890e"
+ },
+ {
+  "kind": "function",
   "object": "public.issue_requires_matching_totals()",
   "detail": "invoker search_path=pg_catalog, public 81e79dd1a9e87b34f400648f3837e52a"
  },
@@ -1481,6 +1491,11 @@
  },
  {
   "kind": "function",
+  "object": "public.organization_members_recent_second_step()",
+  "detail": "definer search_path=pg_catalog, public 90a15b16e48b10daba302c19b9c1da17"
+ },
+ {
+  "kind": "function",
   "object": "public.organization_settings_customer_signoff_guard()",
   "detail": "invoker search_path=pg_catalog, public 5684eb12661dd28bdf76c1b55696d9ec"
  },
@@ -1788,6 +1803,11 @@
   "kind": "function",
   "object": "public.revoke_accountant_invite(p_invite uuid)",
   "detail": "definer search_path=pg_catalog, public, security_audit 1538e2fd55270f6b1d1374e34de3e549"
+ },
+ {
+  "kind": "function",
+  "object": "public.revoke_password_change_ticket(p_ticket uuid)",
+  "detail": "definer search_path=pg_catalog, public f6ea62449be49dca983ecd4f75ef08e3"
  },
  {
   "kind": "function",
@@ -2403,6 +2423,11 @@
   "kind": "function-grant",
   "object": "public.auth_rate_hit(p_bucket text, p_key_hash text, p_window_seconds integer, p_max integer)",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.auth_users_password_change_ticket()",
+  "detail": ""
  },
  {
   "kind": "function-grant",
@@ -3216,6 +3241,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.issue_password_change_ticket(p_user_id uuid, p_purpose text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.issue_requires_matching_totals()",
   "detail": "anon,authenticated,service_role,PUBLIC"
  },
@@ -3651,6 +3681,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.organization_members_recent_second_step()",
+  "detail": ""
+ },
+ {
+  "kind": "function-grant",
   "object": "public.organization_settings_customer_signoff_guard()",
   "detail": "service_role"
  },
@@ -3958,6 +3993,11 @@
   "kind": "function-grant",
   "object": "public.revoke_accountant_invite(p_invite uuid)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.revoke_password_change_ticket(p_ticket uuid)",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -5956,6 +5996,11 @@
  },
  {
   "kind": "rls",
+  "object": "security_audit.password_change_tickets",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "security_audit.platform_admins",
   "detail": "enabled"
  },
@@ -6398,6 +6443,11 @@
   "kind": "trigger",
   "object": "auth.users :: on_auth_user_signed_in_sync_last_login",
   "detail": "O 9cb1827a15f6e452843398f624937604"
+ },
+ {
+  "kind": "trigger",
+  "object": "auth.users :: password_change_ticket",
+  "detail": "O c46c6caed9eb6126bd49791091566be6"
  },
  {
   "kind": "trigger",
@@ -7898,6 +7948,11 @@
   "kind": "trigger",
   "object": "public.organization_members :: organization_members_mfa_enrolment",
   "detail": "O 8a9c708ecbfb35cd9174bcd1a4e3ff94"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.organization_members :: organization_members_recent_second_step",
+  "detail": "O e1cc8d49f24270294e7465f7cffa54a7"
  },
  {
   "kind": "trigger",

@@ -43,13 +43,13 @@ const enrol = (db: Client, p: Person, status: "verified" | "unverified" = "verif
 const unenrol = (db: Client, p: Person) => db.query("delete from auth.mfa_factors where user_id = $1", [p.id]);
 
 /** Runs `fn` inside a transaction as the signed-in `p` (role authenticated), then rolls back unless `keep`. */
-async function as<T>(p: Person, fn: (db: Client) => Promise<T>, opts: { aal?: string; keep?: boolean } = {}): Promise<T> {
+async function as<T>(p: Person, fn: (db: Client) => Promise<T>, opts: { aal?: string; keep?: boolean; amr?: unknown } = {}): Promise<T> {
   return withDb(async (db) => {
     await db.query("begin");
     try {
       await db.query("set local role authenticated");
       await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)",
-        [JSON.stringify({ sub: p.id, role: "authenticated", aud: "authenticated", aal: opts.aal ?? "aal1" }), p.id]);
+        [JSON.stringify({ sub: p.id, role: "authenticated", aud: "authenticated", aal: opts.aal ?? "aal1", ...(opts.amr === undefined ? {} : { amr: opts.amr }) }), p.id]);
       const result = await fn(db);
       await db.query(opts.keep ? "commit" : "rollback");
       return result;
@@ -215,9 +215,15 @@ describe("enrolment required when someone is given admin", () => {
     try {
       // At aal1 the acting admin is refused by 033's rule, as before.
       expect(await errorOf(as(alpha.admin, (db) => db.query("select public.set_member_access($1, 'admin')", [alpha.office.id])))).toMatchObject({ code: "42501" });
-      await as(alpha.admin, (db) => db.query("select public.set_member_access($1, 'admin')", [alpha.office.id]), { aal: "aal2", keep: true });
+      // G1 (136): giving or taking admin also needs an authenticator code from the last 15 minutes in the token (here only the code's age differs).
+      const now = Math.floor(Date.now() / 1000);
+      const fresh = [{ method: "totp", timestamp: now - 30 }];
+      const stale = [{ method: "totp", timestamp: now - 16 * 60 }];
+      expect(await errorOf(as(alpha.admin, (db) => db.query("select public.set_member_access($1, 'admin')", [alpha.office.id]), { aal: "aal2", amr: stale }))).toMatchObject({ code: "42501", hint: "mfa_recent_required" });
+      expect(await flag(alpha.office)).toBe(false);
+      await as(alpha.admin, (db) => db.query("select public.set_member_access($1, 'admin')", [alpha.office.id]), { aal: "aal2", amr: fresh, keep: true });
       expect(await flag(alpha.office)).toBe(true);
-      await as(alpha.admin, (db) => db.query("select public.set_member_access($1, 'office')", [alpha.office.id]), { aal: "aal2", keep: true });
+      await as(alpha.admin, (db) => db.query("select public.set_member_access($1, 'office')", [alpha.office.id]), { aal: "aal2", amr: fresh, keep: true });
     } finally {
       await setRule(alpha.id, false);
     }
