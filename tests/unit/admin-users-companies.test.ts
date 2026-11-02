@@ -29,6 +29,8 @@ const state = {
 };
 
 const supabase = {
+  // G1: the stored memberships, read as the caller to decide whether a change gives or takes admin (none here, so none does).
+  from: () => { const chain: Record<string, unknown> = { select: () => chain, eq: () => chain, in: async () => ({ data: [], error: null }) }; return chain; },
   rpc: async (fn: string, args: Record<string, unknown> = {}) => {
     state.callerRpc.push({ fn, args });
     if (fn === "my_admin_companies") return { data: [{ organization_id: JNR, name: "JNR Engineering" }, { organization_id: MARPET, name: "Marpet" }], error: null };
@@ -55,6 +57,7 @@ vi.mock("@/lib/server/admin-users", () => ({
   guard: async () => (state.guardDenied ? NextResponse.json({ error: "Forbidden" }, { status: 403 }) : { auth: { user: { id: ADMIN }, profile: { organization_id: JNR }, supabase }, admin }),
   liftDeactivationBan: async (_admin: unknown, id: string) => { state.lifted.push(id); return { lifted: true, stillBanned: false }; },
   banState: async () => state.ban,
+  requireRecentAal2: async () => null,
 }));
 
 const { POST } = await import("@/app/api/admin/users/companies/route");

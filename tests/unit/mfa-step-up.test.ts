@@ -106,7 +106,7 @@ describe("changePasswordWithCode", () => {
 });
 
 // ---- G1: the six Admin > Users callers (lib/admin-user-save.ts callAdminApi, over sendWithCode) --------------------------------
-import { ApiError, CODE_CANCELLED, callAdminApi } from "@/lib/admin-user-save";
+import { ApiError, CODE_CANCELLED, callAdminApi, sendCompanyAccess } from "@/lib/admin-user-save";
 import { sendWithCode } from "@/lib/mfa-step-up";
 
 const reply = (status: number, body: Record<string, unknown>) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -185,5 +185,44 @@ describe("sendWithCode", () => {
     const send = vi.fn().mockResolvedValue({ ok: false, status: 403, body: { code: "mfa_recent_required" } });
     expect(await sendWithCode(send, async () => false)).toEqual({ result: "cancelled" });
     expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("sendCompanyAccess: per-company access (can give or take admin)", () => {
+  const changes = [{ organization_id: "c", active: true, role: "admin", secondary_role: null }];
+  it("a fresh code: one request, the body comes back whatever the status", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(207, { ok: false, results: [{ organization_id: "c", ok: true }] }));
+    const prompt = vi.fn(async () => true);
+    expect(await sendCompanyAccess("u", changes, prompt, fetchFn)).toMatchObject({ results: [{ ok: true }] });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ url: "/api/admin/users/companies", method: "POST", body: JSON.stringify({ user_id: "u", changes }) });
+    expect(prompt).not.toHaveBeenCalled();
+  });
+  it("mfa_recent_required: asks, then sends the same request once more", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(403, RECENT_BODY), reply(200, { ok: true, results: [{ ok: true }] }));
+    expect(await sendCompanyAccess("u", changes, async () => true, fetchFn)).toMatchObject({ ok: true });
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toEqual(calls[0]);
+  });
+  it("cancel or a failed code: nothing more is sent", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(403, RECENT_BODY));
+    await expect(sendCompanyAccess("u", changes, async () => false, fetchFn)).rejects.toMatchObject({ message: CODE_CANCELLED });
+    expect(calls).toHaveLength(1);
+  });
+  it("a second 403 after a verified code is returned, one prompt, no loop", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(403, RECENT_BODY), reply(403, RECENT_BODY));
+    const prompt = vi.fn(async () => true);
+    expect(await sendCompanyAccess("u", changes, prompt, fetchFn)).toMatchObject({ code: "mfa_recent_required" });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(2);
+  });
+  it("other refusals (mfa_required, 409) are final at once", async () => {
+    for (const answer of [reply(403, { error: "x", code: "mfa_required" }), reply(409, { ok: false, results: [] })]) {
+      const { fetchFn, calls } = fetchSequence(answer);
+      const prompt = vi.fn(async () => true);
+      await sendCompanyAccess("u", changes, prompt, fetchFn);
+      expect(prompt).not.toHaveBeenCalled();
+      expect(calls).toHaveLength(1);
+    }
   });
 });

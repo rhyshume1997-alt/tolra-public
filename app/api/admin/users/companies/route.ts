@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { jsonError, readJson } from "@/lib/server/auth";
-import { guard, liftDeactivationBan, banState } from "@/lib/server/admin-users";
+import { guard, liftDeactivationBan, banState, requireRecentAal2 } from "@/lib/server/admin-users";
+import { changesAdmin } from "@/lib/mfa-policy";
 import { COMPANY_ROLES, companyAccessErrorMessage, OTHER_COMPANY_LOGIN } from "@/lib/company-access";
 
 // Admin > Users, per-company access (migration 066). POST { user_id, changes: [{ organization_id, active, role?, secondary_role? }] }
@@ -37,6 +38,22 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(json.data);
   if (!parsed.success) return jsonError("Invalid request", 400);
   const { user_id, changes } = parsed.data;
+
+  // G1: a change that gives or takes admin in any of these companies (a role or second role to or from admin, or a switched-off admin back
+  // on: changesAdmin, as PATCH /api/admin/users) needs the second step and a code from the last 15 minutes while REQUIRE_ADMIN_MFA is on, like the
+  // same change in this company (PATCH /api/admin/users). Checked before the first change is sent; other access changes are not asked.
+  // The stored memberships are read as the caller (RLS: only companies they administer show) only to decide this; an unreadable answer counts as an admin change.
+  const { data: stored, error: storedError } = await auth.supabase.from("organization_members").select("organization_id, role, secondary_role, active").eq("user_id", user_id).in("organization_id", changes.map((change) => change.organization_id));
+  const memberships = new Map((stored ?? []).map((row) => [String(row.organization_id), row]));
+  const adminChange = Boolean(storedError) || changes.some((change) => {
+    const before = memberships.get(change.organization_id) ?? null;
+    const request = { role: change.active ? change.role : undefined, secondary_role: change.active ? change.secondary_role : undefined, active: change.active };
+    return changesAdmin(before, request);
+  });
+  if (adminChange) {
+    const refused = await requireRecentAal2(auth, "change who is an admin");
+    if (refused) return refused;
+  }
 
   // Names for the messages, from the companies this admin administers (the database's list, read as the caller).
   const { data: companies } = await auth.supabase.rpc("my_admin_companies");

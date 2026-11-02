@@ -27,7 +27,7 @@ import type { UserRole } from "@/types";
 import { isValidUsername, normaliseUsername, USERNAME_RULES } from "@/lib/username";
 import { PRODUCT } from "@/lib/product";
 import { countMissingNames, displayNameProblem, hasDisplayName } from "@/lib/display-name";
-import { callAdminApi, describePartial, inspectorFlags, saveMemberEdit } from "@/lib/admin-user-save";
+import { callAdminApi, describePartial, sendCompanyAccess, inspectorFlags, saveMemberEdit } from "@/lib/admin-user-save";
 import { ADMIN_MFA_ONBOARDING_NOTICE, type AdminMfaOverview, adminMfaRuleMessage, adminMfaStatusLabel, becomesAdmin, holdsAdmin, parseAdminMfaOverview } from "@/lib/mfa-policy";
 import { disableSignInConfirm, identityActions, parseProtectedList, parseSignInList, type ProtectedState, SIGN_IN_CHECKING_LABEL, SIGN_IN_HELP, type SignInState, signInBadge, signInControls } from "@/lib/sign-in-access";
 import { OnSiteOnlyToggle, useOnSiteOnly } from "@/components/time/on-site-only";
@@ -147,9 +147,8 @@ function CompanyAccessFields({ drafts, onChange, self, loading, error }: { draft
 }
 
 /** Sends company access changes; every company's outcome comes back, whatever the status. Throws only when there is no answer. */
-async function saveCompanyAccess(userId: string, changes: CompanyChange[]): Promise<{ results: CompanyResult[]; loginDisabled: boolean }> {
-  const response = await fetch("/api/admin/users/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, changes }) });
-  const body = (await response.json().catch(() => null)) as { login_disabled?: boolean; error?: string } | null;
+async function saveCompanyAccess(userId: string, changes: CompanyChange[], requestCode: () => Promise<boolean>): Promise<{ results: CompanyResult[]; loginDisabled: boolean }> {
+  const body = (await sendCompanyAccess(userId, changes, requestCode)) as { login_disabled?: boolean; error?: string } | null;
   const results = parseCompanyResults(body);
   if (!results.length) throw new Error(body?.error || "Couldn't save company access. Reload to check what is stored.");
   return { results, loginDisabled: body?.login_disabled === true };
@@ -354,7 +353,7 @@ export default function UsersPage() {
   /** Saves company access changes and says what happened per company. True unless nothing at all was saved. */
   async function applyCompanyChanges(target: { id: string; name: string }, changes: CompanyChange[]): Promise<boolean> {
     try {
-      const { results, loginDisabled } = await saveCompanyAccess(target.id, changes);
+      const { results, loginDisabled } = await saveCompanyAccess(target.id, changes, requestCode);
       const summary = summariseCompanyResults(results);
       if (summary.tone === "ok") toast.success(summary.text);
       else if (summary.tone === "partial") toast.warning(summary.text);

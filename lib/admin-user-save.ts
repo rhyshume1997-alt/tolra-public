@@ -56,6 +56,20 @@ export async function callAdminApi<T extends Record<string, unknown>>(
   return outcome.answer.body as Body;
 }
 
+/**
+ * POST /api/admin/users/companies with the same authenticator-code step as callAdminApi (G1: it can give or take admin in another
+ * company). Resolves with the response body whatever the status (the page reads each company's outcome from it); throws CODE_CANCELLED
+ * when the code prompt is cancelled. A refusal after a verified code is returned as it is, never asked again.
+ */
+export async function sendCompanyAccess(userId: string, changes: unknown[], requestCode: () => Promise<boolean>, fetchFn: typeof fetch = fetch): Promise<unknown> {
+  const outcome = await sendWithCode<{ code?: unknown }>(async () => {
+    const response = await fetchFn("/api/admin/users/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, changes }) });
+    return { ok: response.ok, status: response.status, body: (await response.json().catch(() => null)) as { code?: unknown } | null };
+  }, requestCode);
+  if (outcome.result === "cancelled") throw new ApiError(CODE_CANCELLED);
+  return outcome.answer.body;
+}
+
 /** Reads `applied` / `failed` / `uncertain` from an error response body (ignores anything unexpected; a step is kept in one list only). */
 export function apiErrorFrom(body: unknown, fallback: string): ApiError {
   const b = (body && typeof body === "object" ? body : {}) as { error?: unknown; applied?: unknown; failed?: unknown; uncertain?: unknown };

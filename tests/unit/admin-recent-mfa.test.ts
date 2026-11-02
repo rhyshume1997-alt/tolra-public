@@ -13,8 +13,13 @@ vi.mock("server-only", () => ({}));
 
 const ADMIN = "11111111-1111-4111-8111-111111111111";
 const TARGET = "22222222-2222-4222-8222-222222222222";
+/** A login that belongs to the second company only (per-company access). */
+const TARGET2 = "88888888-8888-4888-8888-888888888888";
 const ORG_A = "44444444-4444-4444-8444-444444444444";
 const ORG_B = "55555555-5555-4555-8555-555555555555";
+/** A second company the caller also administers (per-company access). */
+const ORG_C = "66666666-6666-4666-8666-666666666666";
+const ADMIN_ORGS = [ORG_A, ORG_C];
 const now = () => Math.floor(Date.now() / 1000);
 
 type Row = Record<string, unknown>;
@@ -41,8 +46,8 @@ function table(name: string): Row[] {
 }
 
 /** A tiny in-memory query builder: eq / neq / is / ilike filters, update patches, and writes recorded by name. */
-function from(name: string) {
-  const filters: Array<(row: Row) => boolean> = [];
+function from(name: string, visible: (row: Row) => boolean = () => true) {
+  const filters: Array<(row: Row) => boolean> = [visible];
   let patch: Row | null = null;
   const run = () => {
     const rows = table(name).filter((row) => filters.every((f) => f(row)));
@@ -56,6 +61,7 @@ function from(name: string) {
       return (...args: unknown[]) => {
         if (WRITES.has(prop)) { state.writes.push(`${name}.${prop}`); if (prop === "update") patch = args[0] as Row; }
         if (prop === "eq") filters.push((row) => row[args[0] as string] === args[1]);
+        if (prop === "in") filters.push((row) => (args[1] as unknown[]).includes(row[args[0] as string]));
         if (prop === "neq") filters.push((row) => row[args[0] as string] !== args[1]);
         if (prop === "is") filters.push((row) => (row[args[0] as string] ?? null) === args[1]);
         if (prop === "ilike") filters.push((row) => String(row[args[0] as string] ?? "").toLowerCase() === String(args[1]).replace(/\\/g, "").toLowerCase());
@@ -96,15 +102,25 @@ const caller = {
   rpc: async (fn: string, args: Record<string, unknown>) => {
     if (fn === "admin_login_is_protected") return { data: false, error: null };
     if (fn === "write_audit") return { data: null, error: null };
-    state.writes.push(`rpc.${fn}`);
+    if (fn !== "my_admin_companies" && !(fn === "admin_set_company_access" && !ADMIN_ORGS.includes(args.p_org as string))) state.writes.push(`rpc.${fn}`);
     if (fn === "set_member_access") {
       const row = state.members.find((m) => m.user_id === args.p_user && m.organization_id === ORG_A);
       if (row && args.p_role) row.role = args.p_role;
       if (row && args.p_secondary_role) row.secondary_role = args.p_secondary_role;
     }
+    if (fn === "my_admin_companies") return { data: ADMIN_ORGS.map((organization_id) => ({ organization_id, name: "Company" })), error: null };
+    if (fn === "admin_set_company_access") {
+      // The database decides: only a company the caller administers; the change is applied to that membership.
+      if (!ADMIN_ORGS.includes(args.p_org as string)) return { data: null, error: { code: "42501", message: "x", hint: "not_company_admin" } };
+      const row = state.members.find((m) => m.user_id === args.p_user && m.organization_id === args.p_org);
+      if (args.p_role && row) row.role = args.p_role;
+      if (args.p_active !== null && row) row.active = args.p_active;
+      return { data: { changed: true, action: "UPDATE_USER_ACCESS", active: args.p_active, was_active: true }, error: null };
+    }
     return { data: null, error: null };
   },
-  from,
+  // Row-level security: the caller sees memberships of the companies they administer.
+  from: (name: string) => from(name, (row) => ADMIN_ORGS.includes(row.organization_id as string)),
 };
 
 vi.mock("@/lib/server/auth", async (original) => {
@@ -124,6 +140,7 @@ const { POST: setPassword } = await import("@/app/api/admin/users/password/route
 const { POST: mfaReset } = await import("@/app/api/admin/users/mfa-reset/route");
 const { POST: resetLink } = await import("@/app/api/admin/users/reset-link/route");
 const { POST: createUser, PATCH: patchUser } = await import("@/app/api/admin/users/route");
+const { POST: companies } = await import("@/app/api/admin/users/companies/route");
 const { POST: signIn } = await import("@/app/api/admin/users/sign-in/route");
 
 const request = (url: string, method: string, body: unknown) =>
@@ -136,6 +153,7 @@ const actions: Action[] = [
   { name: "reset link", wrote: "", go: () => resetLink(request("/api/admin/users/reset-link", "POST", { userId: TARGET })) },
   { name: "create user", wrote: "auth.createUser", go: () => createUser(request("/api/admin/users", "POST", { email: "new@example.test", full_name: "New Person", role: "office", password: "Correct-Horse-Battery-9", must_change_password: true })) },
   { name: "give admin", wrote: "rpc.set_member_access", go: () => patchUser(request("/api/admin/users", "PATCH", { user_id: TARGET, role: "admin" })) },
+  { name: "give admin in another company", wrote: "rpc.admin_set_company_access", go: () => companies(request("/api/admin/users/companies", "POST", { user_id: TARGET2, changes: [{ organization_id: ORG_C, active: true, role: "admin", secondary_role: null }] })) },
   { name: "disable sign-in", wrote: "auth.updateUserById", go: () => signIn(request("/api/admin/users/sign-in", "POST", { user_id: TARGET, enabled: false })) },
 ];
 
@@ -149,6 +167,8 @@ function reset() {
   state.members = [
     { user_id: ADMIN, organization_id: ORG_A, role: "admin", secondary_role: null, active: true, support: false },
     { user_id: TARGET, organization_id: ORG_A, role: "office", secondary_role: null, active: true, support: false, hidden_sections: [] },
+    { user_id: ADMIN, organization_id: ORG_C, role: "admin", secondary_role: null, active: true, support: false },
+    { user_id: TARGET2, organization_id: ORG_C, role: "office", secondary_role: null, active: true, support: false },
   ];
   state.profiles = [{ id: TARGET, email: "target@example.test", username: null, full_name: "Target Person", must_change_password: false }];
 }
@@ -288,7 +308,7 @@ describe("company isolation: an admin of company A and a user of company B", () 
   beforeEach(() => {
     state.members = [
       { user_id: ADMIN, organization_id: ORG_A, role: "admin", secondary_role: null, active: true, support: false },
-      { user_id: TARGET, organization_id: ORG_B, role: "office", secondary_role: null, active: true, support: false },
+      { user_id: TARGET2, organization_id: ORG_B, role: "office", secondary_role: null, active: true, support: false },
     ];
   });
   for (const action of actions.filter((a) => ["set password", "reset two-step", "reset link", "give admin", "disable sign-in"].includes(a.name))) {
@@ -311,5 +331,81 @@ describe("the helper itself", () => {
     expect(await stale!.json()).toMatchObject({ code: "mfa_recent_required", error: "For your security, enter a fresh code from your authenticator app to do this." });
     state.level = "aal1";
     expect(await (await requireRecentAal2(auth))!.json()).toMatchObject({ code: "mfa_required" });
+  });
+});
+
+describe("per-company access (POST /api/admin/users/companies): giving or taking admin in another company", () => {
+  const change = (...changes: Array<Record<string, unknown>>) => companies(request("/api/admin/users/companies", "POST", { user_id: TARGET2, changes }));
+  const inC = () => state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_C)!;
+
+  it("giving admin with a stale code: refused before anything is sent, role unchanged", async () => {
+    state.amr = STALE();
+    const response = await change({ organization_id: ORG_C, active: true, role: "admin", secondary_role: null });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+    expect(inC().role).toBe("office");
+  });
+  it("giving admin as a second role with a stale code: refused", async () => {
+    state.amr = STALE();
+    expect(await (await change({ organization_id: ORG_C, active: true, role: "office", secondary_role: "admin" })).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("giving admin with a fresh code: done", async () => {
+    expect((await change({ organization_id: ORG_C, active: true, role: "admin", secondary_role: null })).status).toBe(200);
+    expect(inC().role).toBe("admin");
+  });
+  it("taking admin away (a different role) with a stale code: refused, they stay admin", async () => {
+    inC().role = "admin";
+    state.amr = STALE();
+    expect(await (await change({ organization_id: ORG_C, active: true, role: "office", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+    expect(inC().role).toBe("admin");
+  });
+  it("taking admin away with a fresh code: done", async () => {
+    inC().role = "admin";
+    expect((await change({ organization_id: ORG_C, active: true, role: "office", secondary_role: null })).status).toBe(200);
+    expect(inC().role).toBe("office");
+  });
+  it("switching a switched-off admin back on with a stale code: refused", async () => {
+    Object.assign(inC(), { role: "admin", active: false });
+    state.amr = STALE();
+    expect(await (await change({ organization_id: ORG_C, active: true, role: "admin", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("one admin change among several: the whole request waits for a fresh code, nothing is sent", async () => {
+    state.amr = STALE();
+    const response = await change({ organization_id: ORG_A, active: true, role: "workshop", secondary_role: null }, { organization_id: ORG_C, active: true, role: "admin", secondary_role: null });
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("an access change that is not about admin (an office person becomes workshop) is not asked for a recent code, and is applied", async () => {
+    state.amr = STALE();
+    const response = await change({ organization_id: ORG_C, active: true, role: "workshop", secondary_role: null });
+    expect(response.status).toBe(200);
+    expect(inC().role).toBe("workshop");
+  });
+  it("the stored memberships can't be read: treated as an admin change (fails closed)", async () => {
+    state.amr = STALE();
+    const real = caller.from;
+    caller.from = (() => { const c: Record<string, unknown> = new Proxy({}, { get: (_, p) => (p === "then" ? (r: (v: unknown) => void) => r({ data: null, error: { code: "XX000" } }) : () => c) }); return c; }) as unknown as typeof caller.from;
+    try {
+      expect(await (await change({ organization_id: ORG_C, active: true, role: "workshop", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
+      expect(state.writes).toEqual([]);
+    } finally { caller.from = real; }
+  });
+  it("company A against company B: an admin of A can't give admin in B even with a fresh code (the database refuses), nothing written", async () => {
+    state.members.push({ user_id: TARGET2, organization_id: ORG_B, role: "office", secondary_role: null, active: true, support: false });
+    const response = await change({ organization_id: ORG_B, active: true, role: "admin", secondary_role: null });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ ok: false, results: [{ organization_id: ORG_B, ok: false }] });
+    expect(state.writes).toEqual([]);
+    expect(state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_B)!.role).toBe("office");
+  });
+  it("company A against company B with a stale code: asked for the code first, nothing written", async () => {
+    state.members.push({ user_id: TARGET2, organization_id: ORG_B, role: "office", secondary_role: null, active: true, support: false });
+    state.amr = STALE();
+    expect(await (await change({ organization_id: ORG_B, active: true, role: "admin", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
   });
 });
