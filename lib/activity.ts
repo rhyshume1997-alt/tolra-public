@@ -90,6 +90,8 @@ const TABLE_LABELS: Record<string, string> = {
   site_network_settings: "Site network setting",
   site_networks: "Site network",
   site_network_members: "Site network member",
+  // 128: the name an admin gives a saved workshop network.
+  site_network_names: "Site network name",
   // 114: the clock-in network lock and the clock actions it could not check.
   clock_in_network_locks: "Clock-in network lock",
   clock_in_network_exemptions: "Off-site clock-in setting",

@@ -17,6 +17,7 @@ import { primeShellBrand } from "@/lib/company";
 import { OFFLINE_IDENTITY_MAX_AGE_HOURS, OfflineIdentityExpiredError } from "@/lib/offline/identity-age";
 import { useDateFormatPreference } from "@/lib/date-format-preference";
 import { useIdleSignOut } from "@/lib/use-idle-sign-out";
+import { runsInboxCheck, useInboxAutoCheck } from "@/lib/inbox-auto-check";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { friendlyError } from "@/lib/friendly-error";
 import { UserProvider, useUser } from "@/lib/use-user";
@@ -38,6 +39,8 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   // Signs this device out after the idle limit for the role being worked as (lib/session-policy.ts).
   useIdleSignOut(activeRole, Boolean(user && profile));
   useRememberBrand(user && profile ? profile.organization_id : null);
+  // Admin and office: the server checks the company's inbox every few minutes while this tab is visible (lib/inbox-auto-check.ts).
+  useInboxAutoCheck(Boolean(supabase && user && runsInboxCheck(profile)));
   // The person's own date format (Account Settings; migration 109), primed before the page renders. A change re-renders this shell
   // (sidebar, top bar, offline banner) at once; the page content picks it up on its next render or navigation, never by redrawing it,
   // so an open dialog or an unsaved edit is never lost.

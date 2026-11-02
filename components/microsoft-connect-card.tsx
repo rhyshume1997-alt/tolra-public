@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { fmtDate } from "@/lib/dates";
+import { fmtDate, fmtTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { NEEDS_107, cardStatusLabel, microsoftOutcomeMessage, notSetUpMessage, type IntegrationOverview } from "@/lib/integrations/overview";
+import { ADMIN_CONSENT_STATEMENT, NEEDS_107, RECONNECT_FOR_MAIL, cardStatusLabel, connectCardView, mailSyncLine, microsoftOutcomeMessage, type IntegrationOverview, type MailboxSyncStatus } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 
 export type ConnectStatus = { db107: boolean; xero: { configured: boolean; problem?: string | null }; microsoft: { configured: boolean } };
@@ -27,32 +27,64 @@ export async function postIntegration(path: string): Promise<{ ok: true; body: R
  * them back here with ?microsoft=connected and the card says "All connected" with the mailbox and since when. Disconnect (confirmed) and
  * Test ("Working: <mailbox>" or Microsoft's exact reason). Connect is disabled until the platform owner has entered the app details.
  * Before 107 is applied the card says so and does nothing else.
+ * Inbox reading (C1, migration 127's mailbox_sync_status): "Last checked 10:42", or "Couldn't check mail: <plain reason>", or, for a
+ * connection made before C1 (sending only), "Reconnect to allow reading mail" (sending keeps working meanwhile). Before 127 nothing extra.
  */
 export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null }) {
   const params = useSearchParams();
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
+  const [sync, setSync] = useState<MailboxSyncStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
   const available = status?.db107 === true;
+  const view = connectCardView("microsoft", status ? status.microsoft.configured : null);
+  const [approve, setApprove] = useState<{ url: string; mailto: string; permissions: Array<{ scope: string; text: string }>; expiresAt: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) return;
     const { data, error } = await supabase.rpc("integration_overview", { p_provider: "microsoft" });
     if (error) return toast.error(friendlyError(error, "Couldn't load Microsoft 365."));
     setOverview(data as IntegrationOverview);
+    // 127 not applied (or not an admin): no inbox line.
+    const mail = await supabase.rpc("mailbox_sync_status");
+    setSync(mail.error ? null : (mail.data as MailboxSyncStatus));
   }, []);
 
   useEffect(() => { if (available) void load(); }, [available, load]);
 
   const outcome = params.get("microsoft");
+  // A calm card (never a toast, never red) while Microsoft 365 is not set up yet; "consent_blocked" has its own panel below.
   useEffect(() => {
-    if (!outcome) return;
-    if (outcome === "connected") toast.success(microsoftOutcomeMessage(outcome));
+    if (!outcome || outcome === "consent_blocked" || outcome === "not_configured") return;
+    if (outcome === "connected" || outcome === "consent_approved") toast.success(microsoftOutcomeMessage(outcome));
     else toast.error(microsoftOutcomeMessage(outcome));
   }, [outcome]);
 
+  async function makeApproveLink() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/integrations/microsoft/admin-consent", { method: "POST", credentials: "same-origin" }).catch(() => null);
+      const body = (res ? await res.json().catch(() => ({})) : {}) as { url?: string; mailto?: string; permissions?: Array<{ scope: string; text: string }>; expiresAt?: string; error?: string };
+      if (!res?.ok || !body.url || !body.mailto) return toast.error(body.error ?? "Couldn't make the link. Try again.");
+      setApprove({ url: body.url, mailto: body.mailto, permissions: body.permissions ?? [], expiresAt: body.expiresAt ?? "" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyApprove() {
+    if (!approve) return;
+    try {
+      await navigator.clipboard.writeText(approve.url);
+      toast.success("Link copied. Send it to your Microsoft administrator: it works once, for 24 hours.");
+    } catch {
+      toast.error("Couldn't copy: select the link and copy it.");
+    }
+  }
+
   async function connect() {
+    if (view.connectDisabled) return;
     setBusy(true);
     try {
       const r = await postIntegration("/api/integrations/microsoft/connect");
@@ -89,11 +121,12 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
   }
 
   const linked = overview?.status === "connected" || overview?.status === "needs_reconnect";
+  const mailLine = overview?.status === "connected" ? mailSyncLine(sync, (iso) => fmtTime(iso)) : null;
   return (
     <Card data-testid="microsoft-card">
       <CardHeader>
         <CardTitle>Microsoft 365</CardTitle>
-        <CardDescription>Send Tolra&apos;s e-mails from this company&apos;s own mailbox. Someone with that mailbox signs in at Microsoft once and approves.</CardDescription>
+        <CardDescription>Send Tolra&apos;s e-mails from this company&apos;s own mailbox, and read its inbox into RFQs (read only: Tolra never marks, moves or deletes mail). Someone with that mailbox signs in at Microsoft once and approves.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {status === null ? <p className="text-sm text-slate-500">Loading…</p> : !available ? (
@@ -108,12 +141,43 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
             {overview.status === "needs_reconnect" ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">{overview.status_reason ?? "Microsoft 365 needs to be connected again."}</p>
             ) : null}
-            {!status.microsoft.configured && overview.status !== "connected" ? (
-              <p className="text-sm text-slate-600" data-testid="microsoft-not-set-up">{notSetUpMessage("microsoft")}</p>
+            {mailLine ? (
+              <p role={mailLine.tone === "error" ? "alert" : "status"} data-testid="microsoft-mail-sync"
+                 className={`text-sm ${mailLine.tone === "ok" ? "text-slate-600" : mailLine.tone === "warn" ? "rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900" : "text-red-700"}`}>{mailLine.text}</p>
+            ) : null}
+            {view.notSetUp && overview.status !== "connected" ? (
+              <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="microsoft-not-set-up">{view.message}</p>
+            ) : null}
+            {outcome === "consent_approved" && !view.notSetUp ? (
+              <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 p-2 text-sm text-emerald-800" data-testid="microsoft-consent-approved">{microsoftOutcomeMessage("consent_approved")}</p>
+            ) : null}
+            {outcome === "consent_blocked" && view.offerApproveLink ? (
+              <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-testid="microsoft-consent-blocked">
+                <p><strong>{microsoftOutcomeMessage("consent_blocked")}</strong></p>
+                <p>Ask your Microsoft administrator to approve it once. Send them this link: it shows them exactly what Tolra asks for.</p>
+                {!approve ? (
+                  <Button variant="outline" onClick={makeApproveLink} disabled={busy}>Get the link for your Microsoft admin</Button>
+                ) : (
+                  <div className="space-y-2" data-testid="microsoft-approve-link">
+                    <p data-testid="microsoft-approve-statement">{ADMIN_CONSENT_STATEMENT}</p>
+                    <ul className="list-disc space-y-0.5 pl-5" data-testid="microsoft-approve-permissions">
+                      {approve.permissions.map((p) => <li key={p.scope}>{p.text}</li>)}
+                    </ul>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input readOnly aria-label="Link for your Microsoft admin" value={approve.url} onFocus={(e) => e.currentTarget.select()} className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 font-mono text-xs text-slate-900" />
+                      <Button variant="outline" size="sm" onClick={copyApprove}>Copy link</Button>
+                      <a href={approve.mailto} className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900">Email it to them</a>
+                    </div>
+                    <p className="text-xs">Works once{approve.expiresAt ? `, until ${fmtDate(approve.expiresAt)} (24 hours)` : ", for 24 hours"}. After they approve, come back here and click Connect.</p>
+                  </div>
+                )}
+              </div>
             ) : null}
             <div className="flex flex-wrap gap-2">
               {overview.status !== "connected" ? (
-                <Button onClick={connect} disabled={busy || !status.microsoft.configured}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect Microsoft 365"}</Button>
+                <Button onClick={connect} disabled={busy || view.connectDisabled}>{overview.status === "needs_reconnect" ? "Reconnect" : "Connect Microsoft 365"}</Button>
+              ) : mailLine?.reconnect ? (
+                <Button onClick={connect} disabled={busy || view.connectDisabled} data-testid="microsoft-reconnect-mail">{sync?.mail_read ? "Reconnect" : RECONNECT_FOR_MAIL}</Button>
               ) : null}
               {overview.status === "connected" ? <Button variant="outline" onClick={runTest} disabled={busy}>Test</Button> : null}
               {linked ? <Button variant="outline" onClick={() => setConfirm(true)} disabled={busy}>Disconnect</Button> : null}

@@ -119,7 +119,7 @@ describe("admin routes: support sessions and non-admins are refused first", () =
     microsoftReady.mockResolvedValueOnce(null as never);
     const res = await (await import("@/app/api/integrations/microsoft/connect/route")).POST(post());
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toBe("Not set up yet: the owner must enter the Microsoft 365 app details.");
+    expect(await res.json()).toEqual({ error: "Not set up yet: Tolra's Microsoft 365 connection is switched on at go-live. Nothing to do here.", code: "not_configured" });
     expect(ms.beginMicrosoftConnect).not.toHaveBeenCalled();
   });
 });

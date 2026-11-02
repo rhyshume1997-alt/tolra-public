@@ -217,7 +217,8 @@ describe("Microsoft 365 delegated Connect", () => {
     const user = fakeClient({});
     const url = new URL(await beginMicrosoftConnect(user.client, ORG, msReady));
     expect(url.origin + url.pathname).toBe("https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize");
-    expect(url.searchParams.get("scope")).toBe("offline_access Mail.Send User.Read");
+    // C1 (127): read-only Mail.Read joins the sending scopes (never Mail.ReadWrite).
+    expect(url.searchParams.get("scope")).toBe("offline_access User.Read Mail.Send Mail.Read");
     expect(url.searchParams.get("redirect_uri")).toBe(`${SITE}/api/integrations/microsoft/callback`);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     expect(url.searchParams.has("client_secret")).toBe(false);
@@ -237,7 +238,7 @@ describe("Microsoft 365 delegated Connect", () => {
       if (url.includes("/oauth2/v2.0/token")) { bodies.push(String(init?.body)); return new Response(JSON.stringify({ access_token: "AT", refresh_token: "RT", expires_in: 3600 }), { status: 200 }); }
       return new Response(JSON.stringify({ id: "oid-1", mail: "office@alpha.example.test", displayName: "Office" }), { status: 200 });
     });
-    expect(await finishMicrosoftConnect(svc.client, ORG, ADMIN, "st", "code", msReady, { fetchImpl: fetchImpl as never })).toEqual({ ok: true, mailbox: "office@alpha.example.test" });
+    expect(await finishMicrosoftConnect(svc.client, ORG, ADMIN, "st", "code", msReady, { fetchImpl: fetchImpl as never })).toEqual({ ok: true, mailbox: "office@alpha.example.test", mailRead: false });
     expect(svc.calls[0]).toEqual({ fn: "integration_oauth_consume", args: { p_org: ORG, p_user: ADMIN, p_provider: "microsoft", p_state_hash: hashState("st") } });
     const p = new URLSearchParams(bodies[0]);
     expect([p.get("grant_type"), p.get("code_verifier"), p.get("client_secret"), p.get("redirect_uri")]).toEqual(["authorization_code", "v", "msecret", `${SITE}/api/integrations/microsoft/callback`]);
@@ -287,7 +288,9 @@ describe("Microsoft 365 token refresh (under 084's lease)", () => {
     const store = svc.calls.find((c) => c.fn === "integration_token_store")!.args;
     expect(store.p_provider).toBe("microsoft");
     expect(decryptSecret(String(store.p_refresh_enc), ctx("refresh"), key)).toBe("RT2");
-    expect(svc.calls.map((c) => c.fn)).toEqual(["integration_token_lease", "integration_token_store", "integration_token_release"]);
+    // C1 (127): under the lease, the company's own reading state picks the refresh scopes (no 127 here: sending only).
+    expect(svc.calls.map((c) => c.fn)).toEqual(["integration_token_lease", "mailbox_sync_due", "integration_token_store", "integration_token_release"]);
+    expect(svc.calls[1].args).toEqual({ p_org: ORG });
   });
 
   it("Microsoft answers without a new refresh token: the old one is kept", async () => {
@@ -341,8 +344,8 @@ describe("what Admin > Integrations says", () => {
     expect(cardStatusLabel({ status: "connected" })).toBe("All connected");
     expect(cardStatusLabel({ status: "not_connected" })).toBe("Not connected");
     expect(cardStatusLabel({ status: "not_connected" }, "microsoft")).not.toContain("Not connected");
-    expect(notSetUpMessage("xero")).toBe("Not set up yet: the owner must enter the Xero app details.");
-    expect(notSetUpMessage("microsoft")).toBe("Not set up yet: the owner must enter the Microsoft 365 app details.");
+    expect(notSetUpMessage("xero")).toBe("Not set up yet: Tolra's Xero connection is switched on at go-live. Nothing to do here.");
+    expect(notSetUpMessage("microsoft")).toBe("Not set up yet: Tolra's Microsoft 365 connection is switched on at go-live. Nothing to do here.");
     expect(connectOutcomeMessage("connected")).toBe("All connected: Xero.");
     expect(microsoftOutcomeMessage("connected")).toBe("All connected: Microsoft 365.");
   });

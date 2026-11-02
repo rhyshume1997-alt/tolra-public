@@ -15,8 +15,8 @@ test("manifest, icons and favicon for a signed-in member", async ({ page }) => {
   expect(manifest.headers()["content-type"]).toContain("application/manifest+json");
   const body = await manifest.json();
   // The installed app is Tolra for every company: name, theme and icon don't depend on who is signed in.
-  expect(body).toMatchObject({ name: "Tolra", short_name: "Tolra", theme_color: "#0b1626", start_url: "/dashboard?source=pwa", display: "standalone" });
-  expect(body.icons.map((i: { sizes: string; purpose: string }) => `${i.sizes} ${i.purpose}`)).toEqual(["192x192 any", "512x512 any", "192x192 maskable", "512x512 maskable"]);
+  expect(body).toMatchObject({ name: "Tolra", short_name: "Tolra", theme_color: "#0b2a5b", start_url: "/dashboard?source=pwa", display: "standalone" });
+  expect(body.icons.map((i: { sizes: string; purpose: string }) => `${i.sizes} ${i.purpose}`)).toEqual(["192x192 any", "512x512 any", "512x512 maskable"]);
   for (const size of [192, 512, 180]) {
     const icon = await page.request.get(`/api/pwa-icon?size=${size}`);
     expect(icon.status()).toBe(200);

@@ -10,6 +10,9 @@
  *     goes through next_doc_number and create_with_lines exactly as the Quote Builder's, status draft.
  *   - The Anthropic provider: no tools, structured output, refusal / cut-short / errors handled, key never in an error.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -330,5 +333,24 @@ describe("Anthropic provider (stand-in client, no network)", () => {
     await expect(run(async () => { throw new Anthropic.APIConnectionError({ message: "down" }); })).rejects.toMatchObject({ kind: "unavailable" });
     const err = (await run(async () => { throw auth; }).catch((e: unknown) => e)) as AiProviderError;
     expect(String(err.message)).not.toContain("sk-ant");
+  });
+
+  it("E9 Q4: only a certain rejection before any work (400/401/403/404/413/429) may be refunded; timeouts, 5xx and connection errors may not", async () => {
+    const run = (error: unknown) => anthropicProvider((() => ({ messages: { create: async () => { throw error; } } })) as never).complete(req("{}")).then(() => { throw new Error("expected a provider error"); }, (e: unknown) => e as AiProviderError);
+    const body = { type: "error", error: { type: "x", message: "m" } };
+    const apiError = (status: number) => Anthropic.APIError.generate(status, body, "m", new Headers());
+    for (const status of [400, 401, 403, 404, 413, 429]) expect((await run(apiError(status))).rejectedBeforeWork, `status ${status}`).toBe(true);
+    for (const status of [408, 409, 422, 500, 502, 503, 529]) expect((await run(apiError(status))).rejectedBeforeWork, `status ${status}`).toBe(false);
+    expect((await run(new Anthropic.APIConnectionError({ message: "down" }))).rejectedBeforeWork).toBe(false);
+    expect((await run(new Anthropic.APIConnectionTimeoutError())).rejectedBeforeWork).toBe(false);
+    expect((await run(new Error("anything else"))).rejectedBeforeWork).toBe(false);
+    expect((await run(apiError(401))).detail).toBe("auth");
+    expect((await run(apiError(429))).detail).toBe("rate");
+  });
+
+  it("E9 Q4: the real client makes ONE attempt (no SDK retries), so one reservation never pays for two billed calls", () => {
+    const source = readFileSync(path.join(process.cwd(), "lib/ai-helper/anthropic.ts"), "utf8");
+    expect(source).toMatch(/new Anthropic\(\{ apiKey, timeout: timeoutMs, maxRetries: 0 \}\)/);
+    expect(source).not.toMatch(/maxRetries: [1-9]/);
   });
 });

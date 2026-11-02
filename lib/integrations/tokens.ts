@@ -20,8 +20,11 @@ export const REFRESH_MARGIN_MS = 2 * 60_000;
 export type TokenSourceDeps = {
   db: EngineDb;
   key: Buffer;
-  /** The provider's refresh call (lib/integrations/xero/oauth.ts or microsoft/oauth.ts refreshTokens with the app's configuration). */
-  refresh(refreshToken: string): Promise<RefreshedTokens>;
+  /**
+   * The provider's refresh call (lib/integrations/xero/oauth.ts or microsoft/oauth.ts refreshTokens with the app's configuration). org is
+   * the company whose sign-in this is (Microsoft 365 asks for the scopes that company's connection consented to).
+   */
+  refresh(refreshToken: string, org: string): Promise<RefreshedTokens>;
   /** true for "the refresh token was refused: connect again" (XeroAuthError / MicrosoftAuthError invalid_grant). */
   isRefused(err: unknown): boolean;
   /** The provider's name in the reasons shown to the admin (default "Xero"). */
@@ -53,7 +56,7 @@ export function createTokenSource(deps: TokenSourceDeps) {
       const refreshToken = decryptSecret(lease.refresh_token_enc, ctx("refresh"), deps.key);
       let set: RefreshedTokens;
       try {
-        set = await deps.refresh(refreshToken);
+        set = await deps.refresh(refreshToken, org);
       } catch (err) {
         if (deps.isRefused(err)) {
           await deps.db.rpc("integration_mark_needs_reconnect", { p_org: org, p_provider: provider, p_reason: deps.label ? `${label} refused the stored sign-in (it was revoked, or not used for too long): connect again.` : "Xero refused the stored sign-in (it was revoked, or not used for 60 days): connect again." });

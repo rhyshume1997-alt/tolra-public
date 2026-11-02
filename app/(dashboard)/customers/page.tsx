@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { customersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
 import { Pencil, Plus } from "lucide-react";
@@ -24,6 +24,7 @@ import { auditEvent } from "@/lib/audit";
 import { CUSTOMER_CHANGED, fetchKnownCustomers, loadDemoCustomers, newCustomerDraft, saveCustomer, type CustomerRecord, type KnownCustomer } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { friendlyError } from "@/lib/friendly-error";
+import { linkedRecordId } from "@/lib/record-link";
 import { exportSpreadsheet } from "@/lib/export-records";
 import { CUSTOMER_COLUMNS } from "@/lib/import-columns";
 import { exportAllTitle } from "@/lib/spreadsheet";
@@ -87,6 +88,19 @@ export default function CustomersPage() {
   }
 
   useEffect(() => { void load(); }, []);
+
+  // A link from the global search names a customer as /customers?customer=<id>: once the list has loaded, open that customer (once).
+  const linkedCustomerDone = useRef(false);
+  useEffect(() => {
+    if (linkedCustomerDone.current || loading) return;
+    linkedCustomerDone.current = true;
+    const id = linkedRecordId(window.location.search, "customer");
+    if (!id) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const found = customers.find((customer) => customer.id === id);
+    if (found) setEditing(found);
+    else toast.info("That customer isn't in your list any more.");
+  }, [loading, customers]);
 
   /** A new customer's form; the traceable default (082) is offered once the database has it (a saved customer was read with it). */
   const newDraft = (name: string): CustomerRecord => ({

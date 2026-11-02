@@ -2,14 +2,14 @@
  * Clock-in addresses after migration 078 (lib/site-network.ts, components/time/site-network-card.tsx): the app's retention matches the
  * database's (30 days), the card learns whether the database keeps addresses apart (a missing table, or any error, reads as no), and a
  * site network is only ever added by an admin's explicit click: the app writes site_networks through add_site_network only, called from
- * the Settings card's two buttons, never from a load, an effect or a banner.
+ * the Settings card's "Use this network" button, never from a load, an effect or a banner.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
-import { SITE_NETWORK_IP_RETENTION_DAYS, loadSiteNetworks, purgeSiteNetworkIps } from "@/lib/site-network";
+import { SITE_NETWORK_IP_RETENTION_DAYS, SITE_NETWORK_LABEL_MAX, loadSiteNetworks, purgeSiteNetworkIps, renameSiteNetwork } from "@/lib/site-network";
 
 const ROOT = path.resolve(__dirname, "../..");
 
@@ -41,7 +41,7 @@ describe("retention", () => {
 
   it("loadSiteNetworks: ipRetention only when the address table answers", async () => {
     const base = { site_network_settings: { data: { site_network_check: "flag" }, error: null }, site_networks: { data: [], error: null } };
-    expect(await loadSiteNetworks(fakeClient({ ...base, attendance_event_network_ips: { data: [], error: null } }))).toEqual({ mode: "flag", networks: [], ipRetention: true });
+    expect(await loadSiteNetworks(fakeClient({ ...base, attendance_event_network_ips: { data: [], error: null } }))).toEqual({ mode: "flag", networks: [], ipRetention: true, canRename: true });
     expect((await loadSiteNetworks(fakeClient({ ...base, attendance_event_network_ips: { data: null, error: { code: "PGRST205", message: "missing" } } }))).ipRetention).toBe(false);
     expect((await loadSiteNetworks(fakeClient({ ...base, attendance_event_network_ips: { data: null, error: { code: "08006", message: "offline" } } }))).ipRetention).toBe(false);
   });
@@ -63,6 +63,37 @@ describe("retention", () => {
     expect(card).toContain("onClick={() => setConfirmPurgeAll(true)}");
   });
 
+  it("128: Rename shows only when the database has 128 (its name table answers; a missing table or any error reads as no)", async () => {
+    const base = { site_network_settings: { data: null, error: null }, site_networks: { data: [], error: null } };
+    expect((await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: null, error: { code: "PGRST205", message: "missing" } } }))).canRename).toBe(false);
+    expect((await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: [], error: null } }))).canRename).toBe(true);
+  });
+
+  it("128: a name given to a network is shown in place of its saved label; others keep theirs", async () => {
+    const nets = [{ id: "n1", network: "203.0.113.7/32", label: "Site network", created_at: "x" }, { id: "n2", network: "198.51.100.0/24", label: "Yard", created_at: "y" }];
+    const base = { site_network_settings: { data: null, error: null }, site_networks: { data: nets, error: null } };
+    const got = await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: [{ network_id: "n1", label: "Main workshop" }], error: null } }));
+    expect(got.networks.map((n) => n.label)).toEqual(["Main workshop", "Yard"]);
+    const before = await loadSiteNetworks(fakeClient({ ...base, site_network_names: { data: null, error: { code: "PGRST205", message: "missing" } } }));
+    expect(before.networks.map((n) => n.label)).toEqual(["Site network", "Yard"]);
+  });
+
+  it("128: renameSiteNetwork calls rename_site_network with the key, the id and the trimmed name", async () => {
+    const calls: unknown[] = [];
+    await renameSiteNetwork(fakeClient({}, calls), "key-1", "net-1", "  Main workshop  ");
+    expect(calls).toEqual([["rename_site_network", { p_client_op_id: "key-1", p_id: "net-1", p_label: "Main workshop" }]]);
+    expect(SITE_NETWORK_LABEL_MAX).toBe(60);
+  });
+
+  it("128: the card's Rename is shown only with 128, saves through renameSiteNetwork on a click, and keeps the 60-character limit", () => {
+    const card = readFileSync(path.join(ROOT, "components/time/site-network-card.tsx"), "utf8");
+    expect(card).toMatch(/\) : canRename \? \(/);
+    expect(card).toContain("maxLength={SITE_NETWORK_LABEL_MAX}");
+    const lines = card.split("\n").filter((l) => /\brenameSiteNetwork\(/.test(l));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatch(/onClick=\{\(\) =>/);
+  });
+
   it("purgeSiteNetworkIps calls the admin purge with p_all", async () => {
     const calls: unknown[] = [];
     expect(await purgeSiteNetworkIps(fakeClient({}, calls), true)).toMatchObject({ removed: 3 });
@@ -80,14 +111,15 @@ describe("a seen address never becomes a site network by itself", () => {
     }
   });
 
-  it("addSiteNetwork is only called from the Settings card's two buttons (onClick), never on load", () => {
+  it("addSiteNetwork is only called from the Settings card's one button (onClick), never on load", () => {
     const callers = sources.filter(({ text, f }) => f !== path.join("lib", "site-network.ts") && /\baddSiteNetwork\(/.test(text));
     expect(callers.map((c) => c.f)).toEqual([path.join("components", "time", "site-network-card.tsx")]);
     const card = callers[0].text;
     const lines = card.split("\n").filter((l) => /\baddSiteNetwork\(/.test(l));
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(1);
     for (const l of lines) expect(l).toMatch(/onClick=\{\(\) =>/);
-    // "Use the network I'm on now" (network null: the request's address) is one of them, an explicit button.
-    expect(card).toContain("Use the network I&apos;m on now");
+    // "Use this network" (network null: the request's address) is that explicit button; no address is typed.
+    expect(card).toContain("Use this network");
+    expect(card).not.toContain("Network address");
   });
 });

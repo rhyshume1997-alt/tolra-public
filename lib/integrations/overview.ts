@@ -74,9 +74,32 @@ export function cardStatusLabel(o: Pick<IntegrationOverview, "status">, provider
   return STATUS[o.status] ?? o.status;
 }
 
-/** What the page says when the app details are missing (Connect stays disabled until the platform owner enters them). */
+/** What the page says when the app details are missing (Connect stays disabled until the platform owner enters them at go-live). */
 export function notSetUpMessage(provider: "xero" | "microsoft"): string {
-  return `Not set up yet: the owner must enter the ${provider === "xero" ? "Xero" : "Microsoft 365"} app details.`;
+  return `Not set up yet: Tolra's ${provider === "xero" ? "Xero" : "Microsoft 365"} connection is switched on at go-live. Nothing to do here.`;
+}
+
+/**
+ * What the Microsoft admin's approval panel (Admin > Integrations) and its e-mail say before the plain-words permissions: the approval
+ * link uses Graph's `.default` scope, which approves EVERY permission on Tolra's app registration, so the registration holds exactly
+ * MICROSOFT_REGISTRATION_SCOPES (offline_access, User.Read, Mail.Send, Mail.Read: Connect's own list) and nothing else.
+ */
+export const ADMIN_CONSENT_STATEMENT =
+  "Microsoft's approval uses the .default scope, which approves EVERY permission on Tolra's app registration. The registration has exactly these, and nothing else:";
+
+/** The `code` the connect, callback, test and invite routes answer (HTTP 503) while the app details are missing. */
+export const NOT_CONFIGURED_CODE = "not_configured";
+
+/**
+ * What a provider's card shows and offers, from the status route's answer. Not set up (no app details anywhere) is a calm grey state:
+ * the message, Connect disabled, no accountant link, no admin-approval link. While the status is still loading nothing is offered.
+ */
+export function connectCardView(provider: "xero" | "microsoft", configured: boolean | null | undefined): {
+  notSetUp: boolean; message: string | null; connectDisabled: boolean; offerInvite: boolean; offerApproveLink: boolean;
+} {
+  if (configured === null || configured === undefined) return { notSetUp: false, message: null, connectDisabled: true, offerInvite: false, offerApproveLink: false };
+  if (!configured) return { notSetUp: true, message: notSetUpMessage(provider), connectDisabled: true, offerInvite: false, offerApproveLink: false };
+  return { notSetUp: false, message: null, connectDisabled: false, offerInvite: provider === "xero", offerApproveLink: provider === "microsoft" };
 }
 
 /** Shown in place of what needs migration 107 while it is not applied (the Xero card keeps working as before). */
@@ -87,7 +110,9 @@ export function microsoftOutcomeMessage(outcome: string): string {
   switch (outcome) {
     case "connected": return "All connected: Microsoft 365.";
     case "cancelled": return "Connecting Microsoft 365 was cancelled. Nothing changed.";
-    case "refused": return "Microsoft refused the sign-in (the app may need admin consent in that Microsoft 365 tenant). Nothing changed.";
+    case "refused": return "Microsoft refused the sign-in. Nothing changed.";
+    case "consent_blocked": return "Your Microsoft 365 needs an administrator to approve Tolra first. Nothing changed.";
+    case "consent_approved": return "Approved, now click Connect.";
     case "expired": return "That Connect took too long or was started elsewhere. Click Connect Microsoft 365 again.";
     case "mailbox_in_use": return "That mailbox is already connected to another company in Tolra.";
     case "disconnect_first": return "This company is connected to another mailbox. Disconnect it first.";
@@ -97,4 +122,37 @@ export function microsoftOutcomeMessage(outcome: string): string {
     case "signed_out": return "Sign in again, then connect Microsoft 365.";
     default: return "Connecting Microsoft 365 didn't work. Nothing changed. Try again.";
   }
+}
+
+// Inbox reading (C1, migration 127's mailbox_sync_status: never the cursor, the mailbox id, a token or Microsoft's text).
+/** Why the last inbox check failed: a fixed code (127's CHECK allows only these), shown in the plain words below. */
+export type MailSyncCode = "reconnect" | "consent" | "signin" | "busy" | "unavailable" | "store_failed";
+export type MailboxSyncStatus = { mail_read: boolean; last_sync_at: string | null; last_error: MailSyncCode | null; error_count: number };
+
+const MAIL_SYNC_REASONS: Record<MailSyncCode, string> = {
+  reconnect: "Microsoft needs you to sign in again. Click Reconnect.",
+  consent: "Tolra isn't allowed to read this mailbox. Click Reconnect to allow reading mail.",
+  signin: "Microsoft didn't accept the sign-in. Tolra will try again; if it keeps happening, click Reconnect.",
+  busy: "Microsoft 365 is busy. Tolra will try again shortly.",
+  unavailable: "Microsoft 365 didn't answer. Tolra will try again shortly.",
+  store_failed: "Some messages couldn't be saved. Tolra will try again.",
+};
+
+/** The plain reason for a failure code (anything else reads as "didn't answer": nothing unknown is ever shown). */
+export function mailSyncReason(code: string | null | undefined): string {
+  return MAIL_SYNC_REASONS[(code ?? "") as MailSyncCode] ?? MAIL_SYNC_REASONS.unavailable;
+}
+
+export const RECONNECT_FOR_MAIL = "Reconnect to allow reading mail";
+
+/**
+ * The card's inbox line for a connected mailbox: "Last checked 10:42", "Couldn't check mail: <plain reason>", or (a connection made
+ * before C1, or Microsoft refused reading) the ask to reconnect. null when there is nothing to say yet. `time` formats the UK time.
+ */
+export function mailSyncLine(sync: MailboxSyncStatus | null, time: (iso: string) => string): { tone: "ok" | "warn" | "error"; text: string; reconnect: boolean } | null {
+  if (!sync) return null;
+  if (!sync.mail_read) return { tone: "warn", text: `${RECONNECT_FOR_MAIL}: Tolra can send from this mailbox but not read its inbox yet. Sending keeps working.`, reconnect: true };
+  if (sync.last_error) return { tone: "error", text: `Couldn't check mail: ${mailSyncReason(sync.last_error)}`, reconnect: sync.last_error === "reconnect" };
+  if (sync.last_sync_at) return { tone: "ok", text: `Last checked ${time(sync.last_sync_at)}`, reconnect: false };
+  return { tone: "ok", text: "Reading the inbox: not checked yet.", reconnect: false };
 }

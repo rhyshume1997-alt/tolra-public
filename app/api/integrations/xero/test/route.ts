@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { companyXeroToken, xeroReady } from "@/lib/integrations/server";
 import { ProviderError } from "@/lib/integrations/types";
 import { readOrganisationName } from "@/lib/integrations/xero/client";
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
   const ready = await xeroReady();
   const service = createSupabaseAdminClient();
-  if (!ready || !service) return jsonError("Xero is not set up on this server yet.", 503);
+  if (!ready || !service) return notConfiguredResponse("xero");
   try {
     const conn = await companyXeroToken(service, auth.profile.organization_id, ready);
     if (!conn) return jsonError("Not connected: connect this company to Xero first (or connect again).", 409);

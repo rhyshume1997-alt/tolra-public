@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { CalendarClock, ClipboardList, Eye, EyeOff, FileText, Lock } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -114,6 +115,9 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
               {!brand ? <p className="text-3xl font-black tracking-tight text-[var(--brand)]">{PRODUCT.name}</p> : null}
               <h1 className="mt-5 text-3xl font-bold tracking-tight text-slate-950">{brand ? `Sign in to ${name}` : "Welcome back"}</h1>
               <p className="mt-2 text-sm text-slate-500">{brand ? "Use the username or email your administrator gave you." : `Sign in to your workshop's ${PRODUCT.name} account.`}</p>
+              {!brand ? (
+                <p className="mt-3 text-sm text-slate-600 lg:hidden">Quotes, jobs and invoices for small CNC and fabrication shops. <Link href="/" className="font-semibold text-[var(--brand-accent)] underline underline-offset-2">What is Tolra?</Link></p>
+              ) : null}
             </div>
 
             <div className="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl shadow-slate-900/5 sm:p-8">

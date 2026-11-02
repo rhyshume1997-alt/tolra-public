@@ -1,24 +1,31 @@
 /**
  * Fixed limits for the AI admin helper: models, sizes, output caps and the price table the monthly cap is reserved from.
  *
- * COST. The cap (migration 101, pence) is reserved BEFORE each request from an upper bound: every byte of the system prompt and the
- * data counted as one input token (a token always covers at least one byte), plus framing, plus the full output cap (thinking included:
+ * COST. The cap (migration 101, pence) is reserved BEFORE each request from an upper bound: every byte of the system prompt, the
+ * data and the answer's JSON schema (sent with the request, E9 Q4) counted as one input token (a token always covers at least one byte), plus framing, plus the full output cap (thinking included:
  * max_tokens bounds all output). The request is sent with that output cap, so the provider's own usage can never exceed the estimate,
  * and the database never settles above the reservation either. Prices are the provider's list prices in US dollars per million tokens;
  * one US cent is counted as one penny, which over-counts while a pound is worth more than a dollar (the cap errs on the safe side).
  */
-export type AiHelperFeature = "roundup" | "rfq";
+export type AiHelperFeature = "roundup" | "rfq" | "assistant";
 
 export const AI_HELPER_MODELS: Record<AiHelperFeature, string> = {
   // Reading an RFQ email into spec lines: the stronger model.
   rfq: "claude-opus-5-5",
   // Wording a short summary of facts the code already worked out.
   roundup: "claude-sonnet-5-5",
+  // G3: answering one question about the company's own records, and drafting text (PLAN.md section 5: Sonnet for the assistant).
+  assistant: "claude-sonnet-5-5",
 };
 
-export const AI_HELPER_EFFORT: Record<AiHelperFeature, "low" | "medium"> = { rfq: "medium", roundup: "low" };
+export const AI_HELPER_EFFORT: Record<AiHelperFeature, "low" | "medium"> = { rfq: "medium", roundup: "low", assistant: "low" };
 
-export const MAX_OUTPUT_TOKENS: Record<AiHelperFeature, number> = { rfq: 8000, roundup: 2000 };
+export const MAX_OUTPUT_TOKENS: Record<AiHelperFeature, number> = { rfq: 8000, roundup: 2000, assistant: 2000 };
+
+/** The assistant (G3): the question's length (at most 3,000 bytes), the request body, and how many records one question may see. */
+export const ASSISTANT_QUESTION_MAX_CHARS = 1000;
+export const ASSISTANT_BODY_MAX_BYTES = 8 * 1024;
+export const ASSISTANT_MAX_RECORDS = 50;
 
 /** Pasted RFQ text: characters (and bytes, for multi-byte text) the route accepts. */
 export const RFQ_MAX_CHARS = 20_000;
@@ -30,7 +37,7 @@ export const RFQ_MAX_LINES = 20;
 /** Past quote lines sent as examples (this company's own, read with the person's session). */
 export const RFQ_PAST_LINES = 20;
 
-/** One model request, end to end (the SDK retries once inside it). */
+/** One model request, end to end. The SDK makes ONE attempt (maxRetries 0, E9 Q4): one reservation never pays for two billed calls. */
 export const AI_REQUEST_TIMEOUT_MS = 30_000;
 
 const PRICES_USD_PER_MTOK: Record<string, { input: number; output: number }> = {

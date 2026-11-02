@@ -354,6 +354,10 @@ describe("the platform owner", () => {
     expect((await c.rpc("report_job_problem", { p_job: seedC.jobs, p_reason: "other", p_note: "Support attempt", p_request_id: randomUUID() })).error).not.toBeNull();
     expect((await c.rpc("resolve_job_problem", { p_problem: randomUUID(), p_note: "Support attempt" })).error).not.toBeNull();
     expect(await sql("select 1 from public.job_problems where organization_id = $1", [gamma])).toEqual([]);
+    // 129: an accountant invite is neither made nor cancelled from a read-only support session.
+    expect((await c.rpc("create_accountant_invite", { p_email: "support.attempt@example.test", p_token_hash: "a".repeat(64) })).error).not.toBeNull();
+    expect((await c.rpc("revoke_accountant_invite", { p_invite: randomUUID() })).data ?? false).toBe(false);
+    expect(await sql("select 1 from public.organization_invites where organization_id = $1 and token_hash is not null", [gamma])).toEqual([]);
     // 118: parts are not logged on the company's job from a read-only support session.
     expect((await c.rpc("log_job_parts", { p_job: seedC.jobs, p_quantity: 1, p_note: null, p_client_op_id: randomUUID() })).error).not.toBeNull();
     expect(await sql("select 1 from public.job_part_logs where organization_id = $1", [gamma])).toEqual([]);

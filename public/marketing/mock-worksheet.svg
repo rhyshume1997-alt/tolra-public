@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" width="640" height="440" font-family="Arial, Helvetica, sans-serif">
+  <rect width="640" height="440" fill="#e8eef8"/>
+  <rect x="40" y="14" width="560" height="412" rx="6" fill="#ffffff" stroke="#c4d0e4"/>
+  <rect x="40" y="14" width="560" height="50" rx="6" fill="#0b2a5b"/>
+  <text x="58" y="45" font-size="16" font-weight="700" fill="#ffffff">Job J-0001 · Mounting bracket</text>
+  <rect x="478" y="26" width="104" height="26" rx="13" fill="#1e8fff"/>
+  <text x="530" y="43" font-size="12" font-weight="700" fill="#06224d" text-anchor="middle">In progress</text>
+  <text x="58" y="92" font-size="10" fill="#5b6b86">Customer</text><text x="58" y="107" font-size="12" font-weight="700" fill="#0b2a5b">Example Plant Co</text>
+  <text x="230" y="92" font-size="10" fill="#5b6b86">Quantity</text><text x="230" y="107" font-size="12" font-weight="700" fill="#0b2a5b">20 off</text>
+  <text x="350" y="92" font-size="10" fill="#5b6b86">Material</text><text x="350" y="107" font-size="12" font-weight="700" fill="#0b2a5b">S355 plate, 6 mm</text>
+  <rect x="58" y="126" width="170" height="150" rx="4" fill="#f4f7fc" stroke="#c4d0e4"/>
+  <text x="143" y="144" font-size="10" fill="#5b6b86" text-anchor="middle">Drawing</text>
+  <path d="M88 250V170h70v24h-44v56z" fill="none" stroke="#0b2a5b" stroke-width="2"/>
+  <circle cx="102" cy="184" r="5" fill="none" stroke="#1e8fff" stroke-width="2"/>
+  <circle cx="102" cy="236" r="5" fill="none" stroke="#1e8fff" stroke-width="2"/>
+  <line x1="170" y1="170" x2="190" y2="170" stroke="#5b6b86"/><line x1="170" y1="250" x2="190" y2="250" stroke="#5b6b86"/><line x1="186" y1="170" x2="186" y2="250" stroke="#5b6b86"/>
+  <rect x="246" y="126" width="336" height="24" fill="#e8eef8"/>
+  <text x="256" y="142" font-size="10" font-weight="700" fill="#0b2a5b">Operation</text>
+  <text x="400" y="142" font-size="10" font-weight="700" fill="#0b2a5b">Machine</text>
+  <text x="572" y="142" font-size="10" font-weight="700" fill="#0b2a5b" text-anchor="end">Status</text>
+  <g font-size="11" fill="#22314d">
+    <text x="256" y="170">1  Laser cut</text><text x="400" y="170">Laser 1</text>
+    <text x="256" y="198">2  Fold</text><text x="400" y="198">Press brake</text>
+    <text x="256" y="226">3  Deburr and check</text><text x="400" y="226">Bench</text>
+    <text x="256" y="254">4  Despatch</text><text x="400" y="254">Goods out</text>
+  </g>
+  <g font-size="10" font-weight="700" text-anchor="end">
+    <text x="572" y="170" fill="#0a7a43">Done</text><text x="572" y="198" fill="#0b2a5b">Running</text>
+    <text x="572" y="226" fill="#5b6b86">Waiting</text><text x="572" y="254" fill="#5b6b86">Waiting</text>
+  </g>
+  <g stroke="#dbe3f0"><line x1="246" y1="178" x2="582" y2="178"/><line x1="246" y1="206" x2="582" y2="206"/><line x1="246" y1="234" x2="582" y2="234"/><line x1="246" y1="262" x2="582" y2="262"/></g>
+  <text x="58" y="306" font-size="10" fill="#5b6b86">Notes</text>
+  <rect x="58" y="314" width="330" height="5" rx="2" fill="#dbe3f0"/><rect x="58" y="326" width="260" height="5" rx="2" fill="#dbe3f0"/>
+  <text x="58" y="360" font-size="10" fill="#5b6b86">Sign-off</text>
+  <rect x="58" y="368" width="200" height="38" rx="4" fill="#ffffff" stroke="#c4d0e4" stroke-dasharray="4 3"/>
+  <path d="M72 394c10-22 16 8 26-8s14 6 24-2" fill="none" stroke="#0b2a5b" stroke-width="2"/>
+  <rect x="470" y="378" width="112" height="28" rx="14" fill="#0b2a5b"/>
+  <text x="526" y="396" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">Demo data</text>
+</svg>

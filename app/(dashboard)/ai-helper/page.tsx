@@ -1,5 +1,6 @@
 "use client";
 
+import { AiAssistantPanel } from "@/components/ai-helper/assistant-panel";
 import { AiCustomisedCard } from "@/components/ai-helper/customised-card";
 import { AiMasterCard } from "@/components/ai-helper/master-card";
 import { AiRfqPanel } from "@/components/ai-helper/rfq-panel";
@@ -37,6 +38,7 @@ export default function AiHelperPage() {
             <AiCustomisedCard status={status} onStatus={setStatus} />
             {status.roundup_enabled ? <AiRoundupPanel onUsed={() => void reload()} /> : null}
             {status.rfq_enabled ? <AiRfqPanel onUsed={() => void reload()} /> : null}
+            {status.assistant_available && status.assistant_enabled ? <AiAssistantPanel onUsed={() => void reload()} /> : null}
           </>
         )}
       </div>
