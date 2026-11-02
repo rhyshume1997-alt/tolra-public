@@ -13,7 +13,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
-  loadMoneyTiles, loadQuoteTiles, moneyTilesFromAggregate, moneyTilesFromRows, quoteTilesFromAggregates, quoteTilesFromRows,
+  loadMoneyTiles, loadQuoteTiles, moneyTilesFromAggregate, moneyTilesFromRows, overdueOwed, quoteTilesFromAggregates, quoteTilesFromRows,
   type TileClient,
 } from "@/lib/dashboard-tile-figures";
 import { lights } from "@/lib/dashboard-analytics";
@@ -24,8 +24,10 @@ const fixture = JSON.parse(readFileSync(path.join(__dirname, "../fixtures/dashbo
 const dates = fixture.dates as { today: string; monthStart: string; ninetyDaysAgo: string };
 const people = Object.entries(fixture.people as Record<string, { rows: Record<string, any[]>; rpc: Record<string, any> }>);
 const aggregates = (rpc: Record<string, any>) => ({ open: rpc.open, sent: rpc.sent, won: rpc.won, outcomes: rpc.outcomes, rfqs: rpc.rfqs });
-/** The page's overdue sum (dashboard page.tsx: every bucket but "not due"). */
-const overdue = (m: ReturnType<typeof moneyTilesFromRows>) => (m.owedByAge ? m.owedByAge.filter((b) => b.key !== "not_due").reduce((sum, b) => sum + b.value, 0) : null);
+/** The page's overdue sum (dashboard page.tsx: lib/dashboard-tile-figures overdueOwed, the late buckets in whole pence). */
+const overdue = (m: ReturnType<typeof moneyTilesFromRows>) => overdueOwed(m.owedByAge);
+/** How the page added the late buckets before: pounds as floats. */
+const overdueInPounds = (m: ReturnType<typeof moneyTilesFromRows>) => (m.owedByAge ? m.owedByAge.filter((b) => b.key !== "not_due").reduce((sum, b) => sum + b.value, 0) : null);
 /** What the tiles print (the page's num/money and gbp helpers, the Money owed light), so "the same" also means the same text on screen. */
 const shown = (t: ReturnType<typeof quoteTilesFromRows>, m: ReturnType<typeof moneyTilesFromRows>) => ({
   openQuotes: t.openQuotes, pipeline: t.pipelineValue === null ? null : gbp(t.pipelineValue, 0), rfqs: t.rfqsToQuote, sent: t.quotesSentThisMonth,
@@ -160,6 +162,37 @@ describe("132 money on screen: whole pence in, the page's own gbp(value, 0) out"
         expect(Number.isSafeInteger(rpc.owed[b.key]), `${who} ${b.key}`).toBe(true);
         expect(Object.is(b.value, rpc.owed[b.key] / 100), `${who} ${b.key}`).toBe(true);
       }
+    }
+  });
+});
+
+describe("132 overdue: the three late buckets added in whole pence, divided once", () => {
+  const tiles = (late: [number, number, number], notDue = 0) =>
+    moneyTilesFromAggregate({ to_confirm: 0, invoices: 3, owed_pence: notDue + late[0] + late[1] + late[2], not_due: notDue, late_1_30: late[0], late_31_60: late[1], late_60_plus: late[2] });
+
+  it("1p + 201p + 148p = 350p overdue: £4 (adding pounds gave 3.4999999999999996, £3); not due is never counted", () => {
+    const m = tiles([1, 201, 148], 99999);
+    expect(overdueInPounds(m)).toBe(3.4999999999999996);
+    expect(gbp(overdueInPounds(m)!, 0)).toBe("£3");
+    expect(overdueOwed(m.owedByAge)).toBe(3.5);
+    expect(gbp(overdueOwed(m.owedByAge)!, 0)).toBe("£4");
+    expect(lights.moneyOwed(m.moneyOwed, overdueOwed(m.owedByAge))).toBe("red");
+  });
+
+  it("nothing late: 0 (light green when something is owed); no buckets (read failed): null", () => {
+    const m = tiles([0, 0, 0], 500);
+    expect(overdueOwed(m.owedByAge)).toBe(0);
+    expect(lights.moneyOwed(m.moneyOwed, overdueOwed(m.owedByAge))).toBe("green");
+    expect(overdueOwed(null)).toBeNull();
+  });
+
+  it("every fixture person: the late buckets' pence / 100, and the same text and light as adding pounds gave", () => {
+    for (const [who, { rows, rpc }] of people) {
+      const now = moneyTilesFromAggregate(rpc.owed);
+      expect(overdueOwed(now.owedByAge), who).toBe((rpc.owed.late_1_30 + rpc.owed.late_31_60 + rpc.owed.late_60_plus) / 100);
+      const old = moneyTilesFromRows(rows.unpaid, dates.today);
+      expect(gbp(overdueOwed(now.owedByAge)!, 0), who).toBe(gbp(overdueInPounds(old)!, 0));
+      expect(lights.moneyOwed(now.moneyOwed, overdueOwed(now.owedByAge)), who).toBe(lights.moneyOwed(old.moneyOwed, overdueInPounds(old)));
     }
   });
 });

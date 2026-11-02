@@ -2,7 +2,7 @@
 
 import { AiHelperDashboardLink } from "@/components/ai-helper/dashboard-link";
 import { fetchAll } from "@/lib/fetch-all";
-import { loadMoneyTiles, loadQuoteTiles } from "@/lib/dashboard-tile-figures";
+import { loadMoneyTiles, loadQuoteTiles, overdueOwed as overdueFromBuckets } from "@/lib/dashboard-tile-figures";
 import { HAS_REQUIRED_DATE_FILTER, onTimeJobCount } from "@/lib/job-status";
 import { OPEN_JOBS_FILTER, RUNNING_JOBS_FILTER, hasReworkTag, openJobsDueFilter, stageLabel, stageOf } from "@/lib/job-flow";
 import { StatusBadge } from "@/components/status-badge";
@@ -438,7 +438,8 @@ function AdminDashboard({ office = false }: { office?: boolean }) {
   const pipe = d?.pipeline;
   const canOpen = useCanOpen();
   const { isVisible } = useColumnVisibility("dashboard");
-  const overdueOwed = d?.owedByAge ? d.owedByAge.filter((b) => b.key !== "not_due").reduce((sum, b) => sum + b.value, 0) : null;
+  // The three late buckets added in whole pence (lib/dashboard-tile-figures overdueOwed), never pounds as floats.
+  const overdueOwed = overdueFromBuckets(d?.owedByAge ?? null);
   const kpis: Array<[string, React.ReactNode]> = [
     office
       ? ["rfqs-to-quote", <KpiCard key="rfqs-to-quote" label="RFQs to quote" value={num(d?.rfqsToQuote, loading)} subtext="Outstanding: no quote yet" icon={FileText} href="/rfq" light={d?.rfqsToQuote ? "amber" : "none"} />]

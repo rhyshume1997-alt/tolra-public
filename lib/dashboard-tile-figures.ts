@@ -186,6 +186,16 @@ export function moneyTilesFromAggregate(a: OwedAnswer | null): MoneyTiles {
   };
 }
 
+/**
+ * What is overdue (the Money owed tile's "£x overdue", its light, the leaks list): the three late buckets added in whole pence, then
+ * turned into pounds once. Each bucket is whole pence / 100, so Math.round(value * 100) gives its pence back exactly; adding the pounds
+ * instead (as the page did) can drift below a half pound and show a pound less (0.01 + 2.01 + 1.48 = 3.4999999999999996: £3, not £4).
+ */
+export function overdueOwed(buckets: AgeBucket[] | null): number | null {
+  if (!buckets) return null;
+  return buckets.filter((b) => b.key !== "not_due").reduce((pence, b) => pence + Math.round(b.value * 100), 0) / 100;
+}
+
 type Answer = { ok: true; data: any } | { ok: false; missing: boolean };
 async function call(client: TileClient, fn: string, args: Record<string, unknown>): Promise<Answer> {
   try {
