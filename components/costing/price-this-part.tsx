@@ -44,9 +44,9 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
     <div className="grid gap-3 sm:grid-cols-2">
       {field('Quantity', quantity, v => setQuantity(Math.floor(v)), '1')}
       {material?.unit === 'kg' && field('Material weight kg per part', weightKg, setWeightKg)}
-      {field('Setup hours for batch', setupHours, setSetupHours)}
-      {field('Cycle hours per part', cycleHours, setCycleHours)}
-      {field('Programming hours for batch', programmingHours, setProgrammingHours)}
+      {field('Setup hours for this batch', setupHours, setSetupHours)}
+      {field('Making time per part (hours)', cycleHours, setCycleHours)}
+      {field('Programming hours for this batch', programmingHours, setProgrammingHours)}
     </div>
     {!estimate && material && machine && <p role="alert">Check the quantity, costs and times. Quantity must be a whole number from 1 to 1,000,000.</p>}
     {estimate && <div aria-label="Cost breakdown" className="space-y-1 text-sm">
@@ -54,10 +54,10 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
       <div>Machine: £{estimate.cost_breakdown.machine_cost.toFixed(2)}</div>
       <div>Labour: £{estimate.cost_breakdown.labor_cost.toFixed(2)}</div>
       <div>Programming: £{estimate.cost_breakdown.programming_cost.toFixed(2)}</div>
-      <div>Overhead: £{estimate.cost_breakdown.overhead_cost.toFixed(2)}</div>
+      <div>Other running costs: £{estimate.cost_breakdown.overhead_cost.toFixed(2)}</div>
       <div>Cost per part: £{estimate.summary.unit_cost.toFixed(2)}</div>
       <div>Price per part: £{estimate.summary.unit_price.toFixed(2)}</div>
-      <div>Total quote: £{previewLineTotal(quantity, estimate.summary.unit_price).toFixed(2)}</div>
+      <div>Quote line total before VAT: £{previewLineTotal(quantity, estimate.summary.unit_price).toFixed(2)}</div>
     </div>}
     <button type="button" disabled={!estimate || !description.trim()} onClick={() => {
       if (estimate && description.trim()) onAdd({ description: description.trim(), quantity, unitPrice: estimate.summary.unit_price });
