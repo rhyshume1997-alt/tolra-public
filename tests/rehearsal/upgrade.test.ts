@@ -133,8 +133,9 @@ async function expect043(db: Client, present: boolean) {
   for (const [name, text] of checks) expect(await q(text), `${name} present = ${present}`).toBe(present);
 }
 
-/** What the catalogue fingerprint does not hold: every column and index in public, and the full text of every function in public and
- *  security_audit (077 replaces only security_audit.set_audit_hash). */
+/** What the catalogue fingerprint does not hold: every column and index in public, the full text of every function in public and
+ *  security_audit (077 replaces only security_audit.set_audit_hash), and every row-level-security policy in public, security_audit and
+ *  storage with its kind, roles, command and full USING / WITH CHECK text (131 changes nothing but policy text). */
 const structure = (db: Client) => db.query<{ k: string; d: string }>(
   `select 'column ' || table_name || '.' || column_name as k, data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '') as d
      from information_schema.columns where table_schema = 'public'
@@ -143,6 +144,9 @@ const structure = (db: Client) => db.query<{ k: string; d: string }>(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'security_audit') and p.prokind = 'f'
        and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
    union all select 'trigger ' || tgrelid::regclass::text || ' ' || tgname, pg_get_triggerdef(oid) from pg_trigger where not tgisinternal
+   union all select 'policy ' || schemaname || '.' || tablename || ' ' || policyname,
+                    permissive || ' ' || roles::text || ' ' || cmd || ' USING ' || coalesce(qual, '') || ' WITH CHECK ' || coalesce(with_check, '')
+     from pg_policies where schemaname in ('public', 'security_audit', 'storage')
    order by 1`).then((r) => r.rows);
 
 const IS_044 = (file: string) => file.endsWith("_machine_runs.sql");
