@@ -472,7 +472,7 @@
  {
   "kind": "function",
   "object": "public.dashboard_money_owed(p_today date)",
-  "detail": "invoker search_path=pg_catalog, public c79ac190ae23c6d92c2ee661c8731124"
+  "detail": "invoker search_path=pg_catalog, public fdab50bb12e6e508f3fdae3a4ddf224d"
  },
  {
   "kind": "function",

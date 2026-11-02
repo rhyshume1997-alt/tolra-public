@@ -8,8 +8,10 @@
 -- by age and the "payment to confirm" item, the page read EVERY quote, every declined quote line, every RFQ and every unpaid invoice
 -- into the browser, 1,000 rows per request (lib/fetch-all), and counted and added them up there; past 20,000 rows a figure was blanked.
 -- AFTER: one call per tile. Six read-only functions return the same counts and sums (whole pence), a few dozen bytes each, whatever
--- the company's size. lib/dashboard-tile-figures.ts turns them into exactly the figures the page showed (same rounding, same order of
--- adding); until 132 is applied the page uses the old reads (moved verbatim to the same file), so it works on either side of the release.
+-- the company's size. lib/dashboard-tile-figures.ts turns them into the figures the page showed (same rules, same rounding on screen);
+-- until 132 is applied the page uses the old reads (moved verbatim to the same file), so it works on either side of the release.
+-- Every figure is a whole number (counts, pence), never a float: a float's text in JSON depends on the session's extra_float_digits
+-- (Supabase's server sets 0, PostgreSQL's default is 1), so the same sum could print as 634.32 or 634.3200000000002.
 --
 -- WHAT CHANGES. Six new functions, nothing else: no table, column, row, policy, trigger or existing function is changed.
 --   public.dashboard_open_quotes(today)          Open quotes tile + pipeline: sent and undecided, their value; accepted count.
@@ -50,7 +52,7 @@ BEGIN
                                  'dashboard_rfqs_to_quote', 'dashboard_money_owed')
                AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) NOT IN (
                  'd2c5bd23f4c46c421b989012e74c2e80', '308be040514eab13aca8cf86dd7f2c63', 'd2ca2c957383ede97833c95b84b0f8fa',
-                 '774a67cfe0e7fd2f013f7fd3abcc7dad', 'feb2db260235700a2166bb4c1a550467', '717e79e4e15894b2392c3c9d0eda4e96')) THEN
+                 '774a67cfe0e7fd2f013f7fd3abcc7dad', 'feb2db260235700a2166bb4c1a550467', '214295752bb751f03a74c767b090e8c0')) THEN
     RAISE EXCEPTION '132: a dashboard tile function already exists with another body; stop and compare it first';
   END IF;
 END
@@ -167,7 +169,9 @@ $$;
 --   to_confirm: those whose payment is still to be confirmed (payment_unverified, 027), whatever their status;
 --   invoices / owed: the collectible ones (trimmed, lower-cased status, blank = draft; not paid, draft, void, voided, cancelled,
 --     canceled, credited or written_off) with payment confirmed, and what is owed on them: total - paid - credited + refunded, never
---     below zero. owed is added in pounds, one invoice at a time in id order, as the page added it (the same IEEE double sum);
+--     below zero. owed_pence is that total in whole pence, exact (the page added pounds as floats, so its total could be a hair off
+--     the exact pence; on screen, in whole pounds, the two are the same except where the exact total ends in exactly 50p and the float
+--     sum fell just below it: there the page showed a pound less than the exact total rounds to, and now shows the exact rounding);
 --   the age buckets: those with something owed, in whole pence, by days past the due date (none = not due).
 CREATE OR REPLACE FUNCTION public.dashboard_money_owed(p_today DATE)
 RETURNS JSONB
@@ -192,7 +196,7 @@ AS $$
   SELECT jsonb_build_object(
     'to_confirm', (SELECT count(*) FROM r WHERE r.unverified),
     'invoices', count(*),
-    'owed', coalesce(sum(o.pence::FLOAT8 / 100 ORDER BY o.id), 0),
+    'owed_pence', coalesce(sum(o.pence), 0),
     'not_due', coalesce(sum(o.pence) FILTER (WHERE o.pence > 0 AND o.late <= 0), 0),
     'late_1_30', coalesce(sum(o.pence) FILTER (WHERE o.pence > 0 AND o.late BETWEEN 1 AND 30), 0),
     'late_31_60', coalesce(sum(o.pence) FILTER (WHERE o.pence > 0 AND o.late BETWEEN 31 AND 60), 0),

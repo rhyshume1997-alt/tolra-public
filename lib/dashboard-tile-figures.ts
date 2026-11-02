@@ -9,8 +9,11 @@
  *   RFQs to quote + the pipeline's RFQs           public.dashboard_rfqs_to_quote()
  *   Money owed, Money owed by age, to confirm     public.dashboard_money_owed(today)
  *
- * The figures are the SAME as the old reads gave, to the last bit (tests/unit/dashboard-tile-figures.test.ts works both out over the
- * same rows): pence are whole numbers turned into pounds as before, the money-owed total is added in pounds in id order as before.
+ * The figures are the SAME as the old reads gave (tests/unit/dashboard-tile-figures.test.ts works both out over the same rows): every
+ * answer is a whole number (counts, pence), turned into pounds as before. The one exception is the money-owed total: the old reads added
+ * pounds as floats, so their total could be a hair off the exact pence (634.3200000000002); the function returns the exact pence. On
+ * screen (whole pounds) the two are the same, except where the exact total ends in exactly 50p and the float sum fell just below it: the
+ * old page showed a pound less there (£3 for £3.50), this shows the exact total's rounding (£4).
  * Until 132 is applied (a function is missing) the old reads run instead, moved here unchanged (quoteTilesFromRows, moneyTilesFromRows),
  * so the page works on either side of the release. Any other failure blanks only that tile's figure (a dash), never fakes one.
  * One difference by design: the old reads blanked a figure past 20,000 rows (lib/fetch-all); the functions have no such limit.
@@ -131,7 +134,7 @@ async function moneyTilesFromReads(client: TileClient, today: string): Promise<M
 // ----- 132's functions --------------------------------------------------------------------------------------------------------------
 type OpenAnswer = { open_count: number; open_pence: number; accepted_count: number };
 type OutcomesAnswer = { accepted: number; sent: number; expired: number; rejected: number; expired_sent: number };
-type OwedAnswer = { to_confirm: number; invoices: number; owed: number; not_due: number; late_1_30: number; late_31_60: number; late_60_plus: number };
+type OwedAnswer = { to_confirm: number; invoices: number; owed_pence: number; not_due: number; late_1_30: number; late_31_60: number; late_60_plus: number };
 export type QuoteAnswers = {
   open: OpenAnswer | null;
   sent: { count: number } | null;
@@ -173,7 +176,7 @@ export function moneyTilesFromAggregate(a: OwedAnswer | null): MoneyTiles {
     failed: false,
     toConfirm: Number(a.to_confirm),
     unpaidInvoices: Number(a.invoices),
-    moneyOwed: Number(a.owed),
+    moneyOwed: Number(a.owed_pence) / 100,
     owedByAge: [
       { key: "not_due", label: "Not due yet", light: "green", value: Number(a.not_due) / 100 },
       { key: "late_1_30", label: "1–30 days late", light: "amber", value: Number(a.late_1_30) / 100 },

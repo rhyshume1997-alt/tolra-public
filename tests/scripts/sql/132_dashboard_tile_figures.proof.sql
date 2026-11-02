@@ -36,6 +36,8 @@ END $f$;
 \set O '''a0000000-0000-0000-0000-0000000001a2'''
 \set W '''a0000000-0000-0000-0000-0000000001a3'''
 \set B '''b0000000-0000-0000-0000-0000000001b1'''
+\set G '''c0000000-0000-0000-0000-0000000001c1'''
+\set D '''d0000000-0000-0000-0000-0000000001d1'''
 
 -- Alpha admin: every figure against the hand count.
 INSERT INTO r(name, ok) SELECT 'alpha open quotes: 6 sent and valid (incl. SENT, valid today, no date, v2), 1235128.19, 3 accepted (ACCEPTED, not "Accepted ")',
@@ -49,10 +51,35 @@ INSERT INTO r(name, ok) SELECT 'alpha quotes last 90 days: 2 accepted, 6 awaitin
 INSERT INTO r(name, ok) SELECT 'alpha RFQs to quote: 4 (blank, null, new, "Quoted"; not quoted, not linked)',
   pg_temp.as_user(:A, $$public.dashboard_rfqs_to_quote()$$) = '{"outstanding": 4}';
 INSERT INTO r(name, ok) SELECT 'alpha money owed: 49 invoices, 2 to confirm, buckets 197.87 / 153.05 / 143.40 / 140.00 (60 late is 31-60, 61 is 60+)',
-  pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20') - 'owed'$$)
+  pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20') - 'owed_pence'$$)
     = '{"invoices": 49, "to_confirm": 2, "not_due": 19787, "late_1_30": 15305, "late_31_60": 14340, "late_60_plus": 14000}';
-INSERT INTO r(name, ok) SELECT 'alpha money owed total is the pounds added in id order (634.3200000000002, not 634.32)',
-  (pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20')$$) ->> 'owed') = '634.3200000000002';
+INSERT INTO r(name, ok) SELECT 'alpha money owed total is exact whole pence: 63432 (the old page''s float sum was 634.3200000000002; £634 either way)',
+  (pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20')$$) ->> 'owed_pence') = '63432'
+  AND NOT (pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20')$$) ? 'owed');
+-- The money-owed edge cases (seed comments): Gamma's 199 small amounts and credits, Delta's exact 3.50; columns hold whole pence only.
+INSERT INTO r(name, ok) SELECT 'gamma 203 invoices owe 9407 pence (23.40 small, over-paid 0, over-credited 0, refunded 4.00, part-paid 66.67); delta 350 pence; amounts have 2 decimals',
+  pg_temp.as_user(:G, $$public.dashboard_money_owed('2026-10-20') -> 'owed_pence'$$) = '9407'
+  AND pg_temp.as_user(:G, $$public.dashboard_money_owed('2026-10-20') -> 'invoices'$$) = '203'
+  AND pg_temp.as_user(:D, $$public.dashboard_money_owed('2026-10-20')$$)
+      = '{"invoices": 3, "to_confirm": 0, "owed_pence": 350, "not_due": 350, "late_1_30": 0, "late_31_60": 0, "late_60_plus": 0}'
+  AND (SELECT count(*) = 4 AND bool_and(numeric_scale = 2) FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'invoices' AND column_name IN ('total', 'amount_paid', 'credited_amount', 'refunded_amount'));
+-- No float anywhere: every answer is whole numbers in its JSON text, and the same text whatever the session's extra_float_digits
+-- (Supabase's server sets 0, PostgreSQL's default is 1; a float's text depends on it).
+CREATE TEMP TABLE t_digits(digits int, who text, answer text);
+GRANT ALL ON t_digits TO PUBLIC;
+SET LOCAL extra_float_digits = 0;
+INSERT INTO t_digits SELECT 0, w, pg_temp.as_user(u::uuid, $$jsonb_build_array(public.dashboard_open_quotes('2026-10-20'), public.dashboard_quotes_sent('2026-10-01'),
+  public.dashboard_quotes_won('2026-10-01'), public.dashboard_quote_outcomes('2026-07-22', '2026-10-20'), public.dashboard_rfqs_to_quote(),
+  public.dashboard_money_owed('2026-10-20'))$$)::text FROM (VALUES ('A', :A), ('O', :O), ('W', :W), ('B', :B), ('G', :G), ('D', :D)) v(w, u);
+SET LOCAL extra_float_digits = 1;
+INSERT INTO t_digits SELECT 1, w, pg_temp.as_user(u::uuid, $$jsonb_build_array(public.dashboard_open_quotes('2026-10-20'), public.dashboard_quotes_sent('2026-10-01'),
+  public.dashboard_quotes_won('2026-10-01'), public.dashboard_quote_outcomes('2026-07-22', '2026-10-20'), public.dashboard_rfqs_to_quote(),
+  public.dashboard_money_owed('2026-10-20'))$$)::text FROM (VALUES ('A', :A), ('O', :O), ('W', :W), ('B', :B), ('G', :G), ('D', :D)) v(w, u);
+RESET extra_float_digits;
+INSERT INTO r(name, ok) SELECT 'every answer, for all six people, is whole numbers only and the same text under extra_float_digits 0 and 1',
+  (SELECT count(*) = 12 AND bool_and(regexp_replace(answer, '"[^"]*"', '', 'g') !~ '[.eE]') AND bool_and(answer NOT LIKE '%error%') FROM t_digits)
+  AND NOT EXISTS (SELECT 1 FROM t_digits a JOIN t_digits b ON b.who = a.who AND b.digits = 1 WHERE a.digits = 0 AND a.answer <> b.answer);
 -- Row-level security applies (SECURITY INVOKER): Quotes hidden from the office login -> no quote counted, and every RFQ looks unquoted.
 INSERT INTO r(name, ok) SELECT 'alpha office with Quotes hidden: 0 open, 0 sent, 0 won, 5 RFQs to quote (no quote it may see is linked)',
   pg_temp.as_user(:O, $$public.dashboard_open_quotes('2026-10-20') || public.dashboard_quotes_won('2026-10-01')$$) = '{"open_count": 0, "open_pence": 0, "accepted_count": 0, "count": 0, "undated": 0}'
@@ -73,7 +100,7 @@ INSERT INTO r(name, ok) SELECT 'beta admin: only Beta (2 open 1999.98, 1 accepte
   AND pg_temp.as_user(:B, $$public.dashboard_quotes_won('2026-10-01')$$) = '{"count": 1, "undated": 0}'
   AND pg_temp.as_user(:B, $$public.dashboard_rfqs_to_quote()$$) = '{"outstanding": 1}'
   AND pg_temp.as_user(:B, $$public.dashboard_money_owed('2026-10-20')$$)
-      = '{"invoices": 1, "to_confirm": 0, "owed": 5000, "not_due": 0, "late_1_30": 0, "late_31_60": 0, "late_60_plus": 500000}';
+      = '{"invoices": 1, "to_confirm": 0, "owed_pence": 500000, "not_due": 0, "late_1_30": 0, "late_31_60": 0, "late_60_plus": 500000}';
 -- Not signed in: refused, every one.
 INSERT INTO r(name, ok) SELECT 'anon: all six refused (42501)',
   pg_temp.as_user(NULL, $$public.dashboard_open_quotes('2026-10-20')$$) = '{"error": "42501"}'

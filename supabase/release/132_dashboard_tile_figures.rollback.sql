@@ -12,7 +12,7 @@ BEGIN
                                  'dashboard_rfqs_to_quote', 'dashboard_money_owed')
                AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) NOT IN (
                  'd2c5bd23f4c46c421b989012e74c2e80', '308be040514eab13aca8cf86dd7f2c63', 'd2ca2c957383ede97833c95b84b0f8fa',
-                 '774a67cfe0e7fd2f013f7fd3abcc7dad', 'feb2db260235700a2166bb4c1a550467', '717e79e4e15894b2392c3c9d0eda4e96')) THEN
+                 '774a67cfe0e7fd2f013f7fd3abcc7dad', 'feb2db260235700a2166bb4c1a550467', '214295752bb751f03a74c767b090e8c0')) THEN
     RAISE EXCEPTION '132 rollback: a dashboard tile function is not 132''s; stop and compare it first';
   END IF;
 END

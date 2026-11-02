@@ -180,7 +180,7 @@ markers(migration, present) AS (
     ('132 dashboard tile figures',        (SELECT count(*) = 6 FROM fn WHERE nspname = 'public' AND (proname, md5(regexp_replace(prosrc, '\s', '', 'g'))) IN (
                                             ('dashboard_open_quotes', 'd2c5bd23f4c46c421b989012e74c2e80'), ('dashboard_quotes_sent', '308be040514eab13aca8cf86dd7f2c63'),
                                             ('dashboard_quotes_won', 'd2ca2c957383ede97833c95b84b0f8fa'), ('dashboard_quote_outcomes', '774a67cfe0e7fd2f013f7fd3abcc7dad'),
-                                            ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '717e79e4e15894b2392c3c9d0eda4e96'))))
+                                            ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '214295752bb751f03a74c767b090e8c0'))))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

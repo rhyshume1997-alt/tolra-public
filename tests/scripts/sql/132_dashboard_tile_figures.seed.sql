@@ -1,6 +1,9 @@
 -- Seed for migration 132's proof and parity fixture (tests/scripts/sql/132_dashboard_tile_figures.proof.sql and .fixture.sql). No
--- transaction of its own: the caller's BEGIN ... ROLLBACK keeps nothing. Two companies (Alpha, Beta) and four signed-in people:
--- Alpha admin, Alpha office with Quotes hidden, Alpha workshop, Beta admin. The rows are the awkward cases each rule has to get right:
+-- transaction of its own: the caller's BEGIN ... ROLLBACK keeps nothing. Four companies (Alpha, Beta, Gamma, Delta) and six signed-in
+-- people: Alpha admin, Alpha office with Quotes hidden, Alpha workshop, Beta admin, Gamma admin, Delta admin. Gamma and Delta hold only
+-- invoices, for the money-owed total (whole pence; the old page added pounds as floats): Gamma 199 small amounts whose float sum drifts
+-- plus over-paid, over-credited, refunded and part-paid invoices; Delta 0.01 + 2.01 + 1.48, exactly 3.50, which the old float sum made
+-- 3.4999999999999996 (shown £3; the exact total shows £4). The rows are the awkward cases each rule has to get right:
 -- statuses in any case, padded with spaces (and a no-break space), blank or unknown; quotes sent just before midnight UTC, accepted at
 -- 23:30 UTC on the last day of September (1 October in London); versions "v2"; RFQs linked or marked quoted in another case; invoices
 -- over-paid, credited, refunded, due today, with no due date, payment to confirm; and many pence amounts whose sum is not exact in
@@ -10,21 +13,27 @@
 -- seeded the way older or imported rows hold them.
 SET LOCAL session_replication_role = replica;
 INSERT INTO public.organizations(id, name, slug) VALUES
-  ('a0000000-0000-0000-0000-000000000132', 'Alpha 132', 'alpha-132'), ('b0000000-0000-0000-0000-000000000132', 'Beta 132', 'beta-132');
+  ('a0000000-0000-0000-0000-000000000132', 'Alpha 132', 'alpha-132'), ('b0000000-0000-0000-0000-000000000132', 'Beta 132', 'beta-132'),
+  ('c0000000-0000-0000-0000-000000000132', 'Gamma 132', 'gamma-132'), ('d0000000-0000-0000-0000-000000000132', 'Delta 132', 'delta-132');
 INSERT INTO auth.users (id, email) VALUES
   ('a0000000-0000-0000-0000-0000000001a1', 'admin.a132@example.test'), ('a0000000-0000-0000-0000-0000000001a2', 'office.a132@example.test'),
-  ('a0000000-0000-0000-0000-0000000001a3', 'workshop.a132@example.test'), ('b0000000-0000-0000-0000-0000000001b1', 'admin.b132@example.test');
+  ('a0000000-0000-0000-0000-0000000001a3', 'workshop.a132@example.test'), ('b0000000-0000-0000-0000-0000000001b1', 'admin.b132@example.test'),
+  ('c0000000-0000-0000-0000-0000000001c1', 'admin.c132@example.test'), ('d0000000-0000-0000-0000-0000000001d1', 'admin.d132@example.test');
 INSERT INTO public.user_profiles (id, email, role, organization_id, active, must_change_password) VALUES
   ('a0000000-0000-0000-0000-0000000001a1', 'admin.a132@example.test', 'admin', 'a0000000-0000-0000-0000-000000000132', TRUE, FALSE),
   ('a0000000-0000-0000-0000-0000000001a2', 'office.a132@example.test', 'office', 'a0000000-0000-0000-0000-000000000132', TRUE, FALSE),
   ('a0000000-0000-0000-0000-0000000001a3', 'workshop.a132@example.test', 'workshop', 'a0000000-0000-0000-0000-000000000132', TRUE, FALSE),
-  ('b0000000-0000-0000-0000-0000000001b1', 'admin.b132@example.test', 'admin', 'b0000000-0000-0000-0000-000000000132', TRUE, FALSE)
+  ('b0000000-0000-0000-0000-0000000001b1', 'admin.b132@example.test', 'admin', 'b0000000-0000-0000-0000-000000000132', TRUE, FALSE),
+  ('c0000000-0000-0000-0000-0000000001c1', 'admin.c132@example.test', 'admin', 'c0000000-0000-0000-0000-000000000132', TRUE, FALSE),
+  ('d0000000-0000-0000-0000-0000000001d1', 'admin.d132@example.test', 'admin', 'd0000000-0000-0000-0000-000000000132', TRUE, FALSE)
 ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, organization_id = EXCLUDED.organization_id, active = TRUE, must_change_password = FALSE;
 INSERT INTO public.organization_members (user_id, organization_id, role, hidden_sections, active) VALUES
   ('a0000000-0000-0000-0000-0000000001a1', 'a0000000-0000-0000-0000-000000000132', 'admin', '{}', TRUE),
   ('a0000000-0000-0000-0000-0000000001a2', 'a0000000-0000-0000-0000-000000000132', 'office', '{quotes}', TRUE),
   ('a0000000-0000-0000-0000-0000000001a3', 'a0000000-0000-0000-0000-000000000132', 'workshop', '{}', TRUE),
-  ('b0000000-0000-0000-0000-0000000001b1', 'b0000000-0000-0000-0000-000000000132', 'admin', '{}', TRUE);
+  ('b0000000-0000-0000-0000-0000000001b1', 'b0000000-0000-0000-0000-000000000132', 'admin', '{}', TRUE),
+  ('c0000000-0000-0000-0000-0000000001c1', 'c0000000-0000-0000-0000-000000000132', 'admin', '{}', TRUE),
+  ('d0000000-0000-0000-0000-0000000001d1', 'd0000000-0000-0000-0000-000000000132', 'admin', '{}', TRUE);
 
 -- RFQs (Alpha 6, Beta 2). Outstanding for Alpha: r1 (blank), r2 (null), r3 'new', r5 'Quoted' (case matters: not 'quoted') = 4.
 INSERT INTO public.rfqs(id, organization_id, customer, status) VALUES
@@ -105,4 +114,20 @@ INSERT INTO public.invoices(id, organization_id, invoice_ref, customer, status, 
 SELECT md5('132-small-' || g)::uuid, 'a0000000-0000-0000-0000-000000000132', 'INV-S' || g, 'Small', 'issued', (ARRAY[0.10, 0.20, 0.30, 0.70])[1 + g % 4], 0, 0, 0,
        DATE '2026-10-20' - (g * 3), FALSE
 FROM generate_series(1, 40) g;
+-- Gamma: 199 small invoices of 0.07, 0.29, 0.01, 0.10 in turn (50, 50, 50, 49 of them: 23.40), ids scrambled, due 0 to 89 days ago;
+-- over-paid (50.00, 80.00 paid: 0), credited past its total (10.00, 12.50 credited: 0), paid then partly refunded (10.00 paid, 4.00
+-- refunded: 4.00), part-paid (100.00, 33.33 paid: 66.67). Owed: 2340 + 400 + 6667 = 9407 pence over 203 invoices.
+INSERT INTO public.invoices(id, organization_id, invoice_ref, customer, status, total, amount_paid, credited_amount, refunded_amount, due_date, payment_unverified)
+SELECT md5('132-gamma-' || g)::uuid, 'c0000000-0000-0000-0000-000000000132', 'INV-G' || g, 'Small', 'issued', (ARRAY[0.10, 0.07, 0.29, 0.01])[1 + g % 4], 0, 0, 0,
+       DATE '2026-10-20' - (g % 90), FALSE
+FROM generate_series(1, 199) g;
+INSERT INTO public.invoices(id, organization_id, invoice_ref, customer, status, total, amount_paid, credited_amount, refunded_amount, due_date, payment_unverified) VALUES
+  ('c2000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000132', 'INV-GO', 'Gamma', 'issued', 50.00, 80.00, 0, 0, '2026-10-01', FALSE),
+  ('c2000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000132', 'INV-GC', 'Gamma', 'issued', 10.00, 0, 12.50, 0, '2026-10-01', FALSE),
+  ('c2000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000132', 'INV-GR', 'Gamma', 'issued', 10.00, 10.00, 0, 4.00, '2026-09-01', FALSE),
+  ('c2000000-0000-0000-0000-000000000004', 'c0000000-0000-0000-0000-000000000132', 'INV-GP', 'Gamma', 'Partial', 100.00, 33.33, 0, 0, '2026-11-01', FALSE),
+-- Delta: 0.01, 2.01, 1.48 in id order = exactly 3.50 (350 pence); added as floats in that order, 3.4999999999999996.
+  ('d2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000132', 'INV-D1', 'Delta', 'issued', 0.01, 0, 0, 0, '2026-10-25', FALSE),
+  ('d2000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000132', 'INV-D2', 'Delta', 'issued', 2.01, 0, 0, 0, '2026-10-25', FALSE),
+  ('d2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000132', 'INV-D3', 'Delta', 'issued', 1.48, 0, 0, 0, '2026-10-25', FALSE);
 SET LOCAL session_replication_role = origin;
