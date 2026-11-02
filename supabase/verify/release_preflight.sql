@@ -166,6 +166,17 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'inbound_emails' AND column_name = 'link_suggestions')),
     ('126 booking time zero quote guards', EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delete_machine_booking(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1fee96ce68caa2bcbf89f416587e75ba')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.accept_quote(uuid, text, date, uuid[])') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4f354d3878197aabe53db19807f99305')),
+    ('127 mailbox read',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mailbox_record_inbound(uuid,text,text,text,text,text,timestamp with time zone,text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '4a7ede00d54804941fc17a291bde6b4c')
+                                          AND to_regclass('public.integration_mailbox_sync') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mailbox_sync_claim(uuid,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a9985b00301c4579f1f6797205c21834')),
+    ('128 workshop network',              to_regclass('public.clock_in_network_refusals') IS NOT NULL AND to_regprocedure('public.rename_site_network(uuid,uuid,text)') IS NOT NULL
+                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.site_network_ip_purge(uuid,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '53348dc930741ac3eae1ec3258337871')),
+    ('129 accountant invite',             EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'organization_invites' AND column_name = 'token_hash')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'create_accountant_invite')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'redeem_accountant_invite')
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'handle_new_auth_user' AND position('ACCOUNTANT_INVITE_USED' IN prosrc) > 0)),
+    ('131 rls select wrap',               EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'invoices' AND p.policyname = 'invoices rbac select'
+                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '6a18e9fed9ee8dd956c314df2b296562')),
     ('133 ai helper pre enable',          EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '972540e833a42bbb35ac5b670c56daa8')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e04d0ab645ec24dc0f0acb78c222702')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9'))

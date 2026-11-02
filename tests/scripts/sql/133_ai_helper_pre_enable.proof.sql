@@ -102,6 +102,17 @@ INSERT INTO r(name, ok) SELECT 'one audit row per company per run that deleted f
     @> ARRAY['b0000000-0000-0000-0000-000000000133:1', 'a0000000-0000-0000-0000-000000000133:1']
   AND (SELECT count(*) = 3 AND bool_and(actor_user_id IS NULL AND (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(metadata) k) = ARRAY['created_before', 'deleted', 'source'])
        FROM security_audit.audit_log WHERE action = 'ai_helper_requests_purged');
+-- The boundary (one transaction, so now() here is now() inside the purge): exactly 12 months ago stays, a microsecond older goes.
+SET LOCAL session_replication_role = replica;
+INSERT INTO public.ai_helper_requests (id, organization_id, user_id, feature, month, status, input_digest, input_bytes, reserved_pence, cost_pence, model, output, created_at)
+SELECT v.id::uuid, 'a0000000-0000-0000-0000-000000000133', gen_random_uuid(), 'rfq', date_trunc('month', now() - interval '12 months')::date, 'suggested', repeat('a', 64), 10, 5, 3, 'claude-opus-5-5', '{"kind":"rfq","lines":[]}', now() - interval '12 months' - v.extra
+FROM (VALUES ('a1330000-0000-0000-0000-000000000004', interval '0'), ('a1330000-0000-0000-0000-000000000005', interval '1 microsecond')) AS v(id, extra);
+SET LOCAL session_replication_role = origin;
+INSERT INTO got SELECT 'edge', pg_temp.as_service($$public.ai_helper_purge_requests(1000)$$);
+INSERT INTO r(name, ok) SELECT 'boundary: purge(1000) takes the one a microsecond past 12 months; the one made exactly 12 months ago stays',
+  (SELECT v FROM got WHERE name = 'edge') = '1'
+  AND EXISTS (SELECT 1 FROM public.ai_helper_requests WHERE id = 'a1330000-0000-0000-0000-000000000004')
+  AND NOT EXISTS (SELECT 1 FROM public.ai_helper_requests WHERE id = 'a1330000-0000-0000-0000-000000000005');
 \unset QUIET
 SELECT CASE WHEN ok THEN 'PASS ' ELSE 'FAIL ' END || n || ' ' || name FROM r ORDER BY n;
 SELECT 'TOTAL ' || count(*) FILTER (WHERE ok) || '/' || count(*) FROM r;

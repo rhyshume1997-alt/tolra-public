@@ -93,11 +93,25 @@ describe("133 Q6: AI helper requests are deleted after 12 months, in every compa
       expect(await exists(db, [...keepA, ...keepB])).toEqual([...keepA, ...keepB].sort());
       // Run again: nothing left to delete.
       expect((await as(db, "service_role", "select public.ai_helper_purge_requests(1000) as n")).rows[0].n).toBe(0);
+      // audit_log.id is a random uuid, so the rows are ordered by their count (Beta's purge deleted 1, Alpha's 2).
       const audit = (await db.query<{ organization_id: string; actor_user_id: string | null; metadata: Record<string, unknown> }>(
-        "select organization_id, actor_user_id, metadata from security_audit.audit_log where action = 'ai_helper_requests_purged' and organization_id = any($1) order by id",
+        "select organization_id, actor_user_id, metadata from security_audit.audit_log where action = 'ai_helper_requests_purged' and organization_id = any($1) order by (metadata ->> 'deleted')::int",
         [[a, b]])).rows;
       expect(audit.map((r) => [r.organization_id, r.metadata.deleted, r.actor_user_id])).toEqual([[b, 1, null], [a, 2, null]]);
       expect(Object.keys(audit[0].metadata).sort()).toEqual(["created_before", "deleted", "source"]);
+    });
+  });
+
+  it("the boundary: a request made exactly 12 months ago stays; one a microsecond older goes", async () => {
+    await rolledBack(async (db) => {
+      // One transaction, so now() is the same here and inside the purge: the cut-off is exactly now() - 12 months.
+      const a = await org(db, "edge");
+      const exact = await request(db, a, 365);
+      const older = await request(db, a, 365);
+      await db.query("update public.ai_helper_requests set created_at = now() - interval '12 months', month = date_trunc('month', now() - interval '12 months')::date where id = $1", [exact]);
+      await db.query("update public.ai_helper_requests set created_at = now() - interval '12 months' - interval '1 microsecond', month = date_trunc('month', now() - interval '12 months')::date where id = $1", [older]);
+      expect((await as(db, "service_role", "select public.ai_helper_purge_requests(1000) as n")).rows[0].n).toBe(1);
+      expect(await exists(db, [exact, older])).toEqual([exact]);
     });
   });
 
