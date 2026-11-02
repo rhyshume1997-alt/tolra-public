@@ -77,8 +77,9 @@ export async function readTarget(db, organizationId, loaded) {
   const refs = async (table, col) => new Map((await db.query(`select ${col} as ref, id from public.${table} where organization_id = $1 and ${col} is not null`, [org])).rows.map((r) => [r.ref, r.id]));
   const target = {
     invoices: await refs("invoices", "invoice_ref"), quotes: await refs("quotes", "quote_ref"), purchaseOrders: await refs("purchase_orders", "po_ref"), stock: await refs("stock", "sku"),
+    creditNotes: await refs("credit_notes", "credit_ref"),
     customerNames: new Map(), supplierNames: new Map(), rehearsalId: await readRehearsalId(db),
-    mapped: { invoices: new Map(), quotes: new Map(), purchaseOrders: new Map(), stock: new Map() },
+    mapped: { invoices: new Map(), quotes: new Map(), purchaseOrders: new Map(), stock: new Map(), creditNotes: new Map() },
   };
   for (const [table, key] of [["customers", "customerNames"], ["suppliers", "supplierNames"]]) {
     for (const r of (await db.query(`select name from public.${table} where organization_id = $1`, [org])).rows) {
@@ -96,6 +97,10 @@ export async function readTarget(db, organizationId, loaded) {
       const m = await db.query("select old_id, new_id from public.legacy_import_map where source = $1 and old_id = any($2::text[])", [source, ids]);
       for (const r of m.rows) target.mapped[kind].set(r.old_id, r.new_id);
     }
+    // Credit notes this import wrote on an earlier run are its own (keyed in the map as sliq_credit_notes).
+    const cnNumbers = new Set([...[...loaded.records.creditNotes, ...loaded.records.invoices].filter((r) => r.number).map((r) => normNumber(r.number)), ...target.creditNotes.keys()]);
+    const cnIds = [...cnNumbers].map((n) => String(legacyId(org, "credit_notes", n)));
+    if (cnIds.length) for (const r of (await db.query("select old_id, new_id from public.legacy_import_map where source = 'sliq_credit_notes' and old_id = any($1::text[])", [cnIds])).rows) target.mapped.creditNotes.set(r.old_id, r.new_id);
   }
   return target;
 }
@@ -228,13 +233,15 @@ export async function writeImport(opts) {
       }
     }
 
-    const created = { invoices: 0, lines: 0, payments: 0, paymentToConfirm: 0, quoteLines };
+    const created = { invoices: 0, lines: 0, payments: 0, paymentToConfirm: 0, quoteLines, creditNotes: 0 };
     const newIds = [];
+    const newInvoice = new Map(); // oldId -> new invoice id, for invoices created now
     for (const inv of plan.invoices) {
       if (knownInvoices.has(String(inv.oldId))) continue;
       const id = (await db.query("select new_id from public.legacy_import_map where source = 'invoices' and old_id = $1", [String(inv.oldId)])).rows[0]?.new_id;
       if (!id) throw new Error(`invoice ${inv.number} was not mapped by the importer`);
       newIds.push(id);
+      newInvoice.set(String(inv.oldId), id);
       created.invoices++;
       // The importer makes one line from the header totals. A SliQ invoice has its real lines, or none: no line is invented.
       await db.query("delete from public.invoice_line_items where invoice_id = $1 and organization_id = $2", [id, org]);
@@ -254,11 +261,35 @@ export async function writeImport(opts) {
         created.payments++;
       }
       await db.query(
-        "update public.invoices set invoice_date = $2, status = $3, amount_paid = $4, paid_at = $5, payment_unverified = $6, source_ref = $8 where id = $1 and organization_id = $7",
-        [id, inv.date, inv.final.status, money(inv.final.amountPaid), inv.final.paidAt ? noon(inv.final.paidAt) : null, inv.final.unverified, org, inv.sourceRef],
+        "update public.invoices set invoice_date = $2, status = $3, amount_paid = $4, paid_at = $5, payment_unverified = $6, source_ref = $8, credited_amount = $9 where id = $1 and organization_id = $7",
+        [id, inv.date, inv.final.status, money(inv.final.amountPaid), inv.final.paidAt ? noon(inv.final.paidAt) : null, inv.final.unverified, org, inv.sourceRef, money(inv.final.credited ?? 0)],
       );
       if (inv.final.unverified) created.paymentToConfirm++;
     }
+    // Credit notes imported as customer credit: an issued Tolra credit note under the SliQ number, applied in full to its invoice
+    // (credited_amount was set above). Only for invoices created now: an invoice imported by an earlier run is never changed.
+    const knownCredits = await known("sliq_credit_notes", (plan.creditNotes ?? []).map((c) => c.oldId));
+    for (const cn of plan.creditNotes ?? []) {
+      if (knownCredits.has(String(cn.oldId))) continue;
+      const invId = newInvoice.get(String(cn.carrierOldId));
+      if (!invId) throw new GuardError(`Refusing: credit note ${cn.number} would change ${cn.carrierNumber}, which an earlier run imported. Exclude it or record it outside Tolra.`);
+      const ins = await db.query(
+        `insert into public.credit_notes (organization_id, invoice_id, credit_ref, status, customer, credit_date, reason, subtotal, vat, total, vat_enabled, allocated_amount, issued_at, created_at, updated_at)
+         values ($1, $2, $3, 'issued', $4, $5, $6, $7, $8, $9, $10, $9, $11, $11, $11) returning id`,
+        [org, invId, cn.number, cn.customerName, cn.date, cn.reason.slice(0, 500), money(cn.netPence), money(cn.vatPence), money(cn.grossPence), cn.vatPence > 0, noon(cn.date)],
+      );
+      await db.query("insert into public.invoice_credit_allocations (organization_id, invoice_id, credit_note_id, amount, allocated_on) values ($1, $2, $3, $4, $5)", [org, invId, ins.rows[0].id, money(cn.grossPence), cn.date]);
+      await db.query("insert into public.legacy_import_map (source, old_id, new_id) values ('sliq_credit_notes', $1, $2)", [String(cn.oldId), ins.rows[0].id]);
+      created.creditNotes++;
+    }
+    // The credit-note counter continues after the highest imported CRD-#### (this organisation only; never moves backwards).
+    await db.query(
+      `insert into public.doc_counters as c (organization_id, prefix, last)
+       select organization_id, 'CRD', max((substring(credit_ref from '^CRD-(\\d{1,9})$'))::int) from public.credit_notes
+       where organization_id = $1 and credit_ref ~ '^CRD-\\d{1,9}$' group by organization_id
+       on conflict (organization_id, prefix) do update set last = greatest(c.last, excluded.last)`,
+      [org],
+    );
     if (newIds.length) {
       const bad = await db.query(
         `select i.invoice_ref from public.invoices i where i.id = any($1::uuid[]) and not i.payment_unverified
@@ -266,6 +297,12 @@ export async function writeImport(opts) {
         [newIds],
       );
       if (bad.rowCount) throw new Error(`amount paid differs from the payments on ${bad.rows.map((r) => r.invoice_ref).join(", ")}: rolled back`);
+      const badCredit = await db.query(
+        `select i.invoice_ref from public.invoices i where i.id = any($1::uuid[])
+           and i.credited_amount <> coalesce((select sum(a.amount) from public.invoice_credit_allocations a where a.invoice_id = i.id), 0)`,
+        [newIds],
+      );
+      if (badCredit.rowCount) throw new Error(`credited amount differs from the credit notes applied on ${badCredit.rows.map((r) => r.invoice_ref).join(", ")}: rolled back`);
     }
     await db.query("commit");
     return { importer: imported, created, report };

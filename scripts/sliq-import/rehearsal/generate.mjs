@@ -424,7 +424,7 @@ const manifest = {
     invoiceLines: invoices.reduce((a, i) => a + i.lines.length, 0), quoteLines: quotes.reduce((a, q) => a + q.lines.length, 0),
   },
   expected: {
-    customers: 79, suppliers: 52, invoices: importedInvoices.length, quotes: quotes.length, purchaseOrders: pos.length, creditNotesWritten: 0,
+    customers: 79, suppliers: 52, invoices: importedInvoices.length, quotes: quotes.length, purchaseOrders: pos.length, creditNotesWritten: creditNotes.length,
     // decision 1: every payment is imported, the overpaid invoice's too (it is paid; the surplus is the customer's credit)
     invoicePayments: payments.length,
     // header only: the invoice whose line VAT is unresolved, and both copies of INV-0100 (their lines cannot be told apart)
@@ -439,7 +439,7 @@ const manifest = {
       purchaseOrders: total(pos, (p) => p.total),
     },
     agedDebtorsPence: total(aged, (a) => a.outstanding),
-    // Aged Debtors split: what is owed on invoices, the overpayment credit, the credit notes (recorded outside Tolra, cutover plan)
+    // Aged Debtors split: what is owed on invoices, the overpayment credit, the credit notes (imported as customer credit)
     agedDebtorsOwedPence: total(aged.filter((a) => a.outstanding > 0), (a) => a.outstanding),
     agedDebtorsOverpaidPence: overpaid.gross - overpaid.paid,
     agedDebtorsCreditNotesPence: -total(creditNotes, (c) => c.gross),
@@ -477,7 +477,8 @@ const manifest = {
   },
 };
 w(out, "manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
-const cnResolutions = creditNotes.map((c) => ({ number: c.number, decision: "record-outside-tolra", allocation: null, note: "Synthetic rehearsal: no invoice link in SliQ; recorded by hand after go-live (cutover plan section 1)." }));
+// Imported as customer credit (no invoice link in SliQ): each customer's balance then equals Aged Debtors.
+const cnResolutions = creditNotes.map((c) => ({ number: c.number, decision: "import-as-credit", allocation: null, note: "Synthetic rehearsal: no invoice link in SliQ; imported as the customer's credit." }));
 const customerNames = Object.entries(tolraNames).map(([account, name]) => ({ account, name, note: "Synthetic rehearsal: two customers are called the same in SliQ; this one is told apart by its town." }));
 const resolutions = (extra) => `${JSON.stringify({ format: "sliq-credit-note-resolutions/1", resolutions: cnResolutions, ...extra }, null, 2)}\n`;
 w(out, "resolutions-cn.json", resolutions({}));

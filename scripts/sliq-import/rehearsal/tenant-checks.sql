@@ -131,6 +131,13 @@ select rehearsal_chk.ok('rls: tenant A office user sees every imported ' || v.t,
   ('quotes',             (select count(*) from public.quotes             where organization_id = :'org_a')),
   ('quote_line_items',   (select count(*) from public.quote_line_items   where organization_id = :'org_a')),
   ('purchase_orders',    (select count(*) from public.purchase_orders    where organization_id = :'org_a'))) v(t, n) join rehearsal_chk.truth tr using (t);
+-- What the app itself shows (034's customer_credit(), the Customers page's credit column), as the office user: the overpayment and the
+-- two credit notes imported as customer credit, and nothing for any other company.
+select rehearsal_chk.ok('credit: the app''s customer_credit() shows the imported credit (overpayment + credit notes)',
+  (select coalesce(sum(credit), 0) from public.customer_credit()) = 208.60 and (select count(*) from public.customer_credit()) = 3,
+  (select coalesce(string_agg(customer || ' ' || credit, '; ' order by customer), 'none') from public.customer_credit()));
+select rehearsal_chk.ok('credit: the office user sees the 2 imported credit notes, issued', (select count(*) from public.credit_notes where status = 'issued') = 2,
+  (select count(*) || ' credit notes' from public.credit_notes));
 select rehearsal_chk.ok('rls: tenant A office user sees none of B''s invoices', (select count(*) from public.invoices where organization_id = :'org_b') = 0, 'B rows hidden');
 
 -- ---- 2. Imported issued invoices are read only (as the office user, then the admin) -------------------------------------------

@@ -23,7 +23,9 @@
 // customerNames: Tolra links documents to customers by name, so two customers (or two suppliers: "party": "supplier") may not
 // have the same name; an entry gives one of them its own Tolra name. The SliQ name is kept in the record's notes.
 //
-// decision: "record-outside-tolra" (a person records it by hand after the import), "not-needed" (reviewed: nothing to carry
+// decision: "import-as-credit" (the credit note is written: a Tolra credit note applied to the invoice SliQ links it to, or, with no
+// link, to an imported invoice of the same customer that carries it as customer credit, as an overpayment is; so each customer's
+// balance equals Aged Debtors; not for a credit note with allocations), "record-outside-tolra" (a person records it by hand after the import), "not-needed" (reviewed: nothing to carry
 // over) or "excluded" (left out on purpose). The file never makes the importer write anything: it only records the review.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -33,7 +35,7 @@ import { MappingError } from "./mapping.mjs";
 import { ParseError, parseMoneyPence } from "./parse.mjs";
 
 export const RESOLUTION_FORMAT = "sliq-credit-note-resolutions/1";
-export const DECISIONS = ["record-outside-tolra", "not-needed", "excluded"];
+export const DECISIONS = ["import-as-credit", "record-outside-tolra", "not-needed", "excluded"];
 
 export function loadResolutions(file) {
   let bytes;
@@ -92,7 +94,8 @@ export function resolveCreditNotes({ creditNotes, allocations, invoiceNumbers, r
       }
     }
     const source = allocations.filter((a) => a.creditNote === n && a.status === "ok");
-    if (source.length > 0) {
+    if (e.decision === "import-as-credit" && (source.length > 0 || e.allocation)) bad.push("a credit note with allocations cannot be imported as customer credit: record it outside Tolra");
+    else if (source.length > 0) {
       const ok = alloc && source.length === 1 && source[0].invoice === alloc.invoice && source[0].amount === alloc.amount;
       if (!ok) bad.push("the source has an allocation for this credit note and the resolution does not repeat it exactly (invoice and amount)");
     }

@@ -151,7 +151,7 @@ describe("SliQ import into one organisation", () => {
     const countersBefore = await otherCounters();
     expect(countersBefore.filter((c) => c.organization_id === beta)).toEqual([{ organization_id: beta, prefix: "INV", last: 7 }, { organization_id: beta, prefix: "QUO", last: 3 }]);
     const res = await writeRun({ folder: FIXTURE, reportPath, mapping: "synthetic", databaseUrl: url, organizationId: alpha, excludeNumbers: EXCLUDE, resolutionsPath: RES, write: true });
-    expect(res.created).toEqual({ invoices: 10, lines: 7, payments: 5, paymentToConfirm: 0, quoteLines: 1 });
+    expect(res.created).toEqual({ invoices: 10, lines: 7, payments: 5, paymentToConfirm: 0, quoteLines: 1, creditNotes: 0 }); // the fixture records its credit notes outside Tolra
     expect(await counts(alpha)).toEqual({ customers: 5, quotes: 3, invoices: 10, lines: 7, payments: 5, suppliers: 2, stock: 1, purchase_orders: 1, quote_lines: 1 });
     expect(await counts(beta)).toEqual(bBefore); // isolation
     // The importer reseeds the target company's counters only: every other company's counters are exactly as they were,
@@ -240,7 +240,7 @@ describe("SliQ import into one organisation", () => {
     const before = await counts(alpha);
     const mapBefore = await mapCount();
     const res = await writeRun({ folder: FIXTURE, reportPath, mapping: "synthetic", databaseUrl: url, organizationId: alpha, excludeNumbers: EXCLUDE, resolutionsPath: RES, write: true });
-    expect(res.created).toEqual({ invoices: 0, lines: 0, payments: 0, paymentToConfirm: 0, quoteLines: 0 });
+    expect(res.created).toEqual({ invoices: 0, lines: 0, payments: 0, paymentToConfirm: 0, quoteLines: 0, creditNotes: 0 });
     for (const t of ["customers", "quotes", "invoices"]) expect(res.importer.tables[t]).toMatchObject({ inserted: 0, matched_existing: 0, already_imported: expect.any(Number) });
     expect(await counts(alpha)).toEqual(before);
     expect(await mapCount()).toBe(mapBefore);

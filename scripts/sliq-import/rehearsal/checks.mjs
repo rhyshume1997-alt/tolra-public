@@ -124,7 +124,17 @@ try {
     out(got === n && n === designed[t] ? "PASS" : "FAIL", `count: ${t}`, `database ${got}, source ${n}, designed ${designed[t]}`);
   }
   eq("count: invoice_payments are all marked legacy", await count("invoice_payments", "and source = 'legacy'"), srcCounts.invoice_payments);
-  eq("count: credit notes written (Tolra has no credit-note import)", await count("credit_notes"), 0);
+  eq("count: credit notes written (issued, imported as customer credit)", await count("credit_notes", "and status = 'issued'"), manifest.expected.creditNotesWritten);
+  const cnDb = await q(`select c.credit_ref, c.total::text t, c.allocated_amount::text a, c.customer, i.invoice_ref, i.status, i.customer ic,
+                          (select sum(x.amount) from public.invoice_credit_allocations x where x.credit_note_id = c.id)::text al
+                        from public.credit_notes c join public.invoices i on i.id = c.invoice_id where c.organization_id = $1 order by 1`);
+  const cnOk = manifest.awkward.creditNotes.every((x) => {
+    const d = cnDb.find((r) => r.credit_ref === x.number);
+    return d && num(d.t) === x.gross && num(d.a) === x.gross && num(d.al) === x.gross && d.customer === tolraName[x.account] && d.ic === d.customer && d.status === "paid";
+  });
+  out(cnOk ? "PASS" : "FAIL", "credit notes: each is applied in full to a paid invoice of the same customer (its credit)", cnDb.map((r) => `${r.credit_ref} ${fmt(num(r.t))} on ${r.invoice_ref} (${r.customer})`).join("; "));
+  const [crd] = await q("select last from public.doc_counters where organization_id = $1 and prefix = 'CRD'");
+  eq("credit notes: the CRD counter continues after the highest imported number", crd?.last ?? null, Math.max(...manifest.awkward.creditNotes.map((c) => Number(c.number.replace(/\D/g, "")))));
   eq("count: source invoice rows not written (only the 2 excluded by number: discount, unknown customer)", invoiceRows.length - invoices.length, manifest.expected.held.length);
   eq("count: source payments 1999, every one imported", payments.length, 1999);
   eq("count: source invoices 2035 + the duplicate number's 2 copies + 2 credit notes", `${invoices.length} + ${credits.length}`, "2037 + 2");
@@ -211,20 +221,19 @@ try {
   const accounts = [...new Set([...sliq.keys(), ...rec.keys()])].sort();
   const recOff = accounts.filter((k) => (sliq.get(k) ?? 0) !== (rec.get(k) ?? 0));
   out(recOff.length === 0 ? "PASS" : "FAIL", "aged debtors: reconcile.mjs balances = SliQ Aged Debtors, per customer", `${accounts.length} customers, ${recOff.length} differ; total ${fmt(sum([...rec.values()], (x) => x))} vs ${fmt(agedTotal)}`);
-  // (b) the Tolra ledger (total - amount_paid of every imported invoice, an overpayment negative) against the SliQ report, per
-  // customer. The only designed difference left: credit notes are not written (recorded outside Tolra, cutover plan section 1).
-  const ledger = new Map();
-  for (const d of dbInv.values()) {
-    const bal = num(d.g) - num(d.p);
-    if (bal !== 0) add(ledger, nameToAccount.get(d.customer) ?? `?${d.customer}`, bal);
+  // (b) each customer's NET balance in Tolra (owed less credit: total - amount_paid - credited_amount over every imported invoice;
+  // an overpayment or a credit note makes it negative) against the SliQ report, per customer and in total, to the penny. No
+  // designed difference is left: credit notes are imported as customer credit.
+  const net = new Map();
+  for (const r of await q("select customer, sum(total - amount_paid - credited_amount + refunded_amount)::text b from public.invoices where organization_id = $1 group by 1")) {
+    if (num(r.b) !== 0) add(net, nameToAccount.get(r.customer) ?? `?${r.customer}`, num(r.b));
   }
-  const explained = new Map();
-  for (const c of manifest.awkward.creditNotes) add(explained, c.account, c.gross);
-  const all = [...new Set([...sliq.keys(), ...ledger.keys(), ...explained.keys()])].sort();
-  const off = all.filter((k) => (ledger.get(k) ?? 0) - (sliq.get(k) ?? 0) !== (explained.get(k) ?? 0));
-  const ledgerTotal = sum([...ledger.values()], (x) => x);
-  out(off.length === 0 ? "PASS" : "FAIL", "aged debtors: Tolra ledger = SliQ Aged Debtors per customer, to the penny (only the credit notes recorded outside Tolra differ)",
-    `${all.length} customers, ${off.length} unexplained; ledger ${fmt(ledgerTotal)} = SliQ ${fmt(agedTotal)} + credit notes not written ${fmt(sum(manifest.awkward.creditNotes, (c) => c.gross))}${off.length ? `; differ: ${off.slice(0, 5).join(", ")}` : ""}`);
+  const all = [...new Set([...sliq.keys(), ...net.keys()])].sort();
+  const off = all.filter((k) => (net.get(k) ?? 0) !== (sliq.get(k) ?? 0));
+  const netTotal = sum([...net.values()], (x) => x);
+  out(off.length === 0 ? "PASS" : "FAIL", "aged debtors: each customer's net balance in Tolra (owed less credit) = SliQ Aged Debtors, to the penny",
+    `${all.length} customers, ${off.length} differ${off.length ? `: ${off.slice(0, 5).map((k) => `${k} ${fmt(net.get(k) ?? 0)} vs ${fmt(sliq.get(k) ?? 0)}`).join(", ")}` : ""}`);
+  eq("aged debtors: Tolra net balance in total = SliQ Aged Debtors total, to the penny", netTotal, agedTotal, fmt);
   // (c) what Tolra shows as money owed (lib/receivables.ts owed() and customerCredit()), straight after the import.
   const [ow] = await q(`select coalesce(sum(greatest(0, total - coalesce(amount_paid,0) - coalesce(credited_amount,0) + coalesce(refunded_amount,0))), 0)::text s
                         from public.invoices where organization_id = $1 and not coalesce(payment_unverified, false) and coalesce(status, 'draft') not in ('paid','draft','void','voided','cancelled','canceled','credited','written_off')`);
@@ -232,8 +241,9 @@ try {
                         from public.invoices where organization_id = $1 and not coalesce(payment_unverified, false) and coalesce(status, 'draft') not in ('draft','void','voided','cancelled','canceled','written_off')`);
   eq("aged debtors: Tolra money owed = what SliQ's Aged Debtors shows owed on invoices, to the penny", num(ow.s), manifest.expected.agedDebtorsOwedPence, fmt);
   eq("aged debtors: Tolra money owed = the importer's dry-run figure", num(ow.s), report.balances.owedAfterImport, fmt);
-  eq("aged debtors: Tolra customer credit = SliQ's overpayment credit", num(cr.s), -manifest.expected.agedDebtorsOverpaidPence, fmt);
-  eq("aged debtors: SliQ total = Tolra owed - customer credit + credit notes recorded outside Tolra", num(ow.s) - num(cr.s) + manifest.expected.agedDebtorsCreditNotesPence, agedTotal, fmt);
+  eq("aged debtors: Tolra customer credit = SliQ's credits (the overpayment and the credit notes)", num(cr.s), -manifest.expected.agedDebtorsOverpaidPence - manifest.expected.agedDebtorsCreditNotesPence, fmt);
+  eq("aged debtors: Tolra customer credit = the importer's dry-run figure", num(cr.s), report.balances.creditAfterImport, fmt);
+  eq("aged debtors: SliQ total = Tolra money owed - Tolra customer credit, to the penny", num(ow.s) - num(cr.s), agedTotal, fmt);
 } finally {
   await db.query("rollback").catch(() => {});
   await db.end();

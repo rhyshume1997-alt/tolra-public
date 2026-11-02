@@ -375,7 +375,7 @@ export function analyse(loaded, opts = {}) {
   // ---- customers and suppliers of each document: a stable identifier or a reviewed resolution, never a guess (decision 3) ----
   const ambiguities = [];
   const matchEntries = (resolutions?.customerMatches ?? []).map((e, i) => ({ e, i, used: 0 }));
-  const KINDS = ["invoice", "quote", "purchase_order"];
+  const KINDS = ["invoice", "quote", "purchase_order", "credit_note"];
   for (const m of matchEntries) {
     if (!KINDS.includes(m.e?.kind ?? "invoice")) matchProblems.push(`customerMatches entry ${m.i + 1}: kind must be one of ${KINDS.join(", ")}`);
     else if (!String(m.e?.number ?? "").trim() || !String(m.e?.account ?? "").trim()) matchProblems.push(`customerMatches entry ${m.i + 1}: "number" and "account" are needed`);
@@ -536,6 +536,53 @@ export function analyse(loaded, opts = {}) {
 
   const creditResolution = resolveCreditNotes({ creditNotes, allocations, invoiceNumbers: new Set(invBySource.keys()), resolutions });
 
+  // ---- credit notes imported as customer credit (resolution "import-as-credit") ----
+  // Tolra holds a credit note against an invoice, and a customer's credit as what is paid or credited beyond an invoice (the same
+  // way as an overpayment). A credit note SliQ links to an invoice is applied to that invoice. One with no link is applied to an
+  // imported invoice of the same customer that carries it: the latest one paid in full on or before the credit note's date (then
+  // the earliest paid after it, then any invoice written), so money owed is unchanged and the customer's credit grows by it. Each
+  // customer's balance (owed less credit) then equals Aged Debtors.
+  const importAsCredit = new Set(creditResolution.covered.filter((c) => c.decision === "import-as-credit").map((c) => c.number));
+  const creditPlans = creditA.filter(({ h }) => importAsCredit.has(h.number)).map(({ h }) => {
+    const held = [];
+    const gross = Math.abs(h.gross ?? 0);
+    const party = partyFor("credit_note", h, h.customer, held);
+    let carrier = null;
+    let via = null;
+    if (party) {
+      const written = (p) => !p.held.length && !p.exception && p.h.status === "sent";
+      if (h.relatedInvoice) {
+        const hits = invoicePlans.filter((p) => normNumber(p.h.sourceNumber) === normNumber(h.relatedInvoice));
+        if (hits.length !== 1) held.push(`SliQ links it to ${h.relatedInvoice}, which ${hits.length ? "more than one invoice shares" : "is not in the invoice file"}`);
+        else if (!written(hits[0])) held.push(`SliQ links it to ${h.relatedInvoice}, which is not being written`);
+        else if (hits[0].party?.entry !== party.entry) held.push(`SliQ links it to ${h.relatedInvoice}, which is another customer's`);
+        else [carrier, via] = [hits[0], "linked in SliQ"];
+      } else {
+        const own = invoicePlans.filter((p) => written(p) && p.party?.entry === party.entry);
+        const paid = own.filter((p) => p.state === "paid" || p.state === "overpaid");
+        const byDate = (a, b) => String(a.h.date).localeCompare(String(b.h.date)) || a.h._row - b.h._row;
+        const before = paid.filter((p) => String(p.h.date) <= String(h.date ?? "")).sort(byDate);
+        const after = paid.filter((p) => String(p.h.date) > String(h.date ?? "")).sort(byDate);
+        carrier = before.at(-1) ?? after[0] ?? [...own].sort(byDate).at(-1) ?? null;
+        via = carrier ? (paid.includes(carrier) ? "no link in SliQ: carried as customer credit on a paid invoice of the customer" : "no link in SliQ and no paid invoice: applied to the customer's latest invoice") : null;
+        if (!carrier) held.push("no imported invoice of this customer can carry the credit");
+      }
+    }
+    if (!h.date) held.push("the credit note has no date");
+    if (target?.creditNotes?.has(h.number) && target.mapped.creditNotes?.get(String(legacyId(organizationId, "credit_notes", normNumber(h.number)))) !== target.creditNotes.get(h.number)) {
+      held.push("its number is already used by a different Tolra credit note");
+      collisions.creditNotes = [...(collisions.creditNotes ?? []), { number: h.number, ...where(h) }];
+    }
+    if (held.length) exceptions.push({ number: h.number, reason: `credit note to import as customer credit: ${held.join("; ")}`, blocksWrite: !isExcluded(h) });
+    return { h, held, party, carrier, via, gross };
+  });
+  const creditOn = new Map();
+  for (const c of creditPlans.filter((x) => !x.held.length)) creditOn.set(c.carrier, [...(creditOn.get(c.carrier) ?? []), c]);
+  for (const c of creditNotes) {
+    const cp = creditPlans.find((x) => x.h.number === c.number);
+    if (cp && !cp.held.length) Object.assign(c, { written: true, carriedOn: cp.carrier.h.number, carriedVia: cp.via, representation: `written as an issued Tolra credit note applied to ${cp.carrier.h.number} (${cp.via})` });
+  }
+
   // ---- products (stock items only), suppliers, purchase orders ----
   const productRows = goodRows(rec.products);
   const prodByCode = group(productRows.map((p) => ({ ...p, number: p.code })), "number");
@@ -625,9 +672,26 @@ export function analyse(loaded, opts = {}) {
       const pays = p.writePayments
         ? p.ps.map((x) => ({ oldId: oid("payments", paymentIdentity(normNumber(p.h.number), x.date, x.amount, x.ordinal)), amountPence: x.amount, date: x.date, method: methodFor(x.method), reference: x.reference, rawMethod: x.method }))
         : [];
-      return { ...p.h, oldId: p.oldId, sourceRef: p.h.sourceNumber, customerName: p.party.entry.tolraName, customerAccount: p.party.entry.key ?? null, matchedVia: p.party.via, lines: wl.lines, linesWithheld: wl.withheld, payments: pays, final };
+      // Credit notes applied to this invoice (import-as-credit): credited_amount, and the status they leave it in (034's rule).
+      const credits = (creditOn.get(p) ?? []).map((c) => ({ number: c.h.number, amountPence: c.gross, date: c.h.date }));
+      const credited = sum(credits.map((c) => c.amountPence));
+      if (credited > 0 && !final.unverified && p.h.gross - final.amountPaid - credited <= 0 && final.status !== "paid") {
+        final.status = final.amountPaid > 0 ? "paid" : "credited";
+        final.paidAt = final.status === "paid" ? credits.map((c) => c.date).sort().at(-1) : null;
+      }
+      final.credited = credited;
+      return { ...p.h, oldId: p.oldId, sourceRef: p.h.sourceNumber, customerName: p.party.entry.tolraName, customerAccount: p.party.entry.key ?? null, matchedVia: p.party.via, lines: wl.lines, linesWithheld: wl.withheld, payments: pays, credits, final };
     }),
   };
+  plan.creditNotes = creditPlans.filter((c) => !c.held.length && !isExcluded(c.h)).map((c) => ({
+    number: c.h.number, oldId: oid("credit_notes", normNumber(c.h.number)), customerName: c.party.entry.tolraName, customerAccount: c.party.entry.key ?? null, date: c.h.date,
+    reason: [c.h.reason, `SliQ credit note ${c.h.number}${c.via === "linked in SliQ" ? ` against ${c.h.relatedInvoice}` : ", no invoice link in SliQ"}: applied to ${c.carrier.h.number} on import (${c.via}).`].filter(Boolean).join(" "),
+    netPence: Math.abs(c.h.net ?? 0), vatPence: Math.abs(c.h.vat ?? 0), grossPence: c.gross, carrierNumber: c.carrier.h.number, carrierOldId: c.carrier.oldId, via: c.via,
+  }));
+  // Money owed and customer credit straight after the import, from what would be written (lib/receivables.ts owed / customerCredit).
+  const collectible = (i) => !["paid", "draft", "void", "credited"].includes(i.final.status) && !i.final.unverified;
+  const owedAfterImport = plan.invoices.filter(collectible).reduce((n, i) => n + Math.max(0, i.gross - i.final.amountPaid - i.final.credited), 0);
+  const creditAfterImport = plan.invoices.filter((i) => !["draft", "void"].includes(i.final.status) && !i.final.unverified).reduce((n, i) => n + Math.max(0, i.final.amountPaid + i.final.credited - i.gross), 0);
   const unmappedMethods = [...new Set(plan.invoices.flatMap((i) => i.payments).filter((p) => p.rawMethod && !p.method).map((p) => p.rawMethod))];
 
   const held = [
@@ -635,7 +699,7 @@ export function analyse(loaded, opts = {}) {
     ...quotePlans.filter((p) => p.held.length).map((p) => ({ documentKind: "quote", number: p.q.number, reasons: p.held, ...where(p.q) })),
     ...poPlans.filter((p) => p.held.length).map((p) => ({ documentKind: "purchase_order", number: p.po.number, reasons: p.held, ...where(p.po) })),
     ...stockPlans.filter((p) => p.held.length).map((p) => ({ documentKind: "stock_item", number: p.p.code, reasons: p.held, ...where(p.p) })),
-    ...creditNotes.map((c) => ({ documentKind: "credit_note", number: c.number, reasons: ["Tolra has no credit-note type: listed for a decision, never netted into an invoice"], file: c.file, row: c.row })),
+    ...creditNotes.filter((c) => !plan.creditNotes.some((x) => x.number === c.number)).map((c) => ({ documentKind: "credit_note", number: c.number, reasons: [creditPlans.find((x) => x.h.number === c.number)?.held.join("; ") || (isExcluded(c) ? "excluded by number (operator decision)" : "not imported: the resolutions file records it outside Tolra (or it is not needed)")], file: c.file, row: c.row })),
   ];
   const unresolvedReview = needsReview.filter((n) => n.blocksWrite && !n.excluded);
   const state = (s) => balances.filter((b) => b.state === s);
@@ -692,8 +756,8 @@ export function analyse(loaded, opts = {}) {
       unpaid: balances.filter((b) => b.state === "unpaid"),
       customerCredit: balances.filter((b) => b.state === "overpaid").map((b) => ({ number: b.number, gross: b.gross, paid: b.paid, credit: b.paid - b.gross, file: b.file, row: b.row })),
       // Money owed straight after the import (unpaid and part-paid balances of the invoices written), and the customers' credit.
-      owedAfterImport: invoicePlans.filter((p) => !p.held.length && !p.exception && ["unpaid", "PARTIAL"].includes(p.state)).reduce((n, p) => n + p.h.gross - p.paid, 0),
-      creditAfterImport: invoicePlans.filter((p) => !p.held.length && p.state === "overpaid").reduce((n, p) => n + p.paid - p.h.gross, 0),
+      owedAfterImport,
+      creditAfterImport,
       exceptions,
       statusWordConflicts,
       items: balances,
@@ -722,7 +786,7 @@ export function analyse(loaded, opts = {}) {
       invoicesUnpaid: plan.invoices.filter((i) => i.final.status === "sent" && !i.final.unverified).length,
       renamedDocuments: renames.filter((x) => !x.keeps).length,
       invoicesWithoutLines: plan.invoices.filter((i) => i.linesWithheld).length,
-      creditNotesHeld: creditNotes.length, unmappedPaymentMethods: unmappedMethods,
+      creditNotes: plan.creditNotes.length, creditNotesHeld: creditNotes.length - plan.creditNotes.length, unmappedPaymentMethods: unmappedMethods,
     },
     unresolvedReviewCount: unresolvedReview.length,
     unresolvedMatchCount: unresolvedMatches.length,

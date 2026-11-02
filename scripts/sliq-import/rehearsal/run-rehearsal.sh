@@ -76,9 +76,9 @@ step 15-tenant-checks "${PSQL[@]}" -d "$DB" -f "$HERE/tenant-checks.sql"; check 
 # Re-run: a fresh dry run against the imported target, then the write again. Nothing new may be created; the checks must still pass.
 step 16-rerun-dry-run "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-rerun" --database-url "$URL" --organization-id "$ORG" || exit 1
 step 17-rerun-write "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-rerun/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
-grep -q '{"invoices":0,"lines":0,"payments":0,"paymentToConfirm":0,"quoteLines":0}' "$W/results/17-rerun-write.txt" && echo "PASS|re-run creates nothing" || { echo "FAIL|re-run created rows"; fail=1; }
+grep -q '{"invoices":0,"lines":0,"payments":0,"paymentToConfirm":0,"quoteLines":0,"creditNotes":0}' "$W/results/17-rerun-write.txt" && echo "PASS|re-run creates nothing" || { echo "FAIL|re-run created rows"; fail=1; }
 step 18-rerun-old-report "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
-grep -q '{"invoices":0,"lines":0,"payments":0,"paymentToConfirm":0,"quoteLines":0}' "$W/results/18-rerun-old-report.txt" && echo "PASS|re-run with the first report creates nothing" || { echo "FAIL|re-run with the first report created rows"; fail=1; }
+grep -q '{"invoices":0,"lines":0,"payments":0,"paymentToConfirm":0,"quoteLines":0,"creditNotes":0}' "$W/results/18-rerun-old-report.txt" && echo "PASS|re-run with the first report creates nothing" || { echo "FAIL|re-run with the first report created rows"; fail=1; }
 step 19-checks-after-rerun node "$HERE/checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL"; check 19-checks-after-rerun
 # A changed source file makes the approved report stale: the write is refused.
 cp -r "$W/export" "$W/export-changed"; sed -i '2 s/\r$/X\r/' "$W/export-changed/payments.csv"  # one changed reference
@@ -102,7 +102,7 @@ step 28-names-checks node "$HERE/checks.mjs" --work "$W" --report "$W/r-names/re
 step 21-dry-run-rollback-copy "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-rb" --database-url "$RB_URL" --organization-id "$ORG" || exit 1
 step 22-write-fails-midway expect_fail "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-rb/report.json" --database-url "$RB_URL" --organization-id "$ORG" --install-importer || fail=1
 grep -q "injected failure" "$W/results/22-write-fails-midway.txt" || { echo "FAIL|the injected failure was not what stopped the write"; fail=1; }
-left=$("${PSQL[@]}" -d "$RB" -c "select (select count(*) from customers where organization_id = '$ORG') + (select count(*) from suppliers where organization_id = '$ORG') + (select count(*) from invoices where organization_id = '$ORG') + (select count(*) from invoice_payments where organization_id = '$ORG') + (select count(*) from quotes where organization_id = '$ORG') + (select count(*) from purchase_orders where organization_id = '$ORG') + (select count(*) from doc_counters where organization_id = '$ORG' and last > 0)")
+left=$("${PSQL[@]}" -d "$RB" -c "select (select count(*) from customers where organization_id = '$ORG') + (select count(*) from suppliers where organization_id = '$ORG') + (select count(*) from invoices where organization_id = '$ORG') + (select count(*) from invoice_payments where organization_id = '$ORG') + (select count(*) from quotes where organization_id = '$ORG') + (select count(*) from purchase_orders where organization_id = '$ORG') + (select count(*) from credit_notes where organization_id = '$ORG') + (select count(*) from doc_counters where organization_id = '$ORG' and last > 0)")
 mapn=$("${PSQL[@]}" -d "$RB" -c "select to_regclass('public.legacy_import_map') is not null")
 [[ "$mapn" == t ]] && left=$((left + $("${PSQL[@]}" -d "$RB" -c "select count(*) from public.legacy_import_map")))
 echo "importer tables present after the failed write: $mapn (f = even the --install-importer step was rolled back)"

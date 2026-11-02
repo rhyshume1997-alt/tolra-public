@@ -47,7 +47,7 @@ describe("duplicate payment rows are never summed", () => {
     expect(b.reason).toMatch(/listed more than once/);
     const inv = plan.invoices.find((i: { number: string }) => i.number === "S1006");
     expect(inv.payments).toEqual([]);
-    expect(inv.final).toEqual({ status: "sent", amountPaid: 0, paidAt: null, unverified: true });
+    expect(inv.final).toMatchObject({ status: "sent", amountPaid: 0, paidAt: null, unverified: true });
     expect(renderMarkdown(report)).toContain("Duplicate payment rows");
   });
 

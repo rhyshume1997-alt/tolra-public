@@ -274,7 +274,7 @@ describe("credit-note allocations", () => {
     expect(r.report.balances.exceptions.find((x: { number: string }) => x.number === "S1003").blocksWrite).toBe(true);
     expect(b.reason).toContain("an allocation is not cash");
     const inv = r.plan.invoices.find((i: { number: string }) => i.number === "S1003");
-    expect(inv.final).toEqual({ status: "sent", amountPaid: 0, paidAt: null, unverified: true });
+    expect(inv.final).toMatchObject({ status: "sent", amountPaid: 0, paidAt: null, unverified: true });
   });
 
   it("allocation pointing at a part-paid invoice withholds its cash payments rather than guessing the balance", () => {

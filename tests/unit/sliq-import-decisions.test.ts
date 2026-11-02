@@ -45,11 +45,11 @@ describe("decision 1: the real balance, never Payment to confirm", () => {
   const { report, plan } = run();
 
   it("unpaid, part paid, paid and overpaid are written as they are", () => {
-    expect(inv(plan, "S1005").final).toEqual({ status: "sent", amountPaid: 0, paidAt: null, unverified: false }); // no payment record: owed in full
-    expect(inv(plan, "S1002").final).toEqual({ status: "partial", amountPaid: 20000, paidAt: null, unverified: false });
-    expect(inv(plan, "S1001").final).toEqual({ status: "paid", amountPaid: 12000, paidAt: "2026-03-05", unverified: false });
+    expect(inv(plan, "S1005").final).toMatchObject({ status: "sent", amountPaid: 0, paidAt: null, unverified: false }); // no payment record: owed in full
+    expect(inv(plan, "S1002").final).toMatchObject({ status: "partial", amountPaid: 20000, paidAt: null, unverified: false });
+    expect(inv(plan, "S1001").final).toMatchObject({ status: "paid", amountPaid: 12000, paidAt: "2026-03-05", unverified: false });
     // overpaid: every payment is written, the invoice is paid, the surplus is the customer's credit (lib/receivables.ts customerCredit)
-    expect(inv(plan, "S1006").final).toEqual({ status: "paid", amountPaid: 15000, paidAt: "2026-03-15", unverified: false });
+    expect(inv(plan, "S1006").final).toMatchObject({ status: "paid", amountPaid: 15000, paidAt: "2026-03-15", unverified: false });
     expect(inv(plan, "S1006").payments).toHaveLength(1);
     expect(plan.invoices.filter((i: { final: { unverified: boolean } }) => i.final.unverified)).toEqual([]);
     expect(report.writePlan.invoicesPaymentToConfirm).toBe(0);
@@ -218,3 +218,38 @@ describe("decision 3: customers matched on stable identifiers only", () => {
     expect(readFileSync(path.join(out, "report.md"), "utf8")).toContain("## 14. Customer matching (decision 3: never on a name alone)");
   });
 });
+
+describe("credit notes imported as customer credit (each customer's balance = Aged Debtors)", () => {
+  const cnRes = (decisions: Record<string, string>) => resolutions({ resolutions: JSON.parse(readFileSync(RES, "utf8")).resolutions.map((e: { number: string }) => (decisions[e.number] ? { ...e, decision: decisions[e.number], allocation: null } : e)) });
+  const dir = copy((f, t) => (f === "invoices.csv" ? t : t));
+  writeFileSync(path.join(dir, "credit-notes.csv"), "Credit No,Date,Account,Net,VAT,Gross,Against,Reason,Notes\nCN-002,21/03/2026,C001,50.00,10.00,60.00,,Goods returned,\nCN-003,22/03/2026,C003,10.00,2.00,12.00,S1004,Price adjustment,\n");
+
+  it("no link: applied to the customer's latest paid invoice on or before its date, so money owed is unchanged and credit grows", () => {
+    const base = run(dir).report;
+    const { report, plan } = run(dir, { resolutions: cnRes({ "CN-002": "import-as-credit", "CN-003": "import-as-credit" }) });
+    expect(report.unresolvedCreditNoteCount).toBe(0);
+    expect(report.unresolvedPaymentCount).toBe(0);
+    expect(plan.creditNotes.map((c: { number: string; carrierNumber: string; via: string; grossPence: number }) => [c.number, c.carrierNumber, c.via, c.grossPence])).toEqual([
+      // C001's latest invoice paid in full on or before 21/03/2026 is S1006 (06/03, overpaid; S1001 is 01/03)
+      ["CN-002", "S1006", "no link in SliQ: carried as customer credit on a paid invoice of the customer", 6000],
+      ["CN-003", "S1004", "linked in SliQ", 1200],
+    ]);
+    expect(inv(plan, "S1006").final).toMatchObject({ status: "paid", amountPaid: 15000, credited: 6000 });
+    expect(inv(plan, "S1001").final).toMatchObject({ status: "paid", amountPaid: 12000, credited: 0 });
+    expect(report.balances.owedAfterImport).toBe(base.balances.owedAfterImport);
+    expect(report.balances.creditAfterImport).toBe(base.balances.creditAfterImport + 6000 + 1200);
+    expect(report.creditNotes.find((c: { number: string }) => c.number === "CN-002")).toMatchObject({ written: true, carriedOn: "S1006" });
+    expect(report.writePlan).toMatchObject({ creditNotes: 2 });
+    expect(report.held.some((h: { number: string }) => h.number === "CN-002")).toBe(false);
+  });
+
+  it("a link to an invoice that is not written, or a credit note with allocations, stops the write", () => {
+    const d2 = copy();
+    writeFileSync(path.join(d2, "credit-notes.csv"), "Credit No,Date,Account,Net,VAT,Gross,Against,Reason,Notes\nCN-002,21/03/2026,C002,50.00,10.00,60.00,,Goods returned,\nCN-003,22/03/2026,C003,10.00,2.00,12.00,S9999,Price adjustment,\n");
+    const r = run(d2, { resolutions: cnRes({ "CN-003": "import-as-credit" }) }).report;
+    expect(r.balances.exceptions.find((e: { number: string }) => e.number === "CN-003")).toMatchObject({ blocksWrite: true, reason: expect.stringContaining("SliQ links it to S9999, which is not in the invoice file") });
+    const withAlloc = run(BASIC, { resolutions: cnRes({ "CN-001": "import-as-credit" }) }).report;
+    expect(withAlloc.creditNoteResolution.unresolved.find((u: { number: string }) => u.number === "CN-001").reason).toMatch(/with allocations cannot be imported as customer credit/);
+  });
+});
+
