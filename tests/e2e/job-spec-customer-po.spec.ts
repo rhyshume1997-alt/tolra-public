@@ -29,16 +29,33 @@ const fresh = () => {
 };
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+type QuoteLine = { position: number; description: string; quantity: number; unit_price: number; vat_pct: number; vat_exempt: boolean };
+const LINES: QuoteLine[] = [{ position: 0, description: "Spacer 20mm", quantity: 4, unit_price: 25, vat_pct: 20, vat_exempt: false }];
+
+/**
+ * The quote's total as create_with_lines checks it (030, quote_total doesn't match: net + VAT when vat_enabled and the company is VAT
+ * registered, as createSoloTenant's is): each line's net rounded to the penny, its VAT (unless exempt) rounded to the penny, summed.
+ * Worked in whole pence (no float money) and sent as a "pounds.pence" string.
+ */
+function quoteTotal(lines: QuoteLine[]): string {
+  let pence = 0;
+  for (const line of lines) {
+    const net = Math.round(line.quantity * Math.round(line.unit_price * 100));
+    pence += net + (line.vat_exempt ? 0 : Math.round((net * line.vat_pct) / 100));
+  }
+  return `${Math.trunc(pence / 100)}.${String(pence % 100).padStart(2, "0")}`;
+}
+
 /** A quote of the solo company with one line, made as its admin through create_with_lines (as the app does). */
 async function newQuote(quoteRef: string, customer: string, status: "sent" | "accepted", customerPo: string | null) {
   expect((await adminClient().from("customers").insert({ organization_id: solo.id, name: customer })).error).toBeNull();
   const client = await signedInClient(solo.admin);
   const { error } = await client.rpc("create_with_lines", {
     p_parent: "quotes",
-    p_header: { quote_ref: quoteRef, customer, total_value: 100, vat_enabled: true, status, valid_until: "2099-12-31", description: "Spacers", customer_po: customerPo },
+    p_header: { quote_ref: quoteRef, customer, total_value: quoteTotal(LINES), vat_enabled: true, status, valid_until: "2099-12-31", description: "Spacers", customer_po: customerPo },
     p_child: "quote_line_items",
     p_fk: "quote_id",
-    p_lines: [{ position: 0, description: "Spacer 20mm", quantity: 4, unit_price: 25, vat_pct: 20, vat_exempt: false }],
+    p_lines: LINES,
   });
   expect(error).toBeNull();
   const { data, error: readError } = await adminClient().from("quotes").select("id, customer_po").eq("quote_ref", quoteRef).eq("organization_id", solo.id).single();
@@ -86,7 +103,8 @@ test("(a) PO on the quote only, accepted in the browser: the job's customer_po i
 
   await signIn(page, solo.admin);
   await page.goto("/quotes");
-  await page.locator('[data-slot="card"]', { hasText: quoteRef }).getByRole("button", { name: "View" }).click();
+  // As tests/e2e/quote-customer-po.spec.ts: the card in the Sent quotes section (Open is the default Show tab).
+  await page.getByRole("region", { name: "Sent quotes" }).locator('[data-slot="card"]', { hasText: quoteRef }).getByRole("button", { name: "View" }).click();
   const details = page.getByRole("dialog", { name: `${quoteRef} quote details` });
   await details.getByRole("button", { name: "Mark Accepted" }).click();
   const decision = page.getByRole("dialog", { name: `Mark ${quoteRef} as accepted?` });
