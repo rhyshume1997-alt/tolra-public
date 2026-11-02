@@ -279,7 +279,7 @@ describe("an admin who lost their authenticator is not locked out by 137 (Pack 1
   it("(b) the operator deletes the factor (dashboard: auth.mfa_factors only): 137's trigger does not fire, no ticket is needed or used", async () => {
     await rolledBack(async (db) => {
       const me = await login(db, "lost-factor");
-      await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified')", [me]);
+      await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified', now(), now())", [me]);
       await issue(db, me);
       // No 137 trigger on auth.mfa_factors at all.
       expect((await db.query("select 1 from pg_trigger where tgrelid = 'auth.mfa_factors'::regclass and tgfoid = to_regprocedure('public.auth_users_password_change_ticket()')")).rowCount).toBe(0);
@@ -293,7 +293,7 @@ describe("an admin who lost their authenticator is not locked out by 137 (Pack 1
   it("(c) lost password AND authenticator: the operator, in one SQL editor run, issues an operator ticket, sets the password and removes the factors", async () => {
     await rolledBack(async (db) => {
       const me = await login(db, "lost-both");
-      await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified')", [me]);
+      await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified', now(), now())", [me]);
       // Without the ticket the operator's own UPDATE is refused too.
       expect((await asRole(db, null, "update auth.users set encrypted_password = extensions.crypt('Operator-Set-Password-1', extensions.gen_salt('bf')) where id = $1", [me])).error).toMatchObject(REFUSED);
       const { error } = await asRole(db, null, `select public.issue_password_change_ticket('${me}', 'operator');
@@ -440,6 +440,24 @@ describe("verify, preflight, rollback and release", () => {
       expect(await preflight(db)).toEqual({ marker136: "applied", marker137: "applied", needs137: "true / 5 / 0" });
     });
   });
+  it("as the test role, which (like hosted postgres) does not own auth.users: rollback, release with no trigger, release with the trigger present (rolled back)", async () => {
+    await rolledBack(async (db) => {
+      const who = (await db.query<{ u: string; su: boolean; owner: string; owns: boolean }>(
+        `select current_user as u, r.rolsuper as su, pg_get_userbyid(c.relowner) as owner, pg_has_role(current_user, c.relowner, 'USAGE') as owns
+         from pg_class c, pg_roles r where c.oid = 'auth.users'::regclass and r.rolname = current_user`)).rows[0];
+      // On Supabase's image (CI, hosted) auth.users belongs to supabase_auth_admin and postgres is not a member (revoked in the image's
+      // 20250421084701 migration); DROP TRIGGER works through supautils.drop_trigger_grants, CREATE TRIGGER through the TRIGGER privilege.
+      // A local stand-in connects as a superuser, which owns everything, so only CI proves the non-owner case.
+      if (!who.su) expect({ owner: who.owner, owns: who.owns }).toEqual({ owner: "supabase_auth_admin", owns: false });
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")));
+      expect((await db.query("select 1 from pg_trigger where tgrelid = 'auth.users'::regclass and tgname = 'password_change_ticket'")).rowCount).toBe(0);
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
+      expect((await verify(db, "supabase/verify/password_change_ticket_137.sql")).every((r) => r.ok)).toBe(true);
+      const me = await login(db, "after-rerelease");
+      expect((await authSetsPassword(db, me, "No-Ticket-After-Rerelease-1")).error).toMatchObject(REFUSED);
+    });
+  });
   it("rollback (rolled back): everything 137 made is gone, a password changes without a ticket again, 136's verify is unchanged, preflight 137 not applied; the release applies again, twice", async () => {
     await rolledBack(async (db) => {
       const before136 = await verify(db, "supabase/verify/recent_second_step_136.sql");
@@ -477,14 +495,17 @@ describe("verify, preflight, rollback and release", () => {
     /** Replaces a function with its own text plus a harmless comment after its first BEGIN: same behaviour, an unknown body. */
     const alter = (db: Client, sig: string) =>
       db.query(`do $d$ begin execute regexp_replace(pg_get_functiondef(to_regprocedure('${sig}')), E'\\nBEGIN\\n', E'\\nBEGIN\\n  -- an unknown version\\n'); end $d$`);
-    const changes: Array<[string, (db: Client) => Promise<unknown>]> = [
+    const changes: Array<[string, (db: Client) => Promise<unknown>, boolean?]> = [
       ["trigger function body changed", (db) => alter(db, SIG.trigger)],
       ["issue function body changed", (db) => alter(db, SIG.issue)],
       ["revoke function body changed", (db) => alter(db, SIG.revoke)],
       ["issue function missing", (db) => db.query(`drop function ${SIG.issue}`)],
       ["revoke function missing", (db) => db.query(`drop function ${SIG.revoke}`)],
       ["trigger missing", (db) => db.query("drop trigger password_change_ticket on auth.users")],
-      ["trigger disabled", (db) => db.query("alter table auth.users disable trigger password_change_ticket")],
+      // ALTER TABLE ... DISABLE TRIGGER needs ownership of the table, and auth.users belongs to supabase_auth_admin (the test role, like
+      // hosted postgres, is not a member). So this one case runs on an identical trigger on a scratch table the test owns, with marker
+      // 137's text pointed at that table (see SCRATCH below); 137's real functions are used. Every other change is made on auth.users.
+      ["trigger disabled", (db) => db.query("alter table t137_scratch.users disable trigger password_change_ticket"), true],
       ["trigger calls another function", (db) => db.query(`drop trigger password_change_ticket on auth.users;
          create trigger password_change_ticket before update on auth.users for each row execute function public.organization_members_recent_second_step()`)],
       ["trigger fires AFTER, not BEFORE", (db) => db.query(`drop trigger password_change_ticket on auth.users;
@@ -494,13 +515,26 @@ describe("verify, preflight, rollback and release", () => {
     const marker = async (db: Client, text: string) =>
       (await db.query<{ check: string; value: string }>(text)).rows.find((r) => r.check.startsWith("marker 137 "))?.value;
     /** Every change, each in its own rolled-back transaction: what marker 137 reads after it. */
+    /** Marker 137's text (only that marker's block) pointed at the scratch table instead of auth.users. */
+    const SCRATCH = (text: string) => {
+      const start = text.indexOf("('137 password change ticket'");
+      const end = text.indexOf("\n),", start);
+      const block = text.slice(start, end);
+      expect(block.split("'auth.users'::regclass").length - 1).toBe(1);
+      return text.slice(0, start) + block.replace("'auth.users'::regclass", "'t137_scratch.users'::regclass") + text.slice(end);
+    };
+    /** The same trigger as 137's (BEFORE UPDATE FOR EACH ROW, 137's function, enabled) on a table in a scratch schema (rolled back). */
+    const scratchTrigger = (db: Client) => db.query(`create schema t137_scratch; create table t137_scratch.users (id uuid);
+      create trigger password_change_ticket before update on t137_scratch.users for each row execute function ${SIG.trigger}`);
     const afterEach = async (text: string) => {
       const seen: Record<string, string | undefined> = {};
-      for (const [name, change] of changes) {
+      for (const [name, change, scratch] of changes) {
         seen[name] = await rolledBack(async (db) => {
-          expect(await marker(db, text), `${name}: before the change`).toBe("applied");
+          const read137 = scratch ? SCRATCH(text) : text;
+          if (scratch) await scratchTrigger(db);
+          expect(await marker(db, read137), `${name}: before the change`).toBe("applied");
           await change(db);
-          return marker(db, text);
+          return marker(db, read137);
         });
       }
       return seen;
