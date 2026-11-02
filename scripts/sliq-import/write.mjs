@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 import { checkDatabaseUrl, checkOrganisationId, GuardError } from "./guard.mjs";
+import { prepareJobsWrite } from "./jobs-write.mjs";
 import { legacyId, normNumber, normaliseName } from "./ids.mjs";
 import { penceToPounds } from "./parse.mjs";
 import { analyse } from "./reconcile.mjs";
@@ -189,6 +190,8 @@ export async function writeImport(opts) {
     // Migration 135 keeps the number SliQ printed on every imported invoice, quote and purchase order.
     const refCols = Number((await db.query("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name in ('invoices', 'quotes', 'purchase_orders') and column_name = 'source_ref'")).rows[0].n);
     if (refCols !== 3) throw new GuardError("Refusing: the target has no source_ref columns (migration 135, provisional number). Apply it first: the SliQ number of each imported document is kept there.");
+    // Jobs, sales orders, PO job links and opening WIP (jobs-write.mjs), in this same transaction.
+    const jobsRun = opts.jobsLoaded?.profile ? await prepareJobsWrite(db, org, { loaded, jobsLoaded: opts.jobsLoaded, plan, coreReport: report }) : null;
 
     // Which of this run's records the map already knows (a repeat run): only the others are new.
     const known = async (source, ids) => new Set((await db.query("select old_id from public.legacy_import_map where source = $1 and old_id = any($2::text[])", [source, ids.map(String)])).rows.map((r) => r.old_id));
@@ -199,6 +202,7 @@ export async function writeImport(opts) {
     const knownPOs = await known("purchase_orders", plan.purchaseOrders.map((c) => c.oldId));
 
     const json = buildLegacyExport(plan, org);
+    jobsRun?.addToExport(json);
     const imported = (await db.query("select public.import_legacy_tenant($1::jsonb, $2::uuid) as r", [JSON.stringify(json), org])).rows[0].r;
     if (!imported.ok) throw new Error("the importer did not report ok");
 
@@ -304,8 +308,9 @@ export async function writeImport(opts) {
       );
       if (badCredit.rowCount) throw new Error(`credited amount differs from the credit notes applied on ${badCredit.rows.map((r) => r.invoice_ref).join(", ")}: rolled back`);
     }
+    const jobs = jobsRun ? await jobsRun.finish() : null;
     await db.query("commit");
-    return { importer: imported, created, report };
+    return { importer: imported, created, report, jobs };
   } catch (e) {
     await db.query("rollback").catch(() => {});
     throw e;

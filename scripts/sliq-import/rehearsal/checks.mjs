@@ -52,7 +52,9 @@ const invoiceRows = src("invoices.csv");
 const lines = src("invoice-lines.csv");
 const payments = src("payments.csv");
 const quotes = src("quotes.csv");
-const pos = src("purchase-orders.csv");
+// Part B: purchase orders the import refuses (an unknown supplier) are not in the database; jobs-checks.mjs checks them.
+const heldPos = new Set(manifest.jobs?.purchaseOrders.heldPurchaseOrders ?? []);
+const pos = src("purchase-orders.csv").filter((r) => !heldPos.has(r["PO No"]));
 const credits = src("credit-notes.csv");
 const aged = read(path.join(work, "sliq-reports", "aged-debtors.csv"));
 

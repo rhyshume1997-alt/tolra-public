@@ -13,6 +13,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { GuardError, assertWriteAllowed, checkDatabaseUrl, checkOrganisationId, loadReportFile, redactUrl } from "./guard.mjs";
+import { assertCoreHeaders, coreHeaderProblems } from "./headers.mjs";
+import { loadJobsFolder } from "./jobs-load.mjs";
+import { analyseJobs, jobsVerificationCsv, renderJobsMarkdown, wipVerificationCsv } from "./jobs-plan.mjs";
+import { readJobsTargetReadOnly } from "./jobs-write.mjs";
 import { loadFolder, readWorkbooks } from "./load.mjs";
 import { MappingError, getProfile } from "./mapping.mjs";
 import { loadResolutions } from "./resolutions.mjs";
@@ -22,7 +26,10 @@ import { prepareRehearsal, readTargetReadOnly, writeImport } from "./write.mjs";
 /** Dry run: reads the folder (and, if given, the target read only), writes report.md and report.json. Never writes to a database. */
 export async function dryRun({ folder, outDir, mapping = "sliq", databaseUrl = null, organizationId = null, excludeNumbers = [], encoding, dateFormat, sheets, resolutionsPath }) {
   const profile = getProfile(mapping);
-  const loaded = loadFolder(folder, profile, { workbooks: await readWorkbooks(folder), encoding, dateFormat, sheets });
+  const workbooks = await readWorkbooks(folder);
+  const loaded = loadFolder(folder, profile, { workbooks, encoding, dateFormat, sheets });
+  // Jobs, sales orders and opening WIP (jobs-*.mjs) and the strict header check (headers.mjs): see loadJobs below.
+  const jobsLoaded = loadJobs(folder, mapping, loaded, { workbooks, sheets });
   let target = null;
   if (databaseUrl) {
     if (!organizationId) throw new GuardError("Refusing: --organization-id is needed with --database-url (the collision check reads one organisation).");
@@ -30,9 +37,18 @@ export async function dryRun({ folder, outDir, mapping = "sliq", databaseUrl = n
   }
   const resolutions = resolutionsPath ? loadResolutions(resolutionsPath) : null;
   const { report, plan } = analyse(loaded, { organizationId: organizationId ? organizationId.toLowerCase() : null, target, excludeNumbers, resolutions });
+  // ---- jobs import (report section 14 and the two verification sheets) ----
+  const jobsTarget = databaseUrl && jobsLoaded.profile ? await readJobsTargetReadOnly(databaseUrl, organizationId, jobsLoaded) : null;
+  // A strict header check (the real SliQ mapping) is listed here and refuses the write (writeRun).
+  report.headerCheck = { strict: jobsLoaded.headerCheck.strict, problems: coreHeaderProblems(loaded, jobsLoaded.headerCheck) };
+  report.jobsImport = analyseJobs(loaded, jobsLoaded, { plan, coreReport: report, organizationId: organizationId ? organizationId.toLowerCase() : null, target: jobsTarget }).report;
   mkdirSync(outDir, { recursive: true });
   writeFileSync(path.join(outDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-  writeFileSync(path.join(outDir, "report.md"), `${renderMarkdown(report)}\n`);
+  writeFileSync(path.join(outDir, "report.md"), `${renderMarkdown(report)}\n${report.jobsImport ? `\n${renderJobsMarkdown(report.jobsImport)}\n` : ""}${headerCheckMarkdown(report.headerCheck)}`);
+  if (report.jobsImport) {
+    writeFileSync(path.join(outDir, "jobs-verification.csv"), jobsVerificationCsv(report.jobsImport));
+    writeFileSync(path.join(outDir, "wip-verification.csv"), wipVerificationCsv(report.jobsImport));
+  }
   writeFileSync(path.join(outDir, "ambiguity.csv"), renderAmbiguityCsv(report)); // decision 3: what stops the write, for manual mapping
   return { report, plan, loaded };
 }
@@ -44,14 +60,28 @@ export async function writeRun({ folder, reportPath, mapping = "sliq", databaseU
   checkDatabaseUrl(databaseUrl);
   checkOrganisationId(organizationId);
   const profile = getProfile(mapping);
-  const loaded = loadFolder(folder, profile, { workbooks: await readWorkbooks(folder), encoding, dateFormat, sheets });
+  const workbooks = await readWorkbooks(folder);
+  const loaded = loadFolder(folder, profile, { workbooks, encoding, dateFormat, sheets });
+  const jobsLoaded = loadJobs(folder, mapping, loaded, { workbooks, sheets });
   const org = organizationId.toLowerCase();
   const resolutions = resolutionsPath ? loadResolutions(resolutionsPath) : null;
   const { report: current } = analyse(loaded, { organizationId: org, target: null, excludeNumbers, resolutions });
   // The report on file is checked against the files and options as they are now, before the database is touched.
   const report = loadReportFile(reportPath);
   assertWriteAllowed({ write, databaseUrl, organizationId, report, current, excludeNumbers });
-  return writeImport({ databaseUrl, organizationId: org, loaded, excludeNumbers, installImporter, expectedRehearsalId: report.rehearsal.id, resolutions });
+  assertCoreHeaders(loaded, jobsLoaded.headerCheck); // "headerCheck": "strict": every missing or unknown column refuses the write
+  return writeImport({ databaseUrl, organizationId: org, loaded, excludeNumbers, installImporter, expectedRehearsalId: report.rehearsal.id, resolutions, jobsLoaded });
+}
+
+/** The jobs files: their checksums join loaded.inputs, so a changed jobs file makes the report stale. Their headers are always strict. */
+function loadJobs(folder, mapping, loaded, opts) {
+  return loadJobsFolder(folder, mapping, loaded, opts);
+}
+
+function headerCheckMarkdown(h) {
+  if (!h?.strict) return "";
+  const lines = h.problems.flatMap((p) => [...p.missing.map((m) => `* ${p.file}: missing column ${m.columns.map((c) => `"${c}"`).join(" or ")} (for "${m.field}")`), ...p.unknown.map((u) => `* ${p.file}: unknown column "${u}"`)]);
+  return `\n## 16. Header check (strict)\n\n${lines.length ? `**A write is refused until these are fixed:**\n\n${lines.join("\n")}` : "Every file's header row is exactly what the mapping names."}\n`;
 }
 
 function parseArgs(argv) {
@@ -93,6 +123,7 @@ async function main() {
   if (a.write) {
     const res = await writeRun({ folder, reportPath: a.report, mapping: a.mapping, databaseUrl: a.databaseUrl ?? process.env.SLIQ_IMPORT_DATABASE_URL, organizationId: a.organizationId, excludeNumbers: a.exclude, write: true, installImporter: a.installImporter, encoding: a.encoding, dateFormat: a.dateFormat, sheets: a.sheets, resolutionsPath: a.resolutions });
     console.log(`Written to ${redactUrl(a.databaseUrl ?? "")}:`, JSON.stringify(res.created), "importer tables:", JSON.stringify(res.importer.tables));
+    if (res.jobs) console.log("Jobs import:", JSON.stringify(res.jobs));
     return;
   }
   const out = a.out ?? path.join("sliq-import-report");
@@ -101,6 +132,9 @@ async function main() {
   console.log(`Dry run only: nothing was written to any database. Report: ${path.join(out, "report.md")} and report.json`);
   console.log(`Writable: ${report.writable}. Held: ${report.held.length}. Needs review: ${report.needsReview.length}. Errors: ${report.errors.length}.`);
   console.log(`Renamed duplicate numbers: ${report.writePlan.renamedDocuments}. Ambiguous or unmatched customers (ambiguity.csv): ${report.unresolvedMatchCount}. Payment exceptions: ${report.unresolvedPaymentCount}. Money owed after import: ${report.balances.owedAfterImport} p; customer credit ${report.balances.creditAfterImport} p.`);
+  if (report.headerCheck.strict && report.headerCheck.problems.length) console.log(`Header check (strict): ${report.headerCheck.problems.length} file(s) do not match the mapping; a write is refused. See report section 16.`);
+  const j = report.jobsImport;
+  if (j) console.log(`Jobs: ${j.counts.openInFile} open in the file, ${j.counts.jobsWritten} to import, ${j.counts.jobsHeld} held, ${j.counts.closedInFile} closed. Sales orders ${j.counts.salesOrdersWritten}. PO job links ${j.counts.purchaseOrdersLinked}. WIP rows ${j.counts.wipRows}.${j.blockers.length ? ` Write refused: ${j.blockers.join("; ")}` : ""} Sheets: jobs-verification.csv, wip-verification.csv`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

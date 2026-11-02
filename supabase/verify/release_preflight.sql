@@ -176,7 +176,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'redeem_accountant_invite')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'handle_new_auth_user' AND position('ACCOUNTANT_INVITE_USED' IN prosrc) > 0)),
     ('135 import source ref (provisional number)', (SELECT count(*) FROM col WHERE table_name IN ('invoices', 'quotes', 'purchase_orders') AND column_name = 'source_ref') = 3
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'source_ref_import_only'))
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'source_ref_import_only')),
+    ('136 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip' AND policyname = 'opening_wip rbac select'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
