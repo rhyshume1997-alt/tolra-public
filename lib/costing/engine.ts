@@ -17,14 +17,31 @@ export type DetailedInputs = QuoteInputs & {
 };
 function round(n: number, places: number): number {
   if (!Number.isFinite(n)) throw new RangeError('Invalid rounding input');
-  // Python round uses ties to even on the binary float value.
-  const factor = 10 ** places;
-  const scaled = n * factor;
-  const lower = Math.floor(scaled);
-  const difference = scaled - lower;
-  const tolerance = Number.EPSILON * Math.max(1, Math.abs(scaled)) / 4;
-  if (Math.abs(difference - 0.5) <= tolerance) return (lower % 2 === 0 ? lower : lower + 1) / factor;
-  return Math.round(scaled) / factor;
+  if (!Number.isInteger(places) || places < 0 || places > 10) throw new RangeError('Invalid decimal precision');
+  // Match Python round(binary64, digits): inspect the original IEEE 754 fraction,
+  // not a floating point value first multiplied by 10 ** digits.
+  if (n === 0) return 0;
+  const negative = n < 0;
+  const bytes = new ArrayBuffer(8);
+  const view = new DataView(bytes);
+  view.setFloat64(0, Math.abs(n), false);
+  const bits = view.getBigUint64(0, false);
+  const exponent = Number((bits >> BigInt(52)) & BigInt(2047));
+  const fraction = bits & ((BigInt(1) << BigInt(52)) - BigInt(1));
+  const mantissa = exponent === 0 ? fraction : fraction + (BigInt(1) << BigInt(52));
+  const power = (exponent === 0 ? 1 : exponent) - 1023 - 52;
+  let numerator = mantissa * (BigInt(10) ** BigInt(places));
+  let denominator = BigInt(1);
+  if (power < 0) denominator <<= BigInt(-power);
+  else numerator <<= BigInt(power);
+  let quotient = numerator / denominator;
+  const remainder = numerator % denominator;
+  const doubled = remainder * BigInt(2);
+  if (doubled > denominator || (doubled === denominator && quotient % BigInt(2) !== BigInt(0))) {
+    quotient += BigInt(1);
+  }
+  const result = Number(quotient) / 10 ** places;
+  return negative ? -result : result;
 }
 function validate(p: QuoteInputs) {
   if (!Number.isSafeInteger(p.quantity) || p.quantity < 1 || p.quantity > 1_000_000) throw new RangeError('Invalid quantity');
