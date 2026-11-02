@@ -609,3 +609,48 @@ describe("one decision before the first write, counting each company's own switc
     expect(state.writes).toEqual([]);
   });
 });
+
+describe("create user as admin with the app's switch off and the company's own switch on (add_member runs as the service role, which 136 exempts)", () => {
+  const newAdmin = (extra: Record<string, unknown> = {}) =>
+    createUser(request("/api/admin/users", "POST", { email: "boss@example.test", full_name: "New Boss", role: "admin", password: "Correct-Horse-Battery-9", must_change_password: true, ...extra }));
+  beforeEach(() => { process.env.REQUIRE_ADMIN_MFA = "false"; });
+
+  it("a stale code: 403 mfa_recent_required before anything is written (no login created, no add_member)", async () => {
+    state.amr = STALE();
+    const response = await newAdmin();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("admin as the second role with a stale code: refused the same way, before the login is created", async () => {
+    state.amr = STALE();
+    const response = await newAdmin({ role: "office", secondary_role: "admin" });
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("a fresh code: the admin is created", async () => {
+    const response = await newAdmin();
+    expect([200, 201], await response.clone().text()).toContain(response.status);
+    expect(state.writes).toContain("auth.createUser");
+    expect(state.writes).toContain("admin.rpc.add_member");
+  });
+  it("the company's own switch off too: a stale code is not asked about (unchanged behaviour)", async () => {
+    state.orgs = state.orgs.map((org) => ({ ...org, require_admin_mfa: false }));
+    state.amr = STALE();
+    const response = await newAdmin();
+    expect(await isMfaRefusal(response, "mfa_recent_required")).toBe(false);
+    expect(state.writes).toContain("auth.createUser");
+  });
+  it("the company switch can't be read: counts as on (fails closed), nothing written", async () => {
+    state.failTable = "organizations";
+    state.amr = STALE();
+    const response = await newAdmin();
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("creating a non-admin with a stale code and the app's switch off: not asked (only giving admin is)", async () => {
+    state.amr = STALE();
+    const response = await newAdmin({ role: "office" });
+    expect(await isMfaRefusal(response, "mfa_recent_required")).toBe(false);
+  });
+});

@@ -162,6 +162,16 @@ export async function POST(request: Request) {
   const secondary = parsed.data.secondary_role && parsed.data.secondary_role !== role ? parsed.data.secondary_role : null;
   const hidden = parsed.data.hidden_sections ?? [];
 
+  // G1: giving admin here goes through add_member with the service role, which migration 136's trigger exempts, so the app asks for the
+  // recent code itself whenever the database would: REQUIRE_ADMIN_MFA on (guard above) or this company's own switch on. Decided before
+  // anything is written; a switch that can't be read counts as on (fail closed).
+  if (role === "admin" || secondary === "admin") {
+    const { data: company, error: switchError } = await admin.from("organizations").select("require_admin_mfa").eq("id", orgId).maybeSingle();
+    const companySwitchOn = Boolean(switchError) || company?.require_admin_mfa !== false;
+    const refused = await requireRecentAal2(auth, "give someone admin", companySwitchOn);
+    if (refused) return refused;
+  }
+
   // A username already in use names an EXISTING login (usernames are unique across the platform). That is not an error: the login
   // gets a membership in this company, exactly like the e-mail case below. If an e-mail was typed as well it must be that same
   // login's; otherwise the request is ambiguous and is refused with the old message (nothing about the other login is revealed).
