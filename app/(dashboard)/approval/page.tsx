@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle, Clipboard, Info, Mail, Send } from "lucide-react";
 
+import { ConnectedChaseApproval } from "@/components/chase/connected-approval";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
@@ -290,6 +291,11 @@ export default function ApprovalPage() {
           </Card>
         ) : (
           approvals.map((item) => {
+            if (item.chase) return <ConnectedChaseApproval key={item.id} id={item.id} onDone={() => void load()} manualActions={<>
+              <Button variant="outline" onClick={() => void copyToClipboard(item)}>Copy draft</Button>
+              <Button variant="outline" onClick={() => openEmailClient(item)}>Open in email app</Button>
+              <Button variant="outline" disabled={saving} onClick={() => markSentManually(item)}>Mark as Sent Manually</Button>
+            </>} />;
             const styles = toneStyles[item.tone];
             return (
               <Card key={item.id}>
