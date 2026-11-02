@@ -177,6 +177,10 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'handle_new_auth_user' AND position('ACCOUNTANT_INVITE_USED' IN prosrc) > 0)),
     ('131 rls select wrap',               EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'invoices' AND p.policyname = 'invoices rbac select'
                                                  AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '6a18e9fed9ee8dd956c314df2b296562')),
+    ('132 dashboard tile figures',        (SELECT count(*) = 6 FROM fn WHERE nspname = 'public' AND (proname, md5(regexp_replace(prosrc, '\s', '', 'g'))) IN (
+                                            ('dashboard_open_quotes', 'd2c5bd23f4c46c421b989012e74c2e80'), ('dashboard_quotes_sent', '308be040514eab13aca8cf86dd7f2c63'),
+                                            ('dashboard_quotes_won', 'd2ca2c957383ede97833c95b84b0f8fa'), ('dashboard_quote_outcomes', '774a67cfe0e7fd2f013f7fd3abcc7dad'),
+                                            ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '214295752bb751f03a74c767b090e8c0')))),
     ('133 ai helper pre enable',          EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '972540e833a42bbb35ac5b670c56daa8')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e04d0ab645ec24dc0f0acb78c222702')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9'))
