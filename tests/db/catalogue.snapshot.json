@@ -4312,32 +4312,32 @@
  {
   "kind": "policy",
   "object": "public.ai_helper_requests :: ai_helper_requests office select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.ai_helper_settings :: ai_helper_settings office select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.ai_helper_usage :: ai_helper_usage office select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.attendance_event_network_ips :: attendance_event_network_ips rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.attendance_event_networks :: attendance_event_networks rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.attendance_events :: attendance_events rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
@@ -4347,42 +4347,42 @@
  {
   "kind": "policy",
   "object": "public.clock_in_network_exemptions :: clock_in_network_exemptions rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.clock_in_network_locks :: clock_in_network_locks rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.clock_in_network_refusals :: clock_in_network_refusals admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.clock_in_network_unverified :: clock_in_network_unverified rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.credit_note_lines :: credit_note_lines rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.credit_note_lines :: credit_note_lines rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.credit_note_lines :: credit_note_lines rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.credit_note_lines :: credit_note_lines rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -4392,22 +4392,22 @@
  {
   "kind": "policy",
   "object": "public.credit_notes :: credit_notes rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.credit_notes :: credit_notes rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.credit_notes :: credit_notes rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.credit_notes :: credit_notes rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -4417,7 +4417,7 @@
  {
   "kind": "policy",
   "object": "public.customer_credit_ledger :: customer_credit_ledger rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
@@ -4427,97 +4427,97 @@
  {
   "kind": "policy",
   "object": "public.customers :: customers rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.customers :: customers rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.customers :: customers rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.customers :: customers rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
   "object": "public.delivery_note_items :: delivery_note_items rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.delivery_note_items :: delivery_note_items rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7783492e65b781cfe89209df73819304"
+  "detail": "PERMISSIVE INSERT authenticated 01e4264ca6aa7544994058ff2d5bc12b"
  },
  {
   "kind": "policy",
   "object": "public.delivery_note_items :: delivery_note_items rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 96c75c33346b7633b07d758e4aa6d383"
+  "detail": "PERMISSIVE SELECT authenticated afe7e599c68f3a70d966b2240f90b47d"
  },
  {
   "kind": "policy",
   "object": "public.delivery_note_items :: delivery_note_items rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 1ec4ea4d6b3abfc0e81977da40ab2097"
+  "detail": "PERMISSIVE UPDATE authenticated a8f9ab62defea1d7f44727e3940f842b"
  },
  {
   "kind": "policy",
   "object": "public.delivery_notes :: delivery_notes rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.delivery_notes :: delivery_notes rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7783492e65b781cfe89209df73819304"
+  "detail": "PERMISSIVE INSERT authenticated 01e4264ca6aa7544994058ff2d5bc12b"
  },
  {
   "kind": "policy",
   "object": "public.delivery_notes :: delivery_notes rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 96c75c33346b7633b07d758e4aa6d383"
+  "detail": "PERMISSIVE SELECT authenticated afe7e599c68f3a70d966b2240f90b47d"
  },
  {
   "kind": "policy",
   "object": "public.delivery_notes :: delivery_notes rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 1ec4ea4d6b3abfc0e81977da40ab2097"
+  "detail": "PERMISSIVE UPDATE authenticated a8f9ab62defea1d7f44727e3940f842b"
  },
  {
   "kind": "policy",
   "object": "public.document_attachments :: document_attachments rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 65d5152bed9e043dcf180569b62f1fb2"
+  "detail": "PERMISSIVE DELETE authenticated d5e8c85d7a9726cd7b5fb2f83a18e838"
  },
  {
   "kind": "policy",
   "object": "public.document_attachments :: document_attachments rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated eac2f05de167aaf5631117114800206c"
+  "detail": "PERMISSIVE INSERT authenticated f24a63c4d2c4f2655f27de42e6167460"
  },
  {
   "kind": "policy",
   "object": "public.document_attachments :: document_attachments rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 65d5152bed9e043dcf180569b62f1fb2"
+  "detail": "PERMISSIVE SELECT authenticated d5e8c85d7a9726cd7b5fb2f83a18e838"
  },
  {
   "kind": "policy",
   "object": "public.email_history :: email_history rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.email_history :: email_history rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated d2ad9ec2e6b63d75c9c5996484b28ffb"
+  "detail": "PERMISSIVE INSERT authenticated 49213200206620f1b40d3eddeaecfab3"
  },
  {
   "kind": "policy",
   "object": "public.email_history :: email_history rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.email_history :: email_history rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
@@ -4527,122 +4527,122 @@
  {
   "kind": "policy",
   "object": "public.email_schedule_runs :: email_schedule_runs office select",
-  "detail": "PERMISSIVE SELECT authenticated e92b788d951ce740d4157661bda75d07"
+  "detail": "PERMISSIVE SELECT authenticated ec3eaa346985c4d8b6f644dfdd8d29cb"
  },
  {
   "kind": "policy",
   "object": "public.email_schedules :: email_schedules admin delete",
-  "detail": "PERMISSIVE DELETE authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE DELETE authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.email_schedules :: email_schedules admin insert",
-  "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
+  "detail": "PERMISSIVE INSERT authenticated 8d519372ad4f1388990a4ad10cfeb5de"
  },
  {
   "kind": "policy",
   "object": "public.email_schedules :: email_schedules admin update",
-  "detail": "PERMISSIVE UPDATE authenticated 5eb5430fefd11f45e3c5379a209e0b41"
+  "detail": "PERMISSIVE UPDATE authenticated d1f0a8f12c537fb44e01f5375be08f23"
  },
  {
   "kind": "policy",
   "object": "public.email_schedules :: email_schedules member select",
-  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+  "detail": "PERMISSIVE SELECT authenticated aba327892564ca66f25161fdcaa8da48"
  },
  {
   "kind": "policy",
   "object": "public.email_templates :: email_templates member select",
-  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+  "detail": "PERMISSIVE SELECT authenticated aba327892564ca66f25161fdcaa8da48"
  },
  {
   "kind": "policy",
   "object": "public.email_templates :: email_templates office delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.email_templates :: email_templates office insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.email_templates :: email_templates office update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
   "object": "public.import_batches :: import_batches admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.import_mappings :: import_mappings admin delete",
-  "detail": "PERMISSIVE DELETE authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE DELETE authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.import_mappings :: import_mappings admin insert",
-  "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
+  "detail": "PERMISSIVE INSERT authenticated 8d519372ad4f1388990a4ad10cfeb5de"
  },
  {
   "kind": "policy",
   "object": "public.import_mappings :: import_mappings admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.import_mappings :: import_mappings admin update",
-  "detail": "PERMISSIVE UPDATE authenticated 5eb5430fefd11f45e3c5379a209e0b41"
+  "detail": "PERMISSIVE UPDATE authenticated d1f0a8f12c537fb44e01f5375be08f23"
  },
  {
   "kind": "policy",
   "object": "public.import_record_keys :: import_record_keys admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.import_runs :: import_runs admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.import_stage :: import_stage admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.inbound_emails :: inbound_emails rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.inspector_authorisations :: inspector_authorisations rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.integration_connections :: integration_connections admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.integration_contacts :: integration_contacts admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.integration_mappings :: integration_mappings admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.integration_sends :: integration_sends admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.invoice_credit_allocations :: invoice_credit_allocations rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
@@ -4652,22 +4652,22 @@
  {
   "kind": "policy",
   "object": "public.invoice_line_items :: invoice_line_items rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.invoice_line_items :: invoice_line_items rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.invoice_line_items :: invoice_line_items rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.invoice_line_items :: invoice_line_items rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -4677,7 +4677,7 @@
  {
   "kind": "policy",
   "object": "public.invoice_payments :: invoice_payments rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
@@ -4687,7 +4687,7 @@
  {
   "kind": "policy",
   "object": "public.invoice_queue_events :: invoice_queue_events rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
@@ -4697,27 +4697,27 @@
  {
   "kind": "policy",
   "object": "public.invoice_reminder_sends :: invoice_reminder_sends office select",
-  "detail": "PERMISSIVE SELECT authenticated 95e4fec10d794513d1f5379683dc1be2"
+  "detail": "PERMISSIVE SELECT authenticated 312aac81449231bf38d2cc6b27c41cd8"
  },
  {
   "kind": "policy",
   "object": "public.invoices :: invoices rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.invoices :: invoices rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.invoices :: invoices rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.invoices :: invoices rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -4727,12 +4727,12 @@
  {
   "kind": "policy",
   "object": "public.job_files :: job_files customer po not for viewers",
-  "detail": "RESTRICTIVE SELECT authenticated 26ba84b14b5673be8a4838711aa13b83"
+  "detail": "RESTRICTIVE SELECT authenticated 81711441216d8127226f4ca8e2c4ec8e"
  },
  {
   "kind": "policy",
   "object": "public.job_files :: job_files photos not for viewers",
-  "detail": "RESTRICTIVE SELECT authenticated 3f10ab2ecca0c26d229c5aacc7651361"
+  "detail": "RESTRICTIVE SELECT authenticated 2bb860f9079915043c7f9a0bea300bfd"
  },
  {
   "kind": "policy",
@@ -4742,207 +4742,207 @@
  {
   "kind": "policy",
   "object": "public.job_files :: job_files rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.job_files :: job_files rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 46192704b51eb974752d0fbdfff0a519"
+  "detail": "PERMISSIVE INSERT authenticated 2ff9ab524eee153021051e94b787754d"
  },
  {
   "kind": "policy",
   "object": "public.job_files :: job_files rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_files :: job_files rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated f26f9252aa50f5c3c1253b3a300917a7"
+  "detail": "PERMISSIVE UPDATE authenticated 09b11d8fcd5e64675251fe3a88ede7f2"
  },
  {
   "kind": "policy",
   "object": "public.job_flow_events :: job_flow_events rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_inspections :: job_inspections rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_machines :: job_machines rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_part_logs :: job_part_logs rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_problems :: job_problems rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_rework :: job_rework rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_rework_entries :: job_rework_entries rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_rework_entry_values :: job_rework_entry_values rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.job_signoffs :: job_signoffs rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.job_values :: job_values delete",
-  "detail": "PERMISSIVE DELETE authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.job_values :: job_values insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.job_values :: job_values select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.job_values :: job_values update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
   "object": "public.jobs :: jobs rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated 43f05b0d9510d54d0eebc24bd8705346"
+  "detail": "PERMISSIVE DELETE authenticated 1981d4379619ef80ee61cf17f2f5bbc9"
  },
  {
   "kind": "policy",
   "object": "public.jobs :: jobs rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7783492e65b781cfe89209df73819304"
+  "detail": "PERMISSIVE INSERT authenticated 01e4264ca6aa7544994058ff2d5bc12b"
  },
  {
   "kind": "policy",
   "object": "public.jobs :: jobs rbac select",
-  "detail": "PERMISSIVE SELECT authenticated b8b9185154c36a316e4bb1f744ac0c3b"
+  "detail": "PERMISSIVE SELECT authenticated 47a967492d1b726bb739d47545efbf8d"
  },
  {
   "kind": "policy",
   "object": "public.jobs :: jobs rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 1ec4ea4d6b3abfc0e81977da40ab2097"
+  "detail": "PERMISSIVE UPDATE authenticated a8f9ab62defea1d7f44727e3940f842b"
  },
  {
   "kind": "policy",
   "object": "public.machine_bookings :: machine_bookings tenant delete",
-  "detail": "PERMISSIVE DELETE public 1a18a7b1a61092fb504f2c73f7d0d4f1"
+  "detail": "PERMISSIVE DELETE public 6f6227c1177bb709f1b526f1d37bf463"
  },
  {
   "kind": "policy",
   "object": "public.machine_bookings :: machine_bookings tenant insert",
-  "detail": "PERMISSIVE INSERT public e2cbbd263497effbf48aca82f6f613b9"
+  "detail": "PERMISSIVE INSERT public d550605af7821e337f37b8c6f2f5a801"
  },
  {
   "kind": "policy",
   "object": "public.machine_bookings :: machine_bookings tenant select",
-  "detail": "PERMISSIVE SELECT public 70aac1d760f9d79e50fdd0fe1eca711d"
+  "detail": "PERMISSIVE SELECT public 36e911bf69728c575f43d6a47a97e995"
  },
  {
   "kind": "policy",
   "object": "public.machine_bookings :: machine_bookings tenant update",
-  "detail": "PERMISSIVE UPDATE public f4651220c5242278f75c1cac605cb75d"
+  "detail": "PERMISSIVE UPDATE public dacc3cd60bd4e7e3342f55b57998b2d5"
  },
  {
   "kind": "policy",
   "object": "public.machine_runs :: machine_runs rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
   "object": "public.machines :: machines rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.machines :: machines rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.machines :: machines rbac select",
-  "detail": "PERMISSIVE SELECT authenticated b8b9185154c36a316e4bb1f744ac0c3b"
+  "detail": "PERMISSIVE SELECT authenticated 47a967492d1b726bb739d47545efbf8d"
  },
  {
   "kind": "policy",
   "object": "public.machines :: machines rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
   "object": "public.mail_poll_state :: mail_poll_state rbac select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.operator_sessions :: operator_sessions rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.organization_invites :: organization_invites admins read",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.organization_members :: organization_members admins read org",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.organization_members :: organization_members read own",
-  "detail": "PERMISSIVE SELECT authenticated 5eebdfba311617743b110b29a41f23a0"
+  "detail": "PERMISSIVE SELECT authenticated a7d7eb18352aa8797d6f9c34aa194875"
  },
  {
   "kind": "policy",
   "object": "public.organization_settings :: organization_settings insert",
-  "detail": "PERMISSIVE INSERT public 2df8e2cdcdfaa803fb80cf1d72806efb"
+  "detail": "PERMISSIVE INSERT public 31217f1a286181dedb491fb3f1b0b8b6"
  },
  {
   "kind": "policy",
   "object": "public.organization_settings :: organization_settings select",
-  "detail": "PERMISSIVE SELECT public 70aac1d760f9d79e50fdd0fe1eca711d"
+  "detail": "PERMISSIVE SELECT public 36e911bf69728c575f43d6a47a97e995"
  },
  {
   "kind": "policy",
   "object": "public.organization_settings :: organization_settings update",
-  "detail": "PERMISSIVE UPDATE public 1b3401f3412974a960a5e9ff71ac1876"
+  "detail": "PERMISSIVE UPDATE public 14fbf0f5f05d34ba3a83482ed7eb65b3"
  },
  {
   "kind": "policy",
   "object": "public.organizations :: organizations admin update own",
-  "detail": "PERMISSIVE UPDATE authenticated c3809998874c31771767838463b180a1"
+  "detail": "PERMISSIVE UPDATE authenticated e706ff804c1e275926bf481b9316d3e5"
  },
  {
   "kind": "policy",
   "object": "public.organizations :: organizations select own",
-  "detail": "PERMISSIVE SELECT authenticated 7505c6a588dbb6320309ac5d7128f35d"
+  "detail": "PERMISSIVE SELECT authenticated 99d8a76309f122a00dabbef46067b168"
  },
  {
   "kind": "policy",
   "object": "public.overview_owed_snapshots :: overview_owed_snapshots admin select",
-  "detail": "PERMISSIVE SELECT authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
@@ -4952,22 +4952,22 @@
  {
   "kind": "policy",
   "object": "public.purchase_orders :: purchase_orders rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.purchase_orders :: purchase_orders rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.purchase_orders :: purchase_orders rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.purchase_orders :: purchase_orders rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
@@ -4977,22 +4977,22 @@
  {
   "kind": "policy",
   "object": "public.quote_attachments :: quote_attachments rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.quote_attachments :: quote_attachments rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.quote_attachments :: quote_attachments rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.quote_attachments :: quote_attachments rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
@@ -5002,22 +5002,22 @@
  {
   "kind": "policy",
   "object": "public.quote_line_items :: quote_line_items rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.quote_line_items :: quote_line_items rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.quote_line_items :: quote_line_items rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.quote_line_items :: quote_line_items rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
@@ -5027,22 +5027,22 @@
  {
   "kind": "policy",
   "object": "public.quotes :: quotes rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.quotes :: quotes rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.quotes :: quotes rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.quotes :: quotes rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
@@ -5052,32 +5052,32 @@
  {
   "kind": "policy",
   "object": "public.record_archive_state :: record_archive_state select",
-  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+  "detail": "PERMISSIVE SELECT authenticated aba327892564ca66f25161fdcaa8da48"
  },
  {
   "kind": "policy",
   "object": "public.reopen_requests :: reopen_requests member select",
-  "detail": "PERMISSIVE SELECT authenticated 001421a6576c1b6fbbb808a89ecbf391"
+  "detail": "PERMISSIVE SELECT authenticated aba327892564ca66f25161fdcaa8da48"
  },
  {
   "kind": "policy",
   "object": "public.rfqs :: rfqs rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.rfqs :: rfqs rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.rfqs :: rfqs rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.rfqs :: rfqs rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
@@ -5087,7 +5087,7 @@
  {
   "kind": "policy",
   "object": "public.sales_order_line_machines :: sales_order_line_machines rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 5ad2d119d86695511a91edbc970881fa"
+  "detail": "PERMISSIVE SELECT authenticated b51fdb9c013bb763aa7141df53f37f70"
  },
  {
   "kind": "policy",
@@ -5097,7 +5097,7 @@
  {
   "kind": "policy",
   "object": "public.sales_order_lines :: sales_order_lines rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
@@ -5107,22 +5107,22 @@
  {
   "kind": "policy",
   "object": "public.sales_orders :: sales_orders rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated d52d07dfca8db97c66ed1573ebd3a6c1"
+  "detail": "PERMISSIVE DELETE authenticated 0c3f9197b8141c8b66f15268b935ae94"
  },
  {
   "kind": "policy",
   "object": "public.sales_orders :: sales_orders rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 1119fdfbe777371eb5ac8c8fc827906e"
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
  },
  {
   "kind": "policy",
   "object": "public.sales_orders :: sales_orders rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.sales_orders :: sales_orders rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 5cd04fff55dc985c7634b03ff43e08b3"
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -5132,87 +5132,87 @@
  {
   "kind": "policy",
   "object": "public.site_network_members :: site_network_members rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.site_network_names :: site_network_names rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.site_network_settings :: site_network_settings rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.site_networks :: site_networks rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
   "object": "public.stock :: stock rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.stock :: stock rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.stock :: stock rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.stock :: stock rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
   "object": "public.suppliers :: suppliers rbac delete",
-  "detail": "PERMISSIVE DELETE authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE DELETE authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.suppliers :: suppliers rbac insert",
-  "detail": "PERMISSIVE INSERT authenticated 7b5e35d2cb03e67cf8c15da3923b8ef7"
+  "detail": "PERMISSIVE INSERT authenticated b95a8d526b8c292397da7c12c8a25e72"
  },
  {
   "kind": "policy",
   "object": "public.suppliers :: suppliers rbac select",
-  "detail": "PERMISSIVE SELECT authenticated c957dab9715f3b7e43e39ded1e984ef0"
+  "detail": "PERMISSIVE SELECT authenticated 90036cbc57d00743c6f0f7bd0738a13a"
  },
  {
   "kind": "policy",
   "object": "public.suppliers :: suppliers rbac update",
-  "detail": "PERMISSIVE UPDATE authenticated 61d4765d2dcf519419687f753b937da8"
+  "detail": "PERMISSIVE UPDATE authenticated f070f4c172c8572cd2517a59cbb00801"
  },
  {
   "kind": "policy",
   "object": "public.time_day_flags :: time_day_flags rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.time_settings :: time_settings rbac select",
-  "detail": "PERMISSIVE SELECT authenticated eb4e88c6ee43647d519a025dd6a79dc6"
+  "detail": "PERMISSIVE SELECT authenticated 84db117edbfe90e8e8dac937305f6d4c"
  },
  {
   "kind": "policy",
   "object": "public.time_sync_rejections :: time_sync_rejections rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.time_week_approvals :: time_week_approvals rbac select",
-  "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
+  "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
  {
   "kind": "policy",
   "object": "public.timesheet_sends :: timesheet_sends office select",
-  "detail": "PERMISSIVE SELECT authenticated 1cbd867efcfe2dd1b1130687385ea3a6"
+  "detail": "PERMISSIVE SELECT authenticated 41df2ededed25cc3a22136d71ada5dd8"
  },
  {
   "kind": "policy",
@@ -5232,7 +5232,7 @@
  {
   "kind": "policy",
   "object": "public.user_profiles :: Admins insert org profiles",
-  "detail": "PERMISSIVE INSERT authenticated eb88838f77cc54ce415d0f1211b649f9"
+  "detail": "PERMISSIVE INSERT authenticated 8d519372ad4f1388990a4ad10cfeb5de"
  },
  {
   "kind": "policy",
@@ -5247,7 +5247,7 @@
  {
   "kind": "policy",
   "object": "public.user_profiles :: Users read own profile",
-  "detail": "PERMISSIVE SELECT authenticated cc00666ac5d81806b4129769e28761f3"
+  "detail": "PERMISSIVE SELECT authenticated b3158818130bc2650ee2c7bd09b38a45"
  },
  {
   "kind": "policy",
@@ -5272,37 +5272,37 @@
  {
   "kind": "policy",
   "object": "storage.objects :: document-attachments org delete",
-  "detail": "PERMISSIVE DELETE authenticated 48c068dc1f6f78db386a692d9c82e7d4"
+  "detail": "PERMISSIVE DELETE authenticated 109c41f4481d07b0cbfde076012a9961"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: document-attachments org insert",
-  "detail": "PERMISSIVE INSERT authenticated d800791c699190fe37b4631839d33087"
+  "detail": "PERMISSIVE INSERT authenticated 1efb2a5fe88143699916ff3bf0fd9fb1"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: document-attachments org select",
-  "detail": "PERMISSIVE SELECT authenticated f77c8da95cb3c654d26eebe9e6a81865"
+  "detail": "PERMISSIVE SELECT authenticated 2b937f5ff34db78626a3064877b1f70d"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: job drawings org delete",
-  "detail": "PERMISSIVE DELETE authenticated d9e9fa22029f0234a16ec54c112bf9d3"
+  "detail": "PERMISSIVE DELETE authenticated 2b7ec566b4506d9dc5918f7b02dd8374"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: job drawings org insert",
-  "detail": "PERMISSIVE INSERT authenticated bbb84de21258884a22122095a319bcb6"
+  "detail": "PERMISSIVE INSERT authenticated 2c8b842a92e82cbe88c465be8de536b4"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: job drawings org select",
-  "detail": "PERMISSIVE SELECT authenticated d866ab0dfc3d21799b22a4177450667e"
+  "detail": "PERMISSIVE SELECT authenticated 0ecf1bddff5101df38f2fad021989797"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: job drawings org update",
-  "detail": "PERMISSIVE UPDATE authenticated 78f03b9d476b23cc8407cc0d9f7add8a"
+  "detail": "PERMISSIVE UPDATE authenticated 76e489d7de7f079451629dc75177d894"
  },
  {
   "kind": "policy",
@@ -5322,57 +5322,57 @@
  {
   "kind": "policy",
   "object": "storage.objects :: job photos: only the reserved object is uploaded",
-  "detail": "RESTRICTIVE INSERT authenticated 359160824b8c7ba48fc1474457d43979"
+  "detail": "RESTRICTIVE INSERT authenticated 8203733db41b1d0e8ee251d634ba025b"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: job photos: the reserved object is uploaded",
-  "detail": "PERMISSIVE INSERT authenticated 389ad203e85df9af80a3c678bcc9bc95"
+  "detail": "PERMISSIVE INSERT authenticated f18378ccdc69491c5575a8d36b06b577"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: org-logos admin delete",
-  "detail": "PERMISSIVE DELETE authenticated 8f4aa52a4d44db9be01ba7f39cb1481f"
+  "detail": "PERMISSIVE DELETE authenticated edb0c20b93f1657f1c28411f6626e296"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: org-logos admin insert",
-  "detail": "PERMISSIVE INSERT authenticated d40a9e57674c9fed460361c042aa247c"
+  "detail": "PERMISSIVE INSERT authenticated 4c6b17900a334b7fdfd64ba9e4614cfe"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: org-logos admin update",
-  "detail": "PERMISSIVE UPDATE authenticated be1c7e4b6055e4952115b8dfc8de408a"
+  "detail": "PERMISSIVE UPDATE authenticated 3fa3424546ce8004b672741752029d22"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: org-logos org select",
-  "detail": "PERMISSIVE SELECT authenticated ede390297f9303f6a7a0e7127d9110b8"
+  "detail": "PERMISSIVE SELECT authenticated 0dc0025c633b06116fb54c4211617a80"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: quote-attachments org delete",
-  "detail": "PERMISSIVE DELETE authenticated ca0f9558e9fdbc73bcbefa14e41d4901"
+  "detail": "PERMISSIVE DELETE authenticated b0dc02e5ec9957c1ac5aab8520377d3c"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: quote-attachments org insert",
-  "detail": "PERMISSIVE INSERT authenticated 5b4d08e645139b8d0e67da40c058d658"
+  "detail": "PERMISSIVE INSERT authenticated 46d89e29270cd400ca29d28c43e59d47"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: quote-attachments org select",
-  "detail": "PERMISSIVE SELECT authenticated ca0f9558e9fdbc73bcbefa14e41d4901"
+  "detail": "PERMISSIVE SELECT authenticated b0dc02e5ec9957c1ac5aab8520377d3c"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: quote-attachments org update",
-  "detail": "PERMISSIVE UPDATE authenticated e2a8ca60b496ed0b9cec2c9a418f13cf"
+  "detail": "PERMISSIVE UPDATE authenticated bd77f2c32624450148c1c34c5ab5123e"
  },
  {
   "kind": "policy",
   "object": "storage.objects :: quote-attachments referenced by jobs",
-  "detail": "PERMISSIVE SELECT authenticated 52bb4c1d75c7687088aaab88e213de6f"
+  "detail": "PERMISSIVE SELECT authenticated 5c603dbf51c316313aa9d26ecf5b4eda"
  },
  {
   "kind": "policy",

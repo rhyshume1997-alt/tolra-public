@@ -133,8 +133,9 @@ async function expect043(db: Client, present: boolean) {
   for (const [name, text] of checks) expect(await q(text), `${name} present = ${present}`).toBe(present);
 }
 
-/** What the catalogue fingerprint does not hold: every column and index in public, and the full text of every function in public and
- *  security_audit (077 replaces only security_audit.set_audit_hash). */
+/** What the catalogue fingerprint does not hold: every column and index in public, the full text of every function in public and
+ *  security_audit (077 replaces only security_audit.set_audit_hash), and every row-level-security policy in public, security_audit and
+ *  storage with its kind, roles, command and full USING / WITH CHECK text (131 changes nothing but policy text). */
 const structure = (db: Client) => db.query<{ k: string; d: string }>(
   `select 'column ' || table_name || '.' || column_name as k, data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '') as d
      from information_schema.columns where table_schema = 'public'
@@ -143,6 +144,9 @@ const structure = (db: Client) => db.query<{ k: string; d: string }>(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'security_audit') and p.prokind = 'f'
        and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
    union all select 'trigger ' || tgrelid::regclass::text || ' ' || tgname, pg_get_triggerdef(oid) from pg_trigger where not tgisinternal
+   union all select 'policy ' || schemaname || '.' || tablename || ' ' || policyname,
+                    permissive || ' ' || roles::text || ' ' || cmd || ' USING ' || coalesce(qual, '') || ' WITH CHECK ' || coalesce(with_check, '')
+     from pg_policies where schemaname in ('public', 'security_audit', 'storage')
    order by 1`).then((r) => r.rows);
 
 const IS_044 = (file: string) => file.endsWith("_machine_runs.sql");
@@ -350,7 +354,12 @@ const F114 = later.find((file) => file.endsWith("_clock_in_network_lock.sql"));
  * teardown drops those, so 128 is re-applied after 114 (its guard accepts 078's bodies).
  */
 const F128 = later.find((file) => file.endsWith("_workshop_network.sql"));
-const TIME_FILES_WITH_074 = [...TIME_FILES, ...(F074 ? [F074] : []), ...(F075 ? [F075] : []), ...(F078 ? [F078] : []), ...(F092 ? [F092] : []), ...(F114 ? [F114] : []), ...(F128 ? [F128] : [])];
+/**
+ * 131 (helpers asked once per statement) rewrites the policies of the tables the teardown drops (and 050 to 128 re-create with main's
+ * text): re-applied last (its guard accepts main's or 131's text in each policy).
+ */
+const F131 = later.find((file) => file.endsWith("_rls_select_wrap.sql"));
+const TIME_FILES_WITH_074 = [...TIME_FILES, ...(F074 ? [F074] : []), ...(F075 ? [F075] : []), ...(F078 ? [F078] : []), ...(F092 ? [F092] : []), ...(F114 ? [F114] : []), ...(F128 ? [F128] : []), ...(F131 ? [F131] : [])];
 
 /** Every function 050 to 052 create, and whether the API roles may run it (all others internal: no API role). */
 const TIME_FUNCTIONS: Record<"050" | "051" | "052", { internal: string[]; callable: string[] }> = {
