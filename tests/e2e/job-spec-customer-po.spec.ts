@@ -3,7 +3,8 @@
  *   (a) The PO is entered on the QUOTE only: accepted in the browser, the job's customer_po is the quote's PO and the Job Board's
  *       specification and the printed job sheet show "Customer PO <n>". The fallback itself (an order with no PO whose quote has one,
  *       converted with Convert to Job) takes the quote's PO too.
- *   (b) The order has its own PO (the quote another): the job uses the order's.
+ *   (b) The order has its own PO (the quote another): the job uses the order's, and still does after a reload of the Job Board and the
+ *       printed sheet (never the quote's, never "Sales order").
  *   (c) No PO anywhere: no Customer PO line; the specification reads "Sales order <so_number>." as before and the job's customer_po is empty.
  * Its own company (createSoloTenant), fresh random quote, order and PO numbers on every run.
  */
@@ -133,6 +134,25 @@ test("(b) PO on the order: the job uses the order's PO, not the quote's", async 
   expect(job.specification).not.toContain("Sales order");
   await expectCustomerPoShown(page, job, orderPo);
   await expect(page.locator('[data-print-layout="basic"]')).not.toContainText(quotePo);
+
+  // Conflicting POs after a reload: the job keeps the ORDER's PO (data, Job Board, printed sheet); never the quote's, never "Sales order".
+  await page.goto(`/jobs?job=${job.id}`);
+  await page.reload();
+  const row = page.getByRole("row").filter({ hasText: job.job_no });
+  await expect(row.getByText(`Customer PO ${orderPo}`).filter({ visible: true })).toHaveCount(1);
+  await expect(row).not.toContainText(quotePo);
+  await expect(row).not.toContainText("Sales order");
+  const { data: again, error: againError } = await adminClient().from("jobs").select("customer_po, specification").eq("id", job.id).single();
+  expect(againError).toBeNull();
+  expect(again!.customer_po).toBe(orderPo);
+  expect(again!.specification.split("\n")[0]).toBe(`Customer PO ${orderPo}.`);
+  await page.goto(`/jobs/${job.id}/print`);
+  await page.reload();
+  const sheet = page.locator('[data-print-layout="basic"]');
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toContainText(new RegExp(`Customer PO\\s*${escape(orderPo)}`));
+  await expect(sheet).not.toContainText(quotePo);
+  await expect(sheet).not.toContainText("Sales order");
 });
 
 test("(c) no PO anywhere: no Customer PO line, the job's customer_po stays empty", async ({ page }) => {

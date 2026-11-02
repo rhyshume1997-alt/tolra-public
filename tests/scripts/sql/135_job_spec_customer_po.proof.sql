@@ -13,7 +13,7 @@ CREATE TABLE proof.ids (k TEXT PRIMARY KEY, v UUID);
 CREATE TABLE proof.res (k TEXT PRIMARY KEY, so UUID, result JSONB, err TEXT);
 GRANT USAGE ON SCHEMA proof TO authenticated, service_role; GRANT ALL ON ALL TABLES IN SCHEMA proof TO authenticated, service_role;
 DO $$
-DECLARE o UUID := gen_random_uuid(); r TEXT; u UUID; qa UUID; qc UUID; qd UUID; qh UUID;
+DECLARE o UUID := gen_random_uuid(); r TEXT; u UUID; qa UUID; qc UUID; qd UUID; qh UUID; qi UUID;
 BEGIN
   INSERT INTO public.organizations (id, name, slug) VALUES (o, 'Proof Co', 'proof-' || left(o::text, 8));
   FOREACH r IN ARRAY ARRAY['office', 'workshop'] LOOP
@@ -24,23 +24,27 @@ BEGIN
     INSERT INTO public.organization_members (user_id, organization_id, role) VALUES (u, o, r) ON CONFLICT DO NOTHING;
     INSERT INTO proof.ids VALUES ('u_' || r, u);
   END LOOP;
-  -- Quotes (drafts): A has two ordered lines, a declined one and a drawing file; C has a PO on the quote only; D has no PO; H is accepted below.
+  -- Quotes (drafts): A has two ordered lines, a declined one and a drawing file; C has a PO on the quote only; D has no PO; H is accepted below;
+  -- I has a PO on the quote and a DIFFERENT one on the order (the order's wins).
   INSERT INTO public.quotes (organization_id, quote_ref, customer, total_value) VALUES (o, 'QUO-9001', 'Acme', 100) RETURNING id INTO qa;
   INSERT INTO public.quotes (organization_id, quote_ref, customer, total_value, customer_po) VALUES (o, 'QUO-9003', 'Acme', 50, 'PO-C1') RETURNING id INTO qc;
   INSERT INTO public.quotes (organization_id, quote_ref, customer, total_value) VALUES (o, 'QUO-9004', 'Acme', 50) RETURNING id INTO qd;
   INSERT INTO public.quotes (organization_id, quote_ref, customer, total_value, customer_po) VALUES (o, 'QUO-9008', 'Acme', 72, 'PO-H1') RETURNING id INTO qh;
+  INSERT INTO public.quotes (organization_id, quote_ref, customer, total_value, customer_po) VALUES (o, 'QUO-9009', 'Acme', 30, 'Q-I1') RETURNING id INTO qi;
   INSERT INTO public.quote_line_items (organization_id, quote_id, position, description, quantity, unit_price, part_number, drawing_number, drawing_revision, declined) VALUES
     (o, qa, 1, 'Flange 80mm', 12, 5, 'FL-80', 'DWG-1', 'B', FALSE), (o, qa, 2, 'Spacer', 4, 10, NULL, NULL, NULL, FALSE),
     (o, qa, 3, 'Bush (declined)', 3, 1, NULL, NULL, NULL, TRUE),
     (o, qc, 1, 'Shaft', 5, 10, 'SH-1', NULL, NULL, FALSE),
     (o, qd, 1, 'Pin', 1.5, 10, NULL, 'DP-7', 'D', FALSE),
-    (o, qh, 1, 'Collar', 6, 10, NULL, NULL, NULL, FALSE);
+    (o, qh, 1, 'Collar', 6, 10, NULL, NULL, NULL, FALSE),
+    (o, qi, 1, 'Sleeve', 3, 10, NULL, NULL, NULL, FALSE);
   INSERT INTO public.quote_attachments (organization_id, quote_ref, file_path, file_name) VALUES (o, 'QUO-9001', o::text || '/QUO-9001/dwg-1.pdf', 'dwg-1.pdf');
   -- Sales orders, one per case.
   --   A: PO on the order, reference = the PO (the accept path's rule), quote with lines, delivery date.
   --   B: PO on the order, reference an SO number (the PO arrived later or was typed apart), no quote, no delivery date.
   --   C: no PO on the order, the quote has one.   D: no PO anywhere, quote with lines.   E: no PO, no quote.
   --   F: PO with surrounding spaces (trimmed).    G: PO '' (none).
+  --   I: PO on the order (O-I1) and a different one on its quote (Q-I1): the order's is the job's.
   INSERT INTO public.sales_orders (organization_id, so_number, customer, customer_po, quote_id, quote_ref, status, order_date, delivery_date, total_value) VALUES
     (o, 'PO-A1', 'Acme', 'PO-A1', qa, 'QUO-9001', 'open', '2026-10-09', '2026-11-20', 100),
     (o, 'SO-0902', 'Acme', 'PO-B1', NULL, NULL, 'open', '2026-10-10', NULL, 20),
@@ -48,9 +52,10 @@ BEGIN
     (o, 'SO-0904', 'Acme', NULL, qd, 'QUO-9004', 'open', '2026-10-12', '2026-12-02', 50),
     (o, 'SO-0905', 'Acme', NULL, NULL, NULL, 'confirmed', '2026-10-13', NULL, 0),
     (o, 'SO-0906', 'Acme', '  PO-F1 ', NULL, NULL, 'open', '2026-10-14', '2026-12-03', 10),
-    (o, 'SO-0907', 'Acme', '', NULL, NULL, 'open', '2026-10-15', NULL, 10);
+    (o, 'SO-0907', 'Acme', '', NULL, NULL, 'open', '2026-10-15', NULL, 10),
+    (o, 'SO-0909', 'Acme', 'O-I1', qi, 'QUO-9009', 'open', '2026-10-16', '2026-12-10', 30);
   INSERT INTO proof.ids SELECT 'so_' || x.k, s.id FROM public.sales_orders s
-    JOIN (VALUES ('A', 'PO-A1'), ('B', 'SO-0902'), ('C', 'SO-0903'), ('D', 'SO-0904'), ('E', 'SO-0905'), ('F', 'SO-0906'), ('G', 'SO-0907')) x(k, n)
+    JOIN (VALUES ('A', 'PO-A1'), ('B', 'SO-0902'), ('C', 'SO-0903'), ('D', 'SO-0904'), ('E', 'SO-0905'), ('F', 'SO-0906'), ('G', 'SO-0907'), ('I', 'SO-0909')) x(k, n)
       ON s.so_number = x.n WHERE s.organization_id = o;
   INSERT INTO proof.ids VALUES ('o', o), ('qh', qh);
 END $$;
@@ -82,13 +87,17 @@ RESET ROLE;
 INSERT INTO proof.res (k, so, result)
   SELECT 'H', (r ->> 'so_id')::UUID, jsonb_build_object('job_id', r -> 'job_id', 'job_no', r -> 'job_no', 'created', r -> 'job_created')
   FROM acc WHERE coalesce((r ->> 'job_created')::BOOLEAN, FALSE) ON CONFLICT (k) DO NOTHING;
+-- I, last (so the earlier cases keep their job numbers): the order's PO, not its quote's different one.
+SELECT proof.as_user('office'); SET ROLE authenticated;
+SELECT proof.convert('I', proof.id('so_I'));
+RESET ROLE;
 
 -- ---- the report: one row per case ----
 WITH o AS (SELECT proof.id('o') AS id),
--- The job's customer_po: 080 took the order's only; 135 the order's, else the quote's (case C). F is trimmed by both.
+-- The job's customer_po: 080 took the order's only; 135 the order's, else the quote's (case C; I: the order's beats the quote's). F is trimmed by both.
 expected_po(k, po_080, po_135) AS (VALUES ('A', 'PO-A1', 'PO-A1'), ('A_again', 'PO-A1', 'PO-A1'), ('B', 'PO-B1', 'PO-B1'),
   ('C', NULL, 'PO-C1'), ('D', NULL, NULL), ('E', NULL, NULL), ('F', 'PO-F1', 'PO-F1'), ('G', NULL, NULL), ('H', 'PO-H1', 'PO-H1'),
-  ('W_refused', NULL, NULL)),
+  ('I', 'O-I1', 'O-I1'), ('W_refused', NULL, NULL)),
 expected(k, spec_080, spec_135) AS (VALUES
   ('A', E'Sales order PO-A1; customer delivery required 20/11/2026.\nQUO-9001:\n- Flange 80mm [Part FL-80; Dwg DWG-1 rev B] x 12\n- Spacer x 4',
         E'Customer PO PO-A1; customer delivery required 20/11/2026.\nQUO-9001:\n- Flange 80mm [Part FL-80; Dwg DWG-1 rev B] x 12\n- Spacer x 4'),
@@ -104,6 +113,8 @@ expected(k, spec_080, spec_135) AS (VALUES
   ('G', 'Sales order SO-0907.', 'Sales order SO-0907.'),
   ('H', E'Sales order PO-H1; customer delivery required 09/12/2026.\nQUO-9008:\n- Collar x 6',
         E'Customer PO PO-H1; customer delivery required 09/12/2026.\nQUO-9008:\n- Collar x 6'),
+  ('I', E'Sales order SO-0909; customer delivery required 10/12/2026.\nQUO-9009:\n- Sleeve x 3',
+        E'Customer PO O-I1; customer delivery required 10/12/2026.\nQUO-9009:\n- Sleeve x 3'),
   ('W_refused', NULL, NULL)),
 rows AS (
   SELECT r.k, j.specification AS spec, e.spec_080, e.spec_135, j.customer_po AS job_po, ep.po_080, ep.po_135,
