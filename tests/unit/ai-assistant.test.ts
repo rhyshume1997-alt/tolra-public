@@ -178,6 +178,31 @@ describe("off means nothing reaches the AI provider", () => {
     noProviderCall();
   });
 
+  it("each OFF control on its own (the other two on): ZERO provider calls and ZERO reservations; all three on: one of each", async () => {
+    const reserves = () => db.rpcs.filter((r) => r.fn === "ai_helper_reserve_assistant" || r.fn === "ai_helper_reserve").length;
+    const cases: Array<[string, () => void]> = [
+      ["AI_HELPER_ENABLED not \"true\"", () => { process.env.AI_HELPER_ENABLED = "false"; }],
+      ["AI_ASSISTANT_ENABLED not \"true\"", () => { delete process.env.AI_ASSISTANT_ENABLED; }],
+      ["company assistant_enabled FALSE", () => { db.settings = { assistant_enabled: false }; }],
+    ];
+    for (const [label, off] of cases) {
+      process.env.AI_HELPER_ENABLED = "true"; process.env.AI_ASSISTANT_ENABLED = "true"; db.settings = { assistant_enabled: true };
+      db.rpcs = []; db.reads = []; service.created = 0; model.calls = 0; model.anthropic = 0;
+      off();
+      const res = await ask(post(QUESTION));
+      expect(res.status, label).toBe(404);
+      expect(reserves(), label).toBe(0);
+      expect(db.rpcs, label).toEqual([]);
+      expect(recordReads(), label).toEqual([]);
+      expect(service.created, label).toBe(0);
+      expect([model.calls, model.anthropic], label).toEqual([0, 0]);
+    }
+    process.env.AI_HELPER_ENABLED = "true"; process.env.AI_ASSISTANT_ENABLED = "true"; db.settings = { assistant_enabled: true };
+    db.rpcs = []; model.calls = 0; model.anthropic = 0;
+    expect((await ask(post(QUESTION))).status).toBe(200);
+    expect([reserves(), model.calls, model.anthropic]).toEqual([1, 1, 0]);
+  });
+
   it("aiAssistantEnabled needs both flags exactly \"true\"", () => {
     expect(aiAssistantEnabled({ AI_HELPER_ENABLED: "true", AI_ASSISTANT_ENABLED: "true" })).toBe(true);
     expect(aiAssistantEnabled({ AI_ASSISTANT_ENABLED: "true" })).toBe(false);

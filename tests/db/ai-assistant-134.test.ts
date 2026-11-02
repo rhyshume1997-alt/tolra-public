@@ -9,7 +9,9 @@
  *   - Roles for asking: office and admin may reserve; workshop and viewer may not.
  *   - The cap (122's 500p default, one guarded UPDATE): an assistant request is reserved BEFORE the model call like the others; no room
  *     or no key is a 'refused' request; 20 at once against room for 10 give exactly 10.
- *   - Two companies: one company's switch changes nothing of the other's; a reserve is always the caller's own company.
+ *   - Two companies: one company's switch changes nothing of the other's; a reserve is always the caller's own company. A person who
+ *     belongs to BOTH companies reads and changes only the company their session is in, before and after switching it.
+ *   - Not signed in: anon may not execute either new function (privilege and an actual call: permission denied).
  *   - No write path: a signed-in user still cannot write any AI helper table directly, settle stays the service role's.
  *   - 133's cap rules cover the assistant (AI-PRE, E9 Q4 and Q6): an assistant reservation nobody settled within 10 minutes is charged
  *     in full (by the assistant's reserve and by 133's ai_helper_reserve alike), a late answer on it adds nothing and gives nothing
@@ -122,6 +124,8 @@ const requireAdminMfa = (org: string, value: boolean) => withDb(async (db) => {
 
 const A = { admin: person("a-admin"), office: person("a-office"), workshop: person("a-workshop"), viewer: person("a-viewer"), support: person("a-support") };
 const B = { admin: person("b-admin"), office: person("b-office") };
+/** One person who is an admin of BOTH companies (one login, two memberships); their session is in one company at a time. */
+const BOTH = person("both-admin");
 let orgA = "";
 let orgB = "";
 
@@ -141,7 +145,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  const people = [...Object.values(A), ...Object.values(B)].map((p) => p.id);
+  const people = [...Object.values(A), ...Object.values(B), BOTH].map((p) => p.id);
   await withDb(async (db) => {
     await db.query("begin");
     await db.query("set local session_replication_role = replica");
@@ -166,7 +170,15 @@ describe("134: the assistant is off by default and only an admin switches it on"
     expect(await save(A.admin, true, true, 500)).toMatchObject({ ok: true });
     expect(await setKey(A.admin, KEY_ENC, "WXYZ")).toMatchObject({ ok: true });
     expect(await switches(orgA)).toEqual({ roundup_enabled: true, rfq_enabled: true, assistant_enabled: false });
+    // Refused WITHOUT WRITING: no request row (any feature), no ledger row or change, no audit row of any kind.
+    const footprint = () => sql<{ requests: string; usage: string; audit: string }>(
+      `select (select count(*) from public.ai_helper_requests where organization_id = $1)::text as requests,
+              (select coalesce(json_agg(json_build_object('m', month, 'r', reserved_pence, 's', spent_pence) order by month), '[]')::text from public.ai_helper_usage where organization_id = $1) as usage,
+              (select count(*) from security_audit.audit_log where organization_id = $1)::text as audit`, [orgA]);
+    const before = await footprint();
     for (const p of [A.admin, A.office]) expect(await reserveAssistant(p, 5)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    expect(await footprint()).toEqual(before);
+    expect(before[0].requests).toBe("0");
     expect(await requests(orgA, "assistant")).toEqual([]);
     expect(await audit(orgA, "ai_helper_requested")).toEqual([]);
     // The other two features still reserve (control).
@@ -347,5 +359,91 @@ describe("134: 133's cap rules cover the assistant", () => {
     expect(await request(old)).toBeUndefined();
     expect(await request(recent)).toMatchObject({ status: "suggested" });
     expect((await audit(orgB, "ai_helper_requests_purged")).at(-1)?.metadata).toMatchObject({ deleted: 1, source: "ai_helper" });
+  });
+});
+
+describe("134: not signed in (anon) may not use either new function", () => {
+  const NEW = ["public.ai_helper_reserve_assistant(integer,text,integer)", "public.ai_helper_set_assistant(boolean)"];
+
+  it("134's new functions are exactly these two, and anon holds no EXECUTE on either (nor PUBLIC)", async () => {
+    expect((await sql<{ f: string }>("select p.oid::regprocedure::text as f from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname like '%assistant%' order by 1")).map((r) => r.f))
+      .toEqual(["ai_helper_reserve_assistant(integer,text,integer)", "ai_helper_set_assistant(boolean)"]);
+    for (const f of NEW) {
+      expect((await sql<{ v: boolean }>("select has_function_privilege('anon', $1, 'EXECUTE') as v", [f]))[0].v, f).toBe(false);
+      expect((await sql<{ v: boolean }>("select exists (select 1 from pg_proc p, aclexplode(p.proacl) a where p.oid = to_regprocedure($1) and a.grantee = 0) as v", [f]))[0].v, f).toBe(false);
+    }
+  });
+
+  it("an actual call as anon is refused with permission denied, and writes nothing", async () => {
+    const asAnon = (text: string, params: unknown[]) => withDb(async (db) => {
+      await db.query("begin");
+      try {
+        await db.query("set local role anon");
+        await db.query("select set_config('request.jwt.claims', '{\"role\":\"anon\"}', true)");
+        await db.query(text, params);
+        return null;
+      } catch (error) {
+        return error as { code?: string; message?: string };
+      } finally {
+        await db.query("rollback");
+      }
+    });
+    const before = (await sql<{ n: string }>("select count(*)::text as n from public.ai_helper_requests"))[0].n;
+    for (const [text, params] of [
+      ["select public.ai_helper_reserve_assistant($1, $2, $3)", [1, DIGEST, 1]],
+      ["select public.ai_helper_set_assistant($1)", [true]],
+    ] as const) {
+      const error = await asAnon(text, [...params]);
+      expect(error, text).toMatchObject({ code: "42501" });
+      expect(error?.message, text).toMatch(/^permission denied for function ai_helper_(reserve|set)_assistant$/);
+    }
+    expect((await sql<{ n: string }>("select count(*)::text as n from public.ai_helper_requests"))[0].n).toBe(before);
+  });
+});
+
+describe("134: one person in two companies sees and changes only the company their session is in", () => {
+  const sessionIn = (org: string) => sql("update security_audit.session_company set organization_id = $2 where session_id = $1", [BOTH.session, org]);
+  const visible = (table: string, org: string) => as(BOTH, async (db) => (await db.query(`select organization_id from public.${table} where organization_id = $1`, [org])).rows.length);
+
+  beforeAll(async () => {
+    await withDb(async (db) => {
+      await member(db, orgA, BOTH, "admin");
+      await db.query("insert into public.organization_members (user_id, organization_id, role, active) values ($1, $2, 'admin', true)", [BOTH.id, orgB]);
+    });
+    // Both companies have a switch row and assistant request rows by now (the tests above); A's switch is on, B's is turned off here.
+    expect(await setAssistant(B.admin, false)).toMatchObject({ ok: true });
+    expect(await requests(orgA, "assistant")).not.toHaveLength(0);
+    expect(await requests(orgB, "assistant")).not.toHaveLength(0);
+  });
+
+  it("session in A: A's switch and assistant rows are readable; B's switch, requests and ledger are not", async () => {
+    await sessionIn(orgA);
+    expect(await visible("ai_helper_settings", orgA)).toBe(1);
+    expect(await visible("ai_helper_requests", orgA)).toBeGreaterThan(0);
+    for (const t of ["ai_helper_settings", "ai_helper_requests", "ai_helper_usage"]) expect(await visible(t, orgB), t).toBe(0);
+  });
+
+  it("session in A: the setter changes A's switch only; B's stays off and an assistant reserve is A's", async () => {
+    await sessionIn(orgA);
+    expect(await setAssistant(BOTH, false)).toEqual({ ok: true, value: { assistant_enabled: false } });
+    expect(await switches(orgB)).toMatchObject({ assistant_enabled: false });
+    expect((await switches(orgA))?.assistant_enabled).toBe(false);
+    expect(await setAssistant(BOTH, true)).toMatchObject({ ok: true });
+    expect((await switches(orgA))?.assistant_enabled).toBe(true);
+    expect((await switches(orgB))?.assistant_enabled).toBe(false);
+  });
+
+  it("switched to B: B's off switch refuses the assistant (A's on does not count); A's switch, requests and ledger are not readable", async () => {
+    await sessionIn(orgB);
+    const bRows = (await requests(orgB, "assistant")).length;
+    expect(await reserveAssistant(BOTH, 1)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    expect(await requests(orgB, "assistant")).toHaveLength(bRows);
+    expect(await visible("ai_helper_settings", orgB)).toBe(1);
+    for (const t of ["ai_helper_settings", "ai_helper_requests", "ai_helper_usage"]) expect(await visible(t, orgA), t).toBe(0);
+    expect(await setAssistant(BOTH, true)).toMatchObject({ ok: true });
+    expect((await switches(orgB))?.assistant_enabled).toBe(true);
+    expect(await setAssistant(BOTH, false)).toMatchObject({ ok: true });
+    expect((await switches(orgB))?.assistant_enabled).toBe(false);
+    expect((await switches(orgA))?.assistant_enabled).toBe(true);
   });
 });
