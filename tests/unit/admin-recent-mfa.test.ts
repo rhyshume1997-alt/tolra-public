@@ -39,12 +39,18 @@ const state = {
   writes: [] as string[],
   /** The database refuses set_member_access / admin_set_company_access with this hint (migration 136's trigger). */
   dbRefuses: null as string | null,
+  /** Limits dbRefuses to one company (the p_org of admin_set_company_access). */
+  dbRefusesOrg: null as string | null,
+  /** The company switches the service role reads (organizations.require_admin_mfa). */
+  orgs: [] as Row[],
+  /** A table whose reads fail (a read error). */
+  failTable: null as string | null,
   /** Times the service-role client was created. */
   adminClients: 0,
 };
 
 function table(name: string): Row[] {
-  return name === "organization_members" ? state.members : name === "user_profiles" ? state.profiles : [];
+  return name === "organization_members" ? state.members : name === "user_profiles" ? state.profiles : name === "organizations" ? state.orgs : [];
 }
 
 /** A tiny in-memory query builder: eq / neq / is / ilike filters, update patches, and writes recorded by name. */
@@ -52,6 +58,7 @@ function from(name: string, visible: (row: Row) => boolean = () => true) {
   const filters: Array<(row: Row) => boolean> = [visible];
   let patch: Row | null = null;
   const run = () => {
+    if (state.failTable === name) return { data: null, error: { code: "XX000" } };
     const rows = table(name).filter((row) => filters.every((f) => f(row)));
     if (patch) for (const row of rows) Object.assign(row, patch);
     return { data: rows, error: null };
@@ -59,7 +66,7 @@ function from(name: string, visible: (row: Row) => boolean = () => true) {
   const builder: Record<string, unknown> = new Proxy({}, {
     get: (_, prop: string) => {
       if (prop === "then") return (resolve: (v: unknown) => void) => resolve(run());
-      if (prop === "maybeSingle" || prop === "single") return async () => { const r = run(); return { data: r.data[0] ?? null, error: null }; };
+      if (prop === "maybeSingle" || prop === "single") return async () => { const r = run(); return { data: (r.data ?? [])[0] ?? null, error: null }; };
       return (...args: unknown[]) => {
         if (WRITES.has(prop)) { state.writes.push(`${name}.${prop}`); if (prop === "update") patch = args[0] as Row; }
         if (prop === "eq") filters.push((row) => row[args[0] as string] === args[1]);
@@ -102,7 +109,7 @@ vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () =>
 const caller = {
   auth: { mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: "aal2", currentAuthenticationMethods: state.amr }, error: null }) } },
   rpc: async (fn: string, args: Record<string, unknown>) => {
-    if (state.dbRefuses && (fn === "set_member_access" || fn === "admin_set_company_access")) return { data: null, error: { code: "42501", message: "x", hint: state.dbRefuses } };
+    if (state.dbRefuses && (fn === "set_member_access" || fn === "admin_set_company_access") && (!state.dbRefusesOrg || args.p_org === state.dbRefusesOrg)) return { data: null, error: { code: "42501", message: "x", hint: state.dbRefuses } };
     if (fn === "admin_login_is_protected") return { data: false, error: null };
     if (fn === "write_audit") return { data: null, error: null };
     if (fn !== "my_admin_companies" && !(fn === "admin_set_company_access" && !ADMIN_ORGS.includes(args.p_org as string))) state.writes.push(`rpc.${fn}`);
@@ -122,8 +129,9 @@ const caller = {
     }
     return { data: null, error: null };
   },
-  // Row-level security: the caller sees memberships of the companies they administer.
-  from: (name: string) => from(name, (row) => ADMIN_ORGS.includes(row.organization_id as string)),
+  // Row-level security as the real database has it (007 / 131: "organization_members admins read org"): through the caller's own client an
+  // admin sees the members of the SESSION company only (here A), not of the other companies they administer.
+  from: (name: string) => from(name, (row) => row.organization_id === ORG_A),
 };
 
 vi.mock("@/lib/server/auth", async (original) => {
@@ -166,13 +174,14 @@ const FRESH = () => [{ method: "password", timestamp: now() - 120 }, { method: "
 const STALE = () => [{ method: "password", timestamp: now() - 3600 }, { method: "totp", timestamp: now() - 16 * 60 }];
 
 function reset() {
-  Object.assign(state, { level: "aal2", amr: FRESH(), signedIn: true, support: false, banned: false, writes: [], adminClients: 0, dbRefuses: null });
+  Object.assign(state, { level: "aal2", amr: FRESH(), signedIn: true, support: false, banned: false, writes: [], adminClients: 0, dbRefuses: null, dbRefusesOrg: null, failTable: null });
   state.members = [
     { user_id: ADMIN, organization_id: ORG_A, role: "admin", secondary_role: null, active: true, support: false },
     { user_id: TARGET, organization_id: ORG_A, role: "office", secondary_role: null, active: true, support: false, hidden_sections: [] },
     { user_id: ADMIN, organization_id: ORG_C, role: "admin", secondary_role: null, active: true, support: false },
     { user_id: TARGET2, organization_id: ORG_C, role: "office", secondary_role: null, active: true, support: false },
   ];
+  state.orgs = [{ id: ORG_A, require_admin_mfa: true }, { id: ORG_C, require_admin_mfa: true }, { id: ORG_B, require_admin_mfa: true }];
   state.profiles = [{ id: TARGET, email: "target@example.test", username: null, full_name: "Target Person", must_change_password: false }];
 }
 
@@ -232,13 +241,16 @@ for (const action of actions) {
       expect(state.writes).toEqual([]);
     });
 
-    it("switch off: a stale code is not asked about (unchanged behaviour), aal1 is still refused", async () => {
+    it("switch off (the app's and the company's own): a stale code is not asked about (unchanged behaviour), aal1 is still refused", async () => {
       process.env.REQUIRE_ADMIN_MFA = "false";
+      const companySwitchesOff = () => { state.orgs = state.orgs.map((org) => ({ ...org, require_admin_mfa: false })); };
+      companySwitchesOff();
       state.amr = STALE();
       const stale = await action.go();
       expect(await isMfaRefusal(stale, "mfa_recent_required")).toBe(false);
       expect(await isMfaRefusal(stale, "mfa_required")).toBe(false);
       reset();
+      companySwitchesOff();
       state.level = "aal1";
       const aal1 = await action.go();
       expect(aal1.status).toBe(403);
@@ -388,14 +400,11 @@ describe("per-company access (POST /api/admin/users/companies): giving or taking
     expect(response.status).toBe(200);
     expect(inC().role).toBe("workshop");
   });
-  it("the stored memberships can't be read: treated as an admin change (fails closed)", async () => {
+  it("the stored memberships can't be read (service role): treated as an admin change (fails closed), nothing sent", async () => {
     state.amr = STALE();
-    const real = caller.from;
-    caller.from = (() => { const c: Record<string, unknown> = new Proxy({}, { get: (_, p) => (p === "then" ? (r: (v: unknown) => void) => r({ data: null, error: { code: "XX000" } }) : () => c) }); return c; }) as unknown as typeof caller.from;
-    try {
-      expect(await (await change({ organization_id: ORG_C, active: true, role: "workshop", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
-      expect(state.writes).toEqual([]);
-    } finally { caller.from = real; }
+    state.failTable = "organization_members";
+    expect(await (await change({ organization_id: ORG_C, active: true, role: "workshop", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
   });
   it("company A against company B: an admin of A can't give admin in B even with a fresh code (the database refuses), nothing written", async () => {
     state.members.push({ user_id: TARGET2, organization_id: ORG_B, role: "office", secondary_role: null, active: true, support: false });
@@ -468,5 +477,107 @@ describe("the database's own recent-code refusal (migration 136) reaches the bro
     state.dbRefuses = "not_company_admin";
     const response = await patchUser(request("/api/admin/users", "PATCH", { user_id: TARGET, role: "admin" }));
     expect(await isMfaRefusal(response, "mfa_recent_required")).toBe(false);
+  });
+});
+
+describe("the exploit: an admin of A and C, session A, a stale code, changes for C (real row-level security shows the caller only A's members)", () => {
+  const rowC = () => state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_C)!;
+  const post = (...changes: Array<Record<string, unknown>>) => companies(request("/api/admin/users/companies", "POST", { user_id: TARGET2, changes }));
+  beforeEach(() => {
+    // C's own switch is OFF, so migration 136 would not ask either: the app's decision is the only gate.
+    state.orgs = [{ id: ORG_A, require_admin_mfa: true }, { id: ORG_C, require_admin_mfa: false }, { id: ORG_B, require_admin_mfa: true }];
+    rowC().role = "admin";
+    state.amr = STALE();
+  });
+  const attempts: Array<[string, Record<string, unknown>, (row: Record<string, unknown>) => void]> = [
+    ["switch the admin off", { organization_id: ORG_C, active: false }, () => undefined],
+    ["demote the admin (active true, role office)", { organization_id: ORG_C, active: true, role: "office", secondary_role: null }, () => undefined],
+    ["switch a switched-off admin back on, no role named", { organization_id: ORG_C, active: true }, (row) => { row.active = false; }],
+  ];
+  for (const [name, change, prepare] of attempts) {
+    it(`${name}: 403 mfa_recent_required, nothing written`, async () => {
+      prepare(rowC());
+      const before = { role: rowC().role, active: rowC().active };
+      const response = await post(change);
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+      expect(state.writes).toEqual([]);
+      expect({ role: rowC().role, active: rowC().active }).toEqual(before);
+    });
+    it(`${name}: with a fresh code it is done`, async () => {
+      prepare(rowC());
+      state.amr = FRESH();
+      expect((await post(change)).status).toBe(200);
+      expect(state.writes).toContain("rpc.admin_set_company_access");
+    });
+  }
+  it("a company that is not one of the caller's (an unknown id) counts as an admin change: the code first, nothing written", async () => {
+    const response = await post({ organization_id: ORG_B, active: false });
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("the company switches can't be read: fails closed (the code first)", async () => {
+    state.failTable = "organizations";
+    expect(await (await post({ organization_id: ORG_C, active: false })).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+  });
+  it("a non-admin change in C is still not asked", async () => {
+    rowC().role = "office";
+    expect((await post({ organization_id: ORG_C, active: true, role: "workshop", secondary_role: null })).status).toBe(200);
+  });
+});
+
+describe("one decision before the first write, counting each company's own switch (app switch off)", () => {
+  const post = (...changes: Array<Record<string, unknown>>) => companies(request("/api/admin/users/companies", "POST", { user_id: TARGET2, changes }));
+  beforeEach(() => {
+    process.env.REQUIRE_ADMIN_MFA = "false";
+    state.members.push({ user_id: TARGET2, organization_id: ORG_A, role: "office", secondary_role: null, active: true, support: false });
+    state.amr = STALE();
+  });
+  const twoChanges = () => post({ organization_id: ORG_A, active: true, role: "workshop", secondary_role: null }, { organization_id: ORG_C, active: true, role: "admin", secondary_role: null });
+
+  it("C's own switch is on: the whole request waits for the code, so A is NOT changed first", async () => {
+    state.orgs = [{ id: ORG_A, require_admin_mfa: true }, { id: ORG_C, require_admin_mfa: true }];
+    const response = await twoChanges();
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+    expect(state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_A)!.role).toBe("office");
+  });
+  it("C's own switch is on and the code is fresh: both changes are made", async () => {
+    state.orgs = [{ id: ORG_A, require_admin_mfa: true }, { id: ORG_C, require_admin_mfa: true }];
+    state.amr = FRESH();
+    expect((await twoChanges()).status).toBe(200);
+    expect(state.writes.filter((w) => w === "rpc.admin_set_company_access")).toHaveLength(2);
+  });
+  it("neither switch is on: no recent code is asked (aal2 only), both changes are made", async () => {
+    state.orgs = [{ id: ORG_A, require_admin_mfa: false }, { id: ORG_C, require_admin_mfa: false }];
+    expect((await twoChanges()).status).toBe(200);
+    expect(state.writes.filter((w) => w === "rpc.admin_set_company_access")).toHaveLength(2);
+  });
+  it("a race (the code ages out between the check and the call, so the database refuses C after A was changed): the answer says exactly what was applied, not 'nothing changed'", async () => {
+    state.orgs = [{ id: ORG_A, require_admin_mfa: false }, { id: ORG_C, require_admin_mfa: false }];
+    state.dbRefuses = "mfa_recent_required";
+    state.dbRefusesOrg = ORG_C;
+    const response = await twoChanges();
+    const body = await response.json();
+    expect(response.status).toBe(207);
+    expect(body.code).toBeUndefined();
+    expect(body.results[0]).toMatchObject({ organization_id: ORG_A, ok: true, changed: true });
+    expect(body.results[1]).toMatchObject({ organization_id: ORG_C, ok: false });
+    const { summariseCompanyResults } = await import("@/lib/company-access");
+    const summary = summariseCompanyResults(body.results);
+    expect(summary.tone).toBe("partial");
+    expect(summary.text).toContain("Company access saved: Company.");
+    expect(summary.text).toContain("fresh code");
+  });
+  it("the same race with nothing applied yet: the whole request is refused with the code (nothing was changed, so the dialog may say so)", async () => {
+    state.orgs = [{ id: ORG_A, require_admin_mfa: false }, { id: ORG_C, require_admin_mfa: false }];
+    state.dbRefuses = "mfa_recent_required";
+    state.dbRefusesOrg = ORG_C;
+    const response = await post({ organization_id: ORG_C, active: true, role: "admin", secondary_role: null }, { organization_id: ORG_A, active: true, role: "workshop", secondary_role: null });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
   });
 });

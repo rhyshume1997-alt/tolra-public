@@ -17,7 +17,7 @@ import { useAiFeatures } from "@/components/ai-features";
 import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
 import { passwordProblem } from "@/lib/password";
 import { changePasswordWithCode } from "@/lib/mfa-step-up";
-import { AuthenticatorCodeDialog } from "@/components/authenticator-code-dialog";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { awaitingApproval } from "@/lib/approval-queue";
 import { usePendingReopenCount } from "@/components/reopen-approvals";
 import { supabase } from "@/lib/supabase";
@@ -100,8 +100,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const [logoFailed, setLogoFailed] = useState(false);
   const [switching, setSwitching] = useState(false);
   const passwordForm = useRef<HTMLFormElement>(null);
-  const codeAnswer = useRef<((verified: boolean) => void) | null>(null);
-  const [askingCode, setAskingCode] = useState(false);
+  const { requestCode, codeDialog } = useCodePrompt();
   const currentOrg = organizations.find((org) => org.is_current);
   const canChooseView = profile?.role === "admin" || Boolean(profile?.secondary_role);
   // Admin > Integrations is hidden until the database has 084 (lib/db-features databaseHas084); only an admin's sidebar asks.
@@ -176,20 +175,6 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     } else if (outcome.result === "failed") {
       toast.error([400, 403, 503].includes(outcome.status) && outcome.error ? outcome.error : "Couldn't update your password. Try again.");
     }
-  }
-
-  /** Shows the authenticator code prompt; true once a code verified, false if it was cancelled. */
-  function requestCode() {
-    return new Promise<boolean>((resolve) => {
-      codeAnswer.current = resolve;
-      setAskingCode(true);
-    });
-  }
-
-  function answerCode(verified: boolean) {
-    setAskingCode(false);
-    codeAnswer.current?.(verified);
-    codeAnswer.current = null;
   }
 
   return (
@@ -300,7 +285,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         ) : null}
         <Button variant="ghost" className="mt-1 w-full justify-start text-brand-ink/60 hover:bg-brand-ink/10 hover:text-brand-ink" onClick={signOut}><LogOut className="size-4" /> Log out</Button>
       </div>
-      <AuthenticatorCodeDialog open={askingCode} onVerified={() => answerCode(true)} onCancel={() => answerCode(false)} />
+      {codeDialog}
     </div>
   );
 }

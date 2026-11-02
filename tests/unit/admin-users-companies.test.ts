@@ -29,8 +29,6 @@ const state = {
 };
 
 const supabase = {
-  // G1: the stored memberships, read as the caller to decide whether a change gives or takes admin (none here, so none does).
-  from: () => { const chain: Record<string, unknown> = { select: () => chain, eq: () => chain, in: async () => ({ data: [], error: null }) }; return chain; },
   rpc: async (fn: string, args: Record<string, unknown> = {}) => {
     state.callerRpc.push({ fn, args });
     if (fn === "my_admin_companies") return { data: [{ organization_id: JNR, name: "JNR Engineering" }, { organization_id: MARPET, name: "Marpet" }], error: null };
@@ -43,10 +41,18 @@ const admin = {
   rpc: async (fn: string) => { state.serviceRpc.push(fn); return { data: null, error: null }; },
   from: (table: string) => {
     const filters: Record<string, unknown> = { table };
+    let ids: unknown[] | null = null;
     const chain = {
       select: () => chain,
       eq: (column: string, value: unknown) => { filters[column] = value; return chain; },
-      then: (resolve: (value: { count: number; error: null }) => unknown) => { state.countFilters = filters; return resolve({ count: state.activeLeft, error: null }); },
+      in: (_column: string, values: unknown[]) => { ids = values; return chain; },
+      then: (resolve: (value: unknown) => unknown) => {
+        // G1: the reads that decide whether a recent code is needed (the login's stored memberships: none here, so no change gives or takes
+        // admin; and the companies' own switches: off). They are not the last-company count below.
+        if (ids) return resolve({ data: table === "organizations" ? ids.map((id) => ({ id, require_admin_mfa: false })) : [], error: null });
+        state.countFilters = filters;
+        return resolve({ count: state.activeLeft, error: null });
+      },
     };
     return chain;
   },

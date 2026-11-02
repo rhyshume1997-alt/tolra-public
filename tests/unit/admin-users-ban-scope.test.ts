@@ -104,16 +104,6 @@ function callerClient(org: string, caller: string) {
     world.memberships.some((m) => m.user_id === userId && m.organization_id !== except && m.active && !m.support);
   return {
     auth: { mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: "aal2", nextLevel: "aal2" }, error: null }) } },
-    // G1: the stored memberships the per-company route reads, as the caller, to decide whether a change gives or takes admin.
-    from: () => {
-      const filters: Array<(m: Record<string, unknown>) => boolean> = [];
-      const chain: Record<string, unknown> = {
-        select: () => chain,
-        eq: (column: string, value: unknown) => { filters.push((m) => m[column] === value); return chain; },
-        in: async (column: string, values: unknown[]) => ({ data: world.memberships.filter((m) => filters.every((f) => f(m)) && values.includes((m as Record<string, unknown>)[column])), error: null }),
-      };
-      return chain;
-    },
     rpc: async (fn: string, args: Row = {}) => {
       if (fn === "my_admin_companies") return { data: [{ organization_id: X, name: "X Ltd" }, { organization_id: Y, name: "Y Ltd" }], error: null };
       // 093: TRUE unless one of the caller's people with no support membership (nobody here is on the platform owner list).

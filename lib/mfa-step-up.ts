@@ -76,3 +76,30 @@ export async function changePasswordWithCode(send: () => Promise<ChangeAnswer>, 
   if (outcome.result === "done") return { result: "changed" };
   return { result: "failed", status: outcome.answer.status, error: outcome.answer.body?.error };
 }
+
+/**
+ * The one code prompt of a page. `request()` shows the dialog (`show(true)`) and resolves true once a code verified, false when it was
+ * cancelled. A second request while the dialog is already open does not open another or replace the first: it WAITS for the same answer
+ * (the first caller is never left hanging), so two actions that both need a code are both released by one verified code and both stop
+ * on one cancel. `settle(verified)` closes the dialog and answers every waiting request; it does nothing when no prompt is open.
+ */
+export function createCodeRequester(show: (open: boolean) => void) {
+  let pending: Promise<boolean> | null = null;
+  let answer: ((verified: boolean) => void) | null = null;
+  return {
+    request(): Promise<boolean> {
+      if (pending) return pending;
+      pending = new Promise<boolean>((resolve) => { answer = resolve; });
+      show(true);
+      return pending;
+    },
+    settle(verified: boolean) {
+      if (!pending) return;
+      const done = answer;
+      pending = null;
+      answer = null;
+      show(false);
+      done?.(verified);
+    },
+  };
+}

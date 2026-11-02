@@ -6,7 +6,7 @@ import type { FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { verifyAuthenticatorCode } from "@/lib/mfa-step-up";
+import { createCodeRequester, verifyAuthenticatorCode } from "@/lib/mfa-step-up";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -60,20 +60,15 @@ export function AuthenticatorCodeDialog({ open, onVerified, onCancel }: { open: 
 
 /**
  * For a page that sends sensitive requests through sendWithCode (lib/mfa-step-up.ts): `requestCode` opens the dialog and resolves true
- * once a code verified, false when it was cancelled; render `codeDialog` once in the page.
+ * once a code verified, false when it was cancelled (a second request while the dialog is open waits for the same answer); render
+ * `codeDialog` once in the page.
  */
 export function useCodePrompt() {
   const [asking, setAsking] = useState(false);
-  const answer = useRef<((verified: boolean) => void) | null>(null);
-  const requestCode = useCallback(() => new Promise<boolean>((resolve) => {
-    answer.current = resolve;
-    setAsking(true);
-  }), []);
-  const settle = useCallback((verified: boolean) => {
-    setAsking(false);
-    answer.current?.(verified);
-    answer.current = null;
-  }, []);
+  const requester = useRef<ReturnType<typeof createCodeRequester> | null>(null);
+  if (!requester.current) requester.current = createCodeRequester(setAsking);
+  const requestCode = useCallback(() => requester.current!.request(), []);
+  const settle = useCallback((verified: boolean) => requester.current!.settle(verified), []);
   const codeDialog = <AuthenticatorCodeDialog open={asking} onVerified={() => settle(true)} onCancel={() => settle(false)} />;
   return { requestCode, codeDialog };
 }

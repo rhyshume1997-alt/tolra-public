@@ -42,12 +42,13 @@ export async function requireAal2(auth: AdminContext["auth"]): Promise<NextRespo
  * (recentSecondStep). For the admin actions that hand over, take away or lock a login: set someone's password, reset their two-step
  * sign-in, send a reset link, create a user, give or take admin, disable or enable sign-in. mfa_required when the session never passed
  * the second step; mfa_recent_required (the browser asks for a fresh code, then sends the action once more) when the code is older.
- * Null when the caller may go on. Nothing is written before this answers.
+ * `forceRecent`: ask for the recent code even while REQUIRE_ADMIN_MFA is off (the company being changed has its own switch on, which the
+ * database also enforces). Null when the caller may go on. Nothing is written before this answers.
  */
-export async function requireRecentAal2(auth: AdminContext["auth"], action = "make this change"): Promise<NextResponse | null> {
+export async function requireRecentAal2(auth: AdminContext["auth"], action = "make this change", forceRecent = false): Promise<NextResponse | null> {
   const { data: assurance, error: assuranceError } = await auth.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (assuranceError || assurance?.currentLevel !== "aal2") return mfaRequired();
-  if (adminMfaRequired() && !recentSecondStep(assurance?.currentAuthenticationMethods)) return mfaRecentRequired(action);
+  if ((forceRecent || adminMfaRequired()) && !recentSecondStep(assurance?.currentAuthenticationMethods)) return mfaRecentRequired(action);
   return null;
 }
 

@@ -107,7 +107,7 @@ describe("changePasswordWithCode", () => {
 
 // ---- G1: the six Admin > Users callers (lib/admin-user-save.ts callAdminApi, over sendWithCode) --------------------------------
 import { ApiError, CODE_CANCELLED, callAdminApi, sendCompanyAccess } from "@/lib/admin-user-save";
-import { sendWithCode } from "@/lib/mfa-step-up";
+import { createCodeRequester, sendWithCode } from "@/lib/mfa-step-up";
 
 const reply = (status: number, body: Record<string, unknown>) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const RECENT_BODY = { error: "For your security, enter a fresh code from your authenticator app to make this change.", code: "mfa_recent_required" };
@@ -224,5 +224,46 @@ describe("sendCompanyAccess: per-company access (can give or take admin)", () =>
       expect(prompt).not.toHaveBeenCalled();
       expect(calls).toHaveLength(1);
     }
+  });
+});
+
+describe("createCodeRequester: one prompt per page", () => {
+  it("opens the dialog once and answers true when a code verified", async () => {
+    const shown: boolean[] = [];
+    const prompt = createCodeRequester((open) => shown.push(open));
+    const first = prompt.request();
+    expect(shown).toEqual([true]);
+    prompt.settle(true);
+    expect(await first).toBe(true);
+    expect(shown).toEqual([true, false]);
+  });
+  it("a second request while the dialog is open does not open another or orphan the first: both get the one answer", async () => {
+    const shown: boolean[] = [];
+    const prompt = createCodeRequester((open) => shown.push(open));
+    const first = prompt.request();
+    const second = prompt.request();
+    expect(shown).toEqual([true]);
+    prompt.settle(true);
+    expect(await Promise.all([first, second])).toEqual([true, true]);
+  });
+  it("a cancel stops both", async () => {
+    const prompt = createCodeRequester(() => undefined);
+    const first = prompt.request();
+    const second = prompt.request();
+    prompt.settle(false);
+    expect(await Promise.all([first, second])).toEqual([false, false]);
+  });
+  it("after an answer a new request opens the dialog again; a settle with nothing open does nothing", async () => {
+    const shown: boolean[] = [];
+    const prompt = createCodeRequester((open) => shown.push(open));
+    prompt.settle(true);
+    expect(shown).toEqual([]);
+    const a = prompt.request();
+    prompt.settle(false);
+    expect(await a).toBe(false);
+    const b = prompt.request();
+    expect(shown).toEqual([true, false, true]);
+    prompt.settle(true);
+    expect(await b).toBe(true);
   });
 });
