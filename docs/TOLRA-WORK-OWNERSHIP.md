@@ -59,4 +59,4 @@ House rules for every builder (Claude Code, ChatGPT builders, Codex):
 | e13-tests | Existing E13 owner retained | claude/e13-timesheet-days | BLOCKED | — |
 | sliq-import-tests | Existing SLIQ owner retained | claude/sliq-import | BLOCKED | — |
 | costing-check | Existing COSTING owners retained | chatgpt/costing-in-tolra; chatgpt/costing-wiring | BLOCKED | #110, #123 |
-| full-suite | Codex (own branch only) | codex/bank-csv-quotes | IN PROGRESS | #131 |
+| full-suite | Codex (own branch only) | codex/bank-csv-quotes | DONE IN PR | #131; 4,787 unit tests pass, integration unverified |

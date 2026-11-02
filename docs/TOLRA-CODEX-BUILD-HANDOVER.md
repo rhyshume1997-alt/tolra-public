@@ -18,4 +18,9 @@ Latest instruction prohibits touching held jobs. `claude/work-ownership:docs/TOL
 | e13-tests | Checked ownership | claude/e13-timesheet-days (unchanged) | — | Not run for this queue job | E13 held by Claude Code |
 | sliq-import-tests | Checked ownership; earlier parser results retained above | claude/sliq-import (unchanged) | #114, #122 existing | Prior 75/75 and 53/53 runs were on test PRs, not this branch | SLIQ held by Claude Code |
 | costing-check | Prior golden checks retained above; no screen tests added to held code | chatgpt/costing-in-tolra; chatgpt/costing-wiring (unchanged) | #110, #123 | Both previously passed all 60 golden cases; #123 had 412 other skipped cases | COSTING maths/screens held by ChatGPT builder 1 and Claude |
-| full-suite | Whole unit suite started on Codex application branch | codex/bank-csv-quotes | #131 | Pending | Full CI integration is separate from unit suite |
+| full-suite | Whole unit suite completed on Codex application branch | codex/bank-csv-quotes | #131 | 365 files, 4,787 tests passed; exit 0; 123.45 seconds on 72b3e22 | CI web passed; integration skipped, gate failed in run 41543184851 |
+
+## NEXT UP
+
+- Jobs 1–6: blocked by the explicit current ownership assignments on claude/work-ownership. They need an ownership release before Codex can change them under the latest queue rule.
+- Job 7: all unit tests passed on Codex’s application branch. Coordination branch changes only Markdown, so no runtime suite applies. Database/browser integration remains unverified; no release sign-off.
