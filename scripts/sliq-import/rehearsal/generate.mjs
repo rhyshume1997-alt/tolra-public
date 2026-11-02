@@ -7,14 +7,20 @@
 // Writes:
 //   <out>/export/          the import files, headers as mappings/synthetic.json (the confirmed fixture mapping)
 //   <out>/export-sliq/     the same records under the PROVISIONAL mappings/sliq.json headers (dry run only: a write is refused)
+//   <out>/export-names/    the same records with documents naming their customer by NAME, not account (as SliQ's invoice reports do),
+//                          for <out>/synthetic-names.json (a confirmed fixture mapping): two customers share one name, so their
+//                          documents are ambiguous until <out>/resolutions-names.json names each one's account (decision 3)
+//   <out>/resolutions*.json  resolutions.json (credit notes + the Tolra name for one of the two same-name customers),
+//                          resolutions-cn.json (credit notes only: the write is refused), resolutions-names.json (for export-names)
 //   <out>/sliq-reports/aged-debtors.csv   what SliQ's Aged Debtors report would print for this data (one row per open document)
 //   <out>/manifest.json    the designed truth: counts, every awkward case, expected totals, the next numbers
 //
 // Volumes follow the cutover plan's counts: 79 customers, 52 suppliers, 2035 invoices + 2 credit notes, 1999 payments, 36 unpaid
 // (nothing paid), 1410 quotes, 144 purchase orders; next numbers INV-2315, QUO-1483, PO-0159. Awkward cases are added on top
 // (see manifest.awkward) and are expected to be held, excluded or flagged, never silently imported.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { normaliseName } from "../ids.mjs";
 
@@ -81,6 +87,8 @@ const special = {
   11: { name: "Harbour Fabrication Limited" }, // same name once "Ltd"/"Limited" is ignored: a duplicate for review, written separately
   12: { name: "Smith & Sons Engineering" },
   13: { name: "Smith and Sons Engineering" }, // "&" / "and": the same normalised name
+  14: { name: "Riverside Engineering Ltd" },
+  15: { name: "Riverside Engineering Ltd" }, // EXACTLY the same name, another account: Tolra links by name, so one needs its own name
   20: { name: "Müller Präzisionsteile GmbH", export: true }, // non-ASCII (UTF-8), an EU customer: zero-rated invoices
   21: { name: "O'Neill, Byrne & Co" }, // a comma and an apostrophe in the name (quoted CSV field)
   79: { name: "Dormant Holdings Ltd", dormant: true }, // a customer with no invoices and no quotes
@@ -264,10 +272,13 @@ const extras = [];
     return { number, date, due: addDays(date, 30), customer: cust, customerKey: cust.key, lines, net, vat, gross: net + vat, status: "Unpaid", paid: 0, notes: "", statedLineVat: true, ...more };
   };
   const l1 = makeLines(1, () => 2000);
-  extras.push({ ...base("INV-0100", "2019-11-04", c, l1), case: "duplicate number (first copy)", expect: "held: duplicate document number" });
-  extras.push({ ...base("INV-0100", "2019-11-05", active[4], makeLines(1, () => 2000)), case: "duplicate number (second copy)", expect: "held: duplicate document number" });
+  // A number SliQ used twice, for two customers: both are real, unpaid ledger documents (in Aged Debtors). The earlier keeps
+  // INV-0100, the later becomes INV-0100-B; both keep INV-0100 as the SliQ reference. Their lines (under INV-0100) cannot be told
+  // apart, so both are written header only.
+  extras.push({ ...base("INV-0100", "2019-11-04", c, l1), case: "duplicate number (first copy)", ledger: true, tolraNumber: "INV-0100", expect: "written as INV-0100 (keeps the number)" });
+  extras.push({ ...base("INV-0100", "2019-11-05", active[4], makeLines(1, () => 2000)), case: "duplicate number (second copy)", ledger: true, tolraNumber: "INV-0100-B", expect: "written as INV-0100-B" });
   extras.push({ ...base("INV-0101", "2019-11-06", c, makeLines(1, () => 2000), { discount: "5%" }), case: "header discount 5%", expect: "needs review: excluded with --exclude INV-0101" });
-  extras.push({ ...base("INV-0102", "2019-11-07", { key: "C9999", name: "Not In The Customer File Ltd" }, makeLines(1, () => 2000)), customerKey: "C9999", case: "customer account not in the customers file", expect: "held: customer not found" });
+  extras.push({ ...base("INV-0102", "2019-11-07", { key: "C9999", name: "Not In The Customer File Ltd" }, makeLines(1, () => 2000)), customerKey: "C9999", case: "customer account not in the customers file", expect: "unmatched: stops the write; excluded with --exclude INV-0102" });
 }
 
 // ---- credit notes (2, no invoice link, as in SliQ) ------------------------------------------------------------------------------
@@ -289,6 +300,13 @@ for (let k = 0; k < N_Q; k++) {
   const status = date < "2026-06-01" ? pick(["Accepted", "Accepted", "Declined", "Sent"]) : pick(["Sent", "Sent", "Draft", "Accepted"]);
   quotes.push({ number, date, customer: c, lines, net, vat, gross: net + vat, status, validUntil: addDays(date, 30), notes: "" });
 }
+// A quote number SliQ used twice (below the range, so the next number is not affected): QUO-0050 and QUO-0050-B.
+for (const [date, cust, tolraNumber] of [["2019-12-02", active[5], "QUO-0050"], ["2019-12-09", active[6], "QUO-0050-B"]]) {
+  const lines = makeLines(1, () => 2000);
+  const net = lines.reduce((a, l) => a + l.net, 0);
+  const vat = lines.reduce((a, l) => a + l.vat, 0);
+  quotes.unshift({ number: "QUO-0050", date, customer: cust, lines, net, vat, gross: net + vat, status: "Declined", validUntil: addDays(date, 30), notes: "", tolraNumber });
+}
 
 // ---- purchase orders (144, PO-0015 .. PO-0158) ------------------------------------------------------------------------------------
 const N_PO = 144;
@@ -301,6 +319,11 @@ for (let k = 0; k < N_PO; k++) {
   const status = k % 47 === 5 ? "Cancelled" : k >= N_PO - 2 ? "Draft" : "Open";
   pos.push({ number, supplier: s, date, delivery: rnd() < 0.85 ? addDays(date, int(3, 28)) : "", total, status });
 }
+// A purchase order number SliQ used twice: PO-0010 and PO-0010-B.
+pos.unshift(
+  { number: "PO-0010", supplier: suppliers[0], date: "2019-12-03", delivery: "", total: 12345, status: "Cancelled", tolraNumber: "PO-0010" },
+  { number: "PO-0010", supplier: suppliers[1], date: "2019-12-10", delivery: "", total: 67890, status: "Cancelled", tolraNumber: "PO-0010-B" },
+);
 
 // ---- write the synthetic-mapping files ------------------------------------------------------------------------------------------
 const fancy = (i) => i % 9 === 4; // about one row in nine is written "£1,234.56"
@@ -350,47 +373,91 @@ w(dirSliq, "quotes.csv", csv(["Number", "Customer", "Quote Date", "Gross", "Stat
 w(dirSliq, "purchase-orders.csv", csv(["Number", "Supplier", "Order Date", "Delivery Date", "Total"],
   pos.map((p, n) => [p.number, p.supplier.name, day(p.date), p.delivery ? day(p.delivery) : "", money(p.total, fancy(n))])));
 
+// ---- the same records, documents naming the customer by NAME (decision 3: names are matched only when exactly one customer has them) --
+const dirNames = path.join(out, "export-names");
+mkdirSync(dirNames, { recursive: true });
+for (const f of ["customers.csv", "suppliers.csv", "invoice-lines.csv", "payments.csv", "purchase-orders.csv"]) writeFileSync(path.join(dirNames, f), readFileSync(path.join(dir, f)));
+w(dirNames, "invoices.csv", csv(["Invoice No", "Type", "Date", "Due", "Customer", "Net", "VAT", "Gross", "Status", "Paid", "Against", "Notes", "VAT Code", "Discount"],
+  allInvoiceRows.map((i, n) => [i.number, "Invoice", day(i.date, i.unpadded), i.due ? day(i.due, i.unpadded) : "", i.customer.name,
+    money(i.net, fancy(n)), money(i.vat, fancy(n)), money(i.gross, fancy(n)), i.status, i.paid ? money(i.paid, fancy(n)) : "", "", i.notes, "", i.discount ?? ""])));
+w(dirNames, "credit-notes.csv", csv(["Credit No", "Date", "Customer", "Net", "VAT", "Gross", "Against", "Reason", "Notes"],
+  creditNotes.map((c) => [c.number, day(c.date), c.customer.name, plain(c.net), plain(c.vat), plain(c.gross), "", c.reason, c.notes])));
+w(dirNames, "quotes.csv", csv(["Quote No", "Date", "Customer", "Net", "VAT", "Gross", "Status", "Valid Until", "Notes"],
+  quotes.map((q, n) => [q.number, day(q.date), q.customer.name, money(q.net, fancy(n)), money(q.vat, fancy(n)), money(q.gross, fancy(n)), q.status, day(q.validUntil), q.notes])));
+const namesMapping = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "mappings", "synthetic.json"), "utf8"));
+namesMapping.id = "synthetic-names";
+namesMapping.label = "Synthetic fixtures, documents naming the customer (made-up headers)";
+for (const k of ["invoices", "quotes", "creditNotes"]) namesMapping.files[k].columns.customer = "Customer";
+w(out, "synthetic-names.json", `${JSON.stringify(namesMapping, null, 2)}\n`);
+// The same name twice: the person doing the import names each such document's account (customerMatches), and gives one of the two
+// customers its own Tolra name (customerNames). Generated here from the designed truth, as the reviewed answer would be.
+const sameName = customers.filter((c) => customers.filter((d) => d.name === c.name).length > 1);
+const tolraNames = { [sameName[1].key]: `${sameName[1].name} (${sameName[1].town})` };
+const customerMatches = [
+  ...allInvoiceRows.map((i, n) => ({ i, row: n + 2 })).filter(({ i }) => sameName.includes(i.customer)).map(({ i, row }) => ({ kind: "invoice", number: i.number, row, account: i.customer.key })),
+  ...quotes.map((q, n) => ({ q, row: n + 2 })).filter(({ q }) => sameName.includes(q.customer)).map(({ q, row }) => ({ kind: "quote", number: q.number, row, account: q.customer.key })),
+];
+
 // ---- SliQ's Aged Debtors report for this data: every open document; a credit (overpayment, unallocated credit note) is negative --
 const aged = [];
 for (const i of invoices) {
   const open = i.gross - i.paid;
   if (open !== 0) aged.push({ account: i.customer.key, name: i.customer.name, document: i.number, date: i.date, outstanding: open });
 }
+for (const i of extras.filter((x) => x.ledger)) aged.push({ account: i.customer.key, name: i.customer.name, document: i.number, date: i.date, outstanding: i.gross });
 for (const c of creditNotes) aged.push({ account: c.customer.key, name: c.customer.name, document: c.number, date: c.date, outstanding: -c.gross });
-// The awkward extras are not real SliQ documents of this ledger (a duplicate, an excluded and an orphan row): they are not in it.
+// The other extras are not documents of this ledger (an excluded discount invoice and an orphan row): they are not in it.
 w(dirRep, "aged-debtors.csv", csv(["Account", "Name", "Document", "Date", "Outstanding"], aged.map((a) => [a.account, a.name, a.document, day(a.date), plain(a.outstanding)])));
 
 // ---- manifest: the designed truth the checks compare against -----------------------------------------------------------------
 const total = (xs, f) => xs.reduce((a, x) => a + f(x), 0);
-const importedInvoices = invoices; // all 2035; every extra row is held or excluded
+const dupInvoices = extras.filter((x) => x.ledger); // INV-0100 and INV-0100-B: written, header only, unpaid
+const importedInvoices = [...invoices, ...dupInvoices]; // 2035 + the two copies; INV-0101 and INV-0102 are excluded
+const dupQuotes = quotes.filter((q) => q.tolraNumber);
 const manifest = {
   format: "sliq-rehearsal-manifest/1",
   synthetic: true,
   note: "Synthetic data generated from a fixed seed. No real customer, supplier or document.",
   source: {
     customers: customers.length, suppliers: suppliers.length, invoices: invoices.length, invoiceRowsInFile: allInvoiceRows.length, creditNotes: creditNotes.length,
-    payments: payments.length, unpaidNothingPaid: N_UNPAID, partPaid: N_PARTIAL, overpaid: 1, quotes: quotes.length, purchaseOrders: pos.length,
+    payments: payments.length, unpaidNothingPaid: N_UNPAID + dupInvoices.length, partPaid: N_PARTIAL, overpaid: 1, quotes: quotes.length, purchaseOrders: pos.length,
     invoiceLines: invoices.reduce((a, i) => a + i.lines.length, 0), quoteLines: quotes.reduce((a, q) => a + q.lines.length, 0),
   },
   expected: {
-    customers: 79, suppliers: 52, invoices: 2035, quotes: 1410, purchaseOrders: 144, creditNotesWritten: 0,
-    // the overpaid invoice is Payment to confirm: its one payment is not imported
-    invoicePayments: payments.length - 1,
-    // the invoice whose line VAT is unresolved is written header only
+    customers: 79, suppliers: 52, invoices: importedInvoices.length, quotes: quotes.length, purchaseOrders: pos.length, creditNotesWritten: 0,
+    // decision 1: every payment is imported, the overpaid invoice's too (it is paid; the surplus is the customer's credit)
+    invoicePayments: payments.length,
+    // header only: the invoice whose line VAT is unresolved, and both copies of INV-0100 (their lines cannot be told apart)
     invoiceLines: invoices.reduce((a, i) => a + i.lines.length, 0) - 1,
-    quoteLines: quotes.reduce((a, q) => a + q.lines.length, 0),
-    statuses: { paid: invoices.filter((i) => i.state === "paid").length, partial: N_PARTIAL, sentPaymentToConfirm: N_UNPAID + 1 },
-    paymentToConfirm: N_UNPAID + 1,
+    quoteLines: quotes.filter((q) => !q.tolraNumber).reduce((a, q) => a + q.lines.length, 0),
+    // paid includes the overpaid one; unpaid invoices are issued ('sent') and owed in full; nothing is Payment to confirm
+    statuses: { paid: invoices.filter((i) => i.state === "paid").length + 1, partial: N_PARTIAL, sentUnpaid: N_UNPAID + dupInvoices.length, sentPaymentToConfirm: 0 },
+    paymentToConfirm: 0,
     totalsPence: {
       invoicesNet: total(importedInvoices, (i) => i.net), invoicesVat: total(importedInvoices, (i) => i.vat), invoicesGross: total(importedInvoices, (i) => i.gross),
-      paymentsImported: total(payments.filter((p) => p.invoice !== overpaid.number), (p) => p.amount), quotesGross: total(quotes, (q) => q.gross),
+      paymentsImported: total(payments, (p) => p.amount), quotesGross: total(quotes, (q) => q.gross),
       purchaseOrders: total(pos, (p) => p.total),
     },
     agedDebtorsPence: total(aged, (a) => a.outstanding),
+    // Aged Debtors split: what is owed on invoices, the overpayment credit, the credit notes (recorded outside Tolra, cutover plan)
+    agedDebtorsOwedPence: total(aged.filter((a) => a.outstanding > 0), (a) => a.outstanding),
+    agedDebtorsOverpaidPence: overpaid.gross - overpaid.paid,
+    agedDebtorsCreditNotesPence: -total(creditNotes, (c) => c.gross),
     agedDebtorsDocuments: aged.length,
     nextNumbers: { invoice: "INV-2315", quote: "QUO-1483", purchaseOrder: "PO-0159" },
-    held: extras.map((e) => ({ number: e.number, expect: e.expect })),
-    exclude: ["INV-0101"],
+    held: extras.filter((e) => !e.ledger).map((e) => ({ number: e.number, expect: e.expect })),
+    exclude: extras.filter((e) => !e.ledger).map((e) => e.number),
+    // decision 2: every copy of a number SliQ used twice, with the Tolra number it must get (the same every run)
+    renames: [
+      ...dupInvoices.map((i) => ({ kind: "invoice", sourceNumber: i.number, number: i.tolraNumber, account: i.customer.key })),
+      ...dupQuotes.map((q) => ({ kind: "quote", sourceNumber: q.number, number: q.tolraNumber, account: q.customer.key })),
+      ...pos.filter((p) => p.tolraNumber).map((p) => ({ kind: "purchase_order", sourceNumber: p.number, number: p.tolraNumber, supplier: p.supplier.name })),
+    ],
+    // decision 3: the Tolra name of every customer (one of the two same-name customers gets its own), and how many documents of
+    // export-names are ambiguous until resolved
+    tolraNames: Object.fromEntries(customers.map((c) => [c.key, tolraNames[c.key] ?? c.name])),
+    sameNameCustomers: sameName.map((c) => c.key),
+    namesLayoutAmbiguousDocuments: customerMatches.length,
   },
   awkward: {
     duplicateCustomerNames: [["C0010", "C0011"], ["C0012", "C0013"]],
@@ -410,8 +477,10 @@ const manifest = {
   },
 };
 w(out, "manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
-w(out, "resolutions.json", `${JSON.stringify({
-  format: "sliq-credit-note-resolutions/1",
-  resolutions: creditNotes.map((c) => ({ number: c.number, decision: "record-outside-tolra", allocation: null, note: "Synthetic rehearsal: no invoice link in SliQ; recorded by hand after go-live (cutover plan section 1)." })),
-}, null, 2)}\n`);
+const cnResolutions = creditNotes.map((c) => ({ number: c.number, decision: "record-outside-tolra", allocation: null, note: "Synthetic rehearsal: no invoice link in SliQ; recorded by hand after go-live (cutover plan section 1)." }));
+const customerNames = Object.entries(tolraNames).map(([account, name]) => ({ account, name, note: "Synthetic rehearsal: two customers are called the same in SliQ; this one is told apart by its town." }));
+const resolutions = (extra) => `${JSON.stringify({ format: "sliq-credit-note-resolutions/1", resolutions: cnResolutions, ...extra }, null, 2)}\n`;
+w(out, "resolutions-cn.json", resolutions({}));
+w(out, "resolutions.json", resolutions({ customerNames }));
+w(out, "resolutions-names.json", resolutions({ customerNames, customerMatches }));
 console.log(`Synthetic export written to ${out}: ${customers.length} customers, ${suppliers.length} suppliers, ${allInvoiceRows.length} invoice rows (${invoices.length} + ${extras.length} awkward), ${creditNotes.length} credit notes, ${payments.length} payments, ${quotes.length} quotes, ${pos.length} purchase orders, ${lineRows.length} lines.`);

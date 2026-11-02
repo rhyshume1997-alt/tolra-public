@@ -7,7 +7,7 @@ import { legacyId, normNumber, normaliseName, paymentIdentity } from "./ids.mjs"
 import { poundsString } from "./parse.mjs";
 import { resolveCreditNotes } from "./resolutions.mjs";
 
-export const REPORT_FORMAT = "sliq-reconciliation/3";
+export const REPORT_FORMAT = "sliq-reconciliation/4";
 
 const REVERSE_CHARGE_WORDS = /reverse[\s-]*charge|\bd\.?r\.?c\.?\b|\bCIS\b/i;
 const DISCOUNT_WORDS = /discount|settlement|\bdisc\b|rebate/i;
@@ -43,38 +43,101 @@ function lineVat(l, net) {
   return { ok: false, reason: "no VAT rate or amount in the source" };
 }
 
-/** Customers and suppliers: the same shape. Duplicates by normalised name are listed and all kept as separate records. */
-function parties(rows) {
+/** A name as a person reads it exactly: Unicode composed, surrounding and repeated spaces dropped, case ignored. Nothing else. */
+export const exactName = (s) => String(s ?? "").normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * Customers and suppliers: the same shape. Duplicates by normalised name are listed and all kept as separate records.
+ * `names` gives some records their own Tolra name (resolutions file, customerNames), keyed by account in lower case.
+ *
+ * match(ref) (decision 3, Mon 2 Nov): a document's customer is matched on a stable identifier only, never on a guess:
+ *   1. the account (SliQ's account number) of exactly one record;
+ *   2. otherwise the name EXACTLY as one record has it (case and spacing aside), when no other record has that name or a name
+ *      that normalises to it (Ltd/Limited, &/and, punctuation): SliQ's invoice reports print the business name, so a name that
+ *      only one record can have is an identifier;
+ *   anything else (an account used twice, a name two records share, a match only after normalising, nothing at all) is
+ *   ambiguous or unmatched, with the candidates, and stops the write until the resolutions file names the account.
+ */
+function parties(rows, names = new Map()) {
   const list = [];
   const byName = new Map();
   const byKey = new Map();
+  const byExact = new Map();
   const seen = new Map();
+  const push = (m, k, v) => {
+    if (!m.has(k)) m.set(k, []);
+    m.get(k).push(v);
+  };
   for (const c of rows.filter((r) => !r._bad)) {
     const nn = normaliseName(c.name);
     let identity = c.key ? `key:${c.key.trim().toLowerCase()}` : `name:${nn}`;
     const n = (seen.get(identity) ?? 0) + 1;
     seen.set(identity, n);
     if (n > 1) identity = `${identity}#${n}`;
-    const entry = { ...c, nn, identity };
+    const override = c.key ? names.get(c.key.trim().toLowerCase()) : undefined;
+    const entry = { ...c, nn, identity, tolraName: override ?? c.name, renamedFrom: override ? c.name : null };
     list.push(entry);
-    if (!byName.has(nn)) byName.set(nn, []);
-    byName.get(nn).push(entry);
-    if (c.key) {
-      const k = c.key.trim().toLowerCase();
-      if (!byKey.has(k)) byKey.set(k, []);
-      byKey.get(k).push(entry);
-    }
+    push(byName, nn, entry);
+    push(byExact, exactName(c.name), entry);
+    if (c.key) push(byKey, c.key.trim().toLowerCase(), entry);
   }
-  const resolve = (ref) => {
-    if (!ref) return null;
-    const k = byKey.get(ref.trim().toLowerCase());
-    if (k) return k[0];
-    const n = byName.get(normaliseName(ref));
-    return n ? n[0] : null;
+  const cand = (xs) => xs.map((c) => ({ account: c.key ?? null, name: c.name, ...where(c) }));
+  const match = (ref) => {
+    if (!ref || !String(ref).trim()) return { status: "unmatched", reason: "no customer on the document", candidates: [] };
+    const k = byKey.get(String(ref).trim().toLowerCase());
+    if (k) return k.length === 1 ? { status: "ok", entry: k[0], via: "account" } : { status: "ambiguous", reason: `account ${ref} belongs to ${k.length} records`, candidates: cand(k) };
+    const ex = byExact.get(exactName(ref)) ?? [];
+    const nn = byName.get(normaliseName(ref)) ?? [];
+    if (ex.length === 1 && nn.length === 1) return { status: "ok", entry: ex[0], via: "name (the only record with this name)" };
+    if (ex.length === 1) return { status: "ok", entry: ex[0], via: "name exactly as written (another record's name differs only by Ltd/Limited, & or punctuation)" };
+    if (ex.length > 1) return { status: "ambiguous", reason: `${ex.length} records have exactly this name`, candidates: cand(ex) };
+    if (nn.length > 0) return { status: "ambiguous", reason: "matches only after normalising (case, punctuation, Ltd/Limited, &/and): not an identifier", candidates: cand(nn) };
+    return { status: "unmatched", reason: "no record has this account or name", candidates: [] };
   };
+  const byAccount = (account) => byKey.get(String(account ?? "").trim().toLowerCase()) ?? [];
   const dupNames = [...byName.entries()].filter(([, v]) => v.length > 1).map(([nn, v]) => ({ normalisedName: nn, records: v.map((c) => ({ name: c.name, key: c.key, ...where(c) })) }));
   const dupKeys = [...byKey.entries()].filter(([, v]) => v.length > 1).map(([key, v]) => ({ key, records: v.map((c) => ({ name: c.name, ...where(c) })) }));
-  return { list, resolve, dupNames, dupKeys };
+  // Tolra links documents to a customer by its name: two records may not end up with the same Tolra name.
+  const byTolra = new Map();
+  for (const e of list) push(byTolra, exactName(e.tolraName), e);
+  const sameTolraName = [...byTolra.values()].filter((v) => v.length > 1).map((v) => ({ name: v[0].tolraName, records: cand(v) }));
+  return { list, match, byAccount, dupNames, dupKeys, sameTolraName };
+}
+
+/**
+ * Numbers SliQ used more than once (decision 2, Mon 2 Nov): every copy is kept and gets its own Tolra number, the same every run.
+ * The earliest (by date, then source row) keeps the number; the others get -B, -C ... (skipping a number already used). The
+ * number SliQ printed is kept as sourceNumber (written to source_ref, migration 135). Returns the rows (renamed copies replaced)
+ * and the log of every copy.
+ */
+function numberCopies(rows, kind, dateField) {
+  const groups = new Map();
+  for (const r of rows) {
+    const k = normNumber(r.number);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const used = new Set(groups.keys());
+  const renamed = new Map();
+  const log = [];
+  const duplicated = new Set();
+  for (const [k, copies] of groups) {
+    if (copies.length < 2) continue;
+    duplicated.add(k);
+    const sorted = [...copies].sort((a, b) => String(a[dateField] ?? "").localeCompare(String(b[dateField] ?? "")) || a._row - b._row);
+    let letter = 1;
+    sorted.forEach((r, i) => {
+      let number = normNumber(r.number);
+      if (i > 0) {
+        do number = `${k}-${String.fromCharCode(65 + letter++)}`; while (used.has(number));
+        used.add(number);
+        renamed.set(r, number);
+      }
+      log.push({ kind, sourceNumber: r.number, number, keeps: i === 0, date: r[dateField] ?? null, party: r.customer ?? r.supplier ?? null, ...where(r) });
+    });
+  }
+  const out = rows.map((r) => ({ ...r, sourceNumber: r.number, ...(renamed.has(r) ? { number: renamed.get(r) } : {}) }));
+  return { rows: out, log, duplicated };
 }
 
 /**
@@ -87,28 +150,51 @@ export function analyse(loaded, opts = {}) {
   const docFigures = [];
   const rec = loaded.records;
   const excluded = new Set(excludeNumbers.map(normNumber));
+  // An exclusion names the Tolra number or the number SliQ printed (which excludes every copy of it).
+  const isExcluded = (h) => excluded.has(normNumber(h.number)) || (h.sourceNumber !== undefined && excluded.has(normNumber(h.sourceNumber)));
   const hasFile = (k) => loaded.inputs.some((i) => i.kind === k);
   const goodRows = (rows) => rows.filter((r) => !r._bad);
 
-  const cust = parties(rec.customers);
-  const supp = parties(rec.suppliers);
-  const resolveCustomer = cust.resolve;
+  // ---- customer and supplier names for Tolra (resolutions file, customerNames) ----
+  const matchProblems = [];
+  const nameOverrides = { customer: new Map(), supplier: new Map() };
+  for (const e of resolutions?.customerNames ?? []) {
+    const party = e?.party ?? "customer";
+    const account = String(e?.account ?? "").trim();
+    const name = String(e?.name ?? "").trim().replace(/\s+/g, " ");
+    const pool = party === "supplier" ? rec.suppliers : party === "customer" ? rec.customers : null;
+    if (!pool) matchProblems.push(`customerNames: party must be "customer" or "supplier" (${account || "no account"})`);
+    else if (!account || !name || name.length > 200) matchProblems.push(`customerNames: ${account || "an entry"} needs an account and a name of 1 to 200 characters`);
+    else if (pool.filter((c) => !c._bad && (c.key ?? "").trim().toLowerCase() === account.toLowerCase()).length !== 1) matchProblems.push(`customerNames: ${party} account ${account} is not exactly one record in the ${party === "supplier" ? "suppliers" : "customers"} file`);
+    else if (nameOverrides[party].has(account.toLowerCase())) matchProblems.push(`customerNames: ${party} account ${account} is named twice`);
+    else nameOverrides[party].set(account.toLowerCase(), name);
+  }
+  const cust = parties(rec.customers, nameOverrides.customer);
+  const supp = parties(rec.suppliers, nameOverrides.supplier);
   const customers = cust.list;
   const suppliers = supp.list;
 
   // ---- documents ----
-  const invoiceRows = [];
   const creditRows = [];
   const suspected = [];
+  const invoiceSource = [];
   for (const r of goodRows(rec.invoices)) {
     if (r.docType === "credit_note") creditRows.push({ ...r, source: "invoice file (type column)" });
     else if (r.gross !== null && r.gross < 0) {
       creditRows.push({ ...r, source: "negative total in the invoice file (possible credit note, no type column says so)" });
       suspected.push(r);
-    } else invoiceRows.push(r);
+    } else invoiceSource.push(r);
   }
   for (const r of goodRows(rec.creditNotes)) creditRows.push({ ...r, source: "credit-notes file", status: null });
-  const quoteRows = goodRows(rec.quotes);
+  // A number SliQ used twice: every copy is written under its own deterministic Tolra number; nothing is dropped (decision 2).
+  const invCopies = numberCopies(invoiceSource, "invoice", "date");
+  const quoteCopies = numberCopies(goodRows(rec.quotes), "quote", "date");
+  const poCopies = numberCopies(goodRows(rec.purchaseOrders), "purchase_order", "orderDate");
+  const invoiceRows = invCopies.rows;
+  const quoteRows = quoteCopies.rows;
+  // Lines and payments name the number SliQ printed; when several documents share it they cannot be told apart.
+  const sharedInv = invCopies.duplicated;
+  const sharedQuote = quoteCopies.duplicated;
 
   const group = (rows, key) => {
     const m = new Map();
@@ -120,28 +206,34 @@ export function analyse(loaded, opts = {}) {
     return m;
   };
   const invByNo = group(invoiceRows, "number");
+  const invBySource = group(invoiceRows, "sourceNumber");
   const creditByNo = group(creditRows, "number");
   const quoteByNo = group(quoteRows, "number");
+  const quoteBySource = group(quoteRows, "sourceNumber");
   const allInvNos = group([...invoiceRows, ...creditRows], "number");
+  const allInvSource = group([...invoiceRows.map((r) => ({ ...r, number: r.sourceNumber })), ...creditRows], "number");
   const dupList = (m, kind) => [...m.entries()].filter(([, v]) => v.length > 1).map(([, v]) => ({ kind, number: v[0].number, rows: v.map(where) }));
+  // After the renames only a credit note sharing a number with an invoice (or another credit note) is left here.
   const duplicateDocs = [...dupList(allInvNos, "invoice/credit note"), ...dupList(quoteByNo, "quote")];
   const dupNos = new Set([...allInvNos].filter(([, v]) => v.length > 1).map(([k]) => `i:${k}`).concat([...quoteByNo].filter(([, v]) => v.length > 1).map(([k]) => `q:${k}`)));
+  const renames = [...invCopies.log, ...quoteCopies.log, ...poCopies.log];
 
   // ---- lines (one lines file serves invoices, credit notes and quotes; a number in two document types is ambiguous) ----
   const linesByDoc = group(goodRows(rec.invoiceLines).map((l) => ({ ...l, number: l.documentNumber })), "number");
   const orphanLines = [];
   const ambiguousLines = [];
   for (const [k, ls] of linesByDoc) {
-    if (allInvNos.has(k) && quoteByNo.has(k)) ambiguousLines.push({ number: ls[0].documentNumber, lines: ls.length, reason: "the number is used by both an invoice/credit note and a quote: the lines file cannot say which" });
-    else if (!allInvNos.has(k) && !quoteByNo.has(k)) for (const l of ls) orphanLines.push({ documentNumber: l.documentNumber, ...where(l) });
+    if (allInvSource.has(k) && quoteBySource.has(k)) ambiguousLines.push({ number: ls[0].documentNumber, lines: ls.length, reason: "the number is used by both an invoice/credit note and a quote: the lines file cannot say which" });
+    else if (sharedInv.has(k) || sharedQuote.has(k)) ambiguousLines.push({ number: ls[0].documentNumber, lines: ls.length, reason: `SliQ used the number for ${(sharedInv.has(k) ? invBySource : quoteBySource).get(k).length} documents: the lines file cannot say whose lines these are, so each copy is written with its header only` });
+    else if (!allInvSource.has(k) && !quoteBySource.has(k)) for (const l of ls) orphanLines.push({ documentNumber: l.documentNumber, ...where(l) });
   }
-  const linesOf = (k) => (allInvNos.has(k) && quoteByNo.has(k) ? [] : linesByDoc.get(k) ?? []);
+  const linesOf = (k) => (allInvSource.has(k) && quoteBySource.has(k) ? [] : sharedInv.has(k) || sharedQuote.has(k) ? [] : linesByDoc.get(k) ?? []);
 
   // ---- payments (cash) and allocations (credit notes: never cash) ----
   const paymentsByInv = group(goodRows(rec.payments).map((p) => ({ ...p, number: p.invoiceNumber })), "number");
   const paymentsForUnknownInvoice = [];
   for (const [k, ps] of paymentsByInv) {
-    if (invByNo.has(k)) continue;
+    if (invBySource.has(k)) continue;
     for (const p of ps) paymentsForUnknownInvoice.push({ invoiceNumber: p.invoiceNumber, amount: p.amount, date: p.date, reason: creditByNo.has(k) ? "points at a credit note, not an invoice" : "no such invoice in the invoice file", ...where(p) });
   }
   // The same receipt listed twice (same invoice, date, amount and reference) is never summed: the invoice is left to confirm.
@@ -169,7 +261,7 @@ export function analyse(loaded, opts = {}) {
     const ik = normNumber(a.invoiceNumber);
     let status = "ok";
     if (!creditByNo.has(ck)) status = "credit note not found";
-    else if (!invByNo.has(ik)) status = "invoice not found";
+    else if (!invBySource.has(ik)) status = "invoice not found";
     if (status === "ok") {
       allocatedByInv.set(ik, (allocatedByInv.get(ik) ?? 0) + a.amount);
       allocatedByCredit.set(ck, (allocatedByCredit.get(ck) ?? 0) + a.amount);
@@ -181,15 +273,14 @@ export function analyse(loaded, opts = {}) {
   const mismatches = [];
   const unresolvedVat = [];
   const needsReview = [];
-  const reviewFor = (kind, number, reasons) => {
-    if (reasons.length) needsReview.push({ documentKind: kind, number, blocksWrite: kind !== "credit_note", excluded: excluded.has(normNumber(number)), reasons });
+  const reviewFor = (kind, header, reasons) => {
+    if (reasons.length) needsReview.push({ documentKind: kind, number: header.number, sourceNumber: header.sourceNumber ?? header.number, blocksWrite: kind !== "credit_note", excluded: isExcluded(header), reasons });
   };
   const dedupeReasons = (rs) => rs.filter((r, i) => rs.findIndex((x) => x.detail === r.detail) === i);
   const isRcCode = (c) => c && (loaded.profile.reverseChargeCodes ?? []).some((x) => x.toLowerCase() === c.trim().toLowerCase());
 
   function analyseDoc(kind, header) {
-    const key = normNumber(header.number);
-    const lines = linesOf(key);
+    const lines = linesOf(normNumber(header.sourceNumber ?? header.number));
     const reasons = [];
     const textHit = [header.notes, header.vatCode, header.reason].filter(Boolean);
     if (textHit.some((t) => REVERSE_CHARGE_WORDS.test(t))) reasons.push({ code: "reverse_charge", detail: "reverse-charge wording on the header" });
@@ -232,7 +323,7 @@ export function analyse(loaded, opts = {}) {
     if (header.net !== null && header.net !== undefined && header.vat !== null && header.vat !== undefined && header.gross !== null && header.net + header.vat !== header.gross) {
       mismatches.push({ documentKind: kind, number: header.number, field: "header net + VAT vs gross", stated: header.gross, fromLines: header.net + header.vat, difference: header.gross - (header.net + header.vat), withinRounding: false });
     }
-    reviewFor(kind, header.number, dedupeReasons(reasons));
+    reviewFor(kind, header, dedupeReasons(reasons));
     // Every document's source figures beside the lines' figures, not only the ones that disagree.
     const sGross = sumNet !== null && sumVat !== null ? sumNet + sumVat : null;
     const d = (stated, fromLines) => (stated === null || stated === undefined || fromLines === null ? null : stated - fromLines);
@@ -257,7 +348,11 @@ export function analyse(loaded, opts = {}) {
 
   const noLines = [];
   const linesSupplied = hasFile("invoiceLines");
-  for (const { h, a } of invA) if (a.lines.length === 0) noLines.push({ number: h.number, gross: h.gross, note: linesSupplied ? "no lines in the lines file" : "no lines file supplied", ...where(h) });
+  for (const { h, a } of invA) {
+    if (a.lines.length > 0) continue;
+    const shared = sharedInv.has(normNumber(h.sourceNumber));
+    noLines.push({ number: h.number, gross: h.gross, note: shared ? `lines are listed under SliQ number ${h.sourceNumber}, which ${invBySource.get(normNumber(h.sourceNumber)).length} invoices share: header only` : linesSupplied ? "no lines in the lines file" : "no lines file supplied", ...where(h) });
+  }
 
   // ---- collisions and targets ----
   const collisions = { checked: !!target, status: target ? "checked against the target organisation" : "not checked", invoices: [], quotes: [], purchaseOrders: [], stock: [], customerReview: [], supplierReview: [] };
@@ -272,103 +367,125 @@ export function analyse(loaded, opts = {}) {
       collisions[listKey].push({ number, ...where(row) });
     }
   };
-  const reviewHeld = (kind, key, held) => {
-    if (excluded.has(key)) held.push("excluded by number (operator decision)");
-    else if (needsReview.some((n) => n.documentKind === kind && normNumber(n.number) === key)) held.push("needs review (reverse charge or discount): not yet excluded or resolved");
+  const reviewHeld = (kind, h, held) => {
+    if (isExcluded(h)) held.push("excluded by number (operator decision)");
+    else if (needsReview.some((n) => n.documentKind === kind && normNumber(n.number) === normNumber(h.number))) held.push("needs review (reverse charge or discount): not yet excluded or resolved");
   };
 
+  // ---- customers and suppliers of each document: a stable identifier or a reviewed resolution, never a guess (decision 3) ----
+  const ambiguities = [];
+  const matchEntries = (resolutions?.customerMatches ?? []).map((e, i) => ({ e, i, used: 0 }));
+  const KINDS = ["invoice", "quote", "purchase_order"];
+  for (const m of matchEntries) {
+    if (!KINDS.includes(m.e?.kind ?? "invoice")) matchProblems.push(`customerMatches entry ${m.i + 1}: kind must be one of ${KINDS.join(", ")}`);
+    else if (!String(m.e?.number ?? "").trim() || !String(m.e?.account ?? "").trim()) matchProblems.push(`customerMatches entry ${m.i + 1}: "number" and "account" are needed`);
+  }
+  const resolvedParty = (kind, h, ref) => {
+    const pool = kind === "purchase_order" ? supp : cust;
+    const hits = matchEntries.filter((m) => (m.e?.kind ?? "invoice") === kind && normNumber(m.e?.number) === normNumber(h.sourceNumber ?? h.number)
+      && (m.e.row === undefined || m.e.row === h._row) && (m.e.date === undefined || String(m.e.date).trim() === (h.date ?? h.orderDate ?? "")));
+    if (hits.length > 1) return { status: "ambiguous", reason: "more than one customerMatches entry fits this document (add row or date)", candidates: [] };
+    if (hits.length === 1) {
+      hits[0].used++;
+      const acc = pool.byAccount(hits[0].e.account);
+      if (acc.length !== 1) return { status: "unmatched", reason: `the resolutions file names account ${hits[0].e.account}, which is ${acc.length ? "used by more than one record" : "not in the file"}`, candidates: [] };
+      return { status: "ok", entry: acc[0], via: "resolutions file (customerMatches)" };
+    }
+    return pool.match(ref);
+  };
+  const partyFor = (kind, h, ref, held) => {
+    const m = resolvedParty(kind, h, ref);
+    if (m.status !== "ok") {
+      const blocks = !isExcluded(h);
+      held.push(`${kind === "purchase_order" ? "supplier" : "customer"} ${m.status}: ${m.reason} (see the ambiguity report)`);
+      ambiguities.push({ kind, number: h.number, sourceNumber: h.sourceNumber ?? h.number, reference: ref ?? null, status: m.status, reason: m.reason, candidates: m.candidates, blocksWrite: blocks, ...where(h) });
+      return null;
+    }
+    return m;
+  };
+  // Two customers (or suppliers) with the same Tolra name could not be told apart in Tolra: each needs its own name.
+  for (const [label, pool] of [["customer", cust], ["supplier", supp]]) {
+    for (const g of pool.sameTolraName) {
+      for (const c of g.records) ambiguities.push({ kind: label, number: c.account ?? "(no account)", sourceNumber: c.account ?? null, reference: c.name, status: "ambiguous", reason: `${g.records.length} ${label}s would have the Tolra name "${g.name}": Tolra links documents by name, so give all but one a name of its own (resolutions file, customerNames)`, candidates: g.records, blocksWrite: true, file: c.file, row: c.row });
+    }
+  }
+
   // ---- balances: payment state comes only from the payments file ----
+  // Decision 1 (Mon 2 Nov): an imported invoice gets its real status and balance, so Tolra's money owed equals SliQ's Aged
+  // Debtors straight after the import. Unpaid (no payment record), part paid, paid and overpaid (the surplus is the customer's
+  // credit) are written as they are; nothing is left "Payment to confirm". Evidence that disagrees is an exception that stops
+  // the write until the source is fixed or the invoice is excluded by number.
   const balances = [];
   const exceptions = [];
   const paymentsSupplied = hasFile("payments");
   const statusWordConflicts = [];
-  const customerMissing = (ref) => ref && !resolveCustomer(ref);
 
   const invoicePlans = invA.map(({ h, a }) => {
     const key = normNumber(h.number);
+    const sourceKey = normNumber(h.sourceNumber);
     const held = [];
-    if (dupNos.has(`i:${key}`)) held.push("duplicate document number in the source");
-    if (!h.customer || !resolveCustomer(h.customer)) held.push("customer not found in the customers file");
+    if (dupNos.has(`i:${key}`)) held.push("duplicate document number in the source (an invoice and a credit note)");
+    const party = partyFor("invoice", h, h.customer, held);
     const oldId = organizationId ? legacyId(organizationId, "invoices", key) : null;
     collide("invoices", "invoices", h.number, oldId, h, held, "number");
-    reviewHeld("invoice", key, held);
+    reviewHeld("invoice", h, held);
 
-    const ps = (paymentsByInv.get(key) ?? []).map((p, i) => ({ ...p, ordinal: i }));
+    const ps = (paymentsByInv.get(sourceKey) ?? []).map((p, i) => ({ ...p, ordinal: i }));
     const distinct = ps.filter((p, i) => ps.findIndex((o) => o.date === p.date && o.amount === p.amount && (o.reference ?? "").trim() === (p.reference ?? "").trim()) === i);
-    const paid = sum((dupPayInvoices.has(key) ? distinct : ps).map((p) => p.amount));
+    const paid = sum((dupPayInvoices.has(sourceKey) ? distinct : ps).map((p) => p.amount));
     const bad = ps.filter((p) => p.amount <= 0);
     const undated = ps.filter((p) => !p.date);
-    const allocated = allocatedByInv.get(key) ?? 0;
+    const allocated = allocatedByInv.get(sourceKey) ?? 0;
     const issued = h.status === "sent";
+    const raw = h.statusRaw ?? "";
+    const says = /part/i.test(raw) ? "part paid" : /unpaid|overdue|outstanding/i.test(raw) ? "unpaid" : /\bpaid\b/i.test(raw) ? "paid" : null;
     let state;
     let reason = null;
-    let toConfirm = false;
+    let exception = false;
     let writePayments = false;
+    const fail = (why) => {
+      state = "exception";
+      reason = why;
+      exception = true;
+    };
     if (!issued) {
       state = h.status === "void" ? "void" : "draft";
       if (ps.length) {
         reason = "payments recorded against a draft or cancelled invoice";
-        exceptions.push({ number: h.number, reason, payments: ps.length });
+        exceptions.push({ number: h.number, reason, payments: ps.length, blocksWrite: false });
       }
-    } else if (dupPayInvoices.has(key)) {
-      state = "exception";
-      reason = "the same payment (date, amount, reference) is listed more than once: duplicates are never summed, so no payment is imported";
-      toConfirm = true;
-      exceptions.push({ number: h.number, reason });
     } else if (!paymentsSupplied) {
       state = "unknown";
-      reason = "no payments file supplied";
-      toConfirm = true;
-    } else if (bad.length) {
-      state = "exception";
-      reason = "a payment of zero or less (refund or error): not imported";
-      toConfirm = true;
-      exceptions.push({ number: h.number, reason });
-    } else if (paid > h.gross) {
-      state = "overpaid";
-      reason = `payments ${poundsString(paid)} exceed the invoice ${poundsString(h.gross)}: not imported`;
-      toConfirm = true;
-      exceptions.push({ number: h.number, reason });
-    } else if (ps.length === 0) {
-      state = "unpaid";
-      toConfirm = true;
-      reason = h.amountPaid ? `the invoice list says ${poundsString(h.amountPaid)} paid but there are no payment records` : "no payment records: still owed, to be confirmed by JNR";
-      if (h.amountPaid) exceptions.push({ number: h.number, reason });
-    } else if (h.amountPaid !== null && h.amountPaid !== undefined && h.amountPaid !== paid) {
-      state = "exception";
-      reason = `the invoice list says ${poundsString(h.amountPaid)} paid but the payment records add up to ${poundsString(paid)}: not imported`;
-      toConfirm = true;
-      exceptions.push({ number: h.number, reason });
-    } else if (undated.length) {
-      state = paid === h.gross ? "paid" : "PARTIAL";
-      toConfirm = true;
-      reason = `${undated.length} payment(s) have no date: not imported, to be confirmed`;
-    } else {
-      state = paid === h.gross ? "paid" : "PARTIAL";
+      reason = "no payments file supplied: the balance cannot be known";
+      exception = true;
+    } else if (sharedInv.has(sourceKey) && ps.length) fail(`${ps.length} payment row(s) name SliQ number ${h.sourceNumber}, which ${invBySource.get(sourceKey).length} invoices share: they cannot be told apart`);
+    else if (dupPayInvoices.has(sourceKey)) fail("the same payment (date, amount, reference) is listed more than once: duplicates are never summed");
+    else if (bad.length) fail("a payment of zero or less (refund or error)");
+    else if (undated.length) fail(`${undated.length} payment(s) have no date`);
+    else if (h.amountPaid !== null && h.amountPaid !== undefined && h.amountPaid !== paid) {
+      fail(ps.length ? `the invoice list says ${poundsString(h.amountPaid)} paid but the payment records add up to ${poundsString(paid)}` : `the invoice list says ${poundsString(h.amountPaid)} paid but there are no payment records`);
+    } else if (allocated > 0) fail(`credit note allocation(s) of ${poundsString(allocated)} touch this invoice; an allocation is not cash and is not imported, so its balance would be wrong (cash on file: ${poundsString(paid)})`);
+    else if (says === "paid" && paid < h.gross) fail(`the status word "${raw}" says paid but the payment records add up to ${poundsString(paid)} of ${poundsString(h.gross)}`);
+    else {
+      state = paid === 0 ? "unpaid" : paid < h.gross ? "PARTIAL" : paid === h.gross ? "paid" : "overpaid";
+      if (state === "overpaid") reason = `paid ${poundsString(paid)} on ${poundsString(h.gross)}: the ${poundsString(paid - h.gross)} surplus is the customer's credit`;
       writePayments = true;
     }
-    if (issued && allocated > 0) {
-      writePayments = false;
-      toConfirm = true;
-      reason = `credit note allocation(s) of ${poundsString(allocated)} touch this invoice; an allocation is not cash and is not modelled, so its payments are not imported (cash on file: ${poundsString(paid)})`;
-      exceptions.push({ number: h.number, reason });
-    }
-    // The status word is never trusted for payment; a disagreement with the payments file is only listed.
-    const raw = h.statusRaw ?? "";
-    const says = /part/i.test(raw) ? "part paid" : /unpaid|overdue|outstanding/i.test(raw) ? "unpaid" : /\bpaid\b/i.test(raw) ? "paid" : null;
-    const cash = state === "paid" ? "paid" : state === "PARTIAL" ? "part paid" : state === "unpaid" ? "unpaid" : null;
+    if (exception) exceptions.push({ number: h.number, reason, blocksWrite: held.length === 0 });
+    // The status word is never trusted for payment; any other disagreement with the payments file is listed.
+    const cash = state === "paid" || state === "overpaid" ? "paid" : state === "PARTIAL" ? "part paid" : state === "unpaid" ? "unpaid" : null;
     if (issued && says && cash && says !== cash) statusWordConflicts.push({ number: h.number, statusWord: raw, fromPayments: state, note: "payment state comes from the payments file only", ...where(h) });
     balances.push({
-      number: h.number, documentKind: "invoice", gross: h.gross, paid: ps.length ? paid : null, allocated: allocated || null, balance: ps.length || paymentsSupplied ? h.gross - paid : null,
-      state, payments: ps.length, paymentToConfirm: toConfirm, held: held.length > 0, reason, statusWord: raw || null, ...where(h),
+      number: h.number, sourceNumber: h.sourceNumber, documentKind: "invoice", gross: h.gross, paid: ps.length ? paid : null, allocated: allocated || null, balance: ps.length || paymentsSupplied ? h.gross - paid : null,
+      state, payments: ps.length, exception, held: held.length > 0, reason, statusWord: raw || null, ...where(h),
     });
-    return { h, a, key, oldId, held, ps, writePayments, state, paid, toConfirm };
+    return { h, a, key, oldId, held, ps, writePayments, state, paid, exception, party };
   });
 
   const missing = {
-    invoicesWithoutCustomer: invA.filter(({ h }) => !h.customer || customerMissing(h.customer)).map(({ h }) => ({ number: h.number, customer: h.customer, ...where(h) })),
-    quotesWithoutCustomer: quotesA.filter(({ h }) => !h.customer || customerMissing(h.customer)).map(({ h }) => ({ number: h.number, customer: h.customer, ...where(h) })),
-    creditNotesWithoutCustomer: creditA.filter(({ h }) => !h.customer || customerMissing(h.customer)).map(({ h }) => ({ number: h.number, customer: h.customer, ...where(h) })),
+    invoicesWithoutCustomer: ambiguities.filter((x) => x.kind === "invoice" && x.status === "unmatched").map((x) => ({ number: x.number, customer: x.reference, file: x.file, row: x.row })),
+    quotesWithoutCustomer: [],
+    creditNotesWithoutCustomer: [],
     orphanLines,
     ambiguousLines,
     paymentsForUnknownInvoice,
@@ -379,19 +496,22 @@ export function analyse(loaded, opts = {}) {
     const key = normNumber(q.number);
     const held = [];
     if (dupNos.has(`q:${key}`)) held.push("duplicate document number in the source");
-    if (!q.customer || !resolveCustomer(q.customer)) held.push("customer not found in the customers file");
+    const party = partyFor("quote", q, q.customer, held);
     const oldId = organizationId ? legacyId(organizationId, "quotes", key) : null;
     collide("quotes", "quotes", q.number, oldId, q, held, "number");
-    reviewHeld("quote", key, held);
-    return { q, a, key, oldId, held };
+    reviewHeld("quote", q, held);
+    return { q, a, key, oldId, held, party };
   });
+  missing.quotesWithoutCustomer = ambiguities.filter((x) => x.kind === "quote" && x.status === "unmatched").map((x) => ({ number: x.number, customer: x.reference, file: x.file, row: x.row }));
+  // Credit notes are never written: their customer is only listed (it decides nothing).
+  missing.creditNotesWithoutCustomer = creditA.filter(({ h }) => cust.match(h.customer).status !== "ok").map(({ h }) => ({ number: h.number, customer: h.customer, ...where(h) }));
   if (target) {
     for (const c of customers) {
-      const hit = target.customerNames.get(c.nn);
+      const hit = target.customerNames.get(normaliseName(c.tolraName));
       if (hit) collisions.customerReview.push({ sliqName: c.name, tolraNames: hit, ...where(c), note: "same normalised name as an existing Tolra customer: added as a separate record, review before merging" });
     }
     for (const c of suppliers) {
-      const hit = target.supplierNames.get(c.nn);
+      const hit = target.supplierNames.get(normaliseName(c.tolraName));
       if (hit) collisions.supplierReview.push({ sliqName: c.name, tolraNames: hit, ...where(c), note: "same normalised name as an existing Tolra supplier: added as a separate record, review before merging" });
     }
   }
@@ -399,12 +519,12 @@ export function analyse(loaded, opts = {}) {
   // ---- credit notes ----
   const creditNotes = creditA.map(({ h, a }) => {
     const ref = h.relatedInvoice;
-    const linked = ref ? invByNo.has(normNumber(ref)) : false;
+    const linked = ref ? invBySource.has(normNumber(ref)) : false;
     const gross = h.gross;
     const ck = normNumber(h.number);
     return {
       number: h.number, source: h.source, customer: h.customer, date: h.date, statedGross: gross, proposedGross: gross === null ? null : -Math.abs(gross),
-      linkedInvoice: linked ? invByNo.get(normNumber(ref))[0].number : null,
+      linkedInvoice: linked ? invBySource.get(normNumber(ref))[0].sourceNumber : null,
       link: !ref ? "no invoice reference in the source: listed unlinked" : linked ? "linked" : `reference ${ref} not found in the invoice file: listed unlinked`,
       lines: a.lines.length, written: false,
       allocated: allocatedByCredit.get(ck) ?? null,
@@ -414,7 +534,7 @@ export function analyse(loaded, opts = {}) {
     };
   });
 
-  const creditResolution = resolveCreditNotes({ creditNotes, allocations, invoiceNumbers: new Set(invByNo.keys()), resolutions });
+  const creditResolution = resolveCreditNotes({ creditNotes, allocations, invoiceNumbers: new Set(invBySource.keys()), resolutions });
 
   // ---- products (stock items only), suppliers, purchase orders ----
   const productRows = goodRows(rec.products);
@@ -437,18 +557,19 @@ export function analyse(loaded, opts = {}) {
   }
   for (const s of stockPlans) if (s.held.length) productsNotWritten.push({ code: s.p.code, reason: s.held.join("; "), ...where(s.p) });
 
-  const poRows = goodRows(rec.purchaseOrders);
-  const poByNo = group(poRows, "number");
+  const poRows = poCopies.rows;
   const poPlans = poRows.map((po) => {
     const key = normNumber(po.number);
     const held = [];
-    if (poByNo.get(key).length > 1) held.push("duplicate document number in the source");
-    if (!supp.resolve(po.supplier)) held.push("supplier not found in the suppliers file");
+    const party = partyFor("purchase_order", po, po.supplier, held);
     if (!po.status) held.push("status not in the source: a purchase order cannot be written without one (none is invented)");
     const oldId = organizationId ? legacyId(organizationId, "purchase_orders", key) : null;
     collide("purchaseOrders", "purchaseOrders", po.number, oldId, po, held, "number");
-    return { po, key, oldId, held };
+    if (isExcluded(po)) held.push("excluded by number (operator decision)");
+    return { po, key, oldId, held, party };
   });
+  for (const m of matchEntries) if (m.used === 0 && KINDS.includes(m.e?.kind ?? "invoice")) matchProblems.push(`customerMatches entry ${m.i + 1} (${m.e?.kind ?? "invoice"} ${m.e?.number}) fits no document in the source`);
+
 
   // ---- blanks (not in the source) ----
   const blanks = [];
@@ -470,7 +591,9 @@ export function analyse(loaded, opts = {}) {
 
   // ---- the write plan ----
   const linesFor = (p) => {
-    const reasonWithheld = p.a.lines.length === 0 ? "no lines in the source" : p.a.lines.some((x) => !x.vat.ok) ? "a line's VAT could not be resolved" : p.a.lines.some((x) => x.net === null || x.l.quantity === null) ? "a line's net could not be worked out exactly" : p.a.lines.some((x) => x.l.quantity <= 0 || x.l.unitPrice < 0) ? "a line has a zero or negative quantity or a negative price" : null;
+    const src = normNumber((p.h ?? p.q).sourceNumber);
+    const shared = sharedInv.has(src) || sharedQuote.has(src);
+    const reasonWithheld = shared ? `SliQ number ${src} is used by more than one document: its lines cannot be told apart` : p.a.lines.length === 0 ? "no lines in the source" : p.a.lines.some((x) => !x.vat.ok) ? "a line's VAT could not be resolved" : p.a.lines.some((x) => x.net === null || x.l.quantity === null) ? "a line's net could not be worked out exactly" : p.a.lines.some((x) => x.l.quantity <= 0 || x.l.unitPrice < 0) ? "a line has a zero or negative quantity or a negative price" : null;
     return reasonWithheld ? { withheld: reasonWithheld, lines: [] } : { withheld: null, lines: p.a.lines.map((x, i) => ({ position: i, description: x.l.description, quantityMilli: x.l.quantity, unitPence: x.l.unitPrice, vatCenti: x.vat.pct })) };
   };
   const methodFor = (raw) => {
@@ -484,22 +607,25 @@ export function analyse(loaded, opts = {}) {
     customers: customers.map((c) => ({ ...c, oldId: oid("customers", c.identity) })),
     suppliers: suppliers.map((c) => ({ ...c, oldId: oid("suppliers", c.identity) })),
     stock: stockPlans.filter((s) => s.held.length === 0).map((s) => ({ ...s.p, oldId: s.oldId })),
-    purchaseOrders: poPlans.filter((p) => p.held.length === 0).map((p) => ({ ...p.po, oldId: p.oldId, supplierName: supp.resolve(p.po.supplier).name })),
+    purchaseOrders: poPlans.filter((p) => p.held.length === 0).map((p) => ({ ...p.po, oldId: p.oldId, sourceRef: p.po.sourceNumber, supplierName: p.party.entry.tolraName, matchedVia: p.party.via })),
     quotes: quotePlans.filter((p) => p.held.length === 0).map((p) => {
       const wl = linesFor(p);
-      return { ...p.q, oldId: p.oldId, customerName: resolveCustomer(p.q.customer).name, lines: wl.lines, linesWithheld: wl.withheld };
+      return { ...p.q, oldId: p.oldId, sourceRef: p.q.sourceNumber, customerName: p.party.entry.tolraName, customerAccount: p.party.entry.key ?? null, matchedVia: p.party.via, lines: wl.lines, linesWithheld: wl.withheld };
     }),
     invoices: invoicePlans.filter((p) => p.held.length === 0).map((p) => {
       const wl = linesFor(p);
       const latest = p.ps.map((x) => x.date).filter(Boolean).sort().at(-1) ?? null;
       let final;
       if (p.h.status !== "sent") final = { status: p.h.status, amountPaid: 0, paidAt: null, unverified: false };
-      else if (p.writePayments) final = { status: p.state === "paid" ? "paid" : "partial", amountPaid: p.paid, paidAt: p.state === "paid" ? latest : null, unverified: false };
-      else final = { status: "sent", amountPaid: 0, paidAt: null, unverified: true };
+      else if (p.writePayments) {
+        // Unpaid stays issued ('sent') and is owed in full; overpaid is paid, its surplus the customer's credit (lib/receivables.ts).
+        const status = p.state === "unpaid" ? "sent" : p.state === "PARTIAL" ? "partial" : "paid";
+        final = { status, amountPaid: p.paid, paidAt: status === "paid" ? latest : null, unverified: false };
+      } else final = { status: "sent", amountPaid: 0, paidAt: null, unverified: true }; // an exception: the write is refused while one is left
       const pays = p.writePayments
         ? p.ps.map((x) => ({ oldId: oid("payments", paymentIdentity(normNumber(p.h.number), x.date, x.amount, x.ordinal)), amountPence: x.amount, date: x.date, method: methodFor(x.method), reference: x.reference, rawMethod: x.method }))
         : [];
-      return { ...p.h, oldId: p.oldId, customerName: resolveCustomer(p.h.customer).name, lines: wl.lines, linesWithheld: wl.withheld, payments: pays, final };
+      return { ...p.h, oldId: p.oldId, sourceRef: p.h.sourceNumber, customerName: p.party.entry.tolraName, customerAccount: p.party.entry.key ?? null, matchedVia: p.party.via, lines: wl.lines, linesWithheld: wl.withheld, payments: pays, final };
     }),
   };
   const unmappedMethods = [...new Set(plan.invoices.flatMap((i) => i.payments).filter((p) => p.rawMethod && !p.method).map((p) => p.rawMethod))];
@@ -513,7 +639,9 @@ export function analyse(loaded, opts = {}) {
   ];
   const unresolvedReview = needsReview.filter((n) => n.blocksWrite && !n.excluded);
   const state = (s) => balances.filter((b) => b.state === s);
-  const allKnown = new Set([...allInvNos.keys(), ...quoteByNo.keys()]);
+  const allKnown = new Set([...allInvNos.keys(), ...allInvSource.keys(), ...quoteByNo.keys(), ...quoteBySource.keys(), ...poRows.flatMap((p) => [normNumber(p.number), normNumber(p.sourceNumber)])]);
+  const unresolvedMatches = ambiguities.filter((x) => x.blocksWrite);
+  const unresolvedPayments = exceptions.filter((x) => x.blocksWrite);
   const unknownExcluded = [...excluded].filter((n) => !allKnown.has(n));
   const mp = loaded.profile;
   const optionsApproved = {
@@ -547,13 +675,25 @@ export function analyse(loaded, opts = {}) {
     },
     products: { read: rec.products.length, stockItems: stockPlans.length, notWritten: productsNotWritten, duplicates: dupProducts },
     duplicates: { documents: duplicateDocs, customers: cust.dupNames, customerKeys: cust.dupKeys, suppliers: supp.dupNames },
+    // Every copy of a number SliQ used more than once, with the Tolra number it gets (decision 2). Nothing is dropped.
+    renames,
+    customerMatching: {
+      note: "Documents are matched to a customer (a purchase order to a supplier) by account, or by a name exactly one record has; anything else stops the write until the resolutions file names the account (customerMatches) or gives a customer its own Tolra name (customerNames).",
+      ambiguities, problems: matchProblems,
+      renamedParties: [...customers, ...suppliers].filter((c) => c.renamedFrom).map((c) => ({ account: c.key, sliqName: c.renamedFrom, tolraName: c.tolraName })),
+      byVia: Object.entries([...invoicePlans, ...quotePlans, ...poPlans].filter((p) => p.party).reduce((m, p) => ({ ...m, [p.party.via]: (m[p.party.via] ?? 0) + 1 }), {})).map(([via, n]) => ({ via, documents: n })),
+    },
     missingRelationships: missing,
     documentAmounts: { documentsChecked: invA.length + creditA.length + quotesA.length, withLines: [...invA, ...creditA, ...quotesA].filter((x) => x.a.lines.length).length, mismatches, documents: docFigures },
     balances: {
       note: "Payment state comes only from the payments file. A status word such as Unpaid or Paid is never trusted for payment.",
       summary: Object.fromEntries(["paid", "PARTIAL", "unpaid", "overpaid", "exception", "unknown", "draft", "void"].map((s) => [s, state(s).length])),
       partial: balances.filter((b) => b.state === "PARTIAL"),
-      paymentToConfirm: balances.filter((b) => b.paymentToConfirm && !b.held),
+      unpaid: balances.filter((b) => b.state === "unpaid"),
+      customerCredit: balances.filter((b) => b.state === "overpaid").map((b) => ({ number: b.number, gross: b.gross, paid: b.paid, credit: b.paid - b.gross, file: b.file, row: b.row })),
+      // Money owed straight after the import (unpaid and part-paid balances of the invoices written), and the customers' credit.
+      owedAfterImport: invoicePlans.filter((p) => !p.held.length && !p.exception && ["unpaid", "PARTIAL"].includes(p.state)).reduce((n, p) => n + p.h.gross - p.paid, 0),
+      creditAfterImport: invoicePlans.filter((p) => !p.held.length && p.state === "overpaid").reduce((n, p) => n + p.paid - p.h.gross, 0),
       exceptions,
       statusWordConflicts,
       items: balances,
@@ -579,13 +719,31 @@ export function analyse(loaded, opts = {}) {
       invoiceLines: plan.invoices.reduce((n, i) => n + i.lines.length, 0), quoteLines: plan.quotes.reduce((n, i) => n + i.lines.length, 0),
       payments: plan.invoices.reduce((n, i) => n + i.payments.length, 0),
       invoicesPaymentToConfirm: plan.invoices.filter((i) => i.final.unverified).length,
+      invoicesUnpaid: plan.invoices.filter((i) => i.final.status === "sent" && !i.final.unverified).length,
+      renamedDocuments: renames.filter((x) => !x.keeps).length,
       invoicesWithoutLines: plan.invoices.filter((i) => i.linesWithheld).length,
       creditNotesHeld: creditNotes.length, unmappedPaymentMethods: unmappedMethods,
     },
     unresolvedReviewCount: unresolvedReview.length,
-    writable: loaded.errors.length === 0 && !mp.isStub && unknownExcluded.length === 0 && creditResolution.problems.length === 0,
+    unresolvedMatchCount: unresolvedMatches.length,
+    unresolvedPaymentCount: unresolvedPayments.length,
+    writable: loaded.errors.length === 0 && !mp.isStub && unknownExcluded.length === 0 && creditResolution.problems.length === 0 && matchProblems.length === 0,
   };
   return { report, plan };
+}
+
+/** The ambiguity report as CSV: one row per document (or customer) that stops the write until it is resolved or excluded. */
+export function renderAmbiguityCsv(r) {
+  const cell = (v) => {
+    const t = v === null || v === undefined ? "" : String(v);
+    return /[",\r\n]/.test(t) ? `"${t.replaceAll('"', '""')}"` : t;
+  };
+  const head = ["kind", "tolra_number", "sliq_number", "file", "row", "reference_as_written", "status", "reason", "candidates", "stops_write", "resolve_with"];
+  const rows = r.customerMatching.ambiguities.map((x) => [
+    x.kind, x.number, x.sourceNumber, x.file, x.row, x.reference, x.status, x.reason, x.candidates.map((c) => `${c.account ?? "no account"}=${c.name} (row ${c.row})`).join("; "),
+    x.blocksWrite ? "yes" : "no", ["customer", "supplier"].includes(x.kind) ? `customerNames: {"party":"${x.kind}","account":"${x.number}","name":"<a name of its own>"}` : `customerMatches: {"kind":"${x.kind}","number":"${x.sourceNumber}","row":${x.row},"account":"<account>"} or --exclude ${x.number}`,
+  ]);
+  return `${[head, ...rows].map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`;
 }
 
 // ---- Markdown ----
@@ -609,7 +767,8 @@ export function renderMarkdown(r) {
   if (r.warnings.length) L.push("### Warnings", "", ...table(["File", "Row", "Column", "Value", "Note"], r.warnings.map((e) => [e.file, e.row, e.column, e.value, e.message])));
   L.push("### Not in the export", "", ...r.notInExport.map((n) => `* ${n}`), "");
   L.push("## 2. Duplicates", "");
-  L.push("Same document number more than once (none of these documents is written):", "", ...table(["Kind", "Number", "Rows"], r.duplicates.documents.map((d) => [d.kind, d.number, d.rows.map((x) => `${x.file}:${x.row}`).join(", ")])));
+  L.push("Numbers SliQ used more than once: every copy is written under its own Tolra number, the same every run (the earliest by date keeps the number, then -B, -C ...). The SliQ number is kept as the document's source reference. Lines and payments under a shared number cannot be told apart: each copy gets its header only, and a payment under it stops the write.", "", ...table(["Kind", "SliQ number", "Tolra number", "Keeps it", "Date", "Customer/supplier", "Row"], r.renames.map((d) => [d.kind, d.sourceNumber, d.number, d.keeps ? "yes" : "no", d.date, d.party, `${d.file}:${d.row}`])));
+  L.push("An invoice and a credit note with the same number (the invoice is held):", "", ...table(["Kind", "Number", "Rows"], r.duplicates.documents.map((d) => [d.kind, d.number, d.rows.map((x) => `${x.file}:${x.row}`).join(", ")])));
   L.push("Same customer twice by normalised name (all are written as separate records; review before any merge):", "", ...table(["Normalised name", "Records"], r.duplicates.customers.map((d) => [d.normalisedName, d.records.map((x) => `${x.name} (row ${x.row})`).join("; ")])));
   L.push("Same supplier twice by normalised name:", "", ...table(["Normalised name", "Records"], r.duplicates.suppliers.map((d) => [d.normalisedName, d.records.map((x) => `${x.name} (row ${x.row})`).join("; ")])));
   L.push("## 3. Missing relationships", "");
@@ -627,10 +786,12 @@ export function renderMarkdown(r) {
   L.push(...table(["Document", "Field", "Header (stated)", "From lines", "Difference", "Within rounding"], r.documentAmounts.mismatches.map((x) => [x.number, x.field, money(x.stated), money(x.fromLines), money(x.difference), x.withinRounding ? "yes" : "NO"])));
   L.push("## 5. Balances", "");
   L.push(r.balances.note, "", `Counts: ${Object.entries(r.balances.summary).map(([k, v]) => `${k} ${v}`).join(", ")}.`, "");
-  L.push("### PARTIAL (payments are written as legacy payment rows; the invoice shows part paid)", "", ...table(["Invoice", "Total", "Paid", "Balance", "Payments", "Status word", "Payment to confirm"], r.balances.partial.map((x) => [x.number, money(x.gross), money(x.paid), money(x.balance), x.payments, x.statusWord, x.paymentToConfirm ? x.reason : "no"])));
-  L.push("### Payment to confirm (paid status or amount not evidenced; kept out of money owed and chasers until a person decides)", "", ...table(["Invoice", "Total", "State", "Why"], r.balances.paymentToConfirm.map((x) => [x.number, money(x.gross), x.state, x.reason])));
+  L.push(`Money owed in Tolra straight after the import: **${money(r.balances.owedAfterImport)}** (unpaid and part-paid balances); customers' credit (overpayments): **${money(r.balances.creditAfterImport)}**. Compare with SliQ's Aged Debtors. No imported invoice is left "Payment to confirm".`, "");
+  L.push("### PARTIAL (payments are written as legacy payment rows; the invoice shows part paid)", "", ...table(["Invoice", "Total", "Paid", "Balance", "Payments", "Status word"], r.balances.partial.map((x) => [x.number, money(x.gross), money(x.paid), money(x.balance), x.payments, x.statusWord])));
+  L.push("### Unpaid (no payment record: issued and owed in full)", "", ...table(["Invoice", "Total", "Status word"], r.balances.unpaid.map((x) => [x.number, money(x.gross), x.statusWord])));
+  L.push("### Overpaid (every payment is written; the invoice is paid and the surplus is the customer's credit)", "", ...table(["Invoice", "Total", "Paid", "Credit"], r.balances.customerCredit.map((x) => [x.number, money(x.gross), money(x.paid), money(x.credit)])));
   L.push("### Duplicate payment rows (never summed; the invoice is left to confirm)", "", ...table(["Invoice", "Date", "Amount", "Reference", "Times", "Rows"], r.duplicatePayments.map((x) => [x.invoiceNumber, x.date, money(x.amount), x.reference, x.times, x.rows.map((y) => y.row).join(", ")])));
-  L.push("### Payment exceptions (not imported)", "", ...table(["Invoice", "Why"], r.balances.exceptions.map((x) => [x.number, x.reason])));
+  L.push("### Payment exceptions (**a write is refused while any is left**: fix the source or exclude the invoice by number)", "", ...table(["Invoice", "Why", "Stops the write"], r.balances.exceptions.map((x) => [x.number, x.reason, x.blocksWrite ? "YES" : "no (held or not issued)"])));
   L.push("### Status word disagrees with the payments file (listed only)", "", ...table(["Invoice", "Status word", "From payments"], r.balances.statusWordConflicts.map((x) => [x.number, x.statusWord, x.fromPayments])));
   L.push("## 6. Credit notes and allocations (never netted into invoices; not written)", "");
   L.push(...table(["Credit note", "Source", "Stated", "Link", "Would be represented as"], r.creditNotes.map((c) => [c.number, c.source, money(c.statedGross), c.link, c.representation])));
@@ -659,7 +820,13 @@ export function renderMarkdown(r) {
   L.push("## 13. Approval and rehearsal identity", "");
   L.push(`Approval checksum ${r.approval.sha256}: mapping file ${r.approval.mappingFile ?? "n/a"} (${r.approval.mappingSha256 ?? "n/a"}), encoding ${r.approval.options.encoding ?? "not confirmed"}, date format ${r.approval.options.dateFormat ?? "not confirmed"}, sheets ${JSON.stringify(r.approval.options.sheets)}, exclusions ${r.approval.options.exclusions.join(", ") || "none"}, resolutions ${r.approval.options.resolutionsSha256 ?? "none"}. A write is refused if any of these differs.`);
   L.push(`Rehearsal identity of the target: ${r.rehearsal.checked ? r.rehearsal.id ?? "NONE (the target is not a prepared rehearsal copy)" : "not checked"}.`, "");
-  L.push("## 14. What a write would do", "");
+  L.push("## 14. Customer matching (decision 3: never on a name alone)", "");
+  L.push(r.customerMatching.note, "", ...table(["Matched by", "Documents"], r.customerMatching.byVia.map((x) => [x.via, x.documents])));
+  L.push(`Ambiguous or unmatched (also in ambiguity.csv). **A write is refused while any row says YES.** Resolve each in the resolutions file (customerMatches: kind, number, row, account; customerNames: account, name) or exclude the document by number.`, "",
+    ...table(["Kind", "Tolra number", "SliQ number", "Reference as written", "Status", "Why", "Candidates", "Row", "Stops the write"], r.customerMatching.ambiguities.map((x) => [x.kind, x.number, x.sourceNumber, x.reference, x.status, x.reason, x.candidates.map((c) => `${c.account ?? "no account"} ${c.name} (row ${c.row})`).join("; "), x.row, x.blocksWrite ? "YES" : "no (excluded)"])));
+  if (r.customerMatching.problems.length) L.push("**Resolutions that could not be applied (these stop a write):**", "", ...r.customerMatching.problems.map((p) => `* ${p}`), "");
+  L.push("Customers and suppliers given their own Tolra name (the SliQ name is kept in the notes):", "", ...table(["Account", "SliQ name", "Tolra name"], r.customerMatching.renamedParties.map((x) => [x.account, x.sliqName, x.tolraName])));
+  L.push("## 15. What a write would do", "");
   L.push(...table(["Item", "Count"], Object.entries(r.writePlan).filter(([, v]) => !Array.isArray(v)).map(([k, v]) => [k, v])));
   L.push("Held (not written):", "", ...table(["Kind", "Number", "Why"], r.held.map((h) => [h.documentKind, h.number, h.reasons.join("; ")])));
   if (r.writePlan.unmappedPaymentMethods.length) L.push(`Payment methods not in the mapping (stored as blank): ${r.writePlan.unmappedPaymentMethods.join(", ")}.`, "");

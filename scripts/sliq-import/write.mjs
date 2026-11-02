@@ -89,7 +89,9 @@ export async function readTarget(db, organizationId, loaded) {
   if (exists) {
     const sets = [["invoices", "invoices", loaded.records.invoices, "number"], ["quotes", "quotes", loaded.records.quotes, "number"], ["purchase_orders", "purchaseOrders", loaded.records.purchaseOrders, "number"], ["stock", "stock", loaded.records.products, "code"]];
     for (const [source, kind, rows, field] of sets) {
-      const ids = [...new Set(rows.filter((r) => r[field]).map((r) => String(legacyId(org, source, normNumber(r[field])))))];
+      // The source's numbers and the target's own: a copy renamed on an earlier run (INV-0100-B) is keyed by its Tolra number.
+      const numbers = new Set([...rows.filter((r) => r[field]).map((r) => normNumber(r[field])), ...target[kind].keys()]);
+      const ids = [...new Set([...numbers].map((n) => String(legacyId(org, source, n))))];
       if (ids.length === 0) continue;
       const m = await db.query("select old_id, new_id from public.legacy_import_map where source = $1 and old_id = any($2::text[])", [source, ids]);
       for (const r of m.rows) target.mapped[kind].set(r.old_id, r.new_id);
@@ -115,13 +117,13 @@ export function buildLegacyExport(plan, organizationId) {
   const stamp = (d) => (d ? noon(d) : undefined);
   const join = (...xs) => xs.filter(Boolean).join("\n") || null;
   const customers = plan.customers.map((c) => ({
-    id: c.oldId, organization_id: organizationId, name: c.name, email: c.email, phone: c.phone,
+    id: c.oldId, organization_id: organizationId, name: c.tolraName ?? c.name, email: c.email, phone: c.phone,
     address: [c.address, c.postcode].filter(Boolean).join(", ") || null,
-    notes: join(c.notes, c.vatNumber ? `VAT number: ${c.vatNumber}` : null), status: "active",
+    notes: join(c.notes, c.vatNumber ? `VAT number: ${c.vatNumber}` : null, c.renamedFrom ? `Name in SliQ: ${c.renamedFrom} (account ${c.key})` : null), status: "active",
   }));
   // Suppliers have no address column: it is kept in the notes. The rating columns take the table's own defaults.
   const suppliers = plan.suppliers.map((c) => ({
-    id: c.oldId, organization_id: organizationId, name: c.name, email: c.email, phone: c.phone, on_time_rate: 100, reliability_status: "good",
+    id: c.oldId, organization_id: organizationId, name: c.tolraName ?? c.name, email: c.email, phone: c.phone, on_time_rate: 100, reliability_status: "good",
   }));
   const stock = plan.stock.map((p) => ({
     id: p.oldId, organization_id: organizationId, sku: p.code, material: p.description, current_stock: p.stock, min_level: 0, reorder_quantity: 0,
@@ -176,6 +178,12 @@ export async function writeImport(opts) {
     if (!report.writable) throw new GuardError("Refusing: the source has unreadable rows or unknown excluded numbers.");
     if (report.unresolvedCreditNoteCount > 0) throw new GuardError("Refusing: credit notes or allocations are unresolved.");
     if (report.unresolvedReviewCount > 0) throw new GuardError("Refusing: documents flagged for reverse charge or discounts are unresolved.");
+    if (report.unresolvedMatchCount > 0) throw new GuardError("Refusing: customer or supplier matches are ambiguous or unmatched (see ambiguity.csv).");
+    if (report.unresolvedPaymentCount > 0) throw new GuardError("Refusing: payment exceptions are unresolved.");
+    if (plan.invoices.some((i) => i.final.unverified)) throw new GuardError("Refusing: an invoice would be written without its real balance.");
+    // Migration 135 keeps the number SliQ printed on every imported invoice, quote and purchase order.
+    const refCols = Number((await db.query("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name in ('invoices', 'quotes', 'purchase_orders') and column_name = 'source_ref'")).rows[0].n);
+    if (refCols !== 3) throw new GuardError("Refusing: the target has no source_ref columns (migration 135, provisional number). Apply it first: the SliQ number of each imported document is kept there.");
 
     // Which of this run's records the map already knows (a repeat run): only the others are new.
     const known = async (source, ids) => new Set((await db.query("select old_id from public.legacy_import_map where source = $1 and old_id = any($2::text[])", [source, ids.map(String)])).rows.map((r) => r.old_id));
@@ -183,6 +191,7 @@ export async function writeImport(opts) {
     const knownCustomers = await known("customers", plan.customers.map((c) => c.oldId));
     const knownSuppliers = await known("suppliers", plan.suppliers.map((c) => c.oldId));
     const knownQuotes = await known("quotes", plan.quotes.map((c) => c.oldId));
+    const knownPOs = await known("purchase_orders", plan.purchaseOrders.map((c) => c.oldId));
 
     const json = buildLegacyExport(plan, org);
     const imported = (await db.query("select public.import_legacy_tenant($1::jsonb, $2::uuid) as r", [JSON.stringify(json), org])).rows[0].r;
@@ -196,14 +205,20 @@ export async function writeImport(opts) {
     for (const c of plan.suppliers) {
       if (knownSuppliers.has(String(c.oldId))) continue;
       const address = [c.address, c.postcode].filter(Boolean).join(", ");
-      const notes = [address ? `Address: ${address}` : null, c.vatNumber ? `VAT number: ${c.vatNumber}` : null, c.notes].filter(Boolean).join("\n") || null;
+      const notes = [address ? `Address: ${address}` : null, c.vatNumber ? `VAT number: ${c.vatNumber}` : null, c.notes, c.renamedFrom ? `Name in SliQ: ${c.renamedFrom} (account ${c.key})` : null].filter(Boolean).join("\n") || null;
       await db.query("update public.suppliers set contact_name = $3, notes = $4 where organization_id = $1 and id = (select new_id from public.legacy_import_map where source = 'suppliers' and old_id = $2)", [org, String(c.oldId), c.contact, notes]);
+    }
+    // The number SliQ printed, on every quote and purchase order created now (invoices below).
+    for (const po of plan.purchaseOrders) {
+      if (knownPOs.has(String(po.oldId))) continue;
+      await db.query("update public.purchase_orders set source_ref = $3 where organization_id = $1 and id = (select new_id from public.legacy_import_map where source = 'purchase_orders' and old_id = $2)", [org, String(po.oldId), po.sourceRef]);
     }
     // Quote lines for quotes created now (the importer made none: the quote header carries no line).
     let quoteLines = 0;
     for (const qt of plan.quotes) {
-      if (knownQuotes.has(String(qt.oldId)) || qt.lines.length === 0) continue;
+      if (knownQuotes.has(String(qt.oldId))) continue;
       const id = (await db.query("select new_id from public.legacy_import_map where source = 'quotes' and old_id = $1", [String(qt.oldId)])).rows[0]?.new_id;
+      await db.query("update public.quotes set source_ref = $3 where organization_id = $1 and id = $2", [org, id, qt.sourceRef]);
       for (const l of qt.lines) {
         await db.query(
           "insert into public.quote_line_items (organization_id, quote_id, position, description, quantity, unit_price, vat_pct) values ($1,$2,$3,$4,$5,$6,$7)",
@@ -239,8 +254,8 @@ export async function writeImport(opts) {
         created.payments++;
       }
       await db.query(
-        "update public.invoices set invoice_date = $2, status = $3, amount_paid = $4, paid_at = $5, payment_unverified = $6 where id = $1 and organization_id = $7",
-        [id, inv.date, inv.final.status, money(inv.final.amountPaid), inv.final.paidAt ? noon(inv.final.paidAt) : null, inv.final.unverified, org],
+        "update public.invoices set invoice_date = $2, status = $3, amount_paid = $4, paid_at = $5, payment_unverified = $6, source_ref = $8 where id = $1 and organization_id = $7",
+        [id, inv.date, inv.final.status, money(inv.final.amountPaid), inv.final.paidAt ? noon(inv.final.paidAt) : null, inv.final.unverified, org, inv.sourceRef],
       );
       if (inv.final.unverified) created.paymentToConfirm++;
     }

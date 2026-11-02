@@ -11,14 +11,16 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 HERE="$ROOT/scripts/sliq-import/rehearsal"
 W=${1:-$(mktemp -d)}
 export PGPASSWORD=${PGPASSWORD:-localonly}
-DB=sliq_rehearsal
+DB=${REHEARSAL_DB:-sliq_rehearsal}   # another name (containing "rehearsal") keeps parallel runs apart
 URL="postgresql://postgres@127.0.0.1:5432/$DB"
-RB=sliq_rehearsal_rollback
+RB=${DB}_rollback
 RB_URL="postgresql://postgres@127.0.0.1:5432/$RB"
-RS=sliq_rehearsal_restore
+RS=${DB}_restore
 PSQL=(psql -h 127.0.0.1 -p 5432 -U postgres -X -q -At -v ON_ERROR_STOP=1)
 CLI=(node "$ROOT/scripts/sliq-import/cli.mjs")
-EXCL="INV-0100,INV-0101"   # the duplicate number (both copies, flagged for review) and the 5% discount invoice
+EXCL="INV-0101,INV-0102"   # the 5% discount invoice (needs review) and the invoice whose customer is not in the file (unmatched)
+NM=${DB}_names              # the same import from the layout whose documents name the customer (decision 3)
+NM_URL="postgresql://postgres@127.0.0.1:5432/$NM"
 rm -rf "$W/results" "$W/r-"*; mkdir -p "$W/results"
 : >"$W/timings.tsv"
 fail=0
@@ -49,11 +51,23 @@ step 08-dry-run-collision-no-exclude "${CLI[@]}" "$W/export" --mapping synthetic
 step 09-write-refused-unresolved-review expect_fail "${CLI[@]}" "$W/export" --mapping synthetic --resolutions "$W/resolutions.json" --write --report "$W/r-noexcl/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || fail=1
 step 10a-dry-run-no-resolutions "${CLI[@]}" "$W/export" --mapping synthetic --exclude "$EXCL" --out "$W/r-nores" --database-url "$URL" --organization-id "$ORG" || exit 1
 step 10-write-refused-no-resolutions expect_fail "${CLI[@]}" "$W/export" --mapping synthetic --exclude "$EXCL" --write --report "$W/r-nores/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || fail=1
+# Decision 3: two customers with exactly the same name stop the write until one has its own Tolra name (customerNames).
+step 10b-dry-run-same-name "${CLI[@]}" "$W/export" --mapping synthetic --resolutions "$W/resolutions-cn.json" --exclude "$EXCL" --out "$W/r-same" --database-url "$URL" --organization-id "$ORG" || exit 1
+step 10c-write-refused-same-name expect_fail "${CLI[@]}" "$W/export" --mapping synthetic --resolutions "$W/resolutions-cn.json" --exclude "$EXCL" --write --report "$W/r-same/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || fail=1
+grep -q "ambiguous or unmatched" "$W/results/10c-write-refused-same-name.txt" && [[ $(grep -c ',yes,' "$W/r-same/ambiguity.csv") == 2 ]] && echo "PASS|same-name customers: ambiguity.csv has the 2 customers and the write is refused" || { echo "FAIL|same-name customers were not refused"; fail=1; }
+# Decision 3: without the orphan excluded, its unmatched customer stops the write.
+step 10d-dry-run-orphan "${CLI[@]}" "$W/export" --mapping synthetic --resolutions "$W/resolutions.json" --exclude INV-0101 --out "$W/r-orph" --database-url "$URL" --organization-id "$ORG" || exit 1
+step 10e-write-refused-orphan expect_fail "${CLI[@]}" "$W/export" --mapping synthetic --resolutions "$W/resolutions.json" --exclude INV-0101 --write --report "$W/r-orph/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || fail=1
+grep -q "invoice INV-0102" "$W/results/10e-write-refused-orphan.txt" && grep -q "^invoice,INV-0102,INV-0102,invoices.csv,5,C9999,unmatched" "$W/r-orph/ambiguity.csv" && echo "PASS|unmatched customer: INV-0102 in ambiguity.csv and the write is refused" || { echo "FAIL|the unmatched customer did not stop the write"; fail=1; }
 step 11-dry-run-collision "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-coll" --database-url "$URL" --organization-id "$ORG" || exit 1
+# Decision 2: the same files give the same numbers every run (the dry run without a database and with one).
+node -e 'const [a, b] = process.argv.slice(1).map((f) => JSON.stringify(require(f).renames)); process.exit(a === b && a.includes("INV-0100-B") ? 0 : 1)' "$W/r-dry/report.json" "$W/r-coll/report.json" \
+  && echo "PASS|duplicates: the same renames on every run ($(node -e 'console.log(require(process.argv[1]).renames.filter((x) => !x.keeps).map((x) => x.sourceNumber + " -> " + x.number).join(", "))' "$W/r-coll/report.json"))" || { echo "FAIL|duplicate renames differ between runs"; fail=1; }
 
 # The pre-import state: a backup (pg_dump) and a template copy for the failed-write rollback check.
 step 12-backup pg_dump -h 127.0.0.1 -U postgres -Fc -f "$W/pre-import.dump" "$DB" || exit 1
 "${PSQL[@]}" -d postgres -c "drop database if exists $RB" -c "create database $RB template $DB"
+"${PSQL[@]}" -d postgres -c "drop database if exists $NM" -c "create database $NM template $DB"
 
 step 13-write "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || exit 1
 step 14-checks node "$HERE/checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL" --json "$W/results/checks.json"; check 14-checks
@@ -70,7 +84,19 @@ step 19-checks-after-rerun node "$HERE/checks.mjs" --work "$W" --report "$W/r-co
 cp -r "$W/export" "$W/export-changed"; sed -i '2 s/\r$/X\r/' "$W/export-changed/payments.csv"  # one changed reference
 step 20-write-refused-stale-report expect_fail "${CLI[@]}" "$W/export-changed" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
 
-# Rollback 1 (before COMMIT): a failure late in the write (payment 1990 of 1998) rolls the whole import back.
+# Decision 3 on the layout whose documents name the customer: 106 documents of the two same-name customers are ambiguous and stop the
+# write; with each one's account named in resolutions-names.json the write goes through and every document is on the right customer.
+NOPTS=(--mapping "$W/synthetic-names.json" --exclude "$EXCL")
+step 24-names-dry-run-unresolved "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions.json" --out "$W/r-names-unres" --database-url "$NM_URL" --organization-id "$ORG" || exit 1
+step 25-names-write-refused expect_fail "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions.json" --write --report "$W/r-names-unres/report.json" --database-url "$NM_URL" --organization-id "$ORG" --install-importer || fail=1
+amb=$(($(grep -c ',yes,' "$W/r-names-unres/ambiguity.csv")))
+want=$(node -e 'console.log(require(process.argv[1]).expected.namesLayoutAmbiguousDocuments)' "$W/manifest.json")
+[[ "$amb" == "$want" ]] && grep -q "ambiguous or unmatched" "$W/results/25-names-write-refused.txt" && echo "PASS|names layout: ambiguity.csv lists the $amb documents of the same-name customers and the write is refused" || { echo "FAIL|names layout: $amb ambiguous (expected $want) or the write was not refused"; fail=1; }
+step 26-names-dry-run-resolved "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions-names.json" --out "$W/r-names" --database-url "$NM_URL" --organization-id "$ORG" || exit 1
+step 27-names-write "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions-names.json" --write --report "$W/r-names/report.json" --database-url "$NM_URL" --organization-id "$ORG" --install-importer || fail=1
+step 28-names-checks node "$HERE/checks.mjs" --work "$W" --report "$W/r-names/report.json" --database-url "$NM_URL"; check 28-names-checks
+
+# Rollback 1 (before COMMIT): a failure late in the write (payment 1990 of 1999) rolls the whole import back.
 "${PSQL[@]}" -d "$RB" -c "create function public.rehearsal_fail() returns trigger language plpgsql as \$\$ begin if (select count(*) from public.invoice_payments where organization_id = new.organization_id) >= 1990 then raise exception 'rehearsal: injected failure at payment 1990'; end if; return new; end \$\$" \
   -c "create trigger rehearsal_fail before insert on public.invoice_payments for each row execute function public.rehearsal_fail()"
 step 21-dry-run-rollback-copy "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-rb" --database-url "$RB_URL" --organization-id "$ORG" || exit 1

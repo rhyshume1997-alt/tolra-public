@@ -1,7 +1,8 @@
 /**
  * SliQ importer (PR B) against the local disposable stack: a dry run writes nothing; a rehearsal write lands in one
  * synthetic tenant through the existing importer (public.import_legacy_tenant / legacy_import_map), payments become
- * legacy payment rows (migration 032), unevidenced payments stay "Payment to confirm", a repeat run adds nothing, the other
+ * legacy payment rows (migration 032), every invoice gets its real balance (no "Payment to confirm"; decision 1, 2 Nov), a number
+ * used twice is kept under its own number with the SliQ number in source_ref (decision 2, migration 135), a repeat run adds nothing, the other
  * tenant is untouched, a stale report refuses, and a failure part-way leaves nothing behind. Synthetic fixtures only.
  */
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -23,7 +24,10 @@ import { isolatedBackend } from "../support/isolation";
 
 const FIXTURE = path.resolve(__dirname, "../fixtures/sliq/basic");
 const SQL_DIR = path.resolve(__dirname, "../../supabase");
-const EXCLUDE = ["S1011", "S1012", "Q2004"]; // reverse charge and discount documents: excluded by number
+const REVIEW = ["S1011", "S1012", "Q2004"]; // reverse charge and discount documents: excluded by number
+// What else stops a write (decisions 1 and 3): payment exceptions S1003 (allocation) and S1016 (undated); unmatched S1008, Q2003, PO-0002.
+const BLOCKERS = ["S1003", "S1016", "S1008", "Q2003", "PO-0002"];
+const EXCLUDE = [...REVIEW, ...BLOCKERS];
 const RES = path.resolve(__dirname, "../fixtures/sliq/basic-resolutions.json");
 const synthetic = getProfile("synthetic");
 
@@ -131,8 +135,8 @@ describe("SliQ import into one organisation", () => {
   it("refuses to write while a flagged document is unresolved, and writes nothing", async () => {
     const before = await counts(alpha);
     const out = mkdtempSync(path.join(tmpdir(), "sliq-out-"));
-    await dryRun({ folder: FIXTURE, outDir: out, mapping: "synthetic", databaseUrl: url, organizationId: alpha, excludeNumbers: [], resolutionsPath: RES });
-    await expect(writeRun({ folder: FIXTURE, reportPath: path.join(out, "report.json"), mapping: "synthetic", databaseUrl: url, organizationId: alpha, resolutionsPath: RES, write: true })).rejects.toThrowError(/reverse charge or discounts are unresolved: Q2004, S1011, S1012/);
+    await dryRun({ folder: FIXTURE, outDir: out, mapping: "synthetic", databaseUrl: url, organizationId: alpha, excludeNumbers: BLOCKERS, resolutionsPath: RES });
+    await expect(writeRun({ folder: FIXTURE, reportPath: path.join(out, "report.json"), mapping: "synthetic", databaseUrl: url, organizationId: alpha, excludeNumbers: BLOCKERS, resolutionsPath: RES, write: true })).rejects.toThrowError(/reverse charge or discounts are unresolved: Q2004, S1011, S1012/);
     expect(await counts(alpha)).toEqual(before);
   });
 
@@ -141,27 +145,29 @@ describe("SliQ import into one organisation", () => {
     await expect(writeRun({ folder: FIXTURE, reportPath, mapping: "synthetic", databaseUrl: "postgresql://postgres:x@db.abc.supabase.co:5432/postgres", organizationId: alpha, excludeNumbers: EXCLUDE, resolutionsPath: RES, write: true })).rejects.toThrow(/hosted Supabase/);
   });
 
-  it("a rehearsal write lands in one tenant: documents, lines, legacy payments, Payment to confirm", async () => {
+  it("a rehearsal write lands in one tenant: documents, lines, legacy payments, real balances, renamed duplicates", async () => {
     const bBefore = await counts(beta);
     const otherCounters = () => q("select organization_id, prefix, last from public.doc_counters where organization_id <> $1 order by 1, 2", [alpha]);
     const countersBefore = await otherCounters();
     expect(countersBefore.filter((c) => c.organization_id === beta)).toEqual([{ organization_id: beta, prefix: "INV", last: 7 }, { organization_id: beta, prefix: "QUO", last: 3 }]);
     const res = await writeRun({ folder: FIXTURE, reportPath, mapping: "synthetic", databaseUrl: url, organizationId: alpha, excludeNumbers: EXCLUDE, resolutionsPath: RES, write: true });
-    expect(res.created).toEqual({ invoices: 10, lines: 9, payments: 4, paymentToConfirm: 6, quoteLines: 1 });
-    expect(await counts(alpha)).toEqual({ customers: 5, quotes: 3, invoices: 10, lines: 9, payments: 4, suppliers: 2, stock: 1, purchase_orders: 1, quote_lines: 1 });
+    expect(res.created).toEqual({ invoices: 10, lines: 7, payments: 5, paymentToConfirm: 0, quoteLines: 1 });
+    expect(await counts(alpha)).toEqual({ customers: 5, quotes: 3, invoices: 10, lines: 7, payments: 5, suppliers: 2, stock: 1, purchase_orders: 1, quote_lines: 1 });
     expect(await counts(beta)).toEqual(bBefore); // isolation
     // The importer reseeds the target company's counters only: every other company's counters are exactly as they were,
     // although beta holds INV-0099 above its counter of 7 (a global reseed would have raised it).
     expect(await otherCounters()).toEqual(countersBefore);
 
-    type Inv = { invoice_ref: string; status: string; subtotal: string; vat: string; total: string; amount_paid: string; paid_at: string | null; payment_unverified: boolean; invoice_date: string; due_date: string | null; sum: string; lines: string };
+    type Inv = { invoice_ref: string; source_ref: string | null; status: string; subtotal: string; vat: string; total: string; amount_paid: string; paid_at: string | null; payment_unverified: boolean; invoice_date: string; due_date: string | null; sum: string; lines: string };
     const invs = await q<Inv>(
-      `select i.invoice_ref, i.status, i.subtotal::text, i.vat::text, i.total::text, i.amount_paid::text, i.paid_at::text, i.payment_unverified, i.invoice_date::text, i.due_date::text,
+      `select i.invoice_ref, i.source_ref, i.status, i.subtotal::text, i.vat::text, i.total::text, i.amount_paid::text, i.paid_at::text, i.payment_unverified, i.invoice_date::text, i.due_date::text,
               coalesce((select sum(p.amount) from public.invoice_payments p where p.invoice_id = i.id), 0)::text as sum,
               (select count(*) from public.invoice_line_items l where l.invoice_id = i.id)::text as lines
        from public.invoices i where i.organization_id = $1 order by i.invoice_ref`, [alpha]);
     const by = Object.fromEntries(invs.map((i) => [i.invoice_ref, i]));
-    expect(invs.map((i) => i.invoice_ref)).toEqual(["S1001", "S1002", "S1003", "S1004", "S1005", "S1006", "S1007", "S1010", "S1013", "S1016"]);
+    expect(invs.map((i) => i.invoice_ref)).toEqual(["S1001", "S1002", "S1004", "S1005", "S1006", "S1007", "S1009", "S1009-B", "S1010", "S1013"]);
+    // S1009 was used twice in SliQ: both copies are written, the later as S1009-B, each with S1009 as its SliQ number.
+    expect(invs.map((i) => [i.invoice_ref, i.source_ref])).toEqual(invs.map((i) => [i.invoice_ref, i.invoice_ref.replace(/-B$/, "")]));
 
     // Totals are the stated header figures, exactly.
     expect([by.S1002.subtotal, by.S1002.vat, by.S1002.total]).toEqual(["500.00", "100.00", "600.00"]);
@@ -177,20 +183,23 @@ describe("SliQ import into one organisation", () => {
     expect([by.S1004.status, by.S1004.amount_paid, by.S1004.sum]).toEqual(["paid", "112.50", "112.50"]);
     for (const i of invs.filter((x) => !x.payment_unverified)) expect(Number(i.amount_paid)).toBe(Number(i.sum));
 
-    // Not evidenced: unpaid with no records, overpaid, undated payment, and the rest: Payment to confirm, nothing invented.
-    for (const n of ["S1003", "S1005", "S1006", "S1007", "S1010", "S1016"]) {
-      expect([n, by[n].status, Number(by[n].amount_paid), Number(by[n].sum), by[n].payment_unverified]).toEqual([n, "sent", 0, 0, true]);
+    // No payment record: issued and owed in full. Overpaid: paid, every payment written. Nothing is Payment to confirm.
+    for (const n of ["S1005", "S1007", "S1009", "S1009-B", "S1010"]) {
+      expect([n, by[n].status, Number(by[n].amount_paid), Number(by[n].sum), by[n].payment_unverified]).toEqual([n, "sent", 0, 0, false]);
     }
+    expect([by.S1006.status, by.S1006.amount_paid, by.S1006.sum, by.S1006.payment_unverified]).toEqual(["paid", "150.00", "150.00", false]);
     expect([by.S1013.status, by.S1013.payment_unverified]).toEqual(["draft", false]);
+    expect(invs.filter((i) => i.payment_unverified)).toEqual([]);
 
-    // Kept out of receivables and chasers; the part-paid balance stays owed.
+    // Money owed straight after the import is every unpaid and part-paid balance.
     const asOwed = (i: Inv) => owed({ status: i.status, total: Number(i.total), amount_paid: Number(i.amount_paid), payment_unverified: i.payment_unverified } as never);
-    expect(invs.filter((i) => i.payment_unverified).map(asOwed)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(["S1005", "S1007", "S1009", "S1009-B", "S1010"].map((n) => asOwed(by[n]))).toEqual([96, 48, 12, 12, 120]);
     expect(asOwed(by.S1002)).toBe(400);
     expect(asOwed(by.S1001)).toBe(0);
+    expect(asOwed(by.S1006)).toBe(0);
 
     // Lines: real ones where the source has them, none invented otherwise (header only), none where VAT is unresolved.
-    expect(Object.fromEntries(invs.map((i) => [i.invoice_ref, Number(i.lines)]))).toEqual({ S1001: 1, S1002: 1, S1003: 1, S1004: 2, S1005: 0, S1006: 1, S1007: 0, S1010: 1, S1013: 1, S1016: 1 });
+    expect(Object.fromEntries(invs.map((i) => [i.invoice_ref, Number(i.lines)]))).toEqual({ S1001: 1, S1002: 1, S1004: 2, S1005: 0, S1006: 1, S1007: 0, "S1009": 0, "S1009-B": 0, S1010: 1, S1013: 1 });
     const mixed = await q<{ vat_pct: string; unit_price: string }>("select l.vat_pct::text, l.unit_price::text from public.invoice_line_items l join public.invoices i on i.id = l.invoice_id where i.organization_id = $1 and i.invoice_ref = 'S1004' order by l.position", [alpha]);
     expect(mixed.map((m) => [m.vat_pct, m.unit_price])).toEqual([["20.00", "50.00"], ["5.00", "50.00"]]);
 
@@ -202,10 +211,11 @@ describe("SliQ import into one organisation", () => {
       { invoice_ref: "S1002", amount: "100.00", paid_on: "2026-03-10", source: "legacy", method: "cheque", reference: "CHQ 55" },
       { invoice_ref: "S1002", amount: "100.00", paid_on: "2026-03-20", source: "legacy", method: null, reference: null },
       { invoice_ref: "S1004", amount: "112.50", paid_on: "2026-03-12", source: "legacy", method: "card", reference: null },
+      { invoice_ref: "S1006", amount: "150.00", paid_on: "2026-03-15", source: "legacy", method: "BACS", reference: null },
     ]);
 
     // Held and excluded documents did not land; credit notes were not written or netted.
-    expect(await q("select 1 from public.invoices where organization_id = $1 and invoice_ref in ('S1008','S1009','S1011','S1012','S1015','CN-001','CN-002','CN-003')", [alpha])).toEqual([]);
+    expect(await q("select 1 from public.invoices where organization_id = $1 and invoice_ref in ('S1003','S1008','S1011','S1012','S1015','S1016','CN-001','CN-002','CN-003')", [alpha])).toEqual([]);
     expect((await q<{ quote_ref: string; total_value: string; status: string }>("select quote_ref, total_value::text, status from public.quotes where organization_id = $1 order by quote_ref", [alpha])).map((x) => [x.quote_ref, x.total_value, x.status])).toEqual([["Q2001", "240.00", "sent"], ["Q2002", "480.00", "accepted"], ["Q2005", "60.00", "draft"]]);
     const cust = await q<{ name: string; contact_name: string | null; address: string | null; notes: string | null }>("select name, contact_name, address, notes from public.customers where organization_id = $1 order by name", [alpha]);
     expect(cust).toHaveLength(5);
@@ -214,14 +224,14 @@ describe("SliQ import into one organisation", () => {
     const sup = await q<{ name: string; contact_name: string | null; notes: string | null }>("select name, contact_name, notes from public.suppliers where organization_id = $1 order by name", [alpha]);
     expect(sup[0]).toMatchObject({ name: "Steel Supplies Ltd", contact_name: "Sam Steel", notes: "Address: 7 Foundry Road, Sheffield\nNet 30" });
     expect(await q("select sku, material, current_stock, unit_price::text, auto_purchase from public.stock where organization_id = $1", [alpha])).toEqual([{ sku: "P001", material: "Bracket", current_stock: 40, unit_price: "10", auto_purchase: false }]);
-    expect(await q("select po_ref, supplier, status, total_value::text, order_date::text, expected_delivery::text, items from public.purchase_orders where organization_id = $1", [alpha])).toEqual([
-      { po_ref: "PO-0001", supplier: "Steel Supplies Ltd", status: "sent", total_value: "250.00", order_date: "2026-03-01", expected_delivery: "2026-03-15", items: [] },
+    expect(await q("select po_ref, source_ref, supplier, status, total_value::text, order_date::text, expected_delivery::text, items from public.purchase_orders where organization_id = $1", [alpha])).toEqual([
+      { po_ref: "PO-0001", source_ref: "PO-0001", supplier: "Steel Supplies Ltd", status: "sent", total_value: "250.00", order_date: "2026-03-01", expected_delivery: "2026-03-15", items: [] },
     ]);
+    expect((await q<{ quote_ref: string; source_ref: string }>("select quote_ref, source_ref from public.quotes where organization_id = $1 order by quote_ref", [alpha])).every((x) => x.quote_ref === x.source_ref)).toBe(true);
     expect(await q("select q.quote_ref, l.description, l.quantity::text, l.unit_price::text, l.vat_pct::text, q.created_at::date::text as d from public.quote_line_items l join public.quotes q on q.id = l.quote_id where l.organization_id = $1", [alpha])).toEqual([
       { quote_ref: "Q2001", description: "Fabrication", quantity: "2.000", unit_price: "100.00", vat_pct: "20.00", d: "2026-02-01" },
     ]);
-    // The credit-note allocation (CN-001 against S1003) is not a payment row.
-    expect(await q("select 1 from public.invoice_payments p join public.invoices i on i.id = p.invoice_id where i.organization_id = $1 and i.invoice_ref = 'S1003'", [alpha])).toEqual([]);
+    // S1003 (a credit-note allocation against it) was excluded by number: an allocation is never a payment row.
     // Every row is in the given organisation: nothing of this import carries another organisation id.
     expect(await q("select 1 from public.invoice_payments p join public.invoices i on i.id = p.invoice_id where p.organization_id <> i.organization_id")).toEqual([]);
   });

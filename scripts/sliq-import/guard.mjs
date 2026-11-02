@@ -117,6 +117,14 @@ export function assertWriteAllowed({ write, databaseUrl, organizationId, report,
     const list = current.creditNoteResolution.unresolved.map((n) => n.number).join(", ");
     throw new GuardError(`Refusing: credit notes or allocations are unresolved: ${list}. Tolra has no credit-note type; give each a reviewed decision in a resolution file (--resolutions).`);
   }
+  if (current.unresolvedMatchCount > 0) {
+    const list = current.customerMatching.ambiguities.filter((n) => n.blocksWrite).map((n) => `${n.kind} ${n.number}`);
+    throw new GuardError(`Refusing: ${list.length} customer or supplier match(es) are ambiguous or unmatched (${list.slice(0, 10).join(", ")}${list.length > 10 ? ", ..." : ""}). See ambiguity.csv; name the account in the resolutions file (customerMatches / customerNames) or exclude the document by number.`);
+  }
+  if (current.unresolvedPaymentCount > 0) {
+    const list = current.balances.exceptions.filter((n) => n.blocksWrite).map((n) => n.number);
+    throw new GuardError(`Refusing: payment exceptions are unresolved: ${list.join(", ")}. An imported invoice gets its real balance, so fix the source or exclude each by number (--exclude).`);
+  }
   if (current.unresolvedReviewCount > 0) {
     const list = current.needsReview.filter((n) => n.blocksWrite && !n.excluded).map((n) => n.number).join(", ");
     throw new GuardError(`Refusing: documents flagged for reverse charge or discounts are unresolved: ${list}. Resolve them in the source or exclude each by number (--exclude).`);

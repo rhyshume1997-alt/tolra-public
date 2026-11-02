@@ -19,7 +19,8 @@ const RES = path.resolve(__dirname, "../fixtures/sliq/basic-resolutions.json");
 const ORG = "11111111-2222-4333-8444-555555555555";
 const LOCAL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 const REH = "99999999-aaaa-4bbb-8ccc-dddddddddddd";
-const EXCL = ["S1011", "S1012", "Q2004"];
+// Reverse charge and discount, then the payment exceptions (S1003 allocation, S1016 undated) and the unmatched customers/supplier.
+const EXCL = ["S1011", "S1012", "Q2004", "S1003", "S1016", "S1008", "Q2003", "PO-0002"];
 const synthetic = getProfile("synthetic");
 const tmp = () => mkdtempSync(path.join(tmpdir(), "sliq-audit-"));
 const copy = (edit?: (file: string, text: string) => string) => {
@@ -38,10 +39,11 @@ describe("duplicate payment rows are never summed", () => {
   const dir = copy((f, t) => (f === "payments.csv" ? t.replace("S1006,15/03/2026,150.00,BACS,", "S1006,15/03/2026,60.00,BACS,R9\nS1006,15/03/2026,60.00,BACS,R9") : t));
   const { report, plan } = run({ dir });
 
-  it("lists the duplicate, keeps the invoice at Payment to confirm and imports no payment for it", () => {
+  it("lists the duplicate, makes the invoice an exception that stops the write and imports no payment for it", () => {
     expect(report.duplicatePayments).toEqual([expect.objectContaining({ invoiceNumber: "S1006", date: "2026-03-15", amount: 6000, reference: "R9", times: 2 })]);
     const b = report.balances.items.find((x: { number: string }) => x.number === "S1006");
-    expect(b).toMatchObject({ state: "exception", paymentToConfirm: true, paid: 6000 }); // shown once, never doubled to the 120.00 that would clear it
+    expect(b).toMatchObject({ state: "exception", exception: true, paid: 6000 }); // shown once, never doubled to the 120.00 that would clear it
+    expect(report.unresolvedPaymentCount).toBe(1);
     expect(b.reason).toMatch(/listed more than once/);
     const inv = plan.invoices.find((i: { number: string }) => i.number === "S1006");
     expect(inv.payments).toEqual([]);
@@ -114,7 +116,7 @@ describe("approval covers the whole mapping file and every option", () => {
     expect(() => check(report, { options: { encoding: "windows-1252" } })).toThrowError(/encoding/);
     expect(() => check(report, { options: { dateFormat: "YYYY-MM-DD" } })).toThrowError();
     expect(() => check(report, { options: { sheets: { customers: "Sheet1" } } })).toThrowError();
-    expect(() => check(report, { excludeNumbers: ["S1011", "S1012"] })).toThrowError(/excluded numbers|exclusions/);
+    expect(() => check(report, { excludeNumbers: EXCL.slice(1) })).toThrowError(/excluded numbers|exclusions/);
     const other = JSON.parse(readFileSync(RES, "utf8"));
     other.resolutions[0].note = "changed after approval";
     const f = path.join(tmp(), "res.json");

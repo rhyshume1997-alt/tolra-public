@@ -23,6 +23,11 @@ const ORG = "11111111-2222-4333-8444-555555555555";
 const LOCAL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 const RES = path.resolve(__dirname, "../fixtures/sliq/basic-resolutions.json");
 const REHEARSAL = "99999999-aaaa-4bbb-8ccc-dddddddddddd";
+// Reverse charge and discount (needs review), then what else stops a write in the basic fixture: S1003 (a credit-note allocation)
+// and S1016 (an undated payment) are payment exceptions; S1008, Q2003 and PO-0002 name a customer or supplier that is not in the files.
+const REVIEW = ["S1011", "S1012", "Q2004"];
+const BLOCKERS = ["S1003", "S1016", "S1008", "Q2003", "PO-0002"];
+const EXCL = [...REVIEW, ...BLOCKERS];
 
 function copyFixture(edit?: (file: string, text: string) => string) {
   const dir = mkdtempSync(path.join(tmpdir(), "sliq-unit-"));
@@ -173,10 +178,11 @@ describe("checksums and counts", () => {
 describe("reconciliation lists", () => {
   const r = analyseFixture();
 
-  it("duplicates: the same document number twice, and the same customer by normalised name", () => {
-    expect(r.duplicates.documents).toEqual([expect.objectContaining({ number: "S1009", rows: expect.arrayContaining([expect.objectContaining({ row: 10 }), expect.objectContaining({ row: 11 })]) })]);
+  it("duplicates: a number used twice is renamed, not dropped; the same customer by normalised name is listed", () => {
+    expect(r.duplicates.documents).toEqual([]);
+    expect(r.renames.map((x: { sourceNumber: string; number: string; row: number }) => [x.sourceNumber, x.number, x.row])).toEqual([["S1009", "S1009", 10], ["S1009", "S1009-B", 11]]);
     expect(r.duplicates.customers).toEqual([expect.objectContaining({ normalisedName: "alpha fabrications ltd" })]);
-    expect(r.held.filter((h: { number: string }) => h.number === "S1009")).toHaveLength(2);
+    expect(r.held.filter((h: { number: string }) => h.number.startsWith("S1009"))).toHaveLength(0);
   });
 
   it("missing relationships: customer, lines without a header, payments for unknown invoices", () => {
@@ -196,26 +202,32 @@ describe("reconciliation lists", () => {
     const by = Object.fromEntries(r.balances.items.map((b: { number: string; state: string }) => [b.number, b]));
     expect(by.S1001.state).toBe("paid");
     expect(by.S1004.state).toBe("paid");
-    expect(by.S1003.state).toBe("unpaid");
+    expect(by.S1005.state).toBe("unpaid");
+    expect(by.S1003.state).toBe("exception"); // a credit-note allocation touches it
     expect(by.S1006.state).toBe("overpaid");
-    expect(r.balances.partial).toEqual([expect.objectContaining({ number: "S1002", gross: 60000, paid: 20000, balance: 40000, payments: 2, paymentToConfirm: false })]);
+    expect(r.balances.partial).toEqual([expect.objectContaining({ number: "S1002", gross: 60000, paid: 20000, balance: 40000, payments: 2, exception: false })]);
+    expect(r.balances.customerCredit).toEqual([expect.objectContaining({ number: "S1006", gross: 12000, paid: 15000, credit: 3000 })]);
     expect(r.balances.summary.PARTIAL).toBe(1);
   });
 
-  it("payment to confirm: unevidenced payments are listed, never invented", () => {
-    const list = numbers(r.balances.paymentToConfirm);
-    expect(list).toEqual(["S1003", "S1005", "S1006", "S1007", "S1010", "S1016"]);
-    expect(r.balances.paymentToConfirm.find((b: { number: string }) => b.number === "S1016").reason).toMatch(/no date/);
-    expect(r.balances.exceptions.map((e: { number: string }) => e.number)).toEqual(["S1003", "S1006"]);
-    expect(r.writePlan.payments).toBe(4); // S1001 x1, S1002 x2, S1004 x1: only dated, consistent payments
+  it("no Payment to confirm: evidence that disagrees is an exception that stops the write, never invented", () => {
+    expect(r.balances.exceptions.map((e: { number: string; blocksWrite: boolean }) => [e.number, e.blocksWrite])).toEqual([["S1003", true], ["S1016", true]]);
+    expect(r.balances.exceptions.find((b: { number: string }) => b.number === "S1016").reason).toMatch(/no date/);
+    expect(r.unresolvedPaymentCount).toBe(2);
+    expect(r.writePlan.payments).toBe(5); // S1001 x1, S1002 x2, S1004 x1, S1006 x1 (overpaid: paid, the surplus is credit)
+    const ok = analyseFixture({ excludeNumbers: EXCL });
+    expect(ok.unresolvedPaymentCount).toBe(0);
+    expect(ok.writePlan.invoicesPaymentToConfirm).toBe(0);
+    // owed straight after the import: S1005 96.00 + S1007 48.00 + S1009 12.00 + S1009-B 12.00 + S1010 120.00 + S1002's 400.00 balance
+    expect(ok.balances.owedAfterImport).toBe(68800);
+    expect(ok.balances.creditAfterImport).toBe(3000);
   });
 
-  it("a header that says paid with no payment record stays Payment to confirm", () => {
+  it("a header that says paid with no payment record is an exception that stops the write", () => {
     const dir = copyFixture((f, t) => (f === "payments.csv" ? t.replace("S1001,05/03/2026,120.00,BACS,REF1\n", "") : t));
     const rep = analyse(loadFolder(dir, synthetic)).report;
-    const b = rep.balances.paymentToConfirm.find((x: { number: string }) => x.number === "S1001");
-    expect(b.reason).toMatch(/£120.00 paid but there are no payment records/);
-    expect(rep.balances.exceptions.map((e: { number: string }) => e.number)).toContain("S1001");
+    const b = rep.balances.exceptions.find((x: { number: string }) => x.number === "S1001");
+    expect(b).toMatchObject({ blocksWrite: true, reason: expect.stringMatching(/£120.00 paid but there are no payment records/) });
   });
 
   it("without a payments file balances are unknown, not unpaid", () => {
@@ -226,6 +238,9 @@ describe("reconciliation lists", () => {
     const rep = analyse(loaded).report;
     expect(rep.balances.summary.unknown).toBeGreaterThan(0);
     expect(rep.balances.summary.unpaid).toBe(0);
+    // without payments no balance is known: every issued invoice that would be written stops the write
+    expect(rep.unresolvedPaymentCount).toBe(rep.balances.items.filter((b: { state: string; held: boolean }) => b.state === "unknown" && !b.held).length);
+    expect(rep.unresolvedPaymentCount).toBeGreaterThan(0);
   });
 
   it("credit notes are listed with how each would be represented, never netted", () => {
@@ -236,11 +251,12 @@ describe("reconciliation lists", () => {
     expect(cn["CN-003"].link).toContain("S9999 not found");
     expect(cn.S1015.source).toContain("negative total");
     expect(r.balances.items.some((b: { number: string }) => b.number === "CN-001")).toBe(false);
-    expect(r.writePlan.invoices).toBe(10);
+    expect(r.writePlan.invoices).toBe(12);
   });
 
   it("invoices missing lines are listed and keep their stated header", () => {
-    expect(numbers(r.invoicesMissingLines)).toEqual(["S1005", "S1008", "S1009", "S1009"]);
+    expect(numbers(r.invoicesMissingLines)).toEqual(["S1005", "S1008", "S1009", "S1009-B"]);
+    expect(r.invoicesMissingLines.find((x: { number: string }) => x.number === "S1009-B").note).toMatch(/SliQ number S1009, which 2 invoices share: header only/);
     expect(r.invoicesMissingLines.find((x: { number: string }) => x.number === "S1005").gross).toBe(9600);
   });
 
@@ -326,16 +342,16 @@ describe("write-mode guard", () => {
     return { out, report };
   };
   // A report as a dry run with a checked target would write it (the unit suite has no database, so mark collisions checked).
-  async function dryRunLocal(out: string, excludeNumbers: string[] = ["S1011", "S1012", "Q2004"]) {
+  async function dryRunLocal(out: string, excludeNumbers: string[] = EXCL) {
     const { report } = await dryRun({ folder, outDir: out, mapping: "synthetic", excludeNumbers, resolutionsPath: RES });
     const checked = { ...report, organizationId: ORG, collisions: { ...report.collisions, checked: true }, rehearsal: { checked: true, id: REHEARSAL } };
     writeFileSync(path.join(out, "report.json"), JSON.stringify(checked));
     return { report: checked };
   }
-  const current = (excludeNumbers: string[] = ["S1011", "S1012", "Q2004"], dir = folder) => analyse(loadFolder(dir, synthetic), { organizationId: ORG, excludeNumbers, resolutions: loadResolutions(RES) }).report;
+  const current = (excludeNumbers: string[] = EXCL, dir = folder) => analyse(loadFolder(dir, synthetic), { organizationId: ORG, excludeNumbers, resolutions: loadResolutions(RES) }).report;
   const allow = (over: object = {}) => {
     const { report } = over as { report?: unknown };
-    return assertWriteAllowed({ write: true, databaseUrl: LOCAL, organizationId: ORG, report, current: current(), excludeNumbers: ["S1011", "S1012", "Q2004"], ...over });
+    return assertWriteAllowed({ write: true, databaseUrl: LOCAL, organizationId: ORG, report, current: current(), excludeNumbers: EXCL, ...over });
   };
 
   it("accepts local and disposable databases", async () => {
@@ -380,7 +396,7 @@ describe("write-mode guard", () => {
   it("refuses a stale report: a file changed after the report was made", async () => {
     const { report } = await base();
     const dir = copyFixture((f, t) => (f === "invoices.csv" ? t.replace("100.00,20.00,120.00,Paid", "100.00,20.00,120.00,Issued") : t));
-    expect(() => allow({ report, current: current(["S1011", "S1012", "Q2004"], dir) })).toThrowError(/report is stale[\s\S]*invoices\.csv/);
+    expect(() => allow({ report, current: current(EXCL, dir) })).toThrowError(/report is stale[\s\S]*invoices\.csv/);
   });
 
   it("refuses a report made for another organisation, with different exclusions, or without a collision check", async () => {
@@ -392,9 +408,19 @@ describe("write-mode guard", () => {
 
   it("refuses while reverse-charge or discount documents are unresolved and not excluded", async () => {
     const out = mkdtempSync(path.join(tmpdir(), "sliq-report-"));
-    const { report } = await dryRunLocal(out, []);
-    expect(() => allow({ report, excludeNumbers: [], current: current([]) })).toThrowError(/unresolved: Q2004, S1011, S1012/);
-    expect(() => allow({ report, excludeNumbers: ["S1011"], current: current(["S1011"]) })).toThrowError();
+    const { report } = await dryRunLocal(out, BLOCKERS);
+    expect(() => allow({ report, excludeNumbers: BLOCKERS, current: current(BLOCKERS) })).toThrowError(/unresolved: Q2004, S1011, S1012/);
+    expect(() => allow({ report, excludeNumbers: ["S1011", ...BLOCKERS], current: current(["S1011", ...BLOCKERS]) })).toThrowError();
+  });
+
+  it("refuses while a customer or supplier is unmatched (decision 3), or a payment exception is left (decision 1)", async () => {
+    const out = mkdtempSync(path.join(tmpdir(), "sliq-report-"));
+    const noParty = [...REVIEW, "S1003", "S1016"];
+    const { report } = await dryRunLocal(out, noParty);
+    expect(() => allow({ report, excludeNumbers: noParty, current: current(noParty) })).toThrowError(/3 customer or supplier match\(es\) are ambiguous or unmatched \(invoice S1008, quote Q2003, purchase_order PO-0002\)[\s\S]*ambiguity\.csv/);
+    const noPay = [...REVIEW, "S1008", "Q2003", "PO-0002"];
+    const r2 = await dryRunLocal(mkdtempSync(path.join(tmpdir(), "sliq-report-")), noPay);
+    expect(() => allow({ report: r2.report, excludeNumbers: noPay, current: current(noPay) })).toThrowError(/payment exceptions are unresolved: S1003, S1016/);
   });
 
   it("refuses the stub mapping", async () => {

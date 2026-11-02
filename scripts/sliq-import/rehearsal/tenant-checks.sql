@@ -52,6 +52,29 @@ begin
   perform rehearsal_chk.ok(p_check, n = 0, n || ' row(s) changed');
 end
 $f$;
+-- p_sql must be refused with an error whose message matches p_like (the refusal is the one meant, not RLS or another guard).
+create function rehearsal_chk.refused_by(p_check text, p_sql text, p_like text) returns void language plpgsql as $f$
+begin
+  begin
+    execute p_sql;
+  exception when others then
+    perform rehearsal_chk.ok(p_check, sqlerrm like p_like, 'refused: ' || left(sqlerrm, 100));
+    return;
+  end;
+  perform rehearsal_chk.ok(p_check, false, 'it was ALLOWED');
+end
+$f$;
+-- p_sql must change exactly one row.
+create function rehearsal_chk.one_row(p_check text, p_sql text) returns void language plpgsql as $f$
+declare n bigint;
+begin
+  execute p_sql;
+  get diagnostics n = row_count;
+  perform rehearsal_chk.ok(p_check, n = 1, n || ' row(s) changed');
+exception when others then
+  perform rehearsal_chk.ok(p_check, false, 'refused: ' || left(sqlerrm, 100));
+end
+$f$;
 grant execute on all functions in schema rehearsal_chk to authenticated;
 
 -- What the import put in A, as the owner sees it (the yardstick for what each user may see).
@@ -73,6 +96,8 @@ select id as imported_inv, invoice_ref as imported_ref, total::text as imported_
   where organization_id = :'org_a' and status = 'paid' order by invoice_ref limit 1 \gset
 select id as imported_quote from public.quotes where organization_id = :'org_a' order by quote_ref limit 1 \gset
 select name as a_supplier from public.suppliers where organization_id = :'org_a' order by name limit 1 \gset
+select id as draft_po, source_ref as draft_po_ref from public.purchase_orders where organization_id = :'org_a' and status = 'draft' order by po_ref limit 1 \gset
+select id as draft_quote from public.quotes where organization_id = :'org_a' and status = 'draft' order by quote_ref limit 1 \gset
 
 -- ---- 1. Isolation: tenant B sees none of A's imported rows, A's users see all of them ------------------------------------------
 set local role authenticated;
@@ -121,7 +146,19 @@ select rehearsal_chk.no_rows('read-only: admin cannot change an imported invoice
   'update public.invoice_line_items set unit_price = unit_price + 1 where invoice_id = %L', :'imported_inv'));
 select rehearsal_chk.no_rows('read-only: admin cannot change an imported legacy payment', format(
   'update public.invoice_payments set amount = amount + 1 where invoice_id = %L', :'imported_inv'));
+-- Migration 135: the SliQ number (source_ref) is written by the import only. The admin may still edit a draft imported PO.
+select rehearsal_chk.one_row('source_ref: admin can still edit a draft imported purchase order (its notes)', format(
+  'update public.purchase_orders set notes = %L where id = %L', 'rehearsal note', :'draft_po'));
+select rehearsal_chk.refused_by('source_ref: admin cannot change a draft imported purchase order''s SliQ number', format(
+  'update public.purchase_orders set source_ref = %L where id = %L', 'PO-9999', :'draft_po'), '%SliQ reference%');
+select rehearsal_chk.refused_by('source_ref: admin cannot change a draft imported quote''s SliQ number', format(
+  'update public.quotes set source_ref = %L where id = %L', 'QUO-9999', :'draft_quote'), '%SliQ reference%');
+select rehearsal_chk.refused_by('source_ref: admin cannot clear an imported invoice''s SliQ number', format(
+  'update public.invoices set source_ref = null where id = %L', :'imported_inv'), '%');
+select rehearsal_chk.refused_by('source_ref: a new purchase order cannot carry a SliQ number', format(
+  'insert into public.purchase_orders (organization_id, po_ref, supplier, status, source_ref) values (%L, %L, %L, %L, %L)', :'org_a', 'PO-REH-1', :'a_supplier', 'draft', 'PO-0001'), '%SliQ reference%');
 reset role;
+select rehearsal_chk.ok('source_ref: the draft purchase order keeps its SliQ number', (select source_ref from public.purchase_orders where id = :'draft_po') = :'draft_po_ref', :'draft_po_ref');
 select rehearsal_chk.ok('read-only: the imported invoice is unchanged', (select total::text from public.invoices where id = :'imported_inv') = :'imported_total', :'imported_ref' || ' total ' || :'imported_total');
 
 -- ---- 3. Numbering continues: one new quote, invoice and purchase order through the app's RPCs, as tenant A's office user --------
