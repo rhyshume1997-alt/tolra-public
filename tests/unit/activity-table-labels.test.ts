@@ -13,7 +13,7 @@ const LABELS: Record<string, string> = {
   time_sync_rejections: "Rejected clock sync", job_flow_events: "Job flow", job_inspections: "Inspection", invoice_queue_events: "Invoice queue event",
   inspector_authorisations: "Inspector authorisation", integration_connections: "Integration connection", integration_mappings: "Integration mapping",
   integration_contacts: "Integration contact", integration_sends: "Integration send", site_network_settings: "Site network setting",
-  site_networks: "Site network", site_network_members: "Site network member", import_mappings: "Import mapping", import_batches: "Import batch",
+  site_networks: "Site network", site_network_members: "Site network member", site_network_names: "Site network name", import_mappings: "Import mapping", import_batches: "Import batch",
   import_runs: "Import run",
 };
 

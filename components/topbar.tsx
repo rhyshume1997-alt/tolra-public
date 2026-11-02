@@ -5,6 +5,7 @@ import { ArrowLeft, Bell, LogOut, Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { GlobalSearch } from "@/components/global-search";
 import { ShellStatusChip } from "@/components/shell-status";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -84,6 +85,7 @@ export function Topbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+        <GlobalSearch />
         <SyncStatus />
         {canSeeApprovals ? (
           <Button asChild variant="ghost" size="icon" aria-label="Notifications">
