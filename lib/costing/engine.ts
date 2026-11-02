@@ -15,7 +15,17 @@ export type DetailedInputs = QuoteInputs & {
   programming_time_hr?: number; programming_rate_per_hr?: number;
   first_article_inspection_hr?: number; overhead_rate_pct?: number;
 };
-const round = (n: number, places: number) => Number(n.toFixed(places));
+function round(n: number, places: number): number {
+  if (!Number.isFinite(n)) throw new RangeError('Invalid rounding input');
+  // Python round uses ties to even on the binary float value.
+  const factor = 10 ** places;
+  const scaled = n * factor;
+  const lower = Math.floor(scaled);
+  const difference = scaled - lower;
+  const tolerance = Number.EPSILON * Math.max(1, Math.abs(scaled)) / 4;
+  if (Math.abs(difference - 0.5) <= tolerance) return (lower % 2 === 0 ? lower : lower + 1) / factor;
+  return Math.round(scaled) / factor;
+}
 function validate(p: QuoteInputs) {
   if (!Number.isSafeInteger(p.quantity) || p.quantity < 1 || p.quantity > 1_000_000) throw new RangeError('Invalid quantity');
   const nums = [p.stock_weight_lb, p.cost_per_lb, p.scrap_factor, p.margin_pct ?? 0.15,
