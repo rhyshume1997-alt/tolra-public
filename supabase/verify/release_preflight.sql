@@ -183,7 +183,10 @@ markers(migration, present) AS (
                                             ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '214295752bb751f03a74c767b090e8c0')))),
     ('133 ai helper pre enable',          EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '972540e833a42bbb35ac5b670c56daa8')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e04d0ab645ec24dc0f0acb78c222702')
-                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9'))
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9')),
+    ('134 ai assistant',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
+                                          AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'assistant_enabled')
+                                          AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL)
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -455,6 +458,18 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)')), 'missing'),
     '103 / 103 before 133, 133 / 133 after (other: stop, 133 refuses to replace it)'
+  UNION ALL SELECT 56, '134 needs: 101 and 103 applied (the AI helper tables and caller check; settle the service role''s only), then 133''s reserve, settle and purge',
+    (to_regclass('public.ai_helper_settings') IS NOT NULL AND to_regclass('public.ai_helper_requests') IS NOT NULL
+     AND to_regprocedure('public._ai_helper_caller(text[])') IS NOT NULL
+     AND to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') IS NOT NULL
+     AND NOT has_function_privilege('authenticated', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE'))::TEXT
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' WHEN '972540e833a42bbb35ac5b670c56daa8' THEN '133' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)')), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c4b0d7f39cec1f23c6bd1d5e31e59fa9' THEN '133' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)')), 'missing'),
+    'true / 103 / 103 / missing before 133; true / 133 / 133 / 133 after 133 and after 134 (false or other: stop, 134 refuses to apply)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
