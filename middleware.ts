@@ -8,9 +8,10 @@ import { companyStepRoute, parseSessionInfo } from "@/lib/session-info";
 import { sectionForPath } from "@/lib/sections";
 import { EXPIRED_NOTICE_COOKIE, EXPIRED_NOTICE_MAX_AGE_S, LAST_ACTIVE_COOKIE, OFFICE_IDLE_TIMEOUT_MS, expiredSignInRedirect, idleExceeded } from "@/lib/session-policy";
 
-const ASSET_PATTERN = /\.(?:png|jpe?g|gif|svg|webp|avif|ico|css|js|map|txt|xml|woff2?|ttf|otf)$/i;
-// Public marketing files: the home page's images and the crawler files (robots.txt, sitemap.xml) never need a sign-in.
-const PUBLIC_FILE_PREFIXES = ["/brand/", "/marketing/", "/icons/"];
+const ASSET_PATTERN = /\.(?:png|jpe?g|gif|svg|webp|avif|ico|css|js|map|txt|woff2?|ttf|otf)$/i;
+// The crawler's sitemap needs no sign-in: this exact path only (no .xml rule, so no other path ending .xml skips the checks). The home
+// page's images (/brand/, /marketing/, /icons/) are .png, .svg and .ico files, which ASSET_PATTERN already covers.
+const SITEMAP_PATH = "/sitemap.xml";
 const SECURE_COOKIES = process.env.NODE_ENV === "production";
 
 const ALL_ROLES = ["admin", "office", "workshop", "viewer"];
@@ -45,7 +46,7 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const path = request.nextUrl.pathname;
-  const isAsset = path.startsWith("/_next") || path === "/favicon.ico" || PUBLIC_FILE_PREFIXES.some((prefix) => path.startsWith(prefix)) || ASSET_PATTERN.test(path);
+  const isAsset = path.startsWith("/_next") || path === "/favicon.ico" || path === SITEMAP_PATH || ASSET_PATTERN.test(path);
   const isConfigurationError = path === "/configuration-error";
   const isApi = path.startsWith("/api/");
 

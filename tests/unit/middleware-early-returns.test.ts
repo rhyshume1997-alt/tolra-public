@@ -132,6 +132,39 @@ describe('the public home page "/"', () => {
   });
 });
 
+describe('the public privacy page "/privacy"', () => {
+  it("signed out: it opens (no redirect to /login), after getUser only", async () => {
+    server.user = null;
+    const { location, response } = await visit("/privacy");
+    expect(location).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(server.calls).toEqual(["getUser"]);
+  });
+
+  it("signed in: it opens too (no redirect), with no profile or session reads", async () => {
+    server.user = { id: "u-1" };
+    const { location } = await visit("/privacy");
+    expect(location).toBeNull();
+    expect(server.calls).toEqual(["getUser"]);
+  });
+});
+
+describe("public files can't open anything protected", () => {
+  it("only /sitemap.xml skips the checks: any other path ending .xml is a page like any other and goes to /login", async () => {
+    for (const path of ["/jobs/export.xml", "/dashboard/feed.xml", "/invoices/x.xml", "/sitemap.xml/x", "/privacy.xml"]) {
+      server.calls.length = 0;
+      expect((await visit(path)).location, path).toBe("/login");
+      expect(server.calls, path).toEqual(["getUser"]);
+    }
+  });
+
+  it("the marketing folders are not public by prefix: a path there that is not an image file goes to /login", async () => {
+    for (const path of ["/brand/x", "/marketing/page", "/icons/admin", "/marketing/", "/privacy/x", "/privacy/../dashboard"]) {
+      expect((await visit(path)).location, path).toBe("/login");
+    }
+  });
+});
+
 describe("pages still require a signed-in, active person with the right role (gates unchanged)", () => {
   it("signed out: every page goes to /login; /login, /auth/set-password and /configuration-error open after getUser", async () => {
     for (const page of ["/dashboard", "/jobs", "/quotes", "/invoices", "/admin/users", "/time/week", "/schedule"]) {
