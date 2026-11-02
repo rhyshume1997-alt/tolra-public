@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { jsonError, readJson } from "@/lib/server/auth";
+import { jsonError, mfaRecentRequired, readJson } from "@/lib/server/auth";
 import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAdminEnrolment, requireRecentAal2 } from "@/lib/server/admin-users";
 import { becomesAdmin, changesAdmin } from "@/lib/mfa-policy";
 import { companyAccessErrorMessage, mayAddExistingLogin, OTHER_COMPANY_LOGIN, PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
@@ -77,6 +77,8 @@ const LAST_COMPANY_NEXT_STEP = `If they're leaving, use Disable sign-in instead:
 /** Maps set_member_access() errors to responses (its messages are written for people). */
 function memberAccessError(error: { code?: string; message: string; details?: string; hint?: string }) {
   console.error("[admin/users] set_member_access failed", error.code ?? "no-code", String(error.message ?? "").slice(0, 200));
+  // G1 (migration 136): the database asks for a recent authenticator code when giving or taking admin; the browser opens its code dialog.
+  if (error.hint === "mfa_recent_required") return mfaRecentRequired("change who is an admin");
   // The same friendly wording as per-company access (066): a login keeps one company; a clash with another change is retried.
   if (error.hint === "last_company") return jsonError(`${companyAccessErrorMessage(error, "this company")} ${LAST_COMPANY_NEXT_STEP}`, 409);
   if (error.code === "40P01" || error.code === "40001") return jsonError(companyAccessErrorMessage(error, "this company"), 409);

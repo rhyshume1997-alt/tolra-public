@@ -71,9 +71,10 @@ export function becomesAdmin(before: Roles, after: Roles): boolean {
 }
 
 /**
- * True when a membership change gives or takes admin: the role or second role to or from admin, or reactivating someone who holds
- * it. Such a change hands over (or takes away) the company's admin rights, so it needs the second step always, like creating a user
- * (audit Z1). Fields left undefined are unchanged; a null second role removes it.
+ * True when a membership change gives or takes admin: the role or second role to or from admin, reactivating someone who holds it, or
+ * switching an active admin OFF (deactivating an admin takes their admin rights away: G1). Such a change hands over (or takes away) the
+ * company's admin rights, so it needs the second step always, like creating a user (audit Z1), and a recent authenticator code
+ * (requireRecentAal2; the database asks the same in migration 136). Fields left undefined are unchanged; a null second role removes it.
  */
 export function changesAdmin(before: Roles, change: { role?: string; secondary_role?: string | null; active?: boolean }): boolean {
   const after = {
@@ -81,7 +82,8 @@ export function changesAdmin(before: Roles, change: { role?: string; secondary_r
     secondary_role: change.secondary_role !== undefined ? change.secondary_role : before?.secondary_role,
     active: change.active ?? before?.active,
   };
-  return holdsAdmin(before) !== holdsAdmin(after) || becomesAdmin(before, after);
+  const switchedOff = Boolean(before) && before?.active !== false && holdsAdmin(before) && after.active === false;
+  return holdsAdmin(before) !== holdsAdmin(after) || becomesAdmin(before, after) || switchedOff;
 }
 
 /**

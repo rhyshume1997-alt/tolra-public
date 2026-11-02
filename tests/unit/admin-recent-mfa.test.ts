@@ -37,6 +37,8 @@ const state = {
   banned: false,
   /** Every change attempted: service-role writes, Auth writes, and database functions that change something. */
   writes: [] as string[],
+  /** The database refuses set_member_access / admin_set_company_access with this hint (migration 136's trigger). */
+  dbRefuses: null as string | null,
   /** Times the service-role client was created. */
   adminClients: 0,
 };
@@ -100,6 +102,7 @@ vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () =>
 const caller = {
   auth: { mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: "aal2", currentAuthenticationMethods: state.amr }, error: null }) } },
   rpc: async (fn: string, args: Record<string, unknown>) => {
+    if (state.dbRefuses && (fn === "set_member_access" || fn === "admin_set_company_access")) return { data: null, error: { code: "42501", message: "x", hint: state.dbRefuses } };
     if (fn === "admin_login_is_protected") return { data: false, error: null };
     if (fn === "write_audit") return { data: null, error: null };
     if (fn !== "my_admin_companies" && !(fn === "admin_set_company_access" && !ADMIN_ORGS.includes(args.p_org as string))) state.writes.push(`rpc.${fn}`);
@@ -163,7 +166,7 @@ const FRESH = () => [{ method: "password", timestamp: now() - 120 }, { method: "
 const STALE = () => [{ method: "password", timestamp: now() - 3600 }, { method: "totp", timestamp: now() - 16 * 60 }];
 
 function reset() {
-  Object.assign(state, { level: "aal2", amr: FRESH(), signedIn: true, support: false, banned: false, writes: [], adminClients: 0 });
+  Object.assign(state, { level: "aal2", amr: FRESH(), signedIn: true, support: false, banned: false, writes: [], adminClients: 0, dbRefuses: null });
   state.members = [
     { user_id: ADMIN, organization_id: ORG_A, role: "admin", secondary_role: null, active: true, support: false },
     { user_id: TARGET, organization_id: ORG_A, role: "office", secondary_role: null, active: true, support: false, hidden_sections: [] },
@@ -407,5 +410,63 @@ describe("per-company access (POST /api/admin/users/companies): giving or taking
     state.amr = STALE();
     expect(await (await change({ organization_id: ORG_B, active: true, role: "admin", secondary_role: null })).json()).toMatchObject({ code: "mfa_recent_required" });
     expect(state.writes).toEqual([]);
+  });
+});
+
+describe("deactivating an admin is taking admin (G1)", () => {
+  const deactivate = () => patchUser(request("/api/admin/users", "PATCH", { user_id: TARGET, active: false }));
+  const deactivateInC = () => companies(request("/api/admin/users/companies", "POST", { user_id: TARGET2, changes: [{ organization_id: ORG_C, active: false }] }));
+
+  it("PATCH: an admin switched off with a stale code is refused and stays active; with a fresh code it is done", async () => {
+    state.members[1].role = "admin";
+    state.amr = STALE();
+    expect(await (await deactivate()).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+    expect(state.members[1].active).toBe(true);
+    state.amr = FRESH();
+    expect((await deactivate()).status).toBe(200);
+  });
+  it("PATCH: switching a non-admin off does not ask for a recent code", async () => {
+    state.amr = STALE();
+    expect(await isMfaRefusal(await deactivate(), "mfa_recent_required")).toBe(false);
+  });
+  it("per-company access: an admin of C switched off with a stale code is refused, nothing sent; a non-admin is not asked", async () => {
+    const row = state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_C)!;
+    row.role = "admin";
+    state.amr = STALE();
+    expect(await (await deactivateInC()).json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toEqual([]);
+    expect(row.active).toBe(true);
+    row.role = "office";
+    expect(await isMfaRefusal(await deactivateInC(), "mfa_recent_required")).toBe(false);
+  });
+});
+
+describe("the database's own recent-code refusal (migration 136) reaches the browser as mfa_recent_required", () => {
+  it("PATCH: set_member_access refused with hint mfa_recent_required (the app's switch is off, the company's own is on): 403 with the code, not Forbidden", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "false";
+    state.dbRefuses = "mfa_recent_required";
+    const response = await patchUser(request("/api/admin/users", "PATCH", { user_id: TARGET, role: "admin" }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+  });
+  it("create user (a second role of admin goes through set_member_access): refused the same way, and the new login is rolled back", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "false";
+    state.dbRefuses = "mfa_recent_required";
+    const response = await createUser(request("/api/admin/users", "POST", { email: "new2@example.test", full_name: "New Two", role: "office", secondary_role: "admin", password: "Correct-Horse-Battery-9", must_change_password: true }));
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.writes).toContain("auth.deleteUser");
+  });
+  it("per-company access: refused the same way, once, before any later change is sent", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "false";
+    state.dbRefuses = "mfa_recent_required";
+    const response = await companies(request("/api/admin/users/companies", "POST", { user_id: TARGET2, changes: [{ organization_id: ORG_C, active: true, role: "workshop", secondary_role: null }] }));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+  });
+  it("any other database refusal is still Forbidden / the company message, not the code dialog", async () => {
+    state.dbRefuses = "not_company_admin";
+    const response = await patchUser(request("/api/admin/users", "PATCH", { user_id: TARGET, role: "admin" }));
+    expect(await isMfaRefusal(response, "mfa_recent_required")).toBe(false);
   });
 });

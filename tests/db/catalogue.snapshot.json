@@ -1481,6 +1481,11 @@
  },
  {
   "kind": "function",
+  "object": "public.organization_members_recent_second_step()",
+  "detail": "definer search_path=pg_catalog, public 90a15b16e48b10daba302c19b9c1da17"
+ },
+ {
+  "kind": "function",
   "object": "public.organization_settings_customer_signoff_guard()",
   "detail": "invoker search_path=pg_catalog, public 5684eb12661dd28bdf76c1b55696d9ec"
  },
@@ -3648,6 +3653,11 @@
   "kind": "function-grant",
   "object": "public.organization_members_mfa_enrolment()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.organization_members_recent_second_step()",
+  "detail": ""
  },
  {
   "kind": "function-grant",
@@ -7898,6 +7908,11 @@
   "kind": "trigger",
   "object": "public.organization_members :: organization_members_mfa_enrolment",
   "detail": "O 8a9c708ecbfb35cd9174bcd1a4e3ff94"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.organization_members :: organization_members_recent_second_step",
+  "detail": "O e1cc8d49f24270294e7465f7cffa54a7"
  },
  {
   "kind": "trigger",

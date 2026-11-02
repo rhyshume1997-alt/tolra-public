@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { jsonError, readJson } from "@/lib/server/auth";
+import { jsonError, mfaRecentRequired, readJson } from "@/lib/server/auth";
 import { guard, liftDeactivationBan, banState, requireRecentAal2 } from "@/lib/server/admin-users";
 import { changesAdmin } from "@/lib/mfa-policy";
 import { COMPANY_ROLES, companyAccessErrorMessage, OTHER_COMPANY_LOGIN } from "@/lib/company-access";
@@ -75,6 +75,10 @@ export async function POST(request: Request) {
     });
     if (error) {
       console.error("[admin/users/companies] admin_set_company_access refused", error.code ?? "no-code", error.hint ?? "no-hint");
+      // G1 (migration 136): the database asks for a recent authenticator code (the app's own check above is the first line; this is the
+      // second, for a company whose own switch is on while the app's is off). The code dialog sends the whole request once more; a change
+      // already applied earlier in this request is applied again as "nothing to change".
+      if (error.hint === "mfa_recent_required") return mfaRecentRequired("change who is an admin");
       if (error.hint === "other_company_login") forbidden += 1;
       results.push({ organization_id: change.organization_id, name, ok: false, error: companyAccessErrorMessage(error, name) });
       continue;

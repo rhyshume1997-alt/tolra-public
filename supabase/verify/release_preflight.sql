@@ -186,7 +186,9 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9')),
     ('134 ai assistant',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'assistant_enabled')
-                                          AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL)
+                                          AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL),
+    ('136 recent second step',            EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.organization_members_recent_second_step()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2af8bea37c6c34ccaffb8188a199054c')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'public.organization_members'::regclass AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -470,6 +472,14 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c4b0d7f39cec1f23c6bd1d5e31e59fa9' THEN '133' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)')), 'missing'),
     'true / 103 / 103 / missing before 133; true / 133 / 133 / 133 after 133 and after 134 (false or other: stop, 134 refuses to apply)'
+  UNION ALL SELECT 57, '136 needs: organizations.require_admin_mfa (033), organization_members.support (036), is_api_role and assert_privileged_aal, and set_member_access / admin_set_company_access as 093 left them',
+    (EXISTS (SELECT 1 FROM col WHERE table_name = 'organizations' AND column_name = 'require_admin_mfa') AND EXISTS (SELECT 1 FROM col WHERE table_name = 'organization_members' AND column_name = 'support')
+     AND to_regprocedure('public.is_api_role()') IS NOT NULL AND to_regprocedure('public.assert_privileged_aal()') IS NOT NULL)::TEXT
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '2fc2a6a96b80cc9f7a7f8baf9b67df04' THEN '093' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_member_access(uuid, text, boolean, text, boolean, text[])')), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '378818d240f26ff55595ff4168f7a40e' THEN '093' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.admin_set_company_access(uuid, uuid, text, text, boolean, boolean)')), 'missing'),
+    'true / 093 / 093 before 136 and after (false or other: stop, 136 refuses to apply)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
