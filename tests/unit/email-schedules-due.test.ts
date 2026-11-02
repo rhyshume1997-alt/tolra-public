@@ -254,3 +254,71 @@ describe("the Next run words", () => {
     expect(describeInstant(at("2026-07-06T08:00:00Z"), "Europe/London")).toBe("Mon 6 Jul 2026 at 09:00 (BST)");
   });
 });
+
+// ----- 142: timesheet e-mails on chosen days of the week (daily + weekdays, ISO 1 = Monday ... 7 = Sunday) ---------------------------
+describe("days of the week (142): due on those days once the time has passed, at most once per local day", () => {
+  // Weeks used: Mon 26 Oct 2026 ... Sun 1 Nov 2026 (GMT, after the clocks went back on Sun 25 Oct).
+  const days = (weekdays: number[], time = "09:00", extra: Partial<ScheduleTiming> = {}) => daily(time, { weekdays, updated_at: "2026-10-01T00:00:00Z", ...extra });
+
+  it.each([
+    // [days, now (UTC = UK in GMT), due period key or null]
+    [[1, 3, 5], "2026-10-26T09:00:00Z", "2026-10-26"], // Monday, at the time
+    [[1, 3, 5], "2026-10-26T08:59:00Z", null], // Monday before the time: Friday's is the latest, but over 48 hours old
+    [[1, 3, 5], "2026-10-29T08:59:00Z", "2026-10-28"], // Thursday before the time: Wednesday's is the latest
+    [[1, 3, 5], "2026-10-27T12:00:00Z", "2026-10-26"], // Tuesday: Monday's is the latest
+    [[1, 3, 5], "2026-10-28T09:01:00Z", "2026-10-28"], // Wednesday
+    [[1, 3, 5], "2026-10-30T10:00:00Z", "2026-10-30"], // Friday
+    [[5], "2026-10-30T09:00:00Z", "2026-10-30"], // Friday only
+    [[5], "2026-11-01T08:30:00Z", "2026-10-30"], // Sunday morning: Friday's is under 48 hours old
+    [[5], "2026-11-02T10:00:00Z", null], // Monday: Friday's is older than the catch-up, so nothing (not sent late)
+    [[1, 2, 3, 4, 5, 6, 7], "2026-10-29T09:30:00Z", "2026-10-29"], // every day
+    [[7], "2026-11-01T09:00:00Z", "2026-11-01"], // Sunday is 7
+    [[6, 7], "2026-10-30T09:00:00Z", null], // a weekend schedule on a Friday: last Sunday's is too old
+    [[], "2026-10-28T10:00:00Z", null], // no days: never
+  ] as Array<[number[], string, string | null]>)("%j at %s: %s", (weekdays, now, key) => {
+    expect(dueOccurrence(days(weekdays), at(now))?.periodKey ?? null).toBe(key);
+  });
+
+  it("the period key is the local date, so a day is sent at most once however often the cron calls", () => {
+    const s = days([1, 3, 5]);
+    const keys = new Set<string>();
+    for (let m = 0; m < 24 * 60; m += 15) {
+      const occ = dueOccurrence(s, new Date(Date.parse("2026-10-28T09:00:00Z") + m * 60_000));
+      if (occ && occ.at.toISOString().startsWith("2026-10-28")) keys.add(occ.periodKey);
+    }
+    expect([...keys]).toEqual(["2026-10-28"]);
+    // Two days are two periods, never the same key.
+    expect(dueOccurrence(s, at("2026-10-26T10:00:00Z"))?.periodKey).not.toBe(dueOccurrence(s, at("2026-10-28T10:00:00Z"))?.periodKey);
+  });
+
+  it("the day is the UK date, not the UTC date: 00:15 on a Saturday in summer is still Friday in UTC", () => {
+    // Sat 6 Jun 2026 00:20 BST = Fri 5 Jun 23:20 UTC.
+    expect(dueOccurrence(days([6], "00:15", { updated_at: "2026-05-01T00:00:00Z" }), at("2026-06-05T23:20:00Z"))).toEqual({ at: at("2026-06-05T23:15:00Z"), periodKey: "2026-06-06" });
+    // Sat 00:10 BST (Fri 23:10 UTC): Saturday's 00:15 has not come yet, and last Saturday's is too old.
+    expect(dueOccurrence(days([6], "00:15", { updated_at: "2026-05-01T00:00:00Z" }), at("2026-06-05T23:10:00Z"))).toBeNull();
+  });
+
+  it("across the clock changes: 09:00 UK is 08:00 UTC in summer and 09:00 UTC in winter; a time that does not exist happens an hour later", () => {
+    expect(nextRun(days([5]), at("2026-10-20T12:00:00Z"))).toEqual(at("2026-10-23T08:00:00Z")); // Fri 23 Oct, BST
+    expect(nextRun(days([5]), at("2026-10-24T12:00:00Z"))).toEqual(at("2026-10-30T09:00:00Z")); // Fri 30 Oct, GMT
+    // Sun 29 Mar 2026: 01:30 does not exist in London (clocks go forward at 01:00 GMT), so it runs at 02:30 BST = 01:30 UTC.
+    expect(dueOccurrence(days([7], "01:30", { updated_at: "2026-03-01T00:00:00Z" }), at("2026-03-29T01:30:00Z"))).toEqual({ at: at("2026-03-29T01:30:00Z"), periodKey: "2026-03-29" });
+    // Sun 25 Oct 2026: 01:30 happens twice; the first (00:30 UTC, BST) is the one, and the day still has one key.
+    expect(dueOccurrence(days([7], "01:30"), at("2026-10-25T01:45:00Z"))).toEqual({ at: at("2026-10-25T00:30:00Z"), periodKey: "2026-10-25" });
+  });
+
+  it("switching it on (or saving it) after today's time waits for the next chosen day", () => {
+    expect(dueOccurrence(days([1, 3, 5], "09:00", { updated_at: "2026-10-28T12:00:00Z" }), at("2026-10-28T13:00:00Z"))).toBeNull();
+    expect(dueOccurrence(days([1, 3, 5], "09:00", { updated_at: "2026-10-28T12:00:00Z" }), at("2026-10-30T09:05:00Z"))?.periodKey).toBe("2026-10-30");
+    expect(dueOccurrence(days([1, 3, 5], "09:00", { enabled: false }), at("2026-10-30T09:05:00Z"))).toBeNull();
+  });
+
+  it("without weekdays a daily schedule is every day (invoice reminders and rows from before 142), and a weekly one is unchanged", () => {
+    expect(dueOccurrence(daily("08:00", { updated_at: "2026-10-01T00:00:00Z" }), at("2026-10-27T08:30:00Z"))?.periodKey).toBe("2026-10-27");
+    expect(dueOccurrence(daily("08:00", { weekdays: null, updated_at: "2026-10-01T00:00:00Z" }), at("2026-10-31T08:30:00Z"))?.periodKey).toBe("2026-10-31");
+    expect(dueOccurrence(weekly(5, "09:00", { updated_at: "2026-10-01T00:00:00Z" }), at("2026-10-30T10:00:00Z"))?.periodKey).toBe("2026-W44");
+    // weekdays is only read with frequency daily: a weekly or once row ignores it.
+    expect(dueOccurrence(weekly(5, "09:00", { weekdays: [1], updated_at: "2026-10-01T00:00:00Z" }), at("2026-10-30T10:00:00Z"))?.periodKey).toBe("2026-W44");
+    expect(dueOccurrence(once("2026-10-30T09:00:00Z", { weekdays: [1], updated_at: "2026-10-01T00:00:00Z" }), at("2026-10-30T10:00:00Z"))?.periodKey).toBe("2026-10-30T09:00:00.000Z");
+  });
+});

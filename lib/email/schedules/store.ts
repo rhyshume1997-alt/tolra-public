@@ -21,6 +21,11 @@ export type EmailScheduleRow = ScheduleTiming & {
 };
 
 const COLUMNS = "id, organization_id, kind, enabled, frequency, weekday, time_of_day, run_at, timezone, recipients, last_run_at, updated_at";
+/** 142's timesheet days. Read when the column is there; before 142 is applied the same read without it (every schedule as before). */
+const COLUMNS_142 = `${COLUMNS}, weekdays`;
+/** A column the database does not have yet: 42703 from Postgres, PGRST204 from PostgREST. */
+export const isMissingColumn = (error: { code?: string | null; message?: string | null } | null | undefined) =>
+  !!error && (error.code === "42703" || error.code === "PGRST204" || /column .* does not exist|could not find the .* column/i.test(error.message ?? ""));
 
 export class StoreError extends Error {
   constructor(readonly step: string, readonly code?: string | null) {
@@ -31,7 +36,9 @@ export class StoreError extends Error {
 
 /** Every enabled schedule of an active company. `notApplied` when migration 108 is not in the database. */
 export async function listEnabledSchedules(admin: SupabaseClient): Promise<{ rows: EmailScheduleRow[] } | { notApplied: true }> {
-  const { data, error } = await admin.from("email_schedules").select(`${COLUMNS}, organizations!inner(status)`).eq("enabled", true).eq("organizations.status", "active");
+  const read = (columns: string) => admin.from("email_schedules").select(`${columns}, organizations!inner(status)`).eq("enabled", true).eq("organizations.status", "active");
+  let { data, error } = await read(COLUMNS_142);
+  if (isMissingColumn(error)) ({ data, error } = await read(COLUMNS));
   if (isMissingTable(error)) return { notApplied: true };
   if (error) throw new StoreError("list schedules", error.code);
   return { rows: ((data ?? []) as unknown as EmailScheduleRow[]).map((row) => ({ ...row, recipients: row.recipients ?? null })) };

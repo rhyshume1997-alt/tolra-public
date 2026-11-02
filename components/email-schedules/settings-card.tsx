@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { weekdayName } from "@/lib/email/schedules/due";
+import { describeInstant, weekdayName } from "@/lib/email/schedules/due";
 import {
-  type ScheduleForm, DAILY_RUN_NOTE, EXACT_TIME_SENDING, FREQUENCY_LABEL, SCHEDULE_LABELS, SCHEDULE_NOT_AVAILABLE, defaultForm, formFromRow, nextRunLine, patchFromForm, scheduleErrorMessage,
+  type ScheduleForm, DAILY_RUN_NOTE, EXACT_TIME_SENDING, FREQUENCY_LABEL, ISO_DAYS, SCHEDULE_LABELS, SCHEDULE_NOT_AVAILABLE, TIMESHEET_DAYS_NOT_AVAILABLE, cleanDays, defaultForm, formFromRow, nextRunLine,
+  patchFromForm, scheduleErrorMessage,
 } from "@/lib/email/schedules/form";
+import { isMissingColumn } from "@/lib/email/schedules/store";
 import type { EmailScheduleFrequency, EmailScheduleKind } from "@/lib/email/schedules/due";
 import { supabase } from "@/lib/supabase";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
@@ -20,6 +22,8 @@ import { useUser } from "@/lib/use-user";
 const KINDS: EmailScheduleKind[] = ["invoice_reminder", "timesheet"];
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
 const COLUMNS = "kind, enabled, frequency, weekday, time_of_day, run_at, timezone, recipients";
+/** With 142 applied the timesheet's days come too; before it, the same read without them and the timesheet editor says 142 is needed. */
+const COLUMNS_142 = `${COLUMNS}, weekdays`;
 
 function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -78,14 +82,29 @@ function ScheduleEditor({ kind, initial, zone, canEdit, organizationId }: { kind
         <Switch checked={form.enabled} label={`${labels.title}: ${form.enabled ? "on" : "off"}`} disabled={!canEdit} onChange={(enabled) => set({ enabled })} />
       </div>
 
+      {kind === "timesheet" ? (
+        <fieldset>
+          <legend className="text-sm font-medium text-slate-700">Days</legend>
+          <div className="mt-1 flex flex-wrap gap-3">
+            {ISO_DAYS.map(({ day, short }) => (
+              <label key={day} className="inline-flex items-center gap-1.5 text-sm text-slate-700" htmlFor={id(`day-${day}`)}>
+                <input id={id(`day-${day}`)} type="checkbox" className="size-4" disabled={!canEdit} checked={form.weekdays.includes(day)}
+                  onChange={(e) => set({ weekdays: cleanDays(e.target.checked ? [...form.weekdays, day] : form.weekdays.filter((d) => d !== day)) })} />
+                {short}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-sm font-medium text-slate-700" htmlFor={id("frequency")}>
+        {kind === "timesheet" ? null : <label className="text-sm font-medium text-slate-700" htmlFor={id("frequency")}>
           How often
           <select id={id("frequency")} className="mt-1 h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink disabled:opacity-50" disabled={!canEdit} value={form.frequency} onChange={(e) => set({ frequency: e.target.value as EmailScheduleFrequency })}>
             {labels.frequencies.map((f) => <option key={f} value={f}>{FREQUENCY_LABEL[f]}</option>)}
           </select>
-        </label>
-        {form.frequency === "weekly" ? (
+        </label>}
+        {kind !== "timesheet" && form.frequency === "weekly" ? (
           <label className="text-sm font-medium text-slate-700" htmlFor={id("weekday")}>
             Day
             <select id={id("weekday")} className="mt-1 h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink disabled:opacity-50" disabled={!canEdit} value={form.weekday} onChange={(e) => set({ weekday: Number(e.target.value) })}>
@@ -93,7 +112,7 @@ function ScheduleEditor({ kind, initial, zone, canEdit, organizationId }: { kind
             </select>
           </label>
         ) : null}
-        {form.frequency === "once" ? (
+        {kind !== "timesheet" && form.frequency === "once" ? (
           <label className="text-sm font-medium text-slate-700" htmlFor={id("date")}>
             Date
             <Input id={id("date")} type="date" className="mt-1" disabled={!canEdit} value={form.onceDate} onChange={(e) => set({ onceDate: e.target.value })} />
@@ -104,6 +123,10 @@ function ScheduleEditor({ kind, initial, zone, canEdit, organizationId }: { kind
           <Input id={id("time")} type="time" className="mt-1" disabled={!canEdit} value={form.time} onChange={(e) => set({ time: e.target.value })} />
         </label>
       </div>
+
+      {kind === "timesheet" && form.legacyOnceAt ? (
+        <p className="text-xs text-slate-500">Set earlier to run once, on {describeInstant(new Date(form.legacyOnceAt), zone)}. Saving replaces that with the days above.</p>
+      ) : null}
 
       {kind === "timesheet" ? (
         <div>
@@ -123,13 +146,13 @@ function ScheduleEditor({ kind, initial, zone, canEdit, organizationId }: { kind
 }
 
 /**
- * Settings > Email schedules (migration 108): invoice reminders and timesheet e-mails, each On/Off with Daily, Weekly (a day) or Once (a
- * date and time), a time of day and, for timesheets, who gets them. Everyone in the company can read these; only an admin can change
+ * Settings > Email schedules (migration 108): invoice reminders, On/Off with Daily, Weekly (a day) or Once (a date and time) and a time of
+ * day; timesheet e-mails (142), On/Off with the days of the week (Mon to Sun, Friday offered first), a time of day and who gets them. Everyone in the company can read these; only an admin can change
  * them. Every schedule starts Off. Times are in UK time. While 108 is not applied the card says so and offers nothing to save.
  */
 export function EmailSchedulesCard() {
   const { activeRole } = useUser();
-  const [state, setState] = useState<{ phase: "loading" } | { phase: "unavailable" } | { phase: "error"; message: string } | { phase: "ready"; organizationId: string; forms: Record<EmailScheduleKind, ScheduleForm>; zone: string }>({ phase: "loading" });
+  const [state, setState] = useState<{ phase: "loading" } | { phase: "unavailable" } | { phase: "error"; message: string } | { phase: "ready"; organizationId: string; forms: Record<EmailScheduleKind, ScheduleForm>; zone: string; days142: boolean }>({ phase: "loading" });
 
   useEffect(() => {
     if (!supabase) return void setState({ phase: "unavailable" });
@@ -137,15 +160,21 @@ export function EmailSchedulesCard() {
     void (async () => {
       try {
         const organizationId = await getCurrentOrganizationId();
-        const { data, error } = await supabase!.from("email_schedules").select(COLUMNS).eq("organization_id", organizationId);
+        const read = (columns: string) => supabase!.from("email_schedules").select(columns).eq("organization_id", organizationId);
+        let { data, error } = await read(COLUMNS_142);
+        let days142 = true;
+        if (isMissingColumn(error)) {
+          days142 = false;
+          ({ data, error } = await read(COLUMNS));
+        }
         if (cancelled) return;
         if (error) {
           const message = scheduleErrorMessage(error);
           return void setState(message === SCHEDULE_NOT_AVAILABLE ? { phase: "unavailable" } : { phase: "error", message: "Couldn't load the e-mail schedules. Reload the page to try again." });
         }
-        const rows = (data ?? []) as Array<Parameters<typeof formFromRow>[1] & { kind: EmailScheduleKind }>;
+        const rows = (data ?? []) as unknown as Array<Parameters<typeof formFromRow>[1] & { kind: EmailScheduleKind }>;
         const forms = Object.fromEntries(KINDS.map((kind) => [kind, rows.find((r) => r.kind === kind) ? formFromRow(kind, rows.find((r) => r.kind === kind)!) : defaultForm(kind)])) as Record<EmailScheduleKind, ScheduleForm>;
-        setState({ phase: "ready", organizationId, forms, zone: rows[0]?.timezone || "Europe/London" });
+        setState({ phase: "ready", organizationId, forms, zone: rows[0]?.timezone || "Europe/London", days142 });
       } catch {
         if (!cancelled) setState({ phase: "error", message: "Couldn't load the e-mail schedules. Reload the page to try again." });
       }
@@ -163,7 +192,12 @@ export function EmailSchedulesCard() {
         {state.phase === "ready" ? (
           <>
             <p className="text-slate-500">Set when Tolra sends reminders and timesheets for you. All times are UK time. {EXACT_TIME_SENDING ? "" : DAILY_RUN_NOTE} Nothing is sent until you turn a schedule on{activeRole === "admin" ? "" : "; only an admin can change them"}.</p>
-            {KINDS.map((kind) => <ScheduleEditor key={kind} kind={kind} initial={state.forms[kind]} zone={state.zone} canEdit={activeRole === "admin"} organizationId={state.organizationId} />)}
+            {KINDS.map((kind) => kind === "timesheet" && !state.days142 ? (
+              <section key={kind} className="space-y-2 rounded-lg border p-4" aria-label={SCHEDULE_LABELS[kind].title} data-testid={`email-schedule-${kind}`}>
+                <p className="text-sm font-semibold text-slate-900">{SCHEDULE_LABELS[kind].title}</p>
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950" role="status">{TIMESHEET_DAYS_NOT_AVAILABLE}</div>
+              </section>
+            ) : <ScheduleEditor key={kind} kind={kind} initial={state.forms[kind]} zone={state.zone} canEdit={activeRole === "admin"} organizationId={state.organizationId} />)}
           </>
         ) : null}
       </CardContent>

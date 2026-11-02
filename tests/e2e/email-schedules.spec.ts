@@ -6,7 +6,8 @@
  *     schedules Off, with nothing saved yet (every schedule starts Off).
  *   - An admin turns Invoice reminders On, picks Every week + a weekday + a time and saves: the email_schedules row holds those values with
  *     enabled true, the preview says when it is chosen for and that it is sent at the next daily run, and a reload shows the same.
- *   - Once mode (Timesheet e-mails): a date + a time and a recipient are saved as run_at (UK time) and recipients, and the preview shows that moment.
+ *   - Timesheet e-mails (142): no "how often" choice, only the days (Mon to Sun), the time and the addresses; Off for a new company, with
+ *     Friday offered. Mon + Wed + Fri, a time and a recipient are saved as frequency daily with weekdays {1,3,5}, and a reload keeps them.
  *   - /api/cron/daily: 401 without the secret (or with a wrong one); with it, 200 and { emailSchedules, xeroSweep }; neither schedule is due yet,
  *     so nothing is sent (the mock provider records no mail), no run is recorded and both schedules stay enabled.
  *   - Another company's admin cannot read this company's schedule rows, nor change them; office can read its own company's but not write.
@@ -27,10 +28,10 @@ import { E2E_CRON_SECRET, E2E_MOCK_PORT } from "./paths";
 
 const w = world();
 
-const SCHEDULE_COLUMNS = "id, organization_id, kind, enabled, frequency, weekday, time_of_day, run_at, timezone, recipients, last_run_at";
+const SCHEDULE_COLUMNS = "id, organization_id, kind, enabled, frequency, weekday, weekdays, time_of_day, run_at, timezone, recipients, last_run_at";
 
 type ScheduleRow = {
-  id: string; organization_id: string; kind: string; enabled: boolean; frequency: string; weekday: number | null; time_of_day: string;
+  id: string; organization_id: string; kind: string; enabled: boolean; frequency: string; weekday: number | null; weekdays: number[] | null; time_of_day: string;
   run_at: string | null; timezone: string; recipients: string[] | null; last_run_at: string | null;
 };
 
@@ -43,19 +44,6 @@ async function rowsFor(orgId: string): Promise<ScheduleRow[]> {
 async function recordedMail(): Promise<RecordedEmail[]> {
   const response = await fetch(`http://127.0.0.1:${E2E_MOCK_PORT}/__emails`);
   return response.json();
-}
-
-/** Today's date in UK time plus `days`, as YYYY-MM-DD (the card's "once" date is a UK calendar date). */
-function ukDatePlus(days: number): string {
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const d = new Date(`${today}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-/** "Wed 4 Nov 2026": how the preview words a calendar date (day name, day, month, year; no comma). */
-function dayLabel(date: string): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric" }).format(new Date(`${date}T12:00:00Z`)).replace(",", "");
 }
 
 // ----- roles: Settings is an admin page ------------------------------------------------------------------------------------------
@@ -81,6 +69,7 @@ test.describe("Email schedules in their own company", () => {
   const timesheet = () => page.getByTestId("email-schedule-timesheet");
   // By id (components/email-schedules/settings-card.tsx): a select's label text includes its option names, so "Day" would also match "Time of day".
   const field = (kind: "invoice_reminder" | "timesheet", name: "frequency" | "weekday" | "date" | "time" | "recipients") => page.locator(`#email-schedule-${kind}-${name}`);
+  const day = (iso: number) => page.locator(`#email-schedule-timesheet-day-${iso}`);
 
   test.beforeAll(async ({ browser }) => {
     org = await createSoloTenant(w.runId, `sched-${randomUUID().slice(0, 6)}`);
@@ -108,6 +97,12 @@ test.describe("Email schedules in their own company", () => {
     await expect(page.getByTestId("email-schedule-timesheet-next")).toHaveText("Off: nothing will be sent.");
     // An admin can edit: the controls are enabled.
     await expect(invoice().getByRole("button", { name: "Save Invoice reminders" })).toBeEnabled();
+    // Timesheet e-mails: the days, the time and the addresses only (no "how often"); Friday is offered, nothing else.
+    await expect(field("timesheet", "frequency")).toHaveCount(0);
+    await expect(timesheet().getByRole("checkbox")).toHaveCount(7);
+    for (const iso of [1, 2, 3, 4, 6, 7]) await expect(day(iso)).not.toBeChecked();
+    await expect(day(5)).toBeChecked();
+    await expect(field("timesheet", "time")).toHaveValue("08:00");
     expect(await rowsFor(org.id)).toEqual([]);
   });
 
@@ -143,41 +138,35 @@ test.describe("Email schedules in their own company", () => {
     await expect(page.getByTestId("email-schedule-invoice_reminder-next")).toContainText("Chosen time: Wed");
   });
 
-  test("Once mode: Timesheet e-mails on a date and time, to one address, shows that moment", async () => {
-    const date = ukDatePlus(5);
+  test("Timesheet e-mails on Mon + Wed + Fri at a time, to one address: saved as those days, and a reload keeps them", async () => {
     const recipient = `payroll.${w.runId}@example.test`;
     await page.goto("/settings");
     await expect(timesheet()).toBeVisible();
     await timesheet().getByRole("switch", { name: "Timesheet e-mails: off" }).click();
-    await field("timesheet", "frequency").selectOption({ label: "Once, on a date" });
-    await field("timesheet", "date").fill(date);
+    await day(1).check();
+    await day(3).check();
+    await expect(day(5)).toBeChecked();
     await field("timesheet", "time").fill("14:45");
     await field("timesheet", "recipients").fill(recipient);
 
     const next = page.getByTestId("email-schedule-timesheet-next");
-    await expect(next).toContainText(`Chosen time: ${dayLabel(date)} at 14:45 (`);
+    await expect(next).toContainText(/^Chosen time: (Mon|Wed|Fri) \d{1,2} \w{3} \d{4} at 14:45 \((GMT|BST)\)\./);
     await timesheet().getByRole("button", { name: "Save Timesheet e-mails" }).click();
     await expect(page.getByText("Timesheet e-mails saved").first()).toBeVisible();
 
     await expect.poll(async () => (await rowsFor(org.id)).filter((r) => r.kind === "timesheet").length).toBe(1);
     const row = (await rowsFor(org.id)).find((r) => r.kind === "timesheet")!;
-    expect(row).toMatchObject({ enabled: true, frequency: "once", weekday: null, timezone: "Europe/London", recipients: [recipient], last_run_at: null });
+    expect(row).toMatchObject({ enabled: true, frequency: "daily", weekday: null, weekdays: [1, 3, 5], run_at: null, timezone: "Europe/London", recipients: [recipient], last_run_at: null });
     expect(row.time_of_day.slice(0, 5)).toBe("14:45");
-    // run_at is 14:45 UK time on that date: 13:45Z when the UK is on summer time (BST), 14:45Z in winter (GMT).
-    expect(row.run_at).not.toBeNull();
-    expect(["13:45", "14:45"]).toContain(new Date(row.run_at!).toISOString().slice(11, 16));
-    expect(new Date(row.run_at!).toISOString().slice(0, 10)).toBe(date);
 
-    await expect(next).toContainText(`Chosen time: ${dayLabel(date)} at 14:45 (`);
-    await expect(next).toContainText("Sent at the next daily run after it:");
-
-    // A reload shows the same moment, and Invoice reminders is still the weekly one from before.
+    // A reload shows the same days, time and address, and Invoice reminders is still the weekly one from before.
     await page.reload();
-    await expect(field("timesheet", "frequency")).toHaveValue("once");
-    await expect(field("timesheet", "date")).toHaveValue(date);
+    await expect(timesheet().getByRole("switch", { name: "Timesheet e-mails: on" })).toHaveAttribute("aria-checked", "true");
+    for (const iso of [1, 3, 5]) await expect(day(iso)).toBeChecked();
+    for (const iso of [2, 4, 6, 7]) await expect(day(iso)).not.toBeChecked();
     await expect(field("timesheet", "time")).toHaveValue("14:45");
     await expect(field("timesheet", "recipients")).toHaveValue(recipient);
-    await expect(page.getByTestId("email-schedule-timesheet-next")).toContainText(`Chosen time: ${dayLabel(date)} at 14:45 (`);
+    await expect(page.getByTestId("email-schedule-timesheet-next")).toContainText(/^Chosen time: (Mon|Wed|Fri) .* at 14:45 /);
     await expect(field("invoice_reminder", "frequency")).toHaveValue("weekly");
   });
 

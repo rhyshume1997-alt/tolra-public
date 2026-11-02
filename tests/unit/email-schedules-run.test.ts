@@ -89,6 +89,31 @@ describe("listing the schedules", () => {
     db.failing.email_schedules = { code: "42501", message: "denied" };
     await expect(listEnabledSchedules(db as never)).rejects.toThrow(/list schedules/);
   });
+  it("reads 142's weekdays; before 142 is applied (no such column) the same read without them, so every schedule still runs as before", async () => {
+    const asked: string[] = [];
+    const fake = (missing: boolean) => ({
+      from: () => ({
+        select: (columns: string) => {
+          asked.push(columns);
+          const result = missing && columns.includes("weekdays")
+            ? { data: null, error: { code: "42703", message: "column email_schedules.weekdays does not exist" } }
+            : { data: [{ id: "1", kind: "timesheet", frequency: "daily", ...(columns.includes("weekdays") ? { weekdays: [1, 3, 5] } : {}) }], error: null };
+          const chain = { eq: () => chain, then: (ok: (v: typeof result) => unknown) => Promise.resolve(result).then(ok) };
+          return chain;
+        },
+      }),
+    });
+    const after = await listEnabledSchedules(fake(false) as never);
+    expect("rows" in after && after.rows[0].weekdays).toEqual([1, 3, 5]);
+    expect(asked).toHaveLength(1);
+    asked.length = 0;
+    const before = await listEnabledSchedules(fake(true) as never);
+    expect("rows" in before && before.rows[0]).toMatchObject({ id: "1", frequency: "daily" });
+    expect("rows" in before && before.rows[0].weekdays).toBeUndefined();
+    expect(asked).toHaveLength(2);
+    expect(asked[0]).toContain("weekdays");
+    expect(asked[1]).not.toContain("weekdays");
+  });
 });
 
 describe("running what is due", () => {

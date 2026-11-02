@@ -2,7 +2,8 @@
 // so the Settings card shows "Next run: ..." from the very same functions the cron route uses to decide.
 //
 // A schedule is "daily at a time", "weekly on a weekday at a time" or "once at a moment" in a time zone (Europe/London unless the row says
-// otherwise). Rules the cron relies on:
+// otherwise). A daily schedule with `weekdays` (migration 142, timesheet e-mails) runs only on those days of the week (ISO: 1 = Monday ...
+// 7 = Sunday, of the local date), still once per local date. Rules the cron relies on:
 //   - The occurrence is the most recent scheduled moment at or before `now`. It is DUE when it is within CATCH_UP_MS and not before the
 //     schedule was last changed (`updated_at`): switching a daily 8am schedule on at 2pm waits for tomorrow instead of sending at once.
 //   - The cron may run only once a day (Vercel Hobby: DAILY_PASS_UTC_HOUR). An occurrence whose time has passed since the last pass is
@@ -31,6 +32,8 @@ export type ScheduleTiming = {
   time_of_day: string;
   run_at: string | null;
   timezone: string | null;
+  /** Migration 142 (timesheet e-mails): with frequency "daily", the ISO days of the week it runs (1 = Monday ... 7 = Sunday). Absent or null: every day. */
+  weekdays?: number[] | null;
   /** When the schedule was last changed by a person (not by the cron noting a run). Absent: no lower bound. */
   updated_at?: string | null;
 };
@@ -93,6 +96,11 @@ export function weekdayOfDate(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay();
 }
 
+/** ISO day of the week of a calendar date: 1 = Monday ... 7 = Sunday. */
+export function isoWeekdayOfDate(date: string): number {
+  return weekdayOfDate(date) || 7;
+}
+
 /** The Monday of the week that holds `date`. */
 export function mondayOf(date: string): string {
   return addDaysToDate(date, -((weekdayOfDate(date) + 6) % 7));
@@ -148,9 +156,15 @@ function keyFor(s: ScheduleTiming, at: Date, date: string): string {
 /** The scheduled moment on a local date, or null when the schedule has none that day. */
 function onDate(s: ScheduleTiming, date: string, zone: string): Occurrence | null {
   if (s.frequency === "weekly" && weekdayOfDate(date) !== s.weekday) return null;
+  if (onDays(s) && !(s.weekdays as number[]).includes(isoWeekdayOfDate(date))) return null;
   const [h, mi] = timeOf(s);
   const at = localInstant(date, h, mi, zone);
   return { at, periodKey: keyFor(s, at, date) };
+}
+
+/** A daily schedule limited to days of the week (142). */
+function onDays(s: ScheduleTiming): boolean {
+  return s.frequency === "daily" && Array.isArray(s.weekdays);
 }
 
 function validWeekday(s: ScheduleTiming): boolean {
@@ -171,7 +185,7 @@ export function latestOccurrence(s: ScheduleTiming, now: Date): Occurrence | nul
   }
   const zone = safeZone(s.timezone);
   const today = localDate(now, zone);
-  for (let back = 0; back <= (s.frequency === "weekly" ? 7 : 1); back += 1) {
+  for (let back = 0; back <= (s.frequency === "weekly" || onDays(s) ? 7 : 1); back += 1) {
     const occ = onDate(s, addDaysToDate(today, -back), zone);
     if (occ && occ.at.getTime() <= now.getTime()) return occ;
   }
