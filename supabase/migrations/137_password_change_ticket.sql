@@ -41,6 +41,8 @@
 -- INSERTS ARE NOT ASKED: creating a login with a password (Admin > Users "Add", auth.admin.createUser) and every invite stay as they are.
 -- SIGN-IN: this GoTrue writes encrypted_password at sign-in only when Auth's column encryption is on (token.go, shouldReEncrypt). The
 -- guard (section 1) stops the file when any stored password is already in that encrypted form ('{...}'), so a sign-in is never refused.
+-- IF GoTrue's DB (column) encryption is ever switched on, every sign-in would try to rewrite the stored hash and be refused by this
+-- trigger: roll 137 back FIRST (supabase/release/137_password_change_ticket.rollback.sql), then switch encryption on.
 -- GUARD (section 1): auth.users has the columns this reads, the schema security_audit exists, this role may create a trigger on
 -- auth.users (as 007 and 012 did), no stored password is in the encrypted form, and any existing ticket table has this file's shape.
 -- SELF-CHECK (section 6). Safe to run again (CREATE TABLE IF NOT EXISTS, CREATE OR REPLACE, DROP TRIGGER IF EXISTS).

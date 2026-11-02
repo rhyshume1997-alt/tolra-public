@@ -388,6 +388,72 @@ describe("verify, preflight, rollback and release", () => {
       });
     }
   });
+  describe("marker 137 reads exactly 137's objects: any change makes it 'not applied' (stop)", () => {
+    const MD5 = { trigger: "5fa1d17f4950cdf4e41c8a6fea67b2c5", issue: "a2936196b138dd7dee76db6be3b8ed82", revoke: "42f77209ec079fa354f54ef78784a4b4" };
+    const SIG = { trigger: "public.auth_users_password_change_ticket()", issue: "public.issue_password_change_ticket(uuid,text)", revoke: "public.revoke_password_change_ticket(uuid)" };
+    /** Replaces a function with its own text plus a harmless comment after its first BEGIN: same behaviour, an unknown body. */
+    const alter = (db: Client, sig: string) =>
+      db.query(`do $d$ begin execute regexp_replace(pg_get_functiondef(to_regprocedure('${sig}')), E'\\nBEGIN\\n', E'\\nBEGIN\\n  -- an unknown version\\n'); end $d$`);
+    const changes: Array<[string, (db: Client) => Promise<unknown>]> = [
+      ["trigger function body changed", (db) => alter(db, SIG.trigger)],
+      ["issue function body changed", (db) => alter(db, SIG.issue)],
+      ["revoke function body changed", (db) => alter(db, SIG.revoke)],
+      ["issue function missing", (db) => db.query(`drop function ${SIG.issue}`)],
+      ["revoke function missing", (db) => db.query(`drop function ${SIG.revoke}`)],
+      ["trigger missing", (db) => db.query("drop trigger password_change_ticket on auth.users")],
+      ["trigger disabled", (db) => db.query("alter table auth.users disable trigger password_change_ticket")],
+      ["trigger calls another function", (db) => db.query(`drop trigger password_change_ticket on auth.users;
+         create trigger password_change_ticket before update on auth.users for each row execute function public.organization_members_recent_second_step()`)],
+      ["trigger fires AFTER, not BEFORE", (db) => db.query(`drop trigger password_change_ticket on auth.users;
+         create trigger password_change_ticket after update on auth.users for each row execute function ${SIG.trigger}`)],
+    ];
+    /** Marker 137 as a preflight text reads it (the real file, or a loosened copy), inside the caller's rolled-back transaction. */
+    const marker = async (db: Client, text: string) =>
+      (await db.query<{ check: string; value: string }>(text)).rows.find((r) => r.check.startsWith("marker 137 "))?.value;
+    /** Every change, each in its own rolled-back transaction: what marker 137 reads after it. */
+    const afterEach = async (text: string) => {
+      const seen: Record<string, string | undefined> = {};
+      for (const [name, change] of changes) {
+        seen[name] = await rolledBack(async (db) => {
+          expect(await marker(db, text), `${name}: before the change`).toBe("applied");
+          await change(db);
+          return marker(db, text);
+        });
+      }
+      return seen;
+    };
+    const REAL = read("supabase/verify/release_preflight.sql");
+
+    it("marker 137 names the three exact bodies and the trigger's function and timing", () => {
+      const start = REAL.indexOf("('137 password change ticket'");
+      const line = REAL.slice(start, REAL.indexOf("\n),", start));
+      for (const m of Object.values(MD5)) expect(line).toContain(`= '${m}'`);
+      expect(line).toContain("t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19");
+      expect(line).toContain("t.tgenabled = 'O'");
+    });
+    it("with 137 applied: 'applied'; after each change: 'not applied'", async () => {
+      const seen = await afterEach(REAL);
+      expect(seen).toEqual(Object.fromEntries(changes.map(([name]) => [name, "not applied"])));
+    });
+    it("each loosened marker (an existence check in place of a body, a looser trigger check) fails the test above", async () => {
+      const loosen = (from: string, to: string) => {
+        expect(REAL.split(from).length - 1, from).toBe(1);
+        return REAL.replace(from, to);
+      };
+      const mutants: Array<[string, string]> = [
+        ["trigger body: existence only", loosen(`AND md5(regexp_replace(p.prosrc, '\\s', '', 'g')) = '${MD5.trigger}')`, ")")],
+        ["issue body: existence only", loosen(`AND md5(regexp_replace(p.prosrc, '\\s', '', 'g')) = '${MD5.issue}')`, ")")],
+        ["revoke body: existence only", loosen(`AND md5(regexp_replace(p.prosrc, '\\s', '', 'g')) = '${MD5.revoke}')`, ")")],
+        ["revoke not checked", loosen(`AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('${SIG.revoke}') AND md5(regexp_replace(p.prosrc, '\\s', '', 'g')) = '${MD5.revoke}')`, "")],
+        ["trigger enabled not checked", loosen("AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'\n", "AND t.tgname = 'password_change_ticket'\n")],
+        ["trigger function and timing not checked", loosen("AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19))", "))")],
+      ];
+      for (const [name, text] of mutants) {
+        const seen = await afterEach(text);
+        expect(Object.values(seen).some((v) => v === "applied"), `${name} is caught`).toBe(true);
+      }
+    });
+  });
   it("the guard stops the release when a stored password is in Auth's encrypted form (sign-in would rewrite it)", async () => {
     await rolledBack(async (db) => {
       await db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")));

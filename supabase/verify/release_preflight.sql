@@ -190,8 +190,10 @@ markers(migration, present) AS (
     ('136 recent second step',            EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.organization_members_recent_second_step()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2af8bea37c6c34ccaffb8188a199054c')
                                           AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'public.organization_members'::regclass AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O')),
     ('137 password change ticket',        EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.auth_users_password_change_ticket()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5fa1d17f4950cdf4e41c8a6fea67b2c5')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O')
-                                          AND to_regprocedure('public.issue_password_change_ticket(uuid,text)') IS NOT NULL)
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.issue_password_change_ticket(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a2936196b138dd7dee76db6be3b8ed82')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.revoke_password_change_ticket(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '42f77209ec079fa354f54ef78784a4b4')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
+                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
