@@ -27,7 +27,11 @@ async function seed() {
   // The same customer name in the other company: it must never show up.
   const { error: otherError } = await admin.from("quotes").insert({ organization_id: w.tenants.beta.id, quote_ref: `QUO-O${id}`, customer, total_value: 1, status: "draft", vat_enabled: false });
   expect(otherError).toBeNull();
-  return { customer, quoteRef, invoiceRef, quoteId: quote!.id as string };
+  // A word that appears only in one quote line description (random, so no other row or run matches it).
+  const lineWord = `Flangewidget${id}`;
+  const { error: lineError } = await admin.from("quote_line_items").insert({ organization_id: w.tenants.alpha.id, quote_id: quote!.id, position: 0, description: `Bespoke ${lineWord} bracket`, quantity: 1, unit_price: 100, vat_pct: 0, vat_exempt: false });
+  expect(lineError).toBeNull();
+  return { customer, quoteRef, invoiceRef, quoteId: quote!.id as string, lineWord };
 }
 
 const searchBox = (page: Page) => page.getByTestId("global-search-input");
@@ -59,6 +63,17 @@ test("search an invoice by its number and open it; / focuses the box", async ({ 
   await group.getByTestId("global-search-result").first().click();
   await expect(page).toHaveURL(/\/invoices/);
   await expect(page.getByRole("dialog", { name: /invoice details/ })).toContainText(invoiceRef);
+});
+
+test("search a word that appears only in a quote line description and find that quote", async ({ page }) => {
+  const { lineWord, quoteRef, quoteId } = await seed();
+  await signIn(page, w.tenants.alpha.users.office);
+  await searchBox(page).fill(lineWord);
+  const group = page.getByTestId("global-search-group-lines");
+  await expect(group).toContainText(quoteRef);
+  await group.getByTestId("global-search-result").first().click();
+  await expect(page).toHaveURL(new RegExp(`/quotes.*${quoteId}`));
+  await expect(page.getByRole("dialog", { name: new RegExp(`${quoteRef} quote details`) })).toBeVisible();
 });
 
 test("workshop: searching a quote's customer finds no quote or invoice", async ({ page }) => {

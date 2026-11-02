@@ -13,7 +13,7 @@ import { companyFinanceCheckEnabled, financeCheckAllowed, readCompanyFinanceChec
 import { aiNavAvailable, canOpenDestination } from "@/lib/destinations";
 import { type AiFeatureStates, applyMaster, availableFeatures, masterLabel, masterState, settingsBody } from "@/lib/ai-helper/master-switch";
 
-const states = (roundup: boolean, rfq: boolean, financeCheck: boolean | null): AiFeatureStates => ({ roundup, rfq, financeCheck });
+const states = (roundup: boolean, rfq: boolean, financeCheck: boolean | null, assistant: boolean | null = null): AiFeatureStates => ({ roundup, rfq, financeCheck, assistant });
 
 describe("master switch mapping", () => {
   it("all three on -> on; none on -> off; anything between -> partial, labelled \"Some features on\"", () => {

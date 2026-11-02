@@ -29,8 +29,13 @@ export type AiCompletion = { json: unknown; usage: AiUsage; model: string };
  */
 export type AiFailure = "unavailable" | "refused" | "invalid";
 
+/**
+ * rejectedBeforeWork: the provider CERTAINLY refused the request before doing any work (it answered 400, 401, 403, 404, 413 or 429), so
+ * nothing was billed and the reservation may be given back (E9 Q4). Anything else that fails without usage (a timeout, a 5xx, a dropped
+ * connection, an unknown error) may have been worked on and billed: it is settled at the full reservation.
+ */
 export class AiProviderError extends Error {
-  constructor(readonly kind: AiFailure, readonly usage: AiUsage = { inputTokens: 0, outputTokens: 0 }, readonly detail?: "auth" | "rate") {
+  constructor(readonly kind: AiFailure, readonly usage: AiUsage = { inputTokens: 0, outputTokens: 0 }, readonly detail?: "auth" | "rate", readonly rejectedBeforeWork = false) {
     super(`AI provider: ${kind}${detail ? ` (${detail})` : ""}`);
     this.name = "AiProviderError";
   }

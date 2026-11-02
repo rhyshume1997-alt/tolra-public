@@ -13,7 +13,7 @@ export const PRODUCT = {
   primary: "#1E3472",
   accent: "#2E52B8",
   /** Installed-app background and theme colour (matches the app icon). */
-  appTheme: "#0b1626",
+  appTheme: "#0b2a5b",
 } as const;
 
 /** "JNR Engineering Ltd · Tolra": a company's name first, the product as a small credit. */
