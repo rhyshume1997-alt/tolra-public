@@ -21,3 +21,9 @@ Treat these as occupied, not AVAILABLE: #107/#117 payment-claim detection and ad
 - The public repository omits the original operating protocol/master plan by design (`CLAUDE.md`). Private `Tolra Progress.md` and the handover branch describe an older queue; a complete current mapping of A/B/C/D/E/G/L jobs to availability was not found. Unverified codes cannot safely be claimed.
 - No original builder has recorded a handoff of the occupied work above. Confirm ownership before changing those branches or integrating their code.
 - Go-live approvals, production changes, merges and deployments remain outside this build's authority.
+
+Rhys authorised Codex follow-up fixes on separate branches in this session. Original branches remain untouched.
+
+| Job code | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| — (bank reconciliation #109; original code unavailable) | Codex | codex/bank-csv-quotes; atomic claim claims/pr109-csv-quotes | CLAIMED | — |
