@@ -57,3 +57,11 @@ These are observed runs on the named commits, not an assertion that each PR's la
 The red ci-gate with passing web jobs is explained by the workflow's deliberate decision to skip integration without Ready. Don't remove this gate, misreport it as green, or apply Ready contrary to release instructions. The #123 syntax error was a real code failure and has been fixed on its branch but not yet confirmed by a new run.
 
 Further review work: #125 is the JNR-only wipe guide. Issues #126, #127, #128 and #129 capture branch reviews for chase, timesheets, SliQ importer and costing store. These issues are acceptance checks except where they cite inspected source. No migration or deployment performed.
+
+## CI evidence checked 2 November, subsequent review
+
+PR #110 commit 2cd4a39 CI run 41538339751: web SUCCESS, 368 of 368 Vitest files and 5001 of 5001 tests passed, including 62 tests from costing-golden.test.ts (60 generated Python scenarios and two fixture tests). The overall gate failed solely because the integration job was skipped while Ready was absent. Ready was subsequently added to #110, initiating run 41539927421, which was still running at last inspection. Check the finished result before merging. This is proof of TypeScript results matching Python reference fixtures, not a new run of Python itself.
+
+PR #123 run 41539369901: web FAILED with a TypeScript parsing error in components/costing/connected-costing.tsx line 30. A later read of the current branch showed the malformed quoted string had already been corrected by another update, so avoid overwriting it. Rerun validation on the current branch head and inspect any new errors. Don't add Ready to #123 until web checks pass. Note PR #123 contains the corrected Python-compatible rounding implementation synced from #110 (commit 446bc44).
+
+Release rule: green web checks on the exact commit are necessary but not sufficient. Complete the integration job, verify auth/RLS/company switching and payment idempotency, and confirm green ci-gate. No release sign-off has been made by this document.
