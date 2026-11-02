@@ -65,6 +65,8 @@ const visit = async (path: string, headers: Record<string, string> = {}) => {
 const SKIPPED = [
   "/_next/static/chunks/main.js", "/logo.png", "/icons/apple-touch-icon.png", "/fonts/inter.woff2", "/styles.css", "/robots.txt", "/sw.js",
   "/manifest.webmanifest", "/offline.html",
+  // Public site files: crawler files, the icons and the home page's images (the home page "/" itself is not skipped: see below).
+  "/sitemap.xml", "/favicon.ico", "/brand/tolra-og.png", "/marketing/mock-quote.svg", "/marketing/tolra-og.png", "/icons/apple-touch-icon.png", "/icons/icon-maskable-512.png",
 ];
 const API = ["/api/pwa-icon", "/api/favicon", "/api/auth/signin", "/api/health", "/api/jobs/x", "/api/audit"];
 
@@ -107,6 +109,27 @@ describe("/api paths run getUser only (refreshing the session cookies), then pas
       expect(server.clients).toBe(2);
     });
   }
+});
+
+describe('the public home page "/"', () => {
+  it("signed out: it opens (no redirect to /login), after getUser only", async () => {
+    server.user = null;
+    const { location, response } = await visit("/");
+    expect(location).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(server.calls).toEqual(["getUser"]);
+  });
+
+  it("signed in: it still goes to /dashboard", async () => {
+    server.user = { id: "u-1" };
+    expect((await visit("/")).location).toBe("/dashboard");
+  });
+
+  it("only the exact path is public: other pages and look-alikes still go to /login", async () => {
+    for (const path of ["/dashboard", "/jobs", "/robots", "/sitemap", "/brand", "/marketing", "/icons"]) {
+      expect((await visit(path)).location, path).toBe("/login");
+    }
+  });
 });
 
 describe("pages still require a signed-in, active person with the right role (gates unchanged)", () => {

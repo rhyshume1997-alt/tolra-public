@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 // Web app manifest: the installed app is always Tolra (name, icon, theme), whichever company the person belongs to.
 // Company names and logos show inside the app and on documents, not on the home screen.
 export function GET() {
-  const icon = (size: number, purpose: "any" | "maskable") => ({ src: `/api/pwa-icon?size=${size}`, sizes: `${size}x${size}`, type: "image/png", purpose });
+  // Static files made from the Tolra icon (scripts/make-brand-icons.mjs); the maskable one has the mark inside the safe area.
+  const icon = (src: string, size: number, purpose: "any" | "maskable") => ({ src, sizes: `${size}x${size}`, type: "image/png", purpose });
 
   const manifest = {
     id: "/",
@@ -21,8 +22,7 @@ export function GET() {
     background_color: PRODUCT.appTheme,
     theme_color: PRODUCT.appTheme,
     categories: ["business", "productivity"],
-    // The art is full-bleed with its mark inside the safe zone, so the same image serves as the maskable icon.
-    icons: [icon(192, "any"), icon(512, "any"), icon(192, "maskable"), icon(512, "maskable")],
+    icons: [icon("/icons/icon-192.png", 192, "any"), icon("/icons/icon-512.png", 512, "any"), icon("/icons/icon-maskable-512.png", 512, "maskable")],
   };
 
   return NextResponse.json(manifest, {

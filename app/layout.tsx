@@ -19,10 +19,14 @@ export const metadata: Metadata = {
   applicationName: PRODUCT.name,
   // iPhone / iPad "Add to Home Screen": opens full screen with the company's icon.
   appleWebApp: { capable: true, title: PRODUCT.shortName, statusBarStyle: "default" },
-  // The Tolra app icon (lib/server/app-icon.tsx), the same for every company.
+  // The Tolra icon files in public/icons (made from public/brand), the same for every company.
   icons: {
-    icon: [{ url: "/api/pwa-icon?size=32", sizes: "32x32", type: "image/png" }, { url: "/api/pwa-icon?size=192", sizes: "192x192", type: "image/png" }],
-    apple: [{ url: "/api/pwa-icon?size=180", sizes: "180x180", type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   formatDetection: { telephone: false },
 };
