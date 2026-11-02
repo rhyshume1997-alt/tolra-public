@@ -407,10 +407,12 @@ describe("102 release files on the local stack", () => {
   it("production's shape (095 + 100, no 099 or 101): 102 applies on its own and 103 refuses with nothing kept (all rolled back)", async () => {
     // 102 names no 099 object (tests/unit/migration-102-independent.test.ts checks the text); here 101 (with 103 and 106 on top) is taken
     // away. 106 adds ai_helper_set_finance_check, which 101's rollback refuses to leave behind, and production's shape has no 106 either.
-    // 133 (AI-PRE) replaces 103's reserve and settle bodies, and 103's rollback accepts only 103's: 133 is taken away first.
+    // 133 (AI-PRE) replaces 103's reserve and settle bodies, and 103's rollback accepts only 103's: 133 is taken away first. 134 (G3)
+    // needs 133 and adds two ai_helper functions, which 101's rollback refuses to leave behind: 134 is taken away before 133.
     await withDb(async (db) => {
       await db.query("begin");
       try {
+        await db.query(unwrapped(read("supabase/release/134_ai_assistant.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/133_ai_helper_pre_enable.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/106_email_templates.rollback.sql")));
         await db.query(unwrapped(read("supabase/release/103_ai_helper_service_role.rollback.sql")));
