@@ -127,7 +127,7 @@ describe("the test's own clock", () => {
   });
 });
 
-/** 125: the poll also reports PO matching. These test messages carry no PO number, so matching is skipped (lib/po-capture-load.ts:84). */
+/** 125: the poll also reports PO matching. These test messages carry no PO number, so matching is skipped (lib/po-capture-load.ts:96). */
 const NO_PO = { status: "skipped", customerPo: null, checked: 0, suggested: 0, failed: 0 };
 
 describe("polling", () => {

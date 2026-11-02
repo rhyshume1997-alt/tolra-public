@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Trash2, Wifi } from "lucide-react";
+import { Pencil, Trash2, Wifi } from "lucide-react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
@@ -11,19 +11,20 @@ import { Input } from "@/components/ui/input";
 import { friendlyError } from "@/lib/friendly-error";
 import { newClientOpId } from "@/lib/machine-runs";
 import {
-  type RequestNetwork, type SavedNetwork, type SiteNetworkMode, NETWORK_PROBLEM_TEXT, addSiteNetwork, formatNetwork, loadSiteNetworks,
-  SITE_NETWORK_IP_RETENTION_DAYS, myRequestNetwork, parseNetwork, purgeSiteNetworkIps, removeSiteNetwork, setSiteNetworkCheck,
+  type RequestNetwork, type SavedNetwork, type SiteNetworkMode, addSiteNetwork, loadSiteNetworks, renameSiteNetwork,
+  SITE_NETWORK_IP_RETENTION_DAYS, SITE_NETWORK_LABEL_MAX, myRequestNetwork, purgeSiteNetworkIps, removeSiteNetwork, setSiteNetworkCheck,
 } from "@/lib/site-network";
 import { supabase } from "@/lib/supabase";
 import { useDatabaseHas075 } from "@/lib/use-database-has-075";
 
 /**
- * Settings > Network (075, B40 phase 1): the site's public network(s) and the clock-in check (Off, or Flag: on-site-only people's clock
+ * Settings > Workshop network (075, B40 phase 1): the site's public network(s) and the clock-in check (Off, or Flag: on-site-only people's clock
  * actions from another network are flagged for the office, never refused). Admin only (the Settings page is). Hidden until the database
- * has 075. "Use the network I'm on now" saves the address this browser reaches the server from (the call goes straight from the
+ * has 075. "Use this network" saves the address this browser reaches the server from (the call goes straight from the
  * browser to the database, so it is this device's network). With 078 the card says how long a checked clock action's address is kept
  * and lets the admin delete the expired addresses now (the default) or, after a confirmation naming what goes, all of them. Admin only
- * (the Settings page is; the database refuses anyone else). A network is only ever saved by one of the two buttons below (never automatically).
+ * (the Settings page is; the database refuses anyone else). A network is only ever saved by the button below (never automatically).
+ * With 128 each saved network has Rename (admin, two-step, keyed; 1 to 60 characters; the address never changes).
  */
 export function SiteNetworkCard() {
   const has075 = useDatabaseHas075() === true;
@@ -31,8 +32,9 @@ export function SiteNetworkCard() {
   const [networks, setNetworks] = useState<SavedNetwork[]>([]);
   const [here, setHere] = useState<RequestNetwork | null>(null);
   const [ipRetention, setIpRetention] = useState(false);
+  const [canRename, setCanRename] = useState(false);
+  const [renaming, setRenaming] = useState<{ id: string; label: string; key: string } | null>(null);
   const [label, setLabel] = useState("");
-  const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmPurgeAll, setConfirmPurgeAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +46,7 @@ export function SiteNetworkCard() {
       setMode(state.mode);
       setNetworks(state.networks);
       setIpRetention(state.ipRetention);
+      setCanRename(state.canRename);
       setHere(await myRequestNetwork(supabase).catch(() => null));
       setError(null);
     } catch (err) {
@@ -68,10 +71,9 @@ export function SiteNetworkCard() {
   }
 
   if (!has075) return null;
-  const typedCheck = typed.trim() ? parseNetwork(typed) : null;
   return (
-    <Card data-testid="site-network-card">
-      <CardHeader><CardTitle className="flex items-center gap-2"><Wifi className="size-5 text-brand-accent" /> Site network (clock-in check)</CardTitle></CardHeader>
+    <Card id="workshop-network" data-testid="site-network-card">
+      <CardHeader><CardTitle className="flex items-center gap-2"><Wifi className="size-5 text-brand-accent" /> Workshop network</CardTitle></CardHeader>
       <CardContent className="space-y-4 text-sm">
         <p className="text-slate-600 dark:text-slate-300">
           A phone can&apos;t tell Tolra which Wi-Fi it is on. Tolra sees the public internet address a clock in comes from: every device on the
@@ -79,7 +81,7 @@ export function SiteNetworkCard() {
           <strong>On site only</strong> (Admin &gt; Users) that come from another network are flagged for the office. <strong>The Flag check never
           refuses; the network lock below does.</strong> Clock actions saved offline and synced later show &ldquo;synced later, network unknown&rdquo;. Off: nothing is checked
           or recorded. If the broadband provider changes the address, every check shows &ldquo;not on the site network&rdquo; until you save the
-          new one here; ask the provider for a fixed (static) address.
+          new one: stand on the workshop Wi-Fi and click Use this network.
         </p>
         {ipRetention ? (
           <p className="text-slate-600 dark:text-slate-300" data-testid="site-network-retention">
@@ -99,12 +101,36 @@ export function SiteNetworkCard() {
           {networks.length ? (
             <ul className="space-y-1">
               {networks.map((n) => (
-                <li key={n.id} className="flex items-center justify-between gap-2 rounded-none border p-2" data-testid="site-network-row">
-                  <span><span className="font-medium">{n.label}</span> <span className="font-mono text-slate-600">{n.network}</span></span>
-                  <Button size="sm" variant="outline" disabled={busy} aria-label={`Remove ${n.label}`}
-                    onClick={() => supabase && void run(() => removeSiteNetwork(supabase!, newClientOpId(), n.id), `${n.label} removed.`, "Couldn't remove it.")}>
-                    <Trash2 className="size-4" />
-                  </Button>
+                <li key={n.id} className="flex flex-wrap items-center justify-between gap-2 rounded-none border p-2" data-testid="site-network-row">
+                  {renaming?.id === n.id ? (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Input className="max-w-48" value={renaming.label} maxLength={SITE_NETWORK_LABEL_MAX} aria-label={`New name for ${n.label}`} data-testid="site-network-rename-input"
+                        onChange={(e) => setRenaming({ ...renaming, label: e.target.value, key: newClientOpId() })} />
+                      <span className="font-mono text-slate-600">{n.network}</span>
+                    </span>
+                  ) : (
+                    <span><span className="font-medium">{n.label}</span> <span className="font-mono text-slate-600">{n.network}</span></span>
+                  )}
+                  <span className="flex gap-2">
+                    {renaming?.id === n.id ? (
+                      <>
+                        <Button size="sm" disabled={busy || !renaming.label.trim() || renaming.label.trim().length > SITE_NETWORK_LABEL_MAX} data-testid="site-network-rename-save"
+                          onClick={() => supabase && void run(() => renameSiteNetwork(supabase!, renaming.key, n.id, renaming.label), "Network renamed.", "Couldn't rename it.").then((ok) => ok && setRenaming(null))}>
+                          Save name
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={busy} onClick={() => setRenaming(null)}>Cancel</Button>
+                      </>
+                    ) : canRename ? (
+                      <Button size="sm" variant="outline" disabled={busy} aria-label={`Rename ${n.label}`} data-testid="site-network-rename"
+                        onClick={() => setRenaming({ id: n.id, label: n.label, key: newClientOpId() })}>
+                        <Pencil className="size-4" />
+                      </Button>
+                    ) : null}
+                    <Button size="sm" variant="outline" disabled={busy} aria-label={`Remove ${n.label}`}
+                      onClick={() => supabase && void run(() => removeSiteNetwork(supabase!, newClientOpId(), n.id), `${n.label} removed.`, "Couldn't remove it.")}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -114,16 +140,8 @@ export function SiteNetworkCard() {
           <Input className="max-w-48" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} placeholder="Name, e.g. Workshop" aria-label="Network name" />
           <Button disabled={busy || !here?.ip || here.private === true} data-testid="use-this-network"
             onClick={() => supabase && void run(() => addSiteNetwork(supabase!, newClientOpId(), null, label.trim() || null), "This network is saved.", "Couldn't save this network.").then((ok) => ok && setLabel(""))}>
-            Use the network I&apos;m on now
+            Use this network
           </Button>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <Input className="max-w-64 font-mono" value={typed} onChange={(e) => setTyped(e.target.value)} maxLength={64} placeholder="or type 203.0.113.7 or 203.0.113.0/28" aria-label="Network address" />
-          <Button variant="outline" disabled={busy || !typedCheck?.ok}
-            onClick={() => supabase && typedCheck?.ok && void run(() => addSiteNetwork(supabase!, newClientOpId(), formatNetwork(typedCheck.network), label.trim() || null), "Network saved.", "Couldn't save that network.").then((ok) => { if (ok) { setTyped(""); setLabel(""); } })}>
-            Add
-          </Button>
-          {typedCheck && !typedCheck.ok ? <span className="text-amber-800">{NETWORK_PROBLEM_TEXT[typedCheck.problem]}</span> : null}
         </div>
         <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
           <span>

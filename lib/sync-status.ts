@@ -49,7 +49,7 @@ export function syncIndicator(input: SyncInput): SyncIndicator {
 }
 
 type Op = { kind: string; jobNo?: string };
-const KIND_LABEL: Record<string, string> = { worksheet: "Worksheet", start: "Start", run_start: "Start", pause: "Pause", run_pause: "Pause", finish: "Finish", photo: "Photo", signoff: "Signature" };
+const KIND_LABEL: Record<string, string> = { worksheet: "Worksheet", start: "Start", run_start: "Start", pause: "Pause", run_pause: "Pause", finish: "Finish", photo: "Photo", signoff: "Signature", clock_refusal: "Network-lock report" };
 
 /** One line per queued or held change, for the indicator's panel: "Worksheet · J-1001". */
 export function describeChange(op: Op): string {

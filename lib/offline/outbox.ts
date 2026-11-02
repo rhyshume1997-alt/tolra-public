@@ -87,6 +87,13 @@ export type ClockOp = { kind: "clock"; v: 1; action: "in" | "out" | "break_start
  */
 export type LabourOp = { kind: "labour"; v: 1; action: "start" | "stop"; jobRef: string; jobNo: string; at: string; clientOpId: string };
 /**
+ * 128: the report of a clock action the network lock (114) refused, queued when the report itself could not reach the server
+ * (record_clock_in_refusal under the refused action's own `clientOpId`, so a resend is answered, never doubled). Sent once on
+ * reconnect; whatever the server answers (recorded, or not_refused because the database would no longer refuse it from there), the
+ * entry is done, never held. No jobId: a previous build fails it harmlessly instead of applying it as a Start.
+ */
+export type ClockRefusalOp = { kind: "clock_refusal"; v: 1; action: ClockOp["action"]; clientOpId: string; jobRef: string; jobNo: string };
+/**
  * A customer's sign-off captured on the fitter's phone (migration 072). Same kind ("signoff") so it is listed, retried and dismissed like
  * any signature, and a build without 072 support sends it to sign_off_job, which refuses the role (held, never lost). `capturedBy` is
  * the fitter; `expectedVersion` / `expectedSha256` are the revision the screen showed (null when the device had none): the server
@@ -116,6 +123,7 @@ export type OutboxOp =
   | { kind: "worksheet"; jobId: string; jobNo: string; worksheet: Record<string, unknown>; baseVersion: number | null }
   | ClockOp
   | LabourOp
+  | ClockRefusalOp
   | SignOffOp
   | InspectOp
   | StartOp
@@ -131,9 +139,11 @@ export type OutboxEntry = { id: string; queuedAt: string; op: OutboxOp; inFlight
 
 /** The pseudo job every clock action belongs to: one person's clock actions replay in order, after one another. */
 export const ATTENDANCE_LANE = "attendance";
+/** 128: the lane of queued refusal reports (apart from the clock actions, so a report never holds one up). */
+export const CLOCK_REFUSAL_LANE = "clock-refusals";
 /** The job an op belongs to (run, labour and inspection ops carry it as jobRef; clock actions share one lane). */
 export const jobOfOp = (op: OutboxOp): string =>
-  op.kind === "run_start" || op.kind === "run_pause" || op.kind === "labour" || op.kind === "inspect" ? op.jobRef : op.kind === "clock" ? ATTENDANCE_LANE : op.jobId;
+  op.kind === "run_start" || op.kind === "run_pause" || op.kind === "labour" || op.kind === "inspect" || op.kind === "clock_refusal" ? op.jobRef : op.kind === "clock" ? ATTENDANCE_LANE : op.jobId;
 /** A Start or Pause of the Job Board's Play/Pause (049), or the 044/046 ones still on devices. */
 export const isRunOp = (op: OutboxOp) => op.kind === "run_start" || op.kind === "run_pause";
 /** A keyed time op of the daily job sheet (050 clock actions, 051 labour Start/Stop). */
@@ -201,6 +211,8 @@ export async function enqueue(scope: Scope, op: OutboxOp, now = new Date(), atta
     if (op.kind === "signoff" && queue.some((item) => item.op.kind === "signoff" && item.op.clientOpId === op.clientOpId)) return { set: {} };
     // The same Start or Pause (one client key) queued twice stays one entry.
     if (isRunOp(op) && queue.some((item) => isRunOp(item.op) && (item.op as RunStartOp | RunPauseOp).clientOpId === (op as RunStartOp | RunPauseOp).clientOpId)) return { set: {} };
+    // The same refused clock action's report (one client key) queued twice stays one entry.
+    if (op.kind === "clock_refusal" && queue.some((item) => item.op.kind === "clock_refusal" && item.op.clientOpId === op.clientOpId)) return { set: {} };
     // The same clock action or labour Start/Stop (one client key) queued twice stays one entry.
     if (isTimeOp(op) && queue.some((item) => isTimeOp(item.op) && item.op.clientOpId === op.clientOpId)) return { set: {} };
     // A Pause belongs to the job's latest Start still waiting here (R3.4 capture rule), read in this same atomic step.

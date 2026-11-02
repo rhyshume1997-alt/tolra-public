@@ -97,8 +97,8 @@ describe("normalising and senders", () => {
   it("matches the same address or the same company domain, never a shared mail domain", () => {
     expect(senderMatches("Buyer@Acme.example", ["buyer@acme.example"])).toBe("address");
     expect(senderMatches("other@acme.example", ["buyer@acme.example"])).toBe("domain");
-    expect(senderMatches("someone@gmail.com", ["buyer@gmail.com"])).toBeNull();
-    expect(senderMatches("buyer@gmail.com", ["Buyer@gmail.com"])).toBe("address");
+    expect(senderMatches("someone@aol.com", ["buyer@aol.com"])).toBeNull();
+    expect(senderMatches("buyer@aol.com", ["Buyer@aol.com"])).toBe("address");
     expect(senderMatches("x@evil.example", ["buyer@acme.example"])).toBeNull();
     expect(senderMatches(null, ["buyer@acme.example"])).toBeNull();
     expect(senderMatches("x@acme.example.evil.example", ["buyer@acme.example"])).toBeNull();
@@ -128,7 +128,7 @@ describe("suggestions: the sender AND a PO number", () => {
 
   it("the same PO from a stranger: nothing (never on the PO number alone)", () => {
     expect(match({ from: "x@other.example", subject: "PO 4471" }, [quote({ customerPo: "4471" })])).toEqual([]);
-    expect(match({ from: "x@gmail.com", subject: "PO 4471" }, [quote({ customerPo: "4471", customerEmails: ["buyer@gmail.com"] })])).toEqual([]);
+    expect(match({ from: "x@aol.com", subject: "PO 4471" }, [quote({ customerPo: "4471", customerEmails: ["buyer@aol.com"] })])).toEqual([]);
   });
 
   it("the customer with no PO number in the e-mail: nothing (never on the sender alone)", () => {
