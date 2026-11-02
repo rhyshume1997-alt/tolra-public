@@ -40,3 +40,20 @@ Date ambiguity such as 02/03/2026, unsupported date format, quoted commas, blank
 4. Confirm whether the costing golden fixture's 60 comparisons all pass and whether the half-even behaviour exactly matches Python, especially ties at subpenny precision.
 5. Ensure server write paths are authorised and idempotent before hooking any UI callback that records paid or sends email.
 6. Reconcile the pricing engine's current markup calculation with UI naming that says margin. This is a pricing decision, not simply a naming preference.
+
+## CI verification update, 2 November 2026
+
+These are observed runs on the named commits, not an assertion that each PR's latest head is green. PRs with unverified current heads must be checked again before review.
+
+| PR | Observed run | Web job | Integration | CI gate | After action |
+| --- | --- | --- | --- | --- | --- |
+| #107 | 41521786846 | PASS | SKIPPED | FAIL | No code failure established in this run; Ready label prohibited |
+| #108 | 41526239029 | PASS | SKIPPED | FAIL | No code failure established in this run; Ready label prohibited |
+| #109 | 41522062298 | PASS | SKIPPED | FAIL | No code failure established in this run; Ready label prohibited |
+| #110 | 41538339751 on 2cd4a39 | PASS, 5,001/5,001 unit tests including all 60 golden fixtures | SKIPPED | FAIL | Maths passing; integration blocked by Ready rule |
+| #123 | 41539369901 on previous head | FAIL, TS1005 syntax in connected-costing.tsx line 30 | SKIPPED | FAIL | Fixed in ad515217; new CI result not yet verified |
+| #116, #117, #118, #119, #120, #121, #122, #124 | Not verified in this audit | Unknown | Unknown | Unknown | Current commit and labelled run evidence still required |
+
+The red ci-gate with passing web jobs is explained by the workflow's deliberate decision to skip integration without Ready. Don't remove this gate, misreport it as green, or apply Ready contrary to release instructions. The #123 syntax error was a real code failure and has been fixed on its branch but not yet confirmed by a new run.
+
+Further review work: #125 is the JNR-only wipe guide. Issues #126, #127, #128 and #129 capture branch reviews for chase, timesheets, SliQ importer and costing store. These issues are acceptance checks except where they cite inspected source. No migration or deployment performed.
