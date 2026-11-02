@@ -88,7 +88,7 @@ export function OfflineBanner() {
     }
   }
 
-  const label = (op: OutboxEntry["op"]) => (op.kind === "worksheet" ? "worksheet" : op.kind === "photo" ? "photo" : op.kind === "signoff" ? "signature" : op.kind === "inspect" ? "inspection" : op.kind === "run_start" ? "Start" : op.kind === "run_pause" ? "Pause" : op.kind === "clock" ? clockLabel(op.action) : op.kind === "labour" ? (op.action === "start" ? "job time Start" : "job time Stop") : op.kind);
+  const label = (op: OutboxEntry["op"]) => (op.kind === "worksheet" ? "worksheet" : op.kind === "photo" ? "photo" : op.kind === "signoff" ? "signature" : op.kind === "inspect" ? "inspection" : op.kind === "run_start" ? "Start" : op.kind === "run_pause" ? "Pause" : op.kind === "clock" ? clockLabel(op.action) : op.kind === "labour" ? (op.action === "start" ? "job time Start" : "job time Stop") : op.kind === "clock_refusal" ? "network-lock report" : op.kind);
 
   /** A refused signature goes back in the queue (same key, same revision: the server checks every rule again). */
   async function retrySignature(entry: OutboxEntry) {

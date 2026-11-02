@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { fmtDate } from "@/lib/dates";
+import { APP_TEST_NOTE, XERO_TEST_CONNECTION_NOTE, appTestMessage, isAppTestOutcome } from "@/lib/integrations/app-test-messages";
 
 type ProviderRow = {
   provider: "xero" | "microsoft";
@@ -14,6 +15,7 @@ type ProviderRow = {
   stored: { clientId: string; secretLast4: string; updatedAt: string } | null;
   fromEnvironment: boolean;
   redirectUris: string[];
+  scopes: Array<{ scope: string; text: string | null }>;
 };
 type Answer = { db107: boolean; siteUrlSet: boolean; providers: ProviderRow[] };
 
@@ -28,6 +30,7 @@ export function AppCredentialsCard() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [forms, setForms] = useState<Record<string, { clientId: string; clientSecret: string }>>({});
   const [busy, setBusy] = useState(false);
+  const [testResult, setTestResult] = useState<{ provider: "xero" | "microsoft"; ok: boolean; text: string } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/integrations/app-credentials", { credentials: "same-origin" }).catch(() => null);
@@ -40,6 +43,41 @@ export function AppCredentialsCard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The provider sends the owner back to /platform?app_test=<provider>&result=<outcome> after the test sign-in (the callback stores nothing).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const provider = params.get("app_test");
+    const result = params.get("result");
+    if ((provider !== "xero" && provider !== "microsoft") || !isAppTestOutcome(result)) return;
+    setTestResult({ provider, ok: result === "ok", text: appTestMessage(provider, result) });
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage({ ok: true, text: "Copied." });
+    } catch {
+      setMessage({ ok: false, text: "Couldn't copy: select the text and copy it." });
+    }
+  }
+
+  async function runTest(provider: ProviderRow) {
+    setBusy(true);
+    setMessage(null);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/integrations/app-credentials/test", {
+        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider: provider.provider }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (!res.ok || typeof body.url !== "string") return setTestResult({ provider: provider.provider, ok: false, text: body.error ?? "Couldn't start the test. Try again." });
+      window.location.assign(body.url);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save(provider: ProviderRow) {
     const form = forms[provider.provider] ?? { clientId: provider.stored?.clientId ?? "", clientSecret: "" };
@@ -104,11 +142,34 @@ export function AppCredentialsCard() {
                   </div>
                 </div>
                 {p.redirectUris.length ? (
-                  <div className="text-xs text-slate-600">
+                  <div className="text-xs text-slate-600" data-testid={`app-credentials-${p.provider}-redirects`}>
                     Redirect URI{p.redirectUris.length > 1 ? "s" : ""} to paste at {p.name}:
-                    {p.redirectUris.map((u) => <code key={u} className="mt-1 block break-all rounded bg-slate-100 px-2 py-1">{u}</code>)}
+                    {p.redirectUris.map((u) => (
+                      <div key={u} className="mt-1 flex items-center gap-2">
+                        <code className="block min-w-0 flex-1 break-all rounded bg-slate-100 px-2 py-1">{u}</code>
+                        <Button type="button" variant="outline" size="sm" onClick={() => void copy(u)} aria-label={`Copy ${u}`}>Copy</Button>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
+                {p.scopes?.length ? (
+                  <div className="text-xs text-slate-600" data-testid={`app-credentials-${p.provider}-scopes`}>
+                    Scopes to tick at {p.name}:
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                      {p.scopes.map((s) => <li key={s.scope}><span className="font-mono">{s.scope}</span>{s.text ? <> ({s.text})</> : null}</li>)}
+                    </ul>
+                  </div>
+                ) : null}
+                <div className="grid gap-1">
+                  <div>
+                    <Button type="button" variant="outline" disabled={busy || !answer?.siteUrlSet || (!p.stored && !p.fromEnvironment)} className="min-h-11" onClick={() => void runTest(p)}>Test connection</Button>
+                  </div>
+                  {testResult?.provider === p.provider ? (
+                    <p role={testResult.ok ? "status" : "alert"} className={`text-sm ${testResult.ok ? "text-emerald-700" : "text-red-700"}`} data-testid={`app-credentials-${p.provider}-test-result`}>{testResult.text}</p>
+                  ) : null}
+                  {p.stored || p.fromEnvironment ? <p className="text-xs text-slate-500">{APP_TEST_NOTE}</p> : null}
+                  {p.provider === "xero" ? <p className="text-xs text-slate-500" data-testid="app-credentials-xero-test-note">{XERO_TEST_CONNECTION_NOTE}</p> : null}
+                </div>
                 {answer?.db107 ? (
                   <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); void save(p); }}>
                     <label className="grid gap-1.5 text-sm font-medium text-slate-700">
