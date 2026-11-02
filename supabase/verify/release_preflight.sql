@@ -80,7 +80,7 @@ markers(migration, present) AS (
     ('078 ip retention, CRD numbers',     EXISTS (SELECT 1 FROM fn WHERE proname = 'purge_site_network_ips') AND EXISTS (SELECT 1 FROM fn WHERE proname = 'next_doc_number' AND prosrc LIKE '%''CRD''%') AND to_regclass('public.attendance_event_network_ips') IS NOT NULL),
     -- 085 keeps 079's WHERE TRUE in the body it extends: either body means 079 is applied.,
     ('079 import under pg-safeupdate',    EXISTS (SELECT 1 FROM fn WHERE proname = 'import_company_data_run' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('f7c672e961be898619c046d76458680e', '0a2fec5746b0b1262cb2af6fe792bd7c'))),
-    ('080 activity labels, job work',     EXISTS (SELECT 1 FROM fn WHERE proname = 'convert_sales_order' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'dc8165549871bd15047765ac4fba811e')
+    ('080 activity labels, job work',     EXISTS (SELECT 1 FROM fn WHERE proname = 'convert_sales_order' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('dc8165549871bd15047765ac4fba811e', '9bde44b5ddf519640f1053bcf747c26d'))
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'security_audit' AND proname = 'activity_label' AND prosrc LIKE '%credit_ref%')),
     ('081 job flow and release',          EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'inspect_job')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'job_release_state' AND prosrc LIKE '%job_early_release_active%')),
@@ -187,6 +187,7 @@ markers(migration, present) AS (
     ('134 ai assistant',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'assistant_enabled')
                                           AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL),
+    ('135 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bde44b5ddf519640f1053bcf747c26d')),
     ('136 recent second step',            EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.organization_members_recent_second_step()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2af8bea37c6c34ccaffb8188a199054c')
                                           AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'public.organization_members'::regclass AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O')),
     ('137 password change ticket',        EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.auth_users_password_change_ticket()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5fa1d17f4950cdf4e41c8a6fea67b2c5')
@@ -246,9 +247,9 @@ checks(n, check_name, value, expected) AS (
   UNION ALL SELECT 18, '080 needs: public.org_activity is 035''s and public.convert_sales_order 068''s (or already 080''s)',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '292d6e2612099e36dd107422bd50e1b5' THEN '035' WHEN 'ae7e2416ce0a54b0d8ccb721aeb2d245' THEN '080' WHEN 'a29b5655c21474b4b40d54760de5a9c4' THEN '094' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'org_activity'), 'missing') || ' / ' ||
-    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '5555212a1d32070ce74209e718c3896d' THEN '068' WHEN 'dc8165549871bd15047765ac4fba811e' THEN '080' ELSE 'other' END
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '5555212a1d32070ce74209e718c3896d' THEN '068' WHEN 'dc8165549871bd15047765ac4fba811e' THEN '080' WHEN '9bde44b5ddf519640f1053bcf747c26d' THEN '135' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'convert_sales_order'), 'missing'),
-    '035 / 068 before 080, 080 / 080 after (094 / 080 after 094; other: stop, 080 refuses to replace it)'
+    '035 / 068 before 080, 080 / 080 after (094 / 080 after 094; 094 / 135 after 135; other: stop, 080 refuses to replace it)'
   UNION ALL SELECT 19, '080: jobs still described ''Converted from SO-...'' whose quote has ordered lines (080 describes them by that work)',
     -- quote_line_items.declined is 068's: read through query_to_xml so the preflight still runs on an older database (the rehearsal's 013 base).
     CASE WHEN NOT EXISTS (SELECT 1 FROM col WHERE table_name = 'quote_line_items' AND column_name = 'declined')

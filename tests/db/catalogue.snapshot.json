@@ -397,7 +397,7 @@
  {
   "kind": "function",
   "object": "public.convert_sales_order(p_order uuid)",
-  "detail": "invoker search_path=pg_catalog, public a910251175beeb23e810dab5b1b67201"
+  "detail": "invoker search_path=pg_catalog, public 96ebb4f84751988bb9578b39c57a5c03"
  },
  {
   "kind": "function",
