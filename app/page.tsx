@@ -6,7 +6,7 @@ import { BracketT } from "@/components/marketing/bracket-t";
 import { Cta } from "@/components/marketing/cta";
 import { JobFlow } from "@/components/marketing/job-flow";
 import {
-  CLOSE_CALL_LINE, CLOSE_TITLE, CONTACT_EMAIL, FAQ, FAQ_TITLE, FEATURES, FOUNDER_NAME, FOUNDER_URL, HERO_SUBHEAD, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SEE_HOW_LABEL,
+  CLOSE_CALL_LINE, CLOSE_TITLE, CONTACT_EMAIL, FAQ, FAQ_TITLE, FEATURES, FOUNDER_NAME, FOUNDER_URL, HERO_SUBHEAD, PAIN_CARDS, PAIN_TITLE, PRIVACY_NOTE, PROOF_LINE, SEE_HOW_LABEL,
   SITE_DESCRIPTION, SITE_TITLE, SITE_URL, START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
 } from "@/lib/marketing";
 
@@ -208,7 +208,7 @@ export default function Home() {
             <div className="max-w-md space-y-2">
               <p className="flex items-center gap-2 text-base font-bold text-white"><BracketT variant="flat" size={24} />Tolra</p>
               {CONTACT_EMAIL ? <p>Email: <a href={`mailto:${CONTACT_EMAIL}`} className={`rounded font-semibold text-white underline underline-offset-4 ${focusDark}`}>{CONTACT_EMAIL}</a></p> : null}
-              <p>Privacy: we only use the details you send us to reply to your enquiry, and this page sets no tracking cookies.</p>
+              <p>{PRIVACY_NOTE}</p>
             </div>
             <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <Link href="/login" className={`inline-flex min-h-11 items-center rounded font-semibold text-white underline underline-offset-4 ${focusDark}`}>Sign in</Link>

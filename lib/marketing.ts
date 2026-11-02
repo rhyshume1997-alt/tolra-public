@@ -63,7 +63,7 @@ export const WHO_TEXT = "Small CNC, machining and fabrication shops that are own
 
 export const START_TITLE = "How getting started works";
 export const START_STEPS = [
-  { title: "A 20-minute chat", detail: "You tell me how your shop runs today, and we see whether Tolra fits." },
+  { title: "A 20-minute chat", detail: "You tell me how your shop runs today, and I'll show you whether Tolra fits." },
   { title: "Set up your templates, machines and customers", detail: "Your quote and invoice templates, your machines and your customers, set up the way your shop works." },
   { title: "Run live jobs alongside your current system", detail: "Start with real jobs while your existing way of working carries on." },
 ] as const;
@@ -80,12 +80,20 @@ export const FAQ = [
     question: "Is there a phone app?",
     answer: "Tolra is a web app, so there is nothing to find in an app store. Open it in your phone's browser and add it to your home screen, and it opens full screen like an app, with the Tolra icon.",
   },
-  { question: "What does it cost?", answer: "We'll talk it through on the call." },
+  {
+    question: "Can I export my data?",
+    answer:
+      "Yes. Customers, suppliers, quotes, sales orders, purchase orders, jobs and invoices each download as a CSV or Excel file. A year-end export gives you one zip with the PDF of every issued invoice, sent quote, purchase order and delivery note for the period, plus spreadsheets of the totals and payments.",
+  },
+  { question: "What does it cost?", answer: "I'll talk it through with you on the call." },
 ] as const;
 
 /** Closing section. */
 export const CLOSE_TITLE = "Tell me how your shop runs and I'll show you whether Tolra fits.";
-export const CLOSE_CALL_LINE = "On the call you tell me how quotes, jobs and invoices move through your shop today, and we look at whether Tolra fits it.";
+/** The one-line privacy note in the footer. */
+export const PRIVACY_NOTE = "Privacy: I only use the details you send me to reply to your enquiry, and this page sets no tracking cookies.";
+
+export const CLOSE_CALL_LINE = "On the call you tell me how quotes, jobs and invoices move through your shop today, and I'll show you whether Tolra fits it.";
 
 /** Structured data for search engines. No offers, prices or ratings. */
 export function jsonLd() {

@@ -146,24 +146,29 @@ describe("round 2 sections", () => {
     expect(html.match(/<ol\b[^>]*>[\s\S]*?<\/ol>/g)!.some((list) => (list.match(/<li\b/g) ?? []).length === 3 && list.includes("A 20-minute chat"))).toBe(true);
   });
 
-  it("FAQ: only the three questions, native details/summary, and the FAQPage JSON-LD describes exactly those", async () => {
+  it("FAQ: only the four questions, native details/summary, and the FAQPage JSON-LD describes exactly those", async () => {
     const { html, marketing } = await render({});
-    expect(marketing.FAQ.map((item) => item.question)).toEqual(["How is it secured?", "Is there a phone app?", "What does it cost?"]);
-    expect(html.match(/<details\b/g)).toHaveLength(3);
-    expect(html.match(/<summary\b/g)).toHaveLength(3);
+    expect(marketing.FAQ.map((item) => item.question)).toEqual(["How is it secured?", "Is there a phone app?", "Can I export my data?", "What does it cost?"]);
+    expect(html.match(/<details\b/g)).toHaveLength(4);
+    expect(html.match(/<summary\b/g)).toHaveLength(4);
     const visible = text(html);
-    expect(visible).toContain("We'll talk it through on the call.");
+    expect(visible).toContain("I'll talk it through with you on the call.");
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]!.replace(/\\u003c/g, "<"));
     const faq = ld.find((d: { "@type": string }) => d["@type"] === "FAQPage");
     expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(marketing.FAQ.map((item) => item.question));
     for (const item of marketing.FAQ) expect(visible).toContain(item.answer);
   });
 
-  it("leaves out everything Rhys has not supplied: no hosting, import, Xero/Sage, export, Not-for or privacy page", async () => {
+  it("leaves out everything not yet supplied or proven: no hosting, import, Xero/Sage, Not-for or privacy page", async () => {
     const { html } = await render({});
     const visible = text(html);
-    expect(visible).not.toMatch(/\b(?:Xero|Sage|hosted|hosting|region|export|Not for|retention|controller)\b/i);
+    expect(visible).not.toMatch(/\b(?:Xero|Sage|hosted|hosting|region|Not for|retention|controller)\b/i);
     expect(html).not.toContain('href="/privacy"');
+  });
+
+  it("first person everywhere: no we / our / us in the page's own words", async () => {
+    const { html } = await render({});
+    expect(text(html)).not.toMatch(/\b(?:we|we'll|we're|our|ours|us)\b/i);
   });
 
   it("trust strip: only the three verified items", async () => {
