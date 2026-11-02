@@ -34,4 +34,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
-| 6 | builder2 | chatgpt2/chase-wiring | DONE WITH INTEGRATION GAPS | Pending |
+| 6 | builder2 | chatgpt2/chase-wiring | DONE WITH INTEGRATION GAPS | #132 |

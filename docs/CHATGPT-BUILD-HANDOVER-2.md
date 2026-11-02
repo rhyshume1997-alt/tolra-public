@@ -4,4 +4,4 @@ Draft PRs only. No Ready labels, merges, applied migrations, deployments or main
 
 | Job | Work done | Branch | PR | Tests | Blocker |
 | --- | --- | --- | --- | --- | --- |
-| 6 | Connected settings, approval and claim UI; documented atomic-save and live-test gaps | chatgpt2/chase-wiring | Pending | 13 new tests reported passing; tsc and targeted ESLint passed; Vitest process stays open | No disposable database/provider; atomic settings RPC and concurrency check absent |
+| 6 | Connected settings, approval and claim UI; documented atomic-save and live-test gaps | chatgpt2/chase-wiring | #132 | 13 new tests reported passing; tsc and targeted ESLint passed; Vitest process stays open | No disposable database/provider; atomic settings RPC and concurrency check absent |
