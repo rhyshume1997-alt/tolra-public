@@ -1,8 +1,8 @@
--- 136_opening_wip.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
+-- 141_opening_wip.sql: applied as ONE transaction. Run the whole text; if anything fails, nothing of this file is kept.
 BEGIN;
 
 -- =====================================================================================================
--- 136 (PROVISIONAL number): opening work in progress from SliQ, kept on its own (reviewer decision 6, Mon 2 Nov: Part B of the SliQ import).
+-- 141: opening work in progress from SliQ, kept on its own (reviewer decision 6, Mon 2 Nov: Part B of the SliQ import).
 -- Before: SliQ's WIP at the cutover had nowhere to go. The importer (scripts/sliq-import) writes customers, invoices, quotes, payments, POs and
 -- now open jobs, but a WIP figure is neither an invoice nor a job price, and it must never count as invoiced revenue or money owed.
 -- After: public.opening_wip keeps one row per WIP line exactly as SliQ states it: the SliQ job number, the Tolra job where the job is imported
@@ -20,10 +20,11 @@ BEGIN;
 -- Needs 000 (organizations, jobs), 013 (security_audit.log_row_change), 015 (enforce_same_org_parent), 033 (require_admin_mfa_guard) and 036
 -- (current_user_organization_id, has_org_role, support_readonly_guard). Replaces no existing object and changes no row. Safe to run again.
 -- Until this is applied the importer refuses a write that has WIP rows (the table is missing); nothing in the app reads the table.
--- Verify: supabase/verify/opening_wip_136.sql (every row TRUE). Rollback: supabase/release/136_opening_wip.rollback.sql (drops the table and
--- every opening WIP row; only with Rhys's approval). Proof: tests/scripts/opening-wip-136.proof.sql.
--- NUMBERING: 136 is provisional. 130 to 135 are held by other branches and are not on main; renumber with docs/MIGRATIONS.md before merge. In
--- supabase/verify/release_preflight.sql the '136 ...' marker goes after the highest marker below it (numeric order).
+-- Verify: supabase/verify/opening_wip_141.sql (every row TRUE). Rollback: supabase/release/141_opening_wip.rollback.sql (drops the table and
+-- every opening WIP row; only with Rhys's approval). Proof: tests/scripts/opening-wip-141.proof.sql.
+-- NUMBERING: 140 and 141 (renumbered from 135 and 136, Mon 2 Nov). Main has 135 (job spec Customer PO); 136 and 137 are on PR #106
+-- (G1) and 138 and 139 are held for chasing. In supabase/verify/release_preflight.sql the '141 ...' marker follows '140 ...', which follows
+-- the highest marker below it on the branch it lands on (135 on main today; 136 to 139 go between them when they merge).
 -- The table holds company and job ids, the SliQ job number, a description, a quantity, a value, a date and the importer's key.
 -- =====================================================================================================
 
@@ -33,7 +34,7 @@ BEGIN
      OR to_regprocedure('public.current_user_organization_id()') IS NULL OR to_regprocedure('public.has_org_role(text[])') IS NULL
      OR to_regprocedure('public.support_readonly_guard()') IS NULL OR to_regprocedure('public.require_admin_mfa_guard()') IS NULL
      OR to_regprocedure('public.enforce_same_org_parent()') IS NULL OR to_regprocedure('security_audit.log_row_change()') IS NULL THEN
-    RAISE EXCEPTION '136 needs 000 (organizations, jobs), 013, 015, 033 and 036 (the helpers and guards it uses)';
+    RAISE EXCEPTION '141 needs 000 (organizations, jobs), 013, 015, 033 and 036 (the helpers and guards it uses)';
   END IF;
 END
 $$;
@@ -86,7 +87,7 @@ BEGIN
      OR (SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip') <> 1
      OR has_table_privilege('authenticated', 'public.opening_wip', 'INSERT, UPDATE, DELETE, TRUNCATE')
      OR has_table_privilege('anon', 'public.opening_wip', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE') THEN
-    RAISE EXCEPTION '136 self-check failed: public.opening_wip is not as written';
+    RAISE EXCEPTION '141 self-check failed: public.opening_wip is not as written';
   END IF;
 END
 $$;

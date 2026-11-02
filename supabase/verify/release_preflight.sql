@@ -188,10 +188,11 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'assistant_enabled')
                                           AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL),
     ('135 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bde44b5ddf519640f1053bcf747c26d')),
-    ('135 import source ref (provisional number)', (SELECT count(*) FROM col WHERE table_name IN ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') AND column_name = 'source_ref') = 5
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'source_ref_import_only')),
-    ('136 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip' AND policyname = 'opening_wip rbac select'))
+    ('140 import source ref',            (SELECT count(*) FROM col WHERE table_name IN ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') AND column_name = 'source_ref') = 5
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.source_ref_import_only()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923')),
+    ('141 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'opening_wip' AND p.policyname = 'opening_wip rbac select'
+                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '55ca9a2d4469b23ea4d522e94be4f1a9'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

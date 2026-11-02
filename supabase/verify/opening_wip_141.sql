@@ -1,4 +1,4 @@
--- Migration 136 (opening WIP from SliQ, kept on its own: public.opening_wip). Read only: every row should be TRUE (9).
+-- Migration 141 (opening WIP from SliQ, kept on its own: public.opening_wip). Read only: every row should be TRUE (9).
 SELECT 'table_present_rls_on' AS check_name,
   coalesce((SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = to_regclass('public.opening_wip')), FALSE) AS ok
 UNION ALL SELECT 'columns',

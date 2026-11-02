@@ -188,9 +188,9 @@ export async function writeImport(opts) {
     if (report.unresolvedMatchCount > 0) throw new GuardError("Refusing: customer or supplier matches are ambiguous or unmatched (see ambiguity.csv).");
     if (report.unresolvedPaymentCount > 0) throw new GuardError("Refusing: payment exceptions are unresolved.");
     if (plan.invoices.some((i) => i.final.unverified)) throw new GuardError("Refusing: an invoice would be written without its real balance.");
-    // Migration 135 keeps the number SliQ printed on every imported invoice, quote, purchase order, job and sales order.
+    // Migration 140 keeps the number SliQ printed on every imported invoice, quote, purchase order, job and sales order.
     const refCols = Number((await db.query("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name in ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') and column_name = 'source_ref'")).rows[0].n);
-    if (refCols !== 5) throw new GuardError("Refusing: the target has no source_ref columns (migration 135, provisional number). Apply it first: the SliQ number of each imported document is kept there.");
+    if (refCols !== 5) throw new GuardError("Refusing: the target has no source_ref columns (migration 140). Apply it first: the SliQ number of each imported document is kept there.");
     // Jobs, sales orders, PO job links and opening WIP (jobs-write.mjs), in this same transaction.
     const jobsRun = opts.jobsLoaded?.profile ? await prepareJobsWrite(db, org, { loaded, jobsLoaded: opts.jobsLoaded, plan, coreReport: report, excludeNumbers, resolutions }) : null;
 

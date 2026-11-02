@@ -1,4 +1,4 @@
--- Migration 135 (PROVISIONAL NUMBER: the SliQ number an imported invoice, quote, purchase order, job or sales order had in SliQ).
+-- Migration 140 (the SliQ number an imported invoice, quote, purchase order, job or sales order had in SliQ).
 -- Read only: every row should be TRUE (6).
 SELECT 'five_columns_text_nullable' AS check_name,
   (SELECT string_agg(table_name || ':' || data_type || ':' || is_nullable, ',' ORDER BY table_name) FROM information_schema.columns
@@ -12,7 +12,7 @@ UNION ALL SELECT 'five_triggers_enabled',
      AND t.tgfoid = to_regprocedure('public.source_ref_import_only()')
      AND t.tgrelid IN (to_regclass('public.invoices'), to_regclass('public.quotes'), to_regclass('public.purchase_orders'),
                        to_regclass('public.jobs'), to_regclass('public.sales_orders'))) = 5
-UNION ALL SELECT 'function_is_135s',
+UNION ALL SELECT 'function_is_140s',
   coalesce((SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923' AND NOT prosecdef
             AND proconfig = ARRAY['search_path=pg_catalog, public']
             FROM pg_proc WHERE oid = to_regprocedure('public.source_ref_import_only()')), FALSE)

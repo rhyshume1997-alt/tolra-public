@@ -193,7 +193,7 @@ describe("what the jobs import would do", () => {
     const t = (mapped: Map<string, string>, hasOpeningWip = true) => ({ jobs: new Map([["J-0100", "uuid-1"], ["J-7000", "uuid-7"]]), salesOrders: new Map(), mappedJobs: mapped, mappedSalesOrders: new Map(), salesOrderQuotes: new Map(), hasOpeningWip, counters: {} });
     expect(job(run(folder(), t(new Map())).jr, "J-0100")[0].held).toEqual([expect.stringMatching(/already used by a Tolra job/)]);
     expect(job(run(folder(), t(new Map([[String(id), "uuid-1"]]))).jr, "J-0100")[0].held).toEqual([]);
-    expect(run(folder(), t(new Map(), false)).jr.blockers).toEqual([expect.stringMatching(/migration 136 is not applied/)]);
+    expect(run(folder(), t(new Map(), false)).jr.blockers).toEqual([expect.stringMatching(/migration 141 is not applied/)]);
     // A WIP line on a job already in Tolra (an earlier import) is linked to it.
     const r = run(folder({ wip: `${WIP_H}\r\nJ-7000,Old job,,1.00,30/10/2026,\r\n` }), t(new Map()));
     expect(r.jr.wip.items[0].link).toEqual({ kind: "tolra", jobId: "uuid-7", jobNo: "J-7000" });

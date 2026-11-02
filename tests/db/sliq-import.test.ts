@@ -2,7 +2,7 @@
  * SliQ importer (PR B) against the local disposable stack: a dry run writes nothing; a rehearsal write lands in one
  * synthetic tenant through the existing importer (public.import_legacy_tenant / legacy_import_map), payments become
  * legacy payment rows (migration 032), every invoice gets its real balance (no "Payment to confirm"; decision 1, 2 Nov), a number
- * used twice is kept under its own number with the SliQ number in source_ref (decision 2, migration 135), a repeat run adds nothing, the other
+ * used twice is kept under its own number with the SliQ number in source_ref (decision 2, migration 140), a repeat run adds nothing, the other
  * tenant is untouched, a stale report refuses, and a failure part-way leaves nothing behind. Synthetic fixtures only.
  */
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";

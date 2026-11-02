@@ -167,11 +167,11 @@ mapn=$("${PSQL[@]}" -d "$RB" -c "select to_regclass('public.legacy_import_map') 
 echo "importer tables present after the failed write: $mapn (f = even the --install-importer step was rolled back)"
 [[ "$left" == 0 ]] && echo "PASS|failed write left nothing behind (0 rows in A, 0 map rows, no counters)" || { echo "FAIL|failed write left $left rows"; fail=1; }
 "${PSQL[@]}" -d "$RB" -c "drop trigger rehearsal_fail on public.invoice_payments" -c "drop function public.rehearsal_fail()"
-# A target without migration 136 (no public.opening_wip) refuses a write that has WIP rows; the dry run says so.
+# A target without migration 141 (no public.opening_wip) refuses a write that has WIP rows; the dry run says so.
 "${PSQL[@]}" -d "$RB" -c "drop table public.opening_wip"
-step 22b-dry-run-no-136 "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-no136" --database-url "$RB_URL" --organization-id "$ORG" || exit 1
-step 22c-write-refused-no-136 expect_fail "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-no136/report.json" --database-url "$RB_URL" --organization-id "$ORG" --install-importer || fail=1
-grep -q "migration 136 is not applied" "$W/results/22c-write-refused-no-136.txt" || { echo "FAIL|the missing WIP table was not what refused the write"; fail=1; }
+step 22b-dry-run-no-141 "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-no141" --database-url "$RB_URL" --organization-id "$ORG" || exit 1
+step 22c-write-refused-no-141 expect_fail "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-no141/report.json" --database-url "$RB_URL" --organization-id "$ORG" --install-importer || fail=1
+grep -q "migration 141 is not applied" "$W/results/22c-write-refused-no-141.txt" || { echo "FAIL|the missing WIP table was not what refused the write"; fail=1; }
 
 # Rollback 2 (after COMMIT): the documented way back is the backup taken before the import, restored into a new database.
 "${PSQL[@]}" -d postgres -c "drop database if exists $RS" -c "create database $RS"

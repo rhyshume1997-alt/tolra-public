@@ -1,7 +1,7 @@
 // The jobs part of the write, inside the main import's ONE transaction (write.mjs calls it): jobs and the sales orders that feed
 // them go to public.import_legacy_tenant() in the same JSON as everything else (so a job's quote link resolves through
 // legacy_import_map), then, after the importer: each new order's customer link, each new purchase order's job link, the opening
-// WIP rows (public.opening_wip, migration 136), the SliQ number of each new job and order in source_ref (migration 135), and the J
+// WIP rows (public.opening_wip, migration 141), the SliQ number of each new job and order in source_ref (migration 140), and the J
 // and SO counters moved past the highest SliQ numbers. Every step is
 // checked before the transaction commits; any failure rolls the whole import back. A repeat run creates nothing.
 import pg from "pg";

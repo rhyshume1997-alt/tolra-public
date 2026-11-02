@@ -60,7 +60,7 @@ ORG=$(psql -h 127.0.0.1 -U postgres -X -At -d "$DB" -c "select id from public.or
 node scripts/sliq-import/cli.mjs prepare-rehearsal --database-url "postgresql://postgres@127.0.0.1:5432/$DB"
 ```
 
-`build-db.sh` ends with `built jnr_dryrun_rehearsal: stand-ins + N migrations (000-136)`. The two companies are synthetic
+`build-db.sh` ends with `built jnr_dryrun_rehearsal: stand-ins + N migrations (000-141)`. The two companies are synthetic
 (`rehearsal-a`, `rehearsal-b`); none of your data is in this database.
 
 ## 4. Dry run, files only

@@ -107,7 +107,7 @@ function parties(rows, names = new Map()) {
 /**
  * Numbers SliQ used more than once (decision 2, Mon 2 Nov): every copy is kept and gets its own Tolra number, the same every run.
  * The earliest (by date, then source row) keeps the number; the others get -B, -C ... (skipping a number already used). The
- * number SliQ printed is kept as sourceNumber (written to source_ref, migration 135). Returns the rows (renamed copies replaced)
+ * number SliQ printed is kept as sourceNumber (written to source_ref, migration 140). Returns the rows (renamed copies replaced)
  * and the log of every copy.
  */
 export function numberCopies(rows, kind, dateField) {

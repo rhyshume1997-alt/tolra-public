@@ -1,9 +1,9 @@
--- 135 rollback: ONLY with Rhys's approval. Removes the SliQ number on imported documents: the five source_ref_import_only triggers,
+-- 140 rollback: ONLY with Rhys's approval. Removes the SliQ number on imported documents: the five source_ref_import_only triggers,
 -- public.source_ref_import_only(), the five CHECKs and the five source_ref columns (invoices, quotes, purchase_orders, jobs,
 -- sales_orders).
 -- STOPS while any document has a source_ref: dropping the column would lose the number SliQ printed on an imported document (a
 -- renamed duplicate such as INV-0100-B would no longer say it was INV-0100 in SliQ). Nothing else is touched. Run the whole text as
--- one transaction, then the release preflight (marker 135 shows "not applied").
+-- one transaction, then the release preflight (marker 140 shows "not applied").
 BEGIN;
 
 DO $$
@@ -17,7 +17,7 @@ BEGIN
     END IF;
   END LOOP;
   IF v_n > 0 THEN
-    RAISE EXCEPTION '135 rollback stopped: % imported document(s) carry their SliQ number in source_ref; export them first and get Rhys''s approval to drop it', v_n;
+    RAISE EXCEPTION '140 rollback stopped: % imported document(s) carry their SliQ number in source_ref; export them first and get Rhys''s approval to drop it', v_n;
   END IF;
 END
 $$;

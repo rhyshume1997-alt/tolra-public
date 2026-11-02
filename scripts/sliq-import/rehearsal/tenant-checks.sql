@@ -153,7 +153,7 @@ select rehearsal_chk.no_rows('read-only: admin cannot change an imported invoice
   'update public.invoice_line_items set unit_price = unit_price + 1 where invoice_id = %L', :'imported_inv'));
 select rehearsal_chk.no_rows('read-only: admin cannot change an imported legacy payment', format(
   'update public.invoice_payments set amount = amount + 1 where invoice_id = %L', :'imported_inv'));
--- Migration 135: the SliQ number (source_ref) is written by the import only. The admin may still edit a draft imported PO.
+-- Migration 140: the SliQ number (source_ref) is written by the import only. The admin may still edit a draft imported PO.
 select rehearsal_chk.one_row('source_ref: admin can still edit a draft imported purchase order (its notes)', format(
   'update public.purchase_orders set notes = %L where id = %L', 'rehearsal note', :'draft_po'));
 select rehearsal_chk.refused_by('source_ref: admin cannot change a draft imported purchase order''s SliQ number', format(

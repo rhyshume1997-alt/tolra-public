@@ -5,7 +5,7 @@
 // Rules (reviewer decisions 4-6, 2 Nov, held to the core import's decisions 2 and 3 when the two were joined):
 //   * Jobs: only OPEN jobs are imported (the status word says so); a closed or finished job is listed, never imported. Numbering
 //     is the core import's rule for invoices, quotes and purchase orders: the SliQ job number is the Tolra job number (job_no), the
-//     number SliQ printed is kept in source_ref (migration 135), and a number SliQ used for two open jobs keeps every copy (the
+//     number SliQ printed is kept in source_ref (migration 140), and a number SliQ used for two open jobs keeps every copy (the
 //     first in the file keeps J-1512, the next is J-1512-B, then -C; the same every run). The J counter is moved past the highest
 //     SliQ job number, open or closed. A number a live Tolra job already uses is held (nothing is adopted).
 //   * Customers: matched exactly as the core import matches documents (reconcile.mjs, decision 3): the account, or a name exactly
@@ -368,7 +368,7 @@ export function analyseJobs(loaded, jobsLoaded, { plan, coreReport, organization
   for (const m of linkEntries) if (m.used === 0 && LINK_FIELDS[m.e?.kind]) problems.push(`jobLinks entry ${m.i + 1} (${m.e.kind} ${m.e.number ?? `row ${m.e.row}`}) fits no record in the jobs files`);
   for (const u of plan.unusedMatchEntries?.(["job", "sales_order"]) ?? []) problems.push(`customerMatches entry ${u.entry} (${u.kind} ${u.number}) fits no job or sales order in the source`);
   const blockers = [];
-  if (wipItems.length && target && !target.hasOpeningWip) blockers.push("the target has no public.opening_wip table (migration 136 is not applied): opening WIP cannot be written");
+  if (wipItems.length && target && !target.hasOpeningWip) blockers.push("the target has no public.opening_wip table (migration 141 is not applied): opening WIP cannot be written");
   const numbering = {
     highestSourceJob: highest(jobRows, "number", prof.jobNumberPattern),
     highestSourceSalesOrder: highest(good(rec.salesOrders), "number", prof.salesOrderNumberPattern),
@@ -463,7 +463,7 @@ export function renderJobsMarkdown(jr) {
   if (jr.ambiguities.length) L.push(`**Ambiguous or unmatched in the jobs files (also in ambiguity.csv): ${jr.unresolvedMatchCount} stop the write.** Resolve each in the resolutions file (customerMatches with kind job or sales_order; jobLinks for a link SliQ's numbers cannot make) or exclude the job or order by number.`, "",
     ...table(["Kind", "Tolra number", "SliQ number", "Status", "Why", "Row", "Stops the write"], jr.ambiguities.map((x) => [x.kind, x.number, x.sourceNumber ?? "", x.status, x.reason, x.row, x.blocksWrite ? "YES" : "no (excluded)"])));
   if (jr.problems.length) L.push("**Resolutions file problems (a write is refused):**", "", ...jr.problems.map((p) => `* ${p}`), "");
-  L.push(`Numbering: the SliQ job number is the Tolra job number and is kept as its source reference (migration 135); a number SliQ used for two open jobs keeps every copy (the first in the file keeps it, then -B, -C), and sales orders the same (earliest order date first). Renamed: ${c.jobsRenamed} jobs, ${c.salesOrdersRenamed} sales orders. Highest SliQ job number ${n.highestSourceJob || "none"} (pattern ${n.jobNumberPattern}); the J counter is moved to at least that, so the next new Tolra job follows it. Highest sales order ${n.highestSourceSalesOrder || "none"} (pattern ${n.salesOrderNumberPattern}).${n.jobNumbersOutsidePattern.length ? ` Job numbers outside the pattern (kept as written, not counted): ${n.jobNumbersOutsidePattern.join(", ")}.` : ""}`, "");
+  L.push(`Numbering: the SliQ job number is the Tolra job number and is kept as its source reference (migration 140); a number SliQ used for two open jobs keeps every copy (the first in the file keeps it, then -B, -C), and sales orders the same (earliest order date first). Renamed: ${c.jobsRenamed} jobs, ${c.salesOrdersRenamed} sales orders. Highest SliQ job number ${n.highestSourceJob || "none"} (pattern ${n.jobNumberPattern}); the J counter is moved to at least that, so the next new Tolra job follows it. Highest sales order ${n.highestSourceSalesOrder || "none"} (pattern ${n.salesOrderNumberPattern}).${n.jobNumbersOutsidePattern.length ? ` Job numbers outside the pattern (kept as written, not counted): ${n.jobNumbersOutsidePattern.join(", ")}.` : ""}`, "");
   L.push(`Sales orders: ${c.salesOrderRows} in the file; ${c.salesOrdersWritten} imported (each feeds one imported job, written as converted to it); ${c.salesOrdersHeld} held; ${c.salesOrdersNotImported} not imported.`, "");
   L.push(...table(["Order", "SliQ status", "Result"], jr.salesOrders.filter((s) => s.notImported || s.held.length || s.flags.length).map((s) => [s.number, s.statusRaw, s.notImported ?? (s.held.length ? `HELD: ${s.held.join("; ")}` : s.flags.join("; "))])));
   L.push(`Purchase orders written by the main import: ${c.purchaseOrdersWritten} (${Object.entries(jr.purchaseOrders.byStatus).map(([k, v]) => `${k} ${v}`).join(", ")}); open ${c.purchaseOrdersOpen}. Linked to a job: ${c.purchaseOrdersLinked}. Refused for an unknown supplier: ${c.purchaseOrdersRefusedSupplier}${jr.purchaseOrders.refusedSupplier.length ? ` (${jr.purchaseOrders.refusedSupplier.map((p) => p.number).join(", ")})` : ""}.`, "");

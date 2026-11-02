@@ -79,7 +79,7 @@ set local role authenticated;
 select set_config('request.jwt.claims', :'admin_a', true) is not null as c \gset
 select rehearsal_jchk.ok('rls: A admin sees every opening WIP row', (select count(*) from public.opening_wip) = t.wip, (select count(*) from public.opening_wip) || ' of ' || t.wip) from rehearsal_jchk.truth t;
 select rehearsal_jchk.no_write('rls: A admin cannot change an opening WIP value', format('update public.opening_wip set value = 0 where id = %L', :'a_wip'));
--- Migration 135 on jobs and sales orders: the SliQ number is written by the import only (a signed-in admin cannot set or change it).
+-- Migration 140 on jobs and sales orders: the SliQ number is written by the import only (a signed-in admin cannot set or change it).
 select rehearsal_jchk.no_write('source_ref: A admin cannot change an imported job''s SliQ number', format('update public.jobs set source_ref = %L where id = %L', 'J-9999', :'a_job'));
 select rehearsal_jchk.no_write('source_ref: A admin cannot clear an imported sales order''s SliQ number', format('update public.sales_orders set source_ref = null where id = %L', :'a_so'));
 select rehearsal_jchk.no_write('source_ref: a new job cannot carry a SliQ number', format('insert into public.jobs (organization_id, job_no, customer, source_ref) values (%L, %L, %L, %L)', :'org_a', 'J-REH-1', 'x', 'J-1501'));

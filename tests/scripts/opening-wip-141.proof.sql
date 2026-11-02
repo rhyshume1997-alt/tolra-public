@@ -1,11 +1,11 @@
 -- =====================================================================================================================================
--- Migration 136 proof (opening WIP from SliQ: public.opening_wip). Plain SQL (no psql meta-commands). By hand, against a DISPOSABLE database
--- with the chain applied through 136 (never production):
+-- Migration 141 proof (opening WIP from SliQ: public.opening_wip). Plain SQL (no psql meta-commands). By hand, against a DISPOSABLE database
+-- with the chain applied through 141 (never production):
 --
---   PGPASSWORD=... psql -X -q -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d <disposable> -f tests/scripts/opening-wip-136.proof.sql
+--   PGPASSWORD=... psql -X -q -v ON_ERROR_STOP=1 -h 127.0.0.1 -U postgres -d <disposable> -f tests/scripts/opening-wip-141.proof.sql
 --
 -- ONE transaction, ROLLED BACK at the end: no company, login, job or WIP row is left behind. Every property prints "ok ..." (NOTICE); the
--- first one that does not hold raises "FAIL ...". The last result row is the summary: result = 'PASS opening wip 136 proof'.
+-- first one that does not hold raises "FAIL ...". The last result row is the summary: result = 'PASS opening wip 141 proof'.
 -- Signed-in calls run as PostgREST runs them: role authenticated with request.jwt.claims (sub, email, session_id, aal).
 --
 -- Proves, with two companies: A's admin and office read A's WIP rows and none of B's; B's admin reads B's only; A's workshop person and
@@ -21,44 +21,44 @@ CREATE TEMP TABLE proof_count (n INTEGER NOT NULL) ON COMMIT DROP;
 INSERT INTO proof_count VALUES (0);
 
 INSERT INTO public.organizations (id, name, slug, status) VALUES
-  ('13600000-0000-4000-8000-0000000000a0', 'WIP Proof A', 'proof136-a', 'active'),
-  ('13600000-0000-4000-8000-0000000000b0', 'WIP Proof B', 'proof136-b', 'active');
+  ('14100000-0000-4000-8000-0000000000a0', 'WIP Proof A', 'proof141-a', 'active'),
+  ('14100000-0000-4000-8000-0000000000b0', 'WIP Proof B', 'proof141-b', 'active');
 INSERT INTO proof_people (key, id, email, session) VALUES
-  ('adminA',    '13600000-0000-4000-8000-00000000a001', 'admin.a.136@example.test', '13600000-0000-4000-8000-0000000005a1'),
-  ('officeA',   '13600000-0000-4000-8000-00000000a002', 'office.a.136@example.test', NULL),
-  ('workshopA', '13600000-0000-4000-8000-00000000a003', 'workshop.a.136@example.test', NULL),
-  ('viewerA',   '13600000-0000-4000-8000-00000000a004', 'viewer.a.136@example.test', NULL),
-  ('adminB',    '13600000-0000-4000-8000-00000000b001', 'admin.b.136@example.test', '13600000-0000-4000-8000-0000000005b1');
+  ('adminA',    '14100000-0000-4000-8000-00000000a001', 'admin.a.141@example.test', '14100000-0000-4000-8000-0000000005a1'),
+  ('officeA',   '14100000-0000-4000-8000-00000000a002', 'office.a.141@example.test', NULL),
+  ('workshopA', '14100000-0000-4000-8000-00000000a003', 'workshop.a.141@example.test', NULL),
+  ('viewerA',   '14100000-0000-4000-8000-00000000a004', 'viewer.a.141@example.test', NULL),
+  ('adminB',    '14100000-0000-4000-8000-00000000b001', 'admin.b.141@example.test', '14100000-0000-4000-8000-0000000005b1');
 INSERT INTO auth.users (id, email) SELECT id, email FROM proof_people;
 INSERT INTO public.user_profiles (id, email, full_name, role, organization_id, active, must_change_password) VALUES
-  ('13600000-0000-4000-8000-00000000a001', 'admin.a.136@example.test', 'Admin A', 'admin', '13600000-0000-4000-8000-0000000000a0', TRUE, FALSE),
-  ('13600000-0000-4000-8000-00000000a002', 'office.a.136@example.test', 'Office A', 'office', '13600000-0000-4000-8000-0000000000a0', TRUE, FALSE),
-  ('13600000-0000-4000-8000-00000000a003', 'workshop.a.136@example.test', 'Workshop A', 'workshop', '13600000-0000-4000-8000-0000000000a0', TRUE, FALSE),
-  ('13600000-0000-4000-8000-00000000a004', 'viewer.a.136@example.test', 'Viewer A', 'viewer', '13600000-0000-4000-8000-0000000000a0', TRUE, FALSE),
-  ('13600000-0000-4000-8000-00000000b001', 'admin.b.136@example.test', 'Admin B', 'admin', '13600000-0000-4000-8000-0000000000b0', TRUE, FALSE)
+  ('14100000-0000-4000-8000-00000000a001', 'admin.a.141@example.test', 'Admin A', 'admin', '14100000-0000-4000-8000-0000000000a0', TRUE, FALSE),
+  ('14100000-0000-4000-8000-00000000a002', 'office.a.141@example.test', 'Office A', 'office', '14100000-0000-4000-8000-0000000000a0', TRUE, FALSE),
+  ('14100000-0000-4000-8000-00000000a003', 'workshop.a.141@example.test', 'Workshop A', 'workshop', '14100000-0000-4000-8000-0000000000a0', TRUE, FALSE),
+  ('14100000-0000-4000-8000-00000000a004', 'viewer.a.141@example.test', 'Viewer A', 'viewer', '14100000-0000-4000-8000-0000000000a0', TRUE, FALSE),
+  ('14100000-0000-4000-8000-00000000b001', 'admin.b.141@example.test', 'Admin B', 'admin', '14100000-0000-4000-8000-0000000000b0', TRUE, FALSE)
 ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, organization_id = EXCLUDED.organization_id, active = TRUE, must_change_password = FALSE;
 INSERT INTO public.organization_members (user_id, organization_id, role, active) VALUES
-  ('13600000-0000-4000-8000-00000000a001', '13600000-0000-4000-8000-0000000000a0', 'admin', TRUE),
-  ('13600000-0000-4000-8000-00000000a002', '13600000-0000-4000-8000-0000000000a0', 'office', TRUE),
-  ('13600000-0000-4000-8000-00000000a003', '13600000-0000-4000-8000-0000000000a0', 'workshop', TRUE),
-  ('13600000-0000-4000-8000-00000000a004', '13600000-0000-4000-8000-0000000000a0', 'viewer', TRUE),
-  ('13600000-0000-4000-8000-00000000b001', '13600000-0000-4000-8000-0000000000b0', 'admin', TRUE)
+  ('14100000-0000-4000-8000-00000000a001', '14100000-0000-4000-8000-0000000000a0', 'admin', TRUE),
+  ('14100000-0000-4000-8000-00000000a002', '14100000-0000-4000-8000-0000000000a0', 'office', TRUE),
+  ('14100000-0000-4000-8000-00000000a003', '14100000-0000-4000-8000-0000000000a0', 'workshop', TRUE),
+  ('14100000-0000-4000-8000-00000000a004', '14100000-0000-4000-8000-0000000000a0', 'viewer', TRUE),
+  ('14100000-0000-4000-8000-00000000b001', '14100000-0000-4000-8000-0000000000b0', 'admin', TRUE)
 ON CONFLICT (user_id, organization_id) DO UPDATE SET role = EXCLUDED.role, active = EXCLUDED.active;
 INSERT INTO auth.sessions (id, user_id) VALUES
-  ('13600000-0000-4000-8000-0000000005a1', '13600000-0000-4000-8000-00000000a001'), ('13600000-0000-4000-8000-0000000005b1', '13600000-0000-4000-8000-00000000b001');
+  ('14100000-0000-4000-8000-0000000005a1', '14100000-0000-4000-8000-00000000a001'), ('14100000-0000-4000-8000-0000000005b1', '14100000-0000-4000-8000-00000000b001');
 INSERT INTO security_audit.session_company (session_id, user_id, organization_id) VALUES
-  ('13600000-0000-4000-8000-0000000005a1', '13600000-0000-4000-8000-00000000a001', '13600000-0000-4000-8000-0000000000a0'),
-  ('13600000-0000-4000-8000-0000000005b1', '13600000-0000-4000-8000-00000000b001', '13600000-0000-4000-8000-0000000000b0');
+  ('14100000-0000-4000-8000-0000000005a1', '14100000-0000-4000-8000-00000000a001', '14100000-0000-4000-8000-0000000000a0'),
+  ('14100000-0000-4000-8000-0000000005b1', '14100000-0000-4000-8000-00000000b001', '14100000-0000-4000-8000-0000000000b0');
 
 -- One job in each company, and WIP rows written as the importer writes them (the owner).
 INSERT INTO public.jobs (id, organization_id, job_no, customer, description) VALUES
-  ('13600000-0000-4000-8000-00000000c0a1', '13600000-0000-4000-8000-0000000000a0', 'J-1501', 'Proof Customer A', 'Proof job A'),
-  ('13600000-0000-4000-8000-00000000c0b1', '13600000-0000-4000-8000-0000000000b0', 'J-1501', 'Proof Customer B', 'Proof job B');
+  ('14100000-0000-4000-8000-00000000c0a1', '14100000-0000-4000-8000-0000000000a0', 'J-1501', 'Proof Customer A', 'Proof job A'),
+  ('14100000-0000-4000-8000-00000000c0b1', '14100000-0000-4000-8000-0000000000b0', 'J-1501', 'Proof Customer B', 'Proof job B');
 INSERT INTO public.opening_wip (organization_id, job_id, source_job_ref, description, quantity, value, as_of, source_key) VALUES
-  ('13600000-0000-4000-8000-0000000000a0', '13600000-0000-4000-8000-00000000c0a1', 'J-1501', 'Material issued', 2.5, 125.40, '2026-10-30', 'k1'),
-  ('13600000-0000-4000-8000-0000000000a0', '13600000-0000-4000-8000-00000000c0a1', 'J-1501', 'Labour to date', NULL, NULL, '2026-10-30', 'k2'),
-  ('13600000-0000-4000-8000-0000000000a0', NULL, 'J-1450', 'WIP on a job not in the file', NULL, 80.00, '2026-10-30', 'k3'),
-  ('13600000-0000-4000-8000-0000000000b0', '13600000-0000-4000-8000-00000000c0b1', 'J-1501', 'B material', NULL, 10.00, '2026-10-30', 'k1');
+  ('14100000-0000-4000-8000-0000000000a0', '14100000-0000-4000-8000-00000000c0a1', 'J-1501', 'Material issued', 2.5, 125.40, '2026-10-30', 'k1'),
+  ('14100000-0000-4000-8000-0000000000a0', '14100000-0000-4000-8000-00000000c0a1', 'J-1501', 'Labour to date', NULL, NULL, '2026-10-30', 'k2'),
+  ('14100000-0000-4000-8000-0000000000a0', NULL, 'J-1450', 'WIP on a job not in the file', NULL, 80.00, '2026-10-30', 'k3'),
+  ('14100000-0000-4000-8000-0000000000b0', '14100000-0000-4000-8000-00000000c0b1', 'J-1501', 'B material', NULL, 10.00, '2026-10-30', 'k1');
 
 -- Runs one SELECT as a signed-in person; returns its single value as text, or 'ERR:<sqlstate>'. The role and claims are reset after.
 CREATE FUNCTION pg_temp.as_(p_key TEXT, p_sql TEXT) RETURNS TEXT LANGUAGE plpgsql AS $$
@@ -118,8 +118,8 @@ END $$;
 
 DO $$
 DECLARE
-  v_a CONSTANT TEXT := '13600000-0000-4000-8000-0000000000a0';
-  v_b CONSTANT TEXT := '13600000-0000-4000-8000-0000000000b0';
+  v_a CONSTANT TEXT := '14100000-0000-4000-8000-0000000000a0';
+  v_b CONSTANT TEXT := '14100000-0000-4000-8000-0000000000b0';
   v_inv TEXT;
 BEGIN
   SELECT coalesce(sum(total), 0)::TEXT || '/' || count(*) INTO v_inv FROM public.invoices;
@@ -147,14 +147,14 @@ BEGIN
 
   -- ===== 3. Owner writes: same-company link, repeat key =====
   PERFORM pg_temp.ok('a link to another company''s job is refused', pg_temp.owner_try(format(
-    'INSERT INTO public.opening_wip (organization_id, job_id, source_key) VALUES (%L, %L, %L)', v_a, '13600000-0000-4000-8000-00000000c0b1', 'x4')), 'ERR:23514');
+    'INSERT INTO public.opening_wip (organization_id, job_id, source_key) VALUES (%L, %L, %L)', v_a, '14100000-0000-4000-8000-00000000c0b1', 'x4')), 'ERR:23514');
   PERFORM pg_temp.ok('the same source key twice in one company is refused', pg_temp.owner_try(format(
     'INSERT INTO public.opening_wip (organization_id, source_key) VALUES (%L, %L)', v_a, 'k1')), 'ERR:23505');
   PERFORM pg_temp.ok('the source must be sliq', pg_temp.owner_try(format(
     'INSERT INTO public.opening_wip (organization_id, source_key, source) VALUES (%L, %L, %L)', v_a, 'x5', 'other')), 'ERR:23514');
 
   -- ===== 4. The job goes: the WIP row stays, unlinked, with the SliQ job number =====
-  DELETE FROM public.jobs WHERE id = '13600000-0000-4000-8000-00000000c0a1';
+  DELETE FROM public.jobs WHERE id = '14100000-0000-4000-8000-00000000c0a1';
   PERFORM pg_temp.ok('deleting the job keeps its WIP rows, unlinked, SliQ number kept',
     (SELECT count(*) FILTER (WHERE job_id IS NULL AND source_job_ref = 'J-1501')::TEXT FROM public.opening_wip WHERE organization_id = v_a::UUID), '2');
 
@@ -167,6 +167,6 @@ BEGIN
 END
 $$;
 
-SELECT 'PASS opening wip 136 proof' AS result, n AS checks FROM proof_count;
+SELECT 'PASS opening wip 141 proof' AS result, n AS checks FROM proof_count;
 
 ROLLBACK;
