@@ -46,15 +46,39 @@
     },
     "purchaseOrders": {
       "file": "purchase-orders.csv",
-      "columns": { "number": "PO No", "supplier": "Supplier", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total", "status": "Status" }
+      "columns": { "number": "PO No", "supplier": "Supplier", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total", "status": "Status", "jobRef": "Job No" }
     }
   },
   "statusWords": {
     "invoice": { "Draft": "draft", "Issued": "sent", "Sent": "sent", "Paid": "sent", "Unpaid": "sent", "Cancelled": "void" },
     "quote": { "Draft": "draft", "Sent": "sent", "Accepted": "accepted", "Declined": "rejected" },
-    "po": { "Open": "sent", "Draft": "draft", "Cancelled": "cancelled" }
+    "po": { "Open": "sent", "Draft": "draft", "Cancelled": "cancelled", "Confirmed": "confirmed", "Part Received": "partial_received", "Received": "received" }
   },
   "docTypeWords": { "Invoice": "invoice", "Credit Note": "credit_note" },
   "paymentMethodWords": { "BACS": "BACS", "Cheque": "cheque", "Card": "card", "Cash": "cash", "Other": "other" },
-  "reverseChargeCodes": ["RC", "T20RC"]
+  "reverseChargeCodes": ["RC", "T20RC"],
+  "jobsImport": {
+    "files": {
+      "jobs": {
+        "file": "jobs.csv",
+        "columns": { "number": "Job No", "customer": "Account", "quote": "Quote No", "salesOrder": "Order No", "description": "Description", "status": "Status", "stage": "Stage", "dueDate": "Due", "specification": "Specification", "startedDate": "Started", "finishedDate": "Finished", "value": "Value" }
+      },
+      "salesOrders": {
+        "file": "sales-orders.csv",
+        "columns": { "number": "Order No", "customer": "Account", "quote": "Quote No", "status": "Status", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total", "notes": "Notes", "job": "Job No" }
+      },
+      "wip": {
+        "file": "wip.csv",
+        "columns": { "job": "Job No", "description": "Description", "quantity": "Qty", "value": "Value", "asOf": "As At", "reference": "Reference" }
+      }
+    },
+    "jobStatusWords": {
+      "Open": { "open": true, "status": "on_track" }, "In Progress": { "open": true, "status": "on_track" }, "At Risk": { "open": true, "status": "at_risk" },
+      "Late": { "open": true, "status": "overdue" }, "Complete": { "open": false }, "Invoiced": { "open": false }, "Cancelled": { "open": false }
+    },
+    "jobStageWords": { "Material": "material", "Setup": "setup", "Machining": "machining", "Inspection": "inspection" },
+    "salesOrderStatusWords": { "Open": "open", "Confirmed": "confirmed", "In Production": "in_production", "Despatched": "despatched", "Converted": "converted", "Closed": "closed" },
+    "jobNumberPattern": "^J-(\\d{1,9})$",
+    "salesOrderNumberPattern": "^SO-(\\d{1,9})$"
+  }
 }

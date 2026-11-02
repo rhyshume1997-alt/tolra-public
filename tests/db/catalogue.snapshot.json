@@ -4836,6 +4836,11 @@
  },
  {
   "kind": "policy",
+  "object": "public.opening_wip :: opening_wip rbac select",
+  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+ },
+ {
+  "kind": "policy",
   "object": "public.operator_sessions :: operator_sessions rbac select",
   "detail": "PERMISSIVE SELECT authenticated a7039586719a5eb88e387f127cc9034b"
  },
@@ -5671,6 +5676,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.opening_wip",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.operator_sessions",
   "detail": "enabled"
  },
@@ -6152,6 +6162,11 @@
  {
   "kind": "table-grant",
   "object": "public.mail_poll_state :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.opening_wip :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -7776,6 +7791,26 @@
  },
  {
   "kind": "trigger",
+  "object": "public.opening_wip :: admin_mfa",
+  "detail": "O 7844a5e71b04cc4e4af055c7677ca5b4"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.opening_wip :: audit_opening_wip_changes",
+  "detail": "O c4f01db7f45bab5233980709455bb8d2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.opening_wip :: support_read_only",
+  "detail": "O 322e9112f99e52e8f0328dd7f6176c92"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.opening_wip :: zz_same_org_job_id",
+  "detail": "O 76ad2e436dde07866ed0a9228fb25987"
+ },
+ {
+  "kind": "trigger",
   "object": "public.operator_sessions :: admin_mfa",
   "detail": "O 6dcaf6fc96e66c999a2ecf39524f3c0f"
  },
@@ -8688,6 +8723,11 @@
   "kind": "unique-index",
   "object": "public.machine_runs :: machine_runs_one_open_per_machine",
   "detail": "731c6aa05b5ced36d909d0df2d092d00"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.opening_wip :: opening_wip_source_key_unique",
+  "detail": "1d8fd8528884fa11fdd50784cebd3b9a"
  },
  {
   "kind": "unique-index",

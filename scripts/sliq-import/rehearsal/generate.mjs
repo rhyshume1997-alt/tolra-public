@@ -302,6 +302,60 @@ for (let k = 0; k < N_PO; k++) {
   pos.push({ number, supplier: s, date, delivery: rnd() < 0.85 ? addDays(date, int(3, 28)) : "", total, status });
 }
 
+// ---- Part B: open jobs, the sales orders that feed them, PO statuses and job links, opening WIP ----------------------------------
+// Drawn AFTER every earlier random value, so the records above are byte-identical to the Part A rehearsal (except the PO statuses and
+// the PO job column, set below without the random source).
+const poStatus = (k) => (k % 47 === 5 ? "Cancelled" : k >= N_PO - 2 ? "Draft" : k < 120 ? "Received" : ["Confirmed", "Open", "Part Received"][k % 3]);
+pos.forEach((p, k) => { p.status = poStatus(k); p.job = ""; });
+const N_JOBS = 40; // J-1501 .. J-1540, the last one closed: the J counter must pass it
+const JOB_STATUS = ["Open", "In Progress", "At Risk", "Late"];
+const JOB_STAGE = ["Material", "Setup", "Machining", "Inspection", ""];
+const SPECS = ["EN8 bright bar, turn to drawing, deburr", "316 stainless, 'polish' bearing faces, inspect first-off", "6082 aluminium, face both sides, drill M8 pattern", "Cast iron, bore and sleeve, \"H7\" fit"];
+const closedAt = { 34: "Complete", 35: "Invoiced", 36: "Complete", 37: "Cancelled", 39: "Complete" }; // the finished / closed jobs
+const jobs = [];
+for (let k = 0; k < N_JOBS; k++) {
+  const number = `J-${1501 + k}`;
+  const c = pick(weighted);
+  const theirs = quotes.filter((q) => q.customer.key === c.key && q.status === "Accepted");
+  const status = closedAt[k] ?? JOB_STATUS[k % 4];
+  const j = { number, customer: c, customerKey: c.key, quote: theirs.length ? theirs[theirs.length - 1].number : "", salesOrder: "", description: `${pick(PARTS)} x ${int(1, 40)}`,
+    status, stage: closedAt[k] ? "" : JOB_STAGE[k % 5], due: addDays("2026-11-02", int(3, 60)), spec: pick(SPECS), started: "", finished: "", value: rnd() < 0.85 ? int(15000, 900000) : null, case: null };
+  if (k % 4 === 1 || k % 4 === 2) j.started = addDays("2026-10-30", -int(1, 20));
+  if (closedAt[k]) { j.started = addDays("2026-09-01", int(0, 20)); j.finished = addDays(j.started, int(2, 15)); j.case = `closed in SliQ (${status}): not imported`; }
+  jobs.push(j);
+}
+jobs[5].quote = ""; jobs[5].case = "no quote"; // a job with no quote
+jobs[6].quote = ""; jobs[6].case = "no quote";
+jobs[7].customerKey = "C9999"; jobs[7].case = "customer not in the customers file: held";
+jobs[8].started = "2026-10-12"; jobs[8].finished = "2026-10-28"; jobs[8].stage = ""; jobs[8].case = "finished in SliQ, still open: awaiting inspection";
+jobs[9].value = null; jobs[9].case = "no value in SliQ";
+// Sales orders SO-0201 .. SO-0220 feed jobs J-1511 .. J-1530; SO-0221/0222 are open with no job (keyed by hand); SO-0223/0224 closed.
+const salesOrders = [];
+for (let k = 0; k < 24; k++) {
+  const number = `SO-${pad(201 + k, 4)}`;
+  const feeds = k < 20 ? jobs[10 + k] : null;
+  const c = feeds ? feeds.customer : pick(weighted);
+  const so = { number, customer: c, quote: feeds ? feeds.quote : "", status: feeds ? pick(["Open", "Confirmed", "In Production"]) : k < 22 ? "Open" : "Closed",
+    orderDate: addDays("2026-10-30", -int(5, 60)), delivery: addDays("2026-11-02", int(5, 50)), total: int(20000, 600000), notes: k === 3 ? "Call before delivery, gate code 1234" : "", job: feeds ? feeds.number : "" };
+  if (feeds) feeds.salesOrder = number;
+  salesOrders.push(so);
+}
+// PO job links: the 12 newest POs are bought for open jobs; one names a job not in the file, one a closed job (link not made, listed).
+for (let k = 0; k < 12; k++) pos[N_PO - 3 - k].job = jobs[k === 7 ? 0 : k].number;
+pos[N_PO - 15].job = "J-1499";
+pos[N_PO - 16].job = "J-1536";
+const extraPo = { number: "PO-0010", supplier: { name: "Unknown Supplier Ltd" }, date: "2019-12-02", delivery: "", total: 12345, status: "Open", job: "J-1501" }; // refused: supplier not in the file
+// Opening WIP: one or two lines per open job (some not valued), one on a job not in the file, one on a closed job, one on no job.
+const wip = [];
+for (const j of jobs.slice(0, 20)) {
+  wip.push({ job: j.number, description: "Material issued", qty: String(int(1, 12)), value: int(2000, 90000), asOf: LAST_DAY, ref: `WIP-${j.number}` });
+  if (rnd() < 0.6) wip.push({ job: j.number, description: "Labour to date (hours)", qty: `${int(1, 30)}.5`, value: rnd() < 0.7 ? int(5000, 150000) : null, asOf: LAST_DAY, ref: "" });
+}
+wip[2].value = null; // a line on an open job that SliQ did not value: stays blank
+wip.push({ job: "J-1450", description: "Bar stock cut for a job not in the export", qty: "4", value: 8000, asOf: LAST_DAY, ref: "" });
+wip.push({ job: "J-1536", description: "Material left on a closed job", qty: "", value: 4321, asOf: LAST_DAY, ref: "" });
+wip.push({ job: "", description: "General stock issued, no job", qty: "", value: null, asOf: LAST_DAY, ref: "" });
+
 // ---- write the synthetic-mapping files ------------------------------------------------------------------------------------------
 const fancy = (i) => i % 9 === 4; // about one row in nine is written "£1,234.56"
 const dir = path.join(out, "export");
@@ -330,8 +384,14 @@ w(dir, "credit-notes.csv", csv(["Credit No", "Date", "Account", "Net", "VAT", "G
   creditNotes.map((c) => [c.number, day(c.date), c.customer.key, plain(c.net), plain(c.vat), plain(c.gross), "", c.reason, c.notes])));
 w(dir, "quotes.csv", csv(["Quote No", "Date", "Account", "Net", "VAT", "Gross", "Status", "Valid Until", "Notes"],
   quotes.map((q, n) => [q.number, day(q.date), q.customer.key, money(q.net, fancy(n)), money(q.vat, fancy(n)), money(q.gross, fancy(n)), q.status, day(q.validUntil), q.notes])));
-w(dir, "purchase-orders.csv", csv(["PO No", "Supplier", "Order Date", "Delivery Date", "Total", "Status"],
-  pos.map((p, n) => [p.number, p.supplier.name, day(p.date), p.delivery ? day(p.delivery) : "", money(p.total, fancy(n)), p.status])));
+w(dir, "purchase-orders.csv", csv(["PO No", "Supplier", "Order Date", "Delivery Date", "Total", "Status", "Job No"],
+  [extraPo, ...pos].map((p, n) => [p.number, p.supplier.name, day(p.date), p.delivery ? day(p.delivery) : "", money(p.total, fancy(n)), p.status, p.job])));
+const jobKey = (j) => j.customerKey;
+w(dir, "jobs.csv", csv(["Job No", "Account", "Quote No", "Order No", "Description", "Status", "Stage", "Due", "Specification", "Started", "Finished", "Value"],
+  jobs.map((j, n) => [j.number, jobKey(j), j.quote, j.salesOrder, j.description, j.status, j.stage, day(j.due), j.spec, j.started ? day(j.started) : "", j.finished ? day(j.finished) : "", j.value === null ? "" : money(j.value, fancy(n))])));
+w(dir, "sales-orders.csv", csv(["Order No", "Account", "Quote No", "Status", "Order Date", "Delivery Date", "Total", "Notes", "Job No"],
+  salesOrders.map((s, n) => [s.number, s.customer.key, s.quote, s.status, day(s.orderDate), day(s.delivery), money(s.total, fancy(n)), s.notes, s.job])));
+w(dir, "wip.csv", csv(["Job No", "Description", "Qty", "Value", "As At", "Reference"], wip.map((x, n) => [x.job, x.description, x.qty, x.value === null ? "" : money(x.value, fancy(n)), day(x.asOf), x.ref])));
 
 // ---- the same records under the provisional SliQ headers (customer by NAME: SliQ's likely export has no account code) ----------
 w(dirSliq, "customers.csv", csv(["Company Name", "Contact Name", "Email Address", "Phone Number", "Address", "Notes"],
@@ -347,8 +407,14 @@ w(dirSliq, "invoice-lines.csv", csv(["Document Number", "Description", "Quantity
   [...allInvoiceRows, ...quotes].flatMap((d) => d.lines.map((l) => [d.number, l.description, qtyText(l.qtyMilli), plain(l.unit), String(l.rate / 100), ""]))));
 w(dirSliq, "payments.csv", csv(["Invoice Number", "Date", "Amount", "Method", "Reference"], payments.map((p, n) => [p.invoice, day(p.date), money(p.amount, fancy(n)), p.method, p.reference])));
 w(dirSliq, "quotes.csv", csv(["Number", "Customer", "Quote Date", "Gross", "Status"], quotes.map((q, n) => [q.number, q.customer.name, day(q.date), money(q.gross, fancy(n)), q.status])));
-w(dirSliq, "purchase-orders.csv", csv(["Number", "Supplier", "Order Date", "Delivery Date", "Total"],
-  pos.map((p, n) => [p.number, p.supplier.name, day(p.date), p.delivery ? day(p.delivery) : "", money(p.total, fancy(n))])));
+w(dirSliq, "purchase-orders.csv", csv(["Number", "Supplier", "Order Date", "Delivery Date", "Total", "Status", "Job Number"],
+  [extraPo, ...pos].map((p, n) => [p.number, p.supplier.name, day(p.date), p.delivery ? day(p.delivery) : "", money(p.total, fancy(n)), p.status, p.job])));
+const nameOfKey = new Map(customers.map((c) => [c.key, c.name]));
+w(dirSliq, "jobs.csv", csv(["Job Number", "Customer", "Quote Number", "Order Number", "Description", "Status", "Stage", "Due Date", "Specification", "Start Date", "Finish Date", "Value"],
+  jobs.map((j, n) => [j.number, nameOfKey.get(j.customerKey) ?? "Not In The Customer File Ltd", j.quote, j.salesOrder, j.description, j.status, j.stage, day(j.due), j.spec, j.started ? day(j.started) : "", j.finished ? day(j.finished) : "", j.value === null ? "" : money(j.value, fancy(n))])));
+w(dirSliq, "sales-orders.csv", csv(["Order Number", "Customer", "Quote Number", "Status", "Order Date", "Delivery Date", "Total", "Notes", "Job Number"],
+  salesOrders.map((s, n) => [s.number, s.customer.name, s.quote, s.status, day(s.orderDate), day(s.delivery), money(s.total, fancy(n)), s.notes, s.job])));
+w(dirSliq, "wip.csv", csv(["Job Number", "Description", "Quantity", "Value", "Date", "Reference"], wip.map((x, n) => [x.job, x.description, x.qty, x.value === null ? "" : money(x.value, fancy(n)), day(x.asOf), x.ref])));
 
 // ---- SliQ's Aged Debtors report for this data: every open document; a credit (overpayment, unallocated credit note) is negative --
 const aged = [];
@@ -406,12 +472,40 @@ const manifest = {
     unpaddedDates: invoices.filter((i) => i.unpadded).length,
     vat: vatCases,
     poundSignAmounts: "about one row in nine in invoices, payments, quotes and purchase orders is written £1,234.56",
-    purchaseOrderStatuses: { Open: pos.filter((p) => p.status === "Open").length, Cancelled: pos.filter((p) => p.status === "Cancelled").length, Draft: pos.filter((p) => p.status === "Draft").length },
+    purchaseOrderStatuses: Object.fromEntries([...new Set(pos.map((p) => p.status))].sort().map((st) => [st, pos.filter((p) => p.status === st).length])),
   },
 };
+// Part B: what the jobs import must do with the jobs, sales orders, PO links and WIP above.
+{
+  const open = jobs.filter((j) => !Object.values(closedAt).includes(j.status));
+  const imported = open.filter((j) => j.customerKey !== "C9999");
+  const importedNos = new Set(imported.map((j) => j.number));
+  const linked = wip.filter((x) => importedNos.has(x.job));
+  const sumv = (xs) => xs.reduce((a, x) => a + (x.value ?? 0), 0);
+  const TOLRA_PO = { Open: "sent", Draft: "draft", Cancelled: "cancelled", Confirmed: "confirmed", "Part Received": "partial_received", Received: "received" };
+  const OPEN_PO = new Set(["draft", "sent", "confirmed", "partial_received"]);
+  manifest.jobs = {
+    note: "Part B (reviewer decisions 4-6): open jobs, the sales orders that feed them, PO statuses and job links, opening WIP.",
+    openInFile: open.length, closedInFile: jobs.length - open.length, imported: imported.length, held: open.filter((j) => j.customerKey === "C9999").map((j) => j.number),
+    closed: jobs.filter((j) => !open.includes(j)).map((j) => ({ number: j.number, status: j.status })),
+    importedJobs: imported.map((j) => ({ number: j.number, account: j.customerKey, customer: j.customer.name, quote: j.quote || null, salesOrder: j.salesOrder || null,
+      status: j.status, stage: j.stage || null, due: j.due, started: j.started || null, finished: j.finished || null, valuePence: j.value, spec: j.spec, description: j.description })),
+    noQuote: imported.filter((j) => !j.quote).map((j) => j.number),
+    salesOrders: { inFile: salesOrders.length, imported: salesOrders.filter((so) => so.job && importedNos.has(so.job)).map((so) => ({ number: so.number, job: so.job, account: so.customer.key })),
+      notImported: salesOrders.filter((so) => !so.job).map((so) => so.number) },
+    purchaseOrders: {
+      written: pos.length, refusedUnknownSupplier: [extraPo.number], heldPurchaseOrders: [extraPo.number],
+      open: pos.filter((p) => OPEN_PO.has(TOLRA_PO[p.status])).length, byTolraStatus: Object.fromEntries(Object.values(TOLRA_PO).sort().map((st) => [st, pos.filter((p) => TOLRA_PO[p.status] === st).length]).filter(([, n]) => n > 0)),
+      linked: pos.filter((p) => importedNos.has(p.job)).map((p) => ({ number: p.number, job: p.job })), linkNotMade: pos.filter((p) => p.job && !importedNos.has(p.job)).map((p) => ({ number: p.number, job: p.job })),
+    },
+    wip: { rows: wip.length, totalPence: sumv(wip), linkedRows: linked.length, linkedPence: sumv(linked), unlinkedRows: wip.length - linked.length, unlinkedPence: sumv(wip) - sumv(linked),
+      notValued: wip.filter((x) => x.value === null).length, unlinked: wip.filter((x) => !importedNos.has(x.job)).map((x) => x.job || "(none)") },
+    nextNumbers: { job: `J-${1501 + N_JOBS}`, salesOrder: `SO-${pad(201 + salesOrders.length, 4)}` },
+  };
+}
 w(out, "manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
 w(out, "resolutions.json", `${JSON.stringify({
   format: "sliq-credit-note-resolutions/1",
   resolutions: creditNotes.map((c) => ({ number: c.number, decision: "record-outside-tolra", allocation: null, note: "Synthetic rehearsal: no invoice link in SliQ; recorded by hand after go-live (cutover plan section 1)." })),
 }, null, 2)}\n`);
-console.log(`Synthetic export written to ${out}: ${customers.length} customers, ${suppliers.length} suppliers, ${allInvoiceRows.length} invoice rows (${invoices.length} + ${extras.length} awkward), ${creditNotes.length} credit notes, ${payments.length} payments, ${quotes.length} quotes, ${pos.length} purchase orders, ${lineRows.length} lines.`);
+console.log(`Synthetic export written to ${out}: ${customers.length} customers, ${suppliers.length} suppliers, ${allInvoiceRows.length} invoice rows (${invoices.length} + ${extras.length} awkward), ${creditNotes.length} credit notes, ${payments.length} payments, ${quotes.length} quotes, ${pos.length} purchase orders (+1 awkward), ${lineRows.length} lines; ${jobs.length} jobs, ${salesOrders.length} sales orders, ${wip.length} WIP rows.`);

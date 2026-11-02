@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 import { checkDatabaseUrl, checkOrganisationId, GuardError } from "./guard.mjs";
+import { prepareJobsWrite } from "./jobs-write.mjs";
 import { legacyId, normNumber, normaliseName } from "./ids.mjs";
 import { penceToPounds } from "./parse.mjs";
 import { analyse } from "./reconcile.mjs";
@@ -176,6 +177,8 @@ export async function writeImport(opts) {
     if (!report.writable) throw new GuardError("Refusing: the source has unreadable rows or unknown excluded numbers.");
     if (report.unresolvedCreditNoteCount > 0) throw new GuardError("Refusing: credit notes or allocations are unresolved.");
     if (report.unresolvedReviewCount > 0) throw new GuardError("Refusing: documents flagged for reverse charge or discounts are unresolved.");
+    // Jobs, sales orders, PO job links and opening WIP (jobs-write.mjs), in this same transaction.
+    const jobsRun = opts.jobsLoaded?.profile ? await prepareJobsWrite(db, org, { loaded, jobsLoaded: opts.jobsLoaded, plan, coreReport: report }) : null;
 
     // Which of this run's records the map already knows (a repeat run): only the others are new.
     const known = async (source, ids) => new Set((await db.query("select old_id from public.legacy_import_map where source = $1 and old_id = any($2::text[])", [source, ids.map(String)])).rows.map((r) => r.old_id));
@@ -185,6 +188,7 @@ export async function writeImport(opts) {
     const knownQuotes = await known("quotes", plan.quotes.map((c) => c.oldId));
 
     const json = buildLegacyExport(plan, org);
+    jobsRun?.addToExport(json);
     const imported = (await db.query("select public.import_legacy_tenant($1::jsonb, $2::uuid) as r", [JSON.stringify(json), org])).rows[0].r;
     if (!imported.ok) throw new Error("the importer did not report ok");
 
@@ -252,8 +256,9 @@ export async function writeImport(opts) {
       );
       if (bad.rowCount) throw new Error(`amount paid differs from the payments on ${bad.rows.map((r) => r.invoice_ref).join(", ")}: rolled back`);
     }
+    const jobs = jobsRun ? await jobsRun.finish() : null;
     await db.query("commit");
-    return { importer: imported, created, report };
+    return { importer: imported, created, report, jobs };
   } catch (e) {
     await db.query("rollback").catch(() => {});
     throw e;

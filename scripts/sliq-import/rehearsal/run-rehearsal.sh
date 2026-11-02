@@ -11,11 +11,11 @@ ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 HERE="$ROOT/scripts/sliq-import/rehearsal"
 W=${1:-$(mktemp -d)}
 export PGPASSWORD=${PGPASSWORD:-localonly}
-DB=sliq_rehearsal
+DB=${REHEARSAL_DB:-sliq_rehearsal}   # another name (must contain "rehearsal") keeps parallel runs apart
 URL="postgresql://postgres@127.0.0.1:5432/$DB"
-RB=sliq_rehearsal_rollback
+RB=${DB}_rollback
 RB_URL="postgresql://postgres@127.0.0.1:5432/$RB"
-RS=sliq_rehearsal_restore
+RS=${DB}_restore
 PSQL=(psql -h 127.0.0.1 -p 5432 -U postgres -X -q -At -v ON_ERROR_STOP=1)
 CLI=(node "$ROOT/scripts/sliq-import/cli.mjs")
 EXCL="INV-0100,INV-0101"   # the duplicate number (both copies, flagged for review) and the 5% discount invoice
@@ -58,17 +58,44 @@ step 12-backup pg_dump -h 127.0.0.1 -U postgres -Fc -f "$W/pre-import.dump" "$DB
 step 13-write "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || exit 1
 step 14-checks node "$HERE/checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL" --json "$W/results/checks.json"; check 14-checks
 step 15-tenant-checks "${PSQL[@]}" -d "$DB" -f "$HERE/tenant-checks.sql"; check 15-tenant-checks
+# Part B: open jobs, sales orders, PO statuses and job links, opening WIP, numbering, the verification sheets; then as signed-in users.
+grep -q '^Jobs import: {"jobs":34,' "$W/results/13-write.txt" && echo "PASS|the write created the open jobs" || { echo "FAIL|the write did not report the jobs"; fail=1; }
+step 15b-jobs-checks node "$HERE/jobs-checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL" --json "$W/results/jobs-checks.json" || { echo "FAIL|jobs checks"; fail=1; }; check 15b-jobs-checks
+step 15c-jobs-tenant-checks "${PSQL[@]}" -d "$DB" -f "$HERE/jobs-tenant-checks.sql" || { echo "FAIL|jobs tenant checks"; fail=1; }; check 15c-jobs-tenant-checks
 
 # Re-run: a fresh dry run against the imported target, then the write again. Nothing new may be created; the checks must still pass.
 step 16-rerun-dry-run "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-rerun" --database-url "$URL" --organization-id "$ORG" || exit 1
 step 17-rerun-write "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-rerun/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
 grep -q '{"invoices":0,"lines":0,"payments":0,"paymentToConfirm":0,"quoteLines":0}' "$W/results/17-rerun-write.txt" && echo "PASS|re-run creates nothing" || { echo "FAIL|re-run created rows"; fail=1; }
+JOBS0='{"jobs":0,"salesOrders":0,"jobValues":0,"purchaseOrderJobLinks":0,"wipRows":0,"wipValue":"0.00"'
+grep -qF "Jobs import: $JOBS0" "$W/results/17-rerun-write.txt" && echo "PASS|re-run creates no job, order, link or WIP row" || { echo "FAIL|re-run created jobs rows"; fail=1; }
 step 18-rerun-old-report "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
 grep -q '{"invoices":0,"lines":0,"payments":0,"paymentToConfirm":0,"quoteLines":0}' "$W/results/18-rerun-old-report.txt" && echo "PASS|re-run with the first report creates nothing" || { echo "FAIL|re-run with the first report created rows"; fail=1; }
+grep -qF "Jobs import: $JOBS0" "$W/results/18-rerun-old-report.txt" && echo "PASS|re-run with the first report creates no jobs rows" || { echo "FAIL|re-run with the first report created jobs rows"; fail=1; }
 step 19-checks-after-rerun node "$HERE/checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL"; check 19-checks-after-rerun
+step 19b-jobs-checks-after-rerun node "$HERE/jobs-checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL" || { echo "FAIL|jobs checks after the re-run"; fail=1; }; check 19b-jobs-checks-after-rerun
 # A changed source file makes the approved report stale: the write is refused.
 cp -r "$W/export" "$W/export-changed"; sed -i '2 s/\r$/X\r/' "$W/export-changed/payments.csv"  # one changed reference
 step 20-write-refused-stale-report expect_fail "${CLI[@]}" "$W/export-changed" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
+# The same for a jobs file: one changed byte in jobs.csv makes the approved report stale.
+cp -r "$W/export" "$W/export-jobs-changed"; sed -i '2 s/Open/Late/' "$W/export-jobs-changed/jobs.csv"
+step 20b-write-refused-stale-jobs-file expect_fail "${CLI[@]}" "$W/export-jobs-changed" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
+grep -q "report is stale.*(jobs.csv)" "$W/results/20b-write-refused-stale-jobs-file.txt" || { echo "FAIL|the changed jobs file was not what refused the write"; fail=1; }
+# Header check: a jobs file with an unknown column, or without a mapped one, is refused with the list (even a dry run).
+cp -r "$W/export" "$W/export-jobs-extra"; sed -i '1 s/\r$/,Foreman\r/; 2,$ s/\r$/,\r/' "$W/export-jobs-extra/jobs.csv"
+step 20c-dry-run-refused-unknown-column expect_fail "${CLI[@]}" "$W/export-jobs-extra" "${OPTS[@]}" --out "$W/r-extra" || fail=1
+grep -q 'jobs.csv: unknown column "Foreman"' "$W/results/20c-dry-run-refused-unknown-column.txt" || { echo "FAIL|the unknown column is not listed"; fail=1; }
+cp -r "$W/export" "$W/export-jobs-missing"; python3 -I -c "import csv,sys; p=sys.argv[1]; r=list(csv.reader(open(p, newline=''))); i=r[0].index('Due'); w=csv.writer(open(p, 'w', newline=''), lineterminator='\r\n'); [w.writerow(x[:i] + x[i + 1:]) for x in r]" "$W/export-jobs-missing/jobs.csv"
+step 20d-dry-run-refused-missing-column expect_fail "${CLI[@]}" "$W/export-jobs-missing" "${OPTS[@]}" --out "$W/r-missing" || fail=1
+grep -q 'jobs.csv: missing column "Due"' "$W/results/20d-dry-run-refused-missing-column.txt" || { echo "FAIL|the missing column is not listed"; fail=1; }
+# A strict mapping ("headerCheck": "strict", as mappings/sliq.json) refuses the WRITE when a main file has a column the mapping does not name.
+python3 -I -c "import json,sys; m=json.load(open(sys.argv[1])); m['headerCheck']='strict'; json.dump(m, open(sys.argv[2], 'w'), indent=2)" "$ROOT/scripts/sliq-import/mappings/synthetic.json" "$W/synthetic-strict.json"
+cp -r "$W/export" "$W/export-cust-extra"; sed -i '1 s/\r$/,Credit Limit\r/; 2,$ s/\r$/,\r/' "$W/export-cust-extra/customers.csv"
+SOPTS=(--mapping "$W/synthetic-strict.json" --resolutions "$W/resolutions.json" --exclude "$EXCL")
+step 20e-dry-run-strict-lists "${CLI[@]}" "$W/export-cust-extra" "${SOPTS[@]}" --out "$W/r-strict" --database-url "$URL" --organization-id "$ORG" || fail=1
+grep -q 'customers.csv: unknown column "Credit Limit"' "$W/r-strict/report.md" || { echo "FAIL|the strict report does not list the unknown column"; fail=1; }
+step 20f-write-refused-strict-header expect_fail "${CLI[@]}" "$W/export-cust-extra" "${SOPTS[@]}" --write --report "$W/r-strict/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
+grep -q 'customers.csv: unknown column "Credit Limit"' "$W/results/20f-write-refused-strict-header.txt" || { echo "FAIL|the strict header check was not what refused the write"; fail=1; }
 
 # Rollback 1 (before COMMIT): a failure late in the write (payment 1990 of 1998) rolls the whole import back.
 "${PSQL[@]}" -d "$RB" -c "create function public.rehearsal_fail() returns trigger language plpgsql as \$\$ begin if (select count(*) from public.invoice_payments where organization_id = new.organization_id) >= 1990 then raise exception 'rehearsal: injected failure at payment 1990'; end if; return new; end \$\$" \
@@ -76,12 +103,17 @@ step 20-write-refused-stale-report expect_fail "${CLI[@]}" "$W/export-changed" "
 step 21-dry-run-rollback-copy "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-rb" --database-url "$RB_URL" --organization-id "$ORG" || exit 1
 step 22-write-fails-midway expect_fail "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-rb/report.json" --database-url "$RB_URL" --organization-id "$ORG" --install-importer || fail=1
 grep -q "injected failure" "$W/results/22-write-fails-midway.txt" || { echo "FAIL|the injected failure was not what stopped the write"; fail=1; }
-left=$("${PSQL[@]}" -d "$RB" -c "select (select count(*) from customers where organization_id = '$ORG') + (select count(*) from suppliers where organization_id = '$ORG') + (select count(*) from invoices where organization_id = '$ORG') + (select count(*) from invoice_payments where organization_id = '$ORG') + (select count(*) from quotes where organization_id = '$ORG') + (select count(*) from purchase_orders where organization_id = '$ORG') + (select count(*) from doc_counters where organization_id = '$ORG' and last > 0)")
+left=$("${PSQL[@]}" -d "$RB" -c "select (select count(*) from customers where organization_id = '$ORG') + (select count(*) from suppliers where organization_id = '$ORG') + (select count(*) from invoices where organization_id = '$ORG') + (select count(*) from invoice_payments where organization_id = '$ORG') + (select count(*) from quotes where organization_id = '$ORG') + (select count(*) from purchase_orders where organization_id = '$ORG') + (select count(*) from doc_counters where organization_id = '$ORG' and last > 0) + (select count(*) from jobs where organization_id = '$ORG') + (select count(*) from job_values where organization_id = '$ORG') + (select count(*) from sales_orders where organization_id = '$ORG') + (select count(*) from opening_wip where organization_id = '$ORG')")
 mapn=$("${PSQL[@]}" -d "$RB" -c "select to_regclass('public.legacy_import_map') is not null")
 [[ "$mapn" == t ]] && left=$((left + $("${PSQL[@]}" -d "$RB" -c "select count(*) from public.legacy_import_map")))
 echo "importer tables present after the failed write: $mapn (f = even the --install-importer step was rolled back)"
 [[ "$left" == 0 ]] && echo "PASS|failed write left nothing behind (0 rows in A, 0 map rows, no counters)" || { echo "FAIL|failed write left $left rows"; fail=1; }
 "${PSQL[@]}" -d "$RB" -c "drop trigger rehearsal_fail on public.invoice_payments" -c "drop function public.rehearsal_fail()"
+# A target without migration 136 (no public.opening_wip) refuses a write that has WIP rows; the dry run says so.
+"${PSQL[@]}" -d "$RB" -c "drop table public.opening_wip"
+step 22b-dry-run-no-136 "${CLI[@]}" "$W/export" "${OPTS[@]}" --out "$W/r-no136" --database-url "$RB_URL" --organization-id "$ORG" || exit 1
+step 22c-write-refused-no-136 expect_fail "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-no136/report.json" --database-url "$RB_URL" --organization-id "$ORG" --install-importer || fail=1
+grep -q "migration 136 is not applied" "$W/results/22c-write-refused-no-136.txt" || { echo "FAIL|the missing WIP table was not what refused the write"; fail=1; }
 
 # Rollback 2 (after COMMIT): the documented way back is the backup taken before the import, restored into a new database.
 "${PSQL[@]}" -d postgres -c "drop database if exists $RS" -c "create database $RS"

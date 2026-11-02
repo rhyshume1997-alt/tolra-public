@@ -1,22 +1,25 @@
 -- Rehearsal tenants (synthetic). Run once as postgres on the disposable rehearsal database, after build-db.sh:
 --   psql -h 127.0.0.1 -U postgres -d sliq_rehearsal -v ON_ERROR_STOP=1 -f scripts/sliq-import/rehearsal/setup-tenants.sql
 -- Tenant A "Rehearsal Engineering Ltd" stands in for the company being imported; tenant B "Rehearsal Other Co Ltd" is a second
--- company for the isolation checks. Each has an admin; A also has an office user. Every user has a live aal2 session, as the
+-- company for the isolation checks. Each has an admin; A also has an office user and a workshop user (Part B: WIP and job prices). Every user has a live aal2 session, as the
 -- RLS helpers require. Ids are fixed so the check scripts can name them. Prints the two organisation ids.
 \set ON_ERROR_STOP 1
 begin;
 insert into auth.users (id, aud, role, email, raw_user_meta_data) values
   ('7e570000-0000-4000-8000-0000000000a1', 'authenticated', 'authenticated', 'admin.a@rehearsal.example.test', '{"full_name":"Rehearsal Admin A"}'),
   ('7e570000-0000-4000-8000-0000000000a2', 'authenticated', 'authenticated', 'office.a@rehearsal.example.test', '{"full_name":"Rehearsal Office A"}'),
-  ('7e570000-0000-4000-8000-0000000000b1', 'authenticated', 'authenticated', 'admin.b@rehearsal.example.test', '{"full_name":"Rehearsal Admin B"}');
+  ('7e570000-0000-4000-8000-0000000000b1', 'authenticated', 'authenticated', 'admin.b@rehearsal.example.test', '{"full_name":"Rehearsal Admin B"}'),
+  ('7e570000-0000-4000-8000-0000000000a3', 'authenticated', 'authenticated', 'workshop.a@rehearsal.example.test', '{"full_name":"Rehearsal Workshop A"}');
 insert into auth.sessions (id, user_id, aal) values
   ('7e570000-0000-4000-8000-0000000005a1', '7e570000-0000-4000-8000-0000000000a1', 'aal2'),
   ('7e570000-0000-4000-8000-0000000005a2', '7e570000-0000-4000-8000-0000000000a2', 'aal2'),
-  ('7e570000-0000-4000-8000-0000000005b1', '7e570000-0000-4000-8000-0000000000b1', 'aal2');
+  ('7e570000-0000-4000-8000-0000000005b1', '7e570000-0000-4000-8000-0000000000b1', 'aal2'),
+  ('7e570000-0000-4000-8000-0000000005a3', '7e570000-0000-4000-8000-0000000000a3', 'aal2');
 set local role service_role;
 select public.create_organization('Rehearsal Engineering Ltd', 'rehearsal-a', 'admin.a@rehearsal.example.test',
   '{"documentName":"Rehearsal Engineering Ltd","addressLines":["Unit 1, Test Estate","Testbury","TB1 1ST"],"phone":"01110 000001","email":"office.a@rehearsal.example.test","vatRegistered":true,"vatNumber":"GB 000 0000 00","defaultVatRate":20}'::jsonb) as org_a \gset
 select public.add_member(:'org_a', 'office.a@rehearsal.example.test', 'office') is not null as added \gset
+select public.add_member(:'org_a', 'workshop.a@rehearsal.example.test', 'workshop') is not null as added \gset
 select public.create_organization('Rehearsal Other Co Ltd', 'rehearsal-b', 'admin.b@rehearsal.example.test',
   '{"documentName":"Rehearsal Other Co Ltd","addressLines":["Unit 2"],"phone":"01110 000002","email":"admin.b@rehearsal.example.test","vatRegistered":true,"vatNumber":"GB 000 0000 01","defaultVatRate":20}'::jsonb) as org_b \gset
 reset role;
