@@ -192,8 +192,8 @@ export const PRIVACY_SECTIONS = [
     id: "keep",
     title: "How long I keep it",
     paragraphs: [
-      "Website enquiries and booking details are kept for 12 months after the last time you contacted me, then deleted.",
-      "A company that stops using Tolra has 30 days to export its data, then it is deleted within 90 days. Financial records a company must keep by law are its own to export and keep during those 30 days.",
+      "I keep website enquiries and booking details only as long as I need them to reply to you and to keep reasonable business records. Ask me and I'll delete them.",
+      "A company that stops using Tolra can ask me for an export of its data and for its data to be deleted, and I'll do both promptly. Financial records a company must keep by law are its own to export and keep.",
     ],
   },
   {

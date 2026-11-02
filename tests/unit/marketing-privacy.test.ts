@@ -64,9 +64,10 @@ describe("/privacy content", () => {
     expect(visible).toContain("In the UK. The database, sign-ins and stored files are with Supabase in London, and the app runs on Vercel's servers in London.");
     for (const service of ["Supabase", "Vercel", "Resend", "Google Calendar"]) expect(visible).toContain(service);
     expect(visible).toContain("It is a US company");
-    expect(visible).toContain("kept for 12 months after the last time you contacted me, then deleted");
-    expect(visible).toContain("has 30 days to export its data, then it is deleted within 90 days");
-    expect(visible).toContain("Financial records a company must keep by law are its own to export and keep during those 30 days.");
+    expect(visible).toContain("only as long as I need them to reply to you and to keep reasonable business records. Ask me and I'll delete them.");
+    expect(visible).toContain("can ask me for an export of its data and for its data to be deleted, and I'll do both promptly.");
+    expect(visible).toContain("Financial records a company must keep by law are its own to export and keep.");
+    expect(visible).not.toMatch(/\b(?:12 months|30 days|90 days)\b/);
     expect(visible).toContain("You can ask to see, correct or delete your details.");
     expect(visible).toContain("ask that company first, and I'll help them");
   });
