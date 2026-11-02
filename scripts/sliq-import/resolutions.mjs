@@ -7,10 +7,25 @@
 //     "resolutions": [
 //       { "number": "CN-001", "decision": "record-outside-tolra", "allocation": { "invoice": "S1003", "amount": "24.00" }, "note": "..." },
 //       { "number": "CN-002", "decision": "not-needed", "allocation": null }
+//     ],
+//     "customerMatches": [
+//       { "kind": "invoice", "number": "INV-0123", "row": 45, "account": "C0014", "note": "..." }
+//     ],
+//     "customerNames": [
+//       { "account": "C0015", "name": "Riverside Engineering Ltd (Mocktown)", "note": "..." }
 //     ]
 //   }
 //
-// decision: "record-outside-tolra" (a person records it by hand after the import), "not-needed" (reviewed: nothing to carry
+// customerMatches (decision 3, Mon 2 Nov): a document whose customer the source does not name unambiguously (an account used twice,
+// a name two customers share, a name that matches only after normalising, or no customer at all) stops the write until an entry
+// here names the customer's ACCOUNT. kind is invoice, quote or purchase_order (a purchase order's account is a supplier's); number
+// is the number as SliQ wrote it; row (the source row) or date (ISO) picks one of two documents SliQ numbered the same.
+// customerNames: Tolra links documents to customers by name, so two customers (or two suppliers: "party": "supplier") may not
+// have the same name; an entry gives one of them its own Tolra name. The SliQ name is kept in the record's notes.
+//
+// decision: "import-as-credit" (the credit note is written: a Tolra credit note applied to the invoice SliQ links it to, or, with no
+// link, to an imported invoice of the same customer that carries it as customer credit, as an overpayment is; so each customer's
+// balance equals Aged Debtors; not for a credit note with allocations), "record-outside-tolra" (a person records it by hand after the import), "not-needed" (reviewed: nothing to carry
 // over) or "excluded" (left out on purpose). The file never makes the importer write anything: it only records the review.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -20,7 +35,7 @@ import { MappingError } from "./mapping.mjs";
 import { ParseError, parseMoneyPence } from "./parse.mjs";
 
 export const RESOLUTION_FORMAT = "sliq-credit-note-resolutions/1";
-export const DECISIONS = ["record-outside-tolra", "not-needed", "excluded"];
+export const DECISIONS = ["import-as-credit", "record-outside-tolra", "not-needed", "excluded"];
 
 export function loadResolutions(file) {
   let bytes;
@@ -32,7 +47,13 @@ export function loadResolutions(file) {
     throw new MappingError(`The credit-note resolution file ${file} cannot be read (${e.message}).`);
   }
   if (data?.format !== RESOLUTION_FORMAT || !Array.isArray(data.resolutions)) throw new MappingError(`${file} is not a ${RESOLUTION_FORMAT} file (needs "format" and a "resolutions" list).`);
-  return { file: path.basename(file), sha256: createHash("sha256").update(bytes).digest("hex"), entries: data.resolutions };
+  for (const k of ["customerMatches", "customerNames"]) {
+    if (data[k] !== undefined && !Array.isArray(data[k])) throw new MappingError(`${file}: "${k}" must be a list.`);
+  }
+  return {
+    file: path.basename(file), sha256: createHash("sha256").update(bytes).digest("hex"), entries: data.resolutions,
+    customerMatches: data.customerMatches ?? [], customerNames: data.customerNames ?? [],
+  };
 }
 
 /**
@@ -73,7 +94,8 @@ export function resolveCreditNotes({ creditNotes, allocations, invoiceNumbers, r
       }
     }
     const source = allocations.filter((a) => a.creditNote === n && a.status === "ok");
-    if (source.length > 0) {
+    if (e.decision === "import-as-credit" && (source.length > 0 || e.allocation)) bad.push("a credit note with allocations cannot be imported as customer credit: record it outside Tolra");
+    else if (source.length > 0) {
       const ok = alloc && source.length === 1 && source[0].invoice === alloc.invoice && source[0].amount === alloc.amount;
       if (!ok) bad.push("the source has an allocation for this credit note and the resolution does not repeat it exactly (invoice and amount)");
     }

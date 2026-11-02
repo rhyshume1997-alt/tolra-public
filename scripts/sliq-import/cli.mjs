@@ -16,7 +16,7 @@ import { GuardError, assertWriteAllowed, checkDatabaseUrl, checkOrganisationId, 
 import { loadFolder, readWorkbooks } from "./load.mjs";
 import { MappingError, getProfile } from "./mapping.mjs";
 import { loadResolutions } from "./resolutions.mjs";
-import { analyse, renderMarkdown } from "./reconcile.mjs";
+import { analyse, renderAmbiguityCsv, renderMarkdown } from "./reconcile.mjs";
 import { prepareRehearsal, readTargetReadOnly, writeImport } from "./write.mjs";
 
 /** Dry run: reads the folder (and, if given, the target read only), writes report.md and report.json. Never writes to a database. */
@@ -33,6 +33,7 @@ export async function dryRun({ folder, outDir, mapping = "sliq", databaseUrl = n
   mkdirSync(outDir, { recursive: true });
   writeFileSync(path.join(outDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(path.join(outDir, "report.md"), `${renderMarkdown(report)}\n`);
+  writeFileSync(path.join(outDir, "ambiguity.csv"), renderAmbiguityCsv(report)); // decision 3: what stops the write, for manual mapping
   return { report, plan, loaded };
 }
 
@@ -99,6 +100,7 @@ async function main() {
   if (report.mapping.isProvisional) console.log("Provisional mapping, confirm against the real headers. A write is refused until the mapping file is marked confirmed.");
   console.log(`Dry run only: nothing was written to any database. Report: ${path.join(out, "report.md")} and report.json`);
   console.log(`Writable: ${report.writable}. Held: ${report.held.length}. Needs review: ${report.needsReview.length}. Errors: ${report.errors.length}.`);
+  console.log(`Renamed duplicate numbers: ${report.writePlan.renamedDocuments}. Ambiguous or unmatched customers (ambiguity.csv): ${report.unresolvedMatchCount}. Payment exceptions: ${report.unresolvedPaymentCount}. Money owed after import: ${report.balances.owedAfterImport} p; customer credit ${report.balances.creditAfterImport} p.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

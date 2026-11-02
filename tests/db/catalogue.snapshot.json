@@ -1916,6 +1916,11 @@
  },
  {
   "kind": "function",
+  "object": "public.source_ref_import_only()",
+  "detail": "invoker search_path=pg_catalog, public 4e0c7a5f210db4ee26bd37bb3e69fb32"
+ },
+ {
+  "kind": "function",
   "object": "public.start_job_rework(p_rework uuid)",
   "detail": "definer search_path=pg_catalog, public, security_audit c06a1133204ffb0d12d1f672f894d4f6"
  },
@@ -4037,6 +4042,11 @@
  {
   "kind": "function-grant",
   "object": "public.site_network_replay(p_org uuid, p_client_op_id uuid, p_kind text, p_request jsonb)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.source_ref_import_only()",
   "detail": "service_role"
  },
  {
@@ -7191,6 +7201,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoices :: source_ref_import_only",
+  "detail": "O ce0e9c61cb33cebfe7e871b93865c3c2"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoices :: support_read_only",
   "detail": "O 8898d9ef1e25e7dca094000dc875f0b1"
  },
@@ -7911,6 +7926,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.purchase_orders :: source_ref_import_only",
+  "detail": "O af27a05720643c306cc2f39f265bb3b7"
+ },
+ {
+  "kind": "trigger",
   "object": "public.purchase_orders :: support_read_only",
   "detail": "O 9f0bc0d1ee2bb17b71191337a0d62d45"
  },
@@ -8023,6 +8043,11 @@
   "kind": "trigger",
   "object": "public.quotes :: quotes_start_as_drafts",
   "detail": "O 4f42099e93697cae5ff49b00dc7f8a74"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.quotes :: source_ref_import_only",
+  "detail": "O 6cebade21341684e6ab4e9b6353f4b3e"
  },
  {
   "kind": "trigger",
