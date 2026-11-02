@@ -224,6 +224,89 @@ describe("a ticket allows exactly one change", () => {
   });
 });
 
+describe("a failed password update does not burn the ticket (Pack 19d, 1)", () => {
+  /** Commits fn's work (the logins are removed in afterAll). */
+  const committed = <T>(fn: (db: Client) => Promise<T>) => withDb(async (db) => {
+    await db.query("begin");
+    try {
+      const out = await fn(db);
+      await db.query("commit");
+      return out;
+    } catch (error) {
+      await db.query("rollback");
+      throw error;
+    }
+  });
+  for (const [when, timing] of [["a later BEFORE trigger", "before"], ["an AFTER trigger", "after"]] as const) {
+    it(`Auth's UPDATE fails after 137's trigger ran (${when} raises): the ticket stays unused and works in a fresh transaction within 60 seconds`, async () => {
+      const me = await committed(async (db) => {
+        const id = await login(db, `burn-${timing}`);
+        expect((await issue(db, id)).error).toBeNull();
+        return id;
+      });
+      // Auth's transaction: 137's trigger takes the ticket, then something later in the same transaction fails; all of it rolls back.
+      const failure = await withDb(async (db) => {
+        await db.query("begin");
+        try {
+          await db.query(`create function pg_temp.t137_fail() returns trigger language plpgsql as $f$ begin raise exception 'later failure' using errcode = 'XX137'; end $f$`);
+          // BEFORE triggers fire in name order, so "zz_..." runs after password_change_ticket.
+          await db.query(`create trigger zz_t137_fail ${timing} update on auth.users for each row when (old.id = '${me}') execute function pg_temp.t137_fail()`);
+          const { error } = await authSetsPassword(db, me, "Failed-Attempt-Password-1");
+          return error;
+        } finally {
+          await db.query("rollback");
+        }
+      });
+      expect(failure).toMatchObject({ code: "XX137" });
+      await withDb(async (db) => {
+        expect(await tickets(db, me)).toEqual([{ purpose: "own_change", used: false, live: true }]);
+        expect(await passwordIs(db, me, `Old-burn-${timing}-Password-1`)).toBe(true);
+        expect(await db.query("select 1 from pg_trigger where tgname = 'zz_t137_fail'").then((r) => r.rowCount)).toBe(0);
+      });
+      // The retry, in a fresh transaction, with the same ticket: allowed, and the ticket is now used.
+      await committed(async (db) => {
+        expect((await authSetsPassword(db, me, "Retry-Password-OK-1")).error).toBeNull();
+      });
+      await withDb(async (db) => {
+        expect(await passwordIs(db, me, "Retry-Password-OK-1")).toBe(true);
+        expect(await tickets(db, me)).toEqual([{ purpose: "own_change", used: true, live: true }]);
+      });
+    });
+  }
+});
+
+describe("an admin who lost their authenticator is not locked out by 137 (Pack 19d, 3)", () => {
+  it("(b) the operator deletes the factor (dashboard: auth.mfa_factors only): 137's trigger does not fire, no ticket is needed or used", async () => {
+    await rolledBack(async (db) => {
+      const me = await login(db, "lost-factor");
+      await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified')", [me]);
+      await issue(db, me);
+      // No 137 trigger on auth.mfa_factors at all.
+      expect((await db.query("select 1 from pg_trigger where tgrelid = 'auth.mfa_factors'::regclass and tgfoid = to_regprocedure('public.auth_users_password_change_ticket()')")).rowCount).toBe(0);
+      expect((await asRole(db, authRole, "delete from auth.mfa_factors where user_id = $1", [me])).error).toBeNull();
+      // What Auth may also touch on auth.users when a factor goes (updated_at): the password is unchanged, so not asked.
+      expect((await asRole(db, authRole, "update auth.users set updated_at = now() where id = $1", [me])).error).toBeNull();
+      expect((await db.query("select 1 from auth.mfa_factors where user_id = $1", [me])).rowCount).toBe(0);
+      expect(await tickets(db, me)).toEqual([{ purpose: "own_change", used: false, live: true }]);
+    });
+  });
+  it("(c) lost password AND authenticator: the operator, in one SQL editor run, issues an operator ticket, sets the password and removes the factors", async () => {
+    await rolledBack(async (db) => {
+      const me = await login(db, "lost-both");
+      await db.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified')", [me]);
+      // Without the ticket the operator's own UPDATE is refused too.
+      expect((await asRole(db, null, "update auth.users set encrypted_password = extensions.crypt('Operator-Set-Password-1', extensions.gen_salt('bf')) where id = $1", [me])).error).toMatchObject(REFUSED);
+      const { error } = await asRole(db, null, `select public.issue_password_change_ticket('${me}', 'operator');
+        update auth.users set encrypted_password = extensions.crypt('Operator-Set-Password-1', extensions.gen_salt('bf')) where id = '${me}';
+        delete from auth.mfa_factors where user_id = '${me}';`);
+      expect(error).toBeNull();
+      expect(await passwordIs(db, me, "Operator-Set-Password-1")).toBe(true);
+      expect((await db.query("select 1 from auth.mfa_factors where user_id = $1", [me])).rowCount).toBe(0);
+      expect(await tickets(db, me)).toEqual([{ purpose: "operator", used: true, live: true }]);
+    });
+  });
+});
+
 describe("what is not asked", () => {
   it("an UPDATE that leaves the password as it was (sign-in time, ban, metadata, the same hash) is not asked and uses no ticket", async () => {
     await rolledBack(async (db) => {

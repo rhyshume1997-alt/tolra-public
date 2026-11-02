@@ -33,6 +33,7 @@ const state = {
   log: [] as string[],
   ticket: "ok" as "ok" | "missing" | "error",
   updateError: null as null | { code?: string; status?: number; message?: string },
+  issued: 0,
 };
 
 const admin = {
@@ -54,7 +55,8 @@ const admin = {
     if (fn === "issue_password_change_ticket") {
       if (state.ticket === "missing") return { data: null, error: { code: "PGRST202", message: "Could not find the function" } };
       if (state.ticket === "error") return { data: null, error: { code: "XX000", message: "boom" } };
-      return { data: "ticket-1", error: null };
+      state.issued += 1;
+      return { data: `ticket-${state.issued}`, error: null };
     }
     if (fn === "revoke_password_change_ticket") return { data: false, error: null };
     throw new Error(`unexpected rpc ${fn}`);
@@ -113,7 +115,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
   process.env.BREACHED_PASSWORD_CHECK = "off";
-  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", next: null, amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [], log: [], ticket: "ok", updateError: null });
+  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", next: null, amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [], log: [], ticket: "ok", updateError: null, issued: 0 });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -322,6 +324,21 @@ describe("G1 (migration 137): a single-use ticket for this login, issued only af
     expect(response.status).toBe(500);
     expect((await response.json()).error).toBe("Couldn't save your password. Try again.");
     expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
+  });
+});
+
+describe("G1 (137): a failed update does not use up the person's chance to retry (Pack 19d)", () => {
+  it("updateUser fails: the route drops that ticket; the retry issues a fresh ticket and the change succeeds", async () => {
+    state.updateError = { status: 500, code: "unexpected_failure", message: "Error during password storage" };
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(500);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
+    expect(state.updates).toEqual([]);
+    state.log = [];
+    state.updateError = null;
+    const retry = await change({ password: NEW, current_password: CURRENT });
+    expect(retry.status).toBe(200);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-2:"]);
+    expect(state.updates).toEqual([NEW]);
   });
 });
 

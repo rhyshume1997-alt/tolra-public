@@ -90,6 +90,24 @@ describe("G1 (migration 137): Auth refuses a password change the app's server di
     await ticket(user.id, "admin_set");
     expect((await adminClient().auth.admin.updateUserById(user.id, { password: user.password })).error).toBeNull();
   });
+  it("password recovery (admin generateLink type recovery, then verifyOtp): the recovery session alone can't change the password; with a ticket it can, and the new password signs in", async () => {
+    const user = world.tenants.beta.users.viewer;
+    const link = await adminClient().auth.admin.generateLink({ type: "recovery", email: user.email });
+    expect(link.error).toBeNull();
+    const recovering = fresh();
+    const verified = await recovering.auth.verifyOtp({ type: "recovery", token_hash: link.data.properties!.hashed_token });
+    expect(verified.error).toBeNull();
+    expect(verified.data.session).not.toBeNull();
+    // Direct, with the recovery session's own token and no ticket: refused.
+    expect((await recovering.auth.updateUser({ password: `${user.password}r5` })).error).not.toBeNull();
+    // The app's path (/api/auth/change-password issues the ticket after its checks; a recovery link skips the current password).
+    await ticket(user.id, "own_change");
+    expect((await recovering.auth.updateUser({ password: `${user.password}r5` })).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword({ email: user.email, password: `${user.password}r5` })).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword(user)).error).not.toBeNull();
+    await ticket(user.id, "admin_set");
+    expect((await adminClient().auth.admin.updateUserById(user.id, { password: user.password })).error).toBeNull();
+  });
   it("a signed-in person can't issue a ticket for themselves", async () => {
     const user = world.tenants.alpha.users.office;
     const client = await signedInClient(user);

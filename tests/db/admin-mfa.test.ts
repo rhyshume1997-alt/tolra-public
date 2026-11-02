@@ -3,7 +3,7 @@
  * (aal1) or after the code (aal2); the database rule (organizations.require_admin_mfa) refuses aal1 on settings changes and
  * allows aal2; and another admin can reset a person's two-step sign-in (audited), but not their own and not another company's.
  */
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -11,6 +11,7 @@ vi.mock("server-only", () => ({}));
 import { resetMfa } from "@/lib/server/admin-users";
 
 import { type SyntheticWorld, adminClient, createSyntheticWorld, destroySyntheticWorld, signedInClient, verifyBackendIdentity, withDb } from "../support/fixtures";
+import { isolatedBackend } from "../support/isolation";
 import { enrolTotp, passSecondStep } from "../support/totp";
 
 let world: SyntheticWorld;
@@ -163,5 +164,57 @@ describe("another admin resets someone's two-step sign-in", () => {
     const shared = await resetMfa(adminClient() as never, world.tenants.alpha.id, alphaAdmin().id, sharedId);
     expect(shared).toMatchObject({ ok: false, status: 403 });
     expect(await factorCount(sharedId)).toBe(1);
+  });
+});
+
+describe("an admin who lost their authenticator is not locked out (G1, migration 137; Pack 19d)", () => {
+  /** A second admin of alpha, made for this test (removed with the run: its e-mail ends in the run id). */
+  async function secondAdmin(label: string) {
+    const email = `${label}.${world.runId}@example.test`;
+    const password = `Lost-${label}-${world.runId}-Pw1`;
+    const created = await adminClient().auth.admin.createUser({ email, password, email_confirm: true });
+    expect(created.error).toBeNull();
+    expect((await adminClient().rpc("add_member", { p_org: world.tenants.alpha.id, p_email: email, p_role: "admin" })).error).toBeNull();
+    const client = await signedInClient({ email, password });
+    await enrolTotp(client);
+    return { id: created.data.user!.id, email, password };
+  }
+  const ticket = async (userId: string) => {
+    const { data, error } = await adminClient().rpc("issue_password_change_ticket", { p_user_id: userId, p_purpose: "own_change" });
+    expect(error).toBeNull();
+    expect(typeof data).toBe("string");
+  };
+  const fresh = () => {
+    const { apiUrl, anonKey } = isolatedBackend();
+    return createClient(apiUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  };
+
+  it("(a) another admin resets their two-step sign-in; they sign in with the password (aal1, nothing to verify), enrol, pass the code (aal2), and change their own password through the ticket", async () => {
+    const lost = await secondAdmin("lost-authenticator");
+    expect(await resetMfa(adminClient() as never, world.tenants.alpha.id, world.tenants.alpha.users.admin.id, lost.id)).toEqual({ ok: true, removed: 1 });
+    const client = await signedInClient(lost);
+    expect(await aalOf(client)).toBe("aal1");
+    const assurance = (await client.auth.mfa.getAuthenticatorAssuranceLevel()).data!;
+    expect(assurance.nextLevel).toBe("aal1"); // no factor left: /mfa offers enrolment, not a code
+    await enrolTotp(client);
+    expect(await aalOf(client)).toBe("aal2");
+    expect((await client.auth.updateUser({ password: `${lost.password}n1` })).error).not.toBeNull(); // still no way round the ticket
+    await ticket(lost.id);
+    expect((await client.auth.updateUser({ password: `${lost.password}n1` })).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword({ email: lost.email, password: `${lost.password}n1` })).error).toBeNull();
+  });
+
+  it("(c) lost password AND authenticator: their two-step sign-in is reset, a recovery link signs them in, they enrol, and choose a new password through the ticket", async () => {
+    const lost = await secondAdmin("lost-both");
+    expect(await resetMfa(adminClient() as never, world.tenants.alpha.id, world.tenants.alpha.users.admin.id, lost.id)).toEqual({ ok: true, removed: 1 });
+    const link = await adminClient().auth.admin.generateLink({ type: "recovery", email: lost.email });
+    expect(link.error).toBeNull();
+    const client = fresh();
+    expect((await client.auth.verifyOtp({ type: "recovery", token_hash: link.data.properties!.hashed_token })).error).toBeNull();
+    await enrolTotp(client);
+    expect(await aalOf(client)).toBe("aal2");
+    await ticket(lost.id);
+    expect((await client.auth.updateUser({ password: `${lost.password}n2` })).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword({ email: lost.email, password: `${lost.password}n2` })).error).toBeNull();
   });
 });

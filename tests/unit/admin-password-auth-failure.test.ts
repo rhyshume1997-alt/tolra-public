@@ -20,6 +20,7 @@ const state = {
   /** G1 (137): the order of ticket and Auth calls, and how the ticket function answers. */
   log: [] as string[],
   ticket: "ok" as "ok" | "missing" | "error",
+  issued: 0,
 };
 
 const admin = {
@@ -45,7 +46,8 @@ const admin = {
     if (fn === "issue_password_change_ticket") {
       if (state.ticket === "missing") return { data: null, error: { code: "PGRST202", message: "Could not find the function" } };
       if (state.ticket === "error") return { data: null, error: { code: "P0002", message: "No such login." } };
-      return { data: "ticket-1", error: null };
+      state.issued += 1;
+      return { data: `ticket-${state.issued}`, error: null };
     }
     if (fn === "revoke_password_change_ticket") return { data: false, error: null };
     throw new Error(`unexpected rpc ${fn}`);
@@ -80,7 +82,7 @@ const call = (mustChange: boolean) =>
   }));
 
 beforeEach(() => {
-  Object.assign(state, { flag: false, flagWrites: [], authCalls: 0, authResults: [], audited: [], log: [], ticket: "ok" });
+  Object.assign(state, { flag: false, flagWrites: [], authCalls: 0, authResults: [], audited: [], log: [], ticket: "ok", issued: 0 });
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -184,6 +186,19 @@ describe("G1 (migration 137): a single-use ticket for this login, issued after e
     state.log = [];
     state.authResults = [{ error: { status: 500, code: "unexpected_failure" } }];
     expect((await call(true)).status).toBe(503);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-2"]);
+  });
+});
+
+describe("G1 (137): a failed Auth call does not use up the admin's retry (Pack 19d)", () => {
+  it("Auth refuses (422): that ticket is dropped; the retry issues a fresh ticket and succeeds, audited once", async () => {
+    state.authResults = [{ error: { status: 422, code: "weak_password", message: "Password is too weak" } }];
+    expect((await call(true)).status).toBe(400);
     expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-1"]);
+    state.log = [];
+    const retry = await call(true);
+    expect(retry.status).toBe(200);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-2"]);
+    expect(state.audited).toEqual(["SET_USER_PASSWORD"]);
   });
 });
