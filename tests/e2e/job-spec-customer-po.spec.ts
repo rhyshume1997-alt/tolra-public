@@ -67,7 +67,7 @@ async function newQuote(quoteRef: string, customer: string, status: "sent" | "ac
 /**
  * An open sales order for the quote, with or without its own PO, then Convert to Job on Sales Orders; returns the job made.
  * The row is found by the reference Sales Orders shows: the order's own customer PO when it has one (SO Ref follows the PO,
- * migration 058), otherwise its SO number.
+ * migration 058), otherwise (none or empty) its SO number; and by the order's customer.
  */
 async function convertInBrowser(page: Page, quoteId: string, quoteRef: string, customer: string, soNumber: string, orderPo: string | null) {
   const { data: order, error } = await adminClient().from("sales_orders").insert({
@@ -76,7 +76,11 @@ async function convertInBrowser(page: Page, quoteId: string, quoteRef: string, c
   expect(error).toBeNull();
   await signIn(page, solo.admin);
   await page.goto("/sales-orders");
-  await page.getByRole("row").filter({ hasText: orderPo ?? soNumber }).getByRole("button", { name: "Convert to Job" }).click();
+  // What the row's SO Ref shows is customer_po || so_number (an empty PO shows the SO number), so the same expression here; and the
+  // order's own customer too. Exactly one row before Convert to Job.
+  const row = page.getByRole("row").filter({ hasText: orderPo || soNumber }).filter({ hasText: customer });
+  await expect(row).toHaveCount(1);
+  await row.getByRole("button", { name: "Convert to Job" }).click();
   await page.waitForURL(/\/jobs\?job=/);
   const jobId = new URL(page.url()).searchParams.get("job")!;
   const { data: jobs } = await adminClient().from("jobs").select("id, job_no, customer_po, specification").eq("converted_from_sales_order_id", order!.id);
