@@ -150,6 +150,41 @@ describe("133 Q4: a swept request's charge stands", () => {
   });
 });
 
+describe("133 and the release preflight: 103's and 133's exact bodies only", () => {
+  /** The release preflight's rows, read inside the caller's (rolled-back) transaction. */
+  const preflight = async (db: Client) => {
+    const rows = (await db.query<{ check: string; value: string }>(read("supabase/verify/release_preflight.sql"))).rows;
+    const get = (prefix: string) => rows.find((r) => r.check.startsWith(prefix))?.value;
+    return { marker103: get("marker 103 "), marker133: get("marker 133 "), needs103: get("103 needs:") };
+  };
+  /** Replaces a function with its own text plus a harmless comment after BEGIN: same behaviour, an unknown body. */
+  const alter = (db: Client, sig: string) =>
+    db.query(`do $d$ begin execute regexp_replace(pg_get_functiondef(to_regprocedure('${sig}')), E'\\nBEGIN\\n', E'\\nBEGIN\\n  -- an unknown version\\n'); end $d$`);
+
+  it("with 133 in: 103 applied, 133 / 133; an unknown settle body: 103 not applied and 'other' (stop); an unknown reserve body: 'other' too", async () => {
+    await rolledBack(async (db) => {
+      expect(await preflight(db)).toEqual({ marker103: "applied", marker133: "applied", needs103: "133 / 133" });
+      await alter(db, "public.ai_helper_settle(uuid,text,text,integer,text,jsonb)");
+      expect((await db.query("select md5(regexp_replace(prosrc, '\\s', '', 'g')) as m from pg_proc where oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)')")).rows[0].m)
+        .not.toBe("7e04d0ab645ec24dc0f0acb78c222702");
+      expect(await preflight(db)).toEqual({ marker103: "not applied", marker133: "not applied", needs103: "133 / other" });
+      await alter(db, "public.ai_helper_reserve(text,integer,text,integer)");
+      expect(await preflight(db)).toEqual({ marker103: "not applied", marker133: "not applied", needs103: "other / other" });
+    });
+  });
+
+  it("with 133 rolled back (103's bodies): 103 applied, 133 not applied, 103 / 103; an unknown reserve body alone: 'other' for reserve", async () => {
+    await rolledBack(async (db) => {
+      await db.query(unwrapped(read("supabase/release/133_ai_helper_pre_enable.rollback.sql")));
+      expect(await preflight(db)).toEqual({ marker103: "applied", marker133: "not applied", needs103: "103 / 103" });
+      await alter(db, "public.ai_helper_reserve(text,integer,text,integer)");
+      expect(await preflight(db)).toEqual({ marker103: "applied", marker133: "not applied", needs103: "other / 103" });
+      await alter(db, "public.ai_helper_settle(uuid,text,text,integer,text,jsonb)");
+      expect(await preflight(db)).toEqual({ marker103: "not applied", marker133: "not applied", needs103: "other / other" });
+    });
+  });
+});
+
 describe("133 release files", () => {
   it("verify TRUE on every row; the rollback puts 103's bodies back and removes the purge (rolled back); the release applies again, twice", async () => {
     await withDb(async (db) => {
