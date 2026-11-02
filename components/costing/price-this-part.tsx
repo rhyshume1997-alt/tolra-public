@@ -1,9 +1,14 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { calcDetailedQuote } from '@/lib/costing/engine';
+import { linePence, fromPence } from '@/lib/money';
+import { calcDetailedQuote, type DetailedInputs } from '@/lib/costing/engine';
 import type { CostingRates } from './types';
 export type CostedQuoteLine = { description: string; quantity: number; unitPrice: number };
 export type PricePartProps = { rates: CostingRates; onAdd: (line: CostedQuoteLine) => void };
+export function safePartEstimate(input: DetailedInputs) {
+  try { return calcDetailedQuote(input); } catch { return null; }
+}
+export const previewLineTotal = (quantity: number, unitPrice: number) => fromPence(linePence(quantity, unitPrice));
 const positive = (value: string) => Math.max(0, Number(value) || 0);
 export function PriceThisPart({ rates, onAdd }: PricePartProps) {
   const [materialId, setMaterialId] = useState('');
@@ -20,7 +25,7 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
     if (!material || !machine || !Number.isInteger(quantity) || quantity < 1) return null;
     const perLb = material.unit === 'kg' ? material.price * 0.45359237 : material.price;
     const stockLb = material.unit === 'kg' ? weightKg / 0.45359237 : 1;
-    return calcDetailedQuote({ quantity, stock_weight_lb: stockLb, cost_per_lb: perLb,
+    return safePartEstimate({ quantity, stock_weight_lb: stockLb, cost_per_lb: perLb,
       scrap_factor: material.scrapPct / 100, margin_pct: rates.marginPct / 100,
       programming_time_hr: programmingHours, programming_rate_per_hr: rates.programmingPerHour,
       overhead_rate_pct: 1 + rates.overheadPct / 100,
@@ -43,6 +48,7 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
       {field('Cycle hours per part', cycleHours, setCycleHours)}
       {field('Programming hours for batch', programmingHours, setProgrammingHours)}
     </div>
+    {!estimate && material && machine && <p role="alert">Check the quantity, costs and times. Quantity must be a whole number from 1 to 1,000,000.</p>}
     {estimate && <div aria-label="Cost breakdown" className="space-y-1 text-sm">
       <div>Material: £{estimate.cost_breakdown.material.total.toFixed(2)}</div>
       <div>Machine: £{estimate.cost_breakdown.machine_cost.toFixed(2)}</div>
@@ -51,7 +57,7 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
       <div>Overhead: £{estimate.cost_breakdown.overhead_cost.toFixed(2)}</div>
       <div>Cost per part: £{estimate.summary.unit_cost.toFixed(2)}</div>
       <div>Price per part: £{estimate.summary.unit_price.toFixed(2)}</div>
-      <div>Total quote: £{estimate.summary.extended_price.toFixed(2)}</div>
+      <div>Total quote: £{previewLineTotal(quantity, estimate.summary.unit_price).toFixed(2)}</div>
     </div>}
     <button type="button" disabled={!estimate || !description.trim()} onClick={() => {
       if (estimate && description.trim()) onAdd({ description: description.trim(), quantity, unitPrice: estimate.summary.unit_price });
