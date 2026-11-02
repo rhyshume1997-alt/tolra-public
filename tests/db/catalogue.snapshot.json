@@ -471,6 +471,36 @@
  },
  {
   "kind": "function",
+  "object": "public.dashboard_money_owed(p_today date)",
+  "detail": "invoker search_path=pg_catalog, public fdab50bb12e6e508f3fdae3a4ddf224d"
+ },
+ {
+  "kind": "function",
+  "object": "public.dashboard_open_quotes(p_today date)",
+  "detail": "invoker search_path=pg_catalog, public 1ea624942b7d4ea6705f4ad490b99762"
+ },
+ {
+  "kind": "function",
+  "object": "public.dashboard_quote_outcomes(p_since date, p_today date)",
+  "detail": "invoker search_path=pg_catalog, public fa5c7e177b35cc411183d3f049ab5f5f"
+ },
+ {
+  "kind": "function",
+  "object": "public.dashboard_quotes_sent(p_since date)",
+  "detail": "invoker search_path=pg_catalog, public d1a4a3998fd6ecf99841a9809590b8f5"
+ },
+ {
+  "kind": "function",
+  "object": "public.dashboard_quotes_won(p_since date)",
+  "detail": "invoker search_path=pg_catalog, public c2c4d0804bb5af77eb546a1aad80d73b"
+ },
+ {
+  "kind": "function",
+  "object": "public.dashboard_rfqs_to_quote()",
+  "detail": "invoker search_path=pg_catalog, public 342ec87ce47d47fe5e7cf84ce174d724"
+ },
+ {
+  "kind": "function",
   "object": "public.decide_reopen_request(p_request uuid, p_decision text, p_note text)",
   "detail": "definer search_path=pg_catalog, public 178c9c92260635662757582c7b9fa841"
  },
@@ -2593,6 +2623,36 @@
   "kind": "function-grant",
   "object": "public.customers_in_use_guard()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_money_owed(p_today date)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_open_quotes(p_today date)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_quote_outcomes(p_since date, p_today date)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_quotes_sent(p_since date)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_quotes_won(p_since date)",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.dashboard_rfqs_to_quote()",
+  "detail": "authenticated,service_role"
  },
  {
   "kind": "function-grant",

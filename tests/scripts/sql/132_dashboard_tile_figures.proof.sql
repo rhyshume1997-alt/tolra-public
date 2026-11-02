@@ -1,0 +1,146 @@
+-- Local proof for migration 132 (the dashboard's tile figures in the database). Run on a COPY of a database with the chain plus 132:
+--   createdb e_132 -T base; psql -d e_132 -f supabase/release/132_dashboard_tile_figures.release.sql; psql -X -d e_132 -f this
+-- One transaction, rolled back. Seed: 132_dashboard_tile_figures.seed.sql (hand counts below are worked out from its comments).
+-- Prints one PASS or FAIL line per check, then TOTAL n/m. The parity with the page's old arithmetic (same figures to the last bit) is
+-- tests/unit/dashboard-tile-figures.test.ts over the fixture this seed produces (132_dashboard_tile_figures.fixture.sql).
+\set ON_ERROR_STOP 1
+\set QUIET 1
+BEGIN;
+SET LOCAL TIME ZONE 'UTC';
+\ir 132_dashboard_tile_figures.seed.sql
+CREATE TEMP TABLE r(n serial, name text, ok boolean);
+GRANT ALL ON r TO PUBLIC; GRANT ALL ON SEQUENCE r_n_seq TO PUBLIC;
+-- p_sql (one jsonb expression) as the signed-in p_user (aal2), or as anon when p_user is NULL; the answer, or {"error": SQLSTATE}.
+CREATE FUNCTION pg_temp.as_user(p_user uuid, p_sql text) RETURNS jsonb LANGUAGE plpgsql AS $f$
+DECLARE v jsonb; v_state text;
+BEGIN
+  IF p_user IS NULL THEN
+    PERFORM set_config('request.jwt.claims', '{"role":"anon"}', true);
+    PERFORM set_config('request.jwt.claim.sub', '', true);
+    SET LOCAL ROLE anon;
+  ELSE
+    PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated', 'aal', 'aal2')::text, true);
+    PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+    SET LOCAL ROLE authenticated;
+  END IF;
+  BEGIN
+    EXECUTE 'SELECT ' || p_sql INTO v;
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE;
+    v := jsonb_build_object('error', v_state);
+  END;
+  RESET ROLE;
+  RETURN v;
+END $f$;
+\set A '''a0000000-0000-0000-0000-0000000001a1'''
+\set O '''a0000000-0000-0000-0000-0000000001a2'''
+\set W '''a0000000-0000-0000-0000-0000000001a3'''
+\set B '''b0000000-0000-0000-0000-0000000001b1'''
+\set G '''c0000000-0000-0000-0000-0000000001c1'''
+\set D '''d0000000-0000-0000-0000-0000000001d1'''
+
+-- Alpha admin: every figure against the hand count.
+INSERT INTO r(name, ok) SELECT 'alpha open quotes: 6 sent and valid (incl. SENT, valid today, no date, v2), 1235128.19, 3 accepted (ACCEPTED, not "Accepted ")',
+  pg_temp.as_user(:A, $$public.dashboard_open_quotes('2026-10-20')$$) = '{"open_count": 6, "open_pence": 123512819, "accepted_count": 3}';
+INSERT INTO r(name, ok) SELECT 'alpha quotes sent this month: 8 (QUO-0100 and v2 once; 23:30 UTC 30 Sep not counted; "" once)',
+  pg_temp.as_user(:A, $$public.dashboard_quotes_sent('2026-10-01')$$) = '{"count": 8}';
+INSERT INTO r(name, ok) SELECT 'alpha quotes won this month: 2 ("Accepted " trimmed; 23:30 UTC 30 Sep = 1 Oct London), 1 undated; 22:30 UTC 30 Sep not counted',
+  pg_temp.as_user(:A, $$public.dashboard_quotes_won('2026-10-01')$$) = '{"count": 2, "undated": 1}';
+INSERT INTO r(name, ok) SELECT 'alpha quotes last 90 days: 2 accepted, 6 awaiting, 1 expired (sent), 1 rejected',
+  pg_temp.as_user(:A, $$public.dashboard_quote_outcomes('2026-07-22', '2026-10-20')$$) = '{"accepted": 2, "sent": 6, "expired": 1, "rejected": 1, "expired_sent": 1}';
+INSERT INTO r(name, ok) SELECT 'alpha RFQs to quote: 4 (blank, null, new, "Quoted"; not quoted, not linked)',
+  pg_temp.as_user(:A, $$public.dashboard_rfqs_to_quote()$$) = '{"outstanding": 4}';
+INSERT INTO r(name, ok) SELECT 'alpha money owed: 49 invoices, 2 to confirm, buckets 197.87 / 153.05 / 143.40 / 140.00 (60 late is 31-60, 61 is 60+)',
+  pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20') - 'owed_pence'$$)
+    = '{"invoices": 49, "to_confirm": 2, "not_due": 19787, "late_1_30": 15305, "late_31_60": 14340, "late_60_plus": 14000}';
+INSERT INTO r(name, ok) SELECT 'alpha money owed total is exact whole pence: 63432 (the old page''s float sum was 634.3200000000002; £634 either way)',
+  (pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20')$$) ->> 'owed_pence') = '63432'
+  AND NOT (pg_temp.as_user(:A, $$public.dashboard_money_owed('2026-10-20')$$) ? 'owed');
+-- The money-owed edge cases (seed comments): Gamma's 199 small amounts and credits, Delta's exact 3.50; columns hold whole pence only.
+INSERT INTO r(name, ok) SELECT 'gamma 203 invoices owe 9407 pence (23.40 small, over-paid 0, over-credited 0, refunded 4.00, part-paid 66.67); delta 350 pence; amounts have 2 decimals',
+  pg_temp.as_user(:G, $$public.dashboard_money_owed('2026-10-20') -> 'owed_pence'$$) = '9407'
+  AND pg_temp.as_user(:G, $$public.dashboard_money_owed('2026-10-20') -> 'invoices'$$) = '203'
+  AND pg_temp.as_user(:D, $$public.dashboard_money_owed('2026-10-20')$$)
+      = '{"invoices": 3, "to_confirm": 0, "owed_pence": 350, "not_due": 350, "late_1_30": 0, "late_31_60": 0, "late_60_plus": 0}'
+  AND (SELECT count(*) = 4 AND bool_and(numeric_scale = 2) FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'invoices' AND column_name IN ('total', 'amount_paid', 'credited_amount', 'refunded_amount'));
+-- No float anywhere: every answer is whole numbers in its JSON text, and the same text whatever the session's extra_float_digits
+-- (Supabase's server sets 0, PostgreSQL's default is 1; a float's text depends on it).
+CREATE TEMP TABLE t_digits(digits int, who text, answer text);
+GRANT ALL ON t_digits TO PUBLIC;
+SET LOCAL extra_float_digits = 0;
+INSERT INTO t_digits SELECT 0, w, pg_temp.as_user(u::uuid, $$jsonb_build_array(public.dashboard_open_quotes('2026-10-20'), public.dashboard_quotes_sent('2026-10-01'),
+  public.dashboard_quotes_won('2026-10-01'), public.dashboard_quote_outcomes('2026-07-22', '2026-10-20'), public.dashboard_rfqs_to_quote(),
+  public.dashboard_money_owed('2026-10-20'))$$)::text FROM (VALUES ('A', :A), ('O', :O), ('W', :W), ('B', :B), ('G', :G), ('D', :D)) v(w, u);
+SET LOCAL extra_float_digits = 1;
+INSERT INTO t_digits SELECT 1, w, pg_temp.as_user(u::uuid, $$jsonb_build_array(public.dashboard_open_quotes('2026-10-20'), public.dashboard_quotes_sent('2026-10-01'),
+  public.dashboard_quotes_won('2026-10-01'), public.dashboard_quote_outcomes('2026-07-22', '2026-10-20'), public.dashboard_rfqs_to_quote(),
+  public.dashboard_money_owed('2026-10-20'))$$)::text FROM (VALUES ('A', :A), ('O', :O), ('W', :W), ('B', :B), ('G', :G), ('D', :D)) v(w, u);
+RESET extra_float_digits;
+INSERT INTO r(name, ok) SELECT 'every answer, for all six people, is whole numbers only and the same text under extra_float_digits 0 and 1',
+  (SELECT count(*) = 12 AND bool_and(regexp_replace(answer, '"[^"]*"', '', 'g') !~ '[.eE]') AND bool_and(answer NOT LIKE '%error%') FROM t_digits)
+  AND NOT EXISTS (SELECT 1 FROM t_digits a JOIN t_digits b ON b.who = a.who AND b.digits = 1 WHERE a.digits = 0 AND a.answer <> b.answer);
+-- Money owed reconciles, for every person: owed_pence is the sum, over the invoices that person can read, of each balance worked out
+-- here independently (numeric, exact: total - paid - credited + refunded, in pence, never below zero; status trimmed and lower-cased,
+-- blank = draft; not paid, draft, void, voided, cancelled, canceled, credited, written_off; payment confirmed); the four buckets add up
+-- to the positive part of it (here every balance is at least zero, so to the same total). Pence only: rounded pounds need not add up.
+CREATE TEMP TABLE t_owed(who text, fn jsonb, own jsonb);
+GRANT ALL ON t_owed TO PUBLIC;
+INSERT INTO t_owed SELECT w, pg_temp.as_user(u::uuid, $$public.dashboard_money_owed('2026-10-20')$$),
+  pg_temp.as_user(u::uuid, $$(SELECT jsonb_build_object('n', count(*), 'pence', coalesce(sum(b), 0), 'positive', coalesce(sum(b) FILTER (WHERE b > 0), 0))
+    FROM (SELECT greatest(0, (coalesce(total, 0) - coalesce(amount_paid, 0) - coalesce(credited_amount, 0) + coalesce(refunded_amount, 0)) * 100) AS b
+          FROM public.invoices
+          WHERE status <> 'paid' AND NOT coalesce(payment_unverified, FALSE)
+            AND coalesce(nullif(lower(btrim(status, E' \t\n\r ')), ''), 'draft')
+                NOT IN ('paid', 'draft', 'void', 'voided', 'cancelled', 'canceled', 'credited', 'written_off')) i)$$)
+FROM (VALUES ('A', :A), ('O', :O), ('W', :W), ('B', :B), ('G', :G), ('D', :D)) v(w, u);
+INSERT INTO r(name, ok) SELECT 'money owed reconciles for all six people: owed_pence = sum of each readable invoice''s balance in pence; the four buckets sum to it',
+  (SELECT count(*) = 6 AND bool_and(
+       (fn ->> 'invoices')::bigint = (own ->> 'n')::bigint
+       AND (fn ->> 'owed_pence')::numeric = (own ->> 'pence')::numeric
+       AND (fn ->> 'not_due')::numeric + (fn ->> 'late_1_30')::numeric + (fn ->> 'late_31_60')::numeric + (fn ->> 'late_60_plus')::numeric
+           = (own ->> 'positive')::numeric)
+   FROM t_owed);
+-- No float anywhere in the six functions: a float sum of the total or of any bucket would print by extra_float_digits.
+INSERT INTO r(name, ok) SELECT 'no float in any of the six functions (no float, double precision or real; no division into pounds)',
+  (SELECT count(*) = 6 AND NOT bool_or(p.prosrc ~* '(float|double precision|\mreal\M|::numeric\s*/|/\s*100\.)')
+   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname LIKE 'dashboard\_%');
+-- Row-level security applies (SECURITY INVOKER): Quotes hidden from the office login -> no quote counted, and every RFQ looks unquoted.
+INSERT INTO r(name, ok) SELECT 'alpha office with Quotes hidden: 0 open, 0 sent, 0 won, 5 RFQs to quote (no quote it may see is linked)',
+  pg_temp.as_user(:O, $$public.dashboard_open_quotes('2026-10-20') || public.dashboard_quotes_won('2026-10-01')$$) = '{"open_count": 0, "open_pence": 0, "accepted_count": 0, "count": 0, "undated": 0}'
+  AND pg_temp.as_user(:O, $$public.dashboard_quotes_sent('2026-10-01')$$) = '{"count": 0}'
+  AND pg_temp.as_user(:O, $$public.dashboard_rfqs_to_quote()$$) = '{"outstanding": 5}';
+-- Each figure equals the same count over the rows that person can read directly (so the function never sees more than a SELECT would).
+INSERT INTO r(name, ok) SELECT 'workshop: each figure is what its own reads of quotes / RFQs / invoices give',
+  (pg_temp.as_user(:W, $$public.dashboard_open_quotes('2026-10-20') -> 'open_count'$$))::int
+     = (pg_temp.as_user(:W, $$to_jsonb((SELECT count(*) FROM public.quotes WHERE lower(status) = 'sent' AND (valid_until IS NULL OR valid_until >= '2026-10-20')))$$))::int
+  AND (pg_temp.as_user(:W, $$public.dashboard_money_owed('2026-10-20') -> 'to_confirm'$$))::int
+     = (pg_temp.as_user(:W, $$to_jsonb((SELECT count(*) FROM public.invoices WHERE status <> 'paid' AND payment_unverified))$$))::int
+  AND (pg_temp.as_user(:W, $$public.dashboard_rfqs_to_quote() -> 'outstanding'$$))::int
+     = (pg_temp.as_user(:W, $$to_jsonb((SELECT count(*) FROM public.rfqs r WHERE coalesce(nullif(r.status, ''), 'new') <> 'quoted' AND NOT EXISTS (SELECT 1 FROM public.quotes q WHERE q.rfq_id = r.id)))$$))::int;
+-- Company isolation: Beta sees only Beta's rows, Alpha's figures above hold none of Beta's (999.99 x2, 5000.00).
+INSERT INTO r(name, ok) SELECT 'beta admin: only Beta (2 open 1999.98, 1 accepted, 3 sent, 1 won, 1 RFQ, 1 invoice 5000.00 60+ late)',
+  pg_temp.as_user(:B, $$public.dashboard_open_quotes('2026-10-20')$$) = '{"open_count": 2, "open_pence": 199998, "accepted_count": 1}'
+  AND pg_temp.as_user(:B, $$public.dashboard_quotes_sent('2026-10-01')$$) = '{"count": 3}'
+  AND pg_temp.as_user(:B, $$public.dashboard_quotes_won('2026-10-01')$$) = '{"count": 1, "undated": 0}'
+  AND pg_temp.as_user(:B, $$public.dashboard_rfqs_to_quote()$$) = '{"outstanding": 1}'
+  AND pg_temp.as_user(:B, $$public.dashboard_money_owed('2026-10-20')$$)
+      = '{"invoices": 1, "to_confirm": 0, "owed_pence": 500000, "not_due": 0, "late_1_30": 0, "late_31_60": 0, "late_60_plus": 500000}';
+-- Not signed in: refused, every one.
+INSERT INTO r(name, ok) SELECT 'anon: all six refused (42501)',
+  pg_temp.as_user(NULL, $$public.dashboard_open_quotes('2026-10-20')$$) = '{"error": "42501"}'
+  AND pg_temp.as_user(NULL, $$public.dashboard_quotes_sent('2026-10-01')$$) = '{"error": "42501"}'
+  AND pg_temp.as_user(NULL, $$public.dashboard_quotes_won('2026-10-01')$$) = '{"error": "42501"}'
+  AND pg_temp.as_user(NULL, $$public.dashboard_quote_outcomes('2026-07-22', '2026-10-20')$$) = '{"error": "42501"}'
+  AND pg_temp.as_user(NULL, $$public.dashboard_rfqs_to_quote()$$) = '{"error": "42501"}'
+  AND pg_temp.as_user(NULL, $$public.dashboard_money_owed('2026-10-20')$$) = '{"error": "42501"}';
+-- The shape: six functions, all SECURITY INVOKER, STABLE, search_path pinned; only authenticated (and the owner) may run them.
+INSERT INTO r(name, ok) SELECT 'six functions, invoker, stable, search_path pinned, EXECUTE authenticated only',
+  (SELECT count(*) = 6 AND bool_and(NOT p.prosecdef AND p.provolatile = 's' AND p.proconfig = '{"search_path=pg_catalog, public"}'
+            AND has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE'))
+   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname IN ('dashboard_open_quotes', 'dashboard_quotes_sent', 'dashboard_quotes_won', 'dashboard_quote_outcomes', 'dashboard_rfqs_to_quote', 'dashboard_money_owed'));
+\unset QUIET
+SELECT CASE WHEN ok THEN 'PASS ' ELSE 'FAIL ' END || n || ' ' || name FROM r ORDER BY n;
+SELECT 'TOTAL ' || count(*) FILTER (WHERE ok) || '/' || count(*) FROM r;
+ROLLBACK;
