@@ -125,6 +125,45 @@ describe("132 parity: the database's answers give exactly the old figures", () =
   });
 });
 
+describe("132 money on screen: whole pence in, the page's own gbp(value, 0) out", () => {
+  const answer = (pence: number) => ({ to_confirm: 0, invoices: 1, owed_pence: pence, not_due: pence, late_1_30: pence, late_31_60: pence, late_60_plus: pence });
+  /** The headline (KPI card money() and the panel's meta: gbp(value, 0)) and each bucket row (gbp(b.value, 0)), as the page renders them. */
+  const rendered = (pence: number) => {
+    const m = moneyTilesFromAggregate(answer(pence));
+    return [gbp(m.moneyOwed!, 0), ...m.owedByAge!.map((b) => gbp(b.value, 0))];
+  };
+
+  it("349p -> £3, 350p -> £4, 351p -> £4 (Intl's half-expand: half a pound rounds up), headline and every bucket alike", () => {
+    expect(rendered(349)).toEqual(Array(5).fill("£3"));
+    expect(rendered(350)).toEqual(Array(5).fill("£4"));
+    expect(rendered(351)).toEqual(Array(5).fill("£4"));
+  });
+
+  it("negatives (never sent: every invoice's balance is at least 0, buckets only count pence > 0) would round away from zero: -£3, -£4, -£4", () => {
+    // The page formats with gbp (Intl.NumberFormat, half-expand), never Math.round (which gives -3 for -3.5): headline and buckets alike.
+    expect(Math.round(-3.5)).toBe(-3);
+    expect(rendered(-349)).toEqual(Array(5).fill("-£3"));
+    expect(rendered(-350)).toEqual(Array(5).fill("-£4"));
+    expect(rendered(-351)).toEqual(Array(5).fill("-£4"));
+    for (const [who, { rpc }] of people) for (const [key, v] of Object.entries(rpc.owed)) expect(v as number, `${who} ${key}`).toBeGreaterThanOrEqual(0);
+  });
+
+  it("the headline and every bucket are the database's whole pence / 100, nothing added up in the browser", () => {
+    // Deliberately inconsistent pence: if the headline or a bucket were summed from anything else, it would not be exactly its own field.
+    const m = moneyTilesFromAggregate({ to_confirm: 0, invoices: 3, owed_pence: 63432, not_due: 1, late_1_30: 29, late_31_60: 7, late_60_plus: 10 });
+    expect(m.moneyOwed).toBe(634.32);
+    expect(m.owedByAge!.map((b) => b.value)).toEqual([0.01, 0.29, 0.07, 0.1]);
+    for (const [who, { rpc }] of people) {
+      const t = moneyTilesFromAggregate(rpc.owed);
+      expect(Object.is(t.moneyOwed, rpc.owed.owed_pence / 100), who).toBe(true);
+      for (const b of t.owedByAge!) {
+        expect(Number.isSafeInteger(rpc.owed[b.key]), `${who} ${b.key}`).toBe(true);
+        expect(Object.is(b.value, rpc.owed[b.key] / 100), `${who} ${b.key}`).toBe(true);
+      }
+    }
+  });
+});
+
 /** A fake client: rpc answers from `answers` (or the given error); from() pages over the fixture rows like PostgREST with order+range. */
 function fakeClient(rows: Record<string, any[]>, answers: Record<string, any>, rpcError?: (fn: string) => { code: string; message: string } | null) {
   const calls: string[] = [];

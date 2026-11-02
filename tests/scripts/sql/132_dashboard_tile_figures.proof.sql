@@ -80,6 +80,31 @@ RESET extra_float_digits;
 INSERT INTO r(name, ok) SELECT 'every answer, for all six people, is whole numbers only and the same text under extra_float_digits 0 and 1',
   (SELECT count(*) = 12 AND bool_and(regexp_replace(answer, '"[^"]*"', '', 'g') !~ '[.eE]') AND bool_and(answer NOT LIKE '%error%') FROM t_digits)
   AND NOT EXISTS (SELECT 1 FROM t_digits a JOIN t_digits b ON b.who = a.who AND b.digits = 1 WHERE a.digits = 0 AND a.answer <> b.answer);
+-- Money owed reconciles, for every person: owed_pence is the sum, over the invoices that person can read, of each balance worked out
+-- here independently (numeric, exact: total - paid - credited + refunded, in pence, never below zero; status trimmed and lower-cased,
+-- blank = draft; not paid, draft, void, voided, cancelled, canceled, credited, written_off; payment confirmed); the four buckets add up
+-- to the positive part of it (here every balance is at least zero, so to the same total). Pence only: rounded pounds need not add up.
+CREATE TEMP TABLE t_owed(who text, fn jsonb, own jsonb);
+GRANT ALL ON t_owed TO PUBLIC;
+INSERT INTO t_owed SELECT w, pg_temp.as_user(u::uuid, $$public.dashboard_money_owed('2026-10-20')$$),
+  pg_temp.as_user(u::uuid, $$(SELECT jsonb_build_object('n', count(*), 'pence', coalesce(sum(b), 0), 'positive', coalesce(sum(b) FILTER (WHERE b > 0), 0))
+    FROM (SELECT greatest(0, (coalesce(total, 0) - coalesce(amount_paid, 0) - coalesce(credited_amount, 0) + coalesce(refunded_amount, 0)) * 100) AS b
+          FROM public.invoices
+          WHERE status <> 'paid' AND NOT coalesce(payment_unverified, FALSE)
+            AND coalesce(nullif(lower(btrim(status, E' \t\n\r ')), ''), 'draft')
+                NOT IN ('paid', 'draft', 'void', 'voided', 'cancelled', 'canceled', 'credited', 'written_off')) i)$$)
+FROM (VALUES ('A', :A), ('O', :O), ('W', :W), ('B', :B), ('G', :G), ('D', :D)) v(w, u);
+INSERT INTO r(name, ok) SELECT 'money owed reconciles for all six people: owed_pence = sum of each readable invoice''s balance in pence; the four buckets sum to it',
+  (SELECT count(*) = 6 AND bool_and(
+       (fn ->> 'invoices')::bigint = (own ->> 'n')::bigint
+       AND (fn ->> 'owed_pence')::numeric = (own ->> 'pence')::numeric
+       AND (fn ->> 'not_due')::numeric + (fn ->> 'late_1_30')::numeric + (fn ->> 'late_31_60')::numeric + (fn ->> 'late_60_plus')::numeric
+           = (own ->> 'positive')::numeric)
+   FROM t_owed);
+-- No float anywhere in the six functions: a float sum of the total or of any bucket would print by extra_float_digits.
+INSERT INTO r(name, ok) SELECT 'no float in any of the six functions (no float, double precision or real; no division into pounds)',
+  (SELECT count(*) = 6 AND NOT bool_or(p.prosrc ~* '(float|double precision|\mreal\M|::numeric\s*/|/\s*100\.)')
+   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname LIKE 'dashboard\_%');
 -- Row-level security applies (SECURITY INVOKER): Quotes hidden from the office login -> no quote counted, and every RFQ looks unquoted.
 INSERT INTO r(name, ok) SELECT 'alpha office with Quotes hidden: 0 open, 0 sent, 0 won, 5 RFQs to quote (no quote it may see is linked)',
   pg_temp.as_user(:O, $$public.dashboard_open_quotes('2026-10-20') || public.dashboard_quotes_won('2026-10-01')$$) = '{"open_count": 0, "open_pence": 0, "accepted_count": 0, "count": 0, "undated": 0}'

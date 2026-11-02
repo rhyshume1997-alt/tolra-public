@@ -5,6 +5,8 @@
  *     exactly the answer recorded in tests/fixtures/dashboard-tiles-132.json; tests/unit/dashboard-tile-figures.test.ts proves those
  *     answers give the same figures on screen as the page's old reads of the same rows. So the real database is checked against the
  *     fixture, and the fixture against the old arithmetic;
+ *   - money owed reconciles: owed_pence is the sum of each invoice the person can read, balance in whole pence by the app's own rules
+ *     (lib/receivables, lib/money), worked out here from the rows; the four buckets add up to it to the penny; no function uses a float;
  *   - every answer is whole numbers in its JSON text (no float, whose text depends on the session's extra_float_digits: Supabase's
  *     server sets 0, PostgreSQL's default is 1), checked under both 0 and 1, with the same text under each;
  *   - row-level security applies (an office login with Quotes hidden counts no quote; Beta sees only Beta) and anon is refused;
@@ -17,6 +19,9 @@ import path from "node:path";
 
 import type { Client } from "pg";
 import { beforeAll, describe, expect, it } from "vitest";
+
+import { toPence } from "@/lib/money";
+import { invoiceLifecycle } from "@/lib/receivables";
 
 import { verifyBackendIdentity, withDb } from "../support/fixtures";
 
@@ -97,6 +102,35 @@ describe("132: dashboard tile figures", () => {
         }
       }
       for (const [who, [at0, at1]] of Object.entries(texts)) expect(at0, who).toBe(at1);
+    });
+  });
+
+  it("money owed reconciles for every person: owed_pence = each visible invoice's balance in pence (the app's rules), buckets add up to it", async () => {
+    await seeded(async (db) => {
+      for (const [who, user] of Object.entries(PEOPLE)) {
+        const answer = await asUser(db, user, "select public.dashboard_money_owed('2026-10-20') as owed");
+        const rows = await asUser(db, user, `select status, total::text as total, amount_paid::text as paid, credited_amount::text as credited,
+          refunded_amount::text as refunded, payment_unverified from public.invoices where status <> 'paid'`);
+        expect([answer.code, rows.code], who).toEqual([null, null]);
+        const o = answer.rows[0].owed;
+        // total - paid - credited + refunded, each in whole pence, never below zero, on collectible invoices with payment confirmed.
+        const pence = rows.rows.filter((r) => invoiceLifecycle(r.status) === "collectible" && !r.payment_unverified)
+          .map((r) => Math.max(0, toPence(Number(r.total ?? 0)) - toPence(Number(r.paid ?? 0)) - toPence(Number(r.credited ?? 0)) + toPence(Number(r.refunded ?? 0))));
+        const positive = pence.filter((p) => p > 0).reduce((sum, p) => sum + p, 0);
+        expect(pence.every(Number.isSafeInteger), who).toBe(true);
+        expect(o.invoices, who).toBe(pence.length);
+        expect(o.owed_pence, who).toBe(pence.reduce((sum, p) => sum + p, 0));
+        expect(o.not_due + o.late_1_30 + o.late_31_60 + o.late_60_plus, who).toBe(positive);
+      }
+    });
+  });
+
+  it("no float anywhere in the six functions (a float sum of the total or any bucket would print by extra_float_digits)", async () => {
+    await withDb(async (db) => {
+      const { rows } = await db.query(`select p.proname, p.prosrc ~* '(float|double precision|\\mreal\\M|::numeric\\s*/|/\\s*100\\.)' as floaty
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname like 'dashboard\\_%' order by 1`);
+      expect(rows.length).toBe(6);
+      expect(rows.filter((r) => r.floaty).map((r) => r.proname)).toEqual([]);
     });
   });
 
