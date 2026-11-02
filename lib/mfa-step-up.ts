@@ -48,18 +48,31 @@ export async function verifyAuthenticatorCode(mfa: MfaApi | null | undefined, in
 export type ChangeAnswer = { ok: boolean; status: number; body: { error?: string; code?: string } | null };
 export type ChangeOutcome = { result: "changed" } | { result: "cancelled" } | { result: "failed"; status: number; error?: string };
 
+/** What a sensitive request answered: ok, the HTTP status, and the JSON body (null when there was none). */
+export type SendAnswer<B extends { code?: unknown } = { code?: unknown }> = { ok: boolean; status: number; body: B | null };
+export type SendOutcome<B extends { code?: unknown } = { code?: unknown }> = { result: "done" | "failed"; answer: SendAnswer<B> } | { result: "cancelled" };
+
 /**
- * Sends a password change. If the server answers mfa_recent_required it asks for a code (`requestCode` resolves true once a code verified,
- * false when the person cancelled) and sends the same change ONCE more. The retry is answered by the server like any other request: if it
- * still refuses, that refusal is the outcome (there is no second prompt and no loop). Cancelling sends nothing more.
+ * Sends a sensitive request (a password change, or an admin action on Admin > Users: G1). If the server answers mfa_recent_required it
+ * asks for a code (`requestCode` resolves true once a code verified, false when the person cancelled) and sends the same request ONCE
+ * more. The retry is answered by the server like any other request: if it still refuses, that refusal is the outcome (there is no
+ * second prompt and no loop). Any other answer is final at once. Cancelling sends nothing more, so nothing is changed.
  */
-export async function changePasswordWithCode(send: () => Promise<ChangeAnswer>, requestCode: () => Promise<boolean>): Promise<ChangeOutcome> {
+export async function sendWithCode<B extends { code?: unknown }>(send: () => Promise<SendAnswer<B>>, requestCode: () => Promise<boolean>): Promise<SendOutcome<B>> {
   let answer = await send();
-  if (answer.ok) return { result: "changed" };
+  if (answer.ok) return { result: "done", answer };
   if (needsRecentCode(answer.status, answer.body)) {
     if (!(await requestCode())) return { result: "cancelled" };
     answer = await send();
-    if (answer.ok) return { result: "changed" };
+    if (answer.ok) return { result: "done", answer };
   }
-  return { result: "failed", status: answer.status, error: answer.body?.error };
+  return { result: "failed", answer };
+}
+
+/** The password change on the sidebar: sendWithCode, worded as a ChangeOutcome. */
+export async function changePasswordWithCode(send: () => Promise<ChangeAnswer>, requestCode: () => Promise<boolean>): Promise<ChangeOutcome> {
+  const outcome = await sendWithCode(send, requestCode);
+  if (outcome.result === "cancelled") return { result: "cancelled" };
+  if (outcome.result === "done") return { result: "changed" };
+  return { result: "failed", status: outcome.answer.status, error: outcome.answer.body?.error };
 }

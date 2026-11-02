@@ -2,7 +2,8 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import { PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
-import { forbiddenOrigin, isErrorResponse, jsonError, mfaRequired, requireProfile, sameOrigin } from "@/lib/server/auth";
+import { adminMfaRequired, recentSecondStep } from "@/lib/mfa-policy";
+import { forbiddenOrigin, isErrorResponse, jsonError, mfaRecentRequired, mfaRequired, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 // Shared by the Admin > Users routes: the caller must be an active admin of their current organisation.
@@ -22,7 +23,7 @@ export async function guard(request: Request, options: { aal2?: boolean } = {}):
   // no password or two-step resets. The database refuses set_member_access for it too; the service-role paths are stopped here.
   if (auth.session?.support) return jsonError("Support access can't manage users", 403);
   if (options.aal2) {
-    const refused = await requireAal2(auth);
+    const refused = await requireRecentAal2(auth);
     if (refused) return refused;
   }
   const admin = createSupabaseAdminClient();
@@ -34,6 +35,20 @@ export async function guard(request: Request, options: { aal2?: boolean } = {}):
 export async function requireAal2(auth: AdminContext["auth"]): Promise<NextResponse | null> {
   const { data: assurance, error: assuranceError } = await auth.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   return assuranceError || assurance?.currentLevel !== "aal2" ? mfaRequired() : null;
+}
+
+/**
+ * requireAal2, and (G1) while REQUIRE_ADMIN_MFA is on, a recent authenticator code too: the 15-minute rule of change-password
+ * (recentSecondStep). For the admin actions that hand over, take away or lock a login: set someone's password, reset their two-step
+ * sign-in, send a reset link, create a user, give or take admin, disable or enable sign-in. mfa_required when the session never passed
+ * the second step; mfa_recent_required (the browser asks for a fresh code, then sends the action once more) when the code is older.
+ * Null when the caller may go on. Nothing is written before this answers.
+ */
+export async function requireRecentAal2(auth: AdminContext["auth"], action = "make this change"): Promise<NextResponse | null> {
+  const { data: assurance, error: assuranceError } = await auth.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (assuranceError || assurance?.currentLevel !== "aal2") return mfaRequired();
+  if (adminMfaRequired() && !recentSecondStep(assurance?.currentAuthenticationMethods)) return mfaRecentRequired(action);
+  return null;
 }
 
 export async function audit(ctx: Pick<AdminContext, "auth">, action: string, entityId: string, newData: Record<string, unknown>, request: Request, oldData: Record<string, unknown> | null = null) {

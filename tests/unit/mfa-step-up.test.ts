@@ -104,3 +104,86 @@ describe("changePasswordWithCode", () => {
     expect(await changePasswordWithCode(send, async () => true)).toEqual({ result: "failed", status: 400, error: "Your current password is wrong." });
   });
 });
+
+// ---- G1: the six Admin > Users callers (lib/admin-user-save.ts callAdminApi, over sendWithCode) --------------------------------
+import { ApiError, CODE_CANCELLED, callAdminApi } from "@/lib/admin-user-save";
+import { sendWithCode } from "@/lib/mfa-step-up";
+
+const reply = (status: number, body: Record<string, unknown>) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const RECENT_BODY = { error: "For your security, enter a fresh code from your authenticator app to make this change.", code: "mfa_recent_required" };
+const fetchSequence = (...answers: Array<() => Promise<Response>>) => {
+  const calls: Array<{ url: string; method: string; body: string }> = [];
+  const fn = vi.fn(async (url: string, init: RequestInit) => {
+    calls.push({ url, method: String(init.method), body: String(init.body) });
+    const next = answers.shift();
+    if (!next) throw new Error("unexpected extra request");
+    return next();
+  });
+  return { fetchFn: fn as unknown as typeof fetch, calls };
+};
+
+const CALLERS: Array<{ name: string; url: string; method: "POST" | "PATCH"; payload: Record<string, unknown> }> = [
+  { name: "set password", url: "/api/admin/users/password", method: "POST", payload: { user_id: "u", password: "p", must_change_password: true } },
+  { name: "reset two-step", url: "/api/admin/users/mfa-reset", method: "POST", payload: { userId: "u" } },
+  { name: "reset link", url: "/api/admin/users/reset-link", method: "POST", payload: { userId: "u" } },
+  { name: "create user", url: "/api/admin/users", method: "POST", payload: { email: "a@b.test", role: "office" } },
+  { name: "give or take admin", url: "/api/admin/users", method: "PATCH", payload: { user_id: "u", role: "admin" } },
+  { name: "disable or enable sign-in", url: "/api/admin/users/sign-in", method: "POST", payload: { user_id: "u", enabled: false } },
+];
+
+describe.each(CALLERS)("callAdminApi: $name", ({ url, method, payload }) => {
+  it("a fresh code on the server: one request, no prompt", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(200, { ok: true }));
+    const prompt = vi.fn(async () => true);
+    expect(await callAdminApi(url, method, payload, prompt, fetchFn)).toMatchObject({ ok: true });
+    expect(calls).toHaveLength(1);
+    expect(prompt).not.toHaveBeenCalled();
+  });
+  it("mfa_recent_required: asks for a code, then sends the SAME request once more and succeeds", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(403, RECENT_BODY), reply(200, { ok: true }));
+    const prompt = vi.fn(async () => true);
+    expect(await callAdminApi(url, method, payload, prompt, fetchFn)).toMatchObject({ ok: true });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toEqual(calls[0]);
+    expect(calls[0]).toMatchObject({ url, method, body: JSON.stringify(payload) });
+  });
+  it("a failed code or a cancel (the prompt answers false): nothing more is sent", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(403, RECENT_BODY));
+    await expect(callAdminApi(url, method, payload, async () => false, fetchFn)).rejects.toMatchObject({ message: CODE_CANCELLED });
+    expect(calls).toHaveLength(1);
+  });
+  it("a second 403 after a verified code is shown: one prompt, two requests, no loop", async () => {
+    const { fetchFn, calls } = fetchSequence(reply(403, RECENT_BODY), reply(403, RECENT_BODY));
+    const prompt = vi.fn(async () => true);
+    await expect(callAdminApi(url, method, payload, prompt, fetchFn)).rejects.toBeInstanceOf(ApiError);
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(2);
+  });
+  it("any other refusal (mfa_required, 409, 500) is final at once: no prompt", async () => {
+    for (const answer of [reply(403, { error: "Confirm your authenticator code first.", code: "mfa_required" }), reply(409, { error: "Nope" }), reply(500, { error: "Boom" })]) {
+      const { fetchFn, calls } = fetchSequence(answer);
+      const prompt = vi.fn(async () => true);
+      await expect(callAdminApi(url, method, payload, prompt, fetchFn)).rejects.toBeInstanceOf(ApiError);
+      expect(prompt).not.toHaveBeenCalled();
+      expect(calls).toHaveLength(1);
+    }
+  });
+  it("a refusal after the retry carries the server's message", async () => {
+    const { fetchFn } = fetchSequence(reply(403, RECENT_BODY), reply(409, { error: "Another admin must stay." }));
+    await expect(callAdminApi(url, method, payload, async () => true, fetchFn)).rejects.toMatchObject({ message: "Another admin must stay." });
+  });
+});
+
+describe("sendWithCode", () => {
+  it("the password change helper still maps onto it (changePasswordWithCode keeps its outcomes)", async () => {
+    const send = vi.fn().mockResolvedValueOnce(RECENT).mockResolvedValueOnce(OK);
+    expect(await changePasswordWithCode(send, async () => true)).toEqual({ result: "changed" });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+  it("cancelled sends once", async () => {
+    const send = vi.fn().mockResolvedValue({ ok: false, status: 403, body: { code: "mfa_recent_required" } });
+    expect(await sendWithCode(send, async () => false)).toEqual({ result: "cancelled" });
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { jsonError, readJson } from "@/lib/server/auth";
-import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAal2, requireAdminEnrolment } from "@/lib/server/admin-users";
+import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAdminEnrolment, requireRecentAal2 } from "@/lib/server/admin-users";
 import { becomesAdmin, changesAdmin } from "@/lib/mfa-policy";
 import { companyAccessErrorMessage, mayAddExistingLogin, OTHER_COMPANY_LOGIN, PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
 import { PRODUCT } from "@/lib/product";
@@ -344,7 +344,7 @@ export async function PATCH(request: Request) {
   if (!before) return jsonError("User not found", 404);
   // Giving or taking admin (role, second role, or reactivating an admin) needs the second step always, like creating a user (audit Z1).
   if (changesAdmin(before, { role, secondary_role, active })) {
-    const refused = await requireAal2(auth);
+    const refused = await requireRecentAal2(auth, "change who is an admin");
     if (refused) return refused;
   }
 

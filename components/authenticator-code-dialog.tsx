@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { verifyAuthenticatorCode } from "@/lib/mfa-step-up";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Asks an admin for a fresh authenticator code before a password change (G1). `onVerified` runs once a code verified (the session is
+ * Asks an admin for a fresh authenticator code before a password change or a sensitive admin action (G1). `onVerified` runs once a code verified (the session is
  * then aal2 with a new code time); `onCancel` changes nothing. A wrong code shows a plain error and can be retried.
  */
 export function AuthenticatorCodeDialog({ open, onVerified, onCancel }: { open: boolean; onVerified: () => void | Promise<void>; onCancel: () => void }) {
@@ -56,4 +56,24 @@ export function AuthenticatorCodeDialog({ open, onVerified, onCancel }: { open: 
       </DialogContent>
     </Dialog>
   );
+}
+
+/**
+ * For a page that sends sensitive requests through sendWithCode (lib/mfa-step-up.ts): `requestCode` opens the dialog and resolves true
+ * once a code verified, false when it was cancelled; render `codeDialog` once in the page.
+ */
+export function useCodePrompt() {
+  const [asking, setAsking] = useState(false);
+  const answer = useRef<((verified: boolean) => void) | null>(null);
+  const requestCode = useCallback(() => new Promise<boolean>((resolve) => {
+    answer.current = resolve;
+    setAsking(true);
+  }), []);
+  const settle = useCallback((verified: boolean) => {
+    setAsking(false);
+    answer.current?.(verified);
+    answer.current = null;
+  }, []);
+  const codeDialog = <AuthenticatorCodeDialog open={asking} onVerified={() => settle(true)} onCancel={() => settle(false)} />;
+  return { requestCode, codeDialog };
 }

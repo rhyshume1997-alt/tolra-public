@@ -2,6 +2,7 @@
  * Admin > Users: reading who may record inspections, and saving an Edit that changes both the member (PATCH /api/admin/users) and the
  * inspector flag (set_member_inspector). The two writes are separate, so the order and the message must say exactly what was applied.
  */
+import { sendWithCode } from "@/lib/mfa-step-up";
 
 /** The inspector flags read from organization_members: the set of user ids, or null when the read failed (so nothing is guessed). */
 export function inspectorFlags(data: unknown, error: unknown): Set<string> | null {
@@ -30,6 +31,29 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+/** Shown when the person cancels the authenticator code prompt: nothing was sent, so nothing changed. */
+export const CODE_CANCELLED = "Cancelled. Nothing was changed.";
+
+/**
+ * One call to an Admin > Users route (POST /api/admin/users, PATCH /api/admin/users, and .../password, .../mfa-reset, .../reset-link,
+ * .../sign-in). Resolves with the body on success; throws an ApiError otherwise. G1: when the server answers mfa_recent_required the
+ * authenticator code prompt is shown (`requestCode`) and the SAME request is sent ONCE more after a verified code (sendWithCode). A
+ * cancelled prompt sends nothing more and throws CODE_CANCELLED; a refusal after a verified code is thrown as it is (no second prompt).
+ */
+export async function callAdminApi<T extends Record<string, unknown>>(
+  url: string, method: "POST" | "PATCH", payload: Record<string, unknown>, requestCode: () => Promise<boolean>, fetchFn: typeof fetch = fetch,
+): Promise<T & { ok?: boolean; error?: string }> {
+  type Body = T & { ok?: boolean; error?: string; code?: string };
+  const outcome = await sendWithCode<Body>(async () => {
+    const response = await fetchFn(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const body = (await response.json().catch(() => ({}))) as Body;
+    return { ok: response.ok && !body.error && !!body.ok, status: response.status, body };
+  }, requestCode);
+  if (outcome.result === "cancelled") throw new ApiError(CODE_CANCELLED);
+  if (outcome.result === "failed") throw apiErrorFrom(outcome.answer.body, "Something went wrong. Try again.");
+  return outcome.answer.body as Body;
 }
 
 /** Reads `applied` / `failed` / `uncertain` from an error response body (ignores anything unexpected; a step is kept in one list only). */
