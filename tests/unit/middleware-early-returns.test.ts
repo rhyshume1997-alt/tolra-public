@@ -66,7 +66,7 @@ const SKIPPED = [
   "/_next/static/chunks/main.js", "/logo.png", "/icons/apple-touch-icon.png", "/fonts/inter.woff2", "/styles.css", "/robots.txt", "/sw.js",
   "/manifest.webmanifest", "/offline.html",
   // Public site files: crawler files, the icons and the home page's images (the home page "/" itself is not skipped: see below).
-  "/sitemap.xml", "/favicon.ico", "/brand/tolra-og.png", "/marketing/mock-quote.svg", "/marketing/tolra-og.png", "/icons/apple-touch-icon.png", "/icons/icon-maskable-512.png",
+  "/sitemap.xml", "/favicon.ico", "/icons/favicon.ico", "/brand/tolra-og.png", "/marketing/mock-quote.svg", "/marketing/tolra-og.png", "/icons/apple-touch-icon.png", "/icons/icon-maskable-512.png",
 ];
 const API = ["/api/pwa-icon", "/api/favicon", "/api/auth/signin", "/api/health", "/api/jobs/x", "/api/audit"];
 

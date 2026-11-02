@@ -28,7 +28,7 @@ sizes.forEach((s, i) => {
   head.writeUInt32LE(images[i].length, at + 8); head.writeUInt32LE(offset, at + 12);
   offset += images[i].length;
 });
-writeFileSync("public/favicon.ico", Buffer.concat([head, ...images]));
+writeFileSync("public/icons/favicon.ico", Buffer.concat([head, ...images]));
 
 // Compressed copies for the site (originals stay in public/brand): the share image (still exactly 1200x630) and the hero logo.
 await sharp("public/brand/tolra-og.png").png({ compressionLevel: 9, palette: true, quality: 90, effort: 10 }).toFile("public/marketing/tolra-og.png");

@@ -44,6 +44,10 @@ const appVersion = (process.env.VERCEL_GIT_COMMIT_SHA || `local-${Date.now()}`).
 const nextConfig = {
   poweredByHeader: false,
   env: { NEXT_PUBLIC_APP_VERSION: appVersion },
+  // Browsers ask for /favicon.ico on their own: serve the company's icon there.
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/api/favicon" }];
+  },
   async headers() {
     return [
       {

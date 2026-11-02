@@ -26,7 +26,7 @@ test("manifest, icons and favicon for a signed-in member", async ({ page }) => {
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([size, size]);
   }
   await page.goto("/dashboard");
-  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "/icons/apple-touch-icon.png");
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", /\/api\/pwa-icon\?size=180/);
   const favicon = await page.request.get("/favicon.ico");
   expect(favicon.status()).toBe(200);
   expect(favicon.headers()["content-type"]).toMatch(/^image\//);

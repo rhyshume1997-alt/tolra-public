@@ -15,6 +15,15 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/` },
   robots: { index: true, follow: true },
+  // Only this page links the new icon files; the app's pages keep the icon links from app/layout.tsx.
+  icons: {
+    icon: [
+      { url: "/icons/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   openGraph: { type: "website", url: `${SITE_URL}/`, siteName: "Tolra", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [OG_IMAGE] },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: [OG_IMAGE.url] },
 };
