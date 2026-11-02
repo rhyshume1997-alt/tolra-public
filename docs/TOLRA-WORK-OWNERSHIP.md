@@ -39,4 +39,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 8 | builder2 | chatgpt2/e2e-chasing | DONE IN DRAFT PR | #134 |
 | 9 | builder2 | chatgpt2/pr-review | REVIEW COMPLETE; FOLLOW-UP GAPS RECORDED | #135 |
 | 10 | builder2 | chatgpt2/bank-csv-formats | DONE IN DRAFT PR | #136 |
-| 11 | builder2 | chatgpt2/paid-claim-more-tests | DONE IN DRAFT PR | Pending |
+| 11 | builder2 | chatgpt2/paid-claim-more-tests | DONE IN DRAFT PR | #137 |
