@@ -15,15 +15,7 @@ export type DetailedInputs = QuoteInputs & {
   programming_time_hr?: number; programming_rate_per_hr?: number;
   first_article_inspection_hr?: number; overhead_rate_pct?: number;
 };
-const round = (n: number, places: number) => {
-  // Python round uses ties-to-even. Float tolerance is needed only for an exact half tie.
-  const scale = 10 ** places, value = n * scale, lower = Math.floor(value);
-  const fraction = value - lower;
-  if (Math.abs(fraction - 0.5) < Number.EPSILON * Math.max(1, Math.abs(value)) * 2) {
-    return (lower % 2 === 0 ? lower : lower + 1) / scale;
-  }
-  return Math.round(value) / scale;
-};
+const round = (n: number, places: number) => Number(n.toFixed(places));
 function validate(p: QuoteInputs) {
   if (!Number.isSafeInteger(p.quantity) || p.quantity < 1 || p.quantity > 1_000_000) throw new RangeError('Invalid quantity');
   const nums = [p.stock_weight_lb, p.cost_per_lb, p.scrap_factor, p.margin_pct ?? 0.15,
