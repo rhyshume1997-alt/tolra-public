@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
+import { ChaseStepsEditor } from "@/components/email-schedules/chase-steps-editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,7 @@ function Switch({ checked, onChange, label, disabled }: { checked: boolean; onCh
   );
 }
 
-function ScheduleEditor({ kind, initial, zone, canEdit, organizationId }: { kind: EmailScheduleKind; initial: ScheduleForm; zone: string; canEdit: boolean; organizationId: string }) {
+function ScheduleEditor({ kind, initial, zone, canEdit, canEditSteps, organizationId }: { kind: EmailScheduleKind; initial: ScheduleForm; zone: string; canEdit: boolean; canEditSteps: boolean; organizationId: string }) {
   const [form, setForm] = useState<ScheduleForm>(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -112,12 +113,13 @@ function ScheduleEditor({ kind, initial, zone, canEdit, organizationId }: { kind
           <p className="mt-1 text-xs text-slate-500">One address per line, or separated by commas. Each person&apos;s timesheet is sent as its own e-mail.</p>
         </div>
       ) : (
-        <p className="text-xs text-slate-500">Each reminder goes to the invoice&apos;s customer, at the e-mail address on their customer record. Customers without one are skipped.</p>
+        <p className="text-xs text-slate-500">Each reminder is drafted for the invoice&apos;s customer, at the e-mail address on their customer record, and waits in the Approval Queue for you to approve. Customers without an address are skipped.</p>
       )}
 
       <p className="text-sm font-medium text-slate-800" data-testid={`email-schedule-${kind}-next`} role="status">{preview}</p>
       {error ? <p className="text-sm text-red-600" role="alert">{error}</p> : null}
       <Button className="bg-brand text-brand-ink" aria-label={`Save ${labels.title}`} disabled={!canEdit || saving} onClick={() => void save()}>{saving ? "Saving..." : "Save"}</Button>
+      {kind === "invoice_reminder" ? <div className="border-t pt-4"><ChaseStepsEditor organizationId={organizationId} canEdit={canEditSteps} /></div> : null}
     </section>
   );
 }
@@ -163,7 +165,7 @@ export function EmailSchedulesCard() {
         {state.phase === "ready" ? (
           <>
             <p className="text-slate-500">Set when Tolra sends reminders and timesheets for you. All times are UK time. {EXACT_TIME_SENDING ? "" : DAILY_RUN_NOTE} Nothing is sent until you turn a schedule on{activeRole === "admin" ? "" : "; only an admin can change them"}.</p>
-            {KINDS.map((kind) => <ScheduleEditor key={kind} kind={kind} initial={state.forms[kind]} zone={state.zone} canEdit={activeRole === "admin"} organizationId={state.organizationId} />)}
+            {KINDS.map((kind) => <ScheduleEditor key={kind} kind={kind} initial={state.forms[kind]} zone={state.zone} canEdit={activeRole === "admin"} canEditSteps={activeRole === "admin" || activeRole === "office"} organizationId={state.organizationId} />)}
           </>
         ) : null}
       </CardContent>

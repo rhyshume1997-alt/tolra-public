@@ -16,7 +16,7 @@ export function liveRunnerDeps(admin: SupabaseClient, startedAt = Date.now(), bu
     list: () => listEnabledSchedules(admin),
     claim: (id, key, now) => claimRun(admin, id, key, now),
     execute: (schedule, occurrence, now) => schedule.kind === "invoice_reminder"
-      ? runInvoiceReminders(admin, schedule, occurrence, now, { send: sendCompanyEmail, deadline: startedAt + budgetMs })
+      ? runInvoiceReminders(admin, schedule, occurrence, now, { deadline: startedAt + budgetMs })
       : runTimesheets(admin, schedule, occurrence, now, { send: sendCompanyEmail, deadline: startedAt + budgetMs }),
     finish: (id, key, result) => finishRun(admin, id, key, result),
     note: (schedule, now, succeeded) => noteScheduleRan(admin, schedule, now, succeeded),
