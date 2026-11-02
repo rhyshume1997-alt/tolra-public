@@ -199,7 +199,7 @@ describe("decision 3: customers matched on stable identifiers only", () => {
     expect(bad({ customerMatches: [{ kind: "invoice", number: "S1008", account: "C777" }] }).unresolvedMatchCount).toBe(0); // S1008 is excluded in EXCL
     expect(bad({ customerMatches: [{ kind: "invoice", number: "S1008", account: "C777" }] }).customerMatching.ambiguities.find((a: { number: string }) => a.number === "S1008").blocksWrite).toBe(false);
     expect(bad({ customerNames: [{ account: "C999", name: "Nobody" }] }).customerMatching.problems[0]).toMatch(/customer account C999 is not exactly one record/);
-    expect(bad({ customerMatches: [{ kind: "job", number: "S1001", account: "C001" }] }).customerMatching.problems[0]).toMatch(/kind must be one of invoice, quote, purchase_order/);
+    expect(bad({ customerMatches: [{ kind: "delivery_note", number: "S1001", account: "C001" }] }).customerMatching.problems[0]).toMatch(/kind must be one of invoice, quote, purchase_order, credit_note, job, sales_order/);
   });
 
   it("an unknown customer can be mapped to an account through the resolutions file", () => {

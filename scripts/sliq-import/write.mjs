@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 
 import { checkDatabaseUrl, checkOrganisationId, GuardError } from "./guard.mjs";
+import { jobsKnownNumbers } from "./jobs-plan.mjs";
 import { prepareJobsWrite } from "./jobs-write.mjs";
 import { legacyId, normNumber, normaliseName } from "./ids.mjs";
 import { penceToPounds } from "./parse.mjs";
@@ -180,18 +181,18 @@ export async function writeImport(opts) {
       await db.query(readFileSync(IMPORTER_SQL, "utf8"));
     }
     const target = await readTarget(db, org, loaded);
-    const { report, plan } = analyse(loaded, { organizationId: org, target, excludeNumbers, resolutions });
+    const { report, plan } = analyse(loaded, { organizationId: org, target, excludeNumbers, resolutions, otherNumbers: jobsKnownNumbers(opts.jobsLoaded) });
     if (!report.writable) throw new GuardError("Refusing: the source has unreadable rows or unknown excluded numbers.");
     if (report.unresolvedCreditNoteCount > 0) throw new GuardError("Refusing: credit notes or allocations are unresolved.");
     if (report.unresolvedReviewCount > 0) throw new GuardError("Refusing: documents flagged for reverse charge or discounts are unresolved.");
     if (report.unresolvedMatchCount > 0) throw new GuardError("Refusing: customer or supplier matches are ambiguous or unmatched (see ambiguity.csv).");
     if (report.unresolvedPaymentCount > 0) throw new GuardError("Refusing: payment exceptions are unresolved.");
     if (plan.invoices.some((i) => i.final.unverified)) throw new GuardError("Refusing: an invoice would be written without its real balance.");
-    // Migration 135 keeps the number SliQ printed on every imported invoice, quote and purchase order.
-    const refCols = Number((await db.query("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name in ('invoices', 'quotes', 'purchase_orders') and column_name = 'source_ref'")).rows[0].n);
-    if (refCols !== 3) throw new GuardError("Refusing: the target has no source_ref columns (migration 135, provisional number). Apply it first: the SliQ number of each imported document is kept there.");
+    // Migration 135 keeps the number SliQ printed on every imported invoice, quote, purchase order, job and sales order.
+    const refCols = Number((await db.query("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name in ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') and column_name = 'source_ref'")).rows[0].n);
+    if (refCols !== 5) throw new GuardError("Refusing: the target has no source_ref columns (migration 135, provisional number). Apply it first: the SliQ number of each imported document is kept there.");
     // Jobs, sales orders, PO job links and opening WIP (jobs-write.mjs), in this same transaction.
-    const jobsRun = opts.jobsLoaded?.profile ? await prepareJobsWrite(db, org, { loaded, jobsLoaded: opts.jobsLoaded, plan, coreReport: report }) : null;
+    const jobsRun = opts.jobsLoaded?.profile ? await prepareJobsWrite(db, org, { loaded, jobsLoaded: opts.jobsLoaded, plan, coreReport: report, excludeNumbers, resolutions }) : null;
 
     // Which of this run's records the map already knows (a repeat run): only the others are new.
     const known = async (source, ids) => new Set((await db.query("select old_id from public.legacy_import_map where source = $1 and old_id = any($2::text[])", [source, ids.map(String)])).rows.map((r) => r.old_id));

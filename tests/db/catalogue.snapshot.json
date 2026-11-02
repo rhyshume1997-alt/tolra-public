@@ -7631,6 +7631,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.jobs :: source_ref_import_only",
+  "detail": "O f3503d591d130bf90bf1c9bdc7a27d8e"
+ },
+ {
+  "kind": "trigger",
   "object": "public.jobs :: support_read_only",
   "detail": "O 4e7b793f39d65e294915445e34c3b9f7"
  },
@@ -8198,6 +8203,11 @@
   "kind": "trigger",
   "object": "public.sales_orders :: audit_sales_orders_changes",
   "detail": "O 4b4a190ac336bfc8c0235d8bb6bff97f"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.sales_orders :: source_ref_import_only",
+  "detail": "O 55efa12e42c0d57c47ef087f69d0976d"
  },
  {
   "kind": "trigger",

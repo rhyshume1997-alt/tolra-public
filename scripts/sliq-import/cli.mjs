@@ -15,7 +15,7 @@ import { pathToFileURL } from "node:url";
 import { GuardError, assertWriteAllowed, checkDatabaseUrl, checkOrganisationId, loadReportFile, redactUrl } from "./guard.mjs";
 import { assertCoreHeaders, coreHeaderProblems } from "./headers.mjs";
 import { loadJobsFolder } from "./jobs-load.mjs";
-import { analyseJobs, jobsVerificationCsv, renderJobsMarkdown, wipVerificationCsv } from "./jobs-plan.mjs";
+import { analyseJobs, jobsKnownNumbers, jobsVerificationCsv, mergeJobsIntoReport, renderJobsMarkdown, wipVerificationCsv } from "./jobs-plan.mjs";
 import { readJobsTargetReadOnly } from "./jobs-write.mjs";
 import { loadFolder, readWorkbooks } from "./load.mjs";
 import { MappingError, getProfile } from "./mapping.mjs";
@@ -36,12 +36,14 @@ export async function dryRun({ folder, outDir, mapping = "sliq", databaseUrl = n
     target = await readTargetReadOnly(databaseUrl, organizationId, loaded);
   }
   const resolutions = resolutionsPath ? loadResolutions(resolutionsPath) : null;
-  const { report, plan } = analyse(loaded, { organizationId: organizationId ? organizationId.toLowerCase() : null, target, excludeNumbers, resolutions });
+  const { report, plan } = analyse(loaded, { organizationId: organizationId ? organizationId.toLowerCase() : null, target, excludeNumbers, resolutions, otherNumbers: jobsKnownNumbers(jobsLoaded) });
   // ---- jobs import (report section 14 and the two verification sheets) ----
   const jobsTarget = databaseUrl && jobsLoaded.profile ? await readJobsTargetReadOnly(databaseUrl, organizationId, jobsLoaded) : null;
   // A strict header check (the real SliQ mapping) is listed here and refuses the write (writeRun).
   report.headerCheck = { strict: jobsLoaded.headerCheck.strict, problems: coreHeaderProblems(loaded, jobsLoaded.headerCheck) };
-  report.jobsImport = analyseJobs(loaded, jobsLoaded, { plan, coreReport: report, organizationId: organizationId ? organizationId.toLowerCase() : null, target: jobsTarget }).report;
+  report.jobsImport = analyseJobs(loaded, jobsLoaded, { plan, coreReport: report, organizationId: organizationId ? organizationId.toLowerCase() : null, target: jobsTarget, excludeNumbers, resolutions }).report;
+  // The jobs files' ambiguities and renamed numbers join the core import's (ambiguity.csv, the stop conditions, the duplicates table).
+  mergeJobsIntoReport(report, report.jobsImport);
   mkdirSync(outDir, { recursive: true });
   writeFileSync(path.join(outDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
   writeFileSync(path.join(outDir, "report.md"), `${renderMarkdown(report)}\n${report.jobsImport ? `\n${renderJobsMarkdown(report.jobsImport)}\n` : ""}${headerCheckMarkdown(report.headerCheck)}`);
@@ -65,7 +67,8 @@ export async function writeRun({ folder, reportPath, mapping = "sliq", databaseU
   const jobsLoaded = loadJobs(folder, mapping, loaded, { workbooks, sheets });
   const org = organizationId.toLowerCase();
   const resolutions = resolutionsPath ? loadResolutions(resolutionsPath) : null;
-  const { report: current } = analyse(loaded, { organizationId: org, target: null, excludeNumbers, resolutions });
+  const { report: current, plan: currentPlan } = analyse(loaded, { organizationId: org, target: null, excludeNumbers, resolutions, otherNumbers: jobsKnownNumbers(jobsLoaded) });
+  mergeJobsIntoReport(current, analyseJobs(loaded, jobsLoaded, { plan: currentPlan, coreReport: current, organizationId: org, target: null, excludeNumbers, resolutions }).report);
   // The report on file is checked against the files and options as they are now, before the database is touched.
   const report = loadReportFile(reportPath);
   assertWriteAllowed({ write, databaseUrl, organizationId, report, current, excludeNumbers });

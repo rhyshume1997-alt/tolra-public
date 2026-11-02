@@ -77,6 +77,10 @@ try {
     if (JSON.stringify(got) !== JSON.stringify(want)) bad.push(`${j.number}: ${JSON.stringify(got)} vs ${JSON.stringify(want)}`);
   }
   out(bad.length === 0, "jobs: number kept, customer (by account), quote link, order link, status and stage words, due, spec, started, finished, value", `${m.importedJobs.length - bad.length}/${m.importedJobs.length} as in the source${bad.length ? `; ${bad.slice(0, 2).join(" | ")}` : ""}`);
+  const refs = (await q("select count(*) filter (where source_ref is distinct from job_no)::int bad, count(*)::int n from public.jobs where organization_id = $1"))[0];
+  eq("jobs: every imported job keeps its SliQ number as its source reference (migration 135; none renamed here)", [refs.bad, refs.n], [0, dbJobs.size]);
+  const soRefs = (await q("select count(*) filter (where source_ref is distinct from so_number)::int bad, count(*)::int n from public.sales_orders where organization_id = $1"))[0];
+  eq("sales orders: every imported order keeps its SliQ number as its source reference", [soRefs.bad, soRefs.n], [0, m.salesOrders.imported.length]);
   eq("jobs: jobs with no quote are imported without a quote link", m.noQuote.filter((n) => dbJobs.get(n)?.has_quote !== false), []);
   const finished = m.importedJobs.filter((j) => j.finished).map((j) => j.number);
   out(finished.length > 0 && finished.every((n) => dbJobs.get(n).finished && !dbJobs.get(n).inspected_at && dbJobs.get(n).stage === "inspection"), "jobs: a job finished in SliQ but open is finished, awaiting inspection (still on the board)", finished.join(", "));

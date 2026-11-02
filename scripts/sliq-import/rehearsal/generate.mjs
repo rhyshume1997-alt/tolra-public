@@ -329,7 +329,10 @@ pos.unshift(
 // Drawn AFTER every earlier random value, so the records above are byte-identical to the Part A rehearsal (except the PO statuses and
 // the PO job column, set below without the random source).
 const poStatus = (k) => (k % 47 === 5 ? "Cancelled" : k >= N_PO - 2 ? "Draft" : k < 120 ? "Received" : ["Confirmed", "Open", "Part Received"][k % 3]);
-pos.forEach((p, k) => { p.status = poStatus(k); p.job = ""; });
+// The 144 generated orders; the two copies of PO-0010 (core decision 2, above) keep their own status.
+const genPos = pos.filter((p) => !p.tolraNumber);
+genPos.forEach((p, k) => { p.status = poStatus(k); });
+pos.forEach((p) => { p.job = ""; });
 const N_JOBS = 40; // J-1501 .. J-1540, the last one closed: the J counter must pass it
 const JOB_STATUS = ["Open", "In Progress", "At Risk", "Late"];
 const JOB_STAGE = ["Material", "Setup", "Machining", "Inspection", ""];
@@ -364,10 +367,12 @@ for (let k = 0; k < 24; k++) {
   salesOrders.push(so);
 }
 // PO job links: the 12 newest POs are bought for open jobs; one names a job not in the file, one a closed job (link not made, listed).
-for (let k = 0; k < 12; k++) pos[N_PO - 3 - k].job = jobs[k === 7 ? 0 : k].number;
-pos[N_PO - 15].job = "J-1499";
-pos[N_PO - 16].job = "J-1536";
-const extraPo = { number: "PO-0010", supplier: { name: "Unknown Supplier Ltd" }, date: "2019-12-02", delivery: "", total: 12345, status: "Open", job: "J-1501" }; // refused: supplier not in the file
+for (let k = 0; k < 12; k++) genPos[N_PO - 3 - k].job = jobs[k === 7 ? 0 : k].number;
+genPos[N_PO - 15].job = "J-1499";
+genPos[N_PO - 16].job = "J-1536";
+// PO-0012: its own number (PO-0010 is the core rehearsal's duplicate). Its supplier is in no file: unmatched, so it stops the write
+// (core decision 3) until it is excluded by number (the rehearsal's --exclude).
+const extraPo = { number: "PO-0012", supplier: { name: "Unknown Supplier Ltd" }, date: "2019-12-02", delivery: "", total: 12345, status: "Open", job: "J-1501" }; // refused: supplier not in the file
 // Opening WIP: one or two lines per open job (some not valued), one on a job not in the file, one on a closed job, one on no job.
 const wip = [];
 for (const j of jobs.slice(0, 20)) {
@@ -415,6 +420,38 @@ w(dir, "jobs.csv", csv(["Job No", "Account", "Quote No", "Order No", "Descriptio
 w(dir, "sales-orders.csv", csv(["Order No", "Account", "Quote No", "Status", "Order Date", "Delivery Date", "Total", "Notes", "Job No"],
   salesOrders.map((s, n) => [s.number, s.customer.key, s.quote, s.status, day(s.orderDate), day(s.delivery), money(s.total, fancy(n)), s.notes, s.job])));
 w(dir, "wip.csv", csv(["Job No", "Description", "Qty", "Value", "As At", "Reference"], wip.map((x, n) => [x.job, x.description, x.qty, x.value === null ? "" : money(x.value, fancy(n)), day(x.asOf), x.ref])));
+
+// ---- the jobs files with a job number and a sales order number SliQ used twice (core decisions 2 and 3 on jobs) ------------------
+// export-jobdup: the export plus a second J-1512 (another customer, appended: the first in the file keeps J-1512, this one becomes
+// J-1512-B), a second SO-0205 (a later order date: SO-0205-B, open with no job, keyed by hand) and one WIP line meant for the second
+// J-1512. The WIP lines and the purchase order on J-1512, and job J-1515's order SO-0205, cannot be linked from the files: the dry
+// run lists them in ambiguity.csv and refuses the write; resolutions-jobdup.json names the Tolra number of each (jobLinks).
+const dirDup = path.join(out, "export-jobdup");
+mkdirSync(dirDup, { recursive: true });
+for (const f of ["customers.csv", "suppliers.csv", "invoices.csv", "invoice-lines.csv", "payments.csv", "credit-notes.csv", "quotes.csv", "purchase-orders.csv"]) writeFileSync(path.join(dirDup, f), readFileSync(path.join(dir, f)));
+const dupJob = jobs[11];
+const dupSo = salesOrders[4];
+const otherCustomer = customers.find((c) => !c.dormant && c.key !== dupJob.customerKey && !customers.some((d) => d !== c && d.name === c.name));
+const jobDupRow = { ...dupJob, customerKey: otherCustomer.key, customer: otherCustomer, quote: "", salesOrder: "", description: "Second job SliQ numbered J-1512", status: "Open", stage: "Setup", started: "", finished: "", value: 4500 };
+const soDupRow = { ...dupSo, customer: otherCustomer, quote: "", status: "Open", orderDate: addDays(dupSo.orderDate, 3), total: 12000, notes: "", job: "" };
+const wipDupRow = { job: dupJob.number, description: "Material for the second J-1512", qty: "2", value: 1500, asOf: LAST_DAY, ref: "" };
+const jobsDup = [...jobs, jobDupRow];
+const wipDup = [...wip, wipDupRow];
+w(dirDup, "jobs.csv", csv(["Job No", "Account", "Quote No", "Order No", "Description", "Status", "Stage", "Due", "Specification", "Started", "Finished", "Value"],
+  jobsDup.map((j, n) => [j.number, jobKey(j), j.quote, j.salesOrder, j.description, j.status, j.stage, day(j.due), j.spec, j.started ? day(j.started) : "", j.finished ? day(j.finished) : "", j.value === null ? "" : money(j.value, fancy(n))])));
+w(dirDup, "sales-orders.csv", csv(["Order No", "Account", "Quote No", "Status", "Order Date", "Delivery Date", "Total", "Notes", "Job No"],
+  [...salesOrders, soDupRow].map((s, n) => [s.number, s.customer.key, s.quote, s.status, day(s.orderDate), day(s.delivery), money(s.total, fancy(n)), s.notes, s.job])));
+w(dirDup, "wip.csv", csv(["Job No", "Description", "Qty", "Value", "As At", "Reference"], wipDup.map((x, n) => [x.job, x.description, x.qty, x.value === null ? "" : money(x.value, fancy(n)), day(x.asOf), x.ref])));
+const dupWipRows = wipDup.map((x, n) => ({ x, row: n + 2 })).filter(({ x }) => x.job === dupJob.number);
+const dupPos = [extraPo, ...pos].map((p, n) => ({ p, row: n + 2 })).filter(({ p }) => p.job === dupJob.number && p !== extraPo);
+const jobDup = {
+  note: "export-jobdup: J-1512 and SO-0205 used twice in SliQ. Every link that names them is ambiguous until resolutions-jobdup.json names the Tolra number.",
+  job: dupJob.number, jobB: `${dupJob.number}-B`, jobBAccount: otherCustomer.key, jobBCustomer: otherCustomer.name, salesOrder: dupSo.number, salesOrderB: `${dupSo.number}-B`, salesOrderJob: jobs[14].number,
+  // ambiguous until resolved: every WIP line and purchase order on J-1512, and job J-1515 (its order SO-0205)
+  ambiguous: dupWipRows.length + dupPos.length + 1,
+  wipToFirst: dupWipRows.filter(({ x }) => x !== wipDupRow).map(({ row }) => row), wipToSecond: dupWipRows.filter(({ x }) => x === wipDupRow).map(({ row }) => row),
+  purchaseOrdersToFirst: dupPos.map(({ p }) => p.number),
+};
 
 // ---- the same records under the provisional SliQ headers (customer by NAME: SliQ's likely export has no account code) ----------
 w(dirSliq, "customers.csv", csv(["Company Name", "Contact Name", "Email Address", "Phone Number", "Address", "Notes"],
@@ -555,7 +592,7 @@ const manifest = {
     note: "Part B (reviewer decisions 4-6): open jobs, the sales orders that feed them, PO statuses and job links, opening WIP.",
     openInFile: open.length, closedInFile: jobs.length - open.length, imported: imported.length, held: open.filter((j) => j.customerKey === "C9999").map((j) => j.number),
     closed: jobs.filter((j) => !open.includes(j)).map((j) => ({ number: j.number, status: j.status })),
-    importedJobs: imported.map((j) => ({ number: j.number, account: j.customerKey, customer: j.customer.name, quote: j.quote || null, salesOrder: j.salesOrder || null,
+    importedJobs: imported.map((j) => ({ number: j.number, account: j.customerKey, customer: manifest.expected.tolraNames[j.customerKey] ?? j.customer.name, quote: j.quote || null, salesOrder: j.salesOrder || null,
       status: j.status, stage: j.stage || null, due: j.due, started: j.started || null, finished: j.finished || null, valuePence: j.value, spec: j.spec, description: j.description })),
     noQuote: imported.filter((j) => !j.quote).map((j) => j.number),
     salesOrders: { inFile: salesOrders.length, imported: salesOrders.filter((so) => so.job && importedNos.has(so.job)).map((so) => ({ number: so.number, job: so.job, account: so.customer.key })),
@@ -570,6 +607,7 @@ const manifest = {
     nextNumbers: { job: `J-${1501 + N_JOBS}`, salesOrder: `SO-${pad(201 + salesOrders.length, 4)}` },
   };
 }
+manifest.jobDup = jobDup;
 w(out, "manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
 // Imported as customer credit (no invoice link in SliQ): each customer's balance then equals Aged Debtors.
 const cnResolutions = creditNotes.map((c) => ({ number: c.number, decision: "import-as-credit", allocation: null, note: "Synthetic rehearsal: no invoice link in SliQ; imported as the customer's credit." }));
@@ -578,4 +616,12 @@ const resolutions = (extra) => `${JSON.stringify({ format: "sliq-credit-note-res
 w(out, "resolutions-cn.json", resolutions({}));
 w(out, "resolutions.json", resolutions({ customerNames }));
 w(out, "resolutions-names.json", resolutions({ customerNames, customerMatches }));
+// export-jobdup: the reviewed answer for each link SliQ's repeated numbers cannot make (jobLinks), generated from the designed truth.
+const jobLinks = [
+  ...jobDup.wipToFirst.map((row) => ({ kind: "wip", row, job: jobDup.job, note: "Synthetic rehearsal: the first J-1512's material." })),
+  ...jobDup.wipToSecond.map((row) => ({ kind: "wip", row, job: jobDup.jobB, note: "Synthetic rehearsal: material for the second J-1512." })),
+  ...jobDup.purchaseOrdersToFirst.map((number) => ({ kind: "purchase_order", number, job: jobDup.job, note: "Synthetic rehearsal: bought for the first J-1512." })),
+  { kind: "job", number: jobDup.salesOrderJob, salesOrder: jobDup.salesOrder, note: "Synthetic rehearsal: the earlier SO-0205 feeds J-1515." },
+];
+w(out, "resolutions-jobdup.json", resolutions({ customerNames, jobLinks }));
 console.log(`Synthetic export written to ${out}: ${customers.length} customers, ${suppliers.length} suppliers, ${allInvoiceRows.length} invoice rows (${invoices.length} + ${extras.length} awkward), ${creditNotes.length} credit notes, ${payments.length} payments, ${quotes.length} quotes, ${pos.length} purchase orders (+1 awkward), ${lineRows.length} lines; ${jobs.length} jobs, ${salesOrders.length} sales orders, ${wip.length} WIP rows.`);

@@ -14,7 +14,7 @@ import { assertCoreHeaders, coreHeaderProblems } from "../../scripts/sliq-import
 import { legacyId } from "../../scripts/sliq-import/ids.mjs";
 import { loadJobsFolder } from "../../scripts/sliq-import/jobs-load.mjs";
 import { compareHeaders, getHeaderCheck, getJobsProfile, JOBS_CANONICAL } from "../../scripts/sliq-import/jobs-mapping.mjs";
-import { analyseJobs, jobsVerificationCsv, renderJobsMarkdown, wipVerificationCsv } from "../../scripts/sliq-import/jobs-plan.mjs";
+import { analyseJobs, jobsKnownNumbers, jobsVerificationCsv, mergeJobsIntoReport, renderJobsMarkdown, wipVerificationCsv } from "../../scripts/sliq-import/jobs-plan.mjs";
 import { loadFolder } from "../../scripts/sliq-import/load.mjs";
 import { getProfile, MappingError } from "../../scripts/sliq-import/mapping.mjs";
 import { parseCsv } from "../../scripts/sliq-import/parse.mjs";
@@ -66,11 +66,12 @@ function folder(edit: Edit = {}) {
   return dir;
 }
 const synthetic = getProfile("synthetic");
-function run(dir: string, target: unknown = null) {
+function run(dir: string, target: unknown = null, { excludeNumbers = [] as string[], resolutions = null as object | null } = {}) {
   const loaded = loadFolder(dir, synthetic);
   const jobsLoaded = loadJobsFolder(dir, "synthetic", loaded);
-  const { report, plan: corePlan } = analyse(loaded, { organizationId: ORG, target: null, excludeNumbers: [] });
-  const jobs = analyseJobs(loaded, jobsLoaded, { plan: corePlan, coreReport: report, organizationId: ORG, target });
+  const res = resolutions ? { file: "r.json", sha256: "0".repeat(64), entries: [], customerMatches: [], customerNames: [], jobLinks: [], ...resolutions } : null;
+  const { report, plan: corePlan } = analyse(loaded, { organizationId: ORG, target: null, excludeNumbers, resolutions: res, otherNumbers: jobsKnownNumbers(jobsLoaded) });
+  const jobs = analyseJobs(loaded, jobsLoaded, { plan: corePlan, coreReport: report, organizationId: ORG, target, excludeNumbers, resolutions: res });
   return { loaded, jobsLoaded, report, corePlan, plan: jobs.plan, jr: jobs.report };
 }
 type JobItem = { number: string; held: string[]; [k: string]: unknown };
@@ -138,13 +139,18 @@ describe("what the jobs import would do", () => {
   it("imports only open jobs; a closed SliQ job is listed, never imported", () => {
     expect(jr.counts).toMatchObject({ jobRows: 9, openInFile: 8, closedInFile: 1 });
     expect(job(jr, "J-0190")[0]).toMatchObject({ open: false, statusRaw: "Complete" });
-    expect(plan.jobs.map((j: { number: string }) => j.number)).toEqual(["J-0100", "J-0101", "J-0104", "J-0105"]);
+    expect(plan.jobs.map((j: { number: string }) => j.number)).toEqual(["J-0100", "J-0101", "J-0104", "J-0105", "J-0106", "J-0106-B"]);
   });
-  it("holds an unknown customer (matched by account code), a quote this import does not write, and a duplicate number", () => {
-    expect(job(jr, "J-0102")[0].held).toEqual(['customer "C999" is not in the customers file (matched by account code)']);
+  it("holds an unknown customer (stops the write: ambiguity.csv) and a quote this import does not write; a duplicate number keeps both", () => {
+    expect(job(jr, "J-0102")[0].held).toEqual(["customer unmatched: no record has this account or name (see the ambiguity report)"]);
+    expect(jr.ambiguities.map((a: { kind: string; number: string; status: string; blocksWrite: boolean }) => [a.kind, a.number, a.status, a.blocksWrite])).toEqual([["job", "J-0102", "unmatched", true]]);
+    expect(jr.unresolvedMatchCount).toBe(1);
     expect(job(jr, "J-0103")[0].held[0]).toMatch(/quote Q9999 is not written by this import/);
-    expect(job(jr, "J-0106").map((j: { held: string[] }) => j.held)).toEqual([["duplicate job number in the source"], ["duplicate job number in the source"]]);
-    expect(jr.customerMatching).toBe("account code");
+    // Decision 2 for jobs: the first copy in the file keeps the number, the next is -B; both keep J-0106 as their SliQ reference.
+    expect(jr.jobs.filter((j: { sourceNumber: string }) => j.sourceNumber === "J-0106").map((j: JobItem) => [j.number, j.sourceNumber, j.held, j.oldId]))
+      .toEqual([["J-0106", "J-0106", [], legacyId(ORG, "jobs", "J-0106")], ["J-0106-B", "J-0106", [], legacyId(ORG, "jobs", "J-0106-B")]]);
+    expect(jr.renames.map((x: { kind: string; sourceNumber: string; number: string; keeps: boolean }) => [x.kind, x.sourceNumber, x.number, x.keeps])).toEqual([["job", "J-0106", "J-0106", true], ["job", "J-0106", "J-0106-B", false]]);
+    expect(jr.customerMatching).toMatch(/^account, or a name exactly one customer has/);
   });
   it("keeps the SliQ job number, the customer's name, the quote link, the status and stage words, dates and value as stated", () => {
     const j = plan.jobs.find((x: { number: string }) => x.number === "J-0100");
@@ -162,6 +168,8 @@ describe("what the jobs import would do", () => {
     const not = jr.salesOrders.filter((s: { notImported?: string }) => s.notImported).map((s: { number: string; notImported: string }) => [s.number, s.notImported]);
     expect(not).toEqual([["SO-0013", expect.stringMatching(/key it by hand/)], ["SO-0020", expect.stringMatching(/not imported/)]]);
     expect(plan.jobs.find((x: { number: string }) => x.number === "J-0100").soOldId).toBe(legacyId(ORG, "sales_orders", "SO-0010"));
+    // The order's customer is linked by the id the core import gives that customer.
+    expect(plan.salesOrders.find((s: { number: string }) => s.number === "SO-0010").customerOldId).toBe(legacyId(ORG, "customers", "key:c001"));
   });
   it("purchase orders: the supplier is checked by the main import (unknown refused), the job link here (closed job: no link, listed)", () => {
     expect(jr.purchaseOrders.refusedSupplier.map((p: { number: string }) => p.number)).toEqual(["PO-0002"]);
@@ -188,9 +196,9 @@ describe("what the jobs import would do", () => {
     expect(run(folder(), t(new Map(), false)).jr.blockers).toEqual([expect.stringMatching(/migration 136 is not applied/)]);
     // A WIP line on a job already in Tolra (an earlier import) is linked to it.
     const r = run(folder({ wip: `${WIP_H}\r\nJ-7000,Old job,,1.00,30/10/2026,\r\n` }), t(new Map()));
-    expect(r.jr.wip.items[0].link).toEqual({ kind: "tolra", jobId: "uuid-7" });
+    expect(r.jr.wip.items[0].link).toEqual({ kind: "tolra", jobId: "uuid-7", jobNo: "J-7000" });
   });
-  it("customers file without account codes: matched by a unique name; a duplicate name holds the job", () => {
+  it("customers file without account codes: matched by a name exactly one customer has; a match only after normalising stops the write", () => {
     const noKeys = (t: string) => t.replace(/^Account,/m, "Code,").replace(/\nC00(\d),/g, "\nX$1,") + "C009,Alpha Fabrications Limited,,,,,,,,\r\n";
     const dir = folder({ customers: noKeys, jobs: `${JOBS_H}\r\nJ-0300,Beta Engineering Ltd,,,x,Open,,,,,,\r\nJ-0301,Alpha Fabrications Ltd,,,x,Open,,,,,,\r\n` });
     const raw = JSON.parse(readFileSync(path.resolve(__dirname, "../../scripts/sliq-import/mappings/synthetic.json"), "utf8"));
@@ -202,9 +210,73 @@ describe("what the jobs import would do", () => {
     const jl = loadJobsFolder(dir, mp, loaded);
     const { report, plan } = analyse(loaded, { organizationId: ORG });
     const jr = analyseJobs(loaded, jl, { plan, coreReport: report, organizationId: ORG }).report;
-    expect(jr.customerMatching).toMatch(/^name/);
-    expect(job(jr, "J-0300")[0].held).toEqual([]);
-    expect(job(jr, "J-0301")[0].held).toEqual([expect.stringMatching(/matches \d customers \(duplicate name\)/)]);
+    expect(job(jr, "J-0301")[0].held).toEqual([]);
+    expect(job(jr, "J-0300")[0].held).toEqual([expect.stringMatching(/customer ambiguous: matches only after normalising/)]);
+    expect(jr.ambiguities.filter((a: { blocksWrite: boolean }) => a.blocksWrite).map((a: { number: string }) => a.number)).toEqual(["J-0300"]);
+  });
+});
+
+describe("duplicates and ambiguity across jobs, sales orders, purchase orders and WIP (core decisions 2 and 3)", () => {
+  type Amb = { kind: string; number: string; sourceNumber: string | null; status: string; blocksWrite: boolean; row: number; resolveWith?: string };
+  const blocking = (jr: { ambiguities: Amb[] }) => jr.ambiguities.filter((a) => a.blocksWrite).map((a) => `${a.kind} ${a.number}`);
+  // J-0106 is used twice: a WIP line and a purchase order on J-0106 cannot say which job they are for.
+  const dupLinks = () => folder({ wip: `${WIP_H}\r\nJ-0106,Material for J-0106,,7.00,30/10/2026,\r\nJ-0100,Material,,1.00,30/10/2026,\r\n`, po: (t) => t.replace("PO-0001,Steel Supplies Ltd,01/03/2026,15/03/2026,250.00,Open,J-0100", "PO-0001,Steel Supplies Ltd,01/03/2026,15/03/2026,250.00,Open,J-0106") });
+  it("a WIP line or purchase order on a job number SliQ used twice is ambiguous and stops the write; never linked to a guess", () => {
+    const { jr } = run(dupLinks());
+    expect(blocking(jr)).toEqual(["job J-0102", "purchase_order PO-0001", "wip row 2"]);
+    const wipAmb = jr.ambiguities.find((a: Amb) => a.kind === "wip");
+    expect(wipAmb).toMatchObject({ sourceNumber: null, status: "ambiguous", reason: expect.stringMatching(/SliQ used job number J-0106 for 2 jobs/) });
+    expect(wipAmb.candidates.map((c: { account: string }) => c.account)).toEqual(["J-0106", "J-0106-B"]);
+    expect(wipAmb.resolveWith).toBe('jobLinks: {"kind":"wip","row":2,"job":"<Tolra number, or null>"}');
+    expect(jr.wip.items[0]).toMatchObject({ link: null, problem: "ambiguous job link (see the ambiguity report): kept unlinked" });
+    expect(jr.purchaseOrders.items.find((p: { number: string }) => p.number === "PO-0001")).toMatchObject({ link: null, problem: expect.stringMatching(/ambiguous/) });
+  });
+  it("the resolutions file names the Tolra job (jobLinks) and the customer of a job (customerMatches kind job): 0 left, links as named", () => {
+    const resolutions = { jobLinks: [{ kind: "wip", row: 2, job: "J-0106-B" }, { kind: "purchase_order", number: "PO-0001", job: "J-0106" }], customerMatches: [{ kind: "job", number: "J-0102", account: "C003" }] };
+    const { jr, plan } = run(dupLinks(), null, { resolutions });
+    expect(blocking(jr)).toEqual([]);
+    expect(jr.problems).toEqual([]);
+    expect(jr.wip.items[0].link).toEqual({ kind: "imported", jobOldId: legacyId(ORG, "jobs", "J-0106-B"), jobNo: "J-0106-B" });
+    expect(plan.purchaseOrders.find((p: { number: string }) => p.number === "PO-0001").link).toMatchObject({ kind: "imported", jobNo: "J-0106" });
+    expect(plan.jobs.find((j: { number: string }) => j.number === "J-0102")).toMatchObject({ customerName: "Gamma Supplies" });
+    // An entry that fits nothing, or names a job that is not imported, refuses the write (writable false once merged).
+    const bad = run(dupLinks(), null, { resolutions: { jobLinks: [...resolutions.jobLinks, { kind: "wip", row: 99, job: "J-0100" }, { kind: "purchase_order", number: "PO-0003", job: "J-0101" }] } });
+    expect(bad.jr.problems).toEqual(["jobLinks entry 3 (wip row 99) fits no record in the jobs files", "jobLinks entry 4 (purchase_order PO-0003) fits no record in the jobs files"]);
+    expect(mergeJobsIntoReport(bad.report, bad.jr).writable).toBe(false);
+  });
+  it("an excluded job is held and its ambiguity no longer stops the write; --exclude may name a job number", () => {
+    const { jr, report } = run(folder(), null, { excludeNumbers: ["J-0102"] });
+    expect(report.unknownExcludedNumbers).toEqual([]);
+    expect(job(jr, "J-0102")[0].held).toContain("excluded by number (operator decision)");
+    expect(jr.ambiguities.map((a: Amb) => [a.number, a.blocksWrite])).toEqual([["J-0102", false]]);
+    expect(jr.unresolvedMatchCount).toBe(0);
+  });
+  it("a sales order number SliQ used twice keeps both (earliest order date keeps it); the job naming it is ambiguous until resolved", () => {
+    const sos = `${[SO_H, ...SOS, "SO-0011,C002,,Open,05/11/2026,30/11/2026,5.00,,"].join("\r\n")}\r\n`;
+    const { jr } = run(folder({ salesOrders: sos }));
+    expect(jr.salesOrders.filter((x: { sourceNumber: string }) => x.sourceNumber === "SO-0011").map((x: { number: string }) => x.number)).toEqual(["SO-0011", "SO-0011-B"]);
+    expect(blocking(jr)).toEqual(["job J-0101", "job J-0102"]);
+    expect(job(jr, "J-0101")[0].held).toEqual(["sales order link ambiguous (see the ambiguity report)"]);
+    const ok = run(folder({ salesOrders: sos }), null, { resolutions: { jobLinks: [{ kind: "job", number: "J-0101", salesOrder: "SO-0011-B" }] }, excludeNumbers: ["J-0102"] });
+    expect(ok.jr.unresolvedMatchCount).toBe(0);
+    expect(ok.plan.salesOrders.map((x: { number: string; feeds: string[] }) => `${x.number}>${x.feeds}`)).toContain("SO-0011-B>J-0101");
+  });
+  it("a quote number SliQ used twice cannot be linked from a job: ambiguous until jobLinks names the Tolra quote", () => {
+    const dir = folder({ jobs: `${JOBS_H}\r\nJ-0400,C001,Q2001,,x,Open,,,,,,\r\n`, salesOrders: `${SO_H}\r\n`, wip: `${WIP_H}\r\n` });
+    const qf = path.join(dir, "quotes.csv");
+    writeFileSync(qf, `${readFileSync(qf, "utf8").trimEnd()}\r\nQ2001,02/02/2026,C001,10.00,2.00,12.00,Sent,01/05/2026,\r\n`);
+    const { jr } = run(dir);
+    expect(blocking(jr)).toEqual(["job J-0400"]);
+    expect(jr.ambiguities[0].reason).toMatch(/SliQ used quote number Q2001 for 2 quotes/);
+    const ok = run(dir, null, { resolutions: { jobLinks: [{ kind: "job", number: "J-0400", quote: "Q2001-B" }] } });
+    expect(ok.jr.unresolvedMatchCount).toBe(0);
+    expect(ok.plan.jobs[0]).toMatchObject({ quoteNumber: "Q2001-B", quoteOldId: legacyId(ORG, "quotes", "Q2001-B") });
+  });
+  it("a WIP line SliQ lists twice is kept twice (its own key each), flagged on the sheet", () => {
+    const { jr } = run(folder({ wip: `${WIP_H}\r\nJ-0100,Material,,1.00,30/10/2026,\r\nJ-0100,Material,,1.00,30/10/2026,\r\n` }));
+    expect(jr.wip.items.map((w: { key: string }) => w.key)).toEqual([String(legacyId(ORG, "opening_wip", "J-0100|1")), String(legacyId(ORG, "opening_wip", "J-0100|2"))]);
+    expect(jr.wip.repeatedLines).toBe(2);
+    expect(wipVerificationCsv(jr)).toContain("the same line appears 2 times in the WIP file: every copy is kept");
   });
 });
 
@@ -215,9 +287,9 @@ describe("verification sheets and report", () => {
     expect(headers.slice(0, 4)).toEqual(["Check", "SliQ job no", "Tolra job no", "Result"]);
     const body = rows.filter((r: string[]) => /^\d+$/.test(r[0]));
     expect(body.map((r: string[]) => [r[1], r[2], r[3].split(":")[0]])).toEqual([["J-0100", "J-0100", "imported"], ["J-0101", "J-0101", "imported"], ["J-0102", "", "HELD"],
-      ["J-0103", "", "HELD"], ["J-0104", "J-0104", "imported"], ["J-0105", "J-0105", "imported"], ["J-0106", "", "HELD"], ["J-0106", "", "HELD"], ["J-0190", "", "not imported"]]);
+      ["J-0103", "", "HELD"], ["J-0104", "J-0104", "imported"], ["J-0105", "J-0105", "imported"], ["J-0106", "J-0106", "imported"], ["J-0106", "J-0106-B", "imported"], ["J-0190", "", "not imported"]]);
     expect(rows.find((r: string[]) => r[0] === "Open jobs in the SliQ file")?.[1]).toBe("8");
-    expect(rows.find((r: string[]) => r[0] === "Imported as open jobs")?.[1]).toBe("4");
+    expect(rows.find((r: string[]) => r[0] === "Imported as open jobs")?.[1]).toBe("6");
   });
   it("the WIP sheet: every line as stated (blank: not valued), with the reconciliation totals", () => {
     const { rows } = parseCsv(wipVerificationCsv(jr));
@@ -226,7 +298,7 @@ describe("verification sheets and report", () => {
   });
   it("the report section says WIP is not revenue and gives the reconciliation", () => {
     const md = renderJobsMarkdown(jr);
-    expect(md).toContain("**Open jobs in the SliQ file: 8.** Imported 4; held 4.");
+    expect(md).toContain("**Open jobs in the SliQ file: 8.** Imported 6; held 2.");
     expect(md).toContain("stated value £160.40 = linked to jobs £125.40 (2 rows) + not linked £35.00 (4 rows)");
     expect(md).toContain("not an invoice, not money owed and not revenue");
   });
@@ -234,7 +306,10 @@ describe("verification sheets and report", () => {
     const dir = folder();
     const out = mkdtempSync(path.join(tmpdir(), "sliq-jobs-out-"));
     const { report } = await dryRun({ folder: dir, outDir: out, mapping: "synthetic" });
-    expect(report.jobsImport.counts.jobsWritten).toBe(4);
+    expect(report.jobsImport.counts.jobsWritten).toBe(6);
+    // The jobs files' ambiguity joins the core report's: ambiguity.csv and the stop count.
+    expect(report.customerMatching.ambiguities.some((a: { kind: string; number: string }) => a.kind === "job" && a.number === "J-0102")).toBe(true);
+    expect(readFileSync(path.join(out, "ambiguity.csv"), "utf8")).toMatch(/\r\njob,J-0102,J-0102,jobs\.csv,4,C999,unmatched,/);
     expect(readFileSync(path.join(out, "report.md"), "utf8")).toContain("## 15. Jobs, sales orders");
     expect(readFileSync(path.join(out, "jobs-verification.csv"), "utf8")).toContain("J-0190");
     expect(readFileSync(path.join(out, "wip-verification.csv"), "utf8")).toContain("Value confirmed by John");

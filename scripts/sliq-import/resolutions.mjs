@@ -20,6 +20,12 @@
 // a name two customers share, a name that matches only after normalising, or no customer at all) stops the write until an entry
 // here names the customer's ACCOUNT. kind is invoice, quote or purchase_order (a purchase order's account is a supplier's); number
 // is the number as SliQ wrote it; row (the source row) or date (ISO) picks one of two documents SliQ numbered the same.
+// customerMatches also takes kind "job" and "sales_order" (the jobs files; number as SliQ wrote it, row to pick one of two copies).
+// jobLinks (jobs-plan.mjs): a link the jobs files cannot make unambiguously because SliQ used the number twice (two jobs J-1512, two
+// sales orders, two quotes) stops the write until an entry names the Tolra number to link to ("job", "salesOrder" or "quote"; null
+// for no link). kind is "purchase_order" (number: its Tolra number), "wip" (row: the WIP file's row), "job" or "sales_order"
+// (number: the Tolra number; row as for customerMatches):
+//     "jobLinks": [ { "kind": "wip", "row": 14, "job": "J-1512-B" }, { "kind": "job", "number": "J-1515", "salesOrder": "SO-0205" } ]
 // customerNames: Tolra links documents to customers by name, so two customers (or two suppliers: "party": "supplier") may not
 // have the same name; an entry gives one of them its own Tolra name. The SliQ name is kept in the record's notes.
 //
@@ -47,12 +53,12 @@ export function loadResolutions(file) {
     throw new MappingError(`The credit-note resolution file ${file} cannot be read (${e.message}).`);
   }
   if (data?.format !== RESOLUTION_FORMAT || !Array.isArray(data.resolutions)) throw new MappingError(`${file} is not a ${RESOLUTION_FORMAT} file (needs "format" and a "resolutions" list).`);
-  for (const k of ["customerMatches", "customerNames"]) {
+  for (const k of ["customerMatches", "customerNames", "jobLinks"]) {
     if (data[k] !== undefined && !Array.isArray(data[k])) throw new MappingError(`${file}: "${k}" must be a list.`);
   }
   return {
     file: path.basename(file), sha256: createHash("sha256").update(bytes).digest("hex"), entries: data.resolutions,
-    customerMatches: data.customerMatches ?? [], customerNames: data.customerNames ?? [],
+    customerMatches: data.customerMatches ?? [], customerNames: data.customerNames ?? [], jobLinks: data.jobLinks ?? [],
   };
 }
 

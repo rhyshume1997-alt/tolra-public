@@ -110,7 +110,7 @@ function parties(rows, names = new Map()) {
  * number SliQ printed is kept as sourceNumber (written to source_ref, migration 135). Returns the rows (renamed copies replaced)
  * and the log of every copy.
  */
-function numberCopies(rows, kind, dateField) {
+export function numberCopies(rows, kind, dateField) {
   const groups = new Map();
   for (const r of rows) {
     const k = normNumber(r.number);
@@ -142,11 +142,12 @@ function numberCopies(rows, kind, dateField) {
 
 /**
  * @param loaded    result of loadFolder
- * @param opts      { organizationId?, target?, excludeNumbers? }
+ * @param opts      { organizationId?, target?, excludeNumbers?, resolutions?, otherNumbers? }
  *   target = result of readTarget (rehearsal read) or null/undefined (not checked)
+ *   otherNumbers = the job and sales-order numbers of the jobs files (jobs-plan.mjs), so --exclude may name them
  */
 export function analyse(loaded, opts = {}) {
-  const { organizationId = null, target = null, excludeNumbers = [], resolutions = null } = opts;
+  const { organizationId = null, target = null, excludeNumbers = [], resolutions = null, otherNumbers = [] } = opts;
   const docFigures = [];
   const rec = loaded.records;
   const excluded = new Set(excludeNumbers.map(normNumber));
@@ -376,8 +377,10 @@ export function analyse(loaded, opts = {}) {
   const ambiguities = [];
   const matchEntries = (resolutions?.customerMatches ?? []).map((e, i) => ({ e, i, used: 0 }));
   const KINDS = ["invoice", "quote", "purchase_order", "credit_note"];
+  // A job or sales order is matched to its customer the same way, by jobs-plan.mjs (plan.matchCustomer below).
+  const ALL_KINDS = [...KINDS, "job", "sales_order"];
   for (const m of matchEntries) {
-    if (!KINDS.includes(m.e?.kind ?? "invoice")) matchProblems.push(`customerMatches entry ${m.i + 1}: kind must be one of ${KINDS.join(", ")}`);
+    if (!ALL_KINDS.includes(m.e?.kind ?? "invoice")) matchProblems.push(`customerMatches entry ${m.i + 1}: kind must be one of ${ALL_KINDS.join(", ")}`);
     else if (!String(m.e?.number ?? "").trim() || !String(m.e?.account ?? "").trim()) matchProblems.push(`customerMatches entry ${m.i + 1}: "number" and "account" are needed`);
   }
   const resolvedParty = (kind, h, ref) => {
@@ -703,7 +706,7 @@ export function analyse(loaded, opts = {}) {
   ];
   const unresolvedReview = needsReview.filter((n) => n.blocksWrite && !n.excluded);
   const state = (s) => balances.filter((b) => b.state === s);
-  const allKnown = new Set([...allInvNos.keys(), ...allInvSource.keys(), ...quoteByNo.keys(), ...quoteBySource.keys(), ...poRows.flatMap((p) => [normNumber(p.number), normNumber(p.sourceNumber)])]);
+  const allKnown = new Set([...allInvNos.keys(), ...allInvSource.keys(), ...quoteByNo.keys(), ...quoteBySource.keys(), ...poRows.flatMap((p) => [normNumber(p.number), normNumber(p.sourceNumber)]), ...otherNumbers.map(normNumber)]);
   const unresolvedMatches = ambiguities.filter((x) => x.blocksWrite);
   const unresolvedPayments = exceptions.filter((x) => x.blocksWrite);
   const unknownExcluded = [...excluded].filter((n) => !allKnown.has(n));
@@ -793,6 +796,11 @@ export function analyse(loaded, opts = {}) {
     unresolvedPaymentCount: unresolvedPayments.length,
     writable: loaded.errors.length === 0 && !mp.isStub && unknownExcluded.length === 0 && creditResolution.problems.length === 0 && matchProblems.length === 0,
   };
+  // For jobs-plan.mjs: the same customer match (customerMatches entries of kind job / sales_order included) and the same exclusions.
+  // Not enumerable, so the plan still compares and serialises as plain data.
+  Object.defineProperty(plan, "matchCustomer", { value: (kind, h, ref) => resolvedParty(kind, h, ref) });
+  Object.defineProperty(plan, "isExcluded", { value: isExcluded });
+  Object.defineProperty(plan, "unusedMatchEntries", { value: (kinds) => matchEntries.filter((m) => m.used === 0 && kinds.includes(m.e?.kind ?? "invoice")).map((m) => ({ entry: m.i + 1, kind: m.e.kind, number: m.e.number })) });
   return { report, plan };
 }
 
@@ -805,7 +813,7 @@ export function renderAmbiguityCsv(r) {
   const head = ["kind", "tolra_number", "sliq_number", "file", "row", "reference_as_written", "status", "reason", "candidates", "stops_write", "resolve_with"];
   const rows = r.customerMatching.ambiguities.map((x) => [
     x.kind, x.number, x.sourceNumber, x.file, x.row, x.reference, x.status, x.reason, x.candidates.map((c) => `${c.account ?? "no account"}=${c.name} (row ${c.row})`).join("; "),
-    x.blocksWrite ? "yes" : "no", ["customer", "supplier"].includes(x.kind) ? `customerNames: {"party":"${x.kind}","account":"${x.number}","name":"<a name of its own>"}` : `customerMatches: {"kind":"${x.kind}","number":"${x.sourceNumber}","row":${x.row},"account":"<account>"} or --exclude ${x.number}`,
+    x.blocksWrite ? "yes" : "no", x.resolveWith ? x.resolveWith : ["customer", "supplier"].includes(x.kind) ? `customerNames: {"party":"${x.kind}","account":"${x.number}","name":"<a name of its own>"}` : `customerMatches: {"kind":"${x.kind}","number":"${x.sourceNumber}","row":${x.row},"account":"<account>"} or --exclude ${x.number}`,
   ]);
   return `${[head, ...rows].map((row) => row.map(cell).join(",")).join("\r\n")}\r\n`;
 }

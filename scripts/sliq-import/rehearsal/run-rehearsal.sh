@@ -18,9 +18,14 @@ RB_URL="postgresql://postgres@127.0.0.1:5432/$RB"
 RS=${DB}_restore
 PSQL=(psql -h 127.0.0.1 -p 5432 -U postgres -X -q -At -v ON_ERROR_STOP=1)
 CLI=(node "$ROOT/scripts/sliq-import/cli.mjs")
-EXCL="INV-0101,INV-0102"   # the 5% discount invoice (needs review) and the invoice whose customer is not in the file (unmatched)
+# The 5% discount invoice (needs review), the invoice, purchase order and job whose customer or supplier is in no file (unmatched:
+# each stops the write until excluded, decision 3). The names layout has no jobs files, so it cannot name the job.
+EXCL="INV-0101,INV-0102,PO-0012,J-1508"
+NEXCL="INV-0101,INV-0102,PO-0012"
 NM=${DB}_names              # the same import from the layout whose documents name the customer (decision 3)
 NM_URL="postgresql://postgres@127.0.0.1:5432/$NM"
+JD=${DB}_jobdup             # the jobs files with a job and a sales order number SliQ used twice (decisions 2 and 3 on jobs)
+JD_URL="postgresql://postgres@127.0.0.1:5432/$JD"
 rm -rf "$W/results" "$W/r-"*; mkdir -p "$W/results"
 : >"$W/timings.tsv"
 fail=0
@@ -68,6 +73,7 @@ node -e 'const [a, b] = process.argv.slice(1).map((f) => JSON.stringify(require(
 step 12-backup pg_dump -h 127.0.0.1 -U postgres -Fc -f "$W/pre-import.dump" "$DB" || exit 1
 "${PSQL[@]}" -d postgres -c "drop database if exists $RB" -c "create database $RB template $DB"
 "${PSQL[@]}" -d postgres -c "drop database if exists $NM" -c "create database $NM template $DB"
+"${PSQL[@]}" -d postgres -c "drop database if exists $JD" -c "create database $JD template $DB"
 
 step 13-write "${CLI[@]}" "$W/export" "${OPTS[@]}" --write --report "$W/r-coll/report.json" --database-url "$URL" --organization-id "$ORG" --install-importer || exit 1
 step 14-checks node "$HERE/checks.mjs" --work "$W" --report "$W/r-coll/report.json" --database-url "$URL" --json "$W/results/checks.json"; check 14-checks
@@ -110,10 +116,24 @@ step 20e-dry-run-strict-lists "${CLI[@]}" "$W/export-cust-extra" "${SOPTS[@]}" -
 grep -q 'customers.csv: unknown column "Credit Limit"' "$W/r-strict/report.md" || { echo "FAIL|the strict report does not list the unknown column"; fail=1; }
 step 20f-write-refused-strict-header expect_fail "${CLI[@]}" "$W/export-cust-extra" "${SOPTS[@]}" --write --report "$W/r-strict/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
 grep -q 'customers.csv: unknown column "Credit Limit"' "$W/results/20f-write-refused-strict-header.txt" || { echo "FAIL|the strict header check was not what refused the write"; fail=1; }
+# The same strict check on the purchase orders file (it carries each order's status and job link): an unknown column is listed and
+# refuses the write; and the sales orders and WIP files, like the jobs file, are refused with the list even in a dry run.
+cp -r "$W/export" "$W/export-po-extra"; sed -i '1 s/\r$/,Buyer\r/; 2,$ s/\r$/,\r/' "$W/export-po-extra/purchase-orders.csv"
+step 20g-dry-run-strict-lists-po "${CLI[@]}" "$W/export-po-extra" "${SOPTS[@]}" --out "$W/r-strict-po" --database-url "$URL" --organization-id "$ORG" || fail=1
+grep -q 'purchase-orders.csv: unknown column "Buyer"' "$W/r-strict-po/report.md" || { echo "FAIL|the strict report does not list the purchase orders' unknown column"; fail=1; }
+step 20h-write-refused-strict-po-header expect_fail "${CLI[@]}" "$W/export-po-extra" "${SOPTS[@]}" --write --report "$W/r-strict-po/report.json" --database-url "$URL" --organization-id "$ORG" || fail=1
+grep -q 'purchase-orders.csv: unknown column "Buyer"' "$W/results/20h-write-refused-strict-po-header.txt" || { echo "FAIL|the purchase orders' header was not what refused the write"; fail=1; }
+cp -r "$W/export" "$W/export-so-extra"; sed -i '1 s/\r$/,Rep\r/; 2,$ s/\r$/,\r/' "$W/export-so-extra/sales-orders.csv"
+step 20i-dry-run-refused-so-unknown-column expect_fail "${CLI[@]}" "$W/export-so-extra" "${OPTS[@]}" --out "$W/r-so-extra" || fail=1
+grep -q 'sales-orders.csv: unknown column "Rep"' "$W/results/20i-dry-run-refused-so-unknown-column.txt" || { echo "FAIL|the sales orders' unknown column is not listed"; fail=1; }
+cp -r "$W/export" "$W/export-wip-missing"; python3 -I -c "import csv,sys; p=sys.argv[1]; r=list(csv.reader(open(p, newline=''))); i=r[0].index('Qty'); w=csv.writer(open(p, 'w', newline=''), lineterminator='\r\n'); [w.writerow(x[:i] + x[i + 1:]) for x in r]" "$W/export-wip-missing/wip.csv"
+step 20j-dry-run-refused-wip-missing-column expect_fail "${CLI[@]}" "$W/export-wip-missing" "${OPTS[@]}" --out "$W/r-wip-missing" || fail=1
+grep -q 'wip.csv: missing column "Qty"' "$W/results/20j-dry-run-refused-wip-missing-column.txt" || { echo "FAIL|the WIP file's missing column is not listed"; fail=1; }
+for f in jobs-verification.csv wip-verification.csv; do [[ -s "$W/r-coll/$f" ]] && echo "PASS|the approved dry run wrote $f ($(($(wc -l <"$W/r-coll/$f"))) lines)" || { echo "FAIL|$f missing"; fail=1; }; done
 
 # Decision 3 on the layout whose documents name the customer: 106 documents of the two same-name customers are ambiguous and stop the
 # write; with each one's account named in resolutions-names.json the write goes through and every document is on the right customer.
-NOPTS=(--mapping "$W/synthetic-names.json" --exclude "$EXCL")
+NOPTS=(--mapping "$W/synthetic-names.json" --exclude "$NEXCL")
 step 24-names-dry-run-unresolved "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions.json" --out "$W/r-names-unres" --database-url "$NM_URL" --organization-id "$ORG" || exit 1
 step 25-names-write-refused expect_fail "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions.json" --write --report "$W/r-names-unres/report.json" --database-url "$NM_URL" --organization-id "$ORG" --install-importer || fail=1
 amb=$(($(grep -c ',yes,' "$W/r-names-unres/ambiguity.csv")))
@@ -122,6 +142,18 @@ want=$(node -e 'console.log(require(process.argv[1]).expected.namesLayoutAmbiguo
 step 26-names-dry-run-resolved "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions-names.json" --out "$W/r-names" --database-url "$NM_URL" --organization-id "$ORG" || exit 1
 step 27-names-write "${CLI[@]}" "$W/export-names" "${NOPTS[@]}" --resolutions "$W/resolutions-names.json" --write --report "$W/r-names/report.json" --database-url "$NM_URL" --organization-id "$ORG" --install-importer || fail=1
 step 28-names-checks node "$HERE/checks.mjs" --work "$W" --report "$W/r-names/report.json" --database-url "$NM_URL"; check 28-names-checks
+
+# Decisions 2 and 3 on the jobs files: J-1512 and SO-0205 used twice. Both copies are kept (J-1512-B, SO-0205-B); every link that
+# names them (WIP lines and a purchase order on J-1512, job J-1515's order) is ambiguous and stops the write; with the Tolra number
+# of each named in resolutions-jobdup.json (jobLinks) the write goes through and every link is the one named: 0 wrong attachments.
+step 29-jobdup-dry-run-unresolved "${CLI[@]}" "$W/export-jobdup" "${OPTS[@]}" --out "$W/r-jobdup-unres" --database-url "$JD_URL" --organization-id "$ORG" || exit 1
+step 30-jobdup-write-refused expect_fail "${CLI[@]}" "$W/export-jobdup" "${OPTS[@]}" --write --report "$W/r-jobdup-unres/report.json" --database-url "$JD_URL" --organization-id "$ORG" --install-importer || fail=1
+jamb=$(($(grep -c ',yes,' "$W/r-jobdup-unres/ambiguity.csv")))
+jwant=$(node -e 'console.log(require(process.argv[1]).jobDup.ambiguous)' "$W/manifest.json")
+[[ "$jamb" == "$jwant" ]] && grep -q "ambiguous or unmatched" "$W/results/30-jobdup-write-refused.txt" && echo "PASS|jobs layout: ambiguity.csv lists the $jamb links SliQ's repeated job and order numbers cannot make, and the write is refused" || { echo "FAIL|jobs layout: $jamb ambiguous (expected $jwant) or the write was not refused"; fail=1; }
+step 31-jobdup-dry-run-resolved "${CLI[@]}" "$W/export-jobdup" --mapping synthetic --resolutions "$W/resolutions-jobdup.json" --exclude "$EXCL" --out "$W/r-jobdup" --database-url "$JD_URL" --organization-id "$ORG" || exit 1
+step 32-jobdup-write "${CLI[@]}" "$W/export-jobdup" --mapping synthetic --resolutions "$W/resolutions-jobdup.json" --exclude "$EXCL" --write --report "$W/r-jobdup/report.json" --database-url "$JD_URL" --organization-id "$ORG" --install-importer || fail=1
+step 33-jobdup-checks node "$HERE/jobdup-checks.mjs" --work "$W" --report "$W/r-jobdup/report.json" --database-url "$JD_URL"; check 33-jobdup-checks
 
 # Rollback 1 (before COMMIT): a failure late in the write (payment 1990 of 1999) rolls the whole import back.
 "${PSQL[@]}" -d "$RB" -c "create function public.rehearsal_fail() returns trigger language plpgsql as \$\$ begin if (select count(*) from public.invoice_payments where organization_id = new.organization_id) >= 1990 then raise exception 'rehearsal: injected failure at payment 1990'; end if; return new; end \$\$" \
