@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 440" width="640" height="440" font-family="Arial, Helvetica, sans-serif">
+  <rect width="640" height="440" fill="#e8eef8"/>
+  <rect x="24" y="14" width="592" height="412" rx="6" fill="#ffffff" stroke="#c4d0e4"/>
+  <rect x="24" y="14" width="592" height="50" rx="6" fill="#0b2a5b"/>
+  <text x="42" y="45" font-size="16" font-weight="700" fill="#ffffff">Machine schedule</text>
+  <text x="598" y="45" font-size="12" fill="#bcd4ff" text-anchor="end">This week</text>
+  <g font-size="11" font-weight="700" fill="#0b2a5b" text-anchor="middle">
+    <text x="214" y="92">Mon</text><text x="298" y="92">Tue</text><text x="382" y="92">Wed</text><text x="466" y="92">Thu</text><text x="550" y="92">Fri</text>
+  </g>
+  <g stroke="#dbe3f0"><line x1="172" y1="76" x2="172" y2="330"/><line x1="256" y1="76" x2="256" y2="330"/><line x1="340" y1="76" x2="340" y2="330"/><line x1="424" y1="76" x2="424" y2="330"/><line x1="508" y1="76" x2="508" y2="330"/><line x1="592" y1="76" x2="592" y2="330"/></g>
+  <g font-size="12" font-weight="700" fill="#22314d">
+    <text x="42" y="127">Laser 1</text><text x="42" y="177">Press brake</text><text x="42" y="227">Mill 1</text><text x="42" y="277">Lathe 1</text><text x="42" y="317">Bench</text>
+  </g>
+  <g stroke="#dbe3f0"><line x1="36" y1="146" x2="592" y2="146"/><line x1="36" y1="196" x2="592" y2="196"/><line x1="36" y1="246" x2="592" y2="246"/><line x1="36" y1="296" x2="592" y2="296"/></g>
+  <rect x="176" y="106" width="150" height="30" rx="4" fill="#1e8fff"/><text x="184" y="125" font-size="11" font-weight="700" fill="#06224d">J-0001 Brackets</text>
+  <rect x="350" y="106" width="120" height="30" rx="4" fill="#0b2a5b"/><text x="358" y="125" font-size="11" font-weight="700" fill="#ffffff">J-0004 Panels</text>
+  <rect x="260" y="156" width="130" height="30" rx="4" fill="#1e8fff"/><text x="268" y="175" font-size="11" font-weight="700" fill="#06224d">J-0001 Fold</text>
+  <rect x="176" y="206" width="206" height="30" rx="4" fill="#0b2a5b"/><text x="184" y="225" font-size="11" font-weight="700" fill="#ffffff">J-0003 Housings</text>
+  <rect x="428" y="256" width="150" height="30" rx="4" fill="#4a7bd0"/><text x="436" y="275" font-size="11" font-weight="700" fill="#ffffff">J-0005 Shafts</text>
+  <rect x="470" y="106" width="108" height="30" rx="4" fill="#f4f7fc" stroke="#1e8fff" stroke-dasharray="4 3"/><text x="524" y="125" font-size="11" fill="#0b2a5b" text-anchor="middle">Free</text>
+  <rect x="176" y="256" width="244" height="30" rx="4" fill="#f4f7fc" stroke="#1e8fff" stroke-dasharray="4 3"/><text x="298" y="275" font-size="11" fill="#0b2a5b" text-anchor="middle">Free</text>
+  <text x="42" y="360" font-size="11" fill="#5b6b86">Free slots are dashed. Each job bar ends where the job will finish.</text>
+  <rect x="42" y="378" width="110" height="28" rx="14" fill="#0b2a5b"/>
+  <text x="97" y="396" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">Demo data</text>
+</svg>
