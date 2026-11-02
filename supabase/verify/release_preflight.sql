@@ -119,7 +119,7 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve')),
     ('102 security guards',               EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_may_edit_profile')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'organization_settings_guard_nav' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '99579bb09f2fcf9458103b3128af20c8')),
-    ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'ca5166191666584107491f95ccce4702')),
+    ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('ca5166191666584107491f95ccce4702', '7e04d0ab645ec24dc0f0acb78c222702'))),
     ('105 invoice write-off',             EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_off_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'c7449f4564711533d43a1aa252eddfdf')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reverse_write_off' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4750ac042335694164b634edca559f23')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = 'public.invoices'::regclass)),
@@ -180,7 +180,10 @@ markers(migration, present) AS (
     ('132 dashboard tile figures',        (SELECT count(*) = 6 FROM fn WHERE nspname = 'public' AND (proname, md5(regexp_replace(prosrc, '\s', '', 'g'))) IN (
                                             ('dashboard_open_quotes', 'd2c5bd23f4c46c421b989012e74c2e80'), ('dashboard_quotes_sent', '308be040514eab13aca8cf86dd7f2c63'),
                                             ('dashboard_quotes_won', 'd2ca2c957383ede97833c95b84b0f8fa'), ('dashboard_quote_outcomes', '774a67cfe0e7fd2f013f7fd3abcc7dad'),
-                                            ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '214295752bb751f03a74c767b090e8c0'))))
+                                            ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '214295752bb751f03a74c767b090e8c0')))),
+    ('133 ai helper pre enable',          EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '972540e833a42bbb35ac5b670c56daa8')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e04d0ab645ec24dc0f0acb78c222702')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -396,11 +399,11 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || CASE WHEN to_regprocedure('public.admin_login_is_protected(uuid)') IS NOT NULL THEN '093 present' ELSE '093 missing' END,
     '058 / 012 / 093 present before 102, 102 / 102 / 093 present after (other or missing: stop, 102 refuses to replace it)'
   UNION ALL SELECT 46, '103 needs: 101 applied; ai_helper_reserve and ai_helper_settle 101''s (or already 103''s)',
-    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '8b9a4ec9293a5b6f0ddc8e505822c84f' THEN '101' WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' ELSE 'other' END
+    coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '8b9a4ec9293a5b6f0ddc8e505822c84f' THEN '101' WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' WHEN '972540e833a42bbb35ac5b670c56daa8' THEN '133' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'), 'missing (101 not applied)')
-    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cd5ac6d43f9a5ade20815a82ed123717' THEN '101' WHEN 'ca5166191666584107491f95ccce4702' THEN '103' ELSE 'other' END
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cd5ac6d43f9a5ade20815a82ed123717' THEN '101' WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle'), 'missing (101 not applied)'),
-    '101 / 101 before 103, 103 / 103 after (missing: apply 101 first; other: stop, 103 refuses to replace it)'
+    '101 / 101 before 103, 103 / 103 after (133 / 133 once 133 is applied; missing: apply 101 first; other: stop, 103 refuses to replace it)'
   UNION ALL SELECT 47, '113 needs: public.reopen_job is 081''s (113 calls it for every reopen and replaces nothing)',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '2fca7e7164a55f9f9e0744f8a0c6b50e' THEN '081' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'reopen_job'), 'missing'),
@@ -446,6 +449,12 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '27924815917836092f18d3dd58d87c23' THEN '076' WHEN '9f903e888bca6d55322cc877488c1019' THEN '124' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'purchase_order_issue_lock'), 'missing'),
     'true / 076 before 124, true / 124 after (other: stop, 124 refuses to replace it)'
+  UNION ALL SELECT 55, '133 needs: public.ai_helper_reserve and ai_helper_settle are 103''s (or already 133''s)',
+    coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' WHEN '972540e833a42bbb35ac5b670c56daa8' THEN '133' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')), 'missing')
+    || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
+              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)')), 'missing'),
+    '103 / 103 before 133, 133 / 133 after (other: stop, 133 refuses to replace it)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

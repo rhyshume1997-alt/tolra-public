@@ -8,7 +8,8 @@ import { type AiCompletion, type AiCompletionRequest, type AiHelperProvider, AiP
  *   - 25 x Bracket, Part: BR-100, Material: 6082-T6 aluminium, Finish: clear anodise, Due: 2026-12-04
  *
  * A field left out comes back null (so the route flags it). For the tests of the guards around it:
- *   [mock:down]     the service does not answer (AiProviderError unavailable)
+ *   [mock:down]     the service does not answer (AiProviderError unavailable; it may have billed: settled at the full reservation)
+ *   [mock:rejected] the service refuses the request before any work (unavailable, rejectedBeforeWork: settled at 0)
  *   [mock:refuse]   the model declines (refused)
  *   [mock:garbage]  an answer that is not the JSON asked for (invalid)
  *   text asking to "ignore previous instructions": the answer a steered model might give (extra keys, a price, an action, a quote
@@ -23,6 +24,7 @@ export function mockProvider(): AiHelperProvider {
       const data = JSON.parse(req.data) as Record<string, unknown>;
       const text = typeof data.rfq_email === "string" ? data.rfq_email : "";
       if (text.includes("[mock:down]")) throw new AiProviderError("unavailable");
+      if (text.includes("[mock:rejected]")) throw new AiProviderError("unavailable", undefined, "rate", true);
       if (text.includes("[mock:refuse]")) throw new AiProviderError("refused", usage);
       if (text.includes("[mock:garbage]")) throw new AiProviderError("invalid", usage);
       if (Array.isArray(data.sections)) return { json: roundup(data), usage, model: req.model };
