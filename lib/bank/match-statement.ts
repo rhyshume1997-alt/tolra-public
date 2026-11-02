@@ -75,7 +75,7 @@ export function parseStatementCsv(csv: string): { lines: BankLine[]; errors: str
       const description = (row[descCol] ?? '').trim();
       const money = amountCol >= 0 ? parsePence(row[amountCol] ?? '') : parsePence(row[creditCol] ?? '');
       const debit = amountCol < 0 && debitCol >= 0 ? parsePence(row[debitCol] ?? '') : 0;
-      if (!date || !description || money === null || debit === null) {
+      if (row.length !== header.length || !date || !description || money === null || debit === null) {
         errors.push('Row ' + (headerAt + i + 2) + ': invalid date, description or amount');
         return;
       }
