@@ -15,6 +15,13 @@ const fresh = () => {
   return createClient(apiUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
 };
 
+/** A single-use password change ticket (migration 137), issued with the service role as the app's routes do after their checks. */
+async function ticket(userId: string, purpose: "own_change" | "admin_set") {
+  const { data, error } = await adminClient().rpc("issue_password_change_ticket", { p_user_id: userId, p_purpose: purpose });
+  expect(error).toBeNull();
+  expect(typeof data).toBe("string");
+}
+
 beforeAll(async () => {
   await verifyBackendIdentity();
   world = await createSyntheticWorld();
@@ -64,6 +71,50 @@ describe("temporary password: no business access until the person chooses their 
   });
 });
 
+describe("G1 (migration 137): Auth refuses a password change the app's server did not allow", () => {
+  it("PUT /auth/v1/user with the person's own token and no ticket: refused, the old password still signs in, the new one does not; the same for the admin API", async () => {
+    const user = world.tenants.alpha.users.workshop;
+    const session = (await fresh().auth.signInWithPassword(user)).data.session!;
+    const direct = fresh();
+    await direct.auth.setSession(session);
+    expect((await direct.auth.updateUser({ password: `${user.password}d7` })).error).not.toBeNull();
+    expect((await adminClient().auth.admin.updateUserById(user.id, { password: `${user.password}d8` })).error).not.toBeNull();
+    expect((await fresh().auth.signInWithPassword(user)).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword({ email: user.email, password: `${user.password}d7` })).error).not.toBeNull();
+    // With a ticket the same call works once; the next call needs a new ticket.
+    await ticket(user.id, "own_change");
+    expect((await direct.auth.updateUser({ password: `${user.password}d7` })).error).toBeNull();
+    expect((await direct.auth.updateUser({ password: `${user.password}d6` })).error).not.toBeNull();
+    expect((await fresh().auth.signInWithPassword({ email: user.email, password: `${user.password}d7` })).error).toBeNull();
+    // Put the fixture's password back (a ticket, as the admin route would), so later tests can sign in.
+    await ticket(user.id, "admin_set");
+    expect((await adminClient().auth.admin.updateUserById(user.id, { password: user.password })).error).toBeNull();
+  });
+  it("password recovery (admin generateLink type recovery, then verifyOtp): the recovery session alone can't change the password; with a ticket it can, and the new password signs in", async () => {
+    const user = world.tenants.beta.users.viewer;
+    const link = await adminClient().auth.admin.generateLink({ type: "recovery", email: user.email });
+    expect(link.error).toBeNull();
+    const recovering = fresh();
+    const verified = await recovering.auth.verifyOtp({ type: "recovery", token_hash: link.data.properties!.hashed_token });
+    expect(verified.error).toBeNull();
+    expect(verified.data.session).not.toBeNull();
+    // Direct, with the recovery session's own token and no ticket: refused.
+    expect((await recovering.auth.updateUser({ password: `${user.password}r5` })).error).not.toBeNull();
+    // The app's path (/api/auth/change-password issues the ticket after its checks; a recovery link skips the current password).
+    await ticket(user.id, "own_change");
+    expect((await recovering.auth.updateUser({ password: `${user.password}r5` })).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword({ email: user.email, password: `${user.password}r5` })).error).toBeNull();
+    expect((await fresh().auth.signInWithPassword(user)).error).not.toBeNull();
+    await ticket(user.id, "admin_set");
+    expect((await adminClient().auth.admin.updateUserById(user.id, { password: user.password })).error).toBeNull();
+  });
+  it("a signed-in person can't issue a ticket for themselves", async () => {
+    const user = world.tenants.alpha.users.office;
+    const client = await signedInClient(user);
+    expect((await client.rpc("issue_password_change_ticket", { p_user_id: user.id, p_purpose: "own_change" })).error).not.toBeNull();
+  });
+});
+
 describe("password changes and existing sessions (provider behaviour, verified)", () => {
   it("own change keeps the current session and revokes the others; admin set revokes all", async () => {
     const user = world.tenants.beta.users.office;
@@ -72,12 +123,15 @@ describe("password changes and existing sessions (provider behaviour, verified)"
 
     const clientA = fresh();
     await clientA.auth.setSession(sessionA);
+    // G1 (migration 137): Auth changes a password only with a ticket the app's server issued (as /api/auth/change-password does).
+    await ticket(user.id, "own_change");
     expect((await clientA.auth.updateUser({ password: `${user.password}x9` })).error).toBeNull();
 
     expect((await fresh().auth.refreshSession({ refresh_token: sessionB.refresh_token })).error).not.toBeNull();
     expect((await fresh().auth.getUser(sessionB.access_token)).error).not.toBeNull();
 
     const sessionC = (await fresh().auth.signInWithPassword({ email: user.email, password: `${user.password}x9` })).data.session!;
+    await ticket(user.id, "admin_set");
     expect((await adminClient().auth.admin.updateUserById(user.id, { password: `${user.password}y8` })).error).toBeNull();
     expect((await fresh().auth.refreshSession({ refresh_token: sessionC.refresh_token })).error).not.toBeNull();
     // The app's server checks (middleware, requireProfile) ask Auth, which refuses the revoked session at once.

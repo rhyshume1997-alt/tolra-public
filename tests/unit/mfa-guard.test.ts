@@ -40,7 +40,12 @@ let adminClients = 0;
 vi.mock("@/lib/server/supabase-admin", () => ({
   createSupabaseAdminClient: () => {
     adminClients += 1;
-    return { auth: { admin: { mfa: { listFactors: async () => ({ data: { factors: [] }, error: null }) } } }, from: () => chain(null) };
+    return {
+      auth: { admin: { mfa: { listFactors: async () => ({ data: { factors: [] }, error: null }) } } },
+      from: () => chain(null),
+      // G1 (137): Set password's single-use ticket.
+      rpc: async (fn: string) => ({ data: fn === "issue_password_change_ticket" ? "ticket-1" : false, error: null }),
+    };
   },
 }));
 
