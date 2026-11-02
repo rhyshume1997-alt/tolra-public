@@ -38,6 +38,11 @@
 --      A password reset e-mail sent from the dashboard needs nothing: its link opens Tolra's Choose your password page (the route).
 --   e. TRIGGER password_change_ticket, BEFORE UPDATE, FOR EACH ROW, on auth.users. No column list (UPDATE OF), so the trigger does not
 --      pin the column's type for Auth's own future schema changes; the function returns at once when the password did not change.
+--      auth.users belongs to supabase_auth_admin and the SQL editor's postgres is not a member of it (production, checked read-only):
+--      postgres may CREATE a trigger there (TRIGGER privilege) but not DROP or ALTER one. So this file never drops or alters the
+--      trigger: it creates it only when it is missing, and when it is there it checks its shape (137's function, BEFORE UPDATE, FOR
+--      EACH ROW, enabled): the same shape is left as it is (a second run, or a re-release after the rollback, which leaves the trigger
+--      attached to a pass-through body that CREATE OR REPLACE above turns back into 137's); any other shape stops the file.
 -- INSERTS ARE NOT ASKED: creating a login with a password (Admin > Users "Add", auth.admin.createUser) and every invite stay as they are.
 -- SIGN-IN: this GoTrue writes encrypted_password at sign-in only when Auth's column encryption is on (token.go, shouldReEncrypt). The
 -- guard (section 1) stops the file when any stored password is already in that encrypted form ('{...}'), so a sign-in is never refused.
@@ -45,10 +50,12 @@
 -- trigger: roll 137 back FIRST (supabase/release/137_password_change_ticket.rollback.sql), then switch encryption on.
 -- GUARD (section 1): auth.users has the columns this reads, the schema security_audit exists, this role may create a trigger on
 -- auth.users (as 007 and 012 did), no stored password is in the encrypted form, and any existing ticket table has this file's shape.
--- SELF-CHECK (section 6). Safe to run again (CREATE TABLE IF NOT EXISTS, CREATE OR REPLACE, DROP TRIGGER IF EXISTS).
+-- SELF-CHECK (section 6). Safe to run again, as a role that does not own auth.users (CREATE TABLE IF NOT EXISTS, CREATE OR REPLACE,
+-- the trigger created only when missing).
 -- Verify: supabase/verify/password_change_ticket_137.sql (every row TRUE); every earlier verify file reads as it did before.
--- Rollback: supabase/release/137_password_change_ticket.rollback.sql (drops the trigger, the three functions and the table; only with
--- Rhys's approval).
+-- Rollback: supabase/release/137_password_change_ticket.rollback.sql (only with Rhys's approval): drops the two ticket functions and
+-- the table, and turns the trigger function into a pass-through (RETURN NEW); the trigger itself stays attached and does nothing,
+-- because postgres can't drop a trigger on auth.users.
 -- =====================================================================================================
 
 -- -----------------------------------------------------------------------------------------------------
@@ -183,10 +190,20 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.auth_users_password_change_ticket() FROM PUBLIC, anon, authenticated, service_role;
 
-DROP TRIGGER IF EXISTS password_change_ticket ON auth.users;
-CREATE TRIGGER password_change_ticket
-  BEFORE UPDATE ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.auth_users_password_change_ticket();
+-- Created only when missing (no DROP TRIGGER: postgres does not own auth.users). An existing one must have exactly this shape.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket') THEN
+    CREATE TRIGGER password_change_ticket
+      BEFORE UPDATE ON auth.users
+      FOR EACH ROW EXECUTE FUNCTION public.auth_users_password_change_ticket();
+  ELSIF NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
+                    AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19 AND t.tgattr = ''::int2vector
+                    AND NOT t.tgisinternal AND t.tgqual IS NULL AND t.tgnargs = 0) THEN
+    RAISE EXCEPTION '137: trigger password_change_ticket exists with a different shape; stop and report';
+  END IF;
+END
+$$;
 
 -- -----------------------------------------------------------------------------------------------------
 -- 6. Self-check: everything above is in place; the trigger function is callable by nobody, the two ticket functions by the service role

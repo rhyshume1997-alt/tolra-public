@@ -424,49 +424,110 @@ describe("verify, preflight, rollback and release", () => {
   const verify = async (db: Client, file: string) => (await db.query<{ check_name: string; ok: boolean }>(read(file))).rows;
   const preflight = async (db: Client) => {
     const rows = (await db.query<{ check: string; value: string }>(read("supabase/verify/release_preflight.sql"))).rows;
+    const needs = rows.find((r) => r.check.startsWith("137 needs:"))?.value.split(" / ");
     return { marker136: rows.find((r) => r.check.startsWith("marker 136 "))?.value, marker137: rows.find((r) => r.check.startsWith("marker 137 "))?.value,
-      needs137: rows.find((r) => r.check.startsWith("137 needs:"))?.value.split(" / ").slice(0, 3).join(" / ") };
+      needs137: needs?.slice(0, 3).join(" / "), trigger137: needs?.[4] };
   };
-  const gone137 = async (db: Client) => (await db.query<{ gone: boolean }>(
+  const NO_OP = "9a9b6d9beba469441f646d038720863d";
+  /** After the rollback: the ticket functions and table are gone; the trigger is still attached, its function is the pass-through. */
+  const rolledBack137 = async (db: Client) => (await db.query<{ ok: boolean }>(
     `select to_regclass('security_audit.password_change_tickets') is null and to_regprocedure('public.issue_password_change_ticket(uuid,text)') is null
-       and to_regprocedure('public.revoke_password_change_ticket(uuid)') is null and to_regprocedure('public.auth_users_password_change_ticket()') is null
-       and not exists (select 1 from pg_trigger where tgrelid = 'auth.users'::regclass and tgname = 'password_change_ticket') as gone`)).rows[0].gone;
+       and to_regprocedure('public.revoke_password_change_ticket(uuid)') is null
+       and exists (select 1 from pg_proc p where p.oid = to_regprocedure('public.auth_users_password_change_ticket()') and p.prosecdef
+                   and p.proconfig = array['search_path=pg_catalog, public'] and md5(regexp_replace(p.prosrc, '\\s', '', 'g')) = $1)
+       and not has_function_privilege('authenticated', 'public.auth_users_password_change_ticket()', 'execute')
+       and not has_function_privilege('anon', 'public.auth_users_password_change_ticket()', 'execute')
+       and not has_function_privilege('service_role', 'public.auth_users_password_change_ticket()', 'execute')
+       and exists (select 1 from pg_trigger t where t.tgrelid = 'auth.users'::regclass and t.tgname = 'password_change_ticket' and t.tgenabled = 'O'
+                   and t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') and t.tgtype = 19) as ok`, [NO_OP])).rows[0].ok;
+  /** A direct update of a password by the role in force (no ticket); the error, or null when it went through. */
+  const directChange = async (db: Client, id: string, password: string) =>
+    (await asRole(db, null, "update auth.users set encrypted_password = $2 where id = $1", [id, await hash(db, password)])).error;
 
-  it("verify: TRUE on every row (6); preflight: 137 applied, needs true / 5 / 0", async () => {
+  it("verify: TRUE on every row (6); preflight: 137 applied, needs true / 5 / 0, trigger 137", async () => {
     await rolledBack(async (db) => {
       const rows = await verify(db, "supabase/verify/password_change_ticket_137.sql");
       expect(rows).toHaveLength(6);
       expect(rows.filter((r) => !r.ok)).toEqual([]);
-      expect(await preflight(db)).toEqual({ marker136: "applied", marker137: "applied", needs137: "true / 5 / 0" });
+      expect(await preflight(db)).toEqual({ marker136: "applied", marker137: "applied", needs137: "true / 5 / 0", trigger137: "137" });
     });
   });
-  it("as the test role, which (like hosted postgres) does not own auth.users: rollback, release with no trigger, release with the trigger present (rolled back)", async () => {
+  it("as postgres WITHOUT owning auth.users (production: owner supabase_auth_admin, postgres not a member, TRIGGER granted, no supautils): first release, rerun, rollback, re-release; a direct update refused", async () => {
     await rolledBack(async (db) => {
-      const who = (await db.query<{ u: string; su: boolean; owner: string; owns: boolean }>(
-        `select current_user as u, r.rolsuper as su, pg_get_userbyid(c.relowner) as owner, pg_has_role(current_user, c.relowner, 'USAGE') as owns
-         from pg_class c, pg_roles r where c.oid = 'auth.users'::regclass and r.rolname = current_user`)).rows[0];
-      // On Supabase's image (CI, hosted) auth.users belongs to supabase_auth_admin and postgres is not a member (revoked in the image's
-      // 20250421084701 migration); DROP TRIGGER works through supautils.drop_trigger_grants, CREATE TRIGGER through the TRIGGER privilege.
-      // A local stand-in connects as a superuser, which owns everything, so only CI proves the non-owner case.
-      if (!who.su) expect({ owner: who.owner, owns: who.owns }).toEqual({ owner: "supabase_auth_admin", owns: false });
-      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")));
-      expect((await db.query("select 1 from pg_trigger where tgrelid = 'auth.users'::regclass and tgname = 'password_change_ticket'")).rowCount).toBe(0);
-      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
+      const su = (await db.query<{ su: boolean }>("select rolsuper as su from pg_roles where rolname = current_user")).rows[0].su;
+      if (su) {
+        // A local stand-in connects as a superuser. Mirror production inside this transaction (all of it is rolled back): auth.users
+        // owned by supabase_auth_admin; a non-superuser "postgres" that owns everything else (a member of the connecting role) but is not
+        // a member of supabase_auth_admin; ALL on auth.users granted to it, as production grants postgres. No supautils here, so nothing
+        // can drop or alter that trigger as it. The trigger is removed first (setup, as the owner) so the first release is tested too.
+        await db.query(`do $r$ begin if not exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then create role supabase_auth_admin nologin; end if; end $r$`);
+        await db.query("alter table auth.users owner to supabase_auth_admin");
+        await db.query(`do $r$ begin if pg_has_role(current_user, 'supabase_auth_admin', 'MEMBER') and current_user <> 'supabase_auth_admin' then execute format('revoke supabase_auth_admin from %I', current_user); end if; end $r$`);
+        await db.query("create role t137_prod_postgres nologin nosuperuser inherit");
+        await db.query(`do $r$ begin execute format('grant %I to t137_prod_postgres', current_user); end $r$`);
+        await db.query("grant all on auth.users to t137_prod_postgres");
+        await db.query("drop trigger password_change_ticket on auth.users");
+        await db.query("set local role t137_prod_postgres");
+      } else {
+        // CI (Supabase's image): the test role is postgres itself, not a member of auth.users's owner. Setup only: the image's
+        // supautils.drop_trigger_grants lets postgres drop the trigger, so the first release is tested too. Production's release
+        // and rollback never drop it.
+        await db.query("drop trigger password_change_ticket on auth.users");
+      }
+      const who = (await db.query<{ owner: string; owns: boolean; trig: boolean; su: boolean }>(
+        `select pg_get_userbyid(c.relowner) as owner, pg_has_role(current_user, c.relowner, 'USAGE') as owns, has_table_privilege('auth.users', 'TRIGGER') as trig,
+                (select rolsuper from pg_roles where rolname = current_user) as su
+         from pg_class c where c.oid = 'auth.users'::regclass`)).rows[0];
+      expect(who).toEqual({ owner: "supabase_auth_admin", owns: false, trig: true, su: false });
+      // As that role, without ownership: the release with no trigger (creates it), the release again (shape check passes), the rollback
+      // (no-op body, trigger left attached), the re-release (137's body back).
+      const me = await login(db, "non-owner");
       await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
       expect((await verify(db, "supabase/verify/password_change_ticket_137.sql")).every((r) => r.ok)).toBe(true);
-      const me = await login(db, "after-rerelease");
-      expect((await authSetsPassword(db, me, "No-Ticket-After-Rerelease-1")).error).toMatchObject(REFUSED);
+      expect(await directChange(db, me, "Refused-After-First-1")).toMatchObject(REFUSED);
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
+      expect((await verify(db, "supabase/verify/password_change_ticket_137.sql")).every((r) => r.ok)).toBe(true);
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")));
+      expect(await rolledBack137(db)).toBe(true);
+      expect(await preflight(db)).toMatchObject({ marker137: "not applied", trigger137: "no-op" });
+      expect(await directChange(db, me, "Allowed-While-Rolled-Back-1")).toBeNull();
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
+      expect((await verify(db, "supabase/verify/password_change_ticket_137.sql")).every((r) => r.ok)).toBe(true);
+      expect(await preflight(db)).toMatchObject({ marker137: "applied", trigger137: "137" });
+      expect(await directChange(db, me, "Refused-After-Rerelease-1")).toMatchObject(REFUSED);
+      expect(await passwordIs(db, me, "Allowed-While-Rolled-Back-1")).toBe(true);
     });
   });
-  it("rollback (rolled back): everything 137 made is gone, a password changes without a ticket again, 136's verify is unchanged, preflight 137 not applied; the release applies again, twice", async () => {
+  it("a trigger of that name with another shape stops the release (nothing changed), and the rollback refuses where 137 is not applied", async () => {
+    for (const shape of ["after update", "before update or insert", "before update of encrypted_password"]) {
+      await rolledBack(async (db) => {
+        await db.query("drop trigger password_change_ticket on auth.users");
+        await db.query(`create trigger password_change_ticket ${shape} on auth.users for each row execute function public.auth_users_password_change_ticket()`);
+        const error = await errorOf(db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql"))));
+        expect(error?.message, shape).toBe("137: trigger password_change_ticket exists with a different shape; stop and report");
+      });
+    }
+    await rolledBack(async (db) => {
+      await db.query("drop trigger password_change_ticket on auth.users");
+      await db.query("create trigger password_change_ticket before update on auth.users for each row execute function public.organization_members_recent_second_step()");
+      await db.query("savepoint s");
+      expect((await errorOf(db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")))))?.message).toBe("137: trigger password_change_ticket exists with a different shape; stop and report");
+      await db.query("rollback to savepoint s");
+      expect((await errorOf(db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")))))?.message).toMatch(/^137 rollback: 137 is not applied here/);
+    });
+  });
+  it("rollback (rolled back): the ticket functions and table are gone and the trigger is a pass-through; a password changes without a ticket again, 136's verify is unchanged, preflight 137 not applied / no-op; the release applies again, twice", async () => {
     await rolledBack(async (db) => {
       const before136 = await verify(db, "supabase/verify/recent_second_step_136.sql");
       await db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")));
-      expect(await gone137(db)).toBe(true);
-      expect(await preflight(db)).toMatchObject({ marker136: "applied", marker137: "not applied" });
+      expect(await rolledBack137(db)).toBe(true);
+      expect(await preflight(db)).toMatchObject({ marker136: "applied", marker137: "not applied", trigger137: "no-op" });
       expect(await verify(db, "supabase/verify/recent_second_step_136.sql")).toEqual(before136);
       const me = await login(db, "after-rollback");
       expect((await authSetsPassword(db, me, "No-Ticket-Needed-1")).error).toBeNull();
+      // A second rollback is fine too (same pass-through).
+      await db.query(unwrapped(read("supabase/release/137_password_change_ticket.rollback.sql")));
+      expect(await rolledBack137(db)).toBe(true);
       for (let i = 0; i < 2; i += 1) {
         await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
         expect((await verify(db, "supabase/verify/password_change_ticket_137.sql")).every((r) => r.ok)).toBe(true);
@@ -474,18 +535,18 @@ describe("verify, preflight, rollback and release", () => {
       expect((await authSetsPassword(db, me, "Ticket-Needed-Again-1")).error).toMatchObject(REFUSED);
     });
   });
-  it("ordered rollbacks: 137 then 136, and 136 then 137, both end with neither applied; 137 applies without 136 and 136 again on top", async () => {
+  it("ordered rollbacks: 137 then 136, and 136 then 137, both end with neither applied (137's pass-through left); 137 applies without 136 and 136 again on top", async () => {
     for (const order of [["137", "136"], ["136", "137"]]) {
       await rolledBack(async (db) => {
         const files: Record<string, string> = { "136": "supabase/release/136_recent_second_step_admin_changes.rollback.sql", "137": "supabase/release/137_password_change_ticket.rollback.sql" };
         for (const n of order) await db.query(unwrapped(read(files[n])));
-        expect(await gone137(db), order.join(">")).toBe(true);
-        expect(await preflight(db)).toMatchObject({ marker136: "not applied", marker137: "not applied" });
+        expect(await rolledBack137(db), order.join(">")).toBe(true);
+        expect(await preflight(db)).toMatchObject({ marker136: "not applied", marker137: "not applied", trigger137: "no-op" });
         await db.query(unwrapped(read("supabase/release/137_password_change_ticket.release.sql")));
         expect((await verify(db, "supabase/verify/password_change_ticket_137.sql")).every((r) => r.ok)).toBe(true);
         await db.query(unwrapped(read("supabase/release/136_recent_second_step_admin_changes.release.sql")));
         expect((await verify(db, "supabase/verify/recent_second_step_136.sql")).every((r) => r.ok)).toBe(true);
-        expect(await preflight(db)).toMatchObject({ marker136: "applied", marker137: "applied" });
+        expect(await preflight(db)).toMatchObject({ marker136: "applied", marker137: "applied", trigger137: "137" });
       });
     }
   });

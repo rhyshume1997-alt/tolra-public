@@ -486,13 +486,19 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '378818d240f26ff55595ff4168f7a40e' THEN '093' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.admin_set_company_access(uuid, uuid, text, text, boolean, boolean)')), 'missing'),
     'true / 093 / 093 before 136 and after (false or other: stop, 136 refuses to apply)'
-  UNION ALL SELECT 58, '137 needs: may create a trigger on auth.users (as 007 / 012); auth.users has the 5 columns it reads; stored passwords in Auth''s encrypted form; stored passwords that are not bcrypt cost 10 (information)',
+  UNION ALL SELECT 58, '137 needs: may create a trigger on auth.users (as 007 / 012); auth.users has the 5 columns it reads; stored passwords in Auth''s encrypted form; stored passwords that are not bcrypt cost 10 (information); the trigger password_change_ticket on auth.users (none, 137, no-op after the rollback, other)',
     has_table_privilege(current_user, 'auth.users', 'TRIGGER')::TEXT
     || ' / ' || (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users'
                  AND column_name IN ('id', 'encrypted_password', 'email_confirmed_at', 'invited_at', 'deleted_at'))::TEXT
     || ' / ' || (SELECT count(*) FROM auth.users u WHERE u.encrypted_password LIKE '{%')::TEXT
-    || ' / ' || (SELECT count(*) FROM auth.users u WHERE coalesce(u.encrypted_password, '') <> '' AND u.encrypted_password !~ '^\$2[aby]\$10\$')::TEXT,
-    'true / 5 / 0 / any number, before 137 and after (false, not 5, or encrypted above 0: stop, 137 refuses to apply)'
+    || ' / ' || (SELECT count(*) FROM auth.users u WHERE coalesce(u.encrypted_password, '') <> '' AND u.encrypted_password !~ '^\$2[aby]\$10\$')::TEXT
+    || ' / ' || coalesce((SELECT CASE WHEN t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19 AND t.tgenabled = 'O'
+                                  THEN CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '5fa1d17f4950cdf4e41c8a6fea67b2c5' THEN '137'
+                                                                                         WHEN '9a9b6d9beba469441f646d038720863d' THEN 'no-op' ELSE 'other' END
+                                  ELSE 'other' END
+                          FROM pg_trigger t LEFT JOIN pg_proc p ON p.oid = t.tgfoid
+                          WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket'), 'none'),
+    'true / 5 / 0 / any number / none before 137, 137 after it, no-op after its rollback (false, not 5, encrypted above 0 or other: stop, 137 refuses to apply)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
