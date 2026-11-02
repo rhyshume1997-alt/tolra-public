@@ -36,8 +36,8 @@ export function ConnectedChaseSettings({ organizationId, canEdit }: { organizati
     }
   }
   if (!state) return <p role="status">{error || "Loading payment chasing…"}</p>;
-  return <div className="space-y-3">
-    {suggested && <p className="text-sm">The steps below are suggestions. Save them to start using them.</p>}
+  return <div className="space-y-3" data-testid="chase-steps">
+    {suggested && <p className="text-sm" data-testid="chase-steps-suggested">The steps below are suggestions. Save them to start using them.</p>}
     {error && <p role="alert">{error}</p>}
     <ChaseSettingsCard key={`${organizationId}-${state.version}`} initialSteps={state.rows.length ? state.rows : DEFAULT_CHASE_STEPS.map((s) => ({ days: s.offset_days, tone: s.tone }))} onSave={save} disabled={!canEdit || !!error} />
   </div>;
