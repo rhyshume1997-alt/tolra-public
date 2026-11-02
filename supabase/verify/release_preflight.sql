@@ -188,7 +188,10 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'assistant_enabled')
                                           AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL),
     ('136 recent second step',            EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.organization_members_recent_second_step()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2af8bea37c6c34ccaffb8188a199054c')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'public.organization_members'::regclass AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O'))
+                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'public.organization_members'::regclass AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O')),
+    ('137 password change ticket',        EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.auth_users_password_change_ticket()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5fa1d17f4950cdf4e41c8a6fea67b2c5')
+                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O')
+                                          AND to_regprocedure('public.issue_password_change_ticket(uuid,text)') IS NOT NULL)
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -480,6 +483,13 @@ checks(n, check_name, value, expected) AS (
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN '378818d240f26ff55595ff4168f7a40e' THEN '093' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.admin_set_company_access(uuid, uuid, text, text, boolean, boolean)')), 'missing'),
     'true / 093 / 093 before 136 and after (false or other: stop, 136 refuses to apply)'
+  UNION ALL SELECT 58, '137 needs: may create a trigger on auth.users (as 007 / 012); auth.users has the 5 columns it reads; stored passwords in Auth''s encrypted form; stored passwords that are not bcrypt cost 10 (information)',
+    has_table_privilege(current_user, 'auth.users', 'TRIGGER')::TEXT
+    || ' / ' || (SELECT count(*) FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'users'
+                 AND column_name IN ('id', 'encrypted_password', 'email_confirmed_at', 'invited_at', 'deleted_at'))::TEXT
+    || ' / ' || (SELECT count(*) FROM auth.users u WHERE u.encrypted_password LIKE '{%')::TEXT
+    || ' / ' || (SELECT count(*) FROM auth.users u WHERE coalesce(u.encrypted_password, '') <> '' AND u.encrypted_password !~ '^\$2[aby]\$10\$')::TEXT,
+    'true / 5 / 0 / any number, before 137 and after (false, not 5, or encrypted above 0: stop, 137 refuses to apply)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers

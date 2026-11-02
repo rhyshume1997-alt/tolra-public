@@ -10,6 +10,7 @@ import { forbiddenOrigin, jsonError, mfaRecentRequired, mfaRequired, readJson, s
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
 import { changedAfterTemporary, markers, persist, recentLinkSignIn, setMustChange } from "@/lib/server/password-setup";
 import { isBreachedPassword } from "@/lib/server/breached-password";
+import { issuePasswordChangeTicket, revokePasswordChangeTicket } from "@/lib/server/password-ticket";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 import { withGatewayRetry } from "@/lib/server/resilient-fetch";
 
@@ -113,7 +114,11 @@ export async function POST(request: Request) {
   // Server side and private (k-anonymity range lookup); never blocks when the service is unavailable.
   if (await isBreachedPassword(password)) return jsonError("That password has appeared in a known data breach, so it isn't safe to use. Choose a different one.", 400);
 
+  // G1 (migration 137): every check above passed, so this login may change its password once, now. Without the ticket Auth refuses.
+  const ticket = await issuePasswordChangeTicket(admin, user.id, "own_change");
+  if (!ticket.ok) return jsonError("Couldn't save your password. Try again.", 503);
   const { error } = await supabase.auth.updateUser({ password });
+  await revokePasswordChangeTicket(admin, ticket.ticket);
   if (error) {
     if (error.code === "same_password") {
       return changedAfterTemporary(markers(user.app_metadata))

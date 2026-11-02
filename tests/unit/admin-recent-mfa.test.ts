@@ -83,7 +83,7 @@ function from(name: string, visible: (row: Row) => boolean = () => true) {
 
 const admin = {
   from,
-  rpc: async (fn: string) => { state.writes.push(`admin.rpc.${fn}`); return { data: null, error: null }; },
+  rpc: async (fn: string) => { state.writes.push(`admin.rpc.${fn}`); return { data: fn === "issue_password_change_ticket" ? "ticket-1" : null, error: null }; },
   auth: {
     admin: {
       getUserById: async (id: string) => ({ data: { user: { id, email: "target@example.test", banned_until: state.banned ? "2125-01-01T00:00:00Z" : null, app_metadata: state.banned ? { deactivation_ban: true, deactivation_ban_org: ORG_A } : {} } }, error: null }),
@@ -570,6 +570,34 @@ describe("one decision before the first write, counting each company's own switc
     expect(summary.tone).toBe("partial");
     expect(summary.text).toContain("Company access saved: Company.");
     expect(summary.text).toContain("fresh code");
+  });
+  it("207 partial success (simulated mid-operation failure: the database refuses the 2nd change after the 1st was applied): exact saved list, never 'nothing changed'", async () => {
+    state.orgs = [{ id: ORG_A, require_admin_mfa: false }, { id: ORG_C, require_admin_mfa: false }];
+    state.dbRefusesOrg = ORG_C;
+    const { summariseCompanyResults } = await import("@/lib/company-access");
+    for (const hint of ["mfa_recent_required", "last_company"]) {
+      state.writes = [];
+      state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_A)!.role = "office";
+      state.dbRefuses = hint;
+      const response = await twoChanges();
+      const body = await response.json();
+      expect(response.status, hint).toBe(207);
+      expect(body.ok).toBe(false);
+      expect(body.code).toBeUndefined();
+      expect(body.error).toBe("Some company access changes were not saved.");
+      // Exactly one change saved (A) and exactly one refused (C), in the order sent.
+      expect(body.results).toHaveLength(2);
+      expect(body.results[0]).toEqual({ organization_id: ORG_A, name: "Company", ok: true, changed: true, action: "UPDATE_USER_ACCESS", admin_mfa_onboarding: false });
+      expect(body.results[1]).toMatchObject({ organization_id: ORG_C, name: "Company", ok: false });
+      expect(body.results[1].changed).toBeUndefined();
+      // What the database holds matches the answer: A changed, C not; one write was applied.
+      expect(state.writes.filter((w) => w === "rpc.admin_set_company_access")).toHaveLength(1);
+      expect(state.members.find((m) => m.user_id === TARGET2 && m.organization_id === ORG_A)!.role).toBe("workshop");
+      const summary = summariseCompanyResults(body.results);
+      expect(summary.tone).toBe("partial");
+      expect(summary.text.startsWith("Company access saved: Company.")).toBe(true);
+      expect(summary.text).not.toMatch(/nothing (was )?changed|no changes/i);
+    }
   });
   it("the same race with nothing applied yet: the whole request is refused with the code (nothing was changed, so the dialog may say so)", async () => {
     state.orgs = [{ id: ORG_A, require_admin_mfa: false }, { id: ORG_C, require_admin_mfa: false }];

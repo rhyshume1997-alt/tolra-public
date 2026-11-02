@@ -29,6 +29,10 @@ const state = {
   checks: [] as string[],
   checkSignOuts: 0,
   updates: [] as string[],
+  /** G1 (137): ticket and Auth calls in order; how the ticket function answers; what updateUser answers. */
+  log: [] as string[],
+  ticket: "ok" as "ok" | "missing" | "error",
+  updateError: null as null | { code?: string; status?: number; message?: string },
 };
 
 const admin = {
@@ -45,6 +49,16 @@ const admin = {
     throw new Error(`unexpected table ${table}`);
   },
   auth: { admin: { updateUserById: async () => ({ error: null }) } },
+  rpc: async (fn: string, args: Record<string, unknown>) => {
+    state.log.push(`${fn}:${String(args.p_user_id ?? args.p_ticket)}:${String(args.p_purpose ?? "")}`);
+    if (fn === "issue_password_change_ticket") {
+      if (state.ticket === "missing") return { data: null, error: { code: "PGRST202", message: "Could not find the function" } };
+      if (state.ticket === "error") return { data: null, error: { code: "XX000", message: "boom" } };
+      return { data: "ticket-1", error: null };
+    }
+    if (fn === "revoke_password_change_ticket") return { data: false, error: null };
+    throw new Error(`unexpected rpc ${fn}`);
+  },
 };
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => admin }));
 
@@ -52,7 +66,12 @@ vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
     auth: {
       getUser: async () => ({ data: { user: { id: USER, email: EMAIL, app_metadata: {} } }, error: null }),
-      updateUser: async ({ password }: { password: string }) => { state.updates.push(password); return { error: null }; },
+      updateUser: async ({ password }: { password: string }) => {
+        state.log.push("auth.updateUser");
+        if (state.updateError) return { error: state.updateError };
+        state.updates.push(password);
+        return { error: null };
+      },
       mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: state.next ?? state.level, currentAuthenticationMethods: state.amr }, error: null }) },
     },
     rpc: async () => ({ data: null, error: null }),
@@ -94,7 +113,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
   process.env.BREACHED_PASSWORD_CHECK = "off";
-  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", next: null, amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [] });
+  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", next: null, amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [], log: [], ticket: "ok", updateError: null });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -261,6 +280,48 @@ describe("an admin's authenticator code must be recent (15 minutes) when the swi
     expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
     state.amr = fresh();
     expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+});
+
+describe("G1 (migration 137): a single-use ticket for this login, issued only after every check passed", () => {
+  it("changed: the ticket (own_change, for the caller) is issued right before Auth is asked, then dropped (already used, so nothing to drop)", async () => {
+    const response = await change({ password: NEW, current_password: CURRENT });
+    expect(response.status).toBe(200);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
+  });
+  it("no ticket when a check fails: no current password, a wrong one, or (switch on) an admin's stale code", async () => {
+    await change({ password: NEW });
+    await change({ password: NEW, current_password: "Not-The-Password-1" });
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.memberships = [{ role: "admin", secondary_role: null }];
+    state.level = "aal2";
+    state.amr = [{ method: "totp", timestamp: now() - 16 * 60 }];
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
+    expect(state.log).toEqual([]);
+    expect(state.updates).toEqual([]);
+  });
+  it("the ticket can't be issued: 503, Auth is not asked, the requirement stays", async () => {
+    state.mustChange = true;
+    state.ticket = "error";
+    const response = await change({ password: NEW });
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe("Couldn't save your password. Try again.");
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`]);
+    expect(state.updates).toEqual([]);
+    expect(state.mustChange).toBe(true);
+  });
+  it("before 137 is applied (no ticket function): the change goes on as before, and no ticket is dropped", async () => {
+    state.ticket = "missing";
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser"]);
+    expect(state.updates).toEqual([NEW]);
+  });
+  it("Auth refuses (database refused, weak password): the unused ticket is dropped and the person is told it wasn't saved", async () => {
+    state.updateError = { status: 500, code: "unexpected_failure", message: "Error during password storage" };
+    const response = await change({ password: NEW, current_password: CURRENT });
+    expect(response.status).toBe(500);
+    expect((await response.json()).error).toBe("Couldn't save your password. Try again.");
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
   });
 });
 
