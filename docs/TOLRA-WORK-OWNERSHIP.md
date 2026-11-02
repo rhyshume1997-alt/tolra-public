@@ -26,4 +26,4 @@ Rhys authorised Codex follow-up fixes on separate branches in this session. Orig
 
 | Job code | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
-| — (bank reconciliation #109; original code unavailable) | Codex | codex/bank-csv-quotes; atomic claim claims/pr109-csv-quotes | CLAIMED | — |
+| — (bank reconciliation #109; original code unavailable) | Codex | codex/bank-csv-quotes; atomic claim claims/pr109-csv-quotes | DONE IN PR | #131 (local checks pass; CI pending) |
