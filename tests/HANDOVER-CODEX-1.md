@@ -234,3 +234,9 @@ Rhys completes all numbered manual IQ/OQ/PQ checks, records deviations and revie
 - [x] AJ: #257 draft; complete N1 to N7 and every-job inventory retained above; next is operator evidence.
 - [x] AK / N4: #258 draft; 347 mapped and 5,461 full units passed; next is manual/database/browser evidence and Rhys's blank VSR sign-off.
 - [ ] N7, AF and AG: scope/outcome not identified in the supplied briefs; no completion invented.
+
+### Publication check
+
+All nine AH/AI/AJ/AK codex2 branches are committed and pushed, and #247's repaired head is pushed. Drafts #250 to #258 have no Ready label. A pre-existing Ready label was removed from draft #247 to follow Rhys's rule. The working tree is clean.
+
+Five inherited local references are older than, or rebased differently from, the published work: h-accounting-token-isolation, j-chasing-combined-main, k-ai-combined-main, n1-n6-browser-checks and n-setup-editor-combined. Their ordinary code patches are already published; the old N merge tree differs from published #236 only by #236's later CI step and paid-break unit test. The redundant old merge objects were not force-pushed over newer branches. No unpublished code change remains. Preserve the newer remote heads when picking up this workspace.
