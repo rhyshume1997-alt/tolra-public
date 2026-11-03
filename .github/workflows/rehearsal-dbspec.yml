@@ -1,0 +1,36 @@
+# Diagnostic only, never merge. Runs named DB spec files on a disposable local Supabase (loopback only).
+name: Rehearsal DB spec (diagnostic)
+on:
+  push:
+    branches: [claude/rehearse-255, claude/rehearse-253]
+permissions:
+  contents: read
+jobs:
+  spec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+      - uses: actions/checkout@v4
+      - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.40.7 }
+      - run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env: { GHCR_USER: "${{ github.actor }}", GHCR_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: npm run test:backend
+      - name: Run the reviewer spec (zero failures, zero skips required)
+        run: |
+          set -a; . ./.env.test.local; set +a
+          case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "not loopback"; exit 1;; esac
+          f=$(ls tests/db/reviewer-*-conditions.test.ts | head -1)
+          echo "SPEC $f at $HEAD_SHA"
+          npx vitest run -c vitest.db.config.ts "$f" --reporter=verbose 2>&1 | tee /tmp/out.txt
+          grep -E "Test Files|Tests " /tmp/out.txt
+          if grep -Eq "skipped|todo" /tmp/out.txt; then echo "SKIPS FOUND"; exit 1; fi
+      - if: always()
+        run: npm run test:backend:stop
