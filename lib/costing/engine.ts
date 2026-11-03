@@ -20,7 +20,7 @@ function round(n: number, places: number): number {
   if (!Number.isInteger(places) || places < 0 || places > 10) throw new RangeError('Invalid decimal precision');
   // Match Python round(binary64, digits): inspect the original IEEE 754 fraction,
   // not a floating point value first multiplied by 10 ** digits.
-  if (n === 0) return 0;
+  if (n === 0) return n;
   const negative = n < 0;
   const bytes = new ArrayBuffer(8);
   const view = new DataView(bytes);
@@ -40,9 +40,12 @@ function round(n: number, places: number): number {
   if (doubled > denominator || (doubled === denominator && quotient % BigInt(2) !== BigInt(0))) {
     quotient += BigInt(1);
   }
-  const result = Number(quotient) / 10 ** places;
+  // Parse the exact decimal once; Number(quotient) first can double-round large values.
+  const result = Number(`${quotient}e-${places}`);
   return negative ? -result : result;
 }
+// Expose the existing exact helper for the frozen Python parity checks.
+export { round as pyRound };
 function validate(p: QuoteInputs) {
   if (!Number.isSafeInteger(p.quantity) || p.quantity < 1 || p.quantity > 1_000_000) throw new RangeError('Invalid quantity');
   const nums = [p.stock_weight_lb, p.cost_per_lb, p.scrap_factor, p.margin_pct ?? 0.15,
