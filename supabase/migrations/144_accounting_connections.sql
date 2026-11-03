@@ -41,7 +41,9 @@ END
 $$;
 
 -- Read-only connections must never enqueue an outbound accounting send.
-CREATE OR REPLACE FUNCTION public.integration_enqueue()
+-- Keep 084 integration_enqueue byte-for-byte intact: its replay guard checks that body.
+-- Own a separate trigger function and rebind only the same two document triggers.
+CREATE OR REPLACE FUNCTION public.accounting_cloud_enqueue()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -78,6 +80,13 @@ BEGIN
   RETURN NULL;
 END
 $$;
+REVOKE ALL ON FUNCTION public.accounting_cloud_enqueue() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.invoices;
+CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.accounting_cloud_enqueue();
+DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.credit_notes;
+CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.credit_notes
+  FOR EACH ROW EXECUTE FUNCTION public.accounting_cloud_enqueue();
 CREATE OR REPLACE FUNCTION public.accounting_cloud_connections_ready()
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public
 AS $$ SELECT TRUE $$;

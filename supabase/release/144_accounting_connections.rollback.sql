@@ -45,41 +45,12 @@ BEGIN
   RETURN v_id;
 END
 $$;
-CREATE OR REPLACE FUNCTION public.integration_enqueue()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = pg_catalog, public
-AS $$
-DECLARE
-  v_was  TEXT := lower(coalesce(OLD.status, 'draft'));
-  v_is   TEXT := lower(coalesce(NEW.status, 'draft'));
-  v_type TEXT := CASE TG_TABLE_NAME WHEN 'invoices' THEN 'invoice' ELSE 'credit_note' END;
-  v_ref  TEXT := left(to_jsonb(NEW) ->> CASE TG_TABLE_NAME WHEN 'invoices' THEN 'invoice_ref' ELSE 'credit_ref' END, 100);
-  v_conn RECORD;
-BEGIN
-  IF v_was = v_is THEN
-    RETURN NULL;
-  END IF;
-  IF current_setting('quoteflow.data_import', TRUE) = NEW.organization_id::TEXT
-     OR EXISTS (SELECT 1 FROM public.import_record_keys k WHERE k.organization_id = NEW.organization_id AND k.record_id = NEW.id) THEN
-    RETURN NULL;
-  END IF;
-  FOR v_conn IN SELECT c.provider FROM public.integration_connections c
-                WHERE c.organization_id = NEW.organization_id AND c.status IN ('connected', 'needs_reconnect') ORDER BY c.provider LOOP
-    IF v_was = 'draft' AND v_is NOT IN ('void', 'cancelled') THEN
-      INSERT INTO public.integration_sends (organization_id, provider, doc_type, doc_id, doc_ref, action)
-      VALUES (NEW.organization_id, v_conn.provider, v_type, NEW.id, v_ref, 'create')
-      ON CONFLICT ON CONSTRAINT integration_sends_once DO NOTHING;
-    ELSIF v_type = 'invoice' AND v_is IN ('void', 'cancelled') AND v_was NOT IN ('void', 'cancelled', 'draft')
-          AND EXISTS (SELECT 1 FROM public.integration_sends s WHERE s.organization_id = NEW.organization_id AND s.provider = v_conn.provider
-                        AND s.doc_type = 'invoice' AND s.doc_id = NEW.id AND s.action = 'create') THEN
-      INSERT INTO public.integration_sends (organization_id, provider, doc_type, doc_id, doc_ref, action)
-      VALUES (NEW.organization_id, v_conn.provider, 'invoice', NEW.id, v_ref, 'void')
-      ON CONFLICT ON CONSTRAINT integration_sends_once DO NOTHING;
-    END IF;
-  END LOOP;
-  RETURN NULL;
-END
-$$;
+-- Restore trigger targets; the original 084 function was never replaced.
+DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.invoices;
+CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.invoices
+  FOR EACH ROW EXECUTE FUNCTION public.integration_enqueue();
+DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.credit_notes;
+CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.credit_notes
+  FOR EACH ROW EXECUTE FUNCTION public.integration_enqueue();
+DROP FUNCTION public.accounting_cloud_enqueue();
 COMMIT;
