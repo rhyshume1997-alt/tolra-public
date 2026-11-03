@@ -240,3 +240,108 @@ Rhys completes all numbered manual IQ/OQ/PQ checks, records deviations and revie
 All nine AH/AI/AJ/AK codex2 branches are committed and pushed, and #247's repaired head is pushed. Drafts #250 to #258 have no Ready label. A pre-existing Ready label was removed from draft #247 to follow Rhys's rule. The working tree is clean.
 
 Five inherited local references are older than, or rebased differently from, the published work: h-accounting-token-isolation, j-chasing-combined-main, k-ai-combined-main, n1-n6-browser-checks and n-setup-editor-combined. Their ordinary code patches are already published; the old N merge tree differs from published #236 only by #236's later CI step and paid-break unit test. The redundant old merge objects were not force-pushed over newer branches. No unpublished code change remains. Preserve the newer remote heads when picking up this workspace.
+
+## Latest ordered follow-up: AH, AI, AK, then AJ
+
+This section supersedes earlier current-state counts and heads above. Earlier evidence remains historical; it is not rewritten. No SQL, migrations, Docker startup, wipe, deploy, merge or private-repository change occurred. All source proposals and DB proofs remain for review and separately authorised execution.
+
+| Job | Draft | Current branch/head | Latest local result | What is unfinished |
+| --- | --- | --- | --- | --- |
+| AH | #250 into #249 | codex2/ah-wipe-retention / 1fd6a7b14db68e82f3cd255ff2bfe4ba8c2873c5 | 6 parser/static units passed; typecheck/lint passed | 8 real SQL review cases and full restored-copy private-driver/FK rehearsal unrun |
+| AI, chase | #255 into #233 | codex2/ai-reviewer-db-233 / 39e89f7b5d324fdbaa778d01cd25d0b2bde96da6 | 87 focused unit tests passed; typecheck/lint passed | 5 real DB cases, including 4 separately named reviewer conditions, unrun |
+| AI, inbound | #253 into #241 | codex2/ai-reviewer-db-241 / dd2f7a176cce318aea4b6f725e5c029480f9848b | Guarded attempt: 1 preflight failure, 0 passed, 0 skipped; missing TEST_SUPABASE_URL, no DB request | Real delegated-inbound execution BLOCKED; no prepared backend/env file |
+| AK / N4 | #258 into #247 | codex2/ak-validation-shipped / f2af92ed6331b119db6ab257328ac37f0eeb301c | Fresh 347 mapped units / 32 files and 5,461 full units / 411 files; zero failures/skips; types/lint/mapping pass | Manual IQ/OQ/PQ, database/browser/provider proof and Rhys's VSR decision |
+| AJ | #257 into #246 | codex2/aj-takeover-handover, this final update | Documentation diff check passed | Operator results and unidentified N7/AF/AG scope remain visible |
+
+### AH: exact retention and proof limits
+
+KEEP chase_steps, costing_materials, costing_machines, costing_defaults, company_setup_progress, ai_helper_tolra_companies and global ai_helper_tolra_control. JNR-only sends/pauses are WIPE. Approval evidence is copied to the locked, owner-only append-only archive, verified by full JSONB equality and digest, then included in protected fingerprints before any invoice deletion. Missing invoice/email references, differing approval evidence, unsafe archive privileges or an incomplete copy refuse the entire transaction. Sends and pauses precede invoice parents. Marpet, logins, settings, numbering and old audit history are protected.
+
+The stronger proposal adds archive privilege/immutable-trigger refusal and a final source-count/evidence check. The new real SQL harness tests archive API permissions and owner update/delete/truncate refusal; missing invoice, changed approval and incomplete-copy rollback; two-company settings, numbering, logins, KEEP tables and old audit preservation; and each of Xero/Sage/QuickBooks scoped to JNR only. The source relation names are redirected to temporary twins for deliberate broken-FK fixtures. Actual archive permissions and audit append use the real prepared tables. This is not the private driver's whole wipe or a real source-FK deletion proof, and none of these SQL cases ran here.
+
+Preconditions for Code: identity-verified disposable restored copy, reviewed archive DDL prepared separately, required chase/costing/setup/AI KEEP schemas present, writers stopped and reviewed source locks in place. A missing table/schema must fail, never skip. The private repo was not accessed in this follow-up. Refresh its current table list and protected fingerprints read-only before any future change to that repo.
+
+### AI: named conditions and blocked inbound attempt
+
+#255 retains its original exact-text/uncertain-delivery proof and adds named tests for editing invalidating reviewed text, customer paid claim preserving invoice financials/payments, duplicate approvals plus retries sending once, and cross-company create/approve/claim refusal. Only the mail transport is mocked. The existing friendly-step fixture now uses offset 1 instead of invalid offset 0; zero requires before_due under SQL. No production behaviour or assertion was weakened.
+
+For #241, the exact attempted command on #253 was:
+
+```sh
+npx vitest run -c vitest.db.config.ts tests/db/reviewer-inbound-conditions.test.ts --reporter=json --outputFile=/tmp/ai241-runtime-attempt.json
+```
+
+It failed the isolation preflight with `TEST_SUPABASE_URL is not set`: **1 failed, 0 passed, 0 skipped**. `.env.test.local` is absent; TEST_DATABASE_URL and TEST_SUPABASE_URL are unset. No database request or SQL ran, so this is an environment blocker, not a failed payment-invariance assertion. Docker/backend startup was not attempted because it installs SQL and is outside the retained rules.
+
+After a separately authorised operator provides the prepared local disposable backend, run these on their stated branches:
+
+```sh
+# AH #250, with separately reviewed archive and KEEP schemas already prepared:
+npx vitest run -c vitest.db.config.ts tests/db/wipe-archive-review.test.ts
+# AI #255 into #233, prepared chasing schema and controlled fake mail transport:
+npx vitest run -c vitest.db.config.ts tests/db/reviewer-chase-conditions.test.ts
+# AI #253 into #241, prepared delegated-mail schema:
+npx vitest run -c vitest.db.config.ts tests/db/reviewer-inbound-conditions.test.ts
+```
+
+Expected: all named cases actually execute and pass, zero skipped reviewer conditions. Missing credentials/schema must fail with its cause. The older #251/#252/#254/#256 setup/cap/accounting proofs also remain unrun. When integrating into #247, preserve complete `npm run test:db`, its baseline-first ordering and post-145/146 sequencing, then perform the separate upgrade and browser/provider rehearsals.
+
+### AK: latest candidate, fresh evidence, no sign-off
+
+AK now has #247 **fe7514fbea7eaac2fead0237db0fa7d2abcc6db8** as its base. The clean tested code revision is `2cd2549880f6`; the final `f2af92e` commit adds evidence only. Fresh dated results live in `tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/` on #258. Historical evidence stays unchanged. `npm run validate:pack` checks the 14 URS/risk/OQ, 6 IQ and 8 PQ mappings; `npm run validate:evidence` runs the 32 mapped unit files and saves dated commit/input hashes, logs and exact counts. The VSR sign-off remains blank for Rhys as validation lead.
+
+URS-014's inbound automatic financial-invariance proof is still outside #247 on #241/#253, with manual G03.4 explicitly unrun. AH's stronger archive and AI's named chase DB follow-ups are independent drafts, not silently folded into the candidate. All DB, browser, provider and manual evidence remains separate from the passing unit logs.
+
+**146 rollback STOP RULE:** rollback deliberately retains `ai_helper_requests.key_source`, request history and usage. A second 146 install on that same rolled-back database requires an authorised disposable reset to reviewed baseline through 144, then 145 and 146 in order. Keep evidence first. Never drop key_source, delete retained history, weaken guards or reset a hosted/live company database to force reinstall. #247 includes the no-global-provider-key DB proof: working own-key positive controls, then provided mode refuses round-up/RFQ/assistant with request/usage/key snapshots unchanged. That real SQL proof remains unrun here.
+
+### Final N1 to N7 tick list
+
+- [x] N1: #218/#235/#247, paid-break implementation and unit coverage present; operator DB/browser comparison remains.
+- [x] N2: #219/#224/#232/#234/#247, own/provided modes and owner caps present; real cap race, permissions and missing-global-key SQL proof remain unrun.
+- [x] N3: #221/#230/#237/#240/#247, Xero/Sage/QuickBooks implementation and unit coverage present; expanded SQL and sandbox evidence remain.
+- [x] N4: #220 updated by #258; fresh 347 mapped and 5,461 full unit passes; manual validation and Rhys's VSR sign-off remain blank.
+- [x] N5: #222/#236/#239/#247, blank setup and own-admin policy fix present; real role matrix remains unrun.
+- [x] N6: #223/#236/#247, labelled editor, detail insertion and legacy-text unit coverage present; real browser/email rehearsal remains.
+- [ ] N7: no product brief identified in the supplied materials; scope unresolved, no implementation invented.
+
+### Final every-job tick list
+
+Ticks mean the described implementation/review artifact exists, not that unrun runtime checks passed.
+
+- [x] A: #222 N5 implemented; database/operator checks remain.
+- [x] B: #223 N6 implemented; browser evidence remains.
+- [x] C: #224 provided AI implemented; owner-cap follow-up #232; SQL evidence remains.
+- [x] D: #226 chase refresh implemented; no merge performed here.
+- [x] E: #201 description correction recorded by the earlier account.
+- [x] F: #227 browser/manual checks written; runtime evidence remains.
+- [x] G: #227 database/operator instructions exist; later #247 sequencing supersedes old commands where noted.
+- [x] H: #228 keys, #229 AI company isolation, #230 accounting token/provider isolation; do not mislabel #230 as #229.
+- [x] I: #232 owner caps and real race proof written; SQL race unrun here.
+- [x] J: #233 combined chasing exists; named DB follow-up #255; runtime remains.
+- [x] K: #234 combined AI exists; cap/accounting SQL follow-up #256; runtime remains.
+- [x] L: #235 paid/unpaid two-company unit proof exists.
+- [x] M: #226/#233 truthful banner fix exists; approval/security behaviour retained.
+- [x] N: #236 setup/editor combination exists; #247 contains its reviewed follow-ups.
+- [x] O: #237 accounting combination exists; provider/runtime checks remain.
+- [x] P: #238 manual checklist update recorded; operator steps remain unrun.
+- [x] Q: #239/#240 reviewer unit/access follow-ups exist; real SQL expansion remains unrun.
+- [x] R: #221 ordering fix recorded by the earlier account; do not repeat old flaky-test blame without run evidence.
+- [x] S: #241 inbound evidence exists; #253 real DB attempt blocked at missing backend preflight.
+- [x] T: #242 local fonts implemented; visual review remains separate.
+- [x] U: #244 superseded by #243 seed identity guard; no new seed execution.
+- [x] V: #245 reviewer browser checks wired to CI; runtime evidence remains.
+- [x] W: #246 handover exists; current follow-up #257.
+- [x] X: #247 candidate packaged; real repaired-head database rehearsal remains.
+- [x] Y: earlier private-kit read-only review recorded; this follow-up did not access the private repo.
+- [x] Z: #248 go-live manual checklist exists; real completion/sign-off remains.
+- [x] AA: #247 follow-up recorded in prior inventory; repaired-head runtime remains.
+- [x] AB: #247 follow-up recorded in prior inventory; repaired-head runtime remains.
+- [x] AC: #249 wipe proposal exists; stronger AH draft #250.
+- [x] AD: #246 handover inventory retained; current follow-up #257.
+- [x] AE: #247 final-candidate packaging recorded; no real DB pass claimed for current repaired head.
+- [ ] AF: no definition/outcome in supplied materials; unresolved.
+- [ ] AG: no definition/outcome in supplied materials; unresolved.
+- [x] AH: #250 stronger proposed refusal/permissions/comparison proofs pushed; 6 units passed; all real SQL/private-driver rehearsal BLOCKED here.
+- [x] AI: #251 to #256 proof drafts pushed; #255 has 4 new named cases and 87 focused unit passes; #253 real run BLOCKED by missing backend, 1 preflight failure and 0 skips.
+- [x] AK: #258 refreshed to fe7514f with fresh dated evidence; 347 mapped and 5,461 full unit passes; VSR remains blank.
+- [x] AJ: #257 updated last with full state and exact operator next steps; documentation diff check passed, all new work committed/pushed.
