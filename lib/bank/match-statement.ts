@@ -18,6 +18,7 @@ function splitCsv(csv: string): string[][] {
       row = [];
     } else field += char;
   }
+  if (quoted) throw new Error("Unclosed CSV quote");
   row.push(field);
   if (row.some(value => value.trim())) rows.push(row);
   return rows;
