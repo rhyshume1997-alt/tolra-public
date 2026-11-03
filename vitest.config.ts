@@ -2,7 +2,13 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(__dirname) } },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname),
+      // next/font only works through Next's compiler; the public pages' fonts (components/marketing/fonts.ts) get a stub here.
+      "next/font/google": path.resolve(__dirname, "tests/stubs/next-font-google.ts"),
+    },
+  },
   // Components (PDF documents) use the automatic JSX runtime, as in the app.
   esbuild: { jsx: "automatic" },
   test: { environment: "node", include: ["tests/unit/**/*.test.ts"] },
