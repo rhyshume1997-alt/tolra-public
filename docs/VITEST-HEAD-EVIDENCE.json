@@ -127,8 +127,6 @@
       "seconds": 300.1,
       "totals": [],
       "failures": [],
-      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/153.log",
-      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/153",
       "summary_present": false
     },
     {
@@ -142,8 +140,6 @@
       "seconds": 300.1,
       "totals": [],
       "failures": [],
-      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/154.log",
-      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/154",
       "summary_present": false
     },
     {
@@ -157,8 +153,6 @@
       "seconds": 300.1,
       "totals": [],
       "failures": [],
-      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/155.log",
-      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/155",
       "summary_present": false
     },
     {
@@ -172,8 +166,6 @@
       "seconds": 300.1,
       "totals": [],
       "failures": [],
-      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/156.log",
-      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/156",
       "summary_present": false
     },
     {
@@ -187,8 +179,6 @@
       "seconds": 300.1,
       "totals": [],
       "failures": [],
-      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/157.log",
-      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/157",
       "summary_present": false
     },
     {
@@ -202,8 +192,6 @@
       "seconds": 300.1,
       "totals": [],
       "failures": [],
-      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/158.log",
-      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/158",
       "summary_present": false
     }
   ]

@@ -109,3 +109,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 34a | builder2 | chatgpt2/chase-customer-review-code-only | CODE FIX IN DRAFT PR | #180 |
 | 34b | builder2 | chatgpt2/sliq-numeric-review-code-only | CODE FIX IN DRAFT PR | #181 |
 | 34c | builder2 | chatgpt2/costing-rounding-review-code-only | ROUNDING ERRORS AND COVERAGE GAP FIXED | #182 |
+| 35 | builder2 | chatgpt2/code-only-queue-docs | CURRENT MERGE ORDER AND HANDOVER COMPLETE | #178 |
