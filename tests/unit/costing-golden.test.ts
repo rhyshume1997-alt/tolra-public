@@ -26,6 +26,12 @@ const ENGINE_FILE = path.resolve(__dirname, "../../lib/costing/engine.ts");
 const engine: Engine | null = existsSync(ENGINE_FILE) ? ((await import(/* @vite-ignore */ ENGINE_FILE)) as Engine) : null;
 
 describe("costing golden fixtures (always)", () => {
+  it("requires the port and its rounding helper so parity checks cannot silently skip", () => {
+    expect(engine).not.toBeNull();
+    expect(typeof engine?.pyRound).toBe("function");
+    expect(Object.is(engine?.pyRound?.(-0, 2), -0)).toBe(true);
+    expect(GOLDEN.cases).toHaveLength(60);
+  });
   it("come from the real engine file and cover the branches", () => {
     expect(GOLDEN.source.file).toBe("services/costing-engine/app/services/quoting_enhanced.py");
     expect(GOLDEN.source.sha256).toMatch(/^[0-9a-f]{64}$/);
@@ -54,7 +60,7 @@ describe.skipIf(!engine)("lib/costing/engine.ts matches the Python engine", () =
     expect(engine!.calcDetailedQuote(structuredClone(c.input))).toEqual(c.dict);
   });
 
-  it.skipIf(typeof engine?.pyRound !== "function").each(GOLDEN.py_round.map((r, i) => [i, r] as const))("pyRound case %i", (_i, r) => {
+  it.each(GOLDEN.py_round.map((r, i) => [i, r] as const))("pyRound case %i", (_i, r) => {
     expect(Object.is(engine!.pyRound!(r.x, r.n), r.out)).toBe(true);
   });
 });
