@@ -1037,7 +1037,7 @@ export default function QuotesPage() {
         <Dialog open={builderOpen} onOpenChange={closeBuilder}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New quote</Button></DialogTrigger>
           <DialogContent className="max-w-4xl">
-            <DialogHeader><DialogTitle>{builderPreset?.mode === "edit" ? `Correct draft ${builderPreset.quote.ref}` : builderPreset?.mode === "copy" ? `Copy of ${builderPreset.quote.ref}` : fromRfq ? `Quote Builder: RFQ from ${fromRfq.customer}` : "Quote Builder"}</DialogTitle><DialogDescription>{builderPreset?.mode === "edit" ? "Change the draft and save. It keeps its number." : builderPreset?.mode === "copy" ? "A new quote with a new number, starting from this one." : "Build a detailed quote with line items and VAT."}</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle>{builderPreset?.mode === "edit" ? `Correct draft ${builderPreset.quote.ref}` : builderPreset?.mode === "copy" ? `Copy of ${builderPreset.quote.ref}` : fromRfq ? `Quote Builder: RFQ from ${fromRfq.customer}` : "Quote Builder"}</DialogTitle><DialogDescription>{builderPreset?.mode === "edit" ? "Change the draft and save. It keeps its number." : builderPreset?.mode === "copy" ? "A new quote with a new number, starting from this one." : "Add the items, prices and VAT for this quote."}</DialogDescription></DialogHeader>
             <form key={builderKey} onSubmit={saveQuote} className="space-y-4">
               <div className="grid gap-3 md:grid-cols-3">
                 <CustomerSelect name="customer" required value={builderCustomer} onValueChange={setBuilderCustomer} />
@@ -1219,7 +1219,7 @@ export default function QuotesPage() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle><span className="font-bold">{viewingQuote?.ref}</span> quote details</DialogTitle>
-            <DialogDescription>Customer quote summary and line item breakdown.</DialogDescription>
+            <DialogDescription>Quote details, with the price of each item.</DialogDescription>
           </DialogHeader>
           {viewingQuote ? (
             <div className="space-y-5">

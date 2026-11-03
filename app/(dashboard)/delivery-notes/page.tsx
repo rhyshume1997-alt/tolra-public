@@ -692,7 +692,7 @@ export default function DeliveryNotesPage() {
         <SendEmailDialog request={emailRequest} onClose={() => setEmailRequest(null)} />
         <Dialog open={Boolean(emailing) && canEmail} onOpenChange={(open) => !open && setEmailing(null)}>
           <DialogContent className="max-w-3xl">
-            <DialogHeader><DialogTitle>Email delivery note</DialogTitle><DialogDescription>Send it from here with the PDF attached, or copy the text or open it in your email client, send it, then mark it as sent.</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle>Email delivery note</DialogTitle><DialogDescription>Send it from here with the PDF attached, or copy the text or open it in your email app, send it, then mark it as sent.</DialogDescription></DialogHeader>
             {emailing ? (
               company
                 ? <EmailDraft note={emailing} companyName={company.name} saving={saving} onCopy={copyEmail} onSent={markEmailSent} onSendNow={sendEmailNow} />
@@ -734,13 +734,13 @@ function EmailDraft({ note, companyName, saving, onCopy, onSent, onSendNow }: { 
 
   return (
     <div className="grid gap-3">
-      <Input value={note.email} readOnly placeholder="No email address on file for this customer" />
+      <Input value={note.email} readOnly placeholder="No email address saved for this customer" />
       <Input value={subject} onChange={(event) => { edited.current = true; setSubject(event.target.value); }} />
       <Textarea className="min-h-56" value={draftBody} onChange={(event) => { edited.current = true; setDraftBody(event.target.value); }} />
       <div className="flex flex-wrap gap-2">
         <Button className="bg-brand text-brand-ink" disabled={saving} onClick={() => onSendNow(note, subject, draftBody)}>Send now</Button>
         <Button variant="outline" disabled={saving} onClick={() => void onCopy(note, subject, draftBody)}>Copy Email Body</Button>
-        <Button asChild variant="outline"><a href={mailto}>Open in Email Client</a></Button>
+        <Button asChild variant="outline"><a href={mailto}>Open in email app</a></Button>
         {confirming ? null : <Button className="bg-brand text-brand-ink" disabled={saving} onClick={() => setConfirming(true)}>Mark as Sent</Button>}
       </div>
       {confirming ? (

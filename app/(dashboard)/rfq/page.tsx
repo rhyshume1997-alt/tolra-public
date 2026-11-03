@@ -359,7 +359,7 @@ export default function RfqPage() {
         <Dialog open={creating} onOpenChange={setCreating}>
           <DialogTrigger asChild><Button className="bg-brand text-brand-ink hover:bg-brand-hover"><Plus className="size-4" /> New RFQ</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Create New RFQ</DialogTitle><DialogDescription>Capture customer requirements and status.</DialogDescription></DialogHeader>
+            <DialogHeader><DialogTitle>Create New RFQ</DialogTitle><DialogDescription>Enter what the customer needs and how far the request has got.</DialogDescription></DialogHeader>
             <form onSubmit={saveRfq} className="grid gap-3">
               <Input name="customer" placeholder="Customer" required />
               <div className="grid gap-3 md:grid-cols-2"><Input name="email" type="email" inputMode="email" autoComplete="email" placeholder="Email" /><Input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Phone" /></div>
@@ -375,7 +375,7 @@ export default function RfqPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        {[["New RFQs", count("new"), "new"], ["Awaiting Clarification", count("clarification"), "clarification"], ["Ready to Quote", count("ready"), "ready"]].map(([label, value, filter]) => (
+        {[["New RFQs", count("new"), "new"], ["Waiting for details", count("clarification"), "clarification"], ["Ready to Quote", count("ready"), "ready"]].map(([label, value, filter]) => (
           <Card key={label} className="cursor-pointer transition hover:bg-slate-50" onClick={() => setFilters(new Set([filter]))}><CardContent className="p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-bold text-slate-950">{value}</p></CardContent></Card>
         ))}
       </div>
@@ -437,7 +437,7 @@ export default function RfqPage() {
       )}
 
       <Dialog open={Boolean(viewing)} onOpenChange={(open) => !open && setViewing(null)}>
-        <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Full RFQ information</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p>{rfqSpec(viewing.quantity, viewing.material).quantity ? <p><strong>Quantity:</strong> {rfqSpec(viewing.quantity, viewing.material).quantity}</p> : null}{rfqSpec(viewing.quantity, viewing.material).material ? <p className="break-words"><strong>Material:</strong> {rfqSpec(viewing.quantity, viewing.material).material}</p> : null}<p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>{viewing?.customer}</DialogTitle><DialogDescription>Customer request details</DialogDescription></DialogHeader>{viewing ? <div className="space-y-3 text-sm"><p>{viewing.description}</p>{rfqSpec(viewing.quantity, viewing.material).quantity ? <p><strong>Quantity:</strong> {rfqSpec(viewing.quantity, viewing.material).quantity}</p> : null}{rfqSpec(viewing.quantity, viewing.material).material ? <p className="break-words"><strong>Material:</strong> {rfqSpec(viewing.quantity, viewing.material).material}</p> : null}<p><strong>Value:</strong> {gbp(viewing.value, 0)}</p><p><strong>Email:</strong> {viewing.email}</p><p><strong>Notes:</strong> {viewing.notes || "-"}</p><div className="flex gap-2"><Button asChild><Link href={`/quotes?rfq=${encodeURIComponent(viewing.id)}`}>Create Quote</Link></Button><Button variant="outline" onClick={() => openClarify(viewing)}>Clarify</Button></div></div> : null}</DialogContent>
       </Dialog>
       <EmailViewer emailId={viewEmail} onClose={() => setViewEmail(null)} />
       <Dialog open={Boolean(mailing)} onOpenChange={(open) => !open && setMailing(null)}>

@@ -61,7 +61,7 @@ export function OfflineBanner() {
   /** Downloads the pending picture from this device (the bytes stay queued). */
   async function exportPhoto(op: PhotoOp) {
     const blob = await readAttachment<Blob>(op.blobKey);
-    if (!blob) return toast.error("The photo's bytes are no longer on this device.");
+    if (!blob) return toast.error("The photo file is no longer on this device.");
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
