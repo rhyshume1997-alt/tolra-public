@@ -9,6 +9,7 @@ import { expect, test } from "@playwright/test";
 import { DEFAULT_TEMPLATES, PLACEHOLDERS, SAMPLE_VARS, TEMPLATE_KEYS } from "@/lib/email/templates/defaults";
 import { adminClient } from "../support/fixtures";
 import { signIn, world } from "./helpers";
+import { fillTemplateSubject, fillTemplateBody, expectTemplateSubject, expectTemplateBody } from "./template-editor-controls";
 
 const w = world();
 const org = () => w.tenants.beta.id;
@@ -30,11 +31,11 @@ test("admin edits the invoice template, sees the preview fill in, saves, reloads
     const card = page.getByTestId("email-template-invoice");
     await expect(card).toBeVisible();
     await expect(card).toContainText("Default text");
-    await expect(card.getByLabel("Subject")).toHaveValue(DEFAULT_TEMPLATES.invoice.subject);
+    await expectTemplateSubject(card, DEFAULT_TEMPLATES.invoice.subject);
 
     // Typing updates the preview at once, with the example values; nothing is stored until Save.
-    await card.getByLabel("Subject").fill(subject);
-    await card.getByLabel("Text", { exact: true }).fill(body);
+    await fillTemplateSubject(card, subject);
+    await fillTemplateBody(card, body);
     await expect(card.getByTestId("email-template-invoice-preview-subject")).toHaveText(`Invoice ${SAMPLE_VARS.document_number} for ${SAMPLE_VARS.customer_name} (${tag})`);
     const preview = card.getByTestId("email-template-invoice-preview-body");
     await expect(preview).toContainText(`Dear ${SAMPLE_VARS.customer_name},`);
@@ -51,19 +52,19 @@ test("admin edits the invoice template, sees the preview fill in, saves, reloads
     // After a reload the saved text is what the editor and the preview show.
     await page.reload();
     const reloaded = page.getByTestId("email-template-invoice");
-    await expect(reloaded.getByLabel("Subject")).toHaveValue(subject);
-    await expect(reloaded.getByLabel("Text", { exact: true })).toHaveValue(body);
+    await expectTemplateSubject(reloaded, subject);
+    await expectTemplateBody(reloaded, body);
     await expect(reloaded).toContainText("Your own text");
     await expect(reloaded.getByTestId("email-template-invoice-preview-subject")).toContainText(`(${tag})`);
 
     // Reset to default removes the company's text.
     await reloaded.getByRole("button", { name: "Reset to default" }).click();
-    await expect(reloaded.getByLabel("Subject")).toHaveValue(DEFAULT_TEMPLATES.invoice.subject);
-    await expect(reloaded.getByLabel("Text", { exact: true })).toHaveValue(DEFAULT_TEMPLATES.invoice.body);
+    await expectTemplateSubject(reloaded, DEFAULT_TEMPLATES.invoice.subject);
+    await expectTemplateBody(reloaded, DEFAULT_TEMPLATES.invoice.body);
     await expect(reloaded).toContainText("Default text");
     await expect.poll(() => saved("invoice")).toBeNull();
     await page.reload();
-    await expect(page.getByTestId("email-template-invoice").getByLabel("Subject")).toHaveValue(DEFAULT_TEMPLATES.invoice.subject);
+    await expectTemplateSubject(page.getByTestId("email-template-invoice"), DEFAULT_TEMPLATES.invoice.subject);
   } finally {
     await clearSaved();
   }
@@ -91,8 +92,8 @@ test("the preview never shows a raw {{placeholder}} for a placeholder the app kn
   // Every placeholder the app knows, typed into one template (not saved), is replaced; the unknown one is shown as typed.
   const card = page.getByTestId("email-template-invoice");
   const known = PLACEHOLDERS.map((name) => `{{${name}}}`).join(" ");
-  await card.getByLabel("Subject").fill("Check {{document_number}} {{ company_name }}");
-  await card.getByLabel("Text", { exact: true }).fill(`${known}\n{{not_a_placeholder}}`);
+  await fillTemplateSubject(card, "Check {{document_number}} {{ company_name }}");
+  await fillTemplateBody(card, `${known}\n{{not_a_placeholder}}`);
   const subject = card.getByTestId("email-template-invoice-preview-subject");
   const preview = card.getByTestId("email-template-invoice-preview-body");
   await expect(subject).toHaveText(`Check ${SAMPLE_VARS.document_number} ${SAMPLE_VARS.company_name}`);
