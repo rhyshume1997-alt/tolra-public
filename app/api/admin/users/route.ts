@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { jsonError, readJson } from "@/lib/server/auth";
-import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAal2, requireAdminEnrolment } from "@/lib/server/admin-users";
+import { jsonError, mfaRecentRequired, readJson } from "@/lib/server/auth";
+import { type AdminContext, type BanState, audit, banState, companyMayLift, deactivationBanMarker, enrolmentFlag, existingLoginScope, guard, hasVerifiedTotp, liftDeactivationBan, loginIsProtected, ownsIdentity, requireAdminEnrolment, requireRecentAal2 } from "@/lib/server/admin-users";
 import { becomesAdmin, changesAdmin } from "@/lib/mfa-policy";
 import { companyAccessErrorMessage, mayAddExistingLogin, OTHER_COMPANY_LOGIN, PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
 import { PRODUCT } from "@/lib/product";
@@ -77,6 +77,8 @@ const LAST_COMPANY_NEXT_STEP = `If they're leaving, use Disable sign-in instead:
 /** Maps set_member_access() errors to responses (its messages are written for people). */
 function memberAccessError(error: { code?: string; message: string; details?: string; hint?: string }) {
   console.error("[admin/users] set_member_access failed", error.code ?? "no-code", String(error.message ?? "").slice(0, 200));
+  // G1 (migration 136): the database asks for a recent authenticator code when giving or taking admin; the browser opens its code dialog.
+  if (error.hint === "mfa_recent_required") return mfaRecentRequired("change who is an admin");
   // The same friendly wording as per-company access (066): a login keeps one company; a clash with another change is retried.
   if (error.hint === "last_company") return jsonError(`${companyAccessErrorMessage(error, "this company")} ${LAST_COMPANY_NEXT_STEP}`, 409);
   if (error.code === "40P01" || error.code === "40001") return jsonError(companyAccessErrorMessage(error, "this company"), 409);
@@ -159,6 +161,16 @@ export async function POST(request: Request) {
   const full_name = parsed.data.full_name;
   const secondary = parsed.data.secondary_role && parsed.data.secondary_role !== role ? parsed.data.secondary_role : null;
   const hidden = parsed.data.hidden_sections ?? [];
+
+  // G1: giving admin here goes through add_member with the service role, which migration 136's trigger exempts, so the app asks for the
+  // recent code itself whenever the database would: REQUIRE_ADMIN_MFA on (guard above) or this company's own switch on. Decided before
+  // anything is written; a switch that can't be read counts as on (fail closed).
+  if (role === "admin" || secondary === "admin") {
+    const { data: company, error: switchError } = await admin.from("organizations").select("require_admin_mfa").eq("id", orgId).maybeSingle();
+    const companySwitchOn = Boolean(switchError) || company?.require_admin_mfa !== false;
+    const refused = await requireRecentAal2(auth, "give someone admin", companySwitchOn);
+    if (refused) return refused;
+  }
 
   // A username already in use names an EXISTING login (usernames are unique across the platform). That is not an error: the login
   // gets a membership in this company, exactly like the e-mail case below. If an e-mail was typed as well it must be that same
@@ -344,7 +356,7 @@ export async function PATCH(request: Request) {
   if (!before) return jsonError("User not found", 404);
   // Giving or taking admin (role, second role, or reactivating an admin) needs the second step always, like creating a user (audit Z1).
   if (changesAdmin(before, { role, secondary_role, active })) {
-    const refused = await requireAal2(auth);
+    const refused = await requireRecentAal2(auth, "change who is an admin");
     if (refused) return refused;
   }
 

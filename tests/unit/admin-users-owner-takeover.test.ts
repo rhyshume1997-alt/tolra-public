@@ -83,7 +83,12 @@ function query(table: string) {
 
 const admin = {
   from: (table: string) => query(table),
-  rpc: async (fn: string) => { throw new Error(`unexpected service rpc ${fn}`); },
+  // G1 (137): Set password issues a single-use ticket after its checks, and drops it after the Auth call.
+  rpc: async (fn: string) => {
+    if (fn === "issue_password_change_ticket") return { data: "ticket-1", error: null };
+    if (fn === "revoke_password_change_ticket") return { data: false, error: null };
+    throw new Error(`unexpected service rpc ${fn}`);
+  },
   auth: {
     admin: {
       updateUserById: async (id: string, attrs: Row) => { if ("password" in attrs) world.passwordWrites.push(id); return { data: { user: { id } }, error: null }; },

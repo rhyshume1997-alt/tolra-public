@@ -17,6 +17,10 @@ const state = {
   authCalls: 0,
   authResults: [] as AuthResult[],
   audited: [] as string[],
+  /** G1 (137): the order of ticket and Auth calls, and how the ticket function answers. */
+  log: [] as string[],
+  ticket: "ok" as "ok" | "missing" | "error",
+  issued: 0,
 };
 
 const admin = {
@@ -37,10 +41,22 @@ const admin = {
       }),
     };
   },
+  rpc: async (fn: string, args: Record<string, unknown>) => {
+    state.log.push(`${fn}:${String(args.p_purpose ?? args.p_ticket)}`);
+    if (fn === "issue_password_change_ticket") {
+      if (state.ticket === "missing") return { data: null, error: { code: "PGRST202", message: "Could not find the function" } };
+      if (state.ticket === "error") return { data: null, error: { code: "P0002", message: "No such login." } };
+      state.issued += 1;
+      return { data: `ticket-${state.issued}`, error: null };
+    }
+    if (fn === "revoke_password_change_ticket") return { data: false, error: null };
+    throw new Error(`unexpected rpc ${fn}`);
+  },
   auth: {
     admin: {
       updateUserById: () => {
         state.authCalls += 1;
+        state.log.push("auth.updateUserById");
         const next = state.authResults.shift() ?? { error: null };
         if (next === "throw") return Promise.reject(new TypeError("fetch failed"));
         if (next === "hang") return new Promise(() => {});
@@ -66,7 +82,7 @@ const call = (mustChange: boolean) =>
   }));
 
 beforeEach(() => {
-  Object.assign(state, { flag: false, flagWrites: [], authCalls: 0, authResults: [], audited: [] });
+  Object.assign(state, { flag: false, flagWrites: [], authCalls: 0, authResults: [], audited: [], log: [], ticket: "ok", issued: 0 });
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -138,6 +154,51 @@ describe("admin set password: a definite refusal restores the previous requireme
     const response = await call(true);
     expect(response.status).toBe(200);
     expect(state.flag).toBe(true);
+    expect(state.audited).toEqual(["SET_USER_PASSWORD"]);
+  });
+});
+
+describe("G1 (migration 137): a single-use ticket for this login, issued after every check and before anything is written", () => {
+  it("success: the ticket (admin_set) comes before the flag and the Auth call, and is dropped afterwards (already used, so nothing to drop)", async () => {
+    const response = await call(true);
+    expect(response.status).toBe(200);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-1"]);
+  });
+  it("the ticket can't be issued: 503, nothing written (no flag, no Auth call, nothing audited)", async () => {
+    state.ticket = "error";
+    const response = await call(true);
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe("Could not set the password. Nothing was changed; try again.");
+    expect(state.authCalls).toBe(0);
+    expect(state.flagWrites).toEqual([]);
+    expect(state.audited).toEqual([]);
+  });
+  it("before 137 is applied (no ticket function): the password is set as before, and no ticket is dropped", async () => {
+    state.ticket = "missing";
+    const response = await call(true);
+    expect(response.status).toBe(200);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById"]);
+  });
+  it("Auth refuses (422) or its answer is unknown: the unused ticket is dropped, so nobody can use it later", async () => {
+    state.authResults = [{ error: { status: 422, code: "weak_password", message: "Password is too weak" } }];
+    expect((await call(true)).status).toBe(400);
+    expect(state.log.at(-1)).toBe("revoke_password_change_ticket:ticket-1");
+    state.log = [];
+    state.authResults = [{ error: { status: 500, code: "unexpected_failure" } }];
+    expect((await call(true)).status).toBe(503);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-2"]);
+  });
+});
+
+describe("G1 (137): a failed Auth call does not use up the admin's retry (Pack 19d)", () => {
+  it("Auth refuses (422): that ticket is dropped; the retry issues a fresh ticket and succeeds, audited once", async () => {
+    state.authResults = [{ error: { status: 422, code: "weak_password", message: "Password is too weak" } }];
+    expect((await call(true)).status).toBe(400);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-1"]);
+    state.log = [];
+    const retry = await call(true);
+    expect(retry.status).toBe(200);
+    expect(state.log).toEqual(["issue_password_change_ticket:admin_set", "auth.updateUserById", "revoke_password_change_ticket:ticket-2"]);
     expect(state.audited).toEqual(["SET_USER_PASSWORD"]);
   });
 });

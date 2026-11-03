@@ -143,6 +143,13 @@ describe("policy helpers", () => {
     expect(changesAdmin(admin, { secondary_role: "office" })).toBe(false);
     expect(changesAdmin({ ...office, secondary_role: "admin" }, { role: "admin", secondary_role: null })).toBe(false);
     expect(changesAdmin(admin, {})).toBe(false);
+    // G1: switching an active admin off takes their admin rights away (an admin who is already off, or an office person, is not an admin change).
+    expect(changesAdmin(admin, { active: false })).toBe(true);
+    expect(changesAdmin({ ...office, secondary_role: "admin" }, { active: false })).toBe(true);
+    expect(changesAdmin({ ...admin, active: false }, { active: false })).toBe(false);
+    expect(changesAdmin(office, { active: false })).toBe(false);
+    expect(changesAdmin(admin, { active: true })).toBe(false);
+    expect(changesAdmin(null, { active: false })).toBe(false);
   });
 
   it("shouldCheckEnrolment: never when the global switch is on or for non-admins; not once a factor exists", () => {
