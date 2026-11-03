@@ -8,15 +8,15 @@ import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, 
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 /**
- * POST /api/chase/approve { history_id, subject?, body? }: "Approve and send" a chase draft from the Approvals queue (migration 138).
+ * POST /api/chase/approve { history_id, subject, body }: "Approve and send" a chase draft from the Approvals queue (migration 138).
  * Office and admin of the company only (requireProfile: an admin also needs the second step when required); a support session is refused.
  * Every check is lib/email/chase/approve.ts's. Sends through the company mailer (Microsoft 365, else Resend) in the person's own session;
  * with no mailer set up it answers 409 { status: "no_provider" } and writes nothing (the draft stays for Copy / mail app / Mark as Sent).
  */
 const schema = z.object({
   history_id: z.string().uuid(),
-  subject: z.string().max(400).optional(),
-  body: z.string().max(100_000).optional(),
+  subject: z.string().max(200),
+  body: z.string().max(100_000),
 });
 
 export async function POST(request: Request) {
