@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle, Clipboard, Info, Mail, Send } from "lucide-react";
 
+import { ConnectedChaseApproval } from "@/components/chase/connected-approval";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
@@ -193,12 +194,16 @@ export default function ApprovalPage() {
   function approveAndSend() {
     if (!approving) return;
     const item = approving;
+    if (approveSubject !== item.subject || approveBody !== item.body) {
+      toast.error("Save your changes with Edit, then review the draft again before sending.");
+      return;
+    }
     void run(async () => {
       try {
         const response = await fetch("/api/chase/approve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ history_id: item.id, subject: approveSubject, body: approveBody }),
+          body: JSON.stringify({ history_id: item.id, expected_subject: item.subject, expected_body: item.body }),
         });
         const answer = (await response.json().catch(() => ({}))) as { status?: string; error?: string };
         if (answer.status === "no_provider") {
@@ -231,8 +236,8 @@ export default function ApprovalPage() {
     void run(async () => {
       try {
         if (!supabase) throw new Error("Supabase is not configured.");
-        const { error: updateError } = await supabase.from("email_history").update({ subject: editSubject, body: editBody }).eq("id", item.id).eq("status", "drafted");
-        if (updateError) throw updateError;
+        const { data: changed, error: updateError } = await supabase.from("email_history").update({ subject: editSubject, body: editBody }).eq("id", item.id).eq("status", "drafted").select("id");
+        if (updateError || changed?.length !== 1) throw new Error("This draft changed. Reload and review it again.");
         setApprovals((current) => current.map((entry) => (entry.id === item.id ? { ...entry, subject: editSubject, body: editBody, detail: editSubject } : entry)));
         void auditEvent({ action: "UPDATE", entityTable: "email_history", entityId: item.id, metadata: { fields: ["subject", "body"] } });
         setEditingItem(null);
@@ -290,6 +295,11 @@ export default function ApprovalPage() {
           </Card>
         ) : (
           approvals.map((item) => {
+            if (item.chase) return <ConnectedChaseApproval key={item.id} id={item.id} onDone={() => void load()} manualActions={<>
+              <Button variant="outline" onClick={() => void copyToClipboard(item)}>Copy draft</Button>
+              <Button variant="outline" onClick={() => openEmailClient(item)}>Open in email app</Button>
+              <Button variant="outline" disabled={saving} onClick={() => markSentManually(item)}>Mark as Sent Manually</Button>
+            </>} />;
             const styles = toneStyles[item.tone];
             return (
               <Card key={item.id}>

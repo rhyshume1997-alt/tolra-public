@@ -12,10 +12,13 @@ export type CustomerSaysPaidProps = {
   onConfirmPaymentReceived: (invoiceId: string) => void | Promise<void>;
   onNotReceivedResumeChasing: (invoiceId: string) => void | Promise<void>;
   disabled?: boolean;
+  confirmationMessage?: string;
+  /** Opening a payment form is repeatable; it does not finish the claim. */
+  confirmationOpensForm?: boolean;
 };
 
 /** The parent owns payment/chasing state. A customer's claim never records a payment here. */
-export function CustomerSaysPaid({ invoiceId, invoiceNumber, paymentToConfirm, onCustomerSaysPaid, onConfirmPaymentReceived, onNotReceivedResumeChasing, disabled = false }: CustomerSaysPaidProps) {
+export function CustomerSaysPaid({ invoiceId, invoiceNumber, paymentToConfirm, onCustomerSaysPaid, onConfirmPaymentReceived, onNotReceivedResumeChasing, disabled = false, confirmationMessage = "Payment confirmed as received.", confirmationOpensForm = false }: CustomerSaysPaidProps) {
   const busy = useRef(false);
   const [pending, setPending] = useState(false);
   const [completedFor, setCompletedFor] = useState<boolean | null>(null);
@@ -25,10 +28,10 @@ export function CustomerSaysPaid({ invoiceId, invoiceNumber, paymentToConfirm, o
   const completed = completedFor === paymentToConfirm;
   const locked = disabled || pending || completed;
 
-  async function run(action: (id: string) => void | Promise<void>, success: string) {
+  async function run(action: (id: string) => void | Promise<void>, success: string, finish = true) {
     if (disabled || busy.current || completed) return;
     busy.current = true; setPending(true); setError(""); setMessage("");
-    try { await action(invoiceId); setCompletedFor(paymentToConfirm); setMessage(success); }
+    try { await action(invoiceId); if (finish) setCompletedFor(paymentToConfirm); setMessage(success); }
     catch { setError("Could not save that change. Please try again."); }
     finally { busy.current = false; setPending(false); }
   }
@@ -39,7 +42,7 @@ export function CustomerSaysPaid({ invoiceId, invoiceNumber, paymentToConfirm, o
         <p className="font-semibold">Payment to confirm</p>
         <p className="text-sm">The customer says they have paid invoice {invoiceNumber}. Chasing is paused while you check your bank account. This does not mean the payment has been received.</p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" disabled={locked} onClick={() => void run(onConfirmPaymentReceived, "Payment confirmed as received.")}>Confirm payment received</Button>
+          <Button type="button" disabled={locked} onClick={() => void run(onConfirmPaymentReceived, confirmationMessage, !confirmationOpensForm)}>Confirm payment received</Button>
           <Button type="button" variant="outline" disabled={locked} onClick={() => void run(onNotReceivedResumeChasing, "Payment not received. Chasing resumed.")}>Not received, resume chasing</Button>
         </div>
       </div> : <Button type="button" variant="outline" disabled={locked} onClick={() => void run(onCustomerSaysPaid, "Customer's payment claim saved for checking.")}>Customer says paid</Button>}

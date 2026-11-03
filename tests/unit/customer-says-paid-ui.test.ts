@@ -78,4 +78,14 @@ describe("customer says paid invoice controls", () => {
     mount({ disabled: true, paymentToConfirm });
     expect([...host.querySelectorAll("button")].every((b) => b.disabled)).toBe(true);
   });
+  it("can reopen a cancelled payment form without clearing the claim or reloading", async () => {
+    const props = mount({ paymentToConfirm: true, confirmationOpensForm: true });
+    await click("Confirm payment received");
+    expect(button("Confirm payment received").disabled).toBe(false);
+    await click("Confirm payment received");
+    expect(props.onConfirmPaymentReceived).toHaveBeenCalledTimes(2);
+    expect(props.onNotReceivedResumeChasing).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("Payment to confirm");
+  });
+
 });
