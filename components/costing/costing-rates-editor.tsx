@@ -10,13 +10,13 @@ export function CostingRatesEditor({ value, onChange, onSave, saving }: CostingR
   const modifyMachine = (id: string, patch: Partial<CostingMachine>) => change({ machines: value.machines.map(m => m.id === id ? { ...m, ...patch } : m) });
   return <section aria-label="Costing rates" className="space-y-4">
     <h2 className="text-lg font-semibold">Costing rates</h2>
-    <p className="text-sm">All prices are in pounds. Set your materials and machines before pricing a quote.</p>
+    <p className="text-sm">All prices are in pounds. Set your materials and machines before pricing a quote. Profit added is a percentage of the cost: £100 cost plus 20% gives a £120 price before VAT.</p>
     <h3 className="font-medium">Materials</h3>
     {value.materials.map(m => <div key={m.id} className="grid gap-2 rounded border p-3 sm:grid-cols-4">
       <input aria-label={'Material name ' + m.id} className="border p-2" value={m.name} onChange={e => modifyMaterial(m.id, { name: e.target.value })} />
       <select aria-label={'Material unit ' + m.id} value={m.unit} onChange={e => modifyMaterial(m.id, { unit: e.target.value as 'kg' | 'each' })}><option value="kg">Per kg</option><option value="each">Each</option></select>
       {input('Price £ ' + m.id, m.price, price => modifyMaterial(m.id, { price }))}
-      {input('Scrap % ' + m.id, m.scrapPct, scrapPct => modifyMaterial(m.id, { scrapPct }))}
+      {input('Extra material for waste % ' + m.id, m.scrapPct, scrapPct => modifyMaterial(m.id, { scrapPct }))}
       <button type="button" onClick={() => change({ materials: value.materials.filter(x => x.id !== m.id) })}>Remove material</button>
     </div>)}
     <button type="button" onClick={() => change({ materials: [...value.materials, { id: crypto.randomUUID(), name: '', unit: 'kg', price: 0, scrapPct: 5 }] })}>Add material</button>
@@ -30,8 +30,8 @@ export function CostingRatesEditor({ value, onChange, onSave, saving }: CostingR
     <div className="grid gap-3 sm:grid-cols-2">
       {input('Labour £ per hour', value.labourPerHour, labourPerHour => change({ labourPerHour }))}
       {input('Programming £ per hour', value.programmingPerHour, programmingPerHour => change({ programmingPerHour }))}
-      {input('Overhead %', value.overheadPct, overheadPct => change({ overheadPct }))}
-      {input('Margin %', value.marginPct, marginPct => change({ marginPct }))}
+      {input('Other running costs %', value.overheadPct, overheadPct => change({ overheadPct }))}
+      {input('Profit added %', value.marginPct, marginPct => change({ marginPct }))}
     </div>
     {onSave && <button type="button" disabled={saving} onClick={onSave}>Save costing rates</button>}
   </section>;

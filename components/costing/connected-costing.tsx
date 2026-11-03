@@ -27,7 +27,7 @@ function useSavedRates() {
    setLoading(true);
    const result=await loadCostingRates(supabase);
    if(result.status==='ok'){setStored(result.rates);setError('');}
-   else {setStored(null);setError(result.status==='not_applied'?"Costing is unavailable until its database update is applied.":result.message);}
+   else {setStored(null);setError(result.status==='not_applied'?"Costing is not set up yet. Ask the person who looks after Tolra.":result.message);}
    setLoading(false);
  },[]);
  useEffect(()=>{void reload();},[reload]);
