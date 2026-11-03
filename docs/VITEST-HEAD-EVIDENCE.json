@@ -1,0 +1,210 @@
+{
+  "ci": [
+    {
+      "pr": 153,
+      "sha": "5d6b2540f82c50fccc1789dfac9799a851a1a172",
+      "branch": "chatgpt2/chase-approval-atomic",
+      "base": "chatgpt2/chase-followup",
+      "web": "success",
+      "status": "completed",
+      "job": 125725640111,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41577754413/job/125725640111",
+      "checkout": "b06a2a76a9fe4da892d2dae6b78bf13d514a73fa",
+      "headTree": "0b24c8a07a596bfdcabf15e52b087d0b978979f8",
+      "testTree": "0b24c8a07a596bfdcabf15e52b087d0b978979f8",
+      "treeEqual": true,
+      "totals": [
+        "Test Files  372 passed (372)",
+        "Tests  5024 passed (5024)"
+      ],
+      "failures": []
+    },
+    {
+      "pr": 154,
+      "sha": "e996332ee4f0f51d223e08c8277406f5c6b3f1e6",
+      "branch": "chatgpt2/atomic-sql-tests",
+      "base": "chatgpt2/chase-approval-atomic",
+      "web": "success",
+      "status": "completed",
+      "job": 125726773320,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41578114989/job/125726773320",
+      "checkout": "754d247adec89936ffbeae76336377aeee7785d9",
+      "headTree": "a677baabc7d1736156b50947f64845a72e3e5777",
+      "testTree": "a677baabc7d1736156b50947f64845a72e3e5777",
+      "treeEqual": true,
+      "totals": [
+        "Test Files  372 passed (372)",
+        "Tests  5024 passed (5024)"
+      ],
+      "failures": []
+    },
+    {
+      "pr": 155,
+      "sha": "62692db767a7b185c0e7d14139ed3a0a53787f6a",
+      "branch": "chatgpt2/costing-wiring-atomic",
+      "base": "chatgpt/costing-wiring",
+      "web": "success",
+      "status": "completed",
+      "job": 125747175339,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41584630432/job/125747175339",
+      "checkout": "914a7c59dd777cdbec7cbd782df9a7e0472e104d",
+      "headTree": "0a74684902131fc4723e2338925d4fe3f092893c",
+      "testTree": "0a74684902131fc4723e2338925d4fe3f092893c",
+      "treeEqual": true,
+      "totals": [
+        "Test Files  372 passed (372)",
+        "Tests  5076 passed | 412 skipped (5488)"
+      ],
+      "failures": []
+    },
+    {
+      "pr": 156,
+      "sha": "a13ff77ee1d85840f9bb37c87f5aae676a26a84a",
+      "branch": "chatgpt2/paid-claim-adapter-sender",
+      "base": "chatgpt/paid-claim-adapter",
+      "web": "success",
+      "status": "completed",
+      "job": 125728653857,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41578694180/job/125728653857",
+      "checkout": "dac3f07de1bce9123cb5db543696ed87ddc4cc8c",
+      "headTree": "9e54f4c00f5a5b69902585bd7c2eb7f0576c73eb",
+      "testTree": "9e54f4c00f5a5b69902585bd7c2eb7f0576c73eb",
+      "treeEqual": true,
+      "totals": [
+        "Test Files  367 passed (367)",
+        "Tests  4983 passed (4983)"
+      ],
+      "failures": []
+    },
+    {
+      "pr": 157,
+      "sha": "04598b451b019a986414e5bc92d596a5257c67fd",
+      "branch": "chatgpt2/paid-claim-reconcile",
+      "base": "main",
+      "web": "success",
+      "status": "completed",
+      "job": 125729476982,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41578950642/job/125729476982",
+      "checkout": "6d5ac23737b7ff8110e0967db58697326056d42b",
+      "headTree": "7f66157b893d55339a34888cc9d6e40d1dc09f4f",
+      "testTree": "7f66157b893d55339a34888cc9d6e40d1dc09f4f",
+      "treeEqual": true,
+      "totals": [
+        "Test Files  373 passed (373)",
+        "Tests  5117 passed (5117)"
+      ],
+      "failures": []
+    },
+    {
+      "pr": 158,
+      "sha": "63abc9c1a648c8969289bc696b7907a097e9e138",
+      "branch": "chatgpt2/bank-csv-reconcile",
+      "base": "main",
+      "web": "success",
+      "status": "completed",
+      "job": 125730340757,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41579229222/job/125730340757",
+      "checkout": "fccf344d9758caa42edfe5abdea2ddf1bb2d4d54",
+      "headTree": "8256588fcf4e1e325da6ed64ee792d3054859220",
+      "testTree": "8256588fcf4e1e325da6ed64ee792d3054859220",
+      "treeEqual": true,
+      "totals": [
+        "Test Files  372 passed (372)",
+        "Tests  5051 passed (5051)"
+      ],
+      "failures": []
+    }
+  ],
+  "local": [
+    {
+      "pr": 153,
+      "sha": "5d6b2540f82c50fccc1789dfac9799a851a1a172",
+      "branch": "chatgpt2/chase-approval-atomic",
+      "base": "chatgpt2/chase-followup",
+      "node": "22.23.4 via npm exec",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 300.1,
+      "totals": [],
+      "failures": [],
+      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/153.log",
+      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/153",
+      "summary_present": false
+    },
+    {
+      "pr": 154,
+      "sha": "e996332ee4f0f51d223e08c8277406f5c6b3f1e6",
+      "branch": "chatgpt2/atomic-sql-tests",
+      "base": "chatgpt2/chase-approval-atomic",
+      "node": "22.23.4 via npm exec",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 300.1,
+      "totals": [],
+      "failures": [],
+      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/154.log",
+      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/154",
+      "summary_present": false
+    },
+    {
+      "pr": 155,
+      "sha": "62692db767a7b185c0e7d14139ed3a0a53787f6a",
+      "branch": "chatgpt2/costing-wiring-atomic",
+      "base": "chatgpt/costing-wiring",
+      "node": "22.23.4 via npm exec",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 300.1,
+      "totals": [],
+      "failures": [],
+      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/155.log",
+      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/155",
+      "summary_present": false
+    },
+    {
+      "pr": 156,
+      "sha": "a13ff77ee1d85840f9bb37c87f5aae676a26a84a",
+      "branch": "chatgpt2/paid-claim-adapter-sender",
+      "base": "chatgpt/paid-claim-adapter",
+      "node": "22.23.4 via npm exec",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 300.1,
+      "totals": [],
+      "failures": [],
+      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/156.log",
+      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/156",
+      "summary_present": false
+    },
+    {
+      "pr": 157,
+      "sha": "04598b451b019a986414e5bc92d596a5257c67fd",
+      "branch": "chatgpt2/paid-claim-reconcile",
+      "base": "main",
+      "node": "22.23.4 via npm exec",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 300.1,
+      "totals": [],
+      "failures": [],
+      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/157.log",
+      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/157",
+      "summary_present": false
+    },
+    {
+      "pr": 158,
+      "sha": "63abc9c1a648c8969289bc696b7907a097e9e138",
+      "branch": "chatgpt2/bank-csv-reconcile",
+      "base": "main",
+      "node": "22.23.4 via npm exec",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 300.1,
+      "totals": [],
+      "failures": [],
+      "log": "/workspace/scratch/22892c6d1d92/exact-suite-32/158.log",
+      "worktree": "/workspace/scratch/22892c6d1d92/exact-suite-32/158",
+      "summary_present": false
+    }
+  ]
+}
