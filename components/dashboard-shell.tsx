@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { CompanySetupGuide } from "@/components/company-setup-guide";
 import { DisplayNamePrompt } from "@/components/display-name";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Sidebar } from "@/components/sidebar";
@@ -116,7 +117,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
       <SupportBanner />
       <div className="min-h-screen desk:pl-[248px] print:min-h-0 print:pl-0">
         <Topbar />
-        <main className="w-full px-4 py-6 md:px-6 md:py-8 desk:px-8 desk:py-8 print:p-0"><DisplayNamePrompt /><OfflineBanner />{children}</main>
+        <main className="w-full px-4 py-6 md:px-6 md:py-8 desk:px-8 desk:py-8 print:p-0"><DisplayNamePrompt /><OfflineBanner /><CompanySetupGuide key={profile?.organization_id ?? "none"} />{children}</main>
       </div>
     </div>
   );

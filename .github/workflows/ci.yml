@@ -201,10 +201,26 @@ jobs:
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
-        run: npm run test:db
+        # BRANCH-ONLY (#236, combined N; Rhys, Tue 3 Nov): the N5 proof needs the N5 proposal applied first, so it runs in the step below, after
+        # this baseline. This edit must not travel to main with the branch; main keeps `npm run test:db`.
+        run: npx vitest run -c vitest.db.config.ts --exclude tests/db/company-setup-isolation.test.ts
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         run: scripts/upgrade-rehearsal.sh 013
+      # BRANCH-ONLY (#236; remove before this reaches main). Applies the N5 proposal to the disposable local database only (loopback guard below;
+      # never a hosted project), reloads the schema cache, checks every verification row is true, then runs the N5 isolation proof.
+      - name: "N5 proposal on the throwaway database, then its proof (branch-only)"
+        # !cancelled(): still runs when the baseline above failed, so the N5 proof reports even while another failure is open (the job stays red).
+        if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
+        run: |
+          set -euo pipefail
+          set -a; . ./.env.test.local; set +a
+          case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not a loopback database" >&2; exit 1 ;; esac
+          psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f supabase/proposals/n5_company_setup.sql
+          psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+          psql "$TEST_DATABASE_URL" -XAt -F '|' -v ON_ERROR_STOP=1 -f supabase/verify/n5_company_setup.sql |
+            awk -F '|' '{print} NF != 2 || $2 != "t" {bad=1} END {exit (bad || NR == 0)}'
+          npx vitest run -c vitest.db.config.ts tests/db/company-setup-isolation.test.ts
       - name: Build against the disposable backend
         run: |
           set -a; . ./.env.test.local; set +a
