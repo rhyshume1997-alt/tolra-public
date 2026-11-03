@@ -1,0 +1,2103 @@
+{
+  "date": "2026-11-02",
+  "node": "24.22.1",
+  "command": "node node_modules/vitest/vitest.mjs run --pool=threads --poolOptions.threads.singleThread --no-file-parallelism",
+  "release_status": "BLOCKED: no clean whole-suite pass",
+  "runs": [
+    {
+      "branch": "chatgpt2/approvals-send-ui",
+      "sha": "0e6fede2537ac9fb79347eb171345f625c26c0ea",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 366,
+      "reported_files": 365,
+      "reported_tests": 4916,
+      "reported_passed": 4636,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/bank-csv-formats",
+      "sha": "6c8c7c81b908dbbd8d387262567866c7ae4e2e92",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 366,
+      "reported_files": 366,
+      "reported_tests": 4786,
+      "reported_passed": 4506,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/chase-settings-ui",
+      "sha": "c1d141700fb5131d49030badb8a9eefaed2d2464",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 364,
+      "reported_files": 363,
+      "reported_tests": 4731,
+      "reported_passed": 4451,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/chase-wiring",
+      "sha": "9f08f96dd52cfd9cbffdde913b83a0c9286d32a8",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 371,
+      "reported_files": 371,
+      "reported_tests": 4997,
+      "reported_passed": 4717,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/costing-playwright",
+      "sha": "9b22b299914a19bcc666c51400b0c1a248ecfc8e",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 369,
+      "reported_files": 369,
+      "reported_tests": 5239,
+      "reported_passed": 4547,
+      "reported_failed": 280,
+      "reported_skipped": 412,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/customer-says-paid-ui",
+      "sha": "3c386f5fdc8cfb79a4ee7d546901a41a3aaa6166",
+      "exit_code": -9,
+      "timed_out": false,
+      "seconds": 15.5,
+      "expected_files": 366,
+      "reported_files": 89,
+      "reported_tests": 2490,
+      "reported_passed": 2271,
+      "reported_failed": 219,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "Process terminated by signal 9; exact resource/host cause unconfirmed"
+    },
+    {
+      "branch": "chatgpt2/e2e-chasing",
+      "sha": "718baa8b245655ce8e14e00d2f2c416a0adee994",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 371,
+      "reported_files": 371,
+      "reported_tests": 4997,
+      "reported_passed": 4717,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/full-suite-run",
+      "sha": "a546c3a9b37ad53d3ab235b1c545b577b84db9f5",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 365,
+      "reported_files": 365,
+      "reported_tests": 4916,
+      "reported_passed": 4636,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/go-live-day-checklist",
+      "sha": "fa2c266778630929f2872b5178f8efc20afe0d1b",
+      "exit_code": -9,
+      "timed_out": false,
+      "seconds": 21.0,
+      "expected_files": 365,
+      "reported_files": 108,
+      "reported_tests": 2765,
+      "reported_passed": 2504,
+      "reported_failed": 261,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        }
+      ],
+      "cause": "Process terminated by signal 9; exact resource/host cause unconfirmed"
+    },
+    {
+      "branch": "chatgpt2/paid-claim-more-tests",
+      "sha": "3b9713c3bb52423770bc138a156906ddf994f66c",
+      "exit_code": -9,
+      "timed_out": false,
+      "seconds": 19.9,
+      "expected_files": 365,
+      "reported_files": 96,
+      "reported_tests": 2467,
+      "reported_passed": 2206,
+      "reported_failed": 261,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        }
+      ],
+      "cause": "Process terminated by signal 9; exact resource/host cause unconfirmed"
+    },
+    {
+      "branch": "chatgpt2/plain-english-pass",
+      "sha": "e11dc77555f434eb1ca4b1328709ffd4a39f021e",
+      "exit_code": -9,
+      "timed_out": false,
+      "seconds": 26.3,
+      "expected_files": 369,
+      "reported_files": 160,
+      "reported_tests": 3346,
+      "reported_passed": 3068,
+      "reported_failed": 278,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        }
+      ],
+      "cause": "Process terminated by signal 9; exact resource/host cause unconfirmed"
+    },
+    {
+      "branch": "chatgpt2/pr-review",
+      "sha": "a9b71f67ad37336a5bb550b3ce97bd4b7ba623b9",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 367,
+      "reported_files": 367,
+      "reported_tests": 5232,
+      "reported_passed": 4540,
+      "reported_failed": 280,
+      "reported_skipped": 412,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/receivables-tests",
+      "sha": "77643f52a8232da3b60268e39c898580a99b96fd",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 366,
+      "reported_files": 366,
+      "reported_tests": 4956,
+      "reported_passed": 4676,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/sliq-importer-tests",
+      "sha": "51de46c4eb0aeae89d9ff82e19650d7eaa88abd8",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 366,
+      "reported_files": 366,
+      "reported_tests": 4952,
+      "reported_passed": 4658,
+      "reported_failed": 294,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-import-edge-cases.test.ts",
+          "tests": 36,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 22
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/timesheet-email-tests",
+      "sha": "f6f76ff3cf3fe8abd7c6409018dc6e259dfb7ca7",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 366,
+      "reported_files": 366,
+      "reported_tests": 4963,
+      "reported_passed": 4683,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    },
+    {
+      "branch": "chatgpt2/walkthrough-docs",
+      "sha": "40747158fbd5ae53a7e03ca1c379803fcd0b9d5b",
+      "exit_code": -9,
+      "timed_out": false,
+      "seconds": 40.8,
+      "expected_files": 365,
+      "reported_files": 365,
+      "reported_tests": 4916,
+      "reported_passed": 4636,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "Process terminated by signal 9; exact resource/host cause unconfirmed"
+    },
+    {
+      "branch": "main",
+      "sha": "a546c3a9b37ad53d3ab235b1c545b577b84db9f5",
+      "exit_code": -15,
+      "timed_out": true,
+      "seconds": 120.1,
+      "expected_files": 365,
+      "reported_files": 365,
+      "reported_tests": 4916,
+      "reported_passed": 4636,
+      "reported_failed": 280,
+      "reported_skipped": 0,
+      "summary_present": false,
+      "failed_files": [
+        {
+          "file": "tests/unit/sliq-archive.test.ts",
+          "tests": 48,
+          "failed": 46,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile.test.ts",
+          "tests": 49,
+          "failed": 49,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-import.test.ts",
+          "tests": 39,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 23
+        },
+        {
+          "file": "tests/unit/sliq-import-formats.test.ts",
+          "tests": 24,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 16
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-output.test.ts",
+          "tests": 19,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-protect.test.ts",
+          "tests": 16,
+          "failed": 14,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-safety.test.ts",
+          "tests": 14,
+          "failed": 11,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-money.test.ts",
+          "tests": 17,
+          "failed": 17,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-offline.test.ts",
+          "tests": 35,
+          "failed": 28,
+          "skipped": 0,
+          "passed": 7
+        },
+        {
+          "file": "tests/unit/sliq-reconcile-isolation.test.ts",
+          "tests": 13,
+          "failed": 13,
+          "skipped": 0,
+          "passed": 0
+        },
+        {
+          "file": "tests/unit/check-migrations.test.ts",
+          "tests": 29,
+          "failed": 26,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/marketing-home.test.ts",
+          "tests": 18,
+          "failed": 16,
+          "skipped": 0,
+          "passed": 2
+        },
+        {
+          "file": "tests/unit/offline-replay-after-revocation.test.ts",
+          "tests": 14,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 6
+        },
+        {
+          "file": "tests/unit/session-ended.test.ts",
+          "tests": 12,
+          "failed": 1,
+          "skipped": 0,
+          "passed": 11
+        },
+        {
+          "file": "tests/unit/offline-sync-authority.test.ts",
+          "tests": 11,
+          "failed": 8,
+          "skipped": 0,
+          "passed": 3
+        },
+        {
+          "file": "tests/unit/no-network.test.ts",
+          "tests": 2,
+          "failed": 2,
+          "skipped": 0,
+          "passed": 0
+        }
+      ],
+      "cause": "120-second timeout after reported output; no clean final summary"
+    }
+  ]
+}
