@@ -7,13 +7,6 @@ DO $$ BEGIN
  RAISE EXCEPTION 'Disconnect cloud connections and review/clear their expired states before rollback; no data was removed.';
  END IF;
 END $$;
-DROP FUNCTION public.accounting_cloud_connections_ready();
-ALTER TABLE public.integration_connections DROP CONSTRAINT integration_connections_provider_check;
-ALTER TABLE public.integration_connections ADD CONSTRAINT integration_connections_provider_check CHECK (provider IN ('xero','microsoft'));
-ALTER TABLE public.integration_secrets DROP CONSTRAINT integration_secrets_provider_check;
-ALTER TABLE public.integration_secrets ADD CONSTRAINT integration_secrets_provider_check CHECK (provider IN ('xero','microsoft'));
-ALTER TABLE public.integration_oauth_states DROP CONSTRAINT integration_oauth_states_provider_check;
-ALTER TABLE public.integration_oauth_states ADD CONSTRAINT integration_oauth_states_provider_check CHECK (provider IN ('xero','microsoft'));
 CREATE OR REPLACE FUNCTION public.integration_oauth_start(p_provider TEXT, p_state_hash TEXT, p_verifier_enc TEXT)
 RETURNS UUID
 LANGUAGE plpgsql
@@ -53,4 +46,11 @@ DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.credit_notes;
 CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.credit_notes
   FOR EACH ROW EXECUTE FUNCTION public.integration_enqueue();
 DROP FUNCTION public.accounting_cloud_enqueue();
+DROP FUNCTION public.accounting_cloud_connections_ready();
+ALTER TABLE public.integration_connections DROP CONSTRAINT integration_connections_provider_check;
+ALTER TABLE public.integration_connections ADD CONSTRAINT integration_connections_provider_check CHECK (provider IN ('xero','microsoft'));
+ALTER TABLE public.integration_secrets DROP CONSTRAINT integration_secrets_provider_check;
+ALTER TABLE public.integration_secrets ADD CONSTRAINT integration_secrets_provider_check CHECK (provider IN ('xero','microsoft'));
+ALTER TABLE public.integration_oauth_states DROP CONSTRAINT integration_oauth_states_provider_check;
+ALTER TABLE public.integration_oauth_states ADD CONSTRAINT integration_oauth_states_provider_check CHECK (provider IN ('xero','microsoft'));
 COMMIT;

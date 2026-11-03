@@ -5,44 +5,7 @@ BEGIN;
 -- Reuse the existing company-bound OAuth state, tenant uniqueness, encrypted secrets and refresh leases.
 -- Only connections/secrets/states accept the new providers. Mapping/contact/send tables remain Xero-only.
 -- Prerequisite: 107. New app credentials are environment-only. No provider subscription is purchased.
-ALTER TABLE public.integration_connections DROP CONSTRAINT integration_connections_provider_check;
-ALTER TABLE public.integration_connections ADD CONSTRAINT integration_connections_provider_check CHECK (provider IN ('xero', 'microsoft', 'sage', 'quickbooks'));
-ALTER TABLE public.integration_secrets DROP CONSTRAINT integration_secrets_provider_check;
-ALTER TABLE public.integration_secrets ADD CONSTRAINT integration_secrets_provider_check CHECK (provider IN ('xero', 'microsoft', 'sage', 'quickbooks'));
-ALTER TABLE public.integration_oauth_states DROP CONSTRAINT integration_oauth_states_provider_check;
-ALTER TABLE public.integration_oauth_states ADD CONSTRAINT integration_oauth_states_provider_check CHECK (provider IN ('xero', 'microsoft', 'sage', 'quickbooks'));
-CREATE OR REPLACE FUNCTION public.integration_oauth_start(p_provider TEXT, p_state_hash TEXT, p_verifier_enc TEXT)
-RETURNS UUID
-LANGUAGE plpgsql
-VOLATILE
-SECURITY DEFINER
-SET search_path = pg_catalog, public
-AS $$
-DECLARE
-  v_org UUID := public.current_user_organization_id();
-  v_uid UUID := auth.uid();
-  v_id  UUID;
-BEGIN
-  PERFORM public.assert_privileged_aal();
-  IF v_org IS NULL OR v_uid IS NULL OR NOT public.has_org_role(ARRAY['admin'])
-     OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
-    RAISE EXCEPTION 'Only the company''s own admins can connect it.' USING ERRCODE = '42501';
-  END IF;
-  IF p_provider IS NULL OR p_provider NOT IN ('xero', 'microsoft', 'sage', 'quickbooks') THEN
-    RAISE EXCEPTION 'Unknown provider.' USING ERRCODE = '22023';
-  END IF;
-  DELETE FROM public.integration_oauth_states s
-  WHERE s.organization_id = v_org AND (s.consumed_at IS NOT NULL OR s.expires_at < now());
-  IF (SELECT count(*) FROM public.integration_oauth_states s WHERE s.organization_id = v_org AND s.user_id = v_uid) >= 5 THEN
-    RAISE EXCEPTION 'Too many Connect attempts are open: wait 10 minutes and try again.' USING ERRCODE = '54000', HINT = 'too_many_attempts';
-  END IF;
-  INSERT INTO public.integration_oauth_states (organization_id, provider, user_id, state_hash, verifier_enc, expires_at)
-  VALUES (v_org, p_provider, v_uid, p_state_hash, p_verifier_enc, now() + interval '10 minutes')
-  RETURNING id INTO v_id;
-  RETURN v_id;
-END
-$$;
-
+-- Define new functions before altering existing objects (upgrade rehearsal ordering).
 -- Read-only connections must never enqueue an outbound accounting send.
 -- Keep 084 integration_enqueue byte-for-byte intact: its replay guard checks that body.
 -- Own a separate trigger function and rebind only the same two document triggers.
@@ -84,16 +47,55 @@ BEGIN
 END
 $$;
 REVOKE ALL ON FUNCTION public.accounting_cloud_enqueue() FROM PUBLIC, anon, authenticated;
+CREATE OR REPLACE FUNCTION public.accounting_cloud_connections_ready()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public
+AS $$ SELECT TRUE $$;
+REVOKE ALL ON FUNCTION public.accounting_cloud_connections_ready() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.accounting_cloud_connections_ready() TO service_role;
+
+ALTER TABLE public.integration_connections DROP CONSTRAINT integration_connections_provider_check;
+ALTER TABLE public.integration_connections ADD CONSTRAINT integration_connections_provider_check CHECK (provider IN ('xero', 'microsoft', 'sage', 'quickbooks'));
+ALTER TABLE public.integration_secrets DROP CONSTRAINT integration_secrets_provider_check;
+ALTER TABLE public.integration_secrets ADD CONSTRAINT integration_secrets_provider_check CHECK (provider IN ('xero', 'microsoft', 'sage', 'quickbooks'));
+ALTER TABLE public.integration_oauth_states DROP CONSTRAINT integration_oauth_states_provider_check;
+ALTER TABLE public.integration_oauth_states ADD CONSTRAINT integration_oauth_states_provider_check CHECK (provider IN ('xero', 'microsoft', 'sage', 'quickbooks'));
+CREATE OR REPLACE FUNCTION public.integration_oauth_start(p_provider TEXT, p_state_hash TEXT, p_verifier_enc TEXT)
+RETURNS UUID
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_org UUID := public.current_user_organization_id();
+  v_uid UUID := auth.uid();
+  v_id  UUID;
+BEGIN
+  PERFORM public.assert_privileged_aal();
+  IF v_org IS NULL OR v_uid IS NULL OR NOT public.has_org_role(ARRAY['admin'])
+     OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
+    RAISE EXCEPTION 'Only the company''s own admins can connect it.' USING ERRCODE = '42501';
+  END IF;
+  IF p_provider IS NULL OR p_provider NOT IN ('xero', 'microsoft', 'sage', 'quickbooks') THEN
+    RAISE EXCEPTION 'Unknown provider.' USING ERRCODE = '22023';
+  END IF;
+  DELETE FROM public.integration_oauth_states s
+  WHERE s.organization_id = v_org AND (s.consumed_at IS NOT NULL OR s.expires_at < now());
+  IF (SELECT count(*) FROM public.integration_oauth_states s WHERE s.organization_id = v_org AND s.user_id = v_uid) >= 5 THEN
+    RAISE EXCEPTION 'Too many Connect attempts are open: wait 10 minutes and try again.' USING ERRCODE = '54000', HINT = 'too_many_attempts';
+  END IF;
+  INSERT INTO public.integration_oauth_states (organization_id, provider, user_id, state_hash, verifier_enc, expires_at)
+  VALUES (v_org, p_provider, v_uid, p_state_hash, p_verifier_enc, now() + interval '10 minutes')
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END
+$$;
+
 DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.invoices;
 CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.invoices
   FOR EACH ROW EXECUTE FUNCTION public.accounting_cloud_enqueue();
 DROP TRIGGER IF EXISTS zz_integration_enqueue ON public.credit_notes;
 CREATE TRIGGER zz_integration_enqueue AFTER UPDATE OF status ON public.credit_notes
   FOR EACH ROW EXECUTE FUNCTION public.accounting_cloud_enqueue();
-CREATE OR REPLACE FUNCTION public.accounting_cloud_connections_ready()
-RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public
-AS $$ SELECT TRUE $$;
-REVOKE ALL ON FUNCTION public.accounting_cloud_connections_ready() FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.accounting_cloud_connections_ready() TO service_role;
 
 COMMIT;

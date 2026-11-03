@@ -30,3 +30,12 @@ describe("144 does not poison the 044-onwards replay before labour/network migra
     expect(rollback.indexOf("EXECUTE FUNCTION public.integration_enqueue()")).toBeLessThan(rollback.indexOf("DROP FUNCTION public.accounting_cloud_enqueue()"));
   });
 });
+
+it("144 creates both new functions before changing existing objects; rollback removes them after restoring trigger targets", () => {
+  const firstAlter = added.indexOf("ALTER TABLE");
+  expect(added.indexOf("CREATE OR REPLACE FUNCTION public.accounting_cloud_enqueue()")).toBeLessThan(firstAlter);
+  expect(added.indexOf("CREATE OR REPLACE FUNCTION public.accounting_cloud_connections_ready()")).toBeLessThan(firstAlter);
+  expect(added.indexOf("CREATE OR REPLACE FUNCTION public.accounting_cloud_enqueue()")).toBeLessThan(added.indexOf("CREATE OR REPLACE FUNCTION public.integration_oauth_start("));
+  const rollback = read("supabase/release/144_accounting_connections.rollback.sql");
+  expect(rollback.lastIndexOf("EXECUTE FUNCTION public.integration_enqueue()")).toBeLessThan(rollback.indexOf("DROP FUNCTION public.accounting_cloud_enqueue()"));
+});
