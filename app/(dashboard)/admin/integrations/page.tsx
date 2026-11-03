@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 
+import { AiConnectionCard } from "@/components/integrations/ai-connection-card";
 import { XeroBatchCard } from "@/components/integrations/xero-batch-card";
 import { IntegrationsPanel } from "@/components/integrations-panel";
 import { RoleGate } from "@/components/role-gate";
@@ -17,6 +18,7 @@ export default function AdminIntegrationsPage() {
         </div>
         <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
           <IntegrationsPanel />
+          <AiConnectionCard />
           <XeroBatchCard />
         </Suspense>
       </div>
