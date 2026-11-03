@@ -1,0 +1,24 @@
+# Chase atomic settings: 14 review evidence items
+
+REVIEW ONLY, NOT RUN. This is not SQL, release or merge approval. AO packages the existing #207-line function against final #247 fe7514f as separate phase 147, ordered after 146 in this candidate. Its actual prerequisite is every check in the frozen 138 verification, not costing or a browser fixture. Costing atomic settings stays OUT because costing 143 is not in this candidate.
+
+Assumption: the literal 14-item reviewer text was not present in #207's public body, reviews or inline comments when read. This list reconstructs 14 separately recordable items from Rhys's stated conditions and the function contract; it is not represented as a verbatim reviewer quotation. Reconcile the numbering with the reviewer before acceptance. All DB/runtime evidence is still blocked here.
+
+Code revision: ____ Package checksums: ____ Disposable backend identity: ____ Tester/date: ____
+
+1. [ ] **AS-01 Package and prerequisite.** Check every SHA-256 in 147_chase_settings_atomic.checksums.json, exact code/plan/preflight revision and the 138 body/ACL/RLS verification. Missing or altered 138, an existing conflicting RPC or second install must refuse atomically. Result/evidence: ____
+2. [ ] **AS-02 Atomic successful save.** In one call add, change and remove steps. Reload through a separate session: only the complete requested final set appears, never an intermediate partial set. Result/evidence: ____
+3. [ ] **AS-03 Failed save changes nothing.** Force failure after deletion/update has begun in a disposable fault fixture. Compare every prior row/ID and related history/audit prefix after rollback; no deletion or partial insertion may survive. Result/evidence: ____
+4. [ ] **AS-04 Two companies.** With reused offsets/names, save A and compare B's full settings/history before/after; foreign p_org must refuse without writes. Read and save again as B to prove separation both ways. Result/evidence: ____
+5. [ ] **AS-05 Own admin positive control.** Own-company admin can save valid steps and read the exact returned set. Existing IDs for retained offsets stay stable. Result/evidence: ____
+6. [ ] **AS-06 Own office positive control.** Own-company office can perform the same permitted save without acquiring admin privileges or changing another company's steps. Result/evidence: ____
+7. [ ] **AS-07 Unauthorised roles.** Workshop, viewer, anonymous and no-valid-session callers refuse; compare rows after every attempt. Direct table RLS and guards remain unchanged. Result/evidence: ____
+8. [ ] **AS-08 Support and MFA.** Read-only and elevated support both refuse. A privileged caller missing required MFA refuses. A company admin cannot spoof another session/company. Every failed attempt changes nothing. Result/evidence: ____
+9. [ ] **AS-09 Real two-session race.** Two independent DB connections save different sets from the same expected snapshot, including initially empty settings. Hold/release the actual advisory/row locks: one wins, the stale one gets 40001; no lost update or mixed set. A Promise over a fake DB is not proof. Result/evidence: ____
+10. [ ] **AS-10 Invalid inputs.** Reject null/non-array payloads, missing/null fields, fractional/oversized/non-number days, outside -60 to 365, wrong tone/day combinations, duplicate offsets and more than 10 steps. Each refusal preserves full prior rows. Result/evidence: ____
+11. [ ] **AS-11 Stale expected snapshot.** After another session saves, the old expected IDs/days/tones must refuse with 40001 and clear reload wording. A fresh expected snapshot can then save. Result/evidence: ____
+12. [ ] **AS-12 History and references.** Retained offsets keep IDs; removed offsets follow 138's reviewed FK behaviour while sent history/snapshotted offsets and prior audit evidence remain. Never delete a sent/approved history row to make settings save succeed. Result/evidence: ____
+13. [ ] **AS-13 Post-release verification.** Every 147 verification row is true and preflight reports its exact body, invoker security, pinned path and intended API grants. Verify no RLS/policy/table guard broadened and no costing function was installed. Result/evidence: ____
+14. [ ] **AS-14 Rollback preserves settings.** Stop clients first. Rollback removes only the exact reviewed RPC, without CASCADE; altered/missing function or unexpected dependencies refuse. Compare both companies' full settings/IDs/history/audit before/after: saved settings remain intact. Clients must not fall back to delete-then-insert partial saves. Result/evidence: ____
+
+The current 145/146 test fixture is not changed to install 147 automatically. This separate package needs review, integration and authorised disposable install/verify/race/rollback evidence first. No SQL was run here. Keep every failed or unrun item visible; do not merge #207/#247 or apply SQL on the strength of unit packaging checks.

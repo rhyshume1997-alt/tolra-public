@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Read-only: every proposal has a preflight disposition; post-144 release files
 // preserve the canonical SQL and are deliberately outside frozen baseline replay.
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,9 +28,23 @@ export function checkReleasePlan(root) {
     after = phase.number;
     if (!preflight.includes(`'${phase.marker}'`)) problems.push(`Release marker missing: ${phase.marker}`);
     for (const field of ['source','release','rollback','verify']) if (!existsSync(path.join(root,phase[field]))) problems.push(`Missing ${field}: ${phase[field]}`);
+    if (phase.checksums) {
+      if (!existsSync(path.join(root,phase.checksums))) problems.push(`Missing checksums: ${phase.checksums}`);
+      else {
+        const hashes=JSON.parse(read(phase.checksums));
+        for (const file of [phase.source,phase.release,phase.rollback,phase.verify,'supabase/verify/chase_steps_138.sql','supabase/verify/release_preflight.sql','supabase/release-plan.json']) {
+          if (!existsSync(path.join(root,file)) || hashes.sha256?.[file] !== createHash('sha256').update(read(file)).digest('hex')) problems.push(`Release checksum mismatch: ${file}`);
+        }
+      }
+    }
     if (existsSync(path.join(root,phase.release))) {
       const source = read(phase.source);
-      const body = source.slice(source.indexOf('BEGIN;')+6,source.lastIndexOf('COMMIT;')).trim();
+      // The existing browser fixture owns its transaction. Keep that canonical
+      // proposal unwrapped; production packaging makes only its DDL one-time
+      // and explicitly removes the service-role API grant. Function body is pinned.
+      const body = phase.source === 'supabase/proposals/builder2_chase_settings_atomic.sql'
+        ? source.trim().replace('CREATE OR REPLACE FUNCTION public.save_chase_steps_atomic','CREATE FUNCTION public.save_chase_steps_atomic').replace('FROM PUBLIC,anon;','FROM PUBLIC,anon,service_role;')
+        : source.slice(source.indexOf('BEGIN;')+6,source.lastIndexOf('COMMIT;')).trim();
       const release = read(phase.release);
       if (!release.includes(body)) problems.push(`Canonical proposal changed without packaging update: ${phase.source}`);
       if (!release.includes('DO $post_release_guard$') || !release.trimEnd().endsWith('COMMIT;')) problems.push(`Missing transactional prerequisite guard: ${phase.release}`);
@@ -41,5 +56,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const problems = checkReleasePlan(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   problems.forEach(p => console.error(`FAIL ${p}`));
   if (problems.length) process.exitCode = 1;
-  else console.log('release-plan: every proposal accounted for; 144 → 145 N5 → 146 N2/cap, no number collisions');
+  else console.log('release-plan: every proposal accounted for; 144 → 145 N5 → 146 N2/cap → 147 chase settings, no costing, no number collisions');
 }
