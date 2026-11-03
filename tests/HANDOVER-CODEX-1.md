@@ -47,8 +47,12 @@ Draft PRs only. No deployment, production SQL, database migration/proposal execu
 | [#240](https://github.com/rhyshume1997-alt/tolra-public/pull/240) | OPEN draft | `codex/q-accounting-company-read-tests` → `codex/o-accounting-combined` | Nine focused tests, typecheck and lint passed; real database/provider execution not run. |
 | [#241](https://github.com/rhyshume1997-alt/tolra-public/pull/241) | OPEN draft | `codex/s-inbound-payment-evidence` → `codex2/j-chasing-combined-main` | 84 focused tests, typecheck and lint passed; live inbound/database execution not run. |
 | [#242](https://github.com/rhyshume1997-alt/tolra-public/pull/242) | OPEN draft | `codex/t-offline-marketing-fonts` → `main` | 20 focused tests, typecheck, full lint and production build passed. Existing optional Resend render warning remains; visual browser comparison not run. |
-| [#244](https://github.com/rhyshume1997-alt/tolra-public/pull/244) | OPEN draft | `codex/u-tolra-demo-seed` → `main` | Five unit tests, typecheck and lint passed; seed plan printed. Writer/database never run. |
+| [#244](https://github.com/rhyshume1997-alt/tolra-public/pull/244) | OPEN draft | `codex/u-tolra-demo-seed` → `main` | SUPERSEDED by #243; no more U work. Earlier five unit tests/types/lint passed; seed plan only, writer never run. |
 | [#245](https://github.com/rhyshume1997-alt/tolra-public/pull/245) | OPEN draft | `codex/v-reviewer-browser-conditions` → `codex2/n1-n6-browser-checks` | Four provider-mock unit tests, typecheck and lint passed. Ten browser cases skipped cleanly with no database; no browser runtime proof. |
+| [#246](https://github.com/rhyshume1997-alt/tolra-public/pull/246) | OPEN draft | `codex/w-codex-1-handover` → `main` | W/AD: this handover. Inventory, links and diff reviewed; documentation only. Database/browser evidence remains unrun. |
+| [#247](https://github.com/rhyshume1997-alt/tolra-public/pull/247) | OPEN draft | `codex/x-final-main-candidate` → `main` | X + AA/AB: latest 5,441 units / 409 files passed; typecheck, targeted lint, release-plan/migration checks and seven SQL syntax parses passed. AA production build passed. No AA merge conflicts. Post-144 phases 145/146 packaged, not applied; Code must rehearse them. |
+| [#248](https://github.com/rhyshume1997-alt/tolra-public/pull/248) | OPEN draft | `codex/z-go-live-manual-checks` → `main` | Z: 35 unique numbered manual steps, expected results and NOT RUN evidence cells reviewed; diff check passed. No manual/runtime checks executed. |
+| [#249](https://github.com/rhyshume1997-alt/tolra-public/pull/249) | OPEN draft | `codex/ac-wipe-kit-proposed-lines` → `main` | AC: nine missing-table rows and four preservation replacements reviewed; six SQL snippets parsed only; diff check passed. Chase-history FK retention blocker remains; no private edit or SQL execution. |
 
 [Handover PR #246](https://github.com/rhyshume1997-alt/tolra-public/pull/246) targets main and changes only this file. State: open draft. Validation: inventory/link review and git diff --check; no runtime changes or runtime tests.
 
@@ -79,13 +83,25 @@ The rebase kept existing PR targets: #234 targets main; #230 targets the #221 br
 - Wording fixes were committed directly to the existing #188 and #194 branches; these were not new PRs. Assertions were kept.
 - The private JNR wipe kit was reviewed read only earlier. Nothing was executed. A real backup/restore rehearsal and operator confirmations remain operational sign-off, not a public-code claim.
 
+## X, Y, Z and AA–AC update
+
+- X/#247 starts from main `68f89ca` and combines #233 → #236 → #237 → #234 → #242 in order. Original X conflicts were only `supabase/verify/release_preflight.sql` (kept both 138/144 markers) and `.github/workflows/ci.yml` (kept baseline rehearsal and both guarded proposal proof stages). X's first full result was 5,428 units and a successful build. Expanded lint found pre-existing CommonJS no-require errors and generated Next types; no rule was weakened to hide them.
+- AA folds #239 (real setup access fix plus role/support tests) and #240 (accounting read isolation tests) into #247. **No conflicts.** AA alone passed 5,437 units, typecheck and production build. Latest application behavior now includes the explicit non-support, own-company admin setup guard. #241/#245 remain separate; no unrequested follow-up was silently included.
+- AB reserves **145 N5 setup → 146 N2/AI cap**, after baseline 144, in `supabase/release-plan.json`. These are explicit one-time post-numbered release phases with transactional guards, exact canonical proposal bodies, rollback/verify copies and preflight markers. Safest-reading assumption: keep them outside the frozen baseline `supabase/migrations/` replay because N2 renames functions required by the unchanged 103/133/134 guards. A future numbered migration reusing 145/146 makes the checker fail; reconcile the plan first. No application/startup auto-install exists.
+- AB's coverage check is integrated into `npm run check:migrations`. Four mutation tests catch new/existing proposals missing from preflight/plan, a deleted marker, numbering/order errors and stale package copies. All proposal SQL files have a preflight disposition, including deferred costing and rollback-only SQL. CI still runs the numbered catalogue/upgrade rehearsal first, then both release phases and all three original setup/AI/race proof files. Legacy preflight AI checks inspect the preserved own-key bodies after 146; a separate marker pins all ten live function bodies and sensitive metadata/grants.
+- Final AA/AB head: `382363a` on #247. **5,441 units / 409 files passed**, typecheck, targeted lint, release-plan/migration checks and seven pure SQL syntax parses passed. AA's production build passed. No database, proposal or release SQL was executed here. Code must still prove phase application, atomic repeat refusal/no-change, reverse rollback, real role isolation/cap race and browser checks. Syntax parsing is not SQL runtime proof. Details: `tests/POST-144-RELEASE.md` and `tests/GO-LIVE-CANDIDATE.md` on #247.
+- Y read the private kit only. AC/#249 publishes proposed lines in `tests/WIPE-KIT-PROPOSED-LINES.md`, with no private IDs/secrets or private edits. Nine missing tables are classified; settings/caps/history stay KEEP and only JNR operational chase pauses are proposed WIPE. Existing AI request/usage and send/email-history rows have preservation replacements. The Xero-only disconnect predicate expands to Sage/QuickBooks. No SQL was run.
+- **Wipe blocker:** kept chase approval rows have a non-null cascading invoice FK and set-null history FKs. There is no delete order that removes parents while keeping those approvals intact. AC proposes an early refusal and leaves the existing KEEP→WIPE guard intact. A reviewer must settle a separately proven parent-retention/archive design before any wipe; never delete approvals, disable FKs or reset numbering to get past the guard. Preserve logins, settings, earlier audit rows and every Marpet/other-company row.
+- Z/#248 adds `tests/MANUAL-CHECKS-GO-LIVE.md`: 35 numbered steps for the ZZ invoice, exact-text approval, paid claim, paid/unpaid breaks, AI, Xero, accountant invites and new blank company. Every expected-result/evidence row is NOT RUN. These are instructions, not go-live evidence.
+- AD updates this existing draft #246 rather than opening another handover PR. Inventory states were refreshed from GitHub; older test results were not rerun. No GitHub merge, Ready label, SQL application or deployment occurred.
+
 ## What is next
 
 1. Run the latest #221 and #237 upgrade rehearsals, keeping Code’s exact catalogue snapshot. Do not treat the earlier 128/128 report as proof of the later ordering change.
 2. Run #233’s browser suite against the verified disposable backend with the reviewed proposal fixture. Confirm saved message, exact approved text, edit invalidation, double-send and uncertain-delivery behavior.
 3. Prepare a separately reviewed test database and assembled feature application, then run #245’s ten browser cases, existing #227 cases and the real two-connection AI cap race. Check provider encryption, company isolation, admin/support access and paid/unpaid timesheet agreement.
 4. Review #242 visually. Its production build succeeds without downloading Google Fonts.
-5. Only an operator may run #244’s documented writer against the dedicated loopback `tolra_demo_throwaway` database. It refuses existing companies and requires the fake owner fixture. It is never a normal company setup seed.
+5. U/#244 is superseded by Claude Code's #243. Its PR description says so; it remains open and draft. Do no more U work and do not use its seed for the new blank-company check. #243's disposable-CI proof was reported by the user, not rerun here.
 6. Review overlaps before merging: #198 is closed in favor of #203; older chase joins are superseded by #233. Select the costing line deliberately rather than merging overlapping #184/#190 implementations. No automatic closing or merging was done.
 7. Fill in validation protocol evidence from actual execution. Unit passes, collected cases and skipped browsers are not operator validation evidence.
 
@@ -93,6 +109,12 @@ The rebase kept existing PR targets: #234 targets main; #230 targets the #221 br
 
 - [x] S — #241 — draft; run database/inbound checks next.
 - [x] T — #242 — draft; visual review next.
-- [x] U — #244 — draft, not applied; operator review next.
+- [x] U — #244 — superseded by #243; stopped, left open/draft.
 - [x] V — #245 — draft, ten browser cases skipped without DB; configured runtime next.
 - [x] W — #246 — draft; reviewer can update the Master Plan from this inventory.
+
+- [x] X / AA — #247 — draft; own-admin setup fix and accounting read tests included, no AA conflicts; Code runtime rehearsal next.
+- [x] AB — #247 — release packaging/preflight coverage built and tested, not applied; Code reviews the explicit post-144 phase assumption and rehearses next.
+- [x] AC — #249 — draft proposal only; reviewer retention decision and disposable proof next.
+- [x] AD — #246 — handover updated; Master Plan update next.
+- [x] Z — #248 — draft click checklist; Rhys's evidence run next.
