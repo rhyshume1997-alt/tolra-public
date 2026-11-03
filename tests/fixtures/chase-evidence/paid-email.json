@@ -1,0 +1,7 @@
+{
+  "id": "fake-email-1061",
+  "from": "Fictional Accounts <accounts@fictional.example.test>",
+  "subject": "Payment for INV-1061",
+  "body": "Hello, we have paid INV-1061 by BACS today. Please check your bank. This is fictional test data.",
+  "receivedAt": "2026-11-03T10:00:00Z"
+}
