@@ -190,6 +190,15 @@ describe("input and recipients", () => {
     expect(fetchCalls).toHaveLength(0);
   });
 
+  it("send's subject is one line: CR / LF never reach Microsoft or the log (audit S3)", async () => {
+    configure();
+    expect((await send(post("/api/mail/send", { to: "a@example.test", subject: "S\r\nBcc: attacker@elsewhere.example", body: "B" }))).status).toBe(200);
+    const posted = fetchCalls.find((c) => c.url.endsWith("/sendMail"));
+    expect(JSON.parse(posted?.body ?? "{}").message.subject).toBe("S Bcc: attacker@elsewhere.example");
+    expect(rpcCalls.find((c) => c.name === "reserve_mail_send")?.args.p_subject).toBe("S Bcc: attacker@elsewhere.example");
+    expect((await send(post("/api/mail/send", { to: "a@example.test", subject: "\r\n\u0007", body: "B" }))).status).toBe(400);
+  });
+
   it("send respects EMAIL_RECIPIENT_DOMAINS as a strict list", async () => {
     configure();
     expect((await send(post("/api/mail/send", { to: "someone@real-customer.com", subject: "S", body: "B" }))).status).toBe(403);

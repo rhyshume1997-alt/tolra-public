@@ -81,6 +81,12 @@ describe("redact", () => {
     expect(safeRoute("/a/" + "z".repeat(40))).toBe("/a/[token]");
     expect(safeRoute(undefined)).toBe("unknown");
   });
+
+  it("route is one line: a browser report's CR / LF can't reach the alert's subject header (audit S3)", () => {
+    const route = safeRoute("PAGE /jobs\r\nBcc: attacker@elsewhere.example\u2028X-Extra: 1");
+    expect(route).toBe("PAGE /jobs Bcc: [email] X-Extra: 1");
+    expect(alertEmail({ route, message: "boom", fingerprint: "0123456789ab", commit: "c", environment: "production", at: "2026-10-12T09:00:00.000Z", source: "browser" }).subject).not.toMatch(/[\r\n\u2028]/);
+  });
 });
 
 describe("fingerprint", () => {

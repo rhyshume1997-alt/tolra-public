@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { headerText } from "@/lib/mail-header";
 import { resend } from "@/lib/resend";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { PRODUCT } from "@/lib/product";
@@ -9,7 +10,8 @@ import { sendWithOutcome } from "@/lib/send-outcome";
 const sendJobSchema = z.object({
   job_id: z.string().uuid(),
   recipient_email: z.string().trim().toLowerCase().email().max(254),
-  subject: z.string().trim().min(1).max(200),
+  // One line: CR / LF and other control characters never reach the subject header.
+  subject: z.string().transform(headerText).pipe(z.string().min(1).max(200)),
   body: z.string().trim().min(1).max(10000),
   // The same key for retries of one e-mail (double click, network retry); older clients may leave it out.
   idempotency_key: z.string().regex(/^[A-Za-z0-9-]{8,100}$/).optional(),
