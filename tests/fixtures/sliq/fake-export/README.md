@@ -1,0 +1,1 @@
+Entirely fictional export for automated tests. No JNR, Marpet or real customer data. All addresses use example.test. Includes account identifiers, partial payment, a linked credit note, comma-containing item text, BOM/blank header padding and blank rows. Invalid variants are made in temporary copies; the fixtures are never changed.
