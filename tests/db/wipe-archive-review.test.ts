@@ -68,13 +68,14 @@ it.each(['missing invoice','changed approval','incomplete archive'])('the whole 
 it('two-company before/after keeps Marpet logins settings numbering KEEP tables and prior audit unchanged',async()=>transaction(async db=>{
  const orgs=await seed(db);await twins(db,orgs);
  const before=await protectedRows(db),audit=(await db.query('SELECT to_jsonb(a) AS row FROM security_audit.audit_log a ORDER BY id')).rows;
- const marpet=(await db.query('SELECT to_jsonb(s) AS row FROM review_sends s WHERE organization_id=$1',[orgs[1]])).rows;
+ const marpetSnapshot=async()=>{const snapshot:Record<string,unknown[]>={};for(const table of ['review_sends','review_invoices','review_emails'])snapshot[table]=(await db.query(`SELECT to_jsonb(t) AS row FROM ${table} t WHERE organization_id=$1 ORDER BY to_jsonb(t)::text`,[orgs[1]])).rows;return snapshot;};
+ const marpet=await marpetSnapshot();
  await db.query(archiveSql);
  expect((await db.query('SELECT organization_id FROM security_audit.chase_approval_evidence WHERE organization_id=ANY($1::uuid[])',[orgs])).rows).toEqual([{organization_id:orgs[0]}]);
  // Copy verified first; only then delete JNR source twins, children before invoice.
  await db.query('DELETE FROM review_sends WHERE organization_id=$1',[orgs[0]]);await db.query('DELETE FROM review_invoices WHERE organization_id=$1',[orgs[0]]);
  expect(await protectedRows(db)).toEqual(before);
- expect((await db.query('SELECT to_jsonb(s) AS row FROM review_sends s WHERE organization_id=$1',[orgs[1]])).rows).toEqual(marpet);
+ expect(await marpetSnapshot()).toEqual(marpet);
  const after=(await db.query('SELECT to_jsonb(a) AS row FROM security_audit.audit_log a ORDER BY id')).rows;
  for(const row of audit)expect(after).toContainEqual(row);
  expect(after.filter(row=>!audit.some(old=>JSON.stringify(old)===JSON.stringify(row)))).toHaveLength(1);
