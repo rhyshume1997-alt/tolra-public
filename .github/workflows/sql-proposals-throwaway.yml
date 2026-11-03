@@ -1,0 +1,138 @@
+# Throwaway-database rehearsal of the proposed SQL (migration 144, N5 company setup, N2 Tolra-provided AI), with their
+# verification and rollback files. DIAGNOSTIC ONLY: this is not a merge gate and not part of CI.
+#
+# Safety: runs only against the disposable local Supabase that scripts/test-backend.sh starts on the runner (loopback
+# addresses only; every psql call below refuses any other address). No hosted project, secret, production key, `supabase link`
+# or `supabase db push` is used. Nothing is merged or deployed. Test branch only; never merge this file to main.
+#
+# Trigger: a push to the one test branch below (a workflow that exists only on a branch cannot be dispatched by hand), or a
+# manual run of it.
+name: SQL proposals on a throwaway database
+
+on:
+  push:
+    branches: [claude/ci-sql-proposals-throwaway]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sql-proposals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Helpers, written once. psql_local and verify_sql refuse any database that is not on 127.0.0.1.
+      # verify_sql: a two-column read-only check; any false row, a wrong shape or no rows fails the step.
+      - name: Write helpers
+        run: |
+          cat > "$RUNNER_TEMP/helpers.sh" <<'SH'
+          set -euo pipefail
+          load_env() { set -a; . ./.env.test.local; set +a; }
+          psql_local() {
+            case "${TEST_DATABASE_URL:-}" in
+              postgresql://*@127.0.0.1:*) ;;
+              *) echo "Refusing: TEST_DATABASE_URL is not a loopback database" >&2; return 1 ;;
+            esac
+            psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 "$@"
+          }
+          verify_sql() {
+            echo "== verify $1"
+            psql_local -At -F '|' -f "$1" | awk -F '|' '{print} NF != 2 || $2 != "t" {bad=1} END {exit (bad || NR == 0)}'
+          }
+          SH
+          # Do not let a missing psql silently pass.
+          psql --version
+          bash -n "$RUNNER_TEMP/helpers.sh"
+
+      - name: Migration file checks
+        run: npm run check:migrations
+
+      - name: Start disposable Supabase (applies supabase/migrations, including 144, to an empty database)
+        run: npm run test:backend
+
+      # ---- Phase 1: numbered migration 144 and the ordinary database suite, before the optional proposals ----
+      - name: "144: verification"
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/helpers.sh"; load_env
+          verify_sql supabase/verify/accounting_connections_144.sql
+
+      - name: Ordinary database suite (the two proposal proofs are excluded here and run in phase 2)
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/helpers.sh"; load_env
+          npx vitest run -c vitest.db.config.ts \
+            --exclude tests/db/company-setup-isolation.test.ts \
+            --exclude tests/db/tolra-provided-ai.test.ts
+
+      # ---- Phase 2: apply the N5 and N2 proposals to this throwaway database, verify, run their dedicated proofs ----
+      - name: "N5 and N2 proposals: apply, verify"
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/helpers.sh"; load_env
+          psql_local -f supabase/proposals/n5_company_setup.sql
+          psql_local -f supabase/proposals/n2_tolra_provided_ai.sql
+          psql_local -c "NOTIFY pgrst, 'reload schema';"
+          verify_sql supabase/verify/n5_company_setup.sql
+          verify_sql supabase/verify/n2_tolra_provided_ai.sql
+
+      - name: "N5 and N2 dedicated database proofs"
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/helpers.sh"; load_env
+          npx vitest run -c vitest.db.config.ts tests/db/company-setup-isolation.test.ts tests/db/tolra-provided-ai.test.ts
+
+      # ---- Phase 3: rollback rehearsal on a fresh copy (reset rebuilds the local database from supabase/migrations only) ----
+      - name: "Fresh copy: reset, re-apply N5 and N2, then roll back N2 then N5, verify the original AI functions return"
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/helpers.sh"
+          scripts/test-backend.sh reset
+          load_env
+          psql_local -f supabase/proposals/n5_company_setup.sql
+          psql_local -f supabase/proposals/n2_tolra_provided_ai.sql
+          psql_local -c "NOTIFY pgrst, 'reload schema';"
+          psql_local -f supabase/release/n2_tolra_provided_ai.rollback.sql
+          psql_local -f supabase/release/n5_company_setup.rollback.sql
+          psql_local -c "NOTIFY pgrst, 'reload schema';"
+          verify_sql supabase/verify/ai_helper_pre_enable_133.sql
+          verify_sql supabase/verify/ai_assistant_134.sql
+
+      - name: "144: roll back, release again, verify (same fresh copy)"
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/helpers.sh"; load_env
+          psql_local -f supabase/release/144_accounting_connections.rollback.sql
+          psql_local -f supabase/release/144_accounting_connections.release.sql
+          verify_sql supabase/verify/accounting_connections_144.sql
+
+      - name: Stop disposable Supabase
+        if: always()
+        run: npm run test:backend:stop
