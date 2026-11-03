@@ -2,12 +2,13 @@
 import { useMemo, useState } from 'react';
 import { linePence, fromPence } from '@/lib/money';
 import { calcDetailedQuote, type DetailedInputs } from '@/lib/costing/engine';
-import type { CostingRates } from './types';
+import type { CostingRates, CostingMachine } from './types';
 export type CostedQuoteLine = { description: string; quantity: number; unitPrice: number };
 export type PricePartProps = { rates: CostingRates; onAdd: (line: CostedQuoteLine) => void };
 export function safePartEstimate(input: DetailedInputs) {
   try { return calcDetailedQuote(input); } catch { return null; }
 }
+export const operationLabourRate = (machine: CostingMachine, companyRate: number) => machine.labourPerHour ?? companyRate;
 export const previewLineTotal = (quantity: number, unitPrice: number) => fromPence(linePence(quantity, unitPrice));
 const positive = (value: string) => Math.max(0, Number(value) || 0);
 export function PriceThisPart({ rates, onAdd }: PricePartProps) {
@@ -31,7 +32,7 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
       overhead_rate_pct: 1 + rates.overheadPct / 100,
       ops: [{ name: machine.name, sequence: 1, setup_time_hr: setupHours,
         cycle_time_hr: cycleHours, allowance_pct: 0, machine_rate_per_hr: machine.hourlyRate,
-        labor_rate_per_hr: rates.labourPerHour }] });
+        labor_rate_per_hr: operationLabourRate(machine, rates.labourPerHour) }] });
   }, [material, machine, quantity, weightKg, setupHours, cycleHours, programmingHours, rates]);
   if (!rates.materials.length || !rates.machines.length) return null;
   const field = (name: string, value: number, update: (v: number) => void, step = '0.01') =>
@@ -42,7 +43,7 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
     <label className="block text-sm">Material<select aria-label="Material" className="block w-full rounded border p-2" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
     <label className="block text-sm">Machine<select aria-label="Machine" className="block w-full rounded border p-2" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
     <div className="grid gap-3 sm:grid-cols-2">
-      {field('Quantity', quantity, v => setQuantity(Math.floor(v)), '1')}
+      {field('Quantity', quantity, setQuantity, '1')}
       {material?.unit === 'kg' && field('Material weight kg per part', weightKg, setWeightKg)}
       {field('Setup hours for this batch', setupHours, setSetupHours)}
       {field('Making time per part (hours)', cycleHours, setCycleHours)}
