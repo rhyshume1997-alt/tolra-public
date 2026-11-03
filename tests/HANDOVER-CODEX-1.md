@@ -1,5 +1,9 @@
 # Codex 1 handover
 
+**Current reviewer status, AL (3 November 2026):** the final reviewed #247 code head is **fe7514fbea7eaac2fead0237db0fa7d2abcc6db8**. Earlier commits and unit logs below are historical stages, not alternative final heads or a full CI pass. Full CI [41722093670](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41722093670) was checked as **in_progress, no conclusion**. Do not call it passed. Diagnostic extras [41722081841](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41722081841) provide the scoped 145/146 evidence recorded below, but the overall extras run is **failure** because its seed step needs #243's missing `mark-disposable.sql` on the #247 checkout. #250 is **NOT SAFE** pending Code's real combined-kit throwaway rehearsal. #207 and the independent unrun DB/browser conditions remain **BLOCKED**. #255/#258/#257/#253 are **SAFE WITH CONDITIONS**, not release approval.
+
+**This handover is not release or SQL approval.** It grants no permission to apply SQL, wipe data, merge, deploy or go live. No SQL was executed by this account.
+
 Recorded 3 November 2026. This records the work from this chat, including older branches. GitHub states below were read at handover time; later changes need a fresh check. Historical test counts come from the recorded PR results and are not claims that every old branch was retested today. Any merged PR was merged by another account, not this agent.
 
 ## Rules and limits
@@ -107,14 +111,271 @@ The rebase kept existing PR targets: #234 targets main; #230 targets the #221 br
 
 ## Tick list
 
-- [x] S — #241 — draft; run database/inbound checks next.
-- [x] T — #242 — draft; visual review next.
-- [x] U — #244 — superseded by #243; stopped, left open/draft.
-- [x] V — #245 — draft, ten browser cases skipped without DB; configured runtime next.
-- [x] W — #246 — draft; reviewer can update the Master Plan from this inventory.
+- [x] S ; #241 ; draft; run database/inbound checks next.
+- [x] T ; #242 ; draft; visual review next.
+- [x] U ; #244 ; superseded by #243; stopped, left open/draft.
+- [x] V ; #245 ; draft, ten browser cases skipped without DB; configured runtime next.
+- [x] W ; #246 ; draft; reviewer can update the Master Plan from this inventory.
 
-- [x] X / AA — #247 — draft; own-admin setup fix and accounting read tests included, no AA conflicts; Code runtime rehearsal next.
-- [x] AB — #247 — release packaging/preflight coverage built and tested, not applied; Code reviews the explicit post-144 phase assumption and rehearses next.
-- [x] AC — #249 — draft proposal only; reviewer retention decision and disposable proof next.
-- [x] AD — #246 — handover updated; Master Plan update next.
-- [x] Z — #248 — draft click checklist; Rhys's evidence run next.
+- [x] X / AA ; #247 ; draft; own-admin setup fix and accounting read tests included, no AA conflicts; Code runtime rehearsal next.
+- [x] AB ; #247 ; release packaging/preflight coverage built and tested, not applied; Code reviews the explicit post-144 phase assumption and rehearses next.
+- [x] AC ; #249 ; draft proposal only; reviewer retention decision and disposable proof next.
+- [x] AD ; #246 ; handover updated; Master Plan update next.
+- [x] Z ; #248 ; draft click checklist; Rhys's evidence run next.
+
+
+## AH, AI and AJ takeover, 3 November 2026
+
+Rules retained: own branches, draft PRs only, no SQL execution anywhere, no deploy, no merges, no private repo access, no exposed secrets, no weakened assertions. Work was performed in AH, AI, AJ order. Git push and GitHub API authentication expired during AI (git authentication failure, then HTTP 401). No interactive login or secret inspection was attempted. AH was already published as draft #250. Authentication recovered during AK. All six AI branches are now pushed as drafts #251 to #256. AJ is being published from this committed handover; database execution remains NOT RUN.
+
+### AH: review-only wipe follow-up
+
+Draft [#250](https://github.com/rhyshume1997-alt/tolra-public/pull/250), `codex2/ah-wipe-retention` into `codex/ac-wipe-kit-proposed-lines` (#249). The stated #249 head already contained the reviewer's first AH decisions, protected archive and table parser. The follow-up retained those instead of redoing them. It fixes a real design flaw: `public.canonical_jsonb` rejects numeric JSON, but invoice snapshots contain numbers. Proposed digests now use stored JSONB text and still independently compare the full evidence. New mutations reject added duplicate table rows and unscoped archive predicates, while preserving the reviewed baseline list. Five focused unit tests passed; types/lint passed. No archive or SQL was executed.
+
+KEEP: chase_steps, costing_materials, costing_machines, costing_defaults, company_setup_progress, ai_helper_tolra_companies and global ai_helper_tolra_control. JNR-only WIPE: chase_sends and chase_pauses. Archive exact send/draft/invoice evidence first, verify equality/digests, capture protected fingerprints, then delete sends, pauses and invoice parents. The archive has no FK into deleted parents and is owner-only/immutable. Xero, Sage and QuickBooks must all be disconnected for JNR only. Marpet, logins, settings, numbering and prior audit entries remain protected. Private material was not read or edited in this takeover. A real restored-copy archive/rollback/FK proof is still required by an authorised operator.
+
+### AI: independently targeted database proofs
+
+| Target | Local branch | Added real proof | Focused unit checks | Next |
+| --- | --- | --- | ---: | --- |
+| #236 `codex/n-company-setup-email-combined` | `codex2/ai-setup-db-236` | `tests/db/setup-reviewer-permissions.test.ts`: two-company admin/staff/support SQL matrix | 4 passed | [#251](https://github.com/rhyshume1997-alt/tolra-public/pull/251): approved DB run |
+| #239 `codex/q-setup-access-tests` | `codex2/ai-reviewer-db-239` | `tests/db/reviewer-setup-conditions.test.ts`: same SQL matrix on access-fix head | 12 passed | [#252](https://github.com/rhyshume1997-alt/tolra-public/pull/252): approved DB run |
+| #241 `codex/s-inbound-payment-evidence` | `codex2/ai-reviewer-db-241` | `tests/db/reviewer-inbound-conditions.test.ts`: real delegated paid/remittance RPC, duplicate messages, full invoice/payment snapshots for two companies | 4 passed | [#253](https://github.com/rhyshume1997-alt/tolra-public/pull/253): approved DB run |
+| #232 `codex2/i-owner-ai-caps` | `codex2/ai-reviewer-db-232` | `tests/db/reviewer-cap-conditions.test.ts`: real cap setter isolation and authenticated write/read refusal | 42 passed | [#254](https://github.com/rhyshume1997-alt/tolra-public/pull/254): run proof and existing race |
+| #233 `codex2/j-chasing-combined-main` | `codex2/ai-reviewer-db-233` | `tests/db/reviewer-chase-conditions.test.ts`: real PostgreSQL claims, exact text captured by mock mail transport, simultaneous approvals send once, uncertain result never resends | 39 passed | [#255](https://github.com/rhyshume1997-alt/tolra-public/pull/255): approved DB/provider-mock run |
+| #234 `codex2/k-ai-combined-main` | `codex2/ai-reviewer-db-234` | `reviewer-cap-conditions.test.ts` plus `reviewer-accounting-permissions.test.ts`: two-company Sage/QBO metadata, private secrets, OAuth role/support permissions | 66 passed | [#256](https://github.com/rhyshume1997-alt/tolra-public/pull/256): run proofs and existing race |
+
+Every branch passed TypeScript and targeted changed-test lint. The counts above are existing focused UNIT regressions, not passed SQL tests. New database files have no skip or schema installer. Setup/support and inbound/cap SQL fixtures roll back. The chase test uses the real test database with a mock mail transport and synthetic world cleanup; it does not call a live provider. No production code was changed for AI because no database test was executed to expose a new application bug.
+
+The real two-independent-connection cap race already exists in #232/#234 at `tests/db/tolra-ai-cap-concurrency.test.ts`; it was retained, not duplicated or replaced with a fake concurrency model. Code still must execute it. Inbound assertions exercise `mailbox_record_inbound`, not merely the older admin intake path. SQL permission tests use real authenticated PostgreSQL role/claims and two synthetic companies. The support test distinguishes harmless zero-row RLS updates from statement-level support refusals. Accounting metadata may be read by an own-company support admin under existing SQL policy, but OAuth writes and private token reads must be refused; the HTTP routes remain stricter.
+
+Do not immediately run new setup/cap files as numbered-baseline tests when integrating them into #247. First register them with the existing serial post-144 sequencer/identity-guarded release fixture: setup after 145, cap after 146. This is a required integration step, not permission to exclude or skip tests. Preserve `npm run test:db` as the full command. Do not rewrite frozen catalogue expectations to accommodate post-146 function renames. The standalone follow-up branches require their separately reviewed schema to be prepared before these tests; they never apply it themselves. All actual DB, release, rollback, provider and browser execution is NOT RUN here under the no-SQL rule.
+
+### Published reviewer proofs: operator handoff
+
+All six AI branches are pushed and have draft PRs linked above, each into its exact source branch. No local branch was merged into another. Run `npx vitest run -c vitest.db.config.ts <the row's file>` only on the separately authorised disposable backend with required schema. SQL tests must actually run and pass; missing credentials/schema are failures, not skips. Run the existing cap race on #232/#234 as well. Do not use a private repo or hosted company database.
+
+AJ is draft [#257](https://github.com/rhyshume1997-alt/tolra-public/pull/257), `codex2/aj-takeover-handover`, based on #246 `codex/w-codex-1-handover`, for a draft back into that branch. It includes the reviewer matrix reconciliation. No implementation or test needs recreating. AK is draft #258 against the repaired #247 head; see the final takeover evidence below.
+
+### Item state tick list
+
+- [x] N1: #218/#235, included in #236/#247; paid/unpaid unit coverage exists; actual operator/browser evidence remains separate.
+- [x] N2: #219/#224/#232/#234/#247; both key modes and owner caps implemented; new AI SQL proofs and cap race need execution.
+- [x] N3: #221/#230/#237/#240/#247; accounting code and unit coverage exist; new expanded SQL provider permissions need execution.
+- [x] N4: #220 updated by draft #258; 347 mapped unit tests pass on the current candidate; IQ/OQ/PQ and Rhys VSR sign-off remain blank.
+- [x] N5: #222/#236/#239/#247; own-admin access fix included in candidate; new SQL role/support matrices unrun.
+- [x] N6: #223/#236/#247; editor and legacy-text unit coverage exist; browser evidence remains separate.
+- [ ] N7: no matching product-item brief is identified in the supplied handover/matrix. An unrelated old worksheet test also uses the label N7; do not infer a new product requirement from it.
+
+### Every job state tick list
+
+- [x] A: N5 #222; SQL/database checks separate.
+- [x] B: N6 #223; browser checks separate.
+- [x] C: provided AI #224; cap change #232.
+- [x] D: chase main refresh #226.
+- [x] E: #201 description correction posted.
+- [x] F/G: #227 browser/manual/database handoff; earlier instructions are historical where #247's newer phase sequencing supersedes them.
+- [x] H: #228 own/provided keys; #229 AI company isolation; #230 Sage/QuickBooks token/provider isolation.
+- [x] I: #232 owner caps and existing real race proof, included #234.
+- [x] J/K: combined #233/#234; use the newer #247 candidate for final combined release review.
+- [x] L: #235, reviewed by prior account; no duplicate implementation needed.
+- [x] M: truthful banner in #226/#233; approval/security logic unchanged.
+- [x] N/O: #236/#237; final candidate #247 includes their requested follow-ups #239/#240.
+- [x] P: #238 merged externally into #227; manual execution evidence still pending.
+- [x] Q: #239/#240; database gaps now represented by published AI proofs, not claimed passed.
+- [x] R: #221 ordering fix reported by earlier account; do not repeat old source blame without exact failed-run evidence.
+- [x] S: #241 inbound evidence; new real SQL financial-invariance proof in AI, unrun.
+- [x] T: #242 offline fonts; visual review separate.
+- [x] U: #244 superseded by #243 seed identity guard; no more U work or seed write.
+- [x] V: #245 reviewer browser specs wired to CI; runtime evidence separate.
+- [x] W/AD: #246 original handover; AJ is this follow-up for publication.
+- [x] X/AA/AB/AE: #247 candidate, #239/#240 folded, full DB command and phases 145 then 146 packaged. Rhys reports a full DB run by Code; not rerun here.
+- [x] Y: private kit read-only review by earlier account; no private access by this takeover.
+- [x] Z: #248 go-live manual checklist; actual sign-off separate.
+- [x] AC: #249 first wipe proposal; AH follow-up #250 corrects numeric-safe archival hashing and parser scope.
+- [ ] AF/AG: no job definitions or outcomes recorded in the supplied handover; do not invent completion.
+- [x] AH: #250 draft, five unit tests passed; private repo untouched, no SQL applied; restored-copy proof still required.
+- [x] AI: drafts #251 to #256 pushed; types/lint/focused units passed; every database proof remains unrun.
+- [x] AJ: draft #257 into #246, handover/matrix updated; next is the authorised operator evidence run.
+
+
+## Historical #247 repair stages, before final fe7514f
+
+The later full rehearsal reported by Claude Code supersedes the earlier broad statement that #247's full DB suite had passed. It found a config-loading fault, a real setup-policy permission error and duplicate one-time CI installs. Do not treat the earlier statement as approval of the repaired candidate or the new tests.
+
+The intermediate #247 repair stage was `codex/x-final-main-candidate` at **d7c0019caa51f8a221e1f3b855e67f06d01ac3b4**. It was superseded by final reviewed head **fe7514fbea7eaac2fead0237db0fa7d2abcc6db8**. The following list describes that intermediate stage:
+
+- `a27dcf1` removed the runtime ESM `vitest/node` import. The import is type-only; every baseline file precedes setup, provided AI, then the cap race, without exclusions.
+- `d7c0019` fixes release 145 and its canonical proposal: policies use the existing scoped `my_session()` security-definer API. `_session_membership()` intentionally stays private under 036/121. Every policy still requires own company, admin and non-support; elevated support is refused too. Preflight and verification now check the safe policy shape.
+- The two redundant CI 145/146 installation steps are removed. The single identity-guarded, serial test fixture verifies both release files, even when already installed. Full `npm run test:db`, the independent upgrade rehearsal and existing cap race remain. Claude's separate diagnostic extras workflow was not edited or removed.
+- Real database proofs add the setup admin/office/workshop/viewer/read-only support/elevated support/outsider/anon matrix, positive own-admin writes, 145/146 second-install refusal and 146 rollback refusal around an actual outstanding provided-AI reservation, preserving ledger/history/functions. They are NOT RUN here. Existing financial and access assertions remain. The obsolete unit assertion requiring duplicate CI installs now checks the single owner and ordering of every actual test file.
+
+Local repaired-#247 results: **5,451 unit tests passed, 0 failures, 0 skips**; TypeScript, lint, release-plan check and database config load passed. The config-only command was `npm run test:db -- __config_load_only__ --passWithNoTests`; it intentionally found no tests and executed no SQL. This is not a passed database suite.
+
+### AK / N4
+
+Draft [#258](https://github.com/rhyshume1997-alt/tolra-public/pull/258), `codex2/ak-validation-shipped` into `codex/x-final-main-candidate`. Code/evidence head is `7c30361`; the dated evidence identifies the clean tested code revision `fc8d02d73f06bf029bcb05ac59120d40669db2de` with input hashes. The later commit adds evidence only.
+
+The pack maps 14 URS/risk/OQ rows, 6 IQ steps and 8 PQ steps to existing candidate tests and numbered #248 manual checks, extended for both AI modes, owner caps, Sage/QuickBooks and email editing. `npm run validate:pack` checks the mapping. `npm run validate:evidence` runs only its explicit unit list, saves a unique UTC-dated summary and logs, and refuses failed/skipped/incomplete evidence. Every VSR result and Rhys's signature stays blank.
+
+AK results: **347 mapped unit tests passed across 32 files**, and **5,461 full unit tests passed across 411 files**, both with 0 failures and 0 skips. The ten new pack/evidence integrity tests pass; TypeScript, targeted lint and config loading pass. Logs and aggregate counts are committed under `tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/` on #258. No real keys or company data are present. The original 119 count belongs to #220's older mapping, not this candidate.
+
+No URS is wholly unmapped, but URS-014's incoming paid/remittance/payment-sent email subcondition has **no dedicated automated regression on #247**. #241 and draft #253 are separate proof branches. Manual G03.4 is mapped and remains NOT RUN. The claim UI test is not evidence for inbound financial invariance. The pack's COVERAGE-GAPS.md also lists expanded cap/accounting SQL and provider proof still on separate drafts.
+
+### What Code and Rhys must do next
+
+On the separately authorised disposable backend only, Code must rerun the full `npm run test:db` on repaired #247, preserving every baseline test and the ordered phases. The expected result is every real SQL permission, second-install, outstanding-reservation rollback and cap-race test running and passing, with no excluded/skipped reviewer condition. Continue the separate diagnostic extras rehearsal with the repaired SQL, retaining rollback and seed-refusal proofs. This handover does not authorise SQL here or on a company database.
+
+Use the corrected 145 schema when preparing the independent #251/#252 proof runs, not the old broken proposal. Register newly integrated setup/cap test files after the appropriate release phase in #247's fixture/sequencer. Keep the exact-text/uncertain-delivery and delegated inbound proofs from #253/#255, expanded cap/accounting SQL from #254/#256, and #245 browser work visible until run. Re-run combined browser/provider checks using fake companies and controlled recipients. No private repository edits or archive execution are authorised by this takeover.
+
+Rhys completes all numbered manual IQ/OQ/PQ checks, records deviations and reviews the gaps before signing the VSR as validation lead. AH's restored-copy archive equality/digest/FK/rollback proof and JNR-only Xero/Sage/QuickBooks disconnect checks remain blocked for the authorised operator. Never wipe the seven reviewer KEEP tables or Marpet, logins, settings, numbering or audit history.
+
+- [x] Priority #247: d7c0019 pushed; 5,451 units passed; next is Code's real DB rehearsal.
+- [x] AH: #250 draft; five units passed; next is restored-copy archive proof.
+- [x] AI: #251 to #256 drafts, all pushed; focused units/types/lint passed; next is real SQL execution.
+- [x] AJ: #257 draft; complete N1 to N7 and every-job inventory retained above; next is operator evidence.
+- [x] AK / N4: #258 draft; 347 mapped and 5,461 full units passed; next is manual/database/browser evidence and Rhys's blank VSR sign-off.
+- [ ] N7, AF and AG: scope/outcome not identified in the supplied briefs; no completion invented.
+
+### Publication check
+
+All nine AH/AI/AJ/AK codex2 branches are committed and pushed, and #247's repaired head is pushed. Drafts #250 to #258 have no Ready label. A pre-existing Ready label was removed from draft #247 to follow Rhys's rule. The working tree is clean.
+
+Five inherited local references are older than, or rebased differently from, the published work: h-accounting-token-isolation, j-chasing-combined-main, k-ai-combined-main, n1-n6-browser-checks and n-setup-editor-combined. Their ordinary code patches are already published; the old N merge tree differs from published #236 only by #236's later CI step and paid-break unit test. The redundant old merge objects were not force-pushed over newer branches. No unpublished code change remains. Preserve the newer remote heads when picking up this workspace.
+
+## Latest ordered follow-up: AH, AI, AK, then AJ
+
+This section supersedes earlier current-state counts and heads above. Earlier evidence remains historical; it is not rewritten. No SQL, migrations, Docker startup, wipe, deploy, merge or private-repository change occurred. All source proposals and DB proofs remain for review and separately authorised execution.
+
+| Job | Draft | Current branch/head | Latest local result | What is unfinished |
+| --- | --- | --- | --- | --- |
+| AH | #250 into #249 | codex2/ah-wipe-retention / 1fd6a7b14db68e82f3cd255ff2bfe4ba8c2873c5 | 6 parser/static units passed; typecheck/lint passed | 8 real SQL review cases and full restored-copy private-driver/FK rehearsal unrun |
+| AI, chase | #255 into #233 | codex2/ai-reviewer-db-233 / 39e89f7b5d324fdbaa778d01cd25d0b2bde96da6 | 87 focused unit tests passed; typecheck/lint passed | 5 real DB cases, including 4 separately named reviewer conditions, unrun |
+| AI, inbound | #253 into #241 | codex2/ai-reviewer-db-241 / dd2f7a176cce318aea4b6f725e5c029480f9848b | Guarded attempt: 1 preflight failure, 0 passed, 0 skipped; missing TEST_SUPABASE_URL, no DB request | Real delegated-inbound execution BLOCKED; no prepared backend/env file |
+| AK / N4 | #258 into #247 | codex2/ak-validation-shipped / f2af92ed6331b119db6ab257328ac37f0eeb301c | Fresh 347 mapped units / 32 files and 5,461 full units / 411 files; zero failures/skips; types/lint/mapping pass | Manual IQ/OQ/PQ, database/browser/provider proof and Rhys's VSR decision |
+| AJ | #257 into #246 | codex2/aj-takeover-handover, this final update | Documentation diff check passed | Operator results and unidentified N7/AF/AG scope remain visible |
+
+### AH: exact retention and proof limits
+
+KEEP chase_steps, costing_materials, costing_machines, costing_defaults, company_setup_progress, ai_helper_tolra_companies and global ai_helper_tolra_control. JNR-only sends/pauses are WIPE. Approval evidence is copied to the locked, owner-only append-only archive, verified by full JSONB equality and digest, then included in protected fingerprints before any invoice deletion. Missing invoice/email references, differing approval evidence, unsafe archive privileges or an incomplete copy refuse the entire transaction. Sends and pauses precede invoice parents. Marpet, logins, settings, numbering and old audit history are protected.
+
+The stronger proposal adds archive privilege/immutable-trigger refusal and a final source-count/evidence check. The new real SQL harness tests archive API permissions and owner update/delete/truncate refusal; missing invoice, changed approval and incomplete-copy rollback; two-company settings, numbering, logins, KEEP tables and old audit preservation; and each of Xero/Sage/QuickBooks scoped to JNR only. The source relation names are redirected to temporary twins for deliberate broken-FK fixtures. Actual archive permissions and audit append use the real prepared tables. This is not the private driver's whole wipe or a real source-FK deletion proof, and none of these SQL cases ran here.
+
+Preconditions for Code: identity-verified disposable restored copy, reviewed archive DDL prepared separately, required chase/costing/setup/AI KEEP schemas present, writers stopped and reviewed source locks in place. A missing table/schema must fail, never skip. The private repo was not accessed in this follow-up. Refresh its current table list and protected fingerprints read-only before any future change to that repo.
+
+### AI: named conditions and blocked inbound attempt
+
+#255 retains its original exact-text/uncertain-delivery proof and adds named tests for editing invalidating reviewed text, customer paid claim preserving invoice financials/payments, duplicate approvals plus retries sending once, and cross-company create/approve/claim refusal. Only the mail transport is mocked. The existing friendly-step fixture now uses offset 1 instead of invalid offset 0; zero requires before_due under SQL. No production behaviour or assertion was weakened.
+
+For #241, the exact attempted command on #253 was:
+
+```sh
+npx vitest run -c vitest.db.config.ts tests/db/reviewer-inbound-conditions.test.ts --reporter=json --outputFile=/tmp/ai241-runtime-attempt.json
+```
+
+It failed the isolation preflight with `TEST_SUPABASE_URL is not set`: **1 failed, 0 passed, 0 skipped**. `.env.test.local` is absent; TEST_DATABASE_URL and TEST_SUPABASE_URL are unset. No database request or SQL ran, so this is an environment blocker, not a failed payment-invariance assertion. Docker/backend startup was not attempted because it installs SQL and is outside the retained rules.
+
+After a separately authorised operator provides the prepared local disposable backend, run these on their stated branches:
+
+```sh
+# AH #250, with separately reviewed archive and KEEP schemas already prepared:
+npx vitest run -c vitest.db.config.ts tests/db/wipe-archive-review.test.ts
+# AI #255 into #233, prepared chasing schema and controlled fake mail transport:
+npx vitest run -c vitest.db.config.ts tests/db/reviewer-chase-conditions.test.ts
+# AI #253 into #241, prepared delegated-mail schema:
+npx vitest run -c vitest.db.config.ts tests/db/reviewer-inbound-conditions.test.ts
+```
+
+Expected: all named cases actually execute and pass, zero skipped reviewer conditions. Missing credentials/schema must fail with its cause. The older #251/#252/#254/#256 setup/cap/accounting proofs also remain unrun. When integrating into #247, preserve complete `npm run test:db`, its baseline-first ordering and post-145/146 sequencing, then perform the separate upgrade and browser/provider rehearsals.
+
+### AK: latest candidate, fresh evidence, no sign-off
+
+AK now has #247 **fe7514fbea7eaac2fead0237db0fa7d2abcc6db8** as its base. The clean tested code revision is `2cd2549880f6`; the final `f2af92e` commit adds evidence only. Fresh dated results live in `tests/validation/evidence/2026-11-03T21-36-30.386Z-2cd2549880f6-XPNxXH/` on #258. Historical evidence stays unchanged. `npm run validate:pack` checks the 14 URS/risk/OQ, 6 IQ and 8 PQ mappings; `npm run validate:evidence` runs the 32 mapped unit files and saves dated commit/input hashes, logs and exact counts. The VSR sign-off remains blank for Rhys as validation lead.
+
+URS-014's inbound automatic financial-invariance proof is still outside #247 on #241/#253, with manual G03.4 explicitly unrun. AH's stronger archive and AI's named chase DB follow-ups are independent drafts, not silently folded into the candidate. All DB, browser, provider and manual evidence remains separate from the passing unit logs.
+
+**146 rollback STOP RULE:** rollback deliberately retains `ai_helper_requests.key_source`, request history and usage. A second 146 install on that same rolled-back database requires an authorised disposable reset to reviewed baseline through 144, then 145 and 146 in order. Keep evidence first. Never drop key_source, delete retained history, weaken guards or reset a hosted/live company database to force reinstall. #247 includes the no-global-provider-key DB proof: working own-key positive controls, then provided mode refuses round-up/RFQ/assistant with request/usage/key snapshots unchanged. That real SQL proof remains unrun here.
+
+### AL: final head, scoped external evidence and unresolved conditions
+
+| Code revision | Meaning | Evidence limit |
+| --- | --- | --- |
+| 75897fd8c1fac016bebe41bd743831af2bdb0484 | Earlier #247 content before the loader repair | Superseded; never substitute its result for final-head evidence |
+| a27dcf1549bf013048dcca7b384dad3b05f16b41 | Type-only Vitest sequencer/config-load fix | Intermediate commit, not final #247 |
+| d7c0019caa51f8a221e1f3b855e67f06d01ac3b4 | 145 safe helper, duplicate-CI-step removal and refusal proofs | Intermediate commit; 5,451 local unit passes are unit evidence, not full CI |
+| fe7514fbea7eaac2fead0237db0fa7d2abcc6db8 | Final reviewed #247 code, adding no-global-key refusal proof and rollback reset stop rule | Full CI remains pending; no release/SQL approval |
+
+The diagnostic workflow run head is `510a20431ea4f3c16562e9e05f8adfcaacea8eac` on `claude/247-rehearsal-fe7514f`. That is the diagnostic workflow revision, not a replacement name for final #247 code fe7514f. GitHub metadata confirms extras run 41722081841 completed with failure, and full CI 41722093670 is in progress with no conclusion. The individual SQL findings below are the reviewer/Code's reported scoped evidence; no new SQL was run here and no unreported test count is invented.
+
+| Evidence from extras run 41722081841 | Reported result | What it does not prove |
+| --- | --- | --- |
+| 145 install and verification | Passed | Entire release or all independent setup follow-ups |
+| 146 install and verification | Passed | Full candidate CI or provider/browser acceptance |
+| Role matrices (B3) | Passed observational admin/office/workshop/viewer step | Support/outsider/anon and every independent SQL file still need their exact test evidence |
+| Second installs of 145 and 146 | Refused as required | Reinstall after rollback is supported |
+| 146 rollback with outstanding Tolra reservation | Refused as required | Other unrun concurrency/provider conditions |
+| 146 rollback after settling | Completed and kept history, including key_source by design | A rolled-back database is fresh; reset stop rule still applies |
+| Seed D1: hosted-address and missing-marker refusals | Passed | Marker-dependent seed cases or a successful seed |
+| Seed D2: marker-dependent cases | Failed only because #243's mark-disposable.sql is not on #247 | Not a demonstrated seed-guard defect, not a release-SQL failure, not a completed seed rehearsal |
+| Overall extras run | FAILURE | Never report the overall run as green because selected SQL steps passed |
+| Full CI 41722093670 | PENDING / in_progress, no conclusion | Never report a full-suite or browser pass before final evidence |
+
+BLOCKED conditions remain explicit: #250 combined wipe against the real combined private kit; #207's reviewer/runtime acceptance; independent unrun DB files #251/#252/#253/#254/#255/#256; no-global-key and two-session cap race unless separately evidenced; full CI, browser/provider checks, seed completion with #243's reviewed marker file, manual IQ/OQ/PQ and Rhys's VSR decision. #253's local attempt remains 1 configuration/preflight failure and 0 skips, before any DB request. Code is doing the throwaway combined-wipe rehearsal; the temporary-source archive harness is not that proof.
+
+Reviewer verdicts: #255, #258, #257 and #253 are SAFE WITH CONDITIONS. #250 is NOT SAFE. Neither phrase is approval to release or execute SQL. Record Code's next real results against their exact run and code head; do not mark a block cleared just because a test exists or a unit log passes.
+
+### Final N1 to N7 tick list
+
+- [x] N1: #218/#235/#247, paid-break implementation and unit coverage present; operator DB/browser comparison remains.
+- [x] N2: #219/#224/#232/#234/#247, own/provided modes and owner caps present; real cap race, permissions and missing-global-key SQL proof remain unrun.
+- [x] N3: #221/#230/#237/#240/#247, Xero/Sage/QuickBooks implementation and unit coverage present; expanded SQL and sandbox evidence remain.
+- [x] N4: #220 updated by #258; fresh 347 mapped and 5,461 full unit passes; manual validation and Rhys's VSR sign-off remain blank.
+- [x] N5: #222/#236/#239/#247, blank setup and own-admin policy fix present; role-matrix evidence reported in extras 41722081841, independent SQL/full CI/browser conditions remain.
+- [x] N6: #223/#236/#247, labelled editor, detail insertion and legacy-text unit coverage present; real browser/email rehearsal remains.
+- [ ] N7: no product brief identified in the supplied materials; scope unresolved, no implementation invented.
+
+### Final every-job tick list
+
+Ticks mean the described implementation/review artifact exists, not that unrun runtime checks passed.
+
+- [x] A: #222 N5 implemented; database/operator checks remain.
+- [x] B: #223 N6 implemented; browser evidence remains.
+- [x] C: #224 provided AI implemented; owner-cap follow-up #232; SQL evidence remains.
+- [x] D: #226 chase refresh implemented; no merge performed here.
+- [x] E: #201 description correction recorded by the earlier account.
+- [x] F: #227 browser/manual checks written; runtime evidence remains.
+- [x] G: #227 database/operator instructions exist; later #247 sequencing supersedes old commands where noted.
+- [x] H: #228 keys, #229 AI company isolation, #230 accounting token/provider isolation; do not mislabel #230 as #229.
+- [x] I: #232 owner caps and real race proof written; SQL race unrun here.
+- [x] J: #233 combined chasing exists; named DB follow-up #255; runtime remains.
+- [x] K: #234 combined AI exists; cap/accounting SQL follow-up #256; runtime remains.
+- [x] L: #235 paid/unpaid two-company unit proof exists.
+- [x] M: #226/#233 truthful banner fix exists; approval/security behaviour retained.
+- [x] N: #236 setup/editor combination exists; #247 contains its reviewed follow-ups.
+- [x] O: #237 accounting combination exists; provider/runtime checks remain.
+- [x] P: #238 manual checklist update recorded; operator steps remain unrun.
+- [x] Q: #239/#240 reviewer unit/access follow-ups exist; real SQL expansion remains unrun.
+- [x] R: #221 ordering fix recorded by the earlier account; do not repeat old flaky-test blame without run evidence.
+- [x] S: #241 inbound evidence exists; #253 real DB attempt blocked at missing backend preflight.
+- [x] T: #242 local fonts implemented; visual review remains separate.
+- [x] U: #244 superseded by #243 seed identity guard; no new seed execution.
+- [x] V: #245 reviewer browser checks wired to CI; runtime evidence remains.
+- [x] W: #246 handover exists; current follow-up #257.
+- [x] X: #247 final code head fe7514f packaged; scoped extras evidence recorded, full CI 41722093670 remains pending.
+- [x] Y: earlier private-kit read-only review recorded; this follow-up did not access the private repo.
+- [x] Z: #248 go-live manual checklist exists; real completion/sign-off remains.
+- [x] AA: #247 follow-up recorded in prior inventory; repaired-head runtime remains.
+- [x] AB: #247 follow-up recorded in prior inventory; repaired-head runtime remains.
+- [x] AC: #249 wipe proposal exists; stronger AH draft #250.
+- [x] AD: #246 handover inventory retained; current follow-up #257.
+- [x] AE: #247 final fe7514f, scoped extras SQL evidence recorded; no full CI pass or release approval claimed.
+- [ ] AF: no definition/outcome in supplied materials; unresolved.
+- [ ] AG: no definition/outcome in supplied materials; unresolved.
+- [x] AH: #250 review artifact exists, 6 units passed; reviewer verdict NOT SAFE, real combined-kit rehearsal BLOCKED pending Code.
+- [x] AI: #251 to #256 proof drafts pushed; #255 has 4 new named cases and 87 focused unit passes; #253 real run BLOCKED by missing backend, 1 preflight failure and 0 skips.
+- [x] AK: #258 refreshed to fe7514f with fresh dated evidence; 347 mapped and 5,461 full unit passes; VSR remains blank.
+- [x] AJ: #257 updated last with full state and exact operator next steps; documentation diff check passed, all new work committed/pushed.
+
+- [x] AL: #257 separates historical commits from final fe7514f, records scoped extras/seed failure accurately, and leaves full CI, wipe, #207 and independent DB conditions blocked. Documentation only; no release or SQL approval.
+- [x] AM: #258 explicitly says software NOT VALIDATED, leaves Rhys's VSR blank and lists every pending candidate DB/browser file (132/129), 60 manual rows and separate reviewer conditions. Mapping plus 10 existing pack-integrity tests passed; no runtime acceptance inferred.
+- [x] AN: #250 has 18 numbered real combined-kit checks with blank results/evidence, protected comparisons before commit and atomic refusal on mismatch. Six parser tests passed. Reviewer verdict remains NOT SAFE pending Code's real combined-kit throwaway results.
