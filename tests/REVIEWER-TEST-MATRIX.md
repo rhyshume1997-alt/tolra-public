@@ -32,7 +32,7 @@ GitHub credentials expired during AI and recovered during AK. AH is draft #250; 
 
 ## Urgent candidate repairs and AK evidence
 
-#247 is now d7c0019caa51f8a221e1f3b855e67f06d01ac3b4. The 145 policy permission fault is fixed through the existing scoped my_session API; private helper grants are unchanged. Its setup proof now includes ordinary/elevated support, staff, outsider and anon, plus second-install refusal. The provided-AI proof checks second-install refusal and rollback refusal around a real outstanding reservation. CI no longer installs one-time phases twice; the ordered fixture verifies every verification row. The real cap race and all baseline checks remain.
+Historical intermediate #247 stage: d7c0019caa51f8a221e1f3b855e67f06d01ac3b4, superseded by final reviewed code fe7514fbea7eaac2fead0237db0fa7d2abcc6db8. The 145 policy permission fault is fixed through the existing scoped my_session API; private helper grants are unchanged. Its setup proof now includes ordinary/elevated support, staff, outsider and anon, plus second-install refusal. The provided-AI proof checks second-install refusal and rollback refusal around a real outstanding reservation. CI no longer installs one-time phases twice; the ordered fixture verifies every verification row. The real cap race and all baseline checks remain.
 
 5,451 unit tests passed, 0 failed, 0 skipped; TypeScript, lint, release-plan and config loading passed. No SQL was executed. Claude Code must rerun the full database and diagnostic extras rehearsal; earlier external full-pass reports do not establish the repaired candidate passed.
 
@@ -47,3 +47,10 @@ AK is draft #258 into #247: 14 URS rows, 6 IQ, 14 OQ, 8 PQ; 347 mapped unit and 
 - STOP after rollback 146: key_source, usage and request history intentionally remain. Reinstall on that same rolled-back database requires an authorised disposable reset, not deleting history/columns or weakening guards. Never reset a live company for this. The no-global-key proof in #247 remains unrun SQL.
 
 AJ #257 is the last update and contains the complete N1 to N7 / every-job tick list plus exact prepared-backend commands. No SQL, migrations, Docker startup, wipe, deploy or merge ran here. No private repository change occurred.
+
+
+## AL reviewer evidence correction
+
+Final reviewed #247 code is fe7514fbea7eaac2fead0237db0fa7d2abcc6db8, distinct from intermediate a27dcf1/d7c0019 and from diagnostic workflow head 510a20431ea4f3c16562e9e05f8adfcaacea8eac. Extras run 41722081841 reports passed 145/146 install/verify and role matrices, refused second installs, refused rollback with an outstanding reservation, and rollback after settling retaining history/key_source. Its overall conclusion is FAILURE: the seed step failed only because #243's mark-disposable.sql is absent from #247. Seed completion is not proved and no seed-guard defect is inferred. Full CI run 41722093670 is in progress with no conclusion, never recorded as passed.
+
+These are scoped reviewer/Code results, not SQL executed here or a full release validation. Independent #251 to #256 database conditions, #207, full CI/browser/provider/manual acceptance remain blocked unless separately evidenced. #250 is NOT SAFE pending the real combined-kit throwaway rehearsal; temporary source twins are not that proof. #255/#258/#257/#253 are SAFE WITH CONDITIONS. This matrix/handover is not release or SQL approval.

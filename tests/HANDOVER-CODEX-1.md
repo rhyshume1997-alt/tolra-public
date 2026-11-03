@@ -1,6 +1,8 @@
 # Codex 1 handover
 
-**Latest takeover note:** Rhys reports that #247 has completed the full `npm run test:db`, with #239/#240 folded in and post-144 phases 145 then 146 packaged. That is externally reported evidence, not a database run by this account. Historical NOT RUN statements below describe the earlier account/session. New AI database proofs in the final section remain unrun. No SQL was applied anywhere during this takeover.
+**Current reviewer status, AL (3 November 2026):** the final reviewed #247 code head is **fe7514fbea7eaac2fead0237db0fa7d2abcc6db8**. Earlier commits and unit logs below are historical stages, not alternative final heads or a full CI pass. Full CI [41722093670](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41722093670) was checked as **in_progress, no conclusion**. Do not call it passed. Diagnostic extras [41722081841](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41722081841) provide the scoped 145/146 evidence recorded below, but the overall extras run is **failure** because its seed step needs #243's missing `mark-disposable.sql` on the #247 checkout. #250 is **NOT SAFE** pending Code's real combined-kit throwaway rehearsal. #207 and the independent unrun DB/browser conditions remain **BLOCKED**. #255/#258/#257/#253 are **SAFE WITH CONDITIONS**, not release approval.
+
+**This handover is not release or SQL approval.** It grants no permission to apply SQL, wipe data, merge, deploy or go live. No SQL was executed by this account.
 
 Recorded 3 November 2026. This records the work from this chat, including older branches. GitHub states below were read at handover time; later changes need a fresh check. Historical test counts come from the recorded PR results and are not claims that every old branch was retested today. Any merged PR was merged by another account, not this agent.
 
@@ -197,11 +199,11 @@ AJ is draft [#257](https://github.com/rhyshume1997-alt/tolra-public/pull/257), `
 - [x] AJ: draft #257 into #246, handover/matrix updated; next is the authorised operator evidence run.
 
 
-## Final takeover evidence and urgent #247 repairs
+## Historical #247 repair stages, before final fe7514f
 
 The later full rehearsal reported by Claude Code supersedes the earlier broad statement that #247's full DB suite had passed. It found a config-loading fault, a real setup-policy permission error and duplicate one-time CI installs. Do not treat the earlier statement as approval of the repaired candidate or the new tests.
 
-The repaired draft [#247](https://github.com/rhyshume1997-alt/tolra-public/pull/247) is `codex/x-final-main-candidate` at **d7c0019caa51f8a221e1f3b855e67f06d01ac3b4**:
+The intermediate #247 repair stage was `codex/x-final-main-candidate` at **d7c0019caa51f8a221e1f3b855e67f06d01ac3b4**. It was superseded by final reviewed head **fe7514fbea7eaac2fead0237db0fa7d2abcc6db8**. The following list describes that intermediate stage:
 
 - `a27dcf1` removed the runtime ESM `vitest/node` import. The import is type-only; every baseline file precedes setup, provided AI, then the cap race, without exclusions.
 - `d7c0019` fixes release 145 and its canonical proposal: policies use the existing scoped `my_session()` security-definer API. `_session_membership()` intentionally stays private under 036/121. Every policy still requires own company, admin and non-support; elevated support is refused too. Preflight and verification now check the safe policy shape.
@@ -294,13 +296,40 @@ URS-014's inbound automatic financial-invariance proof is still outside #247 on 
 
 **146 rollback STOP RULE:** rollback deliberately retains `ai_helper_requests.key_source`, request history and usage. A second 146 install on that same rolled-back database requires an authorised disposable reset to reviewed baseline through 144, then 145 and 146 in order. Keep evidence first. Never drop key_source, delete retained history, weaken guards or reset a hosted/live company database to force reinstall. #247 includes the no-global-provider-key DB proof: working own-key positive controls, then provided mode refuses round-up/RFQ/assistant with request/usage/key snapshots unchanged. That real SQL proof remains unrun here.
 
+### AL: final head, scoped external evidence and unresolved conditions
+
+| Code revision | Meaning | Evidence limit |
+| --- | --- | --- |
+| 75897fd8c1fac016bebe41bd743831af2bdb0484 | Earlier #247 content before the loader repair | Superseded; never substitute its result for final-head evidence |
+| a27dcf1549bf013048dcca7b384dad3b05f16b41 | Type-only Vitest sequencer/config-load fix | Intermediate commit, not final #247 |
+| d7c0019caa51f8a221e1f3b855e67f06d01ac3b4 | 145 safe helper, duplicate-CI-step removal and refusal proofs | Intermediate commit; 5,451 local unit passes are unit evidence, not full CI |
+| fe7514fbea7eaac2fead0237db0fa7d2abcc6db8 | Final reviewed #247 code, adding no-global-key refusal proof and rollback reset stop rule | Full CI remains pending; no release/SQL approval |
+
+The diagnostic workflow run head is `510a20431ea4f3c16562e9e05f8adfcaacea8eac` on `claude/247-rehearsal-fe7514f`. That is the diagnostic workflow revision, not a replacement name for final #247 code fe7514f. GitHub metadata confirms extras run 41722081841 completed with failure, and full CI 41722093670 is in progress with no conclusion. The individual SQL findings below are the reviewer/Code's reported scoped evidence; no new SQL was run here and no unreported test count is invented.
+
+| Evidence from extras run 41722081841 | Reported result | What it does not prove |
+| --- | --- | --- |
+| 145 install and verification | Passed | Entire release or all independent setup follow-ups |
+| 146 install and verification | Passed | Full candidate CI or provider/browser acceptance |
+| Role matrices | Passed, including the reviewed permission conditions | Every unrun SQL file in #251 to #256 |
+| Second installs of 145 and 146 | Refused as required | Reinstall after rollback is supported |
+| 146 rollback with outstanding Tolra reservation | Refused as required | Other unrun concurrency/provider conditions |
+| 146 rollback after settling | Completed and kept history, including key_source by design | A rolled-back database is fresh; reset stop rule still applies |
+| Extras seed step | Failed only because #243's mark-disposable.sql is not on #247 | Not a demonstrated seed-guard defect, not a release-SQL failure, not a passed seed rehearsal |
+| Overall extras run | FAILURE | Never report the overall run as green because selected SQL steps passed |
+| Full CI 41722093670 | PENDING / in_progress, no conclusion | Never report a full-suite or browser pass before final evidence |
+
+BLOCKED conditions remain explicit: #250 combined wipe against the real combined private kit; #207's reviewer/runtime acceptance; independent unrun DB files #251/#252/#253/#254/#255/#256; no-global-key and two-session cap race unless separately evidenced; full CI, browser/provider checks, seed completion with #243's reviewed marker file, manual IQ/OQ/PQ and Rhys's VSR decision. #253's local attempt remains 1 configuration/preflight failure and 0 skips, before any DB request. Code is doing the throwaway combined-wipe rehearsal; the temporary-source archive harness is not that proof.
+
+Reviewer verdicts: #255, #258, #257 and #253 are SAFE WITH CONDITIONS. #250 is NOT SAFE. Neither phrase is approval to release or execute SQL. Record Code's next real results against their exact run and code head; do not mark a block cleared just because a test exists or a unit log passes.
+
 ### Final N1 to N7 tick list
 
 - [x] N1: #218/#235/#247, paid-break implementation and unit coverage present; operator DB/browser comparison remains.
 - [x] N2: #219/#224/#232/#234/#247, own/provided modes and owner caps present; real cap race, permissions and missing-global-key SQL proof remain unrun.
 - [x] N3: #221/#230/#237/#240/#247, Xero/Sage/QuickBooks implementation and unit coverage present; expanded SQL and sandbox evidence remain.
 - [x] N4: #220 updated by #258; fresh 347 mapped and 5,461 full unit passes; manual validation and Rhys's VSR sign-off remain blank.
-- [x] N5: #222/#236/#239/#247, blank setup and own-admin policy fix present; real role matrix remains unrun.
+- [x] N5: #222/#236/#239/#247, blank setup and own-admin policy fix present; role-matrix evidence reported in extras 41722081841, independent SQL/full CI/browser conditions remain.
 - [x] N6: #223/#236/#247, labelled editor, detail insertion and legacy-text unit coverage present; real browser/email rehearsal remains.
 - [ ] N7: no product brief identified in the supplied materials; scope unresolved, no implementation invented.
 
@@ -331,17 +360,19 @@ Ticks mean the described implementation/review artifact exists, not that unrun r
 - [x] U: #244 superseded by #243 seed identity guard; no new seed execution.
 - [x] V: #245 reviewer browser checks wired to CI; runtime evidence remains.
 - [x] W: #246 handover exists; current follow-up #257.
-- [x] X: #247 candidate packaged; real repaired-head database rehearsal remains.
+- [x] X: #247 final code head fe7514f packaged; scoped extras evidence recorded, full CI 41722093670 remains pending.
 - [x] Y: earlier private-kit read-only review recorded; this follow-up did not access the private repo.
 - [x] Z: #248 go-live manual checklist exists; real completion/sign-off remains.
 - [x] AA: #247 follow-up recorded in prior inventory; repaired-head runtime remains.
 - [x] AB: #247 follow-up recorded in prior inventory; repaired-head runtime remains.
 - [x] AC: #249 wipe proposal exists; stronger AH draft #250.
 - [x] AD: #246 handover inventory retained; current follow-up #257.
-- [x] AE: #247 final-candidate packaging recorded; no real DB pass claimed for current repaired head.
+- [x] AE: #247 final fe7514f, scoped extras SQL evidence recorded; no full CI pass or release approval claimed.
 - [ ] AF: no definition/outcome in supplied materials; unresolved.
 - [ ] AG: no definition/outcome in supplied materials; unresolved.
-- [x] AH: #250 stronger proposed refusal/permissions/comparison proofs pushed; 6 units passed; all real SQL/private-driver rehearsal BLOCKED here.
+- [x] AH: #250 review artifact exists, 6 units passed; reviewer verdict NOT SAFE, real combined-kit rehearsal BLOCKED pending Code.
 - [x] AI: #251 to #256 proof drafts pushed; #255 has 4 new named cases and 87 focused unit passes; #253 real run BLOCKED by missing backend, 1 preflight failure and 0 skips.
 - [x] AK: #258 refreshed to fe7514f with fresh dated evidence; 347 mapped and 5,461 full unit passes; VSR remains blank.
 - [x] AJ: #257 updated last with full state and exact operator next steps; documentation diff check passed, all new work committed/pushed.
+
+- [x] AL: #257 separates historical commits from final fe7514f, records scoped extras/seed failure accurately, and leaves full CI, wipe, #207 and independent DB conditions blocked. Documentation only; no release or SQL approval.
