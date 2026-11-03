@@ -27,8 +27,11 @@ describe('reviewer atomic costing requirements',()=>{
  });
  it('sends deletions and additions in the same request and never falls back after failure',async()=>{
   const draft=mapCostingRates(saved);draft.materials=[];draft.machines.push({id:'new',name:'Lathe',hourlyRate:80,labourPerHour:0});
+  const before = structuredClone(saved);
+  const draftBefore = structuredClone(draft);
   const db={rpc:vi.fn().mockResolvedValue({error:{code:'42501'}}),from:vi.fn()};
   await expect(saveAtomicCosting(db as never,'company-a',saved,draft)).rejects.toThrow(/Could not save/);
+  expect(saved).toEqual(before);expect(draft).toEqual(draftBefore);
   expect(db.rpc).toHaveBeenCalledTimes(1);expect(db.from).not.toHaveBeenCalled();
   const args=db.rpc.mock.calls[0][1];expect(args.p_expected.materials).toHaveLength(1);expect(args.p_value.materials).toEqual([]);expect(args.p_value.machines).toHaveLength(2);
  });
