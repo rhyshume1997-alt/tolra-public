@@ -66,6 +66,8 @@ const build = process.env.E2E_SKIP_BUILD === "1" ? "" : "npm run build && ";
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /.*\.spec\.ts/,
+  // These ten cases use a separate required CI runner with provider mocks.
+  testIgnore: ["**/reviewer/**"],
   globalSetup: "./tests/e2e/global-setup.ts",
   timeout: 90_000,
   expect: { timeout: 20_000 },
