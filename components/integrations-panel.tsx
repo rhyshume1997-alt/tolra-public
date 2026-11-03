@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
+import { AccountingCloudCards } from "@/components/integrations/accounting-cloud-cards";
 import { AccountantInviteCard } from "@/components/accountant-invite-card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
@@ -286,6 +287,7 @@ export function IntegrationsPanel() {
         offerXero={Boolean(status?.db107 && !xeroView.notSetUp && xeroView.offerInvite && overview && overview.status !== "connected")}
         onXeroLink={() => void loadInvites()}
       />
+      <AccountingCloudCards />
       <MicrosoftConnectCard status={status} />
       {overview && linked ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
       {overview && (linked || anySends) ? <XeroSendLog reloadKey={version} onChanged={() => void load()} /> : null}
