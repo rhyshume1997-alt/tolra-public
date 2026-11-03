@@ -41,10 +41,18 @@ const admin = {
   rpc: async (fn: string) => { state.serviceRpc.push(fn); return { data: null, error: null }; },
   from: (table: string) => {
     const filters: Record<string, unknown> = { table };
+    let ids: unknown[] | null = null;
     const chain = {
       select: () => chain,
       eq: (column: string, value: unknown) => { filters[column] = value; return chain; },
-      then: (resolve: (value: { count: number; error: null }) => unknown) => { state.countFilters = filters; return resolve({ count: state.activeLeft, error: null }); },
+      in: (_column: string, values: unknown[]) => { ids = values; return chain; },
+      then: (resolve: (value: unknown) => unknown) => {
+        // G1: the reads that decide whether a recent code is needed (the login's stored memberships: none here, so no change gives or takes
+        // admin; and the companies' own switches: off). They are not the last-company count below.
+        if (ids) return resolve({ data: table === "organizations" ? ids.map((id) => ({ id, require_admin_mfa: false })) : [], error: null });
+        state.countFilters = filters;
+        return resolve({ count: state.activeLeft, error: null });
+      },
     };
     return chain;
   },
@@ -55,6 +63,7 @@ vi.mock("@/lib/server/admin-users", () => ({
   guard: async () => (state.guardDenied ? NextResponse.json({ error: "Forbidden" }, { status: 403 }) : { auth: { user: { id: ADMIN }, profile: { organization_id: JNR }, supabase }, admin }),
   liftDeactivationBan: async (_admin: unknown, id: string) => { state.lifted.push(id); return { lifted: true, stillBanned: false }; },
   banState: async () => state.ban,
+  requireRecentAal2: async () => null,
 }));
 
 const { POST } = await import("@/app/api/admin/users/companies/route");

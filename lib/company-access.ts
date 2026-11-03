@@ -119,6 +119,7 @@ export function companyAccessErrorMessage(error: { code?: string | null; hint?: 
   switch (error?.hint) {
     case "not_company_admin": return `You're not an admin of ${company}, so you can't change who has access to it.`;
     case "mfa_required": return `${company} requires two-step sign-in for admins. Sign out, sign in again with your authenticator code, then try again.`;
+    case "mfa_recent_required": return `${company}: enter a fresh code from your authenticator app to change who is an admin, then try this again.`;
     case "last_admin": return `${company} must keep at least one active admin.`;
     case "self_removal": return `You can't remove your own access to ${company}.`;
     case "self_demotion": return `You can't remove your own admin rights in ${company}. Ask another admin there.`;
