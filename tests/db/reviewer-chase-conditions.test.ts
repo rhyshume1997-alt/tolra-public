@@ -21,6 +21,10 @@ it('real SQL claims send exact approved text once and close uncertain attempts a
   });
   const input={organizationId:org,userId:actor.id,draftId:id,expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
   const deps={db,admin:service,provider:async()=>({}),send,allowlisted:()=>false};
+  expect((await approveChaseDraft({...input,expectedBody:'Stale reviewed text'},deps)).status).toBe('refused');
+  expect(send).not.toHaveBeenCalled();
+  const stillDraft=await service.from('email_history').select('status,subject,body').eq('id',id).single();
+  expect(stillDraft.error).toBeNull();expect(stillDraft.data).toEqual({status:'drafted',subject,body});
   const attempts=await Promise.all([approveChaseDraft(input,deps),approveChaseDraft(input,deps)]);
   expect(attempts.filter(r=>r.status==='sent')).toHaveLength(1);expect(send).toHaveBeenCalledTimes(1);
   const uncertainId=await draft();const uncertain=vi.fn(async()=>({ok:false as const,code:'provider_error' as const,error:'Synthetic timeout',uncertain:true}));
