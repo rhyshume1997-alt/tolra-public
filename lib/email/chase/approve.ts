@@ -14,11 +14,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { pauseActive } from "@/lib/email/chase/steps";
-import { escapeHtml, oneLine } from "@/lib/email/templates/defaults";
+import { escapeHtml } from "@/lib/email/templates/defaults";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
-export type ApproveInput = { organizationId: string; userId: string; draftId: string; subject?: string; body?: string; today: string };
+export type ApproveInput = { organizationId: string; userId: string; draftId: string; expectedSubject: string; expectedBody: string; today: string };
 export type ApproveDeps = {
   /** The person's own session (row level security). */
   db: SupabaseClient;
@@ -50,6 +50,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     .select("id, organization_id, to_email, subject, body, status, related_to_type, related_to_id").eq("id", input.draftId).maybeSingle();
   const draft = draftRow as { id: string; organization_id: string; to_email: string; subject: string; body: string; status: string; related_to_type: string | null; related_to_id: string | null } | null;
   if (draftError || !draft || draft.organization_id !== org) return refused(404, "Draft not found.");
+  if (typeof input.expectedSubject !== "string" || typeof input.expectedBody !== "string" || input.expectedSubject !== draft.subject || input.expectedBody !== draft.body) return refused(409, "The draft changed after you checked it. Reload and review it before sending.");
   if (draft.status !== "drafted") return refused(409, "This e-mail is no longer waiting for approval. Reload the page.");
 
   const { data: chaseRow } = await db.from("chase_sends").select("id, invoice_id, status").eq("draft_history_id", draft.id).eq("organization_id", org).maybeSingle();
@@ -74,6 +75,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     db.from("email_schedules").select("recipients").eq("organization_id", org).eq("kind", "invoice_reminder").maybeSingle(),
   ]);
   const customerRows = ((customers ?? []) as Array<{ id: string; name: string; email: string | null }>).filter((c) => lower(c.name) === customerName);
+  if (customerRows.length > 1) return refused(409, "Two customer records use this name. Check them before sending.");
   const customerIds = new Set(customerRows.map((c) => c.id));
   for (const p of (pauses ?? []) as Array<{ invoice_id: string | null; customer_id: string | null; paused_until: string | null }>) {
     if (!pauseActive(p.paused_until, input.today)) continue;
@@ -95,30 +97,27 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   }
   if (!to.length || outside().length) return refused(403, "A chase can only go to the customer's e-mail address on file, your reminder recipients or your own team. Update the customer's e-mail first.");
 
-  // An edit made in the approval dialog is saved on the draft first (the person's own session), then that text is what is sent.
-  let subject = draft.subject;
-  let body = draft.body;
-  if (input.subject !== undefined || input.body !== undefined) {
-    const nextSubject = oneLine(input.subject ?? draft.subject);
-    const nextBody = input.body ?? draft.body;
-    if (!nextSubject || nextSubject.length > 200) return refused(400, "Enter a subject of up to 200 characters.");
-    if (!nextBody.trim() || nextBody.length > 100_000) return refused(400, "Enter the e-mail text.");
-    if (nextSubject !== draft.subject || nextBody !== draft.body) {
-      const { error } = await db.from("email_history").update({ subject: nextSubject, body: nextBody }).eq("id", draft.id).eq("status", "drafted");
-      if (error) return refused(409, "Couldn't save your changes to the draft, so nothing was sent. Try again.");
-    }
-    subject = nextSubject;
-    body = nextBody;
-  }
+  // Approval covers only saved, reviewed text. Edits must be saved and reviewed separately.
+  if (!draft.subject.trim() || draft.subject.length > 200 || !draft.body.trim() || draft.body.length > 100_000 || /[\r\n]/.test(draft.subject)) return refused(400, "Check the subject and message before sending.");
+  const subject = input.expectedSubject;
+  const body = input.expectedBody;
 
   const provider = await deps.provider(org);
   if (provider === "refused") return refused(503, "E-mail sending is switched off on this site.");
   if (!provider) return { status: "no_provider", message: NO_PROVIDER_MESSAGE };
 
-  const sent = await deps.send({
+  // Compare and claim in one UPDATE: an edit before this point invalidates approval.
+  // Every editor requires status=drafted, so an edit cannot alter a claimed send.
+  const { data: claimed, error: claimError } = await db.from("email_history")
+    .update({ status: "sending" }).eq("id", draft.id).eq("organization_id", org).eq("status", "drafted")
+    .eq("subject", subject).eq("body", body).eq("to_email", draft.to_email).select("id");
+  if (claimError || !Array.isArray(claimed) || claimed.length !== 1) return refused(409, "The draft changed after you checked it. Reload and review it before sending.");
+
+  let sent: CompanyEmailResult;
+  try { sent = await deps.send({
     organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body, html: escapeHtml(body).replace(/\r?\n/g, "<br>\n"),
     recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: approveKey(draft.id),
-  });
+  }); } catch { return refused(502, "The send result needs checking. Do not send this reminder again until it has been checked."); }
   if (!sent.ok) {
     const http = sent.code === "invalid" ? 400 : sent.code === "recipient_refused" ? 403 : sent.code === "rate_limited" ? 429 : sent.code === "no_provider" ? 503 : 502;
     if (sent.code === "no_provider") return { status: "no_provider", message: NO_PROVIDER_MESSAGE };
@@ -127,6 +126,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   if (sent.mode === "drafted") {
     // The mailer was switched off between the check and the send: it saved a second draft. Remove that copy; the original stays.
     if (sent.historyId && sent.historyId !== draft.id) await deps.admin.from("email_history").delete().eq("id", sent.historyId).eq("organization_id", org).eq("status", "drafted");
+    await db.from("email_history").update({ status: "drafted" }).eq("id", draft.id).eq("organization_id", org).eq("status", "sending").eq("subject", subject).eq("body", body);
     return { status: "no_provider", message: NO_PROVIDER_MESSAGE };
   }
   const historyId = sent.historyId ?? "";
@@ -134,5 +134,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     ? await deps.admin.rpc("chase_record_sent", { p_org: org, p_draft: draft.id, p_sent: historyId, p_user: input.userId })
     : { error: { code: "no_history" } };
   if (recordError) console.error("[chase/approve] sent but not recorded", (recordError as { code?: string }).code);
+  // 138 only deletes a drafted source. Remove our claimed source after it records the send.
+  if (!recordError) await deps.admin.from("email_history").delete().eq("id", draft.id).eq("organization_id", org).eq("status", "sending");
   return { status: "sent", historyId, recorded: !recordError };
 }

@@ -92,7 +92,7 @@ describe("one step per invoice per run (ChatGPT's rule), through the real select
     expect(createDraft).toHaveBeenCalledTimes(1);
     const args = createDraft.mock.calls[0][1];
     expect(args).toMatchObject({ invoiceId: "1", stepId: "s30", subject: "Final payment reminder: invoice INV-1" });
-    expect(args.body).toBe("Hello Acme Ltd,\n\nThis is our final reminder that invoice INV-1 remains unpaid, with £120.00 outstanding. Please contact us promptly to resolve this.\n\nIf you have already paid, please let us know so we can check our records.\n\nKind regards,\nJNR");
+    expect(args.body).toBe("Hello Acme Ltd,\n\nWe are following up again about invoice INV-1. The outstanding amount is £120.00. Please contact us today with a payment date, or tell us if there is a problem we can help resolve.\n\nIf you have already paid, please let us know so we can check our records.\n\nKind regards,\nJNR");
     expect(await run("2026-11-01")).toMatchObject({ drafted: 0, skipped: 1, reasons: { no_step_due: 1 } });
     expect(await run("2026-11-20")).toMatchObject({ drafted: 0, reasons: { no_step_due: 1 } });
     expect(createDraft).toHaveBeenCalledTimes(1);
