@@ -3,7 +3,7 @@ import { documentTotals, toPence } from '@/lib/money';
 import { balanceDue, daysPastDue, owed } from '@/lib/receivables';
 
 describe('money and calendar edges', () => {
-  it.each([[0.01, 1], [0.29, 29], [-0.29, -29], [0, 0]])('keeps %s in whole pennies', (amount, pennies) => {
+  it.each([[0.01, 1], [0.29, 29], [-0.29, -29], [0, 0], [0.145, 15], [-0.145, -15]])('keeps %s in whole pennies', (amount, pennies) => {
     expect(toPence(amount)).toBe(pennies);
   });
   it.each([[0.03, 0.01, 0.04], [0.07, 0.01, 0.08], [0.13, 0.03, 0.16], [0, 0, 0]])('20 percent VAT on %s', (net, vat, total) => {
