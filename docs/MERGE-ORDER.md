@@ -54,7 +54,7 @@ Tests-only PRs #114 and #122 can go first immediately. #119, #120, #121 and #141
 | 30 | [#130](https://github.com/rhyshume1997-alt/tolra-public/pull/130) | `main` | None; keep all owners when joining tracker updates | Docs only; shared ownership | Open #130 → Merge pull request → Create a merge commit |
 | 31 | [#133](https://github.com/rhyshume1997-alt/tolra-public/pull/133) | `main` | Chase/costing guides checked against final screens; fill JNR contact | Docs only; go-live steps | Open #133 → Merge pull request → Create a merge commit |
 | 32 | [#142](https://github.com/rhyshume1997-alt/tolra-public/pull/142) | `main` | Preserve evidence; does not claim full local suite passed | Docs only; historical suite evidence | Open #142 → Merge pull request → Create a merge commit |
-| 33 | [#143](https://github.com/rhyshume1997-alt/tolra-public/pull/143) | `main` | #142; retain all owners/jobs; final tracker #152 or later supersedes snapshots | Docs only; historical handover | Open #143 → Merge pull request → Create a merge commit |
+| 33 | [#143](https://github.com/rhyshume1997-alt/tolra-public/pull/143) | `main` | #142; retain all owners/jobs; the final coordination tracker supersedes snapshots | Docs only; historical handover | Open #143 → Merge pull request → Create a merge commit |
 
 ## Fixes newer than the requested range
 
@@ -65,3 +65,63 @@ There are still production holds: unapplied atomic SQL proposals and DB checks, 
 ## Evidence and review limits
 
 Main was `a546c3a9b37ad53d3ab235b1c545b577b84db9f5`. Job 20 merged it into #135/#139/#140/#145 and joined their updated stacked bases, preserving account security markers 136/137 and costing marker 143 in release preflight. Those auth files and migrations come from main, rather than new costing behaviour. Check the fresh head after every merge. Earlier green CI is historical once the head changes. Historical local full-suite failures/timeouts remain documented; a passing web job is not a live database or email send test.
+
+## Every shared file in the PR changes
+
+Each current PR head was compared with its current base (three-dot Git diff). There are 26 shared paths. [BUILDER2-PR-OVERLAPS.json](BUILDER2-PR-OVERLAPS.json) records all 33 head commits, changed files and conflict pairs. A shared path can merge cleanly and still replace newer behaviour.
+
+| File | PRs changing it | Safest order and what to keep |
+|---|---|---|
+| components/bank/bank-check.tsx | #116, #139 | #116 → #139 → #146. Keep clear labels, awaited callbacks, pending lock, error retry and stable request ID. |
+| components/chase/approval-card.tsx | #112, #132, #139 | #111–113 first, #139 wording before #132/#134 wiring, then #144. Keep selectors, reviewed email snapshot and reopen-after-cancel payment controls. Combine wording into wired components. |
+| components/chase/connected-settings.tsx | #132, #134 | #132 → #134 → #144. Keep selectors and #144 atomic save result. Verify SQL proposal first. |
+| components/chase/customer-says-paid.tsx | #113, #132, #139 | #111–113 first, #139 wording before #132/#134 wiring, then #144. Keep selectors, reviewed email snapshot and reopen-after-cancel payment controls. Combine wording into wired components. |
+| components/chase/settings-card.tsx | #111, #132, #134, #139 | #111–113 first, #139 wording before #132/#134 wiring, then #144. Keep selectors, reviewed email snapshot and reopen-after-cancel payment controls. Combine wording into wired components. |
+| components/costing/connected-costing.tsx | #123, #139 | #110 → #123 → #135 → #139 → #145; keep safe estimates, matching preview/quote totals, plain labels, machine labour override and atomic saves. |
+| components/costing/costing-rates-editor.tsx | #110, #123, #139 | #110 → #123 → #135 → #139 → #145; keep safe estimates, matching preview/quote totals, plain labels, machine labour override and atomic saves. |
+| components/costing/price-this-part.tsx | #110, #123, #135, #139 | #110 → #123 → #135 → #139 → #145; keep safe estimates, matching preview/quote totals, plain labels, machine labour override and atomic saves. |
+| components/costing/types.ts | #110, #123 | #110 → #123 → #145; keep machine labour override including zero. |
+| docs/BUILDER2-FULL-SUITE-FAILURES.md | #142, #143 | #142 → #143; preserve historical failure evidence. New CI is separate. |
+| docs/BUILDER2-FULL-SUITE-RESULTS.json | #142, #143 | #142 → #143; preserve historical failure evidence. New CI is separate. |
+| docs/BUILDER2-FULL-SUITE-RUN.md | #142, #143 | #142 → #143; preserve historical failure evidence. New CI is separate. |
+| docs/BUILDER2-PR-REVIEW.md | #135, #143 | #135 → #143; preserve findings and append resolutions. |
+| docs/CHATGPT-BUILD-HANDOVER-2.md | #132, #133, #134, #135, #136, #137, #138, #139, #140, #141, #142, #143 | Follow the numbered order, combine every job row, then keep the final coordination table. Never choose an older whole file. |
+| docs/TOLRA-CODEX-BUILD-HANDOVER.md | #130, #131 | #130 → #131; keep ownership and CSV verification notes. |
+| docs/TOLRA-WORK-OWNERSHIP.md | #130, #131, #132, #133, #134, #135, #136, #137, #138, #139, #140, #141, #142, #143 | #130 first; combine Codex and both builders’ rows after every merge. Keep all job/branch/PR details. |
+| docs/staff-walkthrough.md | #115, #139 | #115 → #139 → #147; final text must say chosen timesheet days, seasonal daily pass and cost plus percentage (markup). |
+| lib/bank/match-statement.ts | #109, #116, #131, #136, #139 | #109 → #120 → #131 → #116 → #136 → #139 → #146. Keep strict quote/date/pence checks, all tests and #146 reference boundaries. |
+| lib/chase/paid-claim.ts | #107, #117, #137 | #107 → #117 → #137 → #147. Keep #137/#147 detector; do not restore the older #117 copy. |
+| lib/chase/steps.ts | #108, #118 | #108 → #119 → #118, then join Claude chase base before #132. Preserve progression and before-due dates, then wording. |
+| lib/costing/engine.ts | #110, #123 | #110 → #121 → Claude costing base → #123; combine fixes. Keep Python rounding, validation and all golden fixtures. #121 inherits a different engine although its own diff is tests only. |
+| package-lock.json | #111, #112, #113 | #111 → #112 → #113; combine dependencies once and regenerate the lock consistently. Later #144/#146 need jsdom too. |
+| package.json | #111, #112, #113 | #111 → #112 → #113; combine dependencies once and regenerate the lock consistently. Later #144/#146 need jsdom too. |
+| tests/support/optional-backend.ts | #134, #140 | #134 → #140; keep no-database skip and both browser runners. |
+| tests/unit/bank-match-statement.test.ts | #109, #131 | #109 → #131; keep all assertions, including unclosed quotes. |
+| tests/unit/costing-ui.test.ts | #110, #139 | #110 → #139; keep all assertions, changing wording expectations only for intended label changes. |
+
+## Actual text conflicts, including inherited base files
+
+All 528 head pairs were checked with Git merge-tree; 134 pairs have at least one conflict. These include feature-base history, so some paths are absent above. They are pairwise checks, not 134 blocked PRs. Main/base checks in #149 are separate and clean for builder 2 branches. Recheck after each merge.
+
+| Conflicting path | Exact PR pairs (A/B) | Resolution before continuing |
+|---|---|---|
+| docs/CHATGPT-BUILD-HANDOVER-2.md | 143/142, 143/141, 143/140, 143/139, 143/138, 143/137, 143/136, 143/135, 143/134, 143/133, 143/132, 142/141, 142/140, 142/139, 142/138, 142/137, 142/136, 142/135, 142/134, 142/133, 142/132, 141/140, 141/139, 141/138, 141/137, 141/136, 141/135, 141/134, 141/133, 141/132, 140/138, 140/137, 140/136, 140/134, 140/133, 140/132, 139/138, 139/137, 139/136, 139/134, 139/133, 139/132, 138/137, 138/136, 138/135, 138/134, 138/133, 138/132, 137/136, 137/135, 137/134, 137/133, 137/132, 136/135, 136/134, 136/133, 136/132, 135/134, 135/133, 135/132, 134/133, 133/132 | Follow the numbered order, combine every job row, then keep the final coordination table. Never choose an older whole file. |
+| docs/TOLRA-WORK-OWNERSHIP.md | 143/142, 143/141, 143/140, 143/139, 143/138, 143/137, 143/136, 143/135, 143/134, 143/133, 143/132, 143/131, 143/130, 142/141, 142/140, 142/139, 142/138, 142/137, 142/136, 142/135, 142/134, 142/133, 142/132, 142/131, 142/130, 141/140, 141/139, 141/138, 141/137, 141/136, 141/135, 141/134, 141/133, 141/132, 141/131, 141/130, 140/138, 140/137, 140/136, 140/134, 140/133, 140/132, 140/131, 140/130, 139/138, 139/137, 139/136, 139/134, 139/133, 139/132, 139/131, 139/130, 138/137, 138/136, 138/135, 138/134, 138/133, 138/132, 138/131, 138/130, 137/136, 137/135, 137/134, 137/133, 137/132, 137/131, 137/130, 136/135, 136/134, 136/133, 136/132, 136/131, 136/130, 135/134, 135/133, 135/132, 135/131, 135/130, 134/133, 134/131, 134/130, 133/132, 133/131, 133/130, 132/131, 132/130 | #130 first; combine Codex and both builders’ rows after every merge. Keep all job/branch/PR details. |
+| supabase/verify/release_preflight.sql | 143/123, 142/123, 141/140, 141/139, 141/135, 141/134, 141/132, 141/123, 140/134, 140/132, 139/134, 139/132, 138/123, 135/134, 135/132, 134/123, 133/123, 132/123, 130/123, 125/123, 124/123, 123/122, 123/118, 123/117, 123/116, 123/115, 123/114, 123/113, 123/112 | Claude must combine main security markers 136/137, chase 138, timesheet 142 and costing 143 as their bases land. Keep every check and SQL commas. Do not choose either whole file or apply SQL here. #123 still needs its owner to join main. |
+| components/email-schedules/settings-card.tsx | 141/134, 141/132 | Land chosen-day timesheet base and #141 first, then join chase #132/#134 into that settings card. Keep chosen days, recipients, time and chase controls. |
+| components/chase/customer-says-paid.tsx | 140/134, 140/132, 140/113, 139/134, 139/132, 139/113, 134/113, 132/113 | #111–113 first, #139 wording before #132/#134 wiring, then #144. Keep selectors, reviewed email snapshot and reopen-after-cancel payment controls. Combine wording into wired components. |
+| components/chase/settings-card.tsx | 140/134, 140/132, 140/111, 139/134, 139/132, 139/111, 134/111 | #111–113 first, #139 wording before #132/#134 wiring, then #144. Keep selectors, reviewed email snapshot and reopen-after-cancel payment controls. Combine wording into wired components. |
+| lib/bank/match-statement.ts | 140/131, 140/120, 140/116, 140/109, 139/131, 139/120, 139/116, 139/109, 136/116, 131/116 | #109 → #120 → #131 → #116 → #136 → #139 → #146. Keep strict quote/date/pence checks, all tests and #146 reference boundaries. |
+| components/costing/costing-rates-editor.tsx | 140/121, 140/110, 139/121, 139/110 | #110 → #123 → #135 → #139 → #145; keep safe estimates, matching preview/quote totals, plain labels, machine labour override and atomic saves. |
+| components/costing/price-this-part.tsx | 140/121, 140/110, 139/121, 139/110, 135/121, 135/110 | #110 → #123 → #135 → #139 → #145; keep safe estimates, matching preview/quote totals, plain labels, machine labour override and atomic saves. |
+| lib/costing/engine.ts | 140/121, 139/121, 135/121, 123/121 | #110 → #121 → Claude costing base → #123; combine fixes. Keep Python rounding, validation and all golden fixtures. #121 inherits a different engine although its own diff is tests only. |
+| tests/unit/costing-golden.test.ts | 140/121, 140/110, 139/121, 139/110, 135/121, 135/110, 123/121, 123/110 | Keep #110’s 60-case and exact-pence assertions AND Claude’s provenance/coverage checks. Do not replace one suite with a skipped/optional suite, reduce examples or loosen equality. |
+| tests/unit/costing-ui.test.ts | 140/121, 140/110, 139/121, 139/110 | #110 → #139; keep all assertions, changing wording expectations only for intended label changes. |
+| components/bank/bank-check.tsx | 140/116, 139/116 | #116 → #139 → #146. Keep clear labels, awaited callbacks, pending lock, error retry and stable request ID. |
+| docs/staff-walkthrough.md | 140/115, 139/115 | #115 → #139 → #147; final text must say chosen timesheet days, seasonal daily pass and cost plus percentage (markup). |
+| lib/chase/paid-claim.ts | 137/117 | #107 → #117 → #137 → #147. Keep #137/#147 detector; do not restore the older #117 copy. |
+| lib/chase/steps.ts | 134/118, 132/118, 119/118, 118/108 | #108 → #119 → #118, then join Claude chase base before #132. Preserve progression and before-due dates, then wording. |
+
+## When order is not enough
+
+Combine code where both behaviours are needed. Order cannot prevent regressions in copied modules. Do not accept all of one side. Keep both golden suites, every release marker, and chosen-day email settings with chase settings. Run focused tests and TypeScript/lint after resolving; Claude runs release-wide checks.
