@@ -1,16 +1,12 @@
-/**
- * Working hours shown as paid hours: for DISPLAY only (Settings > Company details > Working hours). Pay comes from clock in and out,
- * never from these figures.
- *
- * The break rule matches the job sheet's defaults (migration 050, time settings; not merged yet): on a day of MIN_DAY_HOURS or more at
- * work, LUNCH_MINUTES of lunch and BREAK_MINUTES of break come off unpaid; on a shorter day nothing comes off.
- */
+/** Planned paid hours for display only; actual pay uses clock records and the same company time settings. */
 
 import { clockMinutes, hoursForDay, type DayHours, type WorkingHours } from "@/lib/company";
 
-export const LUNCH_MINUTES = 30;
-export const BREAK_MINUTES = 15;
-export const MIN_DAY_HOURS = 6;
+import { DEFAULT_TIME_SETTINGS, type TimeSettings } from "@/lib/time-sheet";
+
+export const LUNCH_MINUTES = DEFAULT_TIME_SETTINGS.lunchMinutes;
+export const BREAK_MINUTES = DEFAULT_TIME_SETTINGS.breakMinutes;
+export const MIN_DAY_HOURS = DEFAULT_TIME_SETTINGS.breakMinDayHours;
 
 export type DayPaid = { atWork: number; breaks: number; paid: number };
 
@@ -24,22 +20,22 @@ function endMinutes(end: string, start: number) {
  * Minutes at work (finish - start), unpaid breaks and paid time for one day. Null when the start or finish isn't a valid time, or the
  * finish isn't after the start.
  */
-export function paidDay(start: string, end: string): DayPaid | null {
+export function paidDay(start: string, end: string, settings: TimeSettings = DEFAULT_TIME_SETTINGS): DayPaid | null {
   const s = clockMinutes(start);
   const e = s === null ? null : endMinutes(end, s);
   if (s === null || e === null || e <= s) return null;
   const atWork = e - s;
-  const breaks = atWork >= MIN_DAY_HOURS * 60 ? LUNCH_MINUTES + BREAK_MINUTES : 0;
+  const breaks = settings.breaksPaid ? 0 : Math.min(atWork, atWork >= settings.breakMinDayHours * 60 ? settings.lunchMinutes + settings.breakMinutes : 0);
   return { atWork, breaks, paid: atWork - breaks };
 }
 
 export type WeekPaid = { atWork: number; breaks: number; paid: number };
 
 /** The week's totals over the days given (days that aren't valid are left out). */
-export function paidWeek(days: Array<DayHours | null | undefined>): WeekPaid {
+export function paidWeek(days: Array<DayHours | null | undefined>, settings: TimeSettings = DEFAULT_TIME_SETTINGS): WeekPaid {
   const total = { atWork: 0, breaks: 0, paid: 0 };
   for (const day of days) {
-    const d = day ? paidDay(day.start, day.end) : null;
+    const d = day ? paidDay(day.start, day.end, settings) : null;
     if (!d) continue;
     total.atWork += d.atWork;
     total.breaks += d.breaks;
@@ -77,4 +73,10 @@ export function workingHoursLabel(hours: WorkingHours): string {
     const names = days.length >= 3 ? `${DAY_NAMES[days[0] - 1]}–${DAY_NAMES[days[days.length - 1] - 1]}` : days.map((d) => DAY_NAMES[d - 1]).join(", ");
     return `${names} ${text}`;
   }).join(", ");
+}
+
+export function paidHoursExplanation(settings: TimeSettings): string {
+  return settings.breaksPaid
+    ? "Breaks are paid. Paid time is clock in to clock out, including breaks."
+    : `Breaks are unpaid. Paid time is clock in to clock out minus breaks: on a day of ${settings.breakMinDayHours} hours or more, ${settings.lunchMinutes} + ${settings.breakMinutes} minutes, or the breaks you clocked if longer; on a shorter day, the breaks you clocked.`;
 }
