@@ -77,7 +77,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           source "$RUNNER_TEMP/h.sh"; load_env
-          npx vitest run -c vitest.db.config.ts tests/db/rehearsal-role-matrix.test.ts 2>&1 | grep -E "ROLE-MATRIX|Test Files|Tests |FAIL|Error" | cut -c1-1800
+          npx vitest run -c vitest.db.config.ts tests/db/rehearsal-role-matrix.test.ts 2>&1 | grep -E "ROLE-MATRIX|Test Files|Tests |FAIL|Error" | cut -c1-6000
       - name: B4. 146 rollback must refuse while a Tolra AI reservation is outstanding, then succeed once settled; usage history kept
         if: ${{ !cancelled() }}
         run: |
@@ -92,7 +92,12 @@ jobs:
           psql_local -At -c "select 'requests kept', count(*), 'key_source column kept', (select count(*) from information_schema.columns where table_name = 'ai_helper_requests' and column_name = 'key_source') from public.ai_helper_requests"
           psql_local -c "delete from public.ai_helper_requests where organization_id in (select id from public.organizations where slug = 'rehearsal-co')"
           psql_local -c "delete from public.organizations where slug = 'rehearsal-co'"
+          echo "== note: 146 rollback deliberately keeps key_source, so 146 cannot be installed again on this database (reset to re-install)"
+          scripts/test-backend.sh reset
+          load_env
+          psql_local -f supabase/release/145_company_setup.release.sql
           psql_local -f supabase/release/146_tolra_provided_ai.release.sql
+          psql_local -c "NOTIFY pgrst, 'reload schema';"
       - name: C. Roll back 146 then 145, with verify
         if: ${{ !cancelled() }}
         run: |
