@@ -5,6 +5,7 @@ import { customersEmptyHint } from "@/lib/empty-hints";
 import { toast } from "sonner";
 import { Pencil, Plus } from "lucide-react";
 
+import { ChasePauseControl, ChasePausedBadge, useChasePauses } from "@/components/chase/chase-pause";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { ListToolbar } from "@/components/list-toolbar";
@@ -45,6 +46,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerRecord | null>(null);
+  const chasePauses = useChasePauses();
   /** Customer credit by customer name (migration 034): what they have paid or been credited beyond their invoices. */
   const [credits, setCredits] = useState<Map<string, number>>(new Map());
   /** Names on documents with no customer record are listed but are not exported: an export holds saved customers only. */
@@ -172,7 +174,7 @@ export default function CustomersPage() {
               <TableBody>
                 {shown.map((customer) => (
                   <TableRow key={customer.id || customer.name} className="block md:table-row">
-                    {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{customer.name}{customer.notSaved ? <span className="block text-xs font-normal text-slate-500" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}{credits.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}</TableCell> : null}
+                    {isVisible("name") ? <TableCell data-label="Name" className="block font-semibold md:table-cell">{customer.name}{customer.notSaved ? <span className="block text-xs font-normal text-slate-500" data-testid="customer-not-saved">{NOT_SAVED_LABEL}</span> : null}{credits.get(customer.name) ? <span className="block text-xs font-normal text-amber-700" data-testid="customer-credit">Customer credit {gbp(credits.get(customer.name) ?? 0, 2)}</span> : null}{chasePauses.customers.has(customer.name.trim().toLowerCase()) ? <span className="block font-normal"><ChasePausedBadge /></span> : null}</TableCell> : null}
                     {isVisible("contact") ? <TableCell data-label="Contact" className="block md:table-cell">{customer.contactName || "-"}</TableCell> : null}
                     {isVisible("email") ? <TableCell data-label="Email" className="block md:table-cell">{customer.email || "-"}</TableCell> : null}
                     {isVisible("phone") ? <TableCell data-label="Phone" className="block md:table-cell">{customer.phone || "-"}{customer.mobile ? <span className="block text-xs text-slate-600">Mobile {customer.mobile}</span> : null}</TableCell> : null}
@@ -208,6 +210,7 @@ export default function CustomersPage() {
                 <Button type="submit" disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save Customer"}</Button>
               </form>
             ) : null}
+            {editing?.id ? <ChasePauseControl target={{ kind: "customer", id: editing.id, name: editing.name }} onChange={() => void chasePauses.reload()} /> : null}
           </DialogContent>
         </Dialog>
       </div>
