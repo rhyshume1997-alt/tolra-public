@@ -201,10 +201,27 @@ jobs:
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
-        run: npm run test:db
+        # BRANCH-ONLY (#234, the combined AI branch; Rhys, Tue 3 Nov): the two N2 proofs need the N2 proposal applied first, so they run in the
+        # step below, after this baseline. This edit must not travel to main with the branch; main keeps `npm run test:db`.
+        run: npx vitest run -c vitest.db.config.ts --exclude tests/db/tolra-provided-ai.test.ts --exclude tests/db/tolra-ai-cap-concurrency.test.ts
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         run: scripts/upgrade-rehearsal.sh 013
+      # BRANCH-ONLY (#234; remove before this reaches main). Applies the N2 proposal to the disposable local database only (loopback guard
+      # below; never a hosted project), reloads the schema cache, checks its verification rows (every one must be true), then runs the two N2
+      # proofs, including the two-connection cap race. The baseline database suite and upgrade rehearsal above run first, on the unmodified schema.
+      - name: "N2 proposal on the throwaway database, then its proofs (branch-only)"
+        # !cancelled(): still runs when the baseline above failed, so the N2 proofs report even while another failure is open (the job stays red).
+        if: ${{ !cancelled() && !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
+        run: |
+          set -euo pipefail
+          set -a; . ./.env.test.local; set +a
+          case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not a loopback database" >&2; exit 1 ;; esac
+          psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 -f supabase/proposals/n2_tolra_provided_ai.sql
+          psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 -c "NOTIFY pgrst, 'reload schema';"
+          psql "$TEST_DATABASE_URL" -XAt -F '|' -v ON_ERROR_STOP=1 -f supabase/verify/n2_tolra_provided_ai.sql |
+            awk -F '|' '{print} NF != 2 || $2 != "t" {bad=1} END {exit (bad || NR == 0)}'
+          npx vitest run -c vitest.db.config.ts tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts
       - name: Build against the disposable backend
         run: |
           set -a; . ./.env.test.local; set +a
