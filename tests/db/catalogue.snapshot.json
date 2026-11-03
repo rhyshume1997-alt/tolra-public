@@ -56,6 +56,16 @@
  },
  {
   "kind": "function",
+  "object": "public.accounting_cloud_connections_ready()",
+  "detail": "definer search_path=pg_catalog, public 83942b63e9ac68fd0f8c1294d54f7c1c"
+ },
+ {
+  "kind": "function",
+  "object": "public.accounting_cloud_enqueue()",
+  "detail": "definer search_path=pg_catalog, public 07eda98e2de92e1c292940c17543f05c"
+ },
+ {
+  "kind": "function",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "definer search_path=pg_catalog, public d0d9351d698893fa56c9617e8001dce1"
  },
@@ -917,7 +927,7 @@
  {
   "kind": "function",
   "object": "public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)",
-  "detail": "definer search_path=pg_catalog, public 4ee36581e711352a9de91a134e97171b"
+  "detail": "definer search_path=pg_catalog, public f584ce0c6e18e9512e543c4cfe69c5b2"
  },
  {
   "kind": "function",
@@ -2277,6 +2287,16 @@
  {
   "kind": "function-grant",
   "object": "public.accountant_invite_peek(p_token_hash text)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.accounting_cloud_connections_ready()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.accounting_cloud_enqueue()",
   "detail": "service_role"
  },
  {
@@ -6867,7 +6887,7 @@
  {
   "kind": "trigger",
   "object": "public.credit_notes :: zz_integration_enqueue",
-  "detail": "O bc71aca5576f709bbb7949e296f247d5"
+  "detail": "O ecde16000b5fd5159d0109af1eec8730"
  },
  {
   "kind": "trigger",
@@ -7527,7 +7547,7 @@
  {
   "kind": "trigger",
   "object": "public.invoices :: zz_integration_enqueue",
-  "detail": "O ebb2045fa51d3b0b2bf1bc14289afc37"
+  "detail": "O f262af4714960cb89a3992dc882e6101"
  },
  {
   "kind": "trigger",
