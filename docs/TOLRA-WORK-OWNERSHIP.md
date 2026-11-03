@@ -89,4 +89,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 18b | builder2 | chatgpt2/costing-followup | CODE FIXED; DATABASE PROPOSAL UNAPPLIED | #145 |
 | 18c | builder2 | chatgpt2/bank-followup | CODE FIXED; LIVE RECONCILIATION INTEGRATION REQUIRED | #146 |
 | 19 | builder2 | chatgpt2/ci-web-audit | DONE IN DRAFT PR | #148 |
-| 20 | builder2 | chatgpt2/base-conflict-review | DONE IN DRAFT PR | Pending |
+| 20 | builder2 | chatgpt2/base-conflict-review | DONE IN DRAFT PR | #149 |
