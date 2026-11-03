@@ -2,7 +2,7 @@
 -- One-time proposal after 133/134. No deployment/startup hook executes this file.
 -- Default OFF globally and per company. Reuses the existing per-company monthly
 -- usage ledger, request audit, timeout accounting and service-only settlement.
--- Provided allowance is GBP 10/month/company, including reservations. Own-key
+-- Provided allowance defaults to GBP 10/month/company, owner-set up to GBP 1000. Own-key
 -- usage shares the ledger (conservative: switching modes never resets usage).
 -- Original own-key function bodies are preserved by rename for rollback.
 BEGIN;
@@ -192,6 +192,42 @@ BEGIN
  UPDATE public.ai_helper_tolra_control SET enabled = p_enabled,api_key_enc = v_key,updated_by = p_owner,updated_at = now() WHERE singleton;
  RETURN jsonb_build_object('enabled',p_enabled,'key_set',v_key IS NOT NULL);
 END $$;
+-- Owner-only cap reads/writes. The application checks owner MFA before using
+-- the service role. These functions also check the owner's registry identity.
+CREATE FUNCTION public.ai_helper_tolra_caps()
+RETURNS TABLE(organization_id UUID, monthly_cap_pence INTEGER, spent_pence INTEGER, reserved_pence INTEGER)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+ SELECT o.id, coalesce(c.monthly_cap_pence,1000), coalesce(u.spent_pence,0), coalesce(u.reserved_pence,0)
+ FROM public.organizations o LEFT JOIN public.ai_helper_tolra_companies c ON c.organization_id = o.id
+ LEFT JOIN public.ai_helper_usage u ON u.organization_id = o.id AND u.month = date_trunc('month',now() AT TIME ZONE 'Europe/London')::DATE;
+$$;
+CREATE FUNCTION public.ai_helper_tolra_set_cap(p_org UUID,p_cap_pence INTEGER,p_owner UUID)
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v_month DATE := date_trunc('month',now() AT TIME ZONE 'Europe/London')::DATE; v_used INTEGER;
+BEGIN
+ IF p_org IS NULL OR p_cap_pence IS NULL OR p_cap_pence NOT BETWEEN 0 AND 100000 THEN
+  RAISE EXCEPTION 'Choose whole pence from 0 to 100000.' USING ERRCODE = '22023';
+ END IF;
+ IF p_owner IS NULL OR NOT EXISTS (SELECT 1 FROM security_audit.platform_admins a WHERE a.user_id = p_owner) THEN
+  RAISE EXCEPTION 'Owner required.' USING ERRCODE = '42501';
+ END IF;
+ INSERT INTO public.ai_helper_tolra_companies(organization_id) VALUES(p_org) ON CONFLICT(organization_id) DO NOTHING;
+ -- Match reserve's lock order: settings before monthly ledger. Reserve holds
+ -- FOR SHARE on this same row until its guarded UPDATE commits. This exclusive
+ -- lock serializes cap changes with reservations, including a simultaneous cut.
+ PERFORM c.organization_id FROM public.ai_helper_tolra_companies c WHERE c.organization_id = p_org FOR UPDATE;
+ INSERT INTO public.ai_helper_usage(organization_id,month) VALUES(p_org,v_month) ON CONFLICT(organization_id,month) DO NOTHING;
+ SELECT u.spent_pence + u.reserved_pence INTO v_used FROM public.ai_helper_usage u WHERE u.organization_id = p_org AND u.month = v_month FOR UPDATE;
+ IF p_cap_pence < v_used THEN
+  RAISE EXCEPTION 'The limit cannot be below used and reserved AI.' USING ERRCODE = '22023', HINT = 'cap_below_usage';
+ END IF;
+ UPDATE public.ai_helper_tolra_companies SET monthly_cap_pence = p_cap_pence WHERE organization_id = p_org;
+ INSERT INTO security_audit.audit_log(organization_id,actor_user_id,actor_email,action,entity_table,entity_id,metadata)
+ VALUES(p_org,p_owner,(SELECT p.email FROM public.user_profiles p WHERE p.id = p_owner),'ai_helper_settings_updated','ai_helper_tolra_companies',p_org::TEXT,
+  jsonb_build_object('monthly_cap_pence',p_cap_pence,'source','platform_owner'));
+END $$;
+REVOKE ALL ON FUNCTION public.ai_helper_tolra_caps(), public.ai_helper_tolra_set_cap(UUID,INTEGER,UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ai_helper_tolra_caps(), public.ai_helper_tolra_set_cap(UUID,INTEGER,UUID) TO service_role;
 REVOKE ALL ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER), public.ai_helper_status(), public.ai_helper_set_tolra_mode(BOOLEAN) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER), public.ai_helper_status(), public.ai_helper_set_tolra_mode(BOOLEAN) TO authenticated;
 REVOKE ALL ON FUNCTION public.ai_helper_tolra_key(UUID,UUID), public.ai_helper_tolra_owner_status(), public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) FROM PUBLIC, anon, authenticated;
