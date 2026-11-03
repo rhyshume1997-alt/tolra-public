@@ -1,0 +1,124 @@
+{
+  "requirements": [
+    {
+      "id": "URS-001",
+      "risk": "RISK-001",
+      "oq": "OQ-001",
+      "requirement": "Signed-in people see only their own company’s records.",
+      "hazard": "Wrong company sees private records",
+      "severity": "High",
+      "action": "Use two fake companies with reused document numbers. Sign in to each and attempt to open the other company’s record.",
+      "expected": "Other company’s records cannot be read or changed.",
+      "unit": "tests/unit/isolation.test.ts",
+      "browser": "tests/e2e/company-switch-two-tabs.spec.ts"
+    },
+    {
+      "id": "URS-002",
+      "risk": "RISK-002",
+      "oq": "OQ-002",
+      "requirement": "Only people with the right role may perform restricted actions.",
+      "hazard": "Staff can approve or administer without permission",
+      "severity": "High",
+      "action": "Try restricted navigation and actions as workshop, office and admin.",
+      "expected": "Each action follows the role gate; denied actions change nothing.",
+      "unit": "tests/unit/middleware-route-roles.test.ts",
+      "browser": "tests/e2e/two-level-access.spec.ts"
+    },
+    {
+      "id": "URS-003",
+      "risk": "RISK-003",
+      "oq": "OQ-003",
+      "requirement": "Money calculations keep exact pence and handle rounding consistently.",
+      "hazard": "Incorrect invoice or credit totals",
+      "severity": "High",
+      "action": "Run the money edge cases; make a fake quote with fractional quantities and VAT. Compare its saved and printed totals.",
+      "expected": "Expected pence match; no silent fractional-penny drift.",
+      "unit": "tests/unit/money.test.ts",
+      "browser": "tests/e2e/zero-rows.spec.ts"
+    },
+    {
+      "id": "URS-004",
+      "risk": "RISK-004",
+      "oq": "OQ-004",
+      "requirement": "A draft invoice does not count as an issued invoice or an approved payment.",
+      "hazard": "Draft changes alter money owed",
+      "severity": "High",
+      "action": "Create a fake draft and try the draft-payment cases.",
+      "expected": "Draft remains a draft; no issued debt or payment is created.",
+      "unit": "tests/unit/invoice-draft-payment.test.ts",
+      "browser": "tests/e2e/approvals-display.spec.ts"
+    },
+    {
+      "id": "URS-005",
+      "risk": "RISK-005",
+      "oq": "OQ-005",
+      "requirement": "Reopening a finished job requires confirmation, approval handling and a recorded reason.",
+      "hazard": "Work restarts without a trace",
+      "severity": "High",
+      "action": "Reopen a fake finished job. Try cancel, admin approval and notification without an admin present.",
+      "expected": "Cancel does nothing; confirmed route records approval/notification and reason without blaming staff.",
+      "unit": "tests/unit/reopen-sign-off.test.ts",
+      "browser": null
+    },
+    {
+      "id": "URS-006",
+      "risk": "RISK-006",
+      "oq": "OQ-006",
+      "requirement": "Hours use the saved company break rule; JNR starts with unpaid breaks.",
+      "hazard": "Incorrect paid hours",
+      "severity": "High",
+      "action": "Run clock and break cases; compare an eight-hour fake shift with breaks paid and unpaid.",
+      "expected": "Saved rule is followed and the displayed paid hours agree with clock records.",
+      "unit": "tests/unit/time-sheet.test.ts",
+      "browser": null
+    },
+    {
+      "id": "URS-007",
+      "risk": "RISK-007",
+      "oq": "OQ-007",
+      "requirement": "The print pack uses the selected company layout and matching document totals.",
+      "hazard": "Wrong drawing or paperwork reaches the floor",
+      "severity": "Medium",
+      "action": "Preview JNR and basic print layouts using fake records.",
+      "expected": "Selected layout, document number, drawing and totals belong to the selected job/company.",
+      "unit": "tests/unit/print-layout-jnr.test.ts",
+      "browser": "tests/e2e/print-layout-settings.spec.ts"
+    },
+    {
+      "id": "URS-008",
+      "risk": "RISK-008",
+      "oq": "OQ-008",
+      "requirement": "Important changes have a who, what and when record.",
+      "hazard": "Company cannot explain a change",
+      "severity": "High",
+      "action": "Change a fake record as an ordinary user and inspect the audit as an admin.",
+      "expected": "Audit records actor, action and time; staff cannot erase the history.",
+      "unit": "tests/unit/audit-contract.test.ts",
+      "browser": "tests/e2e/who-did-what.spec.ts"
+    },
+    {
+      "id": "URS-009",
+      "risk": "RISK-009",
+      "oq": "OQ-009",
+      "requirement": "Accounting sends stay off until connected and required account codes are mapped.",
+      "hazard": "Wrong or duplicate accounting entry",
+      "severity": "High",
+      "action": "Try unconfigured, unmapped and connected mock accounting cases.",
+      "expected": "Unconfigured/unmapped sends are refused; uncertain sends are checked before another send.",
+      "unit": "tests/unit/integrations-engine.test.ts",
+      "browser": "tests/e2e/xero-batch.spec.ts"
+    },
+    {
+      "id": "URS-010",
+      "risk": "RISK-010",
+      "oq": "OQ-010",
+      "requirement": "AI remains off until company permission and its usage controls allow it; suggestions need a person.",
+      "hazard": "Unreviewed AI action or uncontrolled spend",
+      "severity": "High",
+      "action": "Run the AI master-switch cases with off/on/unavailable features and review the company’s key and limit.",
+      "expected": "Off features cannot run; unavailable features stay unavailable; key and positive limit are required.",
+      "unit": "tests/unit/ai-master-switch.test.ts",
+      "browser": null
+    }
+  ]
+}
