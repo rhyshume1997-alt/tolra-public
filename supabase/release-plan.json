@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "numbered_through": 144,
+  "mode": "post-numbered-one-time",
+  "phases": [
+    {
+      "number": 145,
+      "after": "144",
+      "source": "supabase/proposals/n5_company_setup.sql",
+      "release": "supabase/release/145_company_setup.release.sql",
+      "rollback": "supabase/release/145_company_setup.rollback.sql",
+      "verify": "supabase/verify/company_setup_145.sql",
+      "marker": "post-144 marker 145 company_setup"
+    },
+    {
+      "number": 146,
+      "after": "145",
+      "source": "supabase/proposals/n2_tolra_provided_ai.sql",
+      "release": "supabase/release/146_tolra_provided_ai.release.sql",
+      "rollback": "supabase/release/146_tolra_provided_ai.rollback.sql",
+      "verify": "supabase/verify/tolra_provided_ai_146.sql",
+      "marker": "post-144 marker 146 tolra_provided_ai"
+    }
+  ],
+  "other_proposals": [
+    {
+      "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
+      "disposition": "separate chase settings release decision; requires 138; browser fixture is not production packaging"
+    },
+    {
+      "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
+      "disposition": "deferred: requires costing 143, absent from this candidate"
+    },
+    {
+      "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",
+      "disposition": "rollback only; never forward release input"
+    }
+  ]
+}

@@ -201,10 +201,16 @@ jobs:
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
+        # Full command, no exclusions. The sequencer runs every baseline file first,
+        # then all release proofs prepare/verify 145 and 146 on this disposable backend.
+        # The baseline and upgrade rehearsal still test only numbered migrations first.
+        # Post-144 release plan: 145 N5 then 146 N2/cap; proofs remain mandatory.
         run: npm run test:db
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         run: scripts/upgrade-rehearsal.sh 013
+      # Releases 145/146, their verification queries and extra refusal proofs are
+      # owned by the ordered test:db fixture. Never apply these one-time files twice.
       - name: Build against the disposable backend
         run: |
           set -a; . ./.env.test.local; set +a

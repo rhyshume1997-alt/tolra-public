@@ -166,7 +166,7 @@ describe("the send ledger (106): drafts, sends and retries", () => {
       if (outcome === "hang") state.ledger.push({ id: "s-9", key: ledgerKey(input), history: "h-9", status: "sending" });
       else await go(db, provider, input);
       const again = await go(db, provider, input);
-      expect(again).toMatchObject({ ok: false, code: "provider_error" });
+      expect(again).toMatchObject({ ok: false, code: "provider_error", uncertain: true });
       expect(provider.send).toHaveBeenCalledTimes(outcome === "hang" ? 0 : 1);
     }
   });

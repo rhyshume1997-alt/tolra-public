@@ -6,7 +6,7 @@
 export type ProviderId = "xero";
 
 /** Every provider a company can connect on Admin > Integrations (migration 107): the accounting systems, and Microsoft 365 (mail, delegated). */
-export type ConnectProviderId = ProviderId | "microsoft";
+export type ConnectProviderId = ProviderId | "microsoft" | "sage" | "quickbooks";
 
 /** A document line as migration 084's integration_document returns it: net and VAT worked out as Tolra totals it, and its VAT key. */
 export type DocumentLine = {

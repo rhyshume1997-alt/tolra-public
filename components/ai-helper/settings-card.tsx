@@ -18,7 +18,8 @@ export function AiHelperSettingsCard() {
     <Card data-testid="ai-helper-settings-link">
       <CardHeader><CardTitle className="flex items-center gap-2"><Sparkles className="size-5 text-brand-accent" /> AI</CardTitle></CardHeader>
       <CardContent className="flex flex-wrap items-center gap-3">
-        <p className="text-sm text-slate-500">The AI on/off switch, the monthly limit and your company&apos;s own Anthropic key are in the AI section.</p>
+        <p className="text-sm text-slate-500">Switch AI on or off in Integrations. The monthly limit and your company&apos;s own Anthropic key are in the AI section.</p>
+        <Button asChild variant="outline" size="sm" className="min-h-9"><Link href="/admin/integrations">Open Integrations</Link></Button>
         <Button asChild variant="outline" size="sm" className="min-h-9"><Link href="/ai-helper">Open the AI section</Link></Button>
       </CardContent>
     </Card>

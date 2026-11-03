@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle, Clipboard, Info, Mail } from "lucide-react";
+import { CheckCircle, Clipboard, Info, Mail, Send } from "lucide-react";
 
+import { ConnectedChaseApproval } from "@/components/chase/connected-approval";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,8 @@ type ApprovalItem = {
   to: string;
   subject: string;
   body: string;
+  /** 138: a chase step's draft (a chase_sends row points at it): it can be approved and sent from here. */
+  chase: boolean;
 };
 
 type SentItem = { id: string; customer: string; when: string; status: string };
@@ -66,6 +69,7 @@ function toApproval(row: any): ApprovalItem {
     to: row.to_email || "",
     subject: row.subject || "",
     body: row.body || "",
+    chase: false,
   };
 }
 
@@ -80,6 +84,10 @@ export default function ApprovalPage() {
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
   const [previewItem, setPreviewItem] = useState<ApprovalItem | null>(null);
+  const [approving, setApproving] = useState<ApprovalItem | null>(null);
+  const [approveSubject, setApproveSubject] = useState("");
+  const [approveBody, setApproveBody] = useState("");
+  const [noProvider, setNoProvider] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,6 +107,12 @@ export default function ApprovalPage() {
       if (drafts.error) throw drafts.error;
       if (sent.error) throw sent.error;
       const items = (drafts.data ?? []).map(toApproval);
+      // 138: which drafts are chase drafts (before 138 the table is missing and none are).
+      if (items.length) {
+        const chase = await supabase.from("chase_sends").select("draft_history_id").in("draft_history_id", items.map((item) => item.id));
+        const ids = new Set(chase.error ? [] : (chase.data ?? []).map((row: any) => String(row.draft_history_id)));
+        for (const item of items) item.chase = ids.has(item.id);
+      }
       setApprovals(items);
       updateSharedApprovalCount(items.length);
       setRecent((sent.data ?? []).map((row: any) => ({
@@ -170,6 +184,46 @@ export default function ApprovalPage() {
     });
   }
 
+  function openApprove(item: ApprovalItem) {
+    setApproveSubject(item.subject);
+    setApproveBody(item.body);
+    setApproving(item);
+  }
+
+  /** 138: sends the chase draft (as edited here) through the company mailer, records who approved it, and takes it off the queue. */
+  function approveAndSend() {
+    if (!approving) return;
+    const item = approving;
+    if (approveSubject !== item.subject || approveBody !== item.body) {
+      toast.error("Save your changes with Edit, then review the draft again before sending.");
+      return;
+    }
+    void run(async () => {
+      try {
+        const response = await fetch("/api/chase/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ history_id: item.id, expected_subject: item.subject, expected_body: item.body }),
+        });
+        const answer = (await response.json().catch(() => ({}))) as { status?: string; error?: string };
+        if (answer.status === "no_provider") {
+          setNoProvider(answer.error || "E-mail sending isn't set up for this company.");
+          setApproving(null);
+          setApprovals((current) => current.map((entry) => (entry.id === item.id ? { ...entry, subject: approveSubject, body: approveBody, detail: approveSubject } : entry)));
+          toast.error("E-mail sending isn't set up, so this wasn't sent. Copy it or open it in your email client instead.");
+          return;
+        }
+        if (!response.ok || answer.status !== "sent") throw new Error(answer.error || "Couldn't send this e-mail. Try again.");
+        setApproving(null);
+        removeLocal(item.id);
+        toast.success(`Sent to ${item.customer}`);
+        void load();
+      } catch (err) {
+        toast.error(friendlyError(err, "Couldn't send this e-mail. Try again."));
+      }
+    });
+  }
+
   function openEdit(item: ApprovalItem) {
     setEditSubject(item.subject);
     setEditBody(item.body);
@@ -182,8 +236,8 @@ export default function ApprovalPage() {
     void run(async () => {
       try {
         if (!supabase) throw new Error("Supabase is not configured.");
-        const { error: updateError } = await supabase.from("email_history").update({ subject: editSubject, body: editBody }).eq("id", item.id).eq("status", "drafted");
-        if (updateError) throw updateError;
+        const { data: changed, error: updateError } = await supabase.from("email_history").update({ subject: editSubject, body: editBody }).eq("id", item.id).eq("status", "drafted").select("id");
+        if (updateError || changed?.length !== 1) throw new Error("This draft changed. Reload and review it again.");
         setApprovals((current) => current.map((entry) => (entry.id === item.id ? { ...entry, subject: editSubject, body: editBody, detail: editSubject } : entry)));
         void auditEvent({ action: "UPDATE", entityTable: "email_history", entityId: item.id, metadata: { fields: ["subject", "body"] } });
         setEditingItem(null);
@@ -210,11 +264,17 @@ export default function ApprovalPage() {
         <CardContent className="flex gap-3 p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
           <p className="text-sm font-medium text-blue-950">
-            Email sending isn&apos;t set up yet, so emails are saved as drafts. Copy a draft or open it in your email app, send it yourself, then choose Mark as Sent Manually.
+            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
             {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
           </p>
         </CardContent>
       </Card>
+
+      {noProvider ? (
+        <Card className="border-amber-300 bg-amber-50 shadow-sm" data-testid="approval-no-provider">
+          <CardContent className="p-5 text-sm font-medium text-amber-950" role="status">{noProvider}</CardContent>
+        </Card>
+      ) : null}
 
       {error ? (
         <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{error}</p><Button variant="outline" onClick={() => void load()}>Retry</Button></CardContent></Card>
@@ -235,6 +295,11 @@ export default function ApprovalPage() {
           </Card>
         ) : (
           approvals.map((item) => {
+            if (item.chase) return <ConnectedChaseApproval key={item.id} id={item.id} onDone={() => void load()} manualActions={<>
+              <Button variant="outline" onClick={() => void copyToClipboard(item)}>Copy draft</Button>
+              <Button variant="outline" onClick={() => openEmailClient(item)}>Open in email app</Button>
+              <Button variant="outline" disabled={saving} onClick={() => markSentManually(item)}>Mark as Sent Manually</Button>
+            </>} />;
             const styles = toneStyles[item.tone];
             return (
               <Card key={item.id}>
@@ -269,6 +334,12 @@ export default function ApprovalPage() {
                   </div> : null}
 
                   <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                    {item.chase ? (
+                      <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => openApprove(item)}>
+                        <Send className="size-4" />
+                        Approve and send
+                      </Button>
+                    ) : null}
                     <Button className={styles.button} onClick={() => void copyToClipboard(item)}>
                       <Clipboard className="size-4" />
                       Copy to Clipboard
@@ -328,6 +399,31 @@ export default function ApprovalPage() {
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditingItem(null)}>Cancel</Button>
                 <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={saveEdit}>{saving ? "Saving..." : "Save Draft"}</Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(approving)} onOpenChange={(open) => !open && setApproving(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve and send</DialogTitle>
+            <DialogDescription>Check the e-mail to {approving?.to}. It is sent from {PRODUCT.name} through your company&apos;s e-mail as soon as you approve it.</DialogDescription>
+          </DialogHeader>
+          {approving ? (
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">
+                Subject
+                <input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand" value={approveSubject} onChange={(event) => setApproveSubject(event.target.value)} />
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Body
+                <textarea className="mt-1 min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand" value={approveBody} onChange={(event) => setApproveBody(event.target.value)} />
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setApproving(null)}>Cancel</Button>
+                <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || !approveSubject.trim() || !approveBody.trim()} onClick={approveAndSend}>{saving ? "Sending..." : "Approve and send"}</Button>
               </div>
             </div>
           ) : null}

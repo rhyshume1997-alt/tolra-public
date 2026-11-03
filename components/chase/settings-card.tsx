@@ -59,7 +59,7 @@ export function ChaseSettingsCard({ initialSteps, onSave, disabled = false }: Ch
           <p className="rounded-lg border p-3 text-sm">Chasers are drafts for approval. You check and approve each email before it is sent.</p>
           {rows.length === 0 && <p className="text-sm text-slate-600">No chase steps. Add a step to start chasing.</p>}
           {rows.map((row, index) => (
-            <div key={row.id} className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div key={row.id} data-testid="chase-step" className="grid items-end gap-3 rounded-lg border p-3 sm:grid-cols-[1fr_1fr_auto]">
               <label htmlFor={`${prefix}-${row.id}-days`} className="text-sm font-medium">Days from due date — step {index + 1}
                 <Input id={`${prefix}-${row.id}-days`} type="number" step="1" value={row.days} disabled={locked} onChange={(e) => { changed(); setRows((current) => current.map((item) => item.id === row.id ? { ...item, days: e.target.value } : item)); }} />
               </label>
