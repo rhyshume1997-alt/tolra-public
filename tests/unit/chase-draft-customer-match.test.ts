@@ -134,3 +134,36 @@ describe("credits change the chase balance, never the invoice face total", () =>
     expect(candidate).not.toBe(original);
   });
 });
+
+describe("duplicate customer names across database pages", () => {
+  it.each([false, true])("refuses a first-page / third-page duplicate (fixed recipients: %s)", async (fixed) => {
+    const db = store();
+    db.tables.customers = Array.from({ length: 2002 }, (_, index) => ({
+      id: `customer-${String(index).padStart(5, "0")}`, organization_id: ORG,
+      name: `Unrelated ${index}`, email: "other@example.test", contact_name: null,
+    }));
+    db.rows("customers")[1].name = "Shop Ltd";
+    db.rows("customers")[2001].name = " SHOP LTD ";
+    const pages: Array<[number, number]> = [];
+    const from = db.from.bind(db);
+    vi.spyOn(db, "from").mockImplementation((table) => {
+      const query = from(table);
+      if (table === "customers") {
+        const range = query.range.bind(query);
+        vi.spyOn(query, "range").mockImplementation((start, end) => {
+          pages.push([start, end]);
+          return range(start, end);
+        });
+      }
+      return query;
+    });
+
+    expect(await runChase(db as never, {
+      organizationId: ORG, today: TODAY, recipients: fixed ? ["collections@our-shop.test"] : null,
+    })).toMatchObject({ drafted: 0, sent: 0, skipped: 1, failed: 0, reasons: { ambiguous_customer: 1 } });
+    expect(pages).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
+    expect(db.rpc).not.toHaveBeenCalled();
+    expect(db.log).toEqual([]);
+    expect(db.rows("email_history")).toEqual([]);
+  });
+});
