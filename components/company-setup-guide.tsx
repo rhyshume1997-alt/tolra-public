@@ -7,9 +7,10 @@ import { useUser } from "@/lib/use-user";
 import { SETUP_STEPS, readSetupProgress, writeSetupProgress, type SetupProgress, type SetupStep } from "@/lib/company-setup/progress";
 
 export function CompanySetupGuide() {
-  const { profile, activeRole } = useUser();
+  const { profile, activeRole, session } = useUser();
   const pathname = usePathname();
   const org = profile?.organization_id;
+  const canManage = Boolean(org && activeRole === "admin" && session?.organization_id === org && session.support === false && session.read_only === false);
   const [loaded, setLoaded] = useState<{ org: string; progress: SetupProgress } | null>(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -17,13 +18,13 @@ export function CompanySetupGuide() {
   useEffect(() => {
     let live = true;
     setLoaded(null); setMessage("");
-    if (org && activeRole === "admin" && supabase) void readSetupProgress(supabase, org).then(progress => {
+    if (org && canManage && supabase) void readSetupProgress(supabase, org).then(progress => {
       if (live) setLoaded({ org, progress });
     }).catch(error => { if (live) setMessage(error.message); });
     return () => { live = false; };
-  }, [org, activeRole]);
+  }, [org, canManage]);
   const visible = pathname === "/settings" || pathname === "/admin/users" || pathname === "/admin/integrations" || pathname === "/admin/data";
-  if (!visible || !org || activeRole !== "admin") return null;
+  if (!visible || !org || !canManage) return null;
   const progress = loaded?.org === org ? loaded.progress : {};
   const count = SETUP_STEPS.filter(step => progress[step.id]).length;
   async function mark(step: SetupStep, completed: boolean) {
