@@ -59,6 +59,8 @@ Expected: migration-file checks pass; every database case passes (including RLS,
 ```sh
 git fetch origin main:refs/remotes/origin/ci-main
 git switch -c codex2/ci-n1-n6-evidence origin/ci-main
+git config user.name 'CI evidence'
+git config user.email 'ci-evidence@example.test'
 # Fetch explicitly because some checkouts track only origin/main.
 git fetch origin codex2/chase-main-update:refs/remotes/origin/ci-chase
 git merge --no-ff --no-edit origin/ci-chase
