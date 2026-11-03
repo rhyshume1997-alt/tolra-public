@@ -117,11 +117,11 @@ export function isoWeekKey(date: string): string {
 
 /** "08:00" or "08:00:00" to [hours, minutes]; null when it is not a time of day. */
 export function parseTimeOfDay(value: string | null | undefined): [number, number] | null {
-  const m = /^(\d{1,2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec((value ?? "").trim());
+  const m = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/.exec((value ?? "").trim());
   if (!m) return null;
   const h = Number(m[1]);
   const mi = Number(m[2]);
-  return h <= 23 && mi <= 59 ? [h, mi] : null;
+  return h <= 23 && mi <= 59 && (m[3] === undefined || Number(m[3]) <= 59) ? [h, mi] : null;
 }
 
 /** The instant a local date and time of day happen in `zone` (see the clock rules at the top). */
