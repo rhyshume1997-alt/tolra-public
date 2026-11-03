@@ -69,3 +69,5 @@ The table gives review/application commands, not permission to apply a supersede
 - [Archived documentation from mixed PRs](ARCHIVED-MIXED-PR-DOCS.md) stays only in the docs PR. No docs-only PR (#178 included) is a production merge candidate.
 
 Production holds: proposal SQL/RLS/concurrency/rollback verification and packaging; live browser/mail/payment checks; durable invoice-customer IDs; bank parent-page connection and cross-export identity; provider email authenticity; filled JNR support contacts. Literal local-head full-suite completion remains blocked by an undiagnosed worker stall. No failed assertion is waived and no test is weakened. All new PRs remain drafts without Ready labels.
+
+Final CI: all 18 twins and all three new review fixes (#180/#181/#182) pass latest-head web checks. #182 full suite: Test Files  372 passed (372); Tests  5489 passed (5489); no rounding skips. Manual-plan #179 is a documentation-only change outside docs/.

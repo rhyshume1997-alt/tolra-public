@@ -31,3 +31,7 @@ Each run checked out its requested SHA into its own detached worktree, used Node
 | #158 | 63abc9c1a648c8969289bc696b7907a097e9e138 | Timed out after 300s | Not available; no completed summary |
 
 Full machine-readable head/checkout/tree/totals evidence: [VITEST-HEAD-EVIDENCE.json](VITEST-HEAD-EVIDENCE.json). Each web job URL above carries the full CI log. Do not confuse a unit-suite pass with database RLS, browser execution, provider delivery, migration application or release approval. Those remain separate checks. If literal checkout identity rather than exact source-tree identity is required, rerun these heads on an unrestricted supported runner; local literal-head verification remains blocked.
+
+## Rounding follow-up #182
+
+Latest code-only head f6f4cc850723fb30dc76012f428b8f05e0fd494b passed its full CI unit suite: Test Files  372 passed (372); Tests  5489 passed (5489). No rounding cases were skipped. Job: [web](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41586912684/job/125754486397). CI checkout aaf424225e674d1305b7f4b89db02b19719894b5 has the same Git tree 6485b53447bb901ed8710cf094446a4b6d0dd92b as that head. The two newly exposed rounding failures are fixed, not waived; the earlier #155 412-skip count remains the correct historical record for its original head.
