@@ -37,3 +37,7 @@ Latest instruction prohibits touching held jobs. `claude/work-ownership:docs/TOL
 | costing-check | Executed exact requested branch 8c4c7fe, inspected labour fallback | claude/costing-in-app unchanged | #130 | 15 pass, 472 skipped (including all 60 golden prices); fixture has 60 cases | lib/costing/engine.ts absent: parity and half-even cannot be verified here. Machine helper preserves explicit zero using nullish fallback; 14 rates-store tests pass |
 | manual-checks | Reused existing checklist, corrected requested plus rule and added fractional pennies | codex/manual-checks | #183 | diff check pass; full checks running | Missing feature pages must be marked BLOCKED during manual run |
 | available-jobs | Checked tracker rows | codex/work-ownership | #130 | Read-only | No AVAILABLE row found |
+
+| Job | Work done | Branch | PR | Tests | Blocker |
+| --- | --- | --- | --- | --- | --- |
+| full-suite / bank privacy cleanup | Removed both tracker files from code PR diff; retained quote fix and tests | codex/bank-csv-quotes @ 0a6b970 | #131 | 365 files / 4,787 tests pass; tsc exit 0; full eslint exit 0 | Integration not run; no Ready label |
