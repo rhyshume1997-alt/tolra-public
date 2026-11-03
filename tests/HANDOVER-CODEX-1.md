@@ -377,3 +377,5 @@ Ticks mean the described implementation/review artifact exists, not that unrun r
 - [x] AJ: #257 updated last with full state and exact operator next steps; documentation diff check passed, all new work committed/pushed.
 
 - [x] AL: #257 separates historical commits from final fe7514f, records scoped extras/seed failure accurately, and leaves full CI, wipe, #207 and independent DB conditions blocked. Documentation only; no release or SQL approval.
+- [x] AM: #258 explicitly says software NOT VALIDATED, leaves Rhys's VSR blank and lists every pending candidate DB/browser file (132/129), 60 manual rows and separate reviewer conditions. Mapping plus 10 existing pack-integrity tests passed; no runtime acceptance inferred.
+- [x] AN: #250 has 18 numbered real combined-kit checks with blank results/evidence, protected comparisons before commit and atomic refusal on mismatch. Six parser tests passed. Reviewer verdict remains NOT SAFE pending Code's real combined-kit throwaway results.
