@@ -24,3 +24,19 @@ it("ranks every post-release proof after every baseline file without dropping an
  const sorted=files.toSorted((a,b)=>releaseRank(a)-releaseRank(b));expect(sorted).toHaveLength(files.length);
  expect(sorted.slice(0,baseline.length)).toEqual(baseline);expect(sorted.slice(baseline.length)).toEqual(proofs);
 });
+
+it("sorts real sequencer input without dropping files, keeping 145, 146 and the cap race last", async () => {
+ const { default: ReleaseSequencer } = await import("../support/db-release-sequencer");
+ const ctx = {} as ConstructorParameters<typeof ReleaseSequencer>[0];
+ const sequencer = new ReleaseSequencer(ctx);
+ const baseline = ["catalogue", "definer-functions", "time-labour", "workshop-network-128"].map(name => ({moduleId:`/repo/tests/db/${name}.test.ts`}));
+ const proofs = post144ProofFiles.map(name => ({moduleId:`/repo/tests/db/${name}`}));
+ const input = [proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
+ const original = [...input];
+ const sorted = await sequencer.sort(input);
+ expect(sorted).toEqual([...baseline, ...proofs]);
+ expect(input).toEqual(original);
+ expect(await sequencer.shard(input)).toEqual(input);
+ const windows = proofs.toReversed().map(spec => ({moduleId:spec.moduleId.replaceAll("/", "\\")}));
+ expect((await sequencer.sort(windows)).map(spec => spec.moduleId.replaceAll("\\", "/"))).toEqual(proofs.map(spec => spec.moduleId));
+});
