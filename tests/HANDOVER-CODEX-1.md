@@ -153,14 +153,14 @@ Do not immediately run new setup/cap files as numbered-baseline tests when integ
 
 All six AI branches are pushed and have draft PRs linked above, each into its exact source branch. No local branch was merged into another. Run `npx vitest run -c vitest.db.config.ts <the row's file>` only on the separately authorised disposable backend with required schema. SQL tests must actually run and pass; missing credentials/schema are failures, not skips. Run the existing cap race on #232/#234 as well. Do not use a private repo or hosted company database.
 
-AJ is `codex2/aj-takeover-handover`, based on #246 `codex/w-codex-1-handover`, for a draft back into that branch. It includes the reviewer matrix reconciliation. No implementation or test needs recreating. AK is queued next against #247 for the N4 validation pack and dated evidence runner.
+AJ is draft [#257](https://github.com/rhyshume1997-alt/tolra-public/pull/257), `codex2/aj-takeover-handover`, based on #246 `codex/w-codex-1-handover`, for a draft back into that branch. It includes the reviewer matrix reconciliation. No implementation or test needs recreating. AK is draft #258 against the repaired #247 head; see the final takeover evidence below.
 
 ### Item state tick list
 
 - [x] N1: #218/#235, included in #236/#247; paid/unpaid unit coverage exists; actual operator/browser evidence remains separate.
 - [x] N2: #219/#224/#232/#234/#247; both key modes and owner caps implemented; new AI SQL proofs and cap race need execution.
 - [x] N3: #221/#230/#237/#240/#247; accounting code and unit coverage exist; new expanded SQL provider permissions need execution.
-- [x] N4: #220 validation pack; actual IQ/OQ/PQ report evidence must still be filled from real runs.
+- [x] N4: #220 updated by draft #258; 347 mapped unit tests pass on the current candidate; IQ/OQ/PQ and Rhys VSR sign-off remain blank.
 - [x] N5: #222/#236/#239/#247; own-admin access fix included in candidate; new SQL role/support matrices unrun.
 - [x] N6: #223/#236/#247; editor and legacy-text unit coverage exist; browser evidence remains separate.
 - [ ] N7: no matching product-item brief is identified in the supplied handover/matrix. An unrelated old worksheet test also uses the label N7; do not infer a new product requirement from it.
@@ -194,4 +194,43 @@ AJ is `codex2/aj-takeover-handover`, based on #246 `codex/w-codex-1-handover`, f
 - [ ] AF/AG: no job definitions or outcomes recorded in the supplied handover; do not invent completion.
 - [x] AH: #250 draft, five unit tests passed; private repo untouched, no SQL applied; restored-copy proof still required.
 - [x] AI: drafts #251 to #256 pushed; types/lint/focused units passed; every database proof remains unrun.
-- [x] AJ: handover and matrix updated for a draft into #246; no application change; next is operator evidence and AK.
+- [x] AJ: draft #257 into #246, handover/matrix updated; next is the authorised operator evidence run.
+
+
+## Final takeover evidence and urgent #247 repairs
+
+The later full rehearsal reported by Claude Code supersedes the earlier broad statement that #247's full DB suite had passed. It found a config-loading fault, a real setup-policy permission error and duplicate one-time CI installs. Do not treat the earlier statement as approval of the repaired candidate or the new tests.
+
+The repaired draft [#247](https://github.com/rhyshume1997-alt/tolra-public/pull/247) is `codex/x-final-main-candidate` at **d7c0019caa51f8a221e1f3b855e67f06d01ac3b4**:
+
+- `a27dcf1` removed the runtime ESM `vitest/node` import. The import is type-only; every baseline file precedes setup, provided AI, then the cap race, without exclusions.
+- `d7c0019` fixes release 145 and its canonical proposal: policies use the existing scoped `my_session()` security-definer API. `_session_membership()` intentionally stays private under 036/121. Every policy still requires own company, admin and non-support; elevated support is refused too. Preflight and verification now check the safe policy shape.
+- The two redundant CI 145/146 installation steps are removed. The single identity-guarded, serial test fixture verifies both release files, even when already installed. Full `npm run test:db`, the independent upgrade rehearsal and existing cap race remain. Claude's separate diagnostic extras workflow was not edited or removed.
+- Real database proofs add the setup admin/office/workshop/viewer/read-only support/elevated support/outsider/anon matrix, positive own-admin writes, 145/146 second-install refusal and 146 rollback refusal around an actual outstanding provided-AI reservation, preserving ledger/history/functions. They are NOT RUN here. Existing financial and access assertions remain. The obsolete unit assertion requiring duplicate CI installs now checks the single owner and ordering of every actual test file.
+
+Local repaired-#247 results: **5,451 unit tests passed, 0 failures, 0 skips**; TypeScript, lint, release-plan check and database config load passed. The config-only command was `npm run test:db -- __config_load_only__ --passWithNoTests`; it intentionally found no tests and executed no SQL. This is not a passed database suite.
+
+### AK / N4
+
+Draft [#258](https://github.com/rhyshume1997-alt/tolra-public/pull/258), `codex2/ak-validation-shipped` into `codex/x-final-main-candidate`. Code/evidence head is `7c30361`; the dated evidence identifies the clean tested code revision `fc8d02d73f06bf029bcb05ac59120d40669db2de` with input hashes. The later commit adds evidence only.
+
+The pack maps 14 URS/risk/OQ rows, 6 IQ steps and 8 PQ steps to existing candidate tests and numbered #248 manual checks, extended for both AI modes, owner caps, Sage/QuickBooks and email editing. `npm run validate:pack` checks the mapping. `npm run validate:evidence` runs only its explicit unit list, saves a unique UTC-dated summary and logs, and refuses failed/skipped/incomplete evidence. Every VSR result and Rhys's signature stays blank.
+
+AK results: **347 mapped unit tests passed across 32 files**, and **5,461 full unit tests passed across 411 files**, both with 0 failures and 0 skips. The ten new pack/evidence integrity tests pass; TypeScript, targeted lint and config loading pass. Logs and aggregate counts are committed under `tests/validation/evidence/2026-11-03T21-04-28.722Z-fc8d02d73f06-LjG31g/` on #258. No real keys or company data are present. The original 119 count belongs to #220's older mapping, not this candidate.
+
+No URS is wholly unmapped, but URS-014's incoming paid/remittance/payment-sent email subcondition has **no dedicated automated regression on #247**. #241 and draft #253 are separate proof branches. Manual G03.4 is mapped and remains NOT RUN. The claim UI test is not evidence for inbound financial invariance. The pack's COVERAGE-GAPS.md also lists expanded cap/accounting SQL and provider proof still on separate drafts.
+
+### What Code and Rhys must do next
+
+On the separately authorised disposable backend only, Code must rerun the full `npm run test:db` on repaired #247, preserving every baseline test and the ordered phases. The expected result is every real SQL permission, second-install, outstanding-reservation rollback and cap-race test running and passing, with no excluded/skipped reviewer condition. Continue the separate diagnostic extras rehearsal with the repaired SQL, retaining rollback and seed-refusal proofs. This handover does not authorise SQL here or on a company database.
+
+Use the corrected 145 schema when preparing the independent #251/#252 proof runs, not the old broken proposal. Register newly integrated setup/cap test files after the appropriate release phase in #247's fixture/sequencer. Keep the exact-text/uncertain-delivery and delegated inbound proofs from #253/#255, expanded cap/accounting SQL from #254/#256, and #245 browser work visible until run. Re-run combined browser/provider checks using fake companies and controlled recipients. No private repository edits or archive execution are authorised by this takeover.
+
+Rhys completes all numbered manual IQ/OQ/PQ checks, records deviations and reviews the gaps before signing the VSR as validation lead. AH's restored-copy archive equality/digest/FK/rollback proof and JNR-only Xero/Sage/QuickBooks disconnect checks remain blocked for the authorised operator. Never wipe the seven reviewer KEEP tables or Marpet, logins, settings, numbering or audit history.
+
+- [x] Priority #247: d7c0019 pushed; 5,451 units passed; next is Code's real DB rehearsal.
+- [x] AH: #250 draft; five units passed; next is restored-copy archive proof.
+- [x] AI: #251 to #256 drafts, all pushed; focused units/types/lint passed; next is real SQL execution.
+- [x] AJ: #257 draft; complete N1 to N7 and every-job inventory retained above; next is operator evidence.
+- [x] AK / N4: #258 draft; 347 mapped and 5,461 full units passed; next is manual/database/browser evidence and Rhys's blank VSR sign-off.
+- [ ] N7, AF and AG: scope/outcome not identified in the supplied briefs; no completion invented.
