@@ -3,7 +3,7 @@
 export const SITE_URL = "https://tolra.co.uk";
 export const SITE_TITLE = "Tolra: job management for small CNC & fabrication shops";
 export const SITE_DESCRIPTION =
-  "Quotes, purchase orders, job worksheets, machine schedule and invoices for small CNC and fabrication shops, in one place, with the owner's numbers and a Xero connection. Built by an engineer in Glasgow.";
+  "Quotes, purchase orders, job worksheets, machine schedule and invoices for small CNC and fabrication shops, in one place, with the owner's numbers. Built by an engineer in Glasgow.";
 
 /** The Google Calendar booking page behind every "Book a free 20-minute chat" button. */
 export const BOOKING_URL = "https://calendar.google.com/calendar/appointments/AcZssZ35nSQ_2lobUifPsul__TiweHpPV1aRWuWbssQ=";
@@ -251,16 +251,19 @@ export const FEATURES: ReadonlyArray<{ title: string; detail: string; figure: Fe
  *   Invoicing  app/(dashboard)/invoices/page.tsx, "Late Payer Patterns" (customers with overdue invoices, worst first)
  *   Numbers    app/(dashboard)/numbers/page.tsx and lib/numbers.ts (the three questions)
  *   Weekly hours  components/time/payroll-export.tsx (admin and office, on the weekly hours page)
- *   Admin      app/(dashboard)/admin/activity (activity log, admin only), lib/integrations and app/api/integrations/xero (migration 084)
+ *   Admin      app/(dashboard)/admin/activity (activity log, admin only); the Xero connection (lib/integrations, migration 084) is in
+ *              the code but not yet confirmed in production use, so it carries the In development tag and promises nothing it sends
  *   Accountant components/accountant-invite-card.tsx and lib/integrations/accountant-invite.ts (migration 129: one use, viewer role)
  * No figures: the listing names what you see, never a value.
  */
 export const OWNER_TITLE = "See the patterns and numbers you didn't know you needed";
 export const OWNER_LEAD = "Then send everything straight to your accountant.";
-export const OWNER_XERO = "Connects to your accounts package, Xero today.";
+export const OWNER_XERO = "A Xero connection is being built with the pilot shops.";
 export const OWNER_FROM = "Worked out from the quotes, jobs, invoices and machine time already in Tolra.";
 export const OWNER_SHEET = { title: "Owner's sheet", where: "Where", what: "What you see" } as const;
-export const OWNER_ROWS: ReadonlyArray<{ where: string; items: ReadonlyArray<readonly [string, string]> }> = [
+/** One line of the sheet: its name, what you see there, and `true` when it carries the In development tag. */
+export type OwnerItem = readonly [name: string, what: string, inDevelopment?: true];
+export const OWNER_ROWS: ReadonlyArray<{ where: string; items: ReadonlyArray<OwnerItem> }> = [
   {
     where: "Dashboard",
     items: [
@@ -291,7 +294,7 @@ export const OWNER_ROWS: ReadonlyArray<{ where: string; items: ReadonlyArray<rea
     where: "Admin",
     items: [
       ["Activity log", "Who changed what, and when."],
-      ["Xero connection", "Issued invoices and credit notes go across to Xero."],
+      ["Xero connection", "A link between Tolra and your Xero account.", true],
     ],
   },
   {
@@ -334,7 +337,7 @@ export const FAQ = [
   {
     question: "Does it work with my accounts package?",
     answer:
-      "Yes, with Xero. Once an admin connects your Xero and picks which accounts and VAT rates to use, every invoice and credit note you issue in Tolra is sent across, and an invoice you void in Tolra is voided in Xero too. Payments are not sent to Xero or read back from it, so you mark an invoice paid in Tolra.",
+      "A Xero connection is in development with the pilot shops. Until then you can send your accountant exports, or invite them to see your company in Tolra, read only.",
   },
   { question: "What does it cost?", answer: "I'll talk it through with you on the call." },
 ] as const;

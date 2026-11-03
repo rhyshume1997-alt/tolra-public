@@ -170,14 +170,15 @@ describe("round 2 sections", () => {
     const visible = text(html);
     expect(visible).toContain("I'll talk it through with you on the call.");
     expect(visible).toContain("In the UK. The database, sign-ins and stored files are in London, and the app runs on servers in London.");
-    // Rhys, N7: the Xero integration as built (lib/integrations, migration 084): issued invoices and credit notes sent, voids voided,
-    // payments neither sent nor read back. Nothing about any other accounts package.
+    // N7 review: the Xero connection is in the code (lib/integrations, migration 084) but not confirmed in production use, so the page
+    // calls it in development and promises nothing it sends or syncs. Nothing about any other accounts package.
     const xero = marketing.FAQ.find((item) => item.question === "Does it work with my accounts package?")!.answer;
-    expect(xero).toMatch(/^Yes, with Xero\./);
-    expect(xero).toContain("every invoice and credit note you issue in Tolra is sent across");
-    expect(xero).toContain("Payments are not sent to Xero or read back from it");
+    expect(xero).toBe("A Xero connection is in development with the pilot shops. Until then you can send your accountant exports, or invite them to see your company in Tolra, read only.");
     expect(visible).not.toMatch(/\b(?:Sage|QuickBooks)\b/);
     expect(visible).not.toContain("not yet");
+    // No sentence that names Xero promises sending, syncing or "today".
+    for (const sentence of visible.split(/(?<=[.?!])\s+/).filter((s) => /Xero/.test(s))) expect(sentence).not.toMatch(/\b(?:sent|sends?|sync\w*|go(?:es)? across|automatic\w*|today)\b/i);
+    expect(marketing.SITE_DESCRIPTION).not.toMatch(/Xero/);
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]!.replace(/\\u003c/g, "<"));
     const faq = ld.find((d: { "@type": string }) => d["@type"] === "FAQPage");
     expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(marketing.FAQ.map((item) => item.question));
@@ -215,7 +216,8 @@ describe("round 2 sections", () => {
     const visible = text(section);
     expect(visible).toContain("See the patterns and numbers you didn't know you needed");
     expect(visible).toContain("Then send everything straight to your accountant.");
-    expect(visible).toContain("Connects to your accounts package, Xero today.");
+    expect(visible).toContain("A Xero connection is being built with the pilot shops.");
+    expect(visible).not.toContain("Xero today");
     for (const row of marketing.OWNER_ROWS) for (const [name, what] of row.items) { expect(visible).toContain(name); expect(visible).toContain(what); }
     expect(section).toContain('src="/_next/image?url=%2Fscreens%2Ftolra-dashboard.jpg');
     expect(visible).not.toMatch(/\b(?:AI|Sage|QuickBooks)\b/);
@@ -233,11 +235,15 @@ describe("round 2 sections", () => {
     bands.forEach((alt, index) => expect(alt).toBe(index % 2 === 1));
   });
 
-  it("In development: only the features flagged in the copy carry the tag, and the pilot note follows the features", async () => {
+  it("In development: only the features and owner's-sheet lines flagged in the copy carry the tag, and the pilot note follows the features", async () => {
     const { html, marketing } = await render({});
     const tagged = marketing.FEATURES.filter((feature) => feature.inDevelopment).map((feature) => feature.title);
     expect(tagged).toEqual(["Optional AI helper"]);
-    expect(html.match(/class="mk-tag[^"]*">In development</g)).toHaveLength(tagged.length);
+    const sheetTagged = marketing.OWNER_ROWS.flatMap((row) => row.items.filter((item) => item[2]).map((item) => item[0]));
+    expect(sheetTagged).toEqual(["Xero connection"]);
+    expect(html.match(/class="mk-tag[^"]*">In development</g)).toHaveLength(tagged.length + sheetTagged.length);
+    // The tag sits on the Xero line of the sheet.
+    expect(html).toMatch(/Xero connection<\/dt><dd[^>]*><span class="mk-tag[^"]*">In development<\/span>/);
     expect(text(html)).toContain("Tolra is in pilot and still being developed with the shops using it.");
   });
 

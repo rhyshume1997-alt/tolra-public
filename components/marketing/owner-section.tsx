@@ -1,5 +1,5 @@
-import { ScreenFigure } from "@/components/marketing/feature-figure";
-import { OWNER_FROM, OWNER_LEAD, OWNER_ROWS, OWNER_SHEET, OWNER_TITLE, OWNER_XERO, SCREENSHOTS } from "@/lib/marketing";
+import { InDevelopmentTag, ScreenFigure } from "@/components/marketing/feature-figure";
+import { IN_DEVELOPMENT_LABEL, OWNER_FROM, OWNER_LEAD, OWNER_ROWS, OWNER_SHEET, OWNER_TITLE, OWNER_XERO, SCREENSHOTS } from "@/lib/marketing";
 
 const MUTED = "text-[#3c5277]";
 
@@ -35,10 +35,13 @@ export function OwnerSection({ className = "" }: { className?: string }) {
                   {row.where}
                 </h3>
                 <dl className="divide-y divide-[#0b2a5b]/15">
-                  {row.items.map(([name, what]) => (
+                  {row.items.map(([name, what, inDevelopment]) => (
                     <div key={name} className="grid gap-x-6 gap-y-0.5 px-[var(--mk-box)] py-3 md:grid-cols-[minmax(0,15rem)_minmax(0,1fr)]">
                       <dt className="mk-display text-[1.3125rem] leading-tight">{name}</dt>
-                      <dd className={`text-[0.9375rem] leading-snug ${MUTED}`}>{what}</dd>
+                      <dd className={`text-[0.9375rem] leading-snug ${MUTED}`}>
+                        {inDevelopment ? <InDevelopmentTag label={IN_DEVELOPMENT_LABEL} className="mb-1.5 mt-1 md:mt-0" /> : null}
+                        <span className="block">{what}</span>
+                      </dd>
                     </div>
                   ))}
                 </dl>
