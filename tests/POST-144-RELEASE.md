@@ -30,3 +30,7 @@ CI retains all three proposal-dependent test files, now running the packaged rel
 Review rollback in reverse order, 146 then 145, separately from the normal baseline. 146 first refuses outstanding Tolra reservations, restores own-key functions, keeps request history/key_source and usage, and turns off features for companies that selected the removed Tolra mode. 145 removes setup ticks only. Rollback is a destructive decision requiring its own review, not an automatic cleanup step.
 
 The strict baseline catalogue snapshot is deliberately unchanged: it still covers numbered migrations through 144. Post-144 structural/security checks and all existing role/isolation/race proofs remain separate and mandatory. Code's actual database and browser evidence is still required; unit checks and a successful application build do not prove SQL execution.
+
+## AE correction: full baseline command
+
+The earlier baseline exclusions were unsafe and have been removed. CI now runs the full `npm run test:db`, with every database file included. A serial sequencer finishes every baseline proof before the three release proofs prepare the reviewed 145/146 test fixture. No test or assertion is excluded/skipped. The later upgrade-reset and post-upgrade release-proof steps remain. `tests/REVIEWER-TEST-MATRIX.md` records the conditions and actual remaining runtime gaps.

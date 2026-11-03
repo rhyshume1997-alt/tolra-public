@@ -1,8 +1,9 @@
-// Requires the reviewed proposal on an isolated backend. This test never applies SQL.
+import { preparePost144Backend } from "../support/post-144-release-fixture";
+// Requires the reviewed proposal on an isolated backend. The verified test fixture prepares releases 145/146 after the baseline.
 import { beforeAll, afterAll, expect, it } from "vitest";
 import { adminClient, createSyntheticWorld, destroySyntheticWorld, signedInClient, verifyBackendIdentity, type SyntheticWorld } from "../support/fixtures";
 let world: SyntheticWorld;
-beforeAll(async () => { await verifyBackendIdentity(); world = await createSyntheticWorld(); });
+beforeAll(async () => { await verifyBackendIdentity(); await preparePost144Backend(); world = await createSyntheticWorld(); });
 afterAll(async () => { if (world) await destroySyntheticWorld(world.runId); });
 it("a new company cannot read another company's setup ticks or customers, or write its progress", async () => {
   const a = await signedInClient(world.tenants.alpha.users.admin);

@@ -1,12 +1,13 @@
+import { preparePost144Backend } from "../support/post-144-release-fixture";
 /** Review-only DB proof. NOT RUN here: DB/Docker checks are blocked. Requires
- * the updated N2 proposal applied separately on the disposable backend. Never
- * applies SQL files. Uses real independent connections and a held ledger lock. */
+ * the updated N2 proposal applied separately on the disposable backend. The verified fixture prepares releases 145/146 after the baseline. Uses real independent connections and a held ledger lock. */
 import { randomUUID } from "node:crypto";
 import { expect,it } from "vitest";
 import { createSyntheticWorld,destroySyntheticWorld,verifyBackendIdentity,withDb,type SyntheticWorld } from "../support/fixtures";
 
 it("owner-set caps isolate companies and concurrent reservations cannot exceed the cap",async()=>{
   await verifyBackendIdentity();
+  await preparePost144Backend();
   let world:SyntheticWorld|undefined;
   let control:{enabled:boolean;api_key_enc:string|null;updated_by:string|null;updated_at:string}|undefined;
   try {

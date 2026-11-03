@@ -1,7 +1,8 @@
+import { preparePost144Backend } from "../support/post-144-release-fixture";
 /**
  * NOT RUN for this PR: database/Docker checks are blocked. This proof requires
  * the separately reviewed N2 proposal on an isolated disposable database.
- * It never applies SQL files. Its synthetic records/control changes roll back.
+ * The verified fixture prepares releases 145/146 after baseline checks; synthetic data changes roll back.
  */
 import { randomUUID } from "node:crypto";
 import type { Client } from "pg";
@@ -9,7 +10,7 @@ import { beforeAll, expect, it } from "vitest";
 import { verifyBackendIdentity, withDb } from "../support/fixtures";
 import { SYNTHETIC_SLUG_PREFIX } from "../support/isolation";
 
-beforeAll(async()=>{await verifyBackendIdentity();});
+beforeAll(async()=>{await verifyBackendIdentity(); await preparePost144Backend();});
 const KEY_ENC="v1.aaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbb.cccccccccccc";
 const DIGEST="c".repeat(64);
 

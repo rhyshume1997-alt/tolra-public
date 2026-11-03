@@ -24,7 +24,8 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(n2).toBeGreaterThan(n5);
     const specs = ["company-setup-isolation", "tolra-provided-ai", "tolra-ai-cap-concurrency"];
     for (const spec of specs) {
-      expect(ci.slice(0, upgrade)).toContain(`--exclude tests/db/${spec}.test.ts`);
+      expect(ci.slice(0, upgrade)).toContain("run: npm run test:db");
+      expect(ci.slice(0, upgrade)).not.toContain("--exclude");
       expect(ci.slice(upgrade)).toContain(`tests/db/${spec}.test.ts`);
     }
     for (const [start, end] of [[ci.lastIndexOf("      - name:", n5), n2], [ci.lastIndexOf("      - name:", n2), ci.indexOf("      - name: Build against", n2)]]) {
