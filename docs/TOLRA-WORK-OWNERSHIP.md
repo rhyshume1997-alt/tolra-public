@@ -105,3 +105,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 31 | builder2 | chatgpt2/costing-wiring-atomic; chatgpt2/costing-wiring-atomic-code-only | CONFLICT RESOLVED | #155 / #174 |
 | 33 | builder2 | chatgpt2/manual-checks | DONE: PLAN WRITTEN | #179 |
 | 34a | builder2 | chatgpt2/chase-customer-review-code-only | CODE FIX IN DRAFT PR | #180 |
+| 34b | builder2 | chatgpt2/sliq-numeric-review-code-only | CODE FIX IN DRAFT PR | #181 |
