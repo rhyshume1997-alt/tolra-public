@@ -100,18 +100,26 @@ export function parseStatementCsv(csv: string): { lines: BankLine[]; errors: str
   } catch { return { lines, errors: ['Statement could not be parsed'] }; }
 }
 
+function wholeReference(text: string, ref: string): boolean {
+  const compact=key(ref); if(!compact)return false;
+  return new RegExp('(?:^|[^a-z0-9])'+compact.split('').join('[^a-z0-9]*')+'(?![a-z0-9])','i').test(text);
+}
+
 export function matchStatementLines(lines: BankLine[], invoices: Invoice[]): BankMatch[] {
   const available = new Set<string>();
-  const all = (Array.isArray(invoices) ? invoices : []).filter(invoice => invoice && invoice.balancePence > 0);
+  const source = (Array.isArray(invoices) ? invoices : []).filter(invoice => invoice && Number.isSafeInteger(invoice.balancePence) && invoice.balancePence >= 0);
+  const all = source.filter(invoice => invoice.balancePence > 0);
   return (Array.isArray(lines) ? lines : []).map(line => {
-    if (!line || line.amountPence <= 0) return { line, invoice: null, confidence: 'low', reason: 'Not a money-in transaction' };
+    if (!line || !Number.isSafeInteger(line.amountPence) || line.amountPence <= 0) return { line, invoice: null, confidence: 'low', reason: 'Not a money-in transaction' };
     const description = key(line.description);
     const candidates = all.filter(invoice => !available.has(invoice.id) && invoice.balancePence === line.amountPence);
-    const byRef = candidates.filter(invoice => key(invoice.ref) && description.includes(key(invoice.ref)));
+    const references=source.filter(invoice=>wholeReference(line.description,invoice.ref));
+    const partial=source.some(invoice=>key(invoice.ref) && description.includes(key(invoice.ref)) && !wholeReference(line.description,invoice.ref));
+    const byRef = candidates.filter(invoice => references.some(ref=>ref.id===invoice.id));
     const byCustomer = candidates.filter(invoice => key(invoice.customer).length >= 4 && description.includes(key(invoice.customer)));
-    const chosen = byRef.length === 1 ? byRef[0] : byCustomer.length === 1 ? byCustomer[0] : null;
+    const chosen = references.length === 1 && byRef.length === 1 ? byRef[0] : !references.length && !partial && byCustomer.length === 1 ? byCustomer[0] : null;
     if (chosen) available.add(chosen.id);
-    return { line, invoice: chosen, confidence: byRef.length === 1 ? 'high' : chosen ? 'medium' : 'low',
-      reason: byRef.length === 1 ? 'Exact amount and invoice reference' : chosen ? 'Exact amount and customer name' : 'No unique invoice match' };
+    return { line, invoice: chosen, confidence: chosen && byRef.length === 1 ? 'high' : chosen ? 'medium' : 'low',
+      reason: chosen && byRef.length === 1 ? 'Exact amount and invoice reference' : chosen ? 'Exact amount and customer name' : 'No unique invoice match' };
   });
 }
