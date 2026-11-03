@@ -1,46 +1,21 @@
 "use client";
 
 /*
- * "How Tolra handles it": three live drawings, adapted from the ink-orbit features section (21st.dev). Kept from it: packets that travel
- * along the leaders, a stack of sheets that prints, one item lit at a time, a strip you can scrub, and registration marks that open on
- * hover. Redrawn for the Tolra sheet: navy ink on paper, 1px rules, square corners, signal blue only for what is active, no gradients,
- * glows or shadows, and only real Tolra flows with the page's example values (no people, counters, forecasts or integrations).
- * Every hover state also works on focus; with reduced motion nothing moves and each drawing shows a still, complete state.
+ * "How Tolra handles it": three drawings, adapted from the ink-orbit features section (21st.dev): a stack of sheets, one item lit at a
+ * time, a strip you can scrub, and registration marks that open on hover. Redrawn for the Tolra sheet: navy ink on paper, 1px rules,
+ * square corners, signal blue only for what is selected, no gradients, glows or shadows, and only real Tolra flows with the page's
+ * example values (no people, counters, forecasts or integrations).
+ * Nothing moves on its own (the job traveller's stamp is the page's one moment of motion): each drawing starts in a still, complete
+ * state, and hover, focus, tap and drag change it at once. Every hover state also works on focus.
  * The flow and the stages strip have a wide and a compact drawing; a container query shows the one that fits (the other is display:none,
  * so it is neither seen, focused nor read out).
  */
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { useId, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 
 import {
   FLOW_JOB, FLOW_STEPS, HANDLES_FLOW, HANDLES_IN_TOLRA, HANDLES_SCHEDULE, HANDLES_STAGES, HANDLES_TODAY, ILLUSTRATION_LABEL,
 } from "@/lib/marketing";
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
-  return reduced;
-}
-
-/** True while the element is on screen, so nothing runs off screen. */
-function useOnScreen<T extends Element>(threshold = 0.25) {
-  const ref = useRef<T | null>(null);
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver !== "function") return;
-    const io = new IntersectionObserver(([entry]) => setOn(entry.isIntersecting), { threshold });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [threshold]);
-  return [ref, on] as const;
-}
 
 const activate = (run: () => void) => (e: KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") {
@@ -59,16 +34,10 @@ function Mark({ x, y, size }: { x: number; y: number; size: number }) {
   );
 }
 
-/** A small sheet travelling along a leader. */
-function Packet({ path, dur, begin = 0 }: { path: string; dur: number; begin?: number }) {
-  return (
-    <rect x="-3" y="-4" width="6" height="8" className="io-pkt">
-      <animateMotion dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite" path={path} />
-    </rect>
-  );
-}
-
-/** One drawing on the sheet: registration marks, the problem it answers, the drawing, and how Tolra handles it. */
+/**
+ * One drawing on the sheet: registration marks, the problem it answers ("Today: ..." as one heading), the drawing, and how Tolra
+ * handles it ("In Tolra: ..." as one sentence), so problem and answer read as a pair, not as labels over headings.
+ */
 function Cell({ pain, answer, className, children, status }: { pain: string; answer: string; className: string; children: ReactNode; status: ReactNode }) {
   return (
     <div className={`io-cell ${className}`}>
@@ -77,14 +46,12 @@ function Cell({ pain, answer, className, children, status }: { pain: string; ans
       <span className="io-c io-c-bl" aria-hidden />
       <span className="io-c io-c-br" aria-hidden />
       <div className="io-head">
-        <p className="mk-label">{HANDLES_TODAY}</p>
-        <h3 className="mk-display mt-1 text-[1.625rem]">{pain}</h3>
+        <h4 className="mk-display text-[1.625rem]"><span className="mk-lead">{HANDLES_TODAY}:</span>{pain}</h4>
       </div>
       <div className="io-body">{children}</div>
       <p className="io-status mk-mono" aria-live="polite">{status}</p>
       <div className="io-foot">
-        <p className="mk-label">{HANDLES_IN_TOLRA}</p>
-        <p className="mt-1 max-w-[46ch]">{answer}</p>
+        <p className="max-w-[52ch]"><span className="mk-lead">{HANDLES_IN_TOLRA}:</span>{answer}</p>
       </div>
     </div>
   );
@@ -100,25 +67,19 @@ type FlowLayout = {
 const FLOW_LAYOUTS: FlowLayout[] = [
   {
     variant: "wide", viewBox: "0 0 480 236", office: { x: 8, y: 18, w: 128, h: 64 }, hub: { x: 196, y: 14, w: 88, h: 72 }, shop: { x: 344, y: 18, w: 128, h: 64 }, mark: 36,
-    fromOffice: "M136,40 H196", toOffice: "M196,60 H136", toShop: "M284,40 H344", fromShop: "M344,60 H284", down: "M240,86 V112", stack: { x: 176, y: 112 },
+    fromOffice: "M136,40 H196", toOffice: "M196,60 H136", toShop: "M284,40 H344", fromShop: "M344,60 H284", down: "M240,86 V112", stack: { x: 170, y: 112 },
   },
   {
     variant: "compact", viewBox: "0 0 330 222", office: { x: 4, y: 12, w: 104, h: 56 }, hub: { x: 133, y: 10, w: 64, h: 60 }, shop: { x: 222, y: 12, w: 104, h: 56 }, mark: 30,
-    fromOffice: "M108,32 H133", toOffice: "M133,50 H108", toShop: "M197,32 H222", fromShop: "M222,50 H197", down: "M165,70 V98", stack: { x: 101, y: 98 },
+    fromOffice: "M108,32 H133", toOffice: "M133,50 H108", toShop: "M197,32 H222", fromShop: "M222,50 H197", down: "M165,70 V98", stack: { x: 95, y: 98 },
   },
 ];
 
 /** Office and workshop either side of Tolra, sheets travelling both ways, and the job's documents coming off the stack in turn. */
-function FlowDrawing({ reduced }: { reduced: boolean }) {
-  const [ref, onScreen] = useOnScreen<HTMLDivElement>();
+function FlowDrawing() {
   const [side, setSide] = useState<Role | "">("");
   const [sheet, setSheet] = useState(0);
   const sheets = HANDLES_FLOW.sheets;
-  useEffect(() => {
-    if (reduced || !onScreen) return;
-    const t = setInterval(() => setSheet((n) => (n + 1) % sheets.length), 2800);
-    return () => clearInterval(t);
-  }, [reduced, onScreen, sheets.length]);
 
   const role = HANDLES_FLOW.roles.find((r) => r.id === side);
   const front = sheets[sheet];
@@ -126,7 +87,7 @@ function FlowDrawing({ reduced }: { reduced: boolean }) {
 
   return (
     <Cell className="io-flow" pain={HANDLES_FLOW.pain} answer={HANDLES_FLOW.answer} status={role ? `${role.name}: ${role.work}` : HANDLES_FLOW.prompt}>
-      <div ref={ref}>
+      <div>
         {FLOW_LAYOUTS.map((L) => {
           const boxes = [
             { id: "office" as const, box: L.office, paths: [L.fromOffice, L.toOffice] },
@@ -140,9 +101,6 @@ function FlowDrawing({ reduced }: { reduced: boolean }) {
                 b.paths.map((d, i) => <path key={d} d={d} className={`io-lead${side === b.id ? " io-lead-on" : ""}${i ? " io-dash" : ""}`} />),
               )}
               <path d={L.down} className={`io-lead${side ? "" : " io-lead-on"}`} />
-              {!reduced && onScreen
-                ? [L.fromOffice, L.toOffice, L.toShop, L.fromShop].map((d, i) => <Packet key={d} path={d} dur={(compact ? 1.4 : 2.2) + (i % 2) * 0.5} begin={i * 0.4} />)
-                : null}
 
               {boxes.map(({ id, box }) => {
                 const r = HANDLES_FLOW.roles.find((item) => item.id === id)!;
@@ -177,11 +135,11 @@ function FlowDrawing({ reduced }: { reduced: boolean }) {
 
               <g className="io-hit" role="button" tabIndex={0} aria-label={`${HANDLES_FLOW.nextSheet}. Showing ${front.kind} ${front.number}`} onClick={nextSheet} onKeyDown={activate(nextSheet)}>
                 {[2, 1].map((k) => (
-                  <rect key={k} x={sx + k * 7} y={sy - k * 5} width="128" height="112" className="io-sheet-back" />
+                  <rect key={k} x={sx + k * 7} y={sy - k * 5} width="140" height="112" className="io-sheet-back" />
                 ))}
-                <g key={sheet} className={reduced ? undefined : "io-sheet-new"}>
-                  <rect x={sx} y={sy} width="128" height="112" className="io-sheet" />
-                  <text x={sx + 12} y={sy + 22} className="io-t-label">{front.kind.toUpperCase()}</text>
+                <g>
+                  <rect x={sx} y={sy} width="140" height="112" className="io-sheet" />
+                  <text x={sx + 12} y={sy + 22} className="io-t-label io-t-tight">{front.kind.toUpperCase()}</text>
                   <text x={sx + 12} y={sy + 46} className="io-t-mono">{front.number}</text>
                   <path d={`M${sx + 12} ${sy + 64}h104M${sx + 12} ${sy + 76}h84M${sx + 12} ${sy + 88}h96M${sx + 12} ${sy + 100}h60`} className="io-rule" />
                 </g>
@@ -195,17 +153,9 @@ function FlowDrawing({ reduced }: { reduced: boolean }) {
 }
 
 /** Tolra in the middle of four machines; one is lit at a time, with what is booked on it. */
-function ScheduleDrawing({ reduced }: { reduced: boolean }) {
-  const [ref, onScreen] = useOnScreen<HTMLDivElement>();
-  const [hover, setHover] = useState(-1);
-  const [auto, setAuto] = useState(0);
+function ScheduleDrawing() {
+  const [on, setHover] = useState(-1);
   const machines = HANDLES_SCHEDULE.machines;
-  useEffect(() => {
-    if (reduced || !onScreen || hover >= 0) return;
-    const t = setInterval(() => setAuto((a) => (a + 1) % machines.length), 1900);
-    return () => clearInterval(t);
-  }, [reduced, onScreen, hover, machines.length]);
-  const on = hover >= 0 ? hover : reduced ? -1 : auto;
   const spots = [
     { x: 4, y: 14, lead: "M126,90 H64 V62" },
     { x: 172, y: 14, lead: "M174,90 H236 V62" },
@@ -217,12 +167,11 @@ function ScheduleDrawing({ reduced }: { reduced: boolean }) {
 
   return (
     <Cell className="io-schedule" pain={HANDLES_SCHEDULE.pain} answer={HANDLES_SCHEDULE.answer} status={status}>
-      <div ref={ref}>
+      <div>
         <svg className="io-svg" viewBox="0 0 300 200" role="group" aria-label={HANDLES_SCHEDULE.label}>
           {spots.map((s, i) => (
             <path key={s.lead} d={s.lead} className={`io-lead${on === i ? " io-lead-on" : ""}`} />
           ))}
-          {!reduced && on >= 0 ? <Packet key={on} path={spots[on].lead} dur={1.1} /> : null}
           <g className="io-hub">
             <rect x="126" y="76" width="48" height="48" className="io-node io-node-hub" />
             <Mark x={136} y={86} size={28} />
@@ -262,20 +211,11 @@ const STAGE_LAYOUTS = [
 ] as const;
 
 /** Job J-0001 on a dimension line, stage by stage; the invoice box stays empty until the last stage. Drag, hover or use the arrow keys. */
-function StagesDrawing({ reduced }: { reduced: boolean }) {
-  const [ref, onScreen] = useOnScreen<HTMLDivElement>(0.5);
+function StagesDrawing() {
   const last = FLOW_STEPS.length - 1;
-  const [stage, setStage] = useState(0);
-  const [touched, setTouched] = useState(false);
+  // Starts on the last stage, invoice drafted: the finished picture. Dragging, hovering or the arrow keys move it at once.
+  const [stage, setStage] = useState(last);
   const id = useId();
-  useEffect(() => {
-    if (reduced) setStage(last);
-  }, [reduced, last]);
-  useEffect(() => {
-    if (reduced || touched || !onScreen || stage >= last) return;
-    const t = setTimeout(() => setStage((n) => Math.min(last, n + 1)), 1500);
-    return () => clearTimeout(t);
-  }, [reduced, touched, onScreen, stage, last]);
 
   // Stage positions as a share of the strip's width, the same in both drawings.
   const at = (i: number) => 0.04 + (0.92 * i) / last;
@@ -286,14 +226,12 @@ function StagesDrawing({ reduced }: { reduced: boolean }) {
     const share = (e.clientX - r.left) / r.width;
     let best = 0;
     for (let i = 1; i <= last; i++) if (Math.abs(at(i) - share) < Math.abs(at(best) - share)) best = i;
-    setTouched(true);
     setStage(best);
   };
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const next = e.key === "ArrowRight" || e.key === "ArrowUp" ? stage + 1 : e.key === "ArrowLeft" || e.key === "ArrowDown" ? stage - 1 : e.key === "Home" ? 0 : e.key === "End" ? last : null;
     if (next === null) return;
     e.preventDefault();
-    setTouched(true);
     setStage(Math.max(0, Math.min(last, next)));
   };
   const invoiceText = invoiced ? HANDLES_STAGES.drafted : HANDLES_STAGES.notYet;
@@ -305,7 +243,7 @@ function StagesDrawing({ reduced }: { reduced: boolean }) {
       answer={HANDLES_STAGES.answer}
       status={`${FLOW_JOB.number} · Op ${step.op} ${step.label}: ${step.stamp} · ${HANDLES_STAGES.invoice}: ${invoiceText}`}
     >
-      <div ref={ref} className="io-stages-grid">
+      <div className="io-stages-grid">
         <div
           className="io-scrub"
           role="slider"
@@ -337,7 +275,7 @@ function StagesDrawing({ reduced }: { reduced: boolean }) {
                     <text x={x(i)} y={y + 26} textAnchor="middle" className={`io-t-label${i === stage ? " io-t-on" : ""}`}>{s.op}</text>
                   </g>
                 ))}
-                <g className="io-handle" style={{ transform: `translateX(${x(stage)}px)` }}>
+                <g transform={`translate(${x(stage)} 0)`}>
                   <path d={`M0,${y} L-7,${y - 14} H7 Z`} className="io-handle-mark" />
                 </g>
                 <text x={Math.min(Math.max(x(stage), compact ? 60 : 80), L.w - (compact ? 60 : 80))} y={y - 26} textAnchor="middle" className="io-t-display io-t-sm">
@@ -358,12 +296,11 @@ function StagesDrawing({ reduced }: { reduced: boolean }) {
 
 /** The section's three drawings on one asymmetric sheet grid, labelled once as an illustration with example values. */
 export default function InkOrbitFeatures() {
-  const reduced = useReducedMotion();
   return (
     <div className="io-grid">
-      <FlowDrawing reduced={reduced} />
-      <ScheduleDrawing reduced={reduced} />
-      <StagesDrawing reduced={reduced} />
+      <FlowDrawing />
+      <ScheduleDrawing />
+      <StagesDrawing />
       <p className="io-illustration mk-label">{ILLUSTRATION_LABEL}</p>
     </div>
   );

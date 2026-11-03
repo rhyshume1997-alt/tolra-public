@@ -44,11 +44,32 @@ export const TRUST_ITEMS = ["Admin two-step sign-in", "No tracking cookies on th
 
 /**
  * Every made-up example on the page (the traveller's records, the drawn document layouts) carries this label. They are drawn from the
- * real layouts in the app's code, with example values; they are not screenshots. "Demo data" is kept for real screenshots of a seeded
- * demo company, which drop in through a feature's `shot` (below).
+ * real layouts in the app's code, with example values; they are not screenshots. Real screenshots of the app (below, and a feature's
+ * `shot`) are labelled Screenshot.
  */
 export const ILLUSTRATION_LABEL = "Illustration";
-export const DEMO_DATA_LABEL = "Demo data";
+export const SCREENSHOT_LABEL = "Screenshot";
+
+/**
+ * Two real screenshots of the app, shown at the top of "What it does". Names, companies and quote numbers in them are redacted to
+ * example values. Width and height are the files' own.
+ */
+export const SCREENSHOTS = [
+  {
+    title: "Dashboard",
+    src: "/marketing/tolra-dashboard.jpg",
+    width: 1523,
+    height: 784,
+    alt: "Tolra dashboard: the Today view with tiles for quotes with no reply, enquiries not quoted, jobs running late, work waiting to be checked and money late, above a Needs your attention list of expired quotes",
+  },
+  {
+    title: "Job Board",
+    src: "/marketing/tolra-job-board.jpg",
+    width: 1523,
+    height: 784,
+    alt: "Tolra Job Board in Cards view: tiles for open, not started, running, waiting for inspection and complete jobs, with filters for status, type, group, due date, tag and stage",
+  },
+] as const;
 
 /** The job traveller: one example job, J-0001, stamped stage by stage. Captions are checked against the app's code on main (3 Nov). */
 export const FLOW_TITLE = "One job, from enquiry to invoice";
@@ -93,7 +114,7 @@ export const FLOW_STEPS = [
 ] as const;
 
 /**
- * "How Tolra handles it": three live drawings under "Sound familiar?", each answering one of its problems. Every line reuses the
+ * "How Tolra handles it": three drawings in the same section as "Sound familiar?", each answering one of its problems. Every line reuses the
  * checked copy above (the problems, the traveller captions) or the app's roles and document numbers on main (workshop may sign off,
  * migration 072); the example machines and jobs are the ones in the schedule figure below. No people, counters, forecasts or integrations.
  */
@@ -143,8 +164,8 @@ export const HANDLES_STAGES = {
 
 /**
  * "What it does": alternating rows of text and a figure. Each figure is drawn from the real layout in the app's code (field names as the
- * app prints them) with example values, and is labelled Illustration. When real screenshots of a seeded demo company exist, set `shot`
- * ({ src under /public, alt, width, height }) and the row shows the screenshot, labelled Demo data, instead of the drawing.
+ * app prints them) with example values, and is labelled Illustration. When a real screenshot fits a row, set `shot`
+ * ({ src under /public, alt, width, height }) and the row shows the screenshot, labelled Screenshot, instead of the drawing.
  */
 export type FeatureShot = { src: string; alt: string; width: number; height: number } | null;
 export type FeatureFigure =
