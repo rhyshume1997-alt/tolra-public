@@ -1,0 +1,44 @@
+# Diagnostic only (never merge): runs the demo seed once on the disposable CI database and prints the counts. Loopback database only.
+name: Demo seed proof (diagnostic)
+on:
+  push:
+    branches: [claude/job-u-seed-proof]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start disposable Supabase
+        run: npm run test:backend
+      - name: Run the demo seed
+        run: node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database | sed -E 's/(one-time password: ).*/\1[hidden]/'
+      - name: Second run must refuse (already seeded)
+        run: |
+          if node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database; then echo "expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
+      - name: Stop disposable Supabase
+        if: always()
+        run: npm run test:backend:stop
