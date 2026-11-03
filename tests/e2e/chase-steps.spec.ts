@@ -126,28 +126,52 @@ test.describe("Chase steps in their own company", () => {
     expect((await recordedMail()).slice(before).filter((m) => toOf(m).includes(address))).toEqual([]);
   });
 
-  test("Approve and send: edited on the card, sent through the mailer, off the queue, approval recorded", async () => {
+  test("Approve and send: edited in Approvals, exact reviewed text sent, off the queue, approval recorded", async () => {
     await page.goto("/approval");
     const card = page.locator('[data-slot="card"]').filter({ hasText: address });
     await expect(card).toBeVisible();
     const before = (await recordedMail()).length;
     await card.getByRole("button", { name: "Edit", exact: true }).click();
-    const body = card.getByLabel("Message", { exact: true });
-    await body.fill(`${await body.inputValue()}\n\nEdited before sending ${tag}`);
-    await card.getByRole("button", { name: "Save draft" }).click();
-    await expect(page.getByRole("button", { name: "Approve and send" })).toBeEnabled();
-    await page.getByRole("button", { name: "Approve and send" }).click();
+    // The real page's Edit Email dialog is portalled outside the card and labels this field Body.
+    // #161 also carries the inline chase editor (Message); both must expose exactly one active message editor.
+    const body = page.getByRole("textbox", { name: /^(Body|Message)$/ });
+    const subject = page.getByRole("textbox", { name: "Subject", exact: true });
+    await expect(body).toHaveCount(1);
+    await expect(body).toBeVisible();
+    const approvedSubject = await subject.inputValue();
+    const approvedBody = `${await body.inputValue()}\n\nEdited before sending ${tag}`;
+    await body.fill(approvedBody);
+    await page.getByRole("button", { name: /^Save draft$/i }).click();
+    await expect(body).toHaveCount(0);
+    await expect.poll(async () => (await adminClient().from("email_history").select("subject, body")
+      .eq("organization_id", org.id).eq("related_to_id", ids.owed).eq("status", "drafted").single()).data)
+      .toEqual({ subject: approvedSubject, body: approvedBody });
+
+    const confirmation = page.getByRole("dialog", { name: "Approve and send", exact: true });
+    const sentResponse = page.waitForResponse(response => new URL(response.url()).pathname === "/api/chase/approve" && response.request().method() === "POST");
+    const nextStep = Promise.race([
+      confirmation.waitFor({ state: "visible" }).then(() => "review"),
+      sentResponse.then(() => "sent"),
+    ]);
+    await expect(card.getByRole("button", { name: "Approve and send", exact: true })).toBeEnabled();
+    await card.getByRole("button", { name: "Approve and send", exact: true }).click();
+    if (await nextStep === "review") {
+      await expect(confirmation.getByRole("textbox", { name: "Subject", exact: true })).toHaveValue(approvedSubject);
+      await expect(confirmation.getByRole("textbox", { name: "Body", exact: true })).toHaveValue(approvedBody);
+      await confirmation.getByRole("button", { name: "Approve and send", exact: true }).click();
+    }
+    expect((await sentResponse).status()).toBe(200);
     await expect(page.getByRole("button", { name: "Approve and send" })).toHaveCount(0);
 
     await expect.poll(async () => (await recordedMail()).slice(before).filter((m) => toOf(m).includes(address)).length).toBe(1);
     const sent = (await recordedMail()).slice(before).find((m) => toOf(m).includes(address))!;
-    expect(String((sent.body as { text?: string }).text)).toContain(`Edited before sending ${tag}`);
+    expect((sent.body as { subject?: string; text?: string })).toMatchObject({ subject: approvedSubject, text: approvedBody });
 
     const service = adminClient();
     const chase = (await service.from("chase_sends").select("status, approved_by, sent_history_id, draft_history_id").eq("invoice_id", ids.owed).single()).data!;
     expect(chase).toMatchObject({ status: "sent", approved_by: org.admin.id, draft_history_id: null });
-    expect((await service.from("email_history").select("id, status, body").eq("organization_id", org.id)).data).toEqual([
-      { id: chase.sent_history_id, status: "sent_via_system", body: expect.stringContaining(`Edited before sending ${tag}`) },
+    expect((await service.from("email_history").select("id, status, subject, body").eq("organization_id", org.id)).data).toEqual([
+      { id: chase.sent_history_id, status: "sent_via_system", subject: approvedSubject, body: approvedBody },
     ]);
     await page.reload();
     await expect(page.getByRole("button", { name: "Approve and send" })).toHaveCount(0);
