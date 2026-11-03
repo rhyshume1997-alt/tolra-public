@@ -42,7 +42,7 @@ describe("home page content", () => {
     const figures = html.match(/<figure\b[\s\S]*?<\/figure>/g) ?? [];
     expect(figures).toHaveLength(marketing.FEATURES.length);
     for (const figure of figures) expect(text(figure)).toMatch(/Illustration\s*$/);
-    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 1);
+    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 2); // + the traveller and the "How Tolra handles it" drawings
     const shots = marketing.FEATURES.filter((feature) => feature.shot).length;
     expect(text(html).match(/Demo data/g)?.length ?? 0).toBe(shots);
     const images = html.match(/<img\b[^>]*>/g) ?? [];

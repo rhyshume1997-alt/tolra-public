@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 
 import { Cta } from "@/components/marketing/cta";
 import { FeatureFigure } from "@/components/marketing/feature-figure";
+import { GlassMark } from "@/components/marketing/glass-mark";
 import { JobFlow } from "@/components/marketing/job-flow";
 import { DimensionLine, MarketingSheet } from "@/components/marketing/sheet";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import InkOrbitFeatures from "@/components/ui/ink-orbit-features";
 import {
   CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FEATURES_TITLE, FOUNDER_LINK_LABEL, FOUNDER_NAME, FOUNDER_NOTE, FOUNDER_TITLE, FOUNDER_URL,
-  HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL,
+  HANDLES_HINT, HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL,
   START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
 } from "@/lib/marketing";
 
@@ -82,6 +84,19 @@ export default function Home() {
 
         <DimensionLine reference="B" />
 
+        {/* The problems above, answered: three live drawings (components/ui/ink-orbit-features.tsx). */}
+        <section aria-labelledby="handles-title" className={BAND}>
+          <div className="grid gap-4 lg:grid-cols-12 lg:gap-10">
+            <h2 id="handles-title" className={`${H2} lg:col-span-7`}>{HANDLES_TITLE}</h2>
+            <p className={`self-end lg:col-span-4 lg:col-start-9 ${MUTED}`}>{HANDLES_HINT}</p>
+          </div>
+          <div className="mt-10 lg:mt-14">
+            <InkOrbitFeatures />
+          </div>
+        </section>
+
+        <DimensionLine reference="C" />
+
         <section aria-labelledby="features-title" className={BAND}>
           <h2 id="features-title" className={H2}>{FEATURES_TITLE}</h2>
           <ol className="mt-10 space-y-16 lg:mt-14 lg:space-y-24">
@@ -108,7 +123,7 @@ export default function Home() {
           </ol>
         </section>
 
-        <DimensionLine reference="C" />
+        <DimensionLine reference="D" />
 
         <section aria-labelledby="builder-title" className={`${BAND} grid gap-6 lg:grid-cols-12 lg:gap-10`}>
           <h2 id="builder-title" className={`${H2} lg:col-span-4`}>{FOUNDER_TITLE}</h2>
@@ -126,7 +141,7 @@ export default function Home() {
           </div>
         </section>
 
-        <DimensionLine reference="D" />
+        <DimensionLine reference="E" />
 
         <div className={`${BAND} grid gap-14 lg:grid-cols-12 lg:gap-10`}>
           <section aria-labelledby="who-title" className="lg:col-span-4">
@@ -155,7 +170,7 @@ export default function Home() {
           </section>
         </div>
 
-        <DimensionLine reference="E" />
+        <DimensionLine reference="F" />
 
         <section aria-labelledby="faq-title" className={`${BAND} grid gap-8 lg:grid-cols-12 lg:gap-10`}>
           <h2 id="faq-title" className={`${H2} self-start lg:sticky lg:top-8 lg:col-span-4`}>{FAQ_TITLE}</h2>
@@ -174,7 +189,10 @@ export default function Home() {
 
         <section aria-labelledby="close-title" className={`${SHEET} pb-14 lg:pb-20`}>
           <div className="grid gap-8 border border-[#0b2a5b] bg-white p-6 sm:p-8 lg:grid-cols-12 lg:gap-10 lg:p-12">
-            <h2 id="close-title" className="mk-display text-[clamp(2.25rem,4.6vw,3.75rem)] uppercase lg:col-span-7">{CLOSE_TITLE}</h2>
+            <div className="lg:col-span-7">
+              <h2 id="close-title" className="mk-display text-[clamp(2.25rem,4.6vw,3.75rem)] uppercase">{CLOSE_TITLE}</h2>
+              <div className="mt-8 max-w-[24rem]"><GlassMark /></div>
+            </div>
             <div className="self-end lg:col-span-5">
               <p className={`text-lg leading-relaxed ${MUTED}`}>{CLOSE_CALL_LINE}</p>
               <Cta className="mt-6 w-full sm:w-auto" />

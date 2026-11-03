@@ -262,3 +262,262 @@ details[open] > summary .mk-plus {
     visibility: visible;
   }
 }
+
+/*
+ * "How Tolra handles it" (components/ui/ink-orbit-features.tsx): three live drawings on an asymmetric grid. Ink on white, 1px rules,
+ * square corners; signal blue marks only what is active (a lit leader, a travelling sheet, the handle). Registration marks open on hover.
+ */
+.io-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.25rem;
+}
+@media (min-width: 1024px) {
+  .io-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: 2.5rem;
+    row-gap: 3rem;
+  }
+  .io-flow { grid-column: 1 / span 7; }
+  .io-schedule { grid-column: 8 / span 5; }
+  .io-stages { grid-column: 3 / span 10; }
+  .io-illustration { grid-column: 3 / span 10; }
+}
+.io-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mk-ink);
+  background: #ffffff;
+}
+.io-head {
+  padding: 0.875rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--mk-rule-soft);
+}
+.io-body {
+  padding: 1rem 1rem 0.25rem;
+}
+/* Wide or compact drawing, by the width the drawing actually has. */
+.io-body {
+  container-type: inline-size;
+}
+@container (max-width: 519px) {
+  .io-svg.io-v-wide { display: none; }
+}
+@container (min-width: 520px) {
+  .io-svg.io-v-compact { display: none; }
+}
+.io-status {
+  min-height: 2.75rem;
+  margin: 0 1rem;
+  padding: 0.5rem 0;
+  border-top: 1px dashed var(--mk-rule-soft);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--mk-ink);
+}
+.io-foot {
+  margin-top: auto;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--mk-ink);
+  color: var(--mk-ink-2);
+}
+.io-illustration {
+  justify-self: end;
+}
+@media (min-width: 640px) {
+  .io-head, .io-foot { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .io-body { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .io-status { margin: 0 1.25rem; }
+}
+
+/* Registration marks at the corners of each drawing. */
+.io-c {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 0 solid var(--mk-ink);
+  pointer-events: none;
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.io-c-tl { top: -0.4375rem; left: -0.4375rem; border-top-width: 1px; border-left-width: 1px; }
+.io-c-tr { top: -0.4375rem; right: -0.4375rem; border-top-width: 1px; border-right-width: 1px; }
+.io-c-bl { bottom: -0.4375rem; left: -0.4375rem; border-bottom-width: 1px; border-left-width: 1px; }
+.io-c-br { bottom: -0.4375rem; right: -0.4375rem; border-bottom-width: 1px; border-right-width: 1px; }
+.io-cell:hover .io-c-tl, .io-cell:focus-within .io-c-tl { transform: translate(-3px, -3px); }
+.io-cell:hover .io-c-tr, .io-cell:focus-within .io-c-tr { transform: translate(3px, -3px); }
+.io-cell:hover .io-c-bl, .io-cell:focus-within .io-c-bl { transform: translate(-3px, 3px); }
+.io-cell:hover .io-c-br, .io-cell:focus-within .io-c-br { transform: translate(3px, 3px); }
+
+/* The drawings. */
+.io-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  color: var(--mk-ink);
+}
+.io-lead {
+  fill: none;
+  stroke: var(--mk-rule-soft);
+  stroke-width: 1.25;
+  transition: stroke 200ms ease-out;
+}
+.io-lead-on {
+  stroke: var(--mk-signal);
+}
+.io-dash {
+  stroke-dasharray: 4 4;
+  animation: io-dash 1.2s linear infinite;
+}
+.io-progress {
+  stroke-width: 2.5;
+  transition: d 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.io-pkt {
+  fill: #ffffff;
+  stroke: var(--mk-signal);
+  stroke-width: 1.25;
+}
+.io-node {
+  fill: #ffffff;
+  stroke: var(--mk-ink);
+  stroke-width: 1;
+  transition: stroke 200ms ease-out, stroke-width 200ms ease-out;
+}
+.io-node-hub {
+  fill: var(--mk-paper);
+}
+.io-node-free {
+  stroke-dasharray: 4 3;
+}
+.io-hit {
+  cursor: pointer;
+  outline: none;
+}
+.io-hit-on .io-node,
+.io-hit:focus-visible .io-node,
+.io-hit:focus-visible .io-sheet {
+  stroke: var(--mk-signal);
+  stroke-width: 2;
+}
+.io-sheet,
+.io-sheet-back {
+  fill: #ffffff;
+  stroke: var(--mk-ink);
+  stroke-width: 1;
+}
+.io-sheet-back {
+  stroke: var(--mk-rule-soft);
+}
+.io-sheet-new {
+  animation: io-print 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.io-rule {
+  fill: none;
+  stroke: var(--mk-rule-soft);
+  stroke-width: 1;
+}
+.io-tick {
+  stroke: var(--mk-rule-soft);
+  stroke-width: 1.25;
+}
+.io-tick-on {
+  stroke: var(--mk-ink);
+}
+.io-handle {
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.io-handle-mark {
+  fill: var(--mk-signal);
+  stroke: var(--mk-signal-ink);
+  stroke-width: 1;
+}
+.io-t-display {
+  font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  fill: var(--mk-ink);
+}
+.io-t-sm {
+  font-size: 17px;
+}
+.io-t-label {
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  fill: var(--mk-ink-2);
+}
+.io-t-tight {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.io-t-on {
+  fill: var(--mk-ink);
+  font-weight: 600;
+}
+.io-t-mono {
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 17px;
+  fill: var(--mk-ink);
+}
+
+/* The stages strip: the scrubber, with the invoice box beside it (below it on a phone). */
+.io-stages-grid {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+}
+@media (min-width: 640px) {
+  .io-stages-grid { grid-template-columns: minmax(0, 1fr) 11rem; }
+}
+.io-scrub {
+  container-type: inline-size;
+  cursor: ew-resize;
+  touch-action: pan-y;
+  outline: none;
+}
+.io-scrub:focus-visible {
+  outline: 2px solid var(--mk-signal);
+  outline-offset: 4px;
+}
+.io-invoice {
+  border: 1px dashed var(--mk-ink-2);
+  padding: 0.625rem 0.75rem;
+  color: var(--mk-ink-2);
+  transition: border-color 200ms ease-out, color 200ms ease-out;
+}
+.io-invoice-on {
+  border-style: solid;
+  border-color: var(--mk-ink);
+  color: var(--mk-ink);
+}
+
+@keyframes io-dash {
+  to { stroke-dashoffset: -16; }
+}
+@keyframes io-print {
+  from { opacity: 0; transform: translate(10px, -8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The glass mark in the closing panel. */
+.mk-glass {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 12rem;
+  border: 1px solid var(--mk-rule-soft);
+  background: #ffffff;
+}
+@media (min-width: 1024px) {
+  .mk-glass { height: 15rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .io-sheet-new, .io-dash { animation: none !important; }
+  .io-handle, .io-progress, .io-c { transition: none !important; }
+}

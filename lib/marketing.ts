@@ -93,6 +93,55 @@ export const FLOW_STEPS = [
 ] as const;
 
 /**
+ * "How Tolra handles it": three live drawings under "Sound familiar?", each answering one of its problems. Every line reuses the
+ * checked copy above (the problems, the traveller captions) or the app's roles and document numbers on main (workshop may sign off,
+ * migration 072); the example machines and jobs are the ones in the schedule figure below. No people, counters, forecasts or integrations.
+ */
+export const HANDLES_TITLE = "How Tolra handles it";
+export const HANDLES_HINT = "Hover, tap or tab through each drawing.";
+export const HANDLES_TODAY = "Today";
+export const HANDLES_IN_TOLRA = "In Tolra";
+export const HANDLES_FLOW = {
+  pain: PAIN_CARDS[0].title,
+  answer: FLOW_STEPS[0].caption,
+  label: "Office and workshop working from the same job in Tolra, with its documents coming off the stack in turn",
+  prompt: "Select Office or Workshop to see what each works on, or the stack for the next document.",
+  hub: "Tolra",
+  roles: [
+    { id: "office", name: "Office", work: "Enquiries, quotes, purchase orders and invoices." },
+    { id: "workshop", name: "Workshop", work: "Job worksheets with their drawings, the machines, and operator sign-off." },
+  ],
+  sheets: [
+    { kind: "Quote", number: "QUO-0001" },
+    { kind: "Sales order", number: "SO-0001" },
+    { kind: "Worksheet", number: "J-0001" },
+    { kind: "Delivery note", number: "DLN-0001" },
+    { kind: "Invoice (draft)", number: "INV-0001" },
+  ],
+  nextSheet: "Next document",
+} as const;
+export const HANDLES_SCHEDULE = {
+  pain: PAIN_CARDS[1].title,
+  answer: FLOW_STEPS[4].caption,
+  label: "The machine schedule, one machine at a time",
+  free: "Free",
+  machines: [
+    { name: "Laser 1", jobs: ["J-0001", "J-0004"] },
+    { name: "Press brake", jobs: ["J-0001"] },
+    { name: "Mill 1", jobs: ["J-0003"] },
+    { name: "Lathe 1", jobs: [] },
+  ],
+} as const;
+export const HANDLES_STAGES = {
+  pain: PAIN_CARDS[2].title,
+  answer: "When a delivery note goes out, a draft invoice can be made from it. You check the draft before it is issued.",
+  label: "Step job J-0001 through its stages",
+  invoice: "Invoice",
+  notYet: "Not yet",
+  drafted: "INV-0001 (draft)",
+} as const;
+
+/**
  * "What it does": alternating rows of text and a figure. Each figure is drawn from the real layout in the app's code (field names as the
  * app prints them) with example values, and is labelled Illustration. When real screenshots of a seeded demo company exist, set `shot`
  * ({ src under /public, alt, width, height }) and the row shows the screenshot, labelled Demo data, instead of the drawing.
