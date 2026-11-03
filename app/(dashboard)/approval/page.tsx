@@ -199,7 +199,7 @@ export default function ApprovalPage() {
         const response = await fetch("/api/chase/approve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ history_id: item.id, subject: approveSubject, body: approveBody }),
+          body: JSON.stringify({ history_id: item.id, expected_subject: item.subject, expected_body: item.body, subject: approveSubject, body: approveBody }),
         });
         const answer = (await response.json().catch(() => ({}))) as { status?: string; error?: string };
         if (answer.status === "no_provider") {

@@ -18,7 +18,7 @@ import { escapeHtml, oneLine } from "@/lib/email/templates/defaults";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
-export type ApproveInput = { organizationId: string; userId: string; draftId: string; subject?: string; body?: string; today: string };
+export type ApproveInput = { organizationId: string; userId: string; draftId: string; expectedSubject?: string; expectedBody?: string; subject?: string; body?: string; today: string };
 export type ApproveDeps = {
   /** The person's own session (row level security). */
   db: SupabaseClient;
@@ -50,6 +50,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     .select("id, organization_id, to_email, subject, body, status, related_to_type, related_to_id").eq("id", input.draftId).maybeSingle();
   const draft = draftRow as { id: string; organization_id: string; to_email: string; subject: string; body: string; status: string; related_to_type: string | null; related_to_id: string | null } | null;
   if (draftError || !draft || draft.organization_id !== org) return refused(404, "Draft not found.");
+  if ((input.expectedSubject !== undefined || input.expectedBody !== undefined) && (input.expectedSubject !== draft.subject || input.expectedBody !== draft.body)) return refused(409, "The draft changed after you checked it. Reload and review it before sending.");
   if (draft.status !== "drafted") return refused(409, "This e-mail is no longer waiting for approval. Reload the page.");
 
   const { data: chaseRow } = await db.from("chase_sends").select("id, invoice_id, status").eq("draft_history_id", draft.id).eq("organization_id", org).maybeSingle();
