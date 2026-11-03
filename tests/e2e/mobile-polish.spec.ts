@@ -67,7 +67,7 @@ for (const viewport of [PHONE, TABLET]) {
     for (let i = 0; i < count; i += 1) {
       const row = rows.nth(i);
       await row.scrollIntoViewIfNeeded();
-      const edit = row.getByRole("button", { name: /^(Edit|Revoke support access)$/ });
+      const edit = row.getByRole("button", { name: /^(Edit|Switch off support access)$/ });
       await expect(edit).toBeVisible();
       const box = await edit.boundingBox();
       expect(box!.x + box!.width, `row ${i} action inside the viewport`).toBeLessThanOrEqual(viewport.width + 0.5);
