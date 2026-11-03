@@ -264,7 +264,7 @@ export default function ApprovalPage() {
         <CardContent className="flex gap-3 p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
           <p className="text-sm font-medium text-blue-950">
-            Email sending isn&apos;t set up yet, so emails are saved as drafts. Copy a draft or open it in your email app, send it yourself, then choose Mark as Sent Manually.
+            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
             {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
           </p>
         </CardContent>
