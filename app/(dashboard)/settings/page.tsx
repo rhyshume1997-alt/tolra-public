@@ -9,6 +9,7 @@ import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
 import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
 import { EmailTemplatesCard } from "@/components/email/email-templates-card";
 import { PrintLayoutCard } from "@/components/print-layout-settings-card";
+import { ConnectedCostingRatesCard } from "@/components/costing/connected-costing";
 import { RoleGate } from "@/components/role-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -651,6 +652,7 @@ export default function SettingsPage() {
         <ClockInLockCard />
         <CustomerSignOffCard />
         <PrintLayoutCard />
+        <ConnectedCostingRatesCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
         <EmailSchedulesCard />
