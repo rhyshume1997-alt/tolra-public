@@ -19,3 +19,9 @@ labour session and a machine run each (so the activity log has entries); everyth
 
 Refuses unless you pass `--yes-this-is-a-throwaway-database` **and** both the database and API addresses are `127.0.0.1`/`localhost`. Never put a hosted
 connection string or key in `.env.test.local`. The unit test `tests/unit/demo-seed-plan.test.ts` checks these refusals and that the data is clearly fake.
+
+## AF identity guard (review only, not run here)
+
+A local address is no longer enough. The seed requires a fresh server-side `demo_seed_guard.identity` row and matching per-run `DEMO_DISPOSABLE_ID`. The marker binds the database name, expires after 15 minutes and is inaccessible to browser/service roles. The marker script refuses a nonempty database and cannot overwrite an existing marker. The seed checks the marker before creating an Auth user or company and refuses any company other than the exact Tolra Demo name/slug. Its original duplicate-demo refusal remains.
+
+The manual **Demo seed rehearsal** workflow creates the empty disposable backend, generates the identity, runs `tests/demo-seed/mark-disposable.sql`, then runs the original seed command. No workflow was dispatched or SQL run in this change. A local operator must use that same reviewed marker preparation with a fresh UUID, retain the same UUID only in the process environment, and never mark a live/forwarded database as disposable. Reset rather than reuse an expired/used rehearsal. No production connection is supported. The seed never creates its own marker.
