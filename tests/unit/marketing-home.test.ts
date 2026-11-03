@@ -36,11 +36,16 @@ describe("home page content", () => {
     expect(visible).not.toMatch(/\b(?:price|pricing|per month|testimonial)\b/i);
   });
 
-  it("labels every mock as Demo data and gives every image alt text", async () => {
-    const { html } = await render({});
-    expect(text(html).match(/Demo data/g)!.length).toBeGreaterThanOrEqual(4);
+  it("labels every made-up example as Illustration (Demo data only on real screenshots), and gives every image alt text", async () => {
+    const { html, marketing } = await render({});
+    // The traveller plus one drawn figure per feature; none of them is a screenshot, so none may say Demo data.
+    const figures = html.match(/<figure\b[\s\S]*?<\/figure>/g) ?? [];
+    expect(figures).toHaveLength(marketing.FEATURES.length);
+    for (const figure of figures) expect(text(figure)).toMatch(/Illustration\s*$/);
+    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 1);
+    const shots = marketing.FEATURES.filter((feature) => feature.shot).length;
+    expect(text(html).match(/Demo data/g)?.length ?? 0).toBe(shots);
     const images = html.match(/<img\b[^>]*>/g) ?? [];
-    expect(images.length).toBeGreaterThanOrEqual(4);
     for (const image of images) expect(image).toMatch(/\balt="[^"]+"/);
   });
 
@@ -156,7 +161,9 @@ describe("round 2 sections", () => {
     const visible = text(html);
     expect(visible).toContain("I'll talk it through with you on the call.");
     expect(visible).toContain("In the UK. The database, sign-ins and stored files are in London, and the app runs on servers in London.");
-    expect(visible).toContain("Xero is coming at launch. Sage isn't supported yet.");
+    // Worded as far as main's code goes (Admin > Integrations: connect, account and VAT mappings, issued invoices and credit notes sent;
+    // payments never sent or pulled, lib/integrations/xero/policy.ts).
+    expect(visible).toContain("issued invoices and credit notes are sent to Xero. Payments aren't synced either way. Sage isn't supported yet.");
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]!.replace(/\\u003c/g, "<"));
     const faq = ld.find((d: { "@type": string }) => d["@type"] === "FAQPage");
     expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(marketing.FAQ.map((item) => item.question));

@@ -1,0 +1,264 @@
+/*
+ * The public pages ("/" and "/privacy"): a drawing sheet. Paper white with a faint 10 mm grid, navy ink, 1px rules, no shadows,
+ * no gradients. Signal blue (#1e8fff) is kept for the call to action and active states only. Everything is scoped under .mk-sheet,
+ * so the app's own pages are untouched.
+ */
+.mk-sheet {
+  --mk-paper: #fbfcfd;
+  --mk-ink: #0b2a5b;
+  --mk-ink-2: #3c5277;
+  --mk-rule-soft: rgb(11 42 91 / 0.28);
+  --mk-signal: #1e8fff;
+  --mk-signal-ink: #05193a;
+  --mk-signal-wash: #e7f2ff;
+
+  flex: 1 0 auto;
+  color: var(--mk-ink);
+  background-color: var(--mk-paper);
+  /* The 10 mm grid: one 1px line per cell edge, drawn as a tiny SVG tile (no gradient), scaled to 10 mm. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 .5H40M.5 0V40' fill='none' stroke='%230b2a5b' stroke-opacity='.075'/%3E%3C/svg%3E");
+  background-size: 10mm 10mm;
+  font-family: var(--mk-font-sans), "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mk-sheet ::selection {
+  background: var(--mk-ink);
+  color: #ffffff;
+}
+
+.mk-sheet :focus-visible {
+  outline: 2px solid var(--mk-signal);
+  outline-offset: 3px;
+}
+
+.mk-sheet h1,
+.mk-sheet h2,
+.mk-sheet h3 {
+  letter-spacing: 0;
+}
+
+.mk-display {
+  font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-weight: 600;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.mk-mono {
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small drawing lettering: field labels in the title block, the traveller and the drawn documents. */
+.mk-label {
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mk-ink-2);
+  line-height: 1.3;
+}
+
+.mk-link {
+  color: var(--mk-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+.mk-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* The call to action: the one filled signal-blue object on the sheet. */
+.mk-cta {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.5rem;
+  background: var(--mk-signal);
+  color: var(--mk-signal-ink);
+  border: 1px solid var(--mk-signal-ink);
+  font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
+  transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mk-cta:hover {
+  background: #4ba6ff;
+}
+.mk-cta:focus-visible {
+  outline-color: var(--mk-ink);
+}
+
+/* Dimension-line section divider: extension lines, a line with an arrowhead at each end, and a section reference. */
+.mk-dim {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--mk-ink);
+}
+.mk-dim-ext {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--mk-ink);
+  flex: none;
+}
+.mk-dim-line {
+  position: relative;
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--mk-ink);
+}
+.mk-dim-line::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  border-style: solid;
+}
+.mk-dim-line[data-end="start"]::before {
+  left: 0;
+  border-width: 4.5px 11px 4.5px 0;
+  border-color: transparent var(--mk-ink) transparent transparent;
+}
+.mk-dim-line[data-end="end"]::before {
+  right: 0;
+  border-width: 4.5px 0 4.5px 11px;
+  border-color: transparent transparent transparent var(--mk-ink);
+}
+
+/* Callout balloon: a numbered circle on a leader line, as on a drawing. */
+.mk-balloon {
+  display: grid;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid var(--mk-ink);
+  border-radius: 50%;
+  background: #ffffff;
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 1.0625rem;
+  font-weight: 500;
+}
+.mk-leader {
+  position: relative;
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--mk-ink);
+}
+.mk-leader::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mk-ink);
+}
+.mk-leader[data-to="end"]::after {
+  right: -3px;
+}
+.mk-leader[data-to="start"]::after {
+  left: -3px;
+}
+
+/* The traveller's stamp box: an empty dashed box until the stage is stamped. */
+.mk-stampbox {
+  position: relative;
+  display: grid;
+  width: 5.75rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px dashed var(--mk-rule-soft);
+  flex: none;
+}
+.mk-stamp {
+  display: grid;
+  justify-items: center;
+  padding: 0.125rem 0.375rem;
+  border: 3px double var(--mk-ink);
+  background: rgb(255 255 255 / 0.6);
+  color: var(--mk-ink);
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(-4deg);
+}
+.mk-stampbox[data-stamped="false"] .mk-stamp {
+  visibility: hidden;
+}
+.mk-stampbox[data-stamped="true"][data-fresh="true"] .mk-stamp {
+  animation: mk-stamp-hit 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes mk-stamp-hit {
+  0% {
+    opacity: 0;
+    transform: scale(1.8) rotate(-11deg);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(-4deg);
+  }
+}
+
+/* The FAQ's plus: two 1px strokes that turn to a cross when the answer is open. */
+.mk-plus {
+  position: relative;
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mk-plus::before,
+.mk-plus::after {
+  content: "";
+  position: absolute;
+  background: var(--mk-ink);
+}
+.mk-plus::before {
+  left: 0;
+  right: 0;
+  top: calc(50% - 0.75px);
+  height: 1.5px;
+}
+.mk-plus::after {
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 0.75px);
+  width: 1.5px;
+}
+details[open] > summary .mk-plus {
+  transform: rotate(45deg);
+}
+.mk-sheet summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Reduced motion: nothing moves, and every stamp is shown. */
+@media (prefers-reduced-motion: reduce) {
+  .mk-sheet *,
+  .mk-sheet *::before,
+  .mk-sheet *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .mk-stampbox[data-stamped="false"] .mk-stamp {
+    visibility: visible;
+  }
+}
