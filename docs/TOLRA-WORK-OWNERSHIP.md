@@ -100,4 +100,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 28 | builder2 | chatgpt2/paid-claim-reconcile; chatgpt2/bank-csv-reconcile | DONE IN DRAFT PRS | #157 / #158 |
 | 28a | builder2 | chatgpt2/paid-claim-reconcile | DONE IN DRAFT PR | #157 |
 | 28b | builder2 | chatgpt2/bank-csv-reconcile | DONE IN DRAFT PR | #158 |
-| 29 | builder2 | chatgpt2/reviewer-merge-order | DONE IN DRAFT PR | Pending |
+| 29 | builder2 | chatgpt2/reviewer-merge-order | DONE IN DRAFT PR | #159 |
