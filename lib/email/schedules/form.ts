@@ -29,7 +29,7 @@ export type ScheduleForm = {
 export const SCHEDULE_LABELS: Record<EmailScheduleKind, { title: string; blurb: string; frequencies: EmailScheduleFrequency[] }> = {
   invoice_reminder: {
     title: "Invoice reminders",
-    blurb: "Reminds customers about invoices that are issued, unpaid and past their due date. Each invoice is reminded at most once per run, and never once it is paid.",
+    blurb: "Drafts a chase e-mail for each unpaid invoice that has reached one of your chase steps, for you to approve in the Approval Queue. Nothing is e-mailed until you approve it, and an invoice is never chased once it is paid.",
     frequencies: ["daily", "weekly", "once"],
   },
   timesheet: {

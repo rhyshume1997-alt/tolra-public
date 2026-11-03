@@ -13,8 +13,13 @@
  * No conditionals: where the old text varied (a greeting with or without the contact's name, a sentence only when part paid), the
  * vars builders below compute the piece as one placeholder value.
  */
+import { CHASE_DEFAULT_TEMPLATES, CHASE_JOB_PLACEHOLDERS, CHASE_TEMPLATE_KEYS } from "@/lib/chasing/templates";
 
-export const TEMPLATE_KEYS = ["quote", "invoice", "purchase_order", "delivery_note", "invoice_reminder", "timesheet", "job_to_workshop", "rfq_clarify"] as const;
+export const TEMPLATE_KEYS = [
+  "quote", "invoice", "purchase_order", "delivery_note", "invoice_reminder", "timesheet", "job_to_workshop", "rfq_clarify",
+  // 138: the chase steps' other tones (the friendly tone uses invoice_reminder); their texts are lib/chasing/templates.ts's.
+  ...CHASE_TEMPLATE_KEYS,
+] as const;
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number];
 
 export const PLACEHOLDERS = [
@@ -23,6 +28,9 @@ export const PLACEHOLDERS = [
   "greeting", "payment_note", "job", "delivery_date", "status", "description",
   // What is still to pay on an invoice (after receipts, credits and refunds): the reminder texts say this, not the invoice total.
   "balance",
+  // 138: the invoice's job and its supplier orders, for the chase texts (lib/email/chase/context.ts facts, lib/chasing/templates.ts
+  // chaseJobVars). Each is "" when the invoice has no job (or the job no supplier orders).
+  ...CHASE_JOB_PLACEHOLDERS,
 ] as const;
 export type Placeholder = (typeof PLACEHOLDERS)[number];
 export type TemplateVars = Partial<Record<string, string>>;
@@ -73,7 +81,7 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
   invoice_reminder: {
     label: "Overdue invoice reminder",
     usedFor: "Chasing an overdue invoice (Invoices > Chase overdue, and scheduled reminders).",
-    placeholders: ["greeting", "document_number", "total", "balance", "due_date", "days_overdue", "payment_note", "company_name", "customer_name", "person_name"],
+    placeholders: ["greeting", "document_number", "total", "balance", "due_date", "days_overdue", "payment_note", "company_name", "customer_name", "person_name", ...CHASE_JOB_PLACEHOLDERS],
     subject: "Overdue invoice {{document_number}} from {{company_name}}",
     // The friendly text. The model has one reminder template (no tone tiers), so the firm and final texts are kept here for the follow-up:
     //
@@ -109,6 +117,7 @@ export const DEFAULT_TEMPLATES: Record<TemplateKey, TemplateDefinition> = {
     subject: "JOB SHEET - {{document_number}} - {{customer_name}}",
     body: "{{document_number}}\n{{customer_name}}\n{{description}}\nDue: {{due_date}}",
   },
+  ...CHASE_DEFAULT_TEMPLATES,
   rfq_clarify: {
     label: "RFQ clarification",
     usedFor: "Asking a customer to clarify an RFQ (RFQs > Clarify).",
@@ -137,6 +146,11 @@ export const SAMPLE_VARS: Record<Placeholder, string> = {
   status: "Delivered",
   description: "10 x flange, 316 stainless",
   balance: "£1,000.00",
+  job_number: "J-2210",
+  job_status: "Machining",
+  parts_status: "",
+  parts_expected: "12/11/2026",
+  job_note: "",
 };
 
 export const isTemplateKey = (value: unknown): value is TemplateKey => typeof value === "string" && (TEMPLATE_KEYS as readonly string[]).includes(value);
@@ -190,9 +204,12 @@ export const daysText = (days: number) => `${days} day${days === 1 ? "" : "s"}`;
 export function invoiceReminderVars(input: {
   reference: string; total: string; dueDate: string; daysOverdue: number; companyName: string; customerName: string;
   contactName?: string | null; amountPaid?: number; paidText?: string; balanceText?: string;
+  /** 138: the job / parts merge fields (lib/chasing/templates.ts chaseJobVars); every one "" when not given. */
+  job?: Partial<Record<(typeof CHASE_JOB_PLACEHOLDERS)[number], string>>;
 }): TemplateVars {
   const contact = input.contactName?.trim() || "";
   return {
+    ...Object.fromEntries(CHASE_JOB_PLACEHOLDERS.map((name) => [name, input.job?.[name] ?? ""])),
     greeting: contact ? `Hello ${contact}` : "Hello",
     person_name: contact,
     customer_name: input.customerName,
