@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { Download, Eye, Lock, Mail, Paperclip, Plus, Send, Trash2, Upload } from "lucide-react";
 
 import { CostingLinePicker } from "@/components/costing-line-picker";
+import { ConnectedPriceThisPart } from "@/components/costing/connected-costing";
+import { fromPence, toPence } from "@/lib/money";
 import { CustomerSelect } from "@/components/customer-select";
 import { FilterBar } from "@/components/filter-bar";
 import { ColumnToggle } from "@/components/column-toggle";
@@ -1067,6 +1069,7 @@ export default function QuotesPage() {
               </div>
               <Button type="button" variant="outline" onClick={() => setLineItems((rows) => [...rows, { ...defaultLine(vat.defaultChoice), description: "New line item" }])}>Add Row</Button>
               <CostingLinePicker onAdd={(line) => { const costed: BuilderLine = { ...defaultLine(vat.defaultChoice), ...line, source: "costing_engine" }; setLineItems((rows) => rows.length === 1 && rows[0].unit === 0 ? [costed] : [...rows, costed]); }} />
+              <ConnectedPriceThisPart onAdd={(line) => { const costed: BuilderLine = { ...defaultLine(vat.defaultChoice), description: line.description, qty: line.quantity, unit: fromPence(toPence(line.unitPrice)), source: "costing_engine" }; setLineItems((rows) => rows.length === 1 && rows[0].unit === 0 ? [costed] : [...rows, costed]); }} />
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <VatToggle registered={vat.registered} checked={builderVat} onChange={setBuilderVatOn} />
                 <VatTotals totals={builderTotals} vatEnabled={builderVat} className="w-full max-w-xs space-y-1 rounded-lg bg-slate-50 p-4 text-sm" />

@@ -411,6 +411,11 @@
  },
  {
   "kind": "function",
+  "object": "public.costing_rates_stamp()",
+  "detail": "invoker search_path=pg_catalog, public b592661c61faa5695fa1f425cf165348"
+ },
+ {
+  "kind": "function",
   "object": "public.create_accountant_invite(p_email text, p_token_hash text)",
   "detail": "definer search_path=pg_catalog, public, security_audit 5503a19a83f14a15007b1b1f268b34da"
  },
@@ -2606,6 +2611,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.costing_rates_stamp()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.create_accountant_invite(p_email text, p_token_hash text)",
   "detail": "authenticated,service_role"
  },
@@ -4446,6 +4456,66 @@
  },
  {
   "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
   "object": "public.credit_note_lines :: credit_note_lines rbac delete",
   "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
@@ -5546,6 +5616,21 @@
  },
  {
   "kind": "rls",
+  "object": "public.costing_defaults",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.costing_machines",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.costing_materials",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.credit_note_lines",
   "detail": "enabled"
  },
@@ -6088,6 +6173,21 @@
   "kind": "table-grant",
   "object": "public.clock_in_network_unverified :: authenticated",
   "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.costing_defaults :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.costing_machines :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.costing_materials :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
  },
  {
   "kind": "table-grant",
@@ -6648,6 +6748,66 @@
   "kind": "trigger",
   "object": "public.clock_in_network_unverified :: support_read_only",
   "detail": "O a97c9349329c1267a3045ceb20bf7aea"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: admin_mfa",
+  "detail": "O ddf024a3ae6e38169c0e2e949018c643"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: audit_costing_defaults_changes",
+  "detail": "O 7d284ed8e42919254c454b82155a6747"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: costing_rates_stamp",
+  "detail": "O 25afa1db95acd2117139ff055867f6bd"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: support_read_only",
+  "detail": "O 0be7cc72ff19e9e2f097569141ae36f8"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: admin_mfa",
+  "detail": "O 13a6cc6f7ba030284cacddc7b0c070f2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: audit_costing_machines_changes",
+  "detail": "O 2c8e3bfc7d9e53d823bd7b99f121e08d"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: costing_rates_stamp",
+  "detail": "O 4fd8c7ae97c5f6510db33500d3c6c4e2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: support_read_only",
+  "detail": "O 9f5c9aca243e4b37e708f3619b8ac92d"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: admin_mfa",
+  "detail": "O 1e03ff46229a462ef5a168e91954ccde"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: audit_costing_materials_changes",
+  "detail": "O b380727a25d1203738a1799860224209"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: costing_rates_stamp",
+  "detail": "O ff165373e5bddb5d62ffa6414d341073"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: support_read_only",
+  "detail": "O 016669da061328a50c51466c70258680"
  },
  {
   "kind": "trigger",
@@ -8698,6 +8858,21 @@
   "kind": "unique-index",
   "object": "public.clock_in_network_unverified :: clock_in_network_unverified_id_key",
   "detail": "9fa66ddd38f27da21fcc8f6342d40332"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.costing_defaults :: costing_defaults_org",
+  "detail": "ff074770f830f21699766f768d01c5ad"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.costing_machines :: costing_machines_org_name",
+  "detail": "29e0d68e762ddd893b8d88b4e2d8c2c1"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.costing_materials :: costing_materials_org_name",
+  "detail": "ceb4d73ec74515a61cb1336e0fd4c938"
  },
  {
   "kind": "unique-index",
