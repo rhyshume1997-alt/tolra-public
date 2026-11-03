@@ -1,5 +1,7 @@
 "use client";
 
+import { paidHoursExplanation } from "@/lib/working-hours";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -375,7 +377,7 @@ export function DaySheet() {
             </CardContent>
           </Card>
           <p className="text-xs text-slate-500">
-            Paid time is clock in to clock out minus breaks ({merged?.settings.breaksPaid ? "breaks are paid" : `unpaid: on a day of ${merged?.settings.breakMinDayHours ?? 6} hours or more, ${merged?.settings.lunchMinutes ?? 30} + ${merged?.settings.breakMinutes ?? 15} minutes, or the breaks you clocked if longer; on a shorter day, the breaks you clocked`}).
+            {merged ? paidHoursExplanation(merged.settings) : "Hours settings not loaded."}
             Overtime is not worked out from the hours: it is the Overtime tick below. Bank holidays are holiday allowance; a day worked is an ordinary day unless ticked.
           </p>
         </>
