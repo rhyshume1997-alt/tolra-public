@@ -316,6 +316,26 @@
  },
  {
   "kind": "function",
+  "object": "public.chase_create_draft(p_org uuid, p_invoice uuid, p_step uuid, p_to text, p_to_name text, p_subject text, p_body text, p_user uuid)",
+  "detail": "definer search_path=pg_catalog, public e34d09d760a745e3dca1680980c8e362"
+ },
+ {
+  "kind": "function",
+  "object": "public.chase_pauses_guard()",
+  "detail": "invoker search_path=pg_catalog, public d24b6c7f0841d5b433b99f0dab4a2935"
+ },
+ {
+  "kind": "function",
+  "object": "public.chase_record_sent(p_org uuid, p_draft uuid, p_sent uuid, p_user uuid)",
+  "detail": "definer search_path=pg_catalog, public 638795401ee2f92d21f8234cf42619bf"
+ },
+ {
+  "kind": "function",
+  "object": "public.chase_steps_guard()",
+  "detail": "invoker search_path=pg_catalog, public 680441ffe1c88e3e7f37c30ac56878a4"
+ },
+ {
+  "kind": "function",
   "object": "public.check_credit_note_caps(p_invoice uuid)",
   "detail": "invoker search_path=pg_catalog, public 1b900a512a9e6f79661d058c10f29db4"
  },
@@ -982,7 +1002,7 @@
  {
   "kind": "function",
   "object": "public.invoice_issue_lock()",
-  "detail": "invoker search_path=pg_catalog, public db08937a7fc02e8a7066c69d4886f98d"
+  "detail": "invoker search_path=pg_catalog, public a8c8872bdf04335e301a202bb2af896a"
  },
  {
   "kind": "function",
@@ -1013,6 +1033,11 @@
   "kind": "function",
   "object": "public.invoices_job_release_gate()",
   "detail": "invoker search_path=pg_catalog, public 1d7a66df2edf4a37f0f428662761df69"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoices_payment_claim_guard()",
+  "detail": "invoker search_path=pg_catalog, public 59807819b600509077282964401a2cf5"
  },
  {
   "kind": "function",
@@ -1401,6 +1426,11 @@
  },
  {
   "kind": "function",
+  "object": "public.mark_payment_claimed(p_invoice uuid, p_source text, p_evidence text, p_message_id text)",
+  "detail": "definer search_path=pg_catalog, public b09b3a71e659b117c8f80d2536fdf104"
+ },
+ {
+  "kind": "function",
   "object": "public.member_has_verified_totp(p_user uuid)",
   "detail": "definer search_path=pg_catalog, public 2dbd5c63b2275e46eaaa7e832d8e9264"
  },
@@ -1783,6 +1813,11 @@
   "kind": "function",
   "object": "public.resolve_mail_send(p_id uuid, p_as text)",
   "detail": "definer search_path=pg_catalog, public 80aaa5f86cb4f5b92a76a43c0a86aa82"
+ },
+ {
+  "kind": "function",
+  "object": "public.resolve_payment_claim(p_invoice uuid, p_outcome text)",
+  "detail": "definer search_path=pg_catalog, public 0f3456049dca04e1b2d08208c0d980a6"
  },
  {
   "kind": "function",
@@ -2516,6 +2551,26 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.chase_create_draft(p_org uuid, p_invoice uuid, p_step uuid, p_to text, p_to_name text, p_subject text, p_body text, p_user uuid)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.chase_pauses_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.chase_record_sent(p_org uuid, p_draft uuid, p_sent uuid, p_user uuid)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.chase_steps_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.check_credit_note_caps(p_invoice uuid)",
   "detail": "authenticated,service_role"
  },
@@ -3216,6 +3271,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.invoices_payment_claim_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.invoices_status_allowlist()",
   "detail": "service_role"
  },
@@ -3597,6 +3657,11 @@
  {
   "kind": "function-grant",
   "object": "public.mailbox_sync_status()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mark_payment_claimed(p_invoice uuid, p_source text, p_evidence text, p_message_id text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -3983,6 +4048,11 @@
   "kind": "function-grant",
   "object": "public.resolve_mail_send(p_id uuid, p_as text)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.resolve_payment_claim(p_invoice uuid, p_outcome text)",
+  "detail": "authenticated"
  },
  {
   "kind": "function-grant",
@@ -4433,6 +4503,51 @@
   "kind": "policy",
   "object": "public.bank_holidays :: bank_holidays read",
   "detail": "PERMISSIVE SELECT authenticated eb28d87532d6edd9b635727493ef89f7"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_sends :: chase_sends office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps member select",
+  "detail": "PERMISSIVE SELECT authenticated aba327892564ca66f25161fdcaa8da48"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -5596,6 +5711,21 @@
  },
  {
   "kind": "rls",
+  "object": "public.chase_pauses",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.chase_sends",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.chase_steps",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.clock_in_network_exemptions",
   "detail": "enabled"
  },
@@ -6156,6 +6286,21 @@
  },
  {
   "kind": "table-grant",
+  "object": "public.chase_pauses :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.chase_sends :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.chase_steps :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
   "object": "public.clock_in_network_exemptions :: authenticated",
   "detail": "SELECT"
  },
@@ -6688,6 +6833,46 @@
   "kind": "trigger",
   "object": "public.attendance_events :: zz_same_org_supersedes",
   "detail": "O 63b267656cb29facf7e55a5aaa654171"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_pauses :: admin_mfa",
+  "detail": "O d9bf0996de9181110cb02517918ca5aa"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_pauses :: chase_pauses_guard",
+  "detail": "O 165855b45c6c58b1ed616addec15bec1"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_pauses :: support_read_only",
+  "detail": "O a09b679db1f699c2dea6fd70ce483fe8"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_sends :: admin_mfa",
+  "detail": "O d6d4d0ae9a629345d1b6b0d314036829"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_sends :: support_read_only",
+  "detail": "O 3f191cc23cef6b5c1211fd6b74bc735e"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_steps :: admin_mfa",
+  "detail": "O 3e77f63fdbae4d741d62622c65fb83d0"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_steps :: chase_steps_guard",
+  "detail": "O 8cee042ec3b15d72731959f31f014e0c"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_steps :: support_read_only",
+  "detail": "O 98fd3e87c69ab638fb0b336de6074e91"
  },
  {
   "kind": "trigger",
@@ -7493,6 +7678,11 @@
   "kind": "trigger",
   "object": "public.invoices :: invoices_job_release_gate",
   "detail": "O cd1a4cb604b2a270fc40cbb06cfa2ac5"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.invoices :: invoices_payment_claim_guard",
+  "detail": "O 2b9f96ab815ed94fe4ca5c4ae58cce42"
  },
  {
   "kind": "trigger",
@@ -8838,6 +9028,26 @@
   "kind": "unique-index",
   "object": "public.attendance_events :: attendance_events_one_replacement",
   "detail": "71950b7bdae68ac5a304790157f1d1dc"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_pauses :: chase_pauses_one_per_customer",
+  "detail": "f18a4a9e313a40b53c531d99abfae099"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_pauses :: chase_pauses_one_per_invoice",
+  "detail": "9cc98d1f318efb9ae546074c1ebdb89a"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_sends :: chase_sends_one_per_step",
+  "detail": "8fca0b358a774bd66c3e2a9d30d2d869"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_steps :: chase_steps_one_per_offset",
+  "detail": "0d5c06dac99be818cb5ebb8ad98d018e"
  },
  {
   "kind": "unique-index",

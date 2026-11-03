@@ -16,8 +16,8 @@ const ROUTE = "/api/cron/email-schedules";
  * and the Xero sweep). On Pro, list this route every 15 minutes there (see app/api/cron/daily/route.ts). Called with
  * `Authorization: Bearer <CRON_SECRET>`; anything else gets 401 and nothing is read.
  *
- * Does nothing until a company turns a schedule on (they all start off) and sends nothing unless a mailer is configured (without one the
- * mailer only drafts). One company's failure never stops the others and never makes this route throw: it is counted and the answer is
+ * Does nothing until a company turns a schedule on (they all start off). Invoice reminders (138) only ever DRAFT chase e-mails for the
+ * Approvals queue, whatever mailer is configured; timesheet e-mails are sent when a mailer is configured (without one it only drafts). One company's failure never stops the others and never makes this route throw: it is counted and the answer is
  * still 200. While migration 108 is not applied it answers 200 with { skipped: "database update 108 not applied" }. Safe to run twice:
  * a period is claimed in the database before anything is sent, and an invoice is reminded at most once per period. Counts only.
  */

@@ -48,7 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { storedTotalsProblem } from "@/components/pdf/pdf-totals";
 import { auditEvent } from "@/lib/audit";
 import { type CompanyProfile, requireCompanyProfile, useCompanyProfile } from "@/lib/company";
-import { fetchCustomers, findCustomer, resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
+import { resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
 import { DRAFT_INVOICE_DAYS, DRAFT_INVOICE_RULE_TITLE } from "@/lib/attention-items";
@@ -56,7 +56,7 @@ import { draftInvoiceCounts, invoiceMatchesFilter } from "@/lib/list-filter";
 import { fmtDate, fmtDateTime, nowIso, toDateInput } from "@/lib/dates";
 import { downloadPdf, openMailDraft, pdfBlob, pdfErrorMessage } from "@/lib/download-pdf";
 import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-email-button";
-import { type TemplateVars, invoiceReminderVars, renderTemplate } from "@/lib/email/templates/defaults";
+import { type TemplateVars, renderTemplate } from "@/lib/email/templates/defaults";
 import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { EXPORT_TITLES, exportRows, exportSpreadsheet } from "@/lib/export-records";
 import { INVOICE_COLUMNS, PAYMENT_COLUMNS, paymentExportRows } from "@/lib/import-columns";
@@ -95,13 +95,13 @@ import { PAYMENT_METHODS, type InvoicePayment, netPaid, paymentAmountProblem, pa
 import { documentTotals, fromPence, gbp, isTextLine, toPence } from "@/lib/money";
 import { companyVat, fromVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
+import { ChasePauseControl, ChasePausedBadge, useChasePauses } from "@/components/chase/chase-pause";
 import { VatTotals } from "@/components/vat-totals";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { confirmPageCompany } from "@/lib/page-company";
 import { supabase } from "@/lib/supabase";
 import { JobPicker } from "@/components/job-picker";
 import { type PickerJob, invoiceFieldsFromJob, jobSurvivesCustomerChange } from "@/lib/job-picker";
-import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { useSaving } from "@/lib/use-saving";
 import { ValidationError, invoiceSaveSchema, parseOrThrow, userMessage } from "@/lib/validation/schemas";
 import { fetchAll, truncationNotice } from "@/lib/fetch-all";
@@ -292,6 +292,7 @@ export default function InvoicesPage() {
   const { profile: company } = useCompanyProfile();
   const vat = companyVat(company);
   const { saving, run } = useSaving();
+  const chasePauses = useChasePauses();
   const [today] = useState(() => toDateInput(new Date()));
   const [rows, setRows] = useState<InvoiceBase[]>([]);
   const [filters, setFilters] = useState(new Set(["all"]));
@@ -993,7 +994,10 @@ export default function InvoicesPage() {
     setViewingInvoice((current) => (current && current.id === invoice.id ? derive({ ...current, ...updated }, today) : current));
   }
 
-  /** Drafts a chaser email in email_history for each overdue invoice whose customer has an email address. */
+  /**
+   * Chase All Overdue (138): drafts today's chase step for each owed invoice, at most once per step per invoice, through the same chase
+   * steps as the scheduled pass (POST /api/chase/run). Drafts only: nothing is e-mailed until someone approves it in the Approval Queue.
+   */
   async function chaseOverdue() {
     if (!overdueInvoices.length) {
       toast.info("No overdue invoices to chase.");
@@ -1001,48 +1005,14 @@ export default function InvoicesPage() {
     }
     await run(async () => {
       try {
-        if (!supabase) throw new Error("Supabase is not configured.");
-        const profile = await requireCompanyProfile();
-        const organizationId = await getCurrentOrganizationId();
-        const { data: userData } = await supabase.auth.getUser();
-        const customers = await fetchCustomers();
-        const withIds = overdueInvoices.filter((invoice) => invoice.id);
-        const { data: existing, error: existingError } = await supabase.from("email_history").select("related_to_id").eq("related_to_type", "invoice").eq("status", "drafted").in("related_to_id", withIds.map((invoice) => invoice.id as string));
-        if (existingError) throw existingError;
-        const alreadyDrafted = new Set((existing ?? []).map((row) => String(row.related_to_id)));
-        let noEmail = 0;
-        const drafts = [];
-        // The company's own reminder text (Settings > Email templates), or the default when none is saved or 106 isn't applied.
-        const override = await loadTemplateOverride(supabase, "invoice_reminder");
-        for (const invoice of withIds) {
-          if (alreadyDrafted.has(invoice.id as string)) continue;
-          const customer = findCustomer(customers, invoice.customer);
-          if (!customer?.email) { noEmail += 1; continue; }
-          const email = renderTemplate("invoice_reminder", invoiceReminderVars({
-            reference: invoice.reference, total: currency(invoice.amount), dueDate: fmtDate(invoice.dueDate), daysOverdue: invoice.daysOverdue,
-            companyName: profile.name, customerName: customer.name, contactName: customer.contactName,
-            amountPaid: invoice.amountPaid, paidText: currency(invoice.amountPaid), balanceText: currency(invoice.balance),
-          }), override);
-          drafts.push({
-            organization_id: organizationId,
-            to_email: customer.email,
-            to_name: customer.contactName || customer.name,
-            subject: email.subject,
-            body: email.text,
-            status: "drafted",
-            related_to_type: "invoice",
-            related_to_id: invoice.id,
-            drafted_by: userData.user?.id ?? null,
-            drafted_at: nowIso(),
-          });
-        }
-        if (drafts.length) {
-          const { error } = await supabase.from("email_history").insert(drafts);
-          if (error) throw error;
-          void auditEvent({ action: "DRAFT_CHASERS", entityTable: "email_history", metadata: { count: drafts.length } });
-        }
-        const skipped = alreadyDrafted.size + noEmail;
-        toast.success(drafts.length ? `${drafts.length} chaser email${drafts.length === 1 ? "" : "s"} drafted. Review them in the Approval Queue.${skipped ? ` ${skipped} skipped (already drafted or no customer email).` : ""}` : `Nothing new to draft. ${skipped} skipped (already drafted or no customer email).`);
+        const response = await fetch("/api/chase/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+        const answer = (await response.json().catch(() => ({}))) as { drafted?: number; skipped?: number; failed?: number; error?: string };
+        if (!response.ok) throw new Error(answer.error || "Could not draft the chaser emails.");
+        const drafted = answer.drafted ?? 0;
+        const skipped = answer.skipped ?? 0;
+        const tail = skipped ? ` ${skipped} skipped (no step due today, already chased at this step, paused, or no customer email).` : "";
+        if (answer.failed) toast.error(`${answer.failed} chaser email${answer.failed === 1 ? "" : "s"} couldn't be drafted. Try again.`);
+        toast.success(drafted ? `${drafted} chaser email${drafted === 1 ? "" : "s"} drafted. Review them in the Approval Queue.${tail}` : `Nothing new to draft.${tail}`);
       } catch (err) {
         toast.error(userMessage(err, "Could not draft the chaser emails."));
       }
@@ -1418,7 +1388,7 @@ export default function InvoicesPage() {
                   <TableRow key={invoice.id ?? invoice.reference} className={`block md:table-row ${invoice.status === "paid" ? "opacity-60" : ""}`}>
                     <TableCell className="block md:table-cell"><SelectBox aria-label={`Select ${shownInvoiceRef(invoice)}`} checked={selectedInvoices.includes(invoice.reference)} onChange={() => setSelectedInvoices((current) => current.includes(invoice.reference) ? current.filter((ref) => ref !== invoice.reference) : [...current, invoice.reference])} /></TableCell>
                     {isVisible("invoice") ? <TableCell data-label="Invoice" className="block font-mono font-semibold md:table-cell"><InvoiceRefCell invoice={invoice} autoDraftedFrom={invoice.id ? autoDrafted.get(invoice.id) : null} jobStage={jobDraftStage({ status: invoice.rawStatus, job_id: invoice.jobId }, invoice.jobId ? draftJobs.get(invoice.jobId) : null)} /></TableCell> : null}
-                    {isVisible("customer") ? <TableCell data-label="Customer" className="block md:table-cell">{invoice.customer}</TableCell> : null}
+                    {isVisible("customer") ? <TableCell data-label="Customer" className="block md:table-cell">{invoice.customer}{chasePauses.pausedFor(invoice.id, invoice.customer) ? <span className="block"><ChasePausedBadge customer={!(invoice.id && chasePauses.invoices.has(invoice.id))} /></span> : null}</TableCell> : null}
                     {isVisible("status") ? <TableCell data-label="Status" className="block md:table-cell">
                       <StatusBadge status={invoiceStatusKey(invoice)} unmapped={{ variant: "outline" }} label={invoice.status === "paid" ? "PAID" : invoice.status === "unverified" ? "PAYMENT TO CONFIRM" : invoice.status === "closed" ? invoice.rawStatus.toUpperCase() : invoice.partPaid ? "PART PAID" : !invoice.dueDate ? "No due date" : invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days overdue` : invoice.daysOverdue === 0 ? "Due today" : `Due in ${Math.abs(invoice.daysOverdue)} days`} />
                       {invoice.partPaid && invoice.dueDate ? <span className="block text-xs text-slate-500">{invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days overdue` : invoice.daysOverdue === 0 ? "Due today" : `Due in ${Math.abs(invoice.daysOverdue)} days`}</span> : null}
@@ -1580,6 +1550,8 @@ export default function InvoicesPage() {
                 {viewingInvoice.status === "paid" && viewingInvoice.amountPaid <= 0 ? <div><span className="field-label block">Paid</span><p className="font-medium text-slate-950">Marked paid; the amount received was never recorded</p></div>
                   : viewingInvoice.amountPaid > 0 ? <div><span className="field-label block">Paid</span><p className="font-medium text-slate-950">{currency(viewingInvoice.amountPaid)} received{viewingInvoice.status === "paid" && viewingInvoice.paidAt ? `, settled ${fmtDate(viewingInvoice.paidAt)}` : ""}{viewingInvoice.paymentUnverified ? "; payment to confirm" : viewingInvoice.partPaid ? `; balance due ${currency(viewingInvoice.balance)}` : ""}</p></div> : null}
               </div>
+
+              {viewingInvoice.id && viewingInvoice.rawStatus !== "draft" ? <ChasePauseControl target={{ kind: "invoice", id: viewingInvoice.id, name: shownInvoiceRef(viewingInvoice) }} onChange={() => void chasePauses.reload()} /> : null}
 
               {viewError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{viewError}</div> : null}
               <Table>
