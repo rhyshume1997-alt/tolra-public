@@ -101,7 +101,7 @@ If there is no Bank check screen in the joined app, mark these checks BLOCKED: t
 5. On a different unpaid test invoice, choose Customer says paid, then Not received, resume chasing.
    Expected: no payment is invented. The claim clears and chasing can resume under the saved steps.
 6. Ask Claude to feed made-up emails through the test inbox: a real matching sender saying BACS sent for INV-123; a missing sender; a fake display name containing the customer's email with a different real address; a similar domain; and will pay next week.
-   Expected: only a clear completed-payment claim from the actual matching mailbox is suggested for review. Nothing is automatically marked paid. Case differences may match; ignore the part after + before @ when comparing addresses (for example, pat+accounts@example.com and pat@example.com). A missing or invalid real address must never match. A sender string alone is not proof an email is authentic.
+   Expected: only a clear completed-payment claim from the actual matching mailbox is suggested for review. Nothing is automatically marked paid. Case differences may match; plus-addresses must match exactly. A sender string alone is not proof an email is authentic.
 7. Try an ordinary staff user, support access and another company.
    Expected: no unauthorised payment confirmation, claim changes or other-company data.
 
@@ -109,4 +109,3 @@ If there is no Bank check screen in the joined app, mark these checks BLOCKED: t
 
 Record the app version, test company, person, date and each PASS/FAIL/BLOCKED result. Keep screenshots free of real customer or staff details. Send failures and blocked checks to Rhys and Claude for the go-live decision. These written steps are not evidence that the checks have been run.
 
-Source: reused the existing builder-2 manual checklist, with the plus-address rule updated to Rhys’s 3 November request and a fractional-penny check added. These are expected behaviours, not claims that pending wiring is complete.
