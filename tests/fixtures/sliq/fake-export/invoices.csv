@@ -1,0 +1,4 @@
+Invoice No,Type,Date,Due,Account,Net,VAT,Gross,Status,Paid,Against,Notes,VAT Code,Discount
+
+FAKE-I1001,Invoice,13/10/2026,13/11/2026,FAKE-C01,600.00,120.00,720.00,Issued,120.00,,Fictional test invoice,,
+ , , , , , , , , , , , , , 

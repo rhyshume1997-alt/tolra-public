@@ -1,0 +1,8 @@
+﻿
+
+Account,Name,Contact,Address 1,Address 2,Town,Postcode,Email,Phone,VAT No
+
+FAKE-C01,Fable Fabrications Ltd,Faye Example,Unit 1 Test Estate,,Testtown,TE1 1ST,accounts@fable.example.test,01000 000001,
+ , , , , , , , , , 
+FAKE-C02,Imaginary Tooling Ltd,,Unit 2 Test Estate,,Testtown,TE1 2ST,office@imaginary.example.test,,
+ , , , , , , , , , 

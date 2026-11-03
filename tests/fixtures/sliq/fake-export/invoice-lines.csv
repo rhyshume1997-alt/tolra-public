@@ -1,0 +1,4 @@
+Invoice No,Description,Qty,Unit Price,Line Net,VAT %,Line VAT,VAT Code,Discount
+
+FAKE-I1001,"Fictional bracket, drilled",2,300.00,600.00,20,120.00,,
+ , , , , , , , , 
