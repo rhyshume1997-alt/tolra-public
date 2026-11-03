@@ -1,6 +1,6 @@
 /**
  * Migration 110, RFQ clarification as one atomic call (public.log_rfq_clarification): an office user logs the clarification e-mail from
- * the RFQ page, the RFQ moves to Awaiting Clarification and exactly one e-mail history row exists. Workshop and viewer logins are
+ * the RFQ page, the RFQ moves to Waiting for details and exactly one e-mail history row exists. Workshop and viewer logins are
  * turned away from the page, and the call itself is refused for them with nothing logged and nothing moved.
  * Synthetic data only (alpha tenant); the world is read inside the tests, never at import.
  */
@@ -19,7 +19,7 @@ async function newRfq(label: string) {
   return data!;
 }
 
-test("RFQ clarification: office logs it from the page; one history row, the RFQ moves to Awaiting Clarification", async ({ page }) => {
+test("RFQ clarification: office logs it from the page; one history row, the RFQ moves to Waiting for details", async ({ page }) => {
   const w = world();
   const db = adminClient();
   const rfq = await newRfq("RFQ Clarify Atomic");
@@ -38,7 +38,7 @@ test("RFQ clarification: office logs it from the page; one history row, the RFQ 
   const { data: history } = await db.from("email_history").select("status, related_to_type, to_name").eq("related_to_id", rfq.id);
   expect(history).toEqual([{ status: "sent_manually", related_to_type: "rfq", to_name: rfq.customer }]);
 
-  // The page shows it under Awaiting Clarification after a reload.
+  // The page shows it under Waiting for details after a reload.
   await page.reload();
   await page.getByRole("button", { name: "Clarification", exact: true }).click();
   await expect(card().getByRole("button", { name: "Clarify" })).toBeVisible();

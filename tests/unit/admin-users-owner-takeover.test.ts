@@ -246,7 +246,7 @@ describe("the users PATCH refuses a platform owner's login and one with a suppor
     expect((await patch({ user_id: FORMER, role: "admin" })).status).toBe(403);
     expect(world.memberships.find((m) => m.user_id === FORMER && m.organization_id === A)).toMatchObject({ role: "office" });
   });
-  it("Revoke support access (switch the support row off, nothing else) still works; the role is untouched", async () => {
+  it("Switch off support access (switch the support row off, nothing else) still works; the role is untouched", async () => {
     expect((await patch({ user_id: OWNER, active: false })).status).toBe(200);
     expect(world.memberships.find((m) => m.user_id === OWNER)).toMatchObject({ active: false, role: "admin" });
     // Deactivating a platform owner's ordinary membership here is the same switch-off.

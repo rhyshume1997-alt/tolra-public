@@ -55,7 +55,7 @@ describe("StatusBadge", () => {
   });
 });
 
-describe("Job Board tiles: In rework is purple, Overdue stays red", () => {
+describe("Job Board tiles: In rework is purple, Late stays red", () => {
   const tile = (label: string, tone: "bad" | "rework") => renderToStaticMarkup(createElement(StatTile, { label, value: 3, tone }));
 
   it("draws the In rework tile marker in the rework purple and Overdue in red", () => {
@@ -74,7 +74,7 @@ describe("Job Board tiles: In rework is purple, Overdue stays red", () => {
     expect(DOT.rework).not.toBe(DOT.bad);
   });
 
-  it("is wired on the Job Board: Rework is a purple tag chip (never a status tile) and Overdue stays on the red one", () => {
+  it("is wired on the Job Board: Rework is a purple tag chip (never a status tile) and Late stays on the red one", () => {
     const page = readFileSync(path.resolve(__dirname, "../../app/(dashboard)/jobs/page.tsx"), "utf8");
     // Rework is a tag on a Running job (Rhys, Wed 21 Oct): no In rework tile; its chip carries the rework purple.
     expect(page).not.toMatch(/<StatTile label="In rework"/);

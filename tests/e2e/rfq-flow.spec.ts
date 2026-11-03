@@ -51,7 +51,7 @@ test("RFQ: Quote opens the builder for it, the quote is linked, and the RFQ move
   await expect(card()).toContainText("Won");
 });
 
-test("RFQ: logging a clarification e-mail as sent moves the RFQ to Awaiting Clarification and keeps the history row", async ({ page }) => {
+test("RFQ: logging a clarification e-mail as sent moves the RFQ to Waiting for details and keeps the history row", async ({ page }) => {
   const admin = adminClient();
   const org = w.tenants.alpha.id;
   const customer = `RFQ Clarify ${w.runId}`;

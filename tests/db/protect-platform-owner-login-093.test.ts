@@ -7,7 +7,7 @@
  *   - admin_login_is_protected(p_user), signed-in only: TRUE for a platform owner or a login with any support membership; FALSE only
  *     for one of the caller's people who is neither; TRUE (fail closed, no oracle) for anyone else, for a non-admin, and for NULL.
  *   - set_member_access (066 + the same refusal; review round 2): the session company's edit of such a login is refused, except switching
- *     its membership there off and nothing else (Revoke support access, Deactivate); never switched on, never a role or pages.
+ *     its membership there off and nothing else (Switch off support access, Deactivate); never switched on, never a role or pages.
  *   - Legitimate paths unchanged: an admin changes an ordinary member's role, gives them another company, removes it, changes their own.
  *
  * Mirrors the raw-SQL proof of the 093 review pack. Plain SQL with synthetic rows and forged session claims (no Auth API), so it runs on
