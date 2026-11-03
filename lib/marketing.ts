@@ -288,6 +288,9 @@ export const SHEET_LABELS = {
   signIn: "Sign in",
 } as const;
 
+/** Footer credit for whoever built the site, linking to the web work page (Rhys, 3 Nov). */
+export const WEB_CREDIT = { label: "Website by Rhys Hume", href: "https://www.rhyshume.co.uk/websites" } as const;
+
 /** The footer's title block, as on a drawing. Drawn and checked by the same person: the founder's name when set, otherwise Tolra. */
 export const TITLE_BLOCK = {
   title: "Job management for small CNC & fabrication shops",
