@@ -7,6 +7,10 @@ development database. The proposal is identical in #184 and #190; use #190 plus
 this test-plan branch. No migration number is assigned to the proposal.
 
 Prerequisites: Docker with enough storage, Supabase CLI 2.40.7, Node/npm and psql.
+In CI, the normal database suite verifies the disposable backend, installs a missing
+proposal as a test fixture, runs all ten checks, then removes only that fixture.
+It never replaces or removes a pre-existing proposal. Manual runs retain the
+explicit acknowledgement and installation commands below.
 Onboarding's VFS Docker image expansion exhausted the practical storage budget;
 resolve that environment limitation first. Tests have no skip path: unavailable
 services, missing proposal or failed safety guards must fail the run.

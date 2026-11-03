@@ -1,13 +1,15 @@
-/** Operator-run only: tests/scripts/costing-atomic-plan.md. Never installs SQL. */
+/** Disposable-stack tests; CI prepares its own proposal fixture, manual runs follow tests/scripts/costing-atomic-plan.md. */
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSyntheticWorld, destroySyntheticWorld, verifyBackendIdentity, withDb, type SyntheticWorld } from "../support/fixtures";
+import { createSyntheticWorld, destroySyntheticWorld, withDb, type SyntheticWorld } from "../support/fixtures";
 import { isolatedBackend } from "../support/isolation";
+import { prepareCostingProposal } from "../support/costing-proposal-setup";
 
 let world: SyntheticWorld;
 const material = randomUUID(), machine = randomUUID(), foreignMaterial = randomUUID(), foreignMachine = randomUUID();
 let supportSession: string;
+let cleanupProposal: (() => Promise<void>) | undefined;
 type Settings = { materials: Record<string, unknown>[]; machines: Record<string, unknown>[]; defaults: Record<string, unknown> | null };
 
 async function snapshot(org: string): Promise<Settings> {
@@ -38,12 +40,7 @@ async function save(user: string, org: string, expected: Settings, value: Settin
 }
 
 beforeAll(async () => {
-  if (process.env.COSTING_ATOMIC_THROWAWAY !== "yes") throw new Error("Operator must explicitly set COSTING_ATOMIC_THROWAWAY=yes on the disposable local stack");
-  await verifyBackendIdentity();
-  await withDb(async db => {
-    const fn = await db.query("select to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)') as fn");
-    if (!fn.rows[0].fn) throw new Error("Proposal missing: follow the operator plan; this test never installs it");
-  });
+  cleanupProposal = await prepareCostingProposal();
   world = await createSyntheticWorld();
   supportSession = randomUUID();
   // A real elevated support membership, not a stub of my_session(). The beta viewer retains their own company too.
@@ -55,7 +52,10 @@ beforeAll(async () => {
     await db.query("insert into security_audit.session_company(session_id,user_id,organization_id,grant_id,elevated_until) values($1,$2,$3,$4,now()+interval '30 minutes')", [supportSession, user, org, grant]);
   });
 });
-afterAll(async () => { if (world) await destroySyntheticWorld(world.runId); });
+afterAll(async () => {
+  try { if (world) await destroySyntheticWorld(world.runId); }
+  finally { await cleanupProposal?.(); }
+});
 beforeEach(async () => {
   await withDb(async db => {
     for (const [tenant, mat, mill] of [[world.tenants.alpha, material, machine], [world.tenants.beta, foreignMaterial, foreignMachine]] as const) {
