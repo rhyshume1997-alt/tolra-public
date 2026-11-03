@@ -147,7 +147,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     const confirmPassword = String(form.get("confirmPassword") || "");
 
     if (!currentPassword) {
-      toast.error("Current password is required.");
+      toast.error("Enter your current password.");
       return;
     }
 
@@ -171,7 +171,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     }, requestCode);
     if (outcome.result === "changed") {
       passwordForm.current?.reset();
-      toast.success("Password updated successfully.");
+      toast.success("Password updated.");
     } else if (outcome.result === "failed") {
       toast.error([400, 403, 503].includes(outcome.status) && outcome.error ? outcome.error : "Couldn't update your password. Try again.");
     }

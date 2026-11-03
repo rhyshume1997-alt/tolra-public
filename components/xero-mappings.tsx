@@ -111,7 +111,7 @@ export function XeroMappings({ connected, unmapped, onChanged }: { connected: bo
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Mappings</CardTitle>
+        <CardTitle>Accounts and VAT rates</CardTitle>
         <CardDescription>Where Tolra&apos;s invoices and credit notes go in Xero. Set once; your accountant can tell you which to pick.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

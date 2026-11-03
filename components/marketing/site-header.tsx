@@ -1,20 +1,19 @@
 import Link from "next/link";
 
 import { BracketT } from "@/components/marketing/bracket-t";
+import { SHEET_LABELS } from "@/lib/marketing";
 
-const focusDark = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
-
-/** The header shared by the public pages ("/" and "/privacy"). */
+/** The header shared by the public pages ("/" and "/privacy"): the sheet's top border. */
 export function SiteHeader() {
   return (
-    <header className="bg-[#0b2a5b] text-white">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <Link href="/" className={`flex items-center gap-2 rounded-md text-xl font-bold tracking-tight ${focusDark}`}>
-          <BracketT variant="flat" size={32} />
-          <span>Tolra</span>
+    <header className="border-b border-[#0b2a5b]">
+      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
+        <Link href="/" className="flex min-h-11 items-center gap-2.5 text-[#0b2a5b]">
+          <BracketT variant="flat" size={30} bracket="#0b2a5b" ink="#0b2a5b" />
+          <span className="mk-display text-[1.75rem] uppercase tracking-[0.1em]">Tolra</span>
         </Link>
         <nav aria-label="Main">
-          <Link href="/login" className={`inline-flex min-h-11 items-center rounded-lg border border-white/50 px-4 text-sm font-semibold hover:bg-white/10 ${focusDark}`}>Sign in</Link>
+          <Link href="/login" className="mk-link inline-flex min-h-11 items-center px-1 text-base font-semibold">{SHEET_LABELS.signIn}</Link>
         </nav>
       </div>
     </header>

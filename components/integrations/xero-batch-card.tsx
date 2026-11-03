@@ -150,7 +150,7 @@ export function XeroBatchCard() {
         {needsTick ? <p className="text-sm text-amber-700" data-testid="batch-before-warning">That starts before Xero was connected. Tick the box above to include those documents, or choose {connectedOn} or later.</p> : null}
         <fieldset className="flex flex-wrap gap-4 text-sm" disabled={busy !== null}>
           <label className="flex items-center gap-2"><input type="radio" name="batch-mode" checked={mode === "unsent"} onChange={() => { setMode("unsent"); setPreview(null); }} />Send what has not been sent</label>
-          <label className="flex items-center gap-2"><input type="radio" name="batch-mode" checked={mode === "failed_only"} onChange={() => { setMode("failed_only"); setPreview(null); }} />Resend failed only</label>
+          <label className="flex items-center gap-2"><input type="radio" name="batch-mode" checked={mode === "failed_only"} onChange={() => { setMode("failed_only"); setPreview(null); }} />Retry failed sends only</label>
         </fieldset>
 
         {preview ? (

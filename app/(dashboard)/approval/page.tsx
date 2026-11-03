@@ -143,7 +143,7 @@ export default function ApprovalPage() {
       toast.success(`Draft copied for ${item.customer}`);
     } catch (err) {
       console.error(err);
-      toast.error("Couldn't copy. Select the text in Preview Full and copy it manually.");
+      toast.error("Couldn't copy. Open Full preview, select the text and copy it by hand.");
     }
   }
 
@@ -259,7 +259,7 @@ export default function ApprovalPage() {
         <CardContent className="flex gap-3 p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
           <p className="text-sm font-medium text-blue-950">
-            Emails Tolra drafts wait here. Chase reminders can be approved and sent from here when e-mail sending is set up; otherwise copy a draft or open it in your email client, send it yourself, then choose Mark as Sent Manually.
+            Email sending isn&apos;t set up yet, so emails are saved as drafts. Copy a draft or open it in your email app, send it yourself, then choose Mark as Sent Manually.
             {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
           </p>
         </CardContent>
@@ -284,7 +284,7 @@ export default function ApprovalPage() {
               <div className="flex size-14 items-center justify-center rounded-none bg-green-50">
                 <CheckCircle className="size-8 text-green-600" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-950">All Caught Up</h3>
+              <h3 className="mt-4 text-lg font-semibold text-slate-950">Nothing waiting</h3>
               <p className="mt-2 text-sm text-slate-500">No drafted emails are waiting for approval.</p>
             </CardContent>
           </Card>
@@ -337,10 +337,10 @@ export default function ApprovalPage() {
                     <Button variant="outline" disabled={saving} onClick={() => markSentManually(item)}>Mark as Sent Manually</Button>
                     <Button variant="outline" onClick={() => openEmailClient(item)}>
                       <Mail className="size-4" />
-                      Open in Email Client
+                      Open in email app
                     </Button>
                     <Button variant="outline" onClick={() => openEdit(item)}>Edit</Button>
-                    <Button variant="outline" onClick={() => setPreviewItem(item)}>Preview Full</Button>
+                    <Button variant="outline" onClick={() => setPreviewItem(item)}>Full preview</Button>
                     <Button variant="ghost" disabled={saving} className="text-slate-500 hover:text-slate-900 md:ml-auto" onClick={() => skipApproval(item)}>Skip</Button>
                   </div>
                 </CardContent>
@@ -383,7 +383,7 @@ export default function ApprovalPage() {
                 <input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand" value={editSubject} onChange={(event) => setEditSubject(event.target.value)} />
               </label>
               <label className="block text-sm font-medium text-slate-700">
-                Body
+                Message
                 <textarea className="mt-1 min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand" value={editBody} onChange={(event) => setEditBody(event.target.value)} />
               </label>
               <div className="flex justify-end gap-2">
