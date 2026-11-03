@@ -105,7 +105,7 @@ export default function ActivityPage() {
         {loading && !rows.length ? <Skeleton className="h-60" /> : (
           <Card><CardContent className="p-0">
             {!rows.length && !error ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-center text-slate-500"><History className="size-6" /><p className="text-sm">No activity for these filters.</p></div>
+              <div className="flex flex-col items-center gap-2 py-12 text-center text-slate-500"><History className="size-6" /><p className="text-sm">No activity matches these filters.</p></div>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {rows.map((entry) => {

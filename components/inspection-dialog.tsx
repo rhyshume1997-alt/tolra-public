@@ -249,7 +249,7 @@ export function InspectionDialog({ job, isAdmin, onClose, onRecorded }: Props) {
                   <p className="font-medium">{INSPECTION_LABELS[record.result]} <span className="font-normal text-slate-500">by {cleanName(record.inspector_name) ?? UNKNOWN}, {fmtDateTime(record.inspected_at)}</span></p>
                   <p className="text-slate-600">{record.measured_notes}</p>
                   {record.acceptance_criteria ? <p className="text-slate-600">Criteria: {record.acceptance_criteria}</p> : null}
-                  {record.disposition ? <p className="text-slate-600">Disposition: {DISPOSITION_LABELS[record.disposition]}</p> : null}
+                  {record.disposition ? <p className="text-slate-600">What happened: {DISPOSITION_LABELS[record.disposition]}</p> : null}
                   {record.concession_reason ? <p className="text-slate-600">Concession: {record.concession_reason}</p> : null}
                   {record.attachment_path ? <button type="button" className="text-brand underline" onClick={() => void open(record)}>{record.attachment_name || "Open file"}</button> : null}
                 </li>

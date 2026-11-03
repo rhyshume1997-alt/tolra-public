@@ -11,9 +11,9 @@ export default function NotFoundPage() {
           <CardTitle>Page not found</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-slate-600">The page you requested does not exist or you do not have access to it.</p>
+          <p className="text-sm text-slate-600">We can&apos;t find this page, or you don&apos;t have access to it.</p>
           <Button asChild className="min-h-11 bg-brand text-brand-ink hover:bg-brand-hover">
-            <Link href="/dashboard">Return to dashboard</Link>
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </CardContent>
       </Card>

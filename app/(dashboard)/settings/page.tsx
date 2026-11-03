@@ -285,7 +285,7 @@ function CompanyDetailsCard() {
               </select>
               <p className="mt-1 text-xs text-slate-500">Dark: your brand colour as the page, the tagline as a large headline.</p>
             </div>
-            {field("Eyebrow line (dark style)", "loginEyebrow", { placeholder: "CNC machining and fabrication, Hamilton", maxLength: 80 })}
+            {field("Small heading (dark style)", "loginEyebrow", { placeholder: "CNC machining and fabrication, Hamilton", maxLength: 80 })}
           </div>
           <div className="flex flex-wrap items-center gap-3 rounded-lg p-3 text-sm" style={{ background: `linear-gradient(120deg, ${hexOr(form.brandPrimary, PRODUCT_BRANDING.primary)}, ${hexOr(form.brandAccent, PRODUCT_BRANDING.accent)})`, color: textOn(hexOr(form.brandPrimary, PRODUCT_BRANDING.primary)) }}>
             <span className="font-semibold">{form.name || form.documentName || "Your company"}</span>
@@ -642,7 +642,7 @@ export default function SettingsPage() {
     <RoleGate allowed={["admin"]}>
       <div className="space-y-6">
         <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
-        {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Supabase is unavailable (or the organization_settings migration has not been run), so menu and column choices are stored in this browser only.</div> : null}
+        {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
         <CompanyDetailsCard />
         <ArchiveSettingsCard />
         <AutoConvertCard />
