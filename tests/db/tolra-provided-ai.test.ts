@@ -113,3 +113,58 @@ it("release 146 refuses a second install without changing wrappers or retained h
   } finally {await db.query("ROLLBACK");}
  });
 });
+
+it("provided mode with no global key refuses every reservation and never falls back to a working company key",async()=>{
+ await withDb(async db=>{
+  await db.query("BEGIN");
+  try {
+   const org=randomUUID(),user=randomUUID(),session=randomUUID(),email=`no-global-key-${user}@example.test`;
+   await db.query("INSERT INTO public.organizations(id,name,slug,status) VALUES($1,'Synthetic no global key',$2,'active')",[org,`${SYNTHETIC_SLUG_PREFIX}no-global-${org}`]);
+   await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)",[user,email]);
+   await db.query("INSERT INTO public.user_profiles(id,email,full_name,role,organization_id,active,must_change_password) VALUES($1,$2,'Synthetic admin','admin',$3,TRUE,FALSE)",[user,email,org]);
+   await db.query("INSERT INTO public.organization_members(user_id,organization_id,role,active) VALUES($1,$2,'admin',TRUE)",[user,org]);
+   await db.query("INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)",[session,user]);
+   await db.query("INSERT INTO security_audit.session_company(session_id,user_id,organization_id) VALUES($1,$2,$3)",[session,user,org]);
+   await db.query("SELECT set_config('request.jwt.claims',$1,TRUE),set_config('request.jwt.claim.sub',$2,TRUE)",[JSON.stringify({sub:user,role:"authenticated",aud:"authenticated",aal:"aal2",email,session_id:session}),user]);
+   await db.query("SET LOCAL ROLE authenticated");
+   await db.query("SELECT public.ai_helper_set_key($1,'abcd')",[KEY_ENC]);
+   await db.query("SELECT public.ai_helper_save_settings(TRUE,TRUE,1000)");
+   await db.query("SELECT public.ai_helper_set_assistant(TRUE)");
+   const reservations=[
+    "SELECT public.ai_helper_reserve('roundup',10,$1,10) AS r",
+    "SELECT public.ai_helper_reserve('rfq',10,$1,10) AS r",
+    "SELECT public.ai_helper_reserve_assistant(10,$1,10) AS r",
+   ];
+   // Positive controls prove the same company key, features and caller can reserve.
+   for(const sql of reservations)expect((await db.query(sql,[DIGEST])).rows[0].r).toMatchObject({ok:true});
+   await db.query("RESET ROLE");
+   expect((await db.query("SELECT key_source FROM public.ai_helper_requests WHERE organization_id=$1",[org])).rows).toEqual([{key_source:"own"},{key_source:"own"},{key_source:"own"}]);
+   // Model an existing selection whose platform key is subsequently removed.
+   // These owner-only fixture changes and all synthetic data roll back below.
+   await db.query("UPDATE public.ai_helper_tolra_control SET enabled=TRUE,api_key_enc=$1 WHERE singleton",[KEY_ENC]);
+   await db.query("SET LOCAL ROLE authenticated");
+   await db.query("SELECT public.ai_helper_set_tolra_mode(TRUE)");
+   await db.query("RESET ROLE");
+   await db.query("UPDATE public.ai_helper_tolra_control SET enabled=FALSE,api_key_enc=NULL WHERE singleton");
+   expect((await db.query("SELECT enabled,api_key_enc IS NULL AS no_key FROM public.ai_helper_tolra_control WHERE singleton")).rows).toEqual([{enabled:false,no_key:true}]);
+   const snapshot=async()=>({
+    requests:(await db.query("SELECT * FROM public.ai_helper_requests WHERE organization_id=$1 ORDER BY id",[org])).rows,
+    usage:(await db.query("SELECT * FROM public.ai_helper_usage WHERE organization_id=$1 ORDER BY month",[org])).rows,
+    ownKey:(await db.query("SELECT * FROM public.ai_helper_secrets WHERE organization_id=$1",[org])).rows,
+   });
+   expect((await db.query("SELECT roundup_enabled,rfq_enabled,assistant_enabled FROM public.ai_helper_settings WHERE organization_id=$1",[org])).rows).toEqual([{roundup_enabled:true,rfq_enabled:true,assistant_enabled:true}]);
+   const before=await snapshot();
+   for(const sql of reservations){
+    await db.query("SET LOCAL ROLE authenticated");
+    expect((await db.query("SELECT public.ai_helper_status() AS s")).rows[0].s).toMatchObject({key_set:true,roundup_enabled:true,rfq_enabled:true,tolra_enabled:true,tolra_available:false});
+    await db.query("SAVEPOINT missing_global_key");
+    await expect(db.query(sql,[DIGEST])).rejects.toMatchObject({code:"42501",hint:"ai_helper_off",message:"Tolra AI is off."});
+    await db.query("ROLLBACK TO SAVEPOINT missing_global_key");
+    await db.query("RELEASE SAVEPOINT missing_global_key");
+    await db.query("RESET ROLE");
+    // No fallback request, money reservation or replacement company key is allowed.
+    expect(await snapshot()).toEqual(before);
+   }
+  } finally {await db.query("ROLLBACK");}
+ });
+});
