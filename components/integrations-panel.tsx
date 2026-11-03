@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
+import { AccountingCloudCards } from "@/components/integrations/accounting-cloud-cards";
 import { AccountantInviteCard } from "@/components/accountant-invite-card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
@@ -90,7 +91,7 @@ export function IntegrationsPanel() {
     if (xeroView.connectDisabled) return;
     setBusy(true);
     try {
-      const body = await post("/api/integrations/xero/connect");
+      const body = await post("/api/accounting/xero/connect");
       if (body && typeof body.url === "string") window.location.assign(body.url);
     } finally {
       setBusy(false);
@@ -101,7 +102,7 @@ export function IntegrationsPanel() {
     setConfirmDisconnect(false);
     setBusy(true);
     try {
-      if (await post("/api/integrations/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
+      if (await post("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
       setTest(null);
       await load();
     } finally {
@@ -286,6 +287,7 @@ export function IntegrationsPanel() {
         offerXero={Boolean(status?.db107 && !xeroView.notSetUp && xeroView.offerInvite && overview && overview.status !== "connected")}
         onXeroLink={() => void loadInvites()}
       />
+      <AccountingCloudCards />
       <MicrosoftConnectCard status={status} />
       {overview && linked ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
       {overview && (linked || anySends) ? <XeroSendLog reloadKey={version} onChanged={() => void load()} /> : null}
