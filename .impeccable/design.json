@@ -1,0 +1,519 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T11:45:52.554Z",
+  "title": "Design System: Tolra",
+  "extensions": {
+    "colorMeta": {
+      "brand-navy": {
+        "role": "primary",
+        "displayName": "Workshop Navy",
+        "tonalRamp": [
+          "oklch(15% 0.060 266)",
+          "oklch(27% 0.090 266)",
+          "oklch(39% 0.108 266)",
+          "oklch(51% 0.120 266)",
+          "oklch(63% 0.120 266)",
+          "oklch(75% 0.096 266)",
+          "oklch(86% 0.060 266)",
+          "oklch(95% 0.024 266)"
+        ]
+      },
+      "brand-navy-pressed": {
+        "role": "primary",
+        "displayName": "Pressed Navy",
+        "canonical": "color-mix(in srgb, var(--brand) 86%, black)",
+        "tonalRamp": [
+          "oklch(15% 0.055 266)",
+          "oklch(27% 0.083 266)",
+          "oklch(39% 0.099 266)",
+          "oklch(51% 0.110 266)",
+          "oklch(63% 0.110 266)",
+          "oklch(75% 0.088 266)",
+          "oklch(86% 0.055 266)",
+          "oklch(95% 0.022 266)"
+        ]
+      },
+      "brand-accent": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "tonalRamp": [
+          "oklch(15% 0.080 266)",
+          "oklch(27% 0.120 266)",
+          "oklch(39% 0.144 266)",
+          "oklch(51% 0.160 266)",
+          "oklch(63% 0.160 266)",
+          "oklch(75% 0.128 266)",
+          "oklch(86% 0.080 266)",
+          "oklch(95% 0.032 266)"
+        ]
+      },
+      "app-chrome": {
+        "role": "neutral",
+        "displayName": "Night Chrome",
+        "tonalRamp": [
+          "oklch(15% 0.020 255)",
+          "oklch(27% 0.030 255)",
+          "oklch(39% 0.036 255)",
+          "oklch(51% 0.040 255)",
+          "oklch(63% 0.040 255)",
+          "oklch(75% 0.032 255)",
+          "oklch(86% 0.020 255)",
+          "oklch(95% 0.008 255)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Machine Ink",
+        "tonalRamp": [
+          "oklch(15% 0.018 258)",
+          "oklch(27% 0.026 258)",
+          "oklch(39% 0.032 258)",
+          "oklch(51% 0.035 258)",
+          "oklch(63% 0.035 258)",
+          "oklch(75% 0.028 258)",
+          "oklch(86% 0.018 258)",
+          "oklch(95% 0.007 258)"
+        ]
+      },
+      "muted-ink": {
+        "role": "neutral",
+        "displayName": "Gauge Grey",
+        "tonalRamp": [
+          "oklch(15% 0.013 258)",
+          "oklch(27% 0.019 258)",
+          "oklch(39% 0.023 258)",
+          "oklch(51% 0.025 258)",
+          "oklch(63% 0.025 258)",
+          "oklch(75% 0.020 258)",
+          "oklch(86% 0.013 258)",
+          "oklch(95% 0.005 258)"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Shop Canvas",
+        "tonalRamp": [
+          "oklch(15% 0.004 258)",
+          "oklch(27% 0.006 258)",
+          "oklch(39% 0.007 258)",
+          "oklch(51% 0.008 258)",
+          "oklch(63% 0.008 258)",
+          "oklch(75% 0.006 258)",
+          "oklch(86% 0.004 258)",
+          "oklch(95% 0.002 258)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Sheet White",
+        "tonalRamp": [
+          "oklch(15% 0.000 0)",
+          "oklch(27% 0.000 0)",
+          "oklch(39% 0.000 0)",
+          "oklch(51% 0.000 0)",
+          "oklch(63% 0.000 0)",
+          "oklch(75% 0.000 0)",
+          "oklch(86% 0.000 0)",
+          "oklch(95% 0.000 0)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "tonalRamp": [
+          "oklch(15% 0.006 258)",
+          "oklch(27% 0.009 258)",
+          "oklch(39% 0.011 258)",
+          "oklch(51% 0.012 258)",
+          "oklch(63% 0.012 258)",
+          "oklch(75% 0.010 258)",
+          "oklch(86% 0.006 258)",
+          "oklch(95% 0.002 258)"
+        ]
+      },
+      "input-stroke": {
+        "role": "neutral",
+        "displayName": "Input Stroke",
+        "tonalRamp": [
+          "oklch(15% 0.008 258)",
+          "oklch(27% 0.012 258)",
+          "oklch(39% 0.014 258)",
+          "oklch(51% 0.016 258)",
+          "oklch(63% 0.016 258)",
+          "oklch(75% 0.013 258)",
+          "oklch(86% 0.008 258)",
+          "oklch(95% 0.003 258)"
+        ]
+      },
+      "destructive": {
+        "role": "error",
+        "displayName": "Destructive",
+        "tonalRamp": [
+          "oklch(15% 0.100 27)",
+          "oklch(27% 0.150 27)",
+          "oklch(39% 0.180 27)",
+          "oklch(51% 0.200 27)",
+          "oklch(63% 0.200 27)",
+          "oklch(75% 0.160 27)",
+          "oklch(86% 0.100 27)",
+          "oklch(95% 0.040 27)"
+        ]
+      },
+      "status-green": {
+        "role": "status",
+        "displayName": "Pass Green",
+        "tonalRamp": [
+          "oklch(15% 0.085 150)",
+          "oklch(27% 0.128 150)",
+          "oklch(39% 0.153 150)",
+          "oklch(51% 0.170 150)",
+          "oklch(63% 0.170 150)",
+          "oklch(75% 0.136 150)",
+          "oklch(86% 0.085 150)",
+          "oklch(95% 0.034 150)"
+        ]
+      },
+      "status-green-text": {
+        "role": "status",
+        "displayName": "Start Green",
+        "tonalRamp": [
+          "oklch(15% 0.075 150)",
+          "oklch(27% 0.112 150)",
+          "oklch(39% 0.135 150)",
+          "oklch(51% 0.150 150)",
+          "oklch(63% 0.150 150)",
+          "oklch(75% 0.120 150)",
+          "oklch(86% 0.075 150)",
+          "oklch(95% 0.030 150)"
+        ]
+      },
+      "status-yellow": {
+        "role": "status",
+        "displayName": "Caution Yellow",
+        "tonalRamp": [
+          "oklch(15% 0.075 85)",
+          "oklch(27% 0.112 85)",
+          "oklch(39% 0.135 85)",
+          "oklch(51% 0.150 85)",
+          "oklch(63% 0.150 85)",
+          "oklch(75% 0.120 85)",
+          "oklch(86% 0.075 85)",
+          "oklch(95% 0.030 85)"
+        ]
+      },
+      "status-red": {
+        "role": "status",
+        "displayName": "Fault Red",
+        "tonalRamp": [
+          "oklch(15% 0.105 27)",
+          "oklch(27% 0.158 27)",
+          "oklch(39% 0.189 27)",
+          "oklch(51% 0.210 27)",
+          "oklch(63% 0.210 27)",
+          "oklch(75% 0.168 27)",
+          "oklch(86% 0.105 27)",
+          "oklch(95% 0.042 27)"
+        ]
+      },
+      "status-blue": {
+        "role": "status",
+        "displayName": "Running Blue",
+        "tonalRamp": [
+          "oklch(15% 0.100 262)",
+          "oklch(27% 0.150 262)",
+          "oklch(39% 0.180 262)",
+          "oklch(51% 0.200 262)",
+          "oklch(63% 0.200 262)",
+          "oklch(75% 0.160 262)",
+          "oklch(86% 0.100 262)",
+          "oklch(95% 0.040 262)"
+        ]
+      },
+      "status-purple": {
+        "role": "status",
+        "displayName": "Rework Purple",
+        "tonalRamp": [
+          "oklch(15% 0.110 293)",
+          "oklch(27% 0.165 293)",
+          "oklch(39% 0.198 293)",
+          "oklch(51% 0.220 293)",
+          "oklch(63% 0.220 293)",
+          "oklch(75% 0.176 293)",
+          "oklch(86% 0.110 293)",
+          "oklch(95% 0.044 293)"
+        ]
+      },
+      "status-grey": {
+        "role": "status",
+        "displayName": "Idle Grey",
+        "tonalRamp": [
+          "oklch(15% 0.010 260)",
+          "oklch(27% 0.015 260)",
+          "oklch(39% 0.018 260)",
+          "oklch(51% 0.020 260)",
+          "oklch(63% 0.020 260)",
+          "oklch(75% 0.016 260)",
+          "oklch(86% 0.010 260)",
+          "oklch(95% 0.004 260)"
+        ]
+      },
+      "pause-amber": {
+        "role": "status",
+        "displayName": "Pause Amber",
+        "tonalRamp": [
+          "oklch(15% 0.085 70)",
+          "oklch(27% 0.128 70)",
+          "oklch(39% 0.153 70)",
+          "oklch(51% 0.170 70)",
+          "oklch(63% 0.170 70)",
+          "oklch(75% 0.136 70)",
+          "oklch(86% 0.085 70)",
+          "oklch(95% 0.034 70)"
+        ]
+      },
+      "pause-ink": {
+        "role": "neutral",
+        "displayName": "Pause Ink",
+        "tonalRamp": [
+          "oklch(15% 0.003 50)",
+          "oklch(27% 0.005 50)",
+          "oklch(39% 0.005 50)",
+          "oklch(51% 0.006 50)",
+          "oklch(63% 0.006 50)",
+          "oklch(75% 0.005 50)",
+          "oklch(86% 0.003 50)",
+          "oklch(95% 0.001 50)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Dark, website-style sign-in headline only. Uppercase Anton; never inside the app."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page title block (.page-title)."
+      },
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Stat tile headline figures; tabular."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Sidebar company name, card and record titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Table cells, card copy, descriptions. Inputs are 1rem below 768px."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Eyebrows, topbar page name, sidebar sections, table headers (.label-mono). Uppercase."
+      },
+      "label-strong": {
+        "displayName": "Label Strong",
+        "purpose": "Captions over values (.field-label, .field-caption) and every Job Board heading. Uppercase."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Every button except link buttons. Uppercase."
+      }
+    },
+    "shadows": [
+      {
+        "name": "dialog-lift",
+        "value": "0 24px 60px -20px rgba(11, 22, 38, 0.35)",
+        "purpose": "Modal dialogs only."
+      },
+      {
+        "name": "menu-lift",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+        "purpose": "Dropdown menus, with a 1px ring at 10% foreground."
+      },
+      {
+        "name": "sheet-lift",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "Navigation drawer and side sheets."
+      },
+      {
+        "name": "card",
+        "value": "none",
+        "purpose": "Cards, tiles, tables and panels never carry a shadow."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-change",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Colour, border and ring changes on buttons, inputs, tiles and nav rows."
+      },
+      {
+        "name": "press",
+        "value": "translateY(1px)",
+        "purpose": "Button press: the one physical cue."
+      },
+      {
+        "name": "menu",
+        "value": "100ms fade + zoom-in-95 + 8px slide",
+        "purpose": "Dropdown menus opening and closing."
+      },
+      {
+        "name": "sheet",
+        "value": "200ms ease-in-out, slide 40px + fade",
+        "purpose": "Navigation drawer and side sheets."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Rows stop stacking; tablet card grid begins."
+      },
+      {
+        "name": "desk",
+        "value": "1025px",
+        "purpose": "Fixed sidebar and full dense tables."
+      },
+      {
+        "name": "content-max",
+        "value": "1400px",
+        "purpose": "Main content column cap."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a screen, in the company's brand colour.",
+      "html": "<button class=\"ds-btn-primary\">Create quote</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:9999px;border:1px solid transparent;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.7rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s;background:var(--brand,#1e3472);color:var(--brand-ink,#fff);}.ds-btn-primary:hover{background:color-mix(in srgb, var(--brand,#1e3472) 86%, black);}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand-accent, #2e52b8) 35%, transparent);}.ds-btn-primary:active{transform:translateY(1px);}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions beside a primary; white with a hairline.",
+      "html": "<button class=\"ds-btn-outline\">Export</button>",
+      "css": ".ds-btn-outline{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:9999px;border:1px solid transparent;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.7rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s;background:var(--surface,#fff);color:var(--ink,#0e1726);border-color:var(--line,#e3e6ec);}.ds-btn-outline:hover{background:var(--canvas,#f5f6f8);border-color:rgb(14 23 38 / 25%);}.ds-btn-outline:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand-accent, #2e52b8) 35%, transparent);}.ds-btn-outline:active{transform:translateY(1px);}"
+    },
+    {
+      "name": "Start / Finish Job Buttons",
+      "kind": "button",
+      "refersTo": "button-start",
+      "description": "Shop-floor job actions: green outline Start, blue outline Finish; 64px tall on touch for gloved hands.",
+      "html": "<div class=\"ds-job-actions\"><button class=\"ds-btn-start\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polygon points=\"6 3 20 12 6 21 6 3\"/></svg>Start</button><button class=\"ds-btn-finish\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Finish</button></div>",
+      "css": ".ds-job-actions{display:flex;gap:12px;}.ds-btn-start,.ds-btn-finish{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 16px;border-radius:9999px;border:1px solid transparent;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.7rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,box-shadow .15s;height:64px;padding:0 24px;background:var(--surface,#fff);}.ds-btn-start{border-color:#16a34a;color:#15803d;}.ds-btn-start:hover{background:#f0fdf4;}.ds-btn-finish{border-color:#2563eb;color:#2563eb;}.ds-btn-finish:hover{background:#eff6ff;}.ds-btn-start:focus-visible,.ds-btn-finish:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand-accent, #2e52b8) 35%, transparent);}.ds-btn-start:active,.ds-btn-finish:active{transform:translateY(1px);}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard field: Input Stroke border, accent border and soft ring on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Customer PO</span><input class=\"ds-input\" placeholder=\"PO-10482\" /></label>",
+      "css": ".ds-field{display:grid;gap:4px;max-width:320px;}.ds-field-label{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.6875rem;line-height:1rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;color:var(--ink,#0e1726);}.ds-input{height:40px;padding:4px 12px;border:1px solid var(--input,#d5dae2);border-radius:10px;background:var(--surface,#fff);color:var(--ink,#0e1726);font-family:Archivo,system-ui,sans-serif;font-size:0.875rem;transition:border-color .15s,box-shadow .15s;outline:none;}.ds-input::placeholder{color:#5b6576;}.ds-input:focus-visible{border-color:var(--brand-accent,#2e52b8);box-shadow:0 0 0 3px color-mix(in srgb, var(--brand-accent,#2e52b8) 15%, transparent);}"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "status-badge",
+      "description": "Filled mono pills from the one status map; the word is always shown.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-green\">Complete</span><span class=\"ds-badge ds-yellow\">At risk</span><span class=\"ds-badge ds-red\">Overdue</span><span class=\"ds-badge ds-blue\">Running</span><span class=\"ds-badge ds-purple\">Rework</span><span class=\"ds-badge ds-grey\">Draft</span></div>",
+      "css": ".ds-badges{display:flex;flex-wrap:wrap;gap:6px;}.ds-badge{display:inline-flex;align-items:center;height:20px;padding:2px 8px;border-radius:9999px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.62rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;}.ds-green{background:#16a34a;color:#020617;}.ds-yellow{background:#ca8a04;color:#020617;}.ds-red{background:#dc2626;color:#fff;}.ds-blue{background:#2563eb;color:#fff;}.ds-purple{background:#7c3aed;color:#fff;}.ds-grey{background:#6b7280;color:#fff;}"
+    },
+    {
+      "name": "Stat Tile",
+      "kind": "card",
+      "refersTo": "stat-tile",
+      "description": "One headline number: mono label with a tone dot, large tabular figure, one line of context. Flat, hairline-bordered.",
+      "html": "<a class=\"ds-stat\" href=\"#\"><p class=\"ds-stat-label\"><span class=\"ds-dot\"></span>Overdue jobs</p><p class=\"ds-stat-value\">7</p><p class=\"ds-stat-sub\">3 due for despatch today</p></a>",
+      "css": ".ds-stat{display:block;max-width:260px;padding:20px;border:1px solid var(--line,#e3e6ec);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#0e1726);text-decoration:none;transition:border-color .15s;}.ds-stat:hover{border-color:rgb(14 23 38 / 20%);}.ds-stat:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand-accent,#2e52b8) 30%, transparent);}.ds-stat-label{display:flex;align-items:center;gap:8px;margin:0;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.6875rem;line-height:1rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;}.ds-dot{width:6px;height:6px;border-radius:9999px;background:#dc2626;}.ds-stat-value{margin:16px 0 0;font-family:Archivo,system-ui,sans-serif;font-size:2rem;font-weight:600;line-height:1;letter-spacing:-0.025em;font-variant-numeric:tabular-nums;}.ds-stat-sub{margin:8px 0 0;font-family:Archivo,system-ui,sans-serif;font-size:0.875rem;color:#5b6576;}"
+    },
+    {
+      "name": "Record Card with Field Captions",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "The traveller's printed form: hairline card, each value under its own boxed mono caption.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-row\"><span class=\"ds-caption\">Job No</span><span class=\"ds-value\">J-2417</span></div><div class=\"ds-row\"><span class=\"ds-caption\">Customer</span><span class=\"ds-value\">Aldridge Hydraulics Ltd</span></div><div class=\"ds-row\"><span class=\"ds-caption\">Due</span><span class=\"ds-value\">Fri 6 Nov</span></div></div>",
+      "css": ".ds-card{display:grid;gap:12px;max-width:300px;padding:16px;border:1px solid var(--line,#e3e6ec);border-radius:14px;background:var(--surface,#fff);color:var(--ink,#0e1726);font-family:Archivo,system-ui,sans-serif;font-size:0.875rem;}.ds-row{display:grid;gap:4px;}.ds-caption{width:fit-content;padding:1px 6px;border:1px solid color-mix(in srgb, #5b6576 45%, transparent);border-radius:6px;background:#f1f3f5;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.6875rem;line-height:1rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;}.ds-value{font-variant-numeric:tabular-nums;}"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Solid brand-colour sidebar; tinted rows, active row with a 3px accent bar.",
+      "html": "<nav class=\"ds-nav\"><p class=\"ds-nav-section\">Operations</p><a class=\"ds-nav-item ds-active\" href=\"#\" aria-current=\"page\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z\"/><path d=\"m2 12 8.58 3.91a2 2 0 0 0 1.66 0L21 12\"/><path d=\"m2 17 8.58 3.91a2 2 0 0 0 1.66 0L21 17\"/></svg><span>Job Board</span></a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg><span>Dashboard</span><span class=\"ds-nav-count\">3</span></a></nav>",
+      "css": ".ds-nav{width:240px;padding:16px 12px;background:var(--brand,#1e3472);color:var(--brand-ink,#fff);border-radius:14px;}.ds-nav-section{margin:0 0 8px;padding:0 12px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:0.6875rem;line-height:1rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;opacity:.45;}.ds-nav-item{position:relative;display:flex;align-items:center;gap:12px;min-height:40px;padding:8px 12px;border-radius:10px;color:rgb(255 255 255 / 70%);font-family:Archivo,system-ui,sans-serif;font-size:0.9rem;text-decoration:none;transition:background-color .15s,color .15s;}.ds-nav-item:hover{background:rgb(255 255 255 / 7%);color:#fff;}.ds-nav-item:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand-accent,#2e52b8) 60%, transparent);}.ds-nav-item span:first-of-type{flex:1;}.ds-active{background:rgb(255 255 255 / 11%);color:#fff;font-weight:500;}.ds-active::before{content:'';position:absolute;top:8px;bottom:8px;left:0;width:3px;border-radius:9999px;background:var(--brand-accent,#2e52b8);}.ds-nav-count{min-width:20px;padding:2px 6px;border-radius:9999px;background:#ef4444;color:#fff;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10px;text-align:center;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Job Traveller",
+    "overview": "A job traveller is the sheet that goes round the shop with a part. It's labelled, stamped and signed at every station, and it stays plain, so nobody misreads it at a machine. Tolra is built the same way. Every value has a printed caption above it: small uppercase IBM Plex Mono at 0.6875rem with wide tracking. Records sit on white cards ruled with hairlines. Every status carries both a colour and its word. Nothing on screen is ornament. Captions, ruling, status stamps and numbers do all the work.\n\nThe mood is industrial and confident. The labels and buttons are set in mono like stamped part numbers. Headings are Archivo Semibold set tight. The navy sidebar is as solid as a machine guard. Controls are tactile and sturdy: pill buttons with a physical one-pixel press, inputs 40px high, and everything grows to at least 44px on a touch screen. The workshop's Start and Finish buttons are 64px high so they can be hit with gloves on. The office desk gets density. The shop floor gets reach.\n\nThe navy is a placeholder. Each company's own colours replace brand-navy and brand-accent at runtime, before first paint. The system has to look right in a company's red, green or orange as much as in Tolra's navy. That's why structure comes from neutrals, ruling and type rather than from the brand hue.",
+    "keyCharacteristics": [
+      "Mono uppercase captions over every value, like a printed form.",
+      "Flat white cards separated by 1px hairlines, not shadows.",
+      "A saturated brand sidebar. Everything else is neutral, from ink and canvas to white.",
+      "One status colour map. Every badge shows its word next to its colour.",
+      "Pill-shaped mono buttons that press down 1px.",
+      "Touch targets grow to 44px on coarse pointers, 64px for Start and Finish.",
+      "Tabular figures for every number that gets compared."
+    ],
+    "rules": [
+      {
+        "name": "The Company's Colour Rule",
+        "body": "brand-navy and brand-accent are slots, not the identity. Never hard-code #1e3472 or #2e52b8 in a component. Use bg-brand, text-brand-ink, ring-brand-accent and so on. Every surface must still read correctly when a company's colour replaces the navy.",
+        "section": "colors"
+      },
+      {
+        "name": "The Stamped Status Rule",
+        "body": "Colour is never the only signal. Every status shows its word, and every status colour comes from the one map. If a new state needs a colour, it goes into lib/status-colours.ts first.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Purple Rule",
+        "body": "Purple means rework and nothing else.",
+        "section": "colors"
+      },
+      {
+        "name": "The Caption-First Rule",
+        "body": "A value is never left unlabelled. When a table header disappears, because the row has stacked into a card on a phone or a tablet, each cell prints its own caption from data-label. Captions are in Label Strong, so the eye finds the name before the value.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Any figure that will be compared with another (totals, counts, hours, money) uses tabular numerals.",
+        "section": "typography"
+      },
+      {
+        "name": "The Glove Rule",
+        "body": "On a coarse pointer every control is at least 44px (pointer-coarse:h-11), and Start and Finish are at least 64px. Desk sizes (36px buttons, 40px inputs) apply to mouse users only.",
+        "section": "layout"
+      },
+      {
+        "name": "The Ruled-Not-Raised Rule",
+        "body": "Anything that sits on the page (cards, tiles, tables, panels) is flat, with a hairline border and no shadow. Shadows are only for layers that float over the page.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do put a mono uppercase caption (Label or Label Strong, 0.6875rem, 0.12em tracking) over every value, and a data-label on every table cell that may stack.",
+      "Do use the brand tokens (bg-brand, text-brand-ink, bg-brand-hover, ring-brand-accent) for anything in the company colour, so each company's colours apply.",
+      "Do take every status colour and word from lib/status-colours.ts through StatusBadge.",
+      "Do separate surfaces with 1px Hairline (#e3e6ec) borders and the canvas-to-white step.",
+      "Do size every control to at least 44px on coarse pointers, and Start and Finish to 64px.",
+      "Do use tabular figures for counts, money and hours.",
+      "Do keep stat tiles' colour in the 6px dot and leave the tile white."
+    ],
+    "donts": [
+      "Don't hard-code the Tolra navy or accent hex values in components. They are defaults that each company replaces.",
+      "Don't add shadows to cards, tiles, tables or panels. Shadows are for dialogs, menus and sheets only.",
+      "Don't show a status by colour alone, put yellow text on a light background, or use purple for anything but rework.",
+      "Don't use solid red blocks for destructive actions. Use the 10% red tint with red text.",
+      "Don't use Anton inside the app. It belongs to the dark sign-in page only.",
+      "Don't reach for raw Tailwind slate-* greys in new work. Use ink, muted-foreground, canvas and line. Older screens still use slate directly.",
+      "Don't let action buttons truncate or scroll off the side of a table. They wrap."
+    ]
+  }
+}
