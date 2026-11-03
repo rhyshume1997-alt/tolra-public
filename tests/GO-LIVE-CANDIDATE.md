@@ -52,3 +52,5 @@ No database backend or credentials were available. Database suites, upgrade rehe
 #239 and #240 are now folded into this branch, without conflicts. AA validation: 5,437 unit tests and typecheck passed; production build passed. The setup UI now has the company/admin/non-support access fix and its tests, plus the accounting company-read proof. #241/#245 remain separate.
 
 AB packages N5 as post-144 release step 145, then N2/cap as 146. See `tests/POST-144-RELEASE.md` for the explicit release-phase assumption, guarded transactional files, rollback/verify copies, preflight and all-proposal coverage check. This supersedes the earlier statement that those two proposals have no release allocation. They stay outside frozen baseline replay; Code must rehearse their one-time application, refusal on repeat, and rollback separately. No SQL was applied. The chase atomic release decision remains open.
+
+AB validation: 5,441 units / 409 files passed; typecheck and targeted lint passed; release-plan/migration checks passed; all seven packaged/preflight SQL files parsed with pglast without executing SQL. AA production build passed. No DB/proposal/browser runtime was performed.
