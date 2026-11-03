@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 
-import { ChaseStepsEditor } from "@/components/email-schedules/chase-steps-editor";
+import { ConnectedChaseSettings } from "@/components/chase/connected-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -119,7 +119,7 @@ function ScheduleEditor({ kind, initial, zone, canEdit, canEditSteps, organizati
       <p className="text-sm font-medium text-slate-800" data-testid={`email-schedule-${kind}-next`} role="status">{preview}</p>
       {error ? <p className="text-sm text-red-600" role="alert">{error}</p> : null}
       <Button className="bg-brand text-brand-ink" aria-label={`Save ${labels.title}`} disabled={!canEdit || saving} onClick={() => void save()}>{saving ? "Saving..." : "Save"}</Button>
-      {kind === "invoice_reminder" ? <div className="border-t pt-4"><ChaseStepsEditor organizationId={organizationId} canEdit={canEditSteps} /></div> : null}
+      {kind === "invoice_reminder" ? <div className="border-t pt-4"><ConnectedChaseSettings organizationId={organizationId} canEdit={canEditSteps} /></div> : null}
     </section>
   );
 }

@@ -18,9 +18,11 @@ export function dueSteps(steps: Step[], invoice: ChaseInvoice, today: string): S
     const current = dayNumber(today);
     if (due === null || current === null) return [];
     const sent = new Set(invoice.alreadySentStepIds ?? []);
-    const eligible = (Array.isArray(steps) ? steps : []).filter(step =>
+    const allSteps = Array.isArray(steps) ? steps : [];
+    const highestSentOffset = allSteps.filter(step => sent.has(step.id) && Number.isInteger(step.offsetDays)).reduce((highest, step) => Math.max(highest, step.offsetDays), -Infinity);
+    const eligible = allSteps.filter(step =>
       step && typeof step.id === 'string' && Number.isInteger(step.offsetDays) &&
-      current >= due + step.offsetDays && !sent.has(step.id));
+      current >= due + step.offsetDays && step.offsetDays > highestSentOffset && !sent.has(step.id));
     eligible.sort((a, b) => b.offsetDays - a.offsetDays);
     return eligible.length ? [eligible[0]] : [];
   } catch { return []; }
@@ -55,7 +57,7 @@ export function renderChase(tone: Step['tone'], fields: ChaseFields): { subject:
   const intro: Record<Step['tone'], string> = {
     before_due: 'Just a reminder that invoice ' + ref + ' for ' + balance + ' is due on ' + due + '.',
     friendly: 'Our records show ' + balance + ' remains outstanding on invoice ' + ref + ', due ' + due + '.',
-    firm: 'Invoice ' + ref + ' is ' + days + ' days overdue, with ' + balance + ' outstanding. Please arrange payment or let us know if there is a query.',
+    firm: 'Invoice ' + ref + ' is ' + days + ' ' + (days === 1 ? 'day' : 'days') + ' overdue, with ' + balance + ' outstanding. Please arrange payment or let us know if there is a query.',
     final: 'This is our final reminder that invoice ' + ref + ' remains unpaid, with ' + balance + ' outstanding. Please contact us promptly to resolve this.',
   };
   return {
