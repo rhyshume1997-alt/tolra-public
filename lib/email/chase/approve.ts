@@ -14,7 +14,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { pauseActive } from "@/lib/email/chase/steps";
-import { escapeHtml, oneLine } from "@/lib/email/templates/defaults";
+import { escapeHtml } from "@/lib/email/templates/defaults";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
@@ -50,6 +50,9 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     .select("id, organization_id, to_email, subject, body, status, related_to_type, related_to_id").eq("id", input.draftId).maybeSingle();
   const draft = draftRow as { id: string; organization_id: string; to_email: string; subject: string; body: string; status: string; related_to_type: string | null; related_to_id: string | null } | null;
   if (draftError || !draft || draft.organization_id !== org) return refused(404, "Draft not found.");
+  if (typeof input.subject !== "string" || typeof input.body !== "string" || input.subject !== draft.subject || input.body !== draft.body) {
+    return refused(409, "The draft changed after you checked it. Reload and review it before sending.");
+  }
   if (draft.status !== "drafted") return refused(409, "This e-mail is no longer waiting for approval. Reload the page.");
 
   const { data: chaseRow } = await db.from("chase_sends").select("id, invoice_id, status").eq("draft_history_id", draft.id).eq("organization_id", org).maybeSingle();
@@ -95,21 +98,11 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   }
   if (!to.length || outside().length) return refused(403, "A chase can only go to the customer's e-mail address on file, your reminder recipients or your own team. Update the customer's e-mail first.");
 
-  // An edit made in the approval dialog is saved on the draft first (the person's own session), then that text is what is sent.
-  let subject = draft.subject;
-  let body = draft.body;
-  if (input.subject !== undefined || input.body !== undefined) {
-    const nextSubject = oneLine(input.subject ?? draft.subject);
-    const nextBody = input.body ?? draft.body;
-    if (!nextSubject || nextSubject.length > 200) return refused(400, "Enter a subject of up to 200 characters.");
-    if (!nextBody.trim() || nextBody.length > 100_000) return refused(400, "Enter the e-mail text.");
-    if (nextSubject !== draft.subject || nextBody !== draft.body) {
-      const { error } = await db.from("email_history").update({ subject: nextSubject, body: nextBody }).eq("id", draft.id).eq("status", "drafted");
-      if (error) return refused(409, "Couldn't save your changes to the draft, so nothing was sent. Try again.");
-    }
-    subject = nextSubject;
-    body = nextBody;
-  }
+  // Approval covers the exact saved text the person saw; this endpoint never silently edits it.
+  const subject = input.subject;
+  const body = input.body;
+  if (!subject.trim() || subject !== subject.trim() || subject.length > 200 || /[\r\n\u2028\u2029\0]/.test(subject)) return refused(400, "Check the subject before sending.");
+  if (!body.trim() || body.length > 100_000) return refused(400, "Enter the e-mail text.");
 
   const provider = await deps.provider(org);
   if (provider === "refused") return refused(503, "E-mail sending is switched off on this site.");
