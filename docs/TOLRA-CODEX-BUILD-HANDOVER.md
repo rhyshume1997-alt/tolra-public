@@ -46,3 +46,8 @@ Latest instruction prohibits touching held jobs. `claude/work-ownership:docs/TOL
 ## NEXT UP — 3 November
 
 Jobs 1–5 remain blocked by the existing IN PROGRESS ownership rows. No other owner's source changed. Inbox suggestion persistence, bank page/confirmation persistence, cross-export duplicate identity and actual database exact-approved-text send checks are outstanding. Costing base lacks its engine, so 60 golden prices and rounding are skipped, not passed. Manual checklist is delivered in #183. No AVAILABLE row was found. No Ready labels, migrations, production SQL, merges or deployments performed.
+
+| Job | Work done | Branch | PR | Tests | Blocker |
+| --- | --- | --- | --- | --- | --- |
+| costing-join | Joined engine/screens on costing base; exposed rounding helper and fixed double-rounding at large values; retained all original golden assertions | codex/costing-join a4bd28f | #184 | 627 focused pass, 0 skip: 60 golden prices + 412 rounding cases; tsc pass | Full checks pending |
+| costing-save-all-or-nothing | Reused one-RPC client and reviewed proposal; preserves machine overrides, rejects fractional pennies, no failed-save fallback or in-memory mutation | codex/costing-join | #184 | Atomic client tests included in 627; stronger failed-save snapshot assertions added | SQL proposal not applied or executed: real database rollback proof blocked by no-application rule |
