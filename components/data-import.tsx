@@ -399,7 +399,7 @@ export function DataImport() {
       {dry && built && (phase === "preview" || phase === "committing" || phase === "failed") ? (
         <section className="space-y-3" aria-label="Check result" data-testid="import-preview">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold text-slate-950">{clean ? "The file is clean" : "The file has problems"}</h2>
+            <h2 className="text-lg font-semibold text-slate-950">{clean ? "The file passed the checks" : "The file has problems"}</h2>
             {dry.large ? <span className="rounded-none bg-slate-900 px-2 py-0.5 text-xs font-medium text-white" data-testid="import-large">Large import</span> : null}
           </div>
           <p className="text-sm text-slate-600">
@@ -452,7 +452,7 @@ export function DataImport() {
               <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={!clean || created === 0 || busy} onClick={() => void confirm()}>
                 {phase === "committing" ? "Importing…" : "Confirm import"}
               </Button>
-              {!clean ? <span className="text-sm text-slate-500">Confirm is available when the check is clean.</span> : null}
+              {!clean ? <span className="text-sm text-slate-500">You can confirm once the file passes the checks.</span> : null}
             </div>
           ) : null}
         </section>

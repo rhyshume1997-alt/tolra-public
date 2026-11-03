@@ -58,8 +58,8 @@ export function EmailTemplateEditor({ templateKey, value, custom, dirty, canEdit
           <Input id={`${id}-subject`} value={value.subject} maxLength={SUBJECT_MAX} readOnly={!canEdit} onChange={(event) => onChange({ ...value, subject: event.target.value.replace(/[\r\n]+/g, " ") })} />
           <label htmlFor={`${id}-body`} className="text-xs font-semibold text-slate-700">Text</label>
           <Textarea id={`${id}-body`} className="min-h-48" value={value.body} maxLength={BODY_MAX} readOnly={!canEdit} onChange={(event) => onChange({ ...value, body: event.target.value })} />
-          <p className="text-xs text-slate-500">Placeholders: {definition.placeholders.map((name) => `{{${name}}}`).join(" ")}</p>
-          {unknown.length ? <p role="alert" className="text-xs text-amber-700">Not a placeholder this e-mail fills in, so it will show as typed: {unknown.map((name) => `{{${name}}}`).join(" ")}</p> : null}
+          <p className="text-xs text-slate-500">Words filled in automatically: {definition.placeholders.map((name) => `{{${name}}}`).join(" ")}</p>
+          {unknown.length ? <p role="alert" className="text-xs text-amber-700">These words are not filled in for this email, so they will stay as typed: {unknown.map((name) => `{{${name}}}`).join(" ")}</p> : null}
           {canEdit ? (
             <div className="flex flex-wrap gap-2">
               <Button className="bg-brand text-brand-ink" disabled={busy || !dirty} onClick={onSave}>{busy ? "Saving..." : "Save"}</Button>

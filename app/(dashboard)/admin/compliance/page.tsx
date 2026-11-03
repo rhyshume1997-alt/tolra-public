@@ -185,7 +185,7 @@ export default function CompliancePage() {
                     <TableHead>User</TableHead>
                     <TableHead>Action</TableHead>
                     <TableHead>Record</TableHead>
-                    <TableHead>Integrity code</TableHead>
+                    <TableHead>Record check code</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -195,7 +195,7 @@ export default function CompliancePage() {
                       <TableCell data-label="User" className="block text-xs md:table-cell">{entry.actor_email || "System"}</TableCell>
                       <TableCell data-label="Action" className="block md:table-cell"><Badge variant="outline">{auditActionLabel(entry.action)}</Badge></TableCell>
                       <TableCell data-label="Record" className="block text-xs md:table-cell">{recordTypeLabel(entry.entity_table)}</TableCell>
-                      <TableCell data-label="Integrity code" className="block whitespace-normal break-all font-mono text-xs md:table-cell">{entry.hash || "Pending"}</TableCell>
+                      <TableCell data-label="Record check code" className="block whitespace-normal break-all font-mono text-xs md:table-cell">{entry.hash || "Pending"}</TableCell>
                     </TableRow>
                   ))}
                   {!filteredEntries.length && !error && !loading ? (

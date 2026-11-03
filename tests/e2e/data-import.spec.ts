@@ -30,11 +30,11 @@ async function check(page: Page) {
   await expect(page.getByTestId("import-preview")).toBeVisible({ timeout: 60_000 });
 }
 
-/** The check says the file is clean; when it does not, the failure carries what the page listed (a problem, or an error), not just a missing heading. */
+/** The check says the file passed the checks; when it does not, the failure carries what the page listed (a problem, or an error), not just a missing heading. */
 async function expectClean(page: Page) {
-  const heading = page.getByRole("heading", { name: /^The file (is clean|has problems)$/ });
+  const heading = page.getByRole("heading", { name: /^The file (passed the checks|has problems)$/ });
   await expect(heading).toBeVisible();
-  if ((await heading.textContent()) !== "The file is clean") {
+  if ((await heading.textContent()) !== "The file passed the checks") {
     const problems = await page.getByTestId("import-problems-line").allTextContents();
     const error = await page.getByTestId("import-error").allTextContents();
     throw new Error(`The check did not come back clean. Problems: ${JSON.stringify(problems)} Error: ${JSON.stringify(error)}`);

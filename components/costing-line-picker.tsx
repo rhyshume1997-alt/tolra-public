@@ -54,7 +54,7 @@ export function CostingLinePicker({ onAdd }: CostingLinePickerProps) {
     try {
       setResult(await calculatePartCost(Number(partId), quantity, marginPct / 100));
     } catch (err) {
-      setCalcError(friendlyError(err, "Calculation failed. Check the quantity and margin and try again."));
+      setCalcError(friendlyError(err, "Couldn't work out the price. Check the quantity and margin, then try again."));
     } finally {
       setCalculating(false);
     }
@@ -74,7 +74,7 @@ export function CostingLinePicker({ onAdd }: CostingLinePickerProps) {
   if (partsError) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-        Costing engine unavailable — enter prices manually. ({partsError})
+        Automatic pricing is unavailable — enter the prices yourself. ({partsError})
       </div>
     );
   }

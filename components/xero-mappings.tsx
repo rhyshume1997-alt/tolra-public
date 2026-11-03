@@ -66,7 +66,7 @@ export function XeroMappings({ connected, unmapped, onChanged }: { connected: bo
   const loadRows = useCallback(async () => {
     if (!supabase) return;
     const { data, error } = await supabase.from("integration_mappings").select("kind, tolra_key, external_code, external_name").eq("provider", "xero");
-    if (error) toast.error(friendlyError(error, "Couldn't load the mappings."));
+    if (error) toast.error(friendlyError(error, "Couldn't load Xero's accounts and VAT rates."));
     else setRows((data ?? []) as MappingRow[]);
   }, []);
 
