@@ -50,7 +50,7 @@ Draft PRs only. No deployment, production SQL, database migration/proposal execu
 | [#244](https://github.com/rhyshume1997-alt/tolra-public/pull/244) | OPEN draft | `codex/u-tolra-demo-seed` → `main` | Five unit tests, typecheck and lint passed; seed plan printed. Writer/database never run. |
 | [#245](https://github.com/rhyshume1997-alt/tolra-public/pull/245) | OPEN draft | `codex/v-reviewer-browser-conditions` → `codex2/n1-n6-browser-checks` | Four provider-mock unit tests, typecheck and lint passed. Ten browser cases skipped cleanly with no database; no browser runtime proof. |
 
-The handover PR itself changes only this file; its number is recorded below after creation.
+[Handover PR #246](https://github.com/rhyshume1997-alt/tolra-public/pull/246) targets main and changes only this file. State: open draft. Validation: inventory/link review and git diff --check; no runtime changes or runtime tests.
 
 ## Priority fixes and exact pushed heads
 
@@ -95,4 +95,4 @@ The rebase kept existing PR targets: #234 targets main; #230 targets the #221 br
 - [x] T — #242 — draft; visual review next.
 - [x] U — #244 — draft, not applied; operator review next.
 - [x] V — #245 — draft, ten browser cases skipped without DB; configured runtime next.
-- [ ] W — this handover PR — draft creation next.
+- [x] W — #246 — draft; reviewer can update the Master Plan from this inventory.
