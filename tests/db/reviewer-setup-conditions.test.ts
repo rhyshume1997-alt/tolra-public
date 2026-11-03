@@ -27,7 +27,9 @@ it('two companies enforce setup admin, staff and support permissions in PostgreS
     const rows=(await db.query('SELECT organization_id FROM public.company_setup_progress')).rows;
     expect(rows.map(r=>r.organization_id)).toEqual(actor.role==='admin'&&!actor.support?[actor.org]:[]);
     const foreign=orgs.find(org=>org!==actor.org)!;
-    expect((await db.query('UPDATE public.company_setup_progress SET completed=false WHERE organization_id=$1',[foreign])).rowCount).toBe(0);
+    await db.query('SAVEPOINT foreign_update');
+    if(actor.support){await expect(db.query('UPDATE public.company_setup_progress SET completed=false WHERE organization_id=$1',[foreign])).rejects.toMatchObject({code:'42501'});await db.query('ROLLBACK TO SAVEPOINT foreign_update');}
+    else expect((await db.query('UPDATE public.company_setup_progress SET completed=false WHERE organization_id=$1',[foreign])).rowCount).toBe(0);
     await db.query('SAVEPOINT denied');
     if(actor.role==='admin'&&!actor.support){
      expect((await db.query("INSERT INTO public.company_setup_progress(organization_id,step,completed) VALUES($1,'people',true)",[actor.org])).rowCount).toBe(1);
