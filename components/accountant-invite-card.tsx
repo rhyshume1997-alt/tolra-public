@@ -145,7 +145,7 @@ export function AccountantInviteCard({ offerXero, onXeroLink }: { offerXero: boo
                   return (
                     <li key={row.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                       <span>{row.email}: {state.label}</span>
-                      {state.open ? <Button variant="outline" size="sm" onClick={() => setRevoke(row.id)} disabled={busy}>Revoke</Button> : null}
+                      {state.open ? <Button variant="outline" size="sm" onClick={() => setRevoke(row.id)} disabled={busy}>Cancel invite</Button> : null}
                     </li>
                   );
                 })}
@@ -156,9 +156,9 @@ export function AccountantInviteCard({ offerXero, onXeroLink }: { offerXero: boo
       </CardContent>
       <ConfirmDialog
         open={revoke !== null}
-        title="Revoke this invite?"
+        title="Cancel this invite?"
         description="The link stops working at once. A person who already joined keeps their access: change it in Settings > Users."
-        confirmLabel="Revoke invite"
+        confirmLabel="Cancel invite"
         onConfirm={confirmRevoke}
         onCancel={() => setRevoke(null)}
       />

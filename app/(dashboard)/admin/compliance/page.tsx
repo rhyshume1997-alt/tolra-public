@@ -119,7 +119,7 @@ export default function CompliancePage() {
           </div>
           <Button className="min-h-11 bg-brand hover:bg-brand-hover" onClick={() => void loadAuditEntries()} disabled={loading}>
             <RefreshCw className="size-4" />
-            Refresh Audit Log
+            Refresh activity log
           </Button>
         </div>
 
@@ -167,7 +167,7 @@ export default function CompliancePage() {
               <FileSearch className="size-5 text-brand" />
               Audit Log
             </CardTitle>
-            <CardDescription>The 25 most recent recorded actions: exports, changes to records and administrative actions.</CardDescription>
+            <CardDescription>The 25 latest actions: exports, changes to records and admin changes.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {error ? (

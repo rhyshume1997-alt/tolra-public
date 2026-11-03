@@ -1333,7 +1333,7 @@ export default function InvoicesPage() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-lg border p-4"><p className="field-label">Invoices Raised</p><p className="mt-2 text-2xl font-bold">{loading ? "—" : trends.raised}</p><p className="mt-1 text-xs text-slate-500" data-testid="raised-caption">{raisedCaption(trendRange.from, trendRange.to)}</p></div>
             <div className="rounded-lg border p-4"><p className="field-label">Paid On Time</p><p className="mt-2 text-2xl font-bold text-green-700" data-testid="paid-on-time">{loading ? "—" : trends.onTime}</p><p className="mt-1 text-xs text-slate-500" data-testid="paid-on-time-note">{loading ? "" : trends.onTimeOf}</p></div>
-            <div className="rounded-lg border p-4"><p className="field-label">Avg Days Late</p><p className="mt-2 text-2xl font-bold text-amber-700">{loading ? "—" : trends.avgLate}</p></div>
+            <div className="rounded-lg border p-4"><p className="field-label">Average days late</p><p className="mt-2 text-2xl font-bold text-amber-700">{loading ? "—" : trends.avgLate}</p></div>
           </div>
         </CardContent>
       </Card>
@@ -1555,7 +1555,7 @@ export default function InvoicesPage() {
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{viewingInvoice ? shownInvoiceRef(viewingInvoice) : ""} invoice details</DialogTitle>
-            <DialogDescription>Full customer invoice record and payment status.</DialogDescription>
+            <DialogDescription>Invoice details and payments received.</DialogDescription>
           </DialogHeader>
           {viewingInvoice ? (
             <div className="space-y-5">
@@ -1599,7 +1599,7 @@ export default function InvoicesPage() {
                     </TableRow>
                     )
                   )) : (
-                    <TableRow><TableCell colSpan={4} className="text-slate-500">{viewError ? "Line items unavailable." : "No line items recorded for this invoice."}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-slate-500">{viewError ? "Couldn't load the invoice lines." : "No line items recorded for this invoice."}</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

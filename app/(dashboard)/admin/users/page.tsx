@@ -323,7 +323,7 @@ export default function UsersPage() {
         setAddOpen(false);
         if (result.existing_login) {
           toast.success(result.message ?? `${add.full_name.trim() || username} already has a ${PRODUCT.name} login, so they were added with their existing password.`);
-          if (result.login_disabled) toast.warning(`Their login is disabled. Contact ${PRODUCT.name} support to re-enable it.`);
+          if (result.login_disabled) toast.warning(`Their login is disabled. Contact ${PRODUCT.name} support to turn it back on.`);
           if (result.admin_mfa_onboarding) toast.info(`${add.full_name.trim() || username}: ${ADMIN_MFA_ONBOARDING_NOTICE}`);
         } else {
           setShown({ who: add.full_name.trim(), signIn: username || add.email.trim(), password: add.password, mustChange: add.mustChange, adminMfa: result.admin_mfa_onboarding === true });
@@ -359,7 +359,7 @@ export default function UsersPage() {
       else if (summary.tone === "partial") toast.warning(summary.text);
       else if (summary.tone === "error") toast.error(summary.text);
       if (results.some((r) => r.admin_mfa_onboarding)) toast.info(`${target.name}: ${ADMIN_MFA_ONBOARDING_NOTICE}`);
-      if (loginDisabled) toast.warning(`Their login is disabled. Contact ${PRODUCT.name} support to re-enable it.`);
+      if (loginDisabled) toast.warning(`Their login is disabled. Contact ${PRODUCT.name} support to turn it back on.`);
       return summary.tone !== "error";
     } catch (err) {
       toast.error(err instanceof Error ? err.message : friendlyError(err));
@@ -439,7 +439,7 @@ export default function UsersPage() {
       try {
         const result = await callApi<{ login_disabled?: boolean; admin_mfa_onboarding?: boolean }>("/api/admin/users", "PATCH", { user_id: user.id, ...patch });
         toast.success(success);
-        if (result.login_disabled) toast.warning(`Their login is disabled. Contact ${PRODUCT.name} support to re-enable it.`);
+        if (result.login_disabled) toast.warning(`Their login is disabled. Contact ${PRODUCT.name} support to turn it back on.`);
         if (result.admin_mfa_onboarding) toast.info(`${user.name}: ${ADMIN_MFA_ONBOARDING_NOTICE}`);
         if (afterSave) await afterSave();
         setEditing(null);
@@ -570,7 +570,7 @@ export default function UsersPage() {
                               <Button variant="outline" size="sm" disabled={saving} onClick={() => {
                                 if (!window.confirm(`Switch off Tolra support access to ${company?.name ?? "this company"}? It ends straight away.`)) return;
                                 patchUser(user, { active: false }, "Support access switched off");
-                              }}>Revoke support access</Button>
+                              }}>Switch off support access</Button>
                             </div>
                           ) : (
                           <div className="flex flex-wrap items-center gap-2 md:justify-end">
