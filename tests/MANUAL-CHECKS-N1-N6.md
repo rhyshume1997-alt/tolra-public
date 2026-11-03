@@ -2,17 +2,17 @@
 
 Use a disposable test copy with fake customers and a test mailbox. Ask Claude Code to prepare it using [the database handoff](BLOCKED-DATABASE-CHECKS.md). These checks have not been run against a database here. Do not connect a real customer's mailbox, accounting account or AI account for these checks.
 
-Have two new test companies, a company admin, an office login and a viewer login. Keep one company's name and a made-up customer name clearly different from the other. Record pass/fail, the company, browser, date and any screenshot beside each item. Stop and report a failure; do not tick it as passed because a different test passed.
+Have two new test companies, Company A and Company B, a company admin for each, an office login, a viewer login and a read-only support login. Rhys also needs his own platform-owner login and authenticator. Keep one company's name and a made-up customer name clearly different from the other. Record pass/fail, the company, browser, date and any screenshot beside each item. Stop and report a failure; do not tick it as passed because a different test passed.
 
-## N1 — paid or unpaid breaks (#218)
+## N1 — paid or unpaid breaks (#218/#235; combined #236)
 
 - [ ] Open Settings as the first company's admin. Find the working-hours and break settings.
-- [ ] Choose unpaid breaks and save. Reload the page: it must still say unpaid.
-- [ ] Record a test day from 09:00 to 17:00 with a 30-minute break. It must count 7 hours 30 minutes of paid work.
-- [ ] Change the company to paid breaks, save and repeat that day. It must count 8 hours of paid work.
+- [ ] In Company A choose paid breaks. In Company B choose unpaid breaks, lunch 30 minutes, break 15 minutes and a six-hour threshold. Save both and reload: the two choices must stay different.
+- [ ] Record the same test day, 09:00 to 17:00, in both companies. Company A must show 8 paid hours. Company B must show 7 hours 15 minutes: its saved rule deducts 45 minutes even if only a 30-minute break was clocked.
+- [ ] Repeat for five working days. Working hours and the clocked timesheet must agree: Company A 40 paid hours, Company B 36 hours 15 minutes. Alternate A, B, B, A in separate tabs and reload; neither choice nor total may follow you between companies.
 - [ ] Check the other company's break choice has not changed. Restore both companies' original settings.
 
-## N2 — choose an AI account (#219 and #224)
+## N2 — choose an AI account (#234, including #232 owner caps)
 
 - [ ] Open Integrations before Rhys enables Tolra AI. There must be no Tolra-provided AI option. Your own-key choice must still work as before.
 - [ ] As an ordinary company admin, try to open the platform controls. You must not be allowed to change Tolra's provider key or global switch.
@@ -24,7 +24,7 @@ Have two new test companies, a company admin, an office login and a viewer login
 - [ ] Turn Tolra AI off for the company. Requests must stop. As Rhys, switch the service off globally: companies must not silently start using their own keys instead.
 - [ ] Try as an office user and a viewer: neither may change the company mode or the platform controls. No saved key may appear in an error.
 
-## N3 — accounting connections (#221)
+## N3 — accounting connections (#221/#230; combined #237)
 
 - [ ] Open Integrations. Find the Xero, Sage cloud and QuickBooks choices. Each must describe its actual connection state.
 - [ ] With no provider app set up, check the screen explains why connecting is unavailable. It must not claim an account is connected.
@@ -66,3 +66,54 @@ Have two new test companies, a company admin, an office login and a viewer login
 
 - [ ] Attach the CI run links, exact pass/fail/skip totals, screenshots and any remaining failures to the draft PRs. Keep database/provider checks marked blocked until their own evidence exists.
 - [ ] Restore the test settings and remove fake data using the test harness. Do not apply production SQL, deploy, merge or add a Ready label as part of this checklist.
+
+
+## P-AI — Rhys sets each company's Tolra-provided AI allowance (#232/#234)
+
+Use fake companies and a mock AI provider. This is Tolra-provided AI, not the company's own-key monthly limit. No real provider key or spending is needed. The default is 1,000p (£10) per company per month; the maximum is 100,000p (£1,000).
+
+- [ ] Sign in as Rhys, pass the authenticator step and open Platform → Company AI limits. Find A and B by name. Their limits, used amounts and reserved amounts must be shown separately.
+- [ ] In “Monthly AI limit for Company A (pence)” enter 1500 and press “Save limit for Company A”. Reload. A must show 1500p (£15); B must keep its previous limit. Change B to 2000p (£20); reload and check A is still 1500p.
+- [ ] Try -1, a fraction of a penny and 100001. Each must be refused, with the saved limits unchanged. Do not raise a limit to get a failing test to pass.
+- [ ] Ask Code to put fake used/reserved amounts into the approved test fixture. Try a limit below that total: it must be refused. Setting the limit equal to used plus reserved must stop further requests, not erase earlier usage.
+- [ ] Sign in as A's company admin, then office, viewer and read-only support. None may open or use Rhys's cap controls. Ask Code to repeat the direct cap request under each identity: it must be refused, leaving both A and B unchanged.
+- [ ] As A's admin change A's company AI mode. B's mode and cap must stay unchanged. Ask Code to submit B's company ID in A's mode request: it must not change B. Switching companies must not reset usage.
+- [ ] On the provider-key screen save only Code's synthetic test key. The box must clear. Reload and visit each company's Integrations screen. Neither the key nor an encrypted copy may appear in the page, status answer, save answer or error answer. Ask Code to inspect the browser responses without copying secrets into evidence.
+- [ ] Ask Code to prepare the near-limit fixture: a 15p allowance remaining and two 10p requests. Start the requests together in two tabs. Only one may reserve/run; the other must get the limit refusal. No overspend, negative reservation or second provider call is allowed. B must remain unchanged.
+- [ ] The two-tab click is not proof of a database race. Ask Code to run the existing `tests/db/tolra-ai-cap-concurrency.test.ts` on the separately approved disposable backend: it holds the ledger lock and uses two independent connections. Attach that result too; until then mark the real race check NOT RUN.
+
+## P-CHASE — approval and uncertain delivery (#233)
+
+Use a fake invoice, fake recipient and mock mailbox. Code must supply clear-success and unknown-delivery responses; never send a real reminder just to test a failure.
+
+- [ ] Open a reminder awaiting approval. Save its exact subject and message in the private test evidence, including paragraphs and punctuation. Approve and send: the mock mailbox must contain that exact text, once.
+- [ ] Review another draft, then edit and save its text before sending. Sending with the old approval must be refused. Review the new text before sending; only the new, exactly approved text may arrive.
+- [ ] With the mock mailbox paused, click Send twice, or use two tabs on the same draft. Release the mock response. There must be one delivered email and one successful send record.
+- [ ] Make the mock mailbox answer “unknown whether delivered”. The draft must become “needs checking”. Reload, double-click again and run the normal reminder check. No second email may be attempted automatically. A person must check the mailbox before any resolution.
+
+## P-ACCOUNTING — encrypted, separate connections (#221/#230/#237)
+
+- [ ] In Company A connect the approved Sage sandbox and QuickBooks sandbox separately. Check that each card names the correct business. Keep Xero's mappings/send checks separate; the new adapters do not send invoices.
+- [ ] Give Code the two fake invoice cases with the same invoice number in different companies/providers. Check each from its own company. The balance must come from that company and provider only; checking Sage must not use a QuickBooks token or business.
+- [ ] As Company B open Integrations and try to check A's invoice. A's connection details and balance must not be returned. Code should also try A's company/tenant/invoice IDs in B's direct request: no crossing is allowed.
+- [ ] Ask Code to inspect only the test database's stored tokens. Every saved/rotated token must be encrypted, not a readable access or refresh token. Decrypting with another company or provider must fail. No token may appear in browser responses or evidence screenshots.
+- [ ] Ask Code to force a fake token refresh and repeat the two-provider checks. Each provider must keep its own rotated tokens. A failed connection check must not mark any invoice paid or silently try the other provider.
+- [ ] Record R's database replay check separately: the corrected 144 preserves 084's body guard. The two reported labour/network DB failures and the full schema replay still need an actual clean disposable-database run; unit passes do not close that condition.
+
+## P-SETUP — progress belongs to that company's own admins (#222/#236)
+
+- [ ] As A's own admin tick one setup step and reload. As B's own admin, that A tick must not appear; ticking B must not change A.
+- [ ] Sign in as office, workshop, viewer and read-only support. None may read A's or B's saved progress rows, even by asking the data endpoint directly. None may insert or update them. Ask Code to record the denied requests. A general help link is not permission to see saved ticks.
+- [ ] Return as each own-company admin. Its saved progress must be unchanged by those attempts. Customers, quotes, jobs and invoices must still contain only that company's own records.
+
+## P-EMAIL — preserve saved wording and permissions (#223/#233/#236)
+
+- [ ] Have Code supply an old saved template with spaces, line breaks and an unknown detail marker. Open it, change nothing and save/reopen. The subject and body must be identical, character for character; the unknown marker stays visible with its warning.
+- [ ] As a read-only identity try typing, adding a detail and saving. The editor must not allow a save. Code must repeat the save request directly and record refusal; hiding a button alone is not proof of permissions.
+- [ ] Changing a saved template must not rewrite an already reviewed draft. Repeat P-CHASE with the draft's own edited subject and body; approval must still apply to the exact text sent.
+
+## Evidence for every reviewer condition
+
+For each section above record: exact tested commit and PR, fake company/role, expected result, actual result, PASS / FAIL / NOT RUN, date, screenshot or log link. Store completed evidence privately. A click checklist, mocked unit test, SQL-file check or collected browser case does not prove a database policy, encrypted storage at runtime, genuine concurrency or real provider behaviour.
+
+No SQL, deployment, provider registration or test data change is performed by this document. The N2/N5 proposals and numbered 144 require their own review before a database owner prepares a disposable test copy. Stop on any failure; keep the reviewer condition open until its own evidence passes.
