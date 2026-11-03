@@ -8,16 +8,16 @@ import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, 
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
 /**
- * POST /api/chase/approve { history_id, subject, body }: "Approve and send" a chase draft from the Approvals queue (migration 138).
+ * POST /api/chase/approve { history_id, subject?, body? }: "Approve and send" a chase draft from the Approvals queue (migration 138).
  * Office and admin of the company only (requireProfile: an admin also needs the second step when required); a support session is refused.
  * Every check is lib/email/chase/approve.ts's. Sends through the company mailer (Microsoft 365, else Resend) in the person's own session;
  * with no mailer set up it answers 409 { status: "no_provider" } and writes nothing (the draft stays for Copy / mail app / Mark as Sent).
  */
 const schema = z.object({
   history_id: z.string().uuid(),
-  subject: z.string().max(200),
-  body: z.string().max(100_000),
-});
+  expected_subject: z.string().max(400),
+  expected_body: z.string().max(100_000),
+}).strict();
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const { data: schedule } = await admin.from("email_schedules").select("timezone").eq("organization_id", profile.organization_id).eq("kind", "invoice_reminder").maybeSingle();
   const zone = (schedule as { timezone?: string } | null)?.timezone || "Europe/London";
   const result = await approveChaseDraft(
-    { organizationId: profile.organization_id, userId: user.id, draftId: parsed.data.history_id, subject: parsed.data.subject, body: parsed.data.body, today: localDate(new Date(), zone) },
+    { organizationId: profile.organization_id, userId: user.id, draftId: parsed.data.history_id, expectedSubject: parsed.data.expected_subject, expectedBody: parsed.data.expected_body, today: localDate(new Date(), zone) },
     {
       db: supabase,
       admin,

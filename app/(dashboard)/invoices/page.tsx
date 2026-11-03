@@ -1561,6 +1561,7 @@ export default function InvoicesPage() {
               </div>
 
               {viewingInvoice.id && viewingInvoice.paymentClaimedAt !== undefined && invoiceLifecycle(viewingInvoice.rawStatus) === "collectible" && hasAnyRole(["admin", "office"]) && !session?.support && !session?.read_only ? <CustomerSaysPaid key={`${viewingInvoice.id}-${viewingInvoice.paymentClaimedAt ?? "none"}`} invoiceId={viewingInvoice.id} invoiceNumber={shownInvoiceRef(viewingInvoice)} paymentToConfirm={!!viewingInvoice.paymentClaimedAt} disabled={saving}
+                confirmationOpensForm
                 confirmationMessage="Record the payment in the form. Chasing stays paused until the payment is saved."
                 onCustomerSaysPaid={async (id) => {
                   if (!supabase) throw new Error("Changes are not available.");
