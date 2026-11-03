@@ -34,11 +34,20 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Start disposable Supabase
         run: npm run test:backend
-      - name: Run the demo seed
+      - name: Mark the disposable database (identity), then run the demo seed
         run: |
+          set -euo pipefail
+          set -a; . ./.env.test.local; set +a
+          case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not a loopback database" >&2; exit 1 ;; esac
+          DEMO_DISPOSABLE_ID="$(cat /proc/sys/kernel/random/uuid)"
+          export DEMO_DISPOSABLE_ID
+          psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 -v disposable_id="$DEMO_DISPOSABLE_ID" -f tests/demo-seed/mark-disposable.sql
           node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database | sed -E 's/(one-time password: ).*/\1[hidden]/'
+          echo "== without the identity id the seed must refuse"
+          if env -u DEMO_DISPOSABLE_ID node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database; then echo "expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
       - name: Second run must refuse (already seeded)
         run: |
+          set -a; . ./.env.test.local; set +a
           if node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database; then echo "expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
       - name: Stop disposable Supabase
         if: always()
