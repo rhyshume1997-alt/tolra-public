@@ -69,3 +69,11 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | --- | --- | --- | --- | --- |
 | manual-checks | Codex | codex/manual-checks | DONE IN PR | #183; 4,986 tests, tsc, eslint pass |
 | costing-check (read-only report) | Codex | claude/costing-in-app unchanged | BLOCKED | #130; engine absent, 60 prices skipped |
+
+## Explicit integration assignment, 3 November
+
+| Job | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| costing-join / costing-save-all-or-nothing | Codex (Rhys explicitly assigned this integration) | codex/costing-join | CLAIMED | — |
+| chase-join-check | Codex (Rhys explicitly assigned this integration) | codex/chase-join | CLAIMED | — |
+| money-edge-tests | Codex | codex/money-edge-tests | CLAIMED | — |
