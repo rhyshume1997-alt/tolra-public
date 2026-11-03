@@ -98,4 +98,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 26 | builder2 | chatgpt2/costing-wiring-atomic | DONE IN DRAFT PR | #155 |
 | 27 | builder2 | chatgpt2/paid-claim-adapter-sender | DONE IN DRAFT PR | #156 |
 | 28a | builder2 | chatgpt2/paid-claim-reconcile | DONE IN DRAFT PR | #157 |
-| 28b | builder2 | chatgpt2/bank-csv-reconcile | DONE IN DRAFT PR | Pending |
+| 28b | builder2 | chatgpt2/bank-csv-reconcile | DONE IN DRAFT PR | #158 |
