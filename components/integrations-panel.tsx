@@ -90,7 +90,7 @@ export function IntegrationsPanel() {
     if (xeroView.connectDisabled) return;
     setBusy(true);
     try {
-      const body = await post("/api/integrations/xero/connect");
+      const body = await post("/api/accounting/xero/connect");
       if (body && typeof body.url === "string") window.location.assign(body.url);
     } finally {
       setBusy(false);
@@ -101,7 +101,7 @@ export function IntegrationsPanel() {
     setConfirmDisconnect(false);
     setBusy(true);
     try {
-      if (await post("/api/integrations/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
+      if (await post("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
       setTest(null);
       await load();
     } finally {
