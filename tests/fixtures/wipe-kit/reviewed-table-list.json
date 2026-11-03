@@ -1,0 +1,570 @@
+{
+  "note": "Sanitized reviewed Y table list: ord/action/public-schema table name only; no IDs, data or credentials. Recheck private source before execution.",
+  "rows": [
+    {
+      "ord": 101,
+      "action": "WIPE",
+      "table": "public.integration_sends"
+    },
+    {
+      "ord": 102,
+      "action": "WIPE",
+      "table": "public.integration_contacts"
+    },
+    {
+      "ord": 103,
+      "action": "WIPE",
+      "table": "public.invoice_queue_events"
+    },
+    {
+      "ord": 104,
+      "action": "WIPE",
+      "table": "public.invoice_credit_allocations"
+    },
+    {
+      "ord": 105,
+      "action": "WIPE",
+      "table": "public.customer_credit_ledger"
+    },
+    {
+      "ord": 106,
+      "action": "WIPE",
+      "table": "public.credit_note_lines"
+    },
+    {
+      "ord": 107,
+      "action": "WIPE",
+      "table": "public.credit_notes"
+    },
+    {
+      "ord": 108,
+      "action": "WIPE",
+      "table": "public.document_attachments"
+    },
+    {
+      "ord": 109,
+      "action": "WIPE",
+      "table": "public.delivery_note_items"
+    },
+    {
+      "ord": 110,
+      "action": "WIPE",
+      "table": "public.delivery_notes"
+    },
+    {
+      "ord": 111,
+      "action": "WIPE",
+      "table": "public.invoice_job_finish_legacy"
+    },
+    {
+      "ord": 112,
+      "action": "WIPE",
+      "table": "public.invoice_notes_legacy"
+    },
+    {
+      "ord": 113,
+      "action": "WIPE",
+      "table": "public.invoice_payments"
+    },
+    {
+      "ord": 114,
+      "action": "WIPE",
+      "table": "public.invoice_reminder_sends"
+    },
+    {
+      "ord": 115,
+      "action": "WIPE",
+      "table": "public.invoice_line_items"
+    },
+    {
+      "ord": 116,
+      "action": "WIPE",
+      "table": "public.invoices"
+    },
+    {
+      "ord": 117,
+      "action": "WIPE",
+      "table": "public.job_flow_events"
+    },
+    {
+      "ord": 118,
+      "action": "WIPE",
+      "table": "public.job_signoffs"
+    },
+    {
+      "ord": 119,
+      "action": "WIPE",
+      "table": "public.job_rework_entry_values"
+    },
+    {
+      "ord": 120,
+      "action": "WIPE",
+      "table": "public.job_rework_entries"
+    },
+    {
+      "ord": 121,
+      "action": "WIPE",
+      "table": "public.job_rework"
+    },
+    {
+      "ord": 122,
+      "action": "WIPE",
+      "table": "public.job_inspections"
+    },
+    {
+      "ord": 123,
+      "action": "WIPE",
+      "table": "public.job_part_logs"
+    },
+    {
+      "ord": 124,
+      "action": "WIPE",
+      "table": "public.job_problems"
+    },
+    {
+      "ord": 125,
+      "action": "WIPE",
+      "table": "public.labour_ops"
+    },
+    {
+      "ord": 126,
+      "action": "WIPE",
+      "table": "public.operator_sessions"
+    },
+    {
+      "ord": 127,
+      "action": "WIPE",
+      "table": "public.paused_ack_ops"
+    },
+    {
+      "ord": 128,
+      "action": "WIPE",
+      "table": "public.machine_run_ops"
+    },
+    {
+      "ord": 129,
+      "action": "WIPE",
+      "table": "public.machine_runs"
+    },
+    {
+      "ord": 130,
+      "action": "WIPE",
+      "table": "public.job_machines"
+    },
+    {
+      "ord": 131,
+      "action": "WIPE",
+      "table": "public.machine_bookings"
+    },
+    {
+      "ord": 132,
+      "action": "WIPE",
+      "table": "public.job_files"
+    },
+    {
+      "ord": 133,
+      "action": "WIPE",
+      "table": "public.job_values"
+    },
+    {
+      "ord": 134,
+      "action": "WIPE",
+      "table": "public.opening_wip"
+    },
+    {
+      "ord": 135,
+      "action": "WIPE",
+      "table": "public.sales_order_line_machines"
+    },
+    {
+      "ord": 136,
+      "action": "WIPE",
+      "table": "public.sales_order_lines"
+    },
+    {
+      "ord": 137,
+      "action": "WIPE",
+      "table": "public.quote_attachments"
+    },
+    {
+      "ord": 138,
+      "action": "WIPE",
+      "table": "public.quote_line_items"
+    },
+    {
+      "ord": 139,
+      "action": "WIPE",
+      "table": "public.inbound_emails"
+    },
+    {
+      "ord": 140,
+      "action": "WIPE",
+      "table": "public.purchase_orders"
+    },
+    {
+      "ord": 141,
+      "action": "WIPE",
+      "table": "public.jobs"
+    },
+    {
+      "ord": 142,
+      "action": "WIPE",
+      "table": "public.sales_orders"
+    },
+    {
+      "ord": 143,
+      "action": "WIPE",
+      "table": "public.quotes"
+    },
+    {
+      "ord": 144,
+      "action": "WIPE",
+      "table": "public.rfqs"
+    },
+    {
+      "ord": 145,
+      "action": "WIPE",
+      "table": "public.email_history"
+    },
+    {
+      "ord": 146,
+      "action": "WIPE",
+      "table": "public.record_archive_state"
+    },
+    {
+      "ord": 147,
+      "action": "WIPE",
+      "table": "public.reopen_requests"
+    },
+    {
+      "ord": 148,
+      "action": "WIPE",
+      "table": "public.overview_owed_snapshots"
+    },
+    {
+      "ord": 149,
+      "action": "WIPE",
+      "table": "public.time_sync_rejections"
+    },
+    {
+      "ord": 150,
+      "action": "WIPE",
+      "table": "public.time_week_approvals"
+    },
+    {
+      "ord": 151,
+      "action": "WIPE",
+      "table": "public.time_day_flag_ops"
+    },
+    {
+      "ord": 152,
+      "action": "WIPE",
+      "table": "public.time_day_flags"
+    },
+    {
+      "ord": 153,
+      "action": "WIPE",
+      "table": "public.clock_in_network_unverified"
+    },
+    {
+      "ord": 154,
+      "action": "WIPE",
+      "table": "public.clock_in_network_refusals"
+    },
+    {
+      "ord": 155,
+      "action": "WIPE",
+      "table": "public.attendance_event_network_ips"
+    },
+    {
+      "ord": 156,
+      "action": "WIPE",
+      "table": "public.attendance_event_networks"
+    },
+    {
+      "ord": 157,
+      "action": "WIPE",
+      "table": "public.attendance_events"
+    },
+    {
+      "ord": 158,
+      "action": "WIPE",
+      "table": "public.import_record_keys"
+    },
+    {
+      "ord": 159,
+      "action": "WIPE",
+      "table": "public.import_batches"
+    },
+    {
+      "ord": 160,
+      "action": "WIPE",
+      "table": "public.import_stage"
+    },
+    {
+      "ord": 161,
+      "action": "WIPE",
+      "table": "public.import_runs"
+    },
+    {
+      "ord": 162,
+      "action": "WIPE",
+      "table": "public.customers"
+    },
+    {
+      "ord": 163,
+      "action": "WIPE",
+      "table": "public.suppliers"
+    },
+    {
+      "ord": 164,
+      "action": "WIPE",
+      "table": "public.ai_helper_requests"
+    },
+    {
+      "ord": 165,
+      "action": "WIPE",
+      "table": "public.ai_helper_usage"
+    },
+    {
+      "ord": 166,
+      "action": "WIPE",
+      "table": "public.organization_invites"
+    },
+    {
+      "ord": 167,
+      "action": "WIPE",
+      "table": "public.integration_oauth_states"
+    },
+    {
+      "ord": 168,
+      "action": "WIPE",
+      "table": "public.integration_connect_invites"
+    },
+    {
+      "ord": 201,
+      "action": "KEEP",
+      "table": "public.organizations"
+    },
+    {
+      "ord": 202,
+      "action": "KEEP",
+      "table": "public.organization_settings"
+    },
+    {
+      "ord": 203,
+      "action": "KEEP",
+      "table": "public.organization_members"
+    },
+    {
+      "ord": 204,
+      "action": "KEEP",
+      "table": "public.user_profiles"
+    },
+    {
+      "ord": 205,
+      "action": "KEEP",
+      "table": "public.user_preferences"
+    },
+    {
+      "ord": 206,
+      "action": "KEEP",
+      "table": "public.doc_counters"
+    },
+    {
+      "ord": 207,
+      "action": "KEEP",
+      "table": "public.time_settings"
+    },
+    {
+      "ord": 208,
+      "action": "KEEP",
+      "table": "public.site_networks"
+    },
+    {
+      "ord": 209,
+      "action": "KEEP",
+      "table": "public.site_network_settings"
+    },
+    {
+      "ord": 210,
+      "action": "KEEP",
+      "table": "public.site_network_ops"
+    },
+    {
+      "ord": 211,
+      "action": "KEEP",
+      "table": "public.site_network_names"
+    },
+    {
+      "ord": 212,
+      "action": "KEEP",
+      "table": "public.site_network_members"
+    },
+    {
+      "ord": 213,
+      "action": "KEEP",
+      "table": "public.clock_in_network_locks"
+    },
+    {
+      "ord": 214,
+      "action": "KEEP",
+      "table": "public.clock_in_network_exemptions"
+    },
+    {
+      "ord": 215,
+      "action": "KEEP",
+      "table": "public.inspector_authorisations"
+    },
+    {
+      "ord": 216,
+      "action": "KEEP",
+      "table": "public.machines"
+    },
+    {
+      "ord": 217,
+      "action": "KEEP",
+      "table": "public.stock"
+    },
+    {
+      "ord": 218,
+      "action": "KEEP",
+      "table": "public.email_templates"
+    },
+    {
+      "ord": 219,
+      "action": "KEEP",
+      "table": "public.email_schedules"
+    },
+    {
+      "ord": 220,
+      "action": "KEEP",
+      "table": "public.email_schedule_runs"
+    },
+    {
+      "ord": 221,
+      "action": "KEEP",
+      "table": "public.timesheet_sends"
+    },
+    {
+      "ord": 222,
+      "action": "KEEP",
+      "table": "public.integration_connections"
+    },
+    {
+      "ord": 223,
+      "action": "KEEP",
+      "table": "public.integration_secrets"
+    },
+    {
+      "ord": 224,
+      "action": "KEEP",
+      "table": "public.integration_oauth_states"
+    },
+    {
+      "ord": 225,
+      "action": "KEEP",
+      "table": "public.integration_mappings"
+    },
+    {
+      "ord": 226,
+      "action": "KEEP",
+      "table": "public.integration_mailbox_sync"
+    },
+    {
+      "ord": 227,
+      "action": "KEEP",
+      "table": "public.integration_app_credentials"
+    },
+    {
+      "ord": 228,
+      "action": "KEEP",
+      "table": "public.mail_poll_state"
+    },
+    {
+      "ord": 229,
+      "action": "KEEP",
+      "table": "public.import_mappings"
+    },
+    {
+      "ord": 230,
+      "action": "KEEP",
+      "table": "public.ai_helper_settings"
+    },
+    {
+      "ord": 231,
+      "action": "KEEP",
+      "table": "public.ai_helper_secrets"
+    },
+    {
+      "ord": 232,
+      "action": "KEEP",
+      "table": "public.bank_holidays"
+    },
+    {
+      "ord": 233,
+      "action": "KEEP",
+      "table": "public.auth_rate_limits"
+    },
+    {
+      "ord": 234,
+      "action": "KEEP",
+      "table": "public.legacy_audit_log"
+    },
+    {
+      "ord": 235,
+      "action": "KEEP",
+      "table": "public.legacy_import_map"
+    },
+    {
+      "ord": 236,
+      "action": "KEEP",
+      "table": "security_audit.org_entry_log"
+    },
+    {
+      "ord": 237,
+      "action": "KEEP",
+      "table": "security_audit.session_company"
+    },
+    {
+      "ord": 238,
+      "action": "KEEP",
+      "table": "security_audit.platform_admins"
+    },
+    {
+      "ord": 239,
+      "action": "KEEP",
+      "table": "security_audit.company_email_sends"
+    },
+    {
+      "ord": 240,
+      "action": "KEEP",
+      "table": "security_audit.email_send_ledger"
+    },
+    {
+      "ord": 241,
+      "action": "KEEP",
+      "table": "security_audit.mail_send_ledger"
+    },
+    {
+      "ord": 242,
+      "action": "KEEP",
+      "table": "security_audit.password_change_tickets"
+    },
+    {
+      "ord": 243,
+      "action": "KEEP",
+      "table": "security_audit.browser_error_alerts"
+    },
+    {
+      "ord": 244,
+      "action": "KEEP",
+      "table": "security_audit.error_alerts"
+    },
+    {
+      "ord": 301,
+      "action": "APPEND",
+      "table": "security_audit.audit_log"
+    }
+  ]
+}

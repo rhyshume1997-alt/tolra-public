@@ -1,19 +1,17 @@
-# Proposed wipe-kit lines — AC
+# Proposed wipe-kit lines — reviewer decision AH
 
-**REVIEW ONLY. Do not run these snippets. Nothing was changed in the private repository and no SQL was executed.**
+**REVIEW ONLY. Nothing here was executed. No private repo was changed.** These snippets are for independent review and a disposable rehearsal, not approval to wipe. Recheck the current private kit against this reviewed table-name/action fixture before editing it. No private IDs, project details, data or secrets appear here.
 
-These are proposed edits to the kit reviewed in Y, not an approved replacement kit. The source is the requested private branch's `28-wipe-jnr-tables.sql` and `28-wipe-jnr.sql`; only public-schema names and proposed logic are reproduced here. No company IDs, project IDs, connection details or secrets are copied. Recheck the current private kit before editing it.
+The reviewer decided: keep chase settings, costing, setup progress and AI controls; wipe **JNR only** chase pauses and sends, preserving approval evidence first. Never change Marpet or another company's rows, logins, settings, numbering or earlier audit history. This replaces AC's earlier KEEP chase_sends proposal.
 
-Assumption: “keep audit history” includes chase approvals and send evidence. That is the safest reading. It deliberately leaves a retention blocker rather than deleting that history to make a wipe pass.
+## 1. Nine missing tables: proposed VALUES rows
 
-## 1. Add the nine missing tables to the single list
-
-The driver, export and check scripts all read `28-wipe-jnr-tables.sql`. Add these **VALUES rows** inside its existing `INSERT INTO b11_list (ord, action, tbl, jnr_rows, export) VALUES`, before the final semicolon. These numbers were unused in the reviewed list. They are fragments, not standalone runnable SQL:
+Add these inside the existing `INSERT INTO b11_list (ord, action, tbl, jnr_rows, export) VALUES`, before its final semicolon. Numbers are unused in the reviewed list. These are fragments, not standalone commands:
 
 ```sql
+(89,  'WIPE', 'public.chase_sends',               'organization_id = {org}', TRUE),
 (90,  'WIPE', 'public.chase_pauses',              'organization_id = {org}', TRUE),
 (245, 'KEEP', 'public.chase_steps',               'organization_id = {org}', TRUE),
-(246, 'KEEP', 'public.chase_sends',               'organization_id = {org}', TRUE),
 (247, 'KEEP', 'public.costing_materials',         'organization_id = {org}', TRUE),
 (248, 'KEEP', 'public.costing_machines',          'organization_id = {org}', TRUE),
 (249, 'KEEP', 'public.costing_defaults',          'organization_id = {org}', TRUE),
@@ -22,67 +20,123 @@ The driver, export and check scripts all read `28-wipe-jnr-tables.sql`. Add thes
 (252, 'KEEP', 'public.ai_helper_tolra_control',   NULL, FALSE),
 ```
 
-| Table | Reason |
-| --- | --- |
-| chase_pauses | Operational pause on JNR's invoice/customer. If deletion is ever approved, remove before those parents; other companies untouched. |
-| chase_steps | Company chase settings, kept. |
-| chase_sends | Approval/send evidence and duplicate-send history, kept. FK blocker below must not be bypassed. |
-| costing_materials / costing_machines / costing_defaults | Company rates and costing settings, kept. |
-| company_setup_progress | Company setup ticks, kept; ordinary staff/support must not gain access. |
-| ai_helper_tolra_companies | Company mode and owner-set cap, kept. |
-| ai_helper_tolra_control | Global control and encrypted key, kept for everyone and NEVER exported. It has no organization_id, so the old unknown-company-table guard would not discover it. |
-
-## 2. Keep AI evidence and usage instead of resetting a cap
-
-Replace the existing 164/165 WIPE rows with these KEEP rows; do not leave both versions in the list:
+The global AI control has no organization_id and is never exported. The unknown-company-table guard alone would miss it. AI request/cost evidence and the spending/reservation ledger must not reset a real allowance: replace existing 164/165 WIPE rows, not duplicate them:
 
 ```sql
 (164, 'KEEP', 'public.ai_helper_requests', 'organization_id = {org}', TRUE),
 (165, 'KEEP', 'public.ai_helper_usage',    'organization_id = {org}', TRUE),
 ```
 
-Requests record decisions/cost evidence. Usage includes reserved/spent money; deleting it can reset a company's monthly allowance accounting. Keep existing `ai_helper_settings`, `ai_helper_secrets` and the new cap/control rows too. Never export secret tables.
+Keep the kit's existing auth users/members/profiles, organizations/settings, time settings, doc_counters, templates/schedules, machines/stock, connections/keys/mappings and immutable audit classifications. Existing operational business email/integration-send rows follow the original kit's classification; chase-linked messages/invoice snapshots must be archived below before any deletion. No earlier immutable audit entry is deleted.
 
-Under the preservation-first reading, also replace the existing operational send-history WIPE rows below with KEEP, rather than silently losing the exact text and send evidence:
+## 2. Proposed protected archive: separate preparation and review
+
+This new table has **no FK into invoices, email_history, chase_sends or another wiped table**. It keeps original IDs/text in the evidence JSON. The sole company FK points to kept organizations. Reviewer must approve/archive DDL separately; do not silently create it in a live wipe. This proposal does not assign or apply a migration.
 
 ```sql
-(101, 'KEEP', 'public.integration_sends', 'organization_id = {org}', TRUE),
-(145, 'KEEP', 'public.email_history',     'organization_id = {org}', TRUE),
+CREATE TABLE security_audit.chase_approval_evidence (
+  organization_id uuid NOT NULL REFERENCES public.organizations(id),
+  chase_send_id uuid NOT NULL,
+  evidence jsonb NOT NULL,
+  evidence_sha256 text NOT NULL CHECK (
+    evidence_sha256 = encode(extensions.digest(
+      convert_to(public.canonical_jsonb(evidence), 'UTF8'), 'sha256'), 'hex')
+  ),
+  archived_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (organization_id, chase_send_id)
+);
+ALTER TABLE security_audit.chase_approval_evidence ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON security_audit.chase_approval_evidence FROM PUBLIC, anon, authenticated, service_role;
+CREATE FUNCTION security_audit.chase_approval_evidence_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog AS $archive_guard$
+BEGIN
+  RAISE EXCEPTION 'Chase approval evidence is immutable';
+END;
+$archive_guard$;
+REVOKE ALL ON FUNCTION security_audit.chase_approval_evidence_immutable() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER chase_approval_evidence_immutable
+BEFORE UPDATE OR DELETE OR TRUNCATE ON security_audit.chase_approval_evidence
+FOR EACH STATEMENT EXECUTE FUNCTION security_audit.chase_approval_evidence_immutable();
 ```
 
-These classifications can expose further kept-child/wiped-parent links. That is a refusal requiring retention review, not a reason to switch off the guard. This report does not authorize deletion of any audit/history table elsewhere in the kit.
-
-## 3. Chase approval FK blocker: refuse before any delete
-
-`chase_sends.invoice_id` is NOT NULL and has `ON DELETE CASCADE` to invoices. Its history IDs use `ON DELETE SET NULL` to email_history. Deleting an invoice first deletes its approval rows; deleting the approval rows first loses history. Deleting email history can change kept approval evidence. **No delete order alone preserves these rows while removing their parents.**
-
-Proposed explanatory guard in the existing driver's DO block, after company identity checks/locks and before the first DELETE or trigger-disable loop. `c_jnr` is the driver's existing verified JNR constant; no new unverified company ID is introduced:
+Register this additional proposed archive as KEEP in the same one-list file (beyond the nine missing tables), so driver/export/check fingerprints cover it. Do not export message contents automatically:
 
 ```sql
-IF to_regclass('public.chase_sends') IS NOT NULL THEN
-  IF EXISTS (
-    SELECT 1 FROM public.chase_sends
-    WHERE organization_id = c_jnr
-  ) THEN
-    RAISE EXCEPTION
-      'REFUSED: JNR chase approval/send history must be retained; review invoice/email retention before wiping. Nothing changed.';
+(253, 'KEEP', 'security_audit.chase_approval_evidence', 'organization_id = {org}', FALSE),
+```
+
+No trigger on this archive is added to the wipe's disable list. Access stays owner-only; no browser SELECT/write policy is introduced. Earlier stored evidence can never be overwritten to make verification pass.
+
+## 3. Archive and verify before protected fingerprints or any delete
+
+Insert the following proposed block **inside the existing wipe transaction, after its verified JNR/project/disconnect/unknown-table/FK checks and table locks, but before section 2 captures protected fingerprints**. The existing c_jnr is its verified JNR constant, not a new argument. Because the archive is KEEP, its newly preserved rows must be captured in the protected baseline after this block, then remain unchanged through deletion. The normal dry mode rolls back the archive and audit appends too.
+
+```sql
+DECLARE
+  c_jnr uuid := (SELECT org_txt::uuid FROM b11_cfg);
+  r record;
+  v_inserted integer;
+BEGIN
+  IF to_regclass('security_audit.chase_approval_evidence') IS NULL THEN
+    RAISE EXCEPTION 'REFUSED: reviewed approval evidence archive is missing. Nothing changed.';
   END IF;
-END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.chase_sends s
+    LEFT JOIN public.invoices i ON i.id = s.invoice_id AND i.organization_id = s.organization_id
+    LEFT JOIN public.email_history d ON d.id = s.draft_history_id AND d.organization_id = s.organization_id
+    LEFT JOIN public.email_history e ON e.id = s.sent_history_id AND e.organization_id = s.organization_id
+    WHERE s.organization_id = c_jnr AND (
+      i.id IS NULL OR
+      (s.status = 'sent' AND (s.sent_history_id IS NULL OR e.id IS NULL)) OR
+      (s.status = 'drafted' AND (s.draft_history_id IS NULL OR d.id IS NULL)) OR
+      (s.draft_history_id IS NOT NULL AND d.id IS NULL) OR
+      (s.sent_history_id IS NOT NULL AND e.id IS NULL)
+    )
+  ) THEN
+    RAISE EXCEPTION 'REFUSED: incomplete or cross-company chase evidence; review before wiping. Nothing changed.';
+  END IF;
+  FOR r IN
+    SELECT s.organization_id, s.id,
+      jsonb_build_object('chase_send', to_jsonb(s), 'invoice', to_jsonb(i),
+                         'draft_email', to_jsonb(d), 'sent_email', to_jsonb(e)) AS evidence
+    FROM public.chase_sends s
+    JOIN public.invoices i ON i.id = s.invoice_id AND i.organization_id = s.organization_id
+    LEFT JOIN public.email_history d ON d.id = s.draft_history_id AND d.organization_id = s.organization_id
+    LEFT JOIN public.email_history e ON e.id = s.sent_history_id AND e.organization_id = s.organization_id
+    WHERE s.organization_id = c_jnr
+    ORDER BY s.id
+  LOOP
+    INSERT INTO security_audit.chase_approval_evidence
+      (organization_id, chase_send_id, evidence, evidence_sha256)
+    VALUES (r.organization_id, r.id, r.evidence,
+      encode(extensions.digest(convert_to(public.canonical_jsonb(r.evidence), 'UTF8'), 'sha256'), 'hex'))
+    ON CONFLICT (organization_id, chase_send_id) DO NOTHING;
+    GET DIAGNOSTICS v_inserted = ROW_COUNT;
+    IF NOT EXISTS (
+      SELECT 1 FROM security_audit.chase_approval_evidence a
+      WHERE a.organization_id = r.organization_id AND a.chase_send_id = r.id
+        AND a.evidence = r.evidence
+        AND a.evidence_sha256 = encode(extensions.digest(
+          convert_to(public.canonical_jsonb(r.evidence), 'UTF8'), 'sha256'), 'hex')
+    ) THEN
+      RAISE EXCEPTION 'REFUSED: archived approval evidence differs. Nothing changed.';
+    END IF;
+    IF v_inserted = 1 THEN
+      PERFORM security_audit.log_named_event(r.organization_id, 'CHASE_EVIDENCE_ARCHIVED',
+        'chase_sends', r.id::text, jsonb_build_object('evidence_sha256',
+          encode(extensions.digest(convert_to(public.canonical_jsonb(r.evidence), 'UTF8'), 'sha256'), 'hex')));
+    END IF;
+  END LOOP;
+END;
 ```
 
-Keep the existing **KEEP-table foreign-key-to-WIPE-table refusal**, even when there are no approval rows: it still detects the structural cascade risk. Do not add a DELETE on chase_sends, disable FK triggers, change the list to dodge the guard, use CASCADE, or update away the invoice/history links.
+This is a nested DECLARE/BEGIN/END block for the driver's existing DO body, not standalone SQL or another DO statement. It belongs in the **same already-open wipe transaction**. Its local c_jnr reads only the already identity-checked b11_cfg; never run it before the driver's hard-coded JNR identity checks. No COMMIT is added. Existing locks must include the KEEP archive and all chase/invoice/email source tables, preventing changes between preservation and deletion. An absent chase schema is a refusal requiring explicit review, not a reason to bypass this block.
 
-Safe sequence for the reviewer:
+Safe deletion order after preservation and fingerprint capture: chase_sends (89) → chase_pauses (90) → the existing invoice/customer/email parent sequence. No FK is disabled or link nulled. Exact approved subject/body, recipient, approval IDs/times, send state (including uncertain draft state), original send/invoice IDs and invoice snapshot live in the immutable archive; the append-only audit chain records its digest. Every source row must match its archive before the driver may delete anything. A mismatch/partial archive aborts the entire transaction.
 
-1. Confirm the same verified JNR identity/project; quiesce writers, senders, mail polling and accounting jobs. Capture the restored-copy baseline and backup/restore evidence.
-2. Classify every table and capture all protected rows. Run the added history guard and the existing unknown-table/KEEP-FK guards **before any delete**. With the present FK design, stop here.
-3. A separately reviewed design must either retain the required invoice/email parent rows, or preserve approvals in an approved immutable archive with a proven audit chain. Neither schema change nor archive SQL is invented in this proposal. Review its effects on every other FK before approving a wipe.
-4. Only after that separate design is proven on the disposable restore can an approved operational wipe use children before parents: JNR chase pauses (90) before invoice/customer rows; opening_wip (existing 134) before jobs; other original child ordering remains. Approval history stays retained. Numbering/logins/settings never reset.
-5. Verify protected fingerprints, every earlier audit row, enabled triggers and every Marpet/other-company row; then test dry rollback and a separately approved commit rehearsal. Do not treat this document as either approval.
+## 4. JNR-only disconnect check for all accounting providers
 
-## 4. Refuse all accounting connections, not Xero alone
-
-Replace the existing driver's Xero-only connected predicate with the following condition inside its existing refusal branch. Use the same condition in the companion check/preflight logic:
+Replace the Xero-only predicate in the driver's existing preflight and companion check with:
 
 ```sql
 EXISTS (
@@ -93,31 +147,10 @@ EXISTS (
 )
 ```
 
-Suggested refusal text:
+Its refusal branch says disconnect JNR's Xero/Sage/QuickBooks first. Do not delete tokens to force it to pass. Keep Microsoft rows but stop mailbox polling/writers for rehearsal. Keep original project/company verification, locks, unknown-table/KEEP→WIPE guards, trigger restoration, earlier-audit hashes and all-other-company fingerprints. Marpet rows are never in either archive or delete scope.
 
-```sql
-RAISE EXCEPTION
-  'REFUSED: disconnect JNR accounting connections (Xero, Sage and QuickBooks) before wiping. Nothing changed.';
-```
+## 5. Review and proof still required
 
-Keep the rows, encrypted tokens, settings and mappings as classified KEEP; do not delete credentials to force this check to pass. Disconnect through the reviewed app flow before capturing the baseline. Stop reconnects/jobs while rehearsing. Microsoft mailbox writes also need quiescing even though this predicate concerns accounting providers.
+The public `tests/fixtures/wipe-kit/reviewed-table-list.json` contains sanitized ord/action/table names from Y, not private data. The unit parser applies these proposed list rows to that reviewed list and rejects duplicate ordinals, changed kept-table classifications, wrong new-table actions, unscoped WIPE rows and bad send-before-parent ordering. It also checks the archive-preserve/verify design. These are static proofs, not database execution.
 
-## 5. Already covered: do not add duplicate rows
-
-- 138 also adds invoice claim fields and template keys: existing invoices and email_templates rows cover them. email_history needs the retention replacement above.
-- 140 source_ref: invoices, quotes, purchase_orders, jobs, sales_orders are already listed. No new table.
-- 141 opening_wip: already listed before jobs. Do not duplicate it.
-- 142 weekdays: email_schedules already KEEP. No new table.
-- 143: the three costing tables are the new KEEP rows above.
-- 144: no new accounting_connections table. Existing integration_connections, integration_secrets, integration_oauth_states and integration_sends hold the accounting data. Keep connections/secrets and non-invite states; existing invite-state cleanup needs its original scoped review. Mappings/app credentials/contact mappings already have classifications. The provider disconnect guard needs extending as above.
-- N5 and N2/cap: use the three new progress/mode/global-control rows plus existing AI settings/request/usage storage described above. In #247 they are post-144 release phases 145 and 146, not baseline migrations; the keeper classifications apply whichever approved packaging installs them.
-
-## Never wipe
-
-Keep auth users/logins, organization memberships/profiles, company settings/branding/hours/break choices, setup progress, templates/schedules, rates, keys/connections/mappings, document counters/numbering, AI controls/caps/usage, approval/send history and all existing audit history. The existing `security_audit.audit_log` remains APPEND only: old entries unchanged, newly audited approved actions may append. Never alter a Marpet row or any other company's row.
-
-Retain the kit's exact-company/project checks, unknown-table guard, table locks, immutable-history checks, trigger restoration checks and protected-row fingerprints. Do not broaden its organization predicate. Export no encrypted credentials or keys. The same list must drive export, dry run, checks and any separately approved execution.
-
-## Evidence still required
-
-This file was reviewed against the public SQL definitions and Y's read-only report. Proposed SQL was parsed as syntax only, never executed. No private repo edits, migrations, wipes, database connections or deployments were performed. The revised kit needs independent review, fresh hashes and disposable restore/rehearsal evidence. The chase history FK issue remains an explicit blocker until that preservation design is settled.
+No private repo touched, SQL applied, archive created, wipe run, connection opened or deploy performed. The reviewer must separately prove archive DDL/permissions/immutability, full evidence equality/digests, inserted audit chain, dry rollback, failed/partial archive rollback, safe FK deletion, and unchanged Marpet/settings/logins/numbering/history on a disposable restored copy before any live decision. Refresh the current kit/table list and reviewed hashes first.
