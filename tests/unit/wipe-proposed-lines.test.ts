@@ -30,3 +30,10 @@ it("uses a numeric-safe stored JSONB digest, never the numbers-forbidden signoff
  expect(source).toContain("convert_to(evidence::text, 'UTF8')");expect(source).toContain("convert_to(r.evidence::text, 'UTF8')");
  expect(source).not.toContain('public.canonical_jsonb(');
 });
+it("refuses unsafe archive grants and checks every source invoice and approval after copying",()=>{
+ expect(source).toContain("archive permissions or append-only guard differ");
+ expect(source).toContain("SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER");
+ expect(source).toContain("i.id IS NULL OR a.chase_send_id IS NULL OR a.evidence IS DISTINCT FROM");
+ expect(source).toContain("REFUSED: approval archive incomplete");
+ expect(source).toContain("SELECT count(*) FROM public.chase_sends WHERE organization_id=c_jnr");
+});

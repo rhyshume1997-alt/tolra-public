@@ -1,4 +1,4 @@
-# Proposed wipe-kit lines — reviewer decision AH
+# Proposed wipe-kit lines : reviewer decision AH
 
 **REVIEW ONLY. Nothing here was executed. No private repo was changed.** These snippets are for independent review and a disposable rehearsal, not approval to wipe. Recheck the current private kit against this reviewed table-name/action fixture before editing it. No private IDs, project details, data or secrets appear here.
 
@@ -80,6 +80,14 @@ BEGIN
   IF to_regclass('security_audit.chase_approval_evidence') IS NULL THEN
     RAISE EXCEPTION 'REFUSED: reviewed approval evidence archive is missing. Nothing changed.';
   END IF;
+  IF EXISTS (SELECT 1 FROM unnest(ARRAY['anon','authenticated','service_role']) AS roles(name)
+    WHERE has_table_privilege(name, 'security_audit.chase_approval_evidence', 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'))
+    OR NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='security_audit.chase_approval_evidence'::regclass AND relrowsecurity)
+    OR NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='security_audit.chase_approval_evidence'::regclass
+      AND tgname='chase_approval_evidence_immutable' AND tgenabled='O'
+      AND tgfoid='security_audit.chase_approval_evidence_immutable()'::regprocedure) THEN
+    RAISE EXCEPTION 'REFUSED: archive permissions or append-only guard differ. Nothing changed.';
+  END IF;
   IF EXISTS (
     SELECT 1 FROM public.chase_sends s
     LEFT JOIN public.invoices i ON i.id = s.invoice_id AND i.organization_id = s.organization_id
@@ -127,6 +135,20 @@ BEGIN
           encode(extensions.digest(convert_to(r.evidence::text, 'UTF8'), 'sha256'), 'hex')));
     END IF;
   END LOOP;
+  -- Count and compare the whole source again under the driver's retained locks.
+  IF (SELECT count(*) FROM public.chase_sends WHERE organization_id=c_jnr) <>
+     (SELECT count(*) FROM public.chase_sends s JOIN security_audit.chase_approval_evidence a
+       ON a.organization_id=s.organization_id AND a.chase_send_id=s.id WHERE s.organization_id=c_jnr)
+     OR EXISTS (
+       SELECT 1 FROM public.chase_sends s
+       LEFT JOIN public.invoices i ON i.id=s.invoice_id AND i.organization_id=s.organization_id
+       LEFT JOIN public.email_history d ON d.id=s.draft_history_id AND d.organization_id=s.organization_id
+       LEFT JOIN public.email_history e ON e.id=s.sent_history_id AND e.organization_id=s.organization_id
+       LEFT JOIN security_audit.chase_approval_evidence a ON a.organization_id=s.organization_id AND a.chase_send_id=s.id
+       WHERE s.organization_id=c_jnr AND (i.id IS NULL OR a.chase_send_id IS NULL OR a.evidence IS DISTINCT FROM
+         jsonb_build_object('chase_send',to_jsonb(s),'invoice',to_jsonb(i),'draft_email',to_jsonb(d),'sent_email',to_jsonb(e))))
+  THEN RAISE EXCEPTION 'REFUSED: approval archive incomplete. Nothing changed.';
+  END IF;
 END;
 ```
 
@@ -156,3 +178,10 @@ The public `tests/fixtures/wipe-kit/reviewed-table-list.json` contains sanitized
 No private repo touched, SQL applied, archive created, wipe run, connection opened or deploy performed. The reviewer must separately prove archive DDL/permissions/immutability, full evidence equality/digests, inserted audit chain, dry rollback, failed/partial archive rollback, safe FK deletion, and unchanged Marpet/settings/logins/numbering/history on a disposable restored copy before any live decision. Refresh the current kit/table list and reviewed hashes first.
 
 AH follow-up assumption: digest the stored JSONB text on the same PostgreSQL engine used for verification. Do not call the job-signoff canonicalizer: it rejects numeric JSON, while invoice and send snapshots contain numbers. Equality of the full JSONB evidence is checked independently of its digest. Cross-version restores must verify both equality and digests before any deletion. The reviewed list is a sanitized public fixture, not a fresh read of the private repo.
+
+
+## 6. Runnable review proofs, not executed here
+
+`tests/db/wipe-archive-review.test.ts` requires the separately reviewed archive DDL and required KEEP schemas already prepared on an identity-verified disposable database. It never installs the archive. Named tests cover API-role permissions, owner append-only refusal, missing invoice, changed approval evidence, suppressed/incomplete copy, atomic rollback, and two-company before/after protection of settings, numbering, logins and old audit history. The SQL harness executes this exact proposed block with only its three source relation names redirected to temporary twins. This permits missing-invoice fixtures without disabling real foreign keys. The archive and permission/immutability checks use the real protected table.
+
+The harness is not the private driver's full wipe: it deletes only synthetic JNR source rows in its temporary tables after verifying the copy. Real source-FK deletion, private driver fingerprints and a restored-copy rehearsal remain separate required proofs. No private repository was read or changed in this follow-up. Missing schemas/credentials must fail the proof, not skip it. These database tests are NOT RUN under the no-SQL rule.
