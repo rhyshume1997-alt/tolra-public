@@ -37,7 +37,7 @@ export function PayrollExport({ week, names }: { week: string; names: PeopleMap 
       const company = (await requireCompanyProfile()).name;
       await exportSpreadsheet(format, payrollFileBase(company, period.start, period.end), PAYROLL_COLUMNS, rows);
       const unapproved = unapprovedCount(rows);
-      if (rows.length && unapproved) toast.warning(`${unapproved} of ${rows.length} person-weeks in this file are not approved (or changed since approval).`);
+      if (rows.length && unapproved) toast.warning(`${unapproved} of ${rows.length} weekly records in this file are not approved (or changed since approval).`);
       if (rows.length) setOpen(false);
     } catch (err) {
       toast.error(friendlyError(err, "Couldn't prepare the payroll export."));

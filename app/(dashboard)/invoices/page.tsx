@@ -1314,7 +1314,7 @@ export default function InvoicesPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><TrendingDown className="size-5 text-amber-600" /> Late Payer Patterns</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><TrendingDown className="size-5 text-amber-600" /> Customers with overdue invoices</CardTitle></CardHeader>
         <CardContent className="grid gap-3 lg:grid-cols-3">
           {loading ? <Skeleton className="h-20" /> : latePayers.length ? latePayers.map((payer) => (
             <div key={payer.customer} className="rounded-lg border border-slate-200 p-4">
@@ -1327,7 +1327,7 @@ export default function InvoicesPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Invoicing Trends</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Invoice figures</CardTitle></CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
           <DateRangeFields from={trendRange.from} to={trendRange.to} onApply={setTrendRange} />
           <div className="grid gap-3 sm:grid-cols-3">

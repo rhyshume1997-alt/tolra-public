@@ -134,7 +134,7 @@ export default function EmailPage() {
                           <Button size="sm" variant="outline" disabled={settling === item.id} onClick={() => void settle(item, "sent")}>It was sent</Button>
                           <Button size="sm" variant="outline" disabled={settling === item.id} onClick={() => void settle(item, "failed")}>It was not sent</Button>
                         </div>
-                      ) : <p className="font-medium">An administrator can settle this.</p>}
+                      ) : <p className="font-medium">An admin can check and record whether it was sent.</p>}
                     </div>
                   ) : null}
                 </TableCell>

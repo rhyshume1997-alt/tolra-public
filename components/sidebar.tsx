@@ -51,7 +51,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: "Sales Pipeline",
+    title: "Sales",
     items: [
       { href: "/rfq", label: "RFQ Control Centre", roles: ["admin", "office"] },
       { href: "/quotes", label: "Quote Generator", roles: ["admin", "office"] },
