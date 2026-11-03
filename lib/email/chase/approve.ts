@@ -75,6 +75,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     db.from("email_schedules").select("recipients").eq("organization_id", org).eq("kind", "invoice_reminder").maybeSingle(),
   ]);
   const customerRows = ((customers ?? []) as Array<{ id: string; name: string; email: string | null }>).filter((c) => lower(c.name) === customerName);
+  if (customerRows.length > 1) return refused(409, "Two customer records use this name. Check them before sending.");
   const customerIds = new Set(customerRows.map((c) => c.id));
   for (const p of (pauses ?? []) as Array<{ invoice_id: string | null; customer_id: string | null; paused_until: string | null }>) {
     if (!pauseActive(p.paused_until, input.today)) continue;
