@@ -16,7 +16,9 @@
     "test:db": "vitest run -c vitest.db.config.ts",
     "test:live": "vitest run -c vitest.live.config.ts",
     "test:e2e": "playwright test",
-    "test:e2e:list": "playwright test --list"
+    "test:e2e:list": "playwright test --list",
+    "validate:pack": "node tests/validation/check-pack.mjs",
+    "validate:evidence": "node tests/validation/run-evidence.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
