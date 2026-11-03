@@ -117,3 +117,20 @@ Use a fake invoice, fake recipient and mock mailbox. Code must supply clear-succ
 For each section above record: exact tested commit and PR, fake company/role, expected result, actual result, PASS / FAIL / NOT RUN, date, screenshot or log link. Store completed evidence privately. A click checklist, mocked unit test, SQL-file check or collected browser case does not prove a database policy, encrypted storage at runtime, genuine concurrency or real provider behaviour.
 
 No SQL, deployment, provider registration or test data change is performed by this document. The N2/N5 proposals and numbered 144 require their own review before a database owner prepares a disposable test copy. Stop on any failure; keep the reviewer condition open until its own evidence passes.
+
+## V — remaining reviewer checks in Playwright
+
+Use the separately prepared disposable application/database described in `tests/e2e/reviewer/README.md`. No database means ten explicit skips, not ten passes. A configured but broken schema or missing feature must fail. Ask Code to run the required-backend command and attach actual results; keep this table NOT RUN until then.
+
+| Case | Plain click/API check and expected result | Pass / Fail / Not run; evidence |
+| --- | --- | --- |
+| V-ACCOUNTING | Connect the two fake providers for A. Saved tokens are encrypted and cannot decrypt for B or the other provider. The correct provider returns its own balance; B sees no A connection/balance. Nothing marks an invoice paid. | NOT RUN; ____ |
+| V-AI-CAPS | Rhys passes MFA, changes A's cap, reloads and checks B stayed unchanged. A's company admin cannot read/write platform caps or change B's AI mode. | NOT RUN; ____ |
+| V-SETUP-SUPPORT | Enter a fake company as read-only support, then request logged write access. Neither support state may see or change its saved setup ticks; the own admin's tick stays. | NOT RUN; ____ |
+| V-CHASE-EDIT | Review a reminder, save an edit, try the old approval and require refusal. Approve the edited text; exactly that subject/message arrives once. | NOT RUN; ____ |
+| V-CHASE-DOUBLE | Start two Sends together. One succeeds, the other refuses; the fake mailbox contains one exact approved email. | NOT RUN; ____ |
+| V-CHASE-UNKNOWN | The fake mailbox receives one email but answers unknown. The draft needs checking; reload and retry three times. No second provider send is allowed. | NOT RUN; ____ |
+| V-INBOUND | Receive fake Paid, Remittance and Payment sent replies through the real intake procedure. Keep evidence, but invoice status, paid amount/date and payment ledger must not change. | NOT RUN; ____ |
+| V-BREAKS | Keep paid and unpaid companies open side by side with the same five eight-hour days. Settings and actual timesheets agree at 40:00 versus 36:15 and stay separate after reload. | NOT RUN; ____ |
+| V-SETUP-ROLES | Office, workshop and viewer try to read/write saved setup rows. Each is refused/gets no rows; the own admin's original tick remains visible and unchanged. | NOT RUN; ____ |
+| V-EMAIL-LEGACY | Reopen old saved wording, spaces and an unknown marker unchanged. Read-only users' direct save requests are refused; stored text stays exact. | NOT RUN; ____ |
