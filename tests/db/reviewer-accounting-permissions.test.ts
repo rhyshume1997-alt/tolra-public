@@ -29,7 +29,7 @@ it('two companies enforce accounting admin, staff and support permissions in Pos
     await db.query('SAVEPOINT secret_read');await expect(db.query('SELECT * FROM public.integration_secrets')).rejects.toMatchObject({code:'42501'});await db.query('ROLLBACK TO SAVEPOINT secret_read');
     for(const provider of ['sage','quickbooks']){
      await db.query('SAVEPOINT oauth');
-     const params=[provider,actor.id.replaceAll('-','').repeat(2),'v1.aaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbb.cccccccccccc'];
+     const params=[provider,randomUUID().replaceAll('-','').repeat(2),'v1.aaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbb.cccccccccccc'];
      if(actor.role==='admin'&&!actor.support)expect((await db.query('SELECT public.integration_oauth_start($1,$2,$3)',params)).rowCount).toBe(1);
      else {await expect(db.query('SELECT public.integration_oauth_start($1,$2,$3)',params)).rejects.toMatchObject({code:'42501'});await db.query('ROLLBACK TO SAVEPOINT oauth');}
     }
