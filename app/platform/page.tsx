@@ -3,6 +3,8 @@
 import { Building2, Plus, ShieldAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { TolraAiControl } from "@/components/platform/tolra-ai-control";
+import { TolraAiCaps } from "@/components/platform/tolra-ai-caps";
 import { AppCredentialsCard } from "@/components/platform/app-credentials-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -212,6 +214,8 @@ export default function PlatformPage() {
         </Dialog>
 
         <AppCredentialsCard />
+        <TolraAiControl />
+        <TolraAiCaps />
 
         <Button variant="ghost" className="mt-6 min-h-11 w-fit text-slate-500" onClick={() => void signOut()}>Sign out</Button>
       </div>

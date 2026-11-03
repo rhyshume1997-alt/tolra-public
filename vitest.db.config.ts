@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
+import ReleaseSequencer from "./tests/support/db-release-sequencer";
 
 // Database suite (audit B1): runs only against the local disposable Supabase (scripts/test-backend.sh).
 export default defineConfig({
@@ -8,6 +9,7 @@ export default defineConfig({
     environment: "node",
     include: ["tests/db/**/*.test.ts"],
     fileParallelism: false,
+    sequence: { sequencer: ReleaseSequencer },
     testTimeout: 60_000,
     hookTimeout: 120_000,
   },

@@ -10,6 +10,7 @@ import { mockProvider } from "@/lib/ai-helper/mock";
 import { type AiFailure, type AiHelperProvider, AiProviderError, type AiUsage } from "@/lib/ai-helper/provider";
 import { decryptSecret } from "@/lib/integrations/crypto";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
+import { TOLRA_AI_KEY_CONTEXT } from "@/lib/ai-helper/tolra-key-context";
 
 /**
  * The model provider this server uses: the company's own Anthropic account, or (AI_HELPER_PROVIDER=mock, tests and local runs only) the
@@ -25,16 +26,17 @@ export type RunOutcome<T> =
   | { kind: "off" }
   | { kind: "cap"; requestId: string }
   | { kind: "no_key"; requestId: string }
-  | { kind: "failed"; failure: AiFailure; detail?: "auth" | "rate" | "key" }
+  | { kind: "failed"; failure: AiFailure; detail?: "auth" | "rate" | "key" | "tolra_key" | "tolra_auth" }
   | { kind: "unavailable" };
 
 /** The person-facing line for every outcome but ok. Nothing was changed in any of them. */
 export function outcomeMessage(outcome: Exclude<RunOutcome<unknown>, { kind: "ok" }>): { status: number; error: string; code: string } {
   switch (outcome.kind) {
     case "off": return { status: 404, error: "The AI helper is off for this company.", code: "off" };
-    case "cap": return { status: 429, error: "This company's AI limit for the month has been reached, so nothing was sent to the AI. An admin can raise the limit in the AI section.", code: "cap" };
+    case "cap": return { status: 429, error: "This company's AI limit for the month has been reached, so nothing was sent to the AI. Try again next month or ask your admin for help.", code: "cap" };
     case "no_key": return { status: 409, error: "No AI key is set for this company. An admin can add the company's own key in the AI section.", code: "no_key" };
     case "failed":
+      if (outcome.detail === "tolra_key" || outcome.detail === "tolra_auth") return { status: 503, error: "The Tolra AI account is not available right now. Ask Tolra to check it or carry on by hand. Nothing was changed.", code: "tolra_key_unavailable" };
       if (outcome.detail === "auth") return { status: 503, error: "The AI service refused this company's key. An admin can check it in the AI section. Nothing was changed.", code: "key_refused" };
       if (outcome.detail === "key") return { status: 503, error: "The company's AI key can't be read on this server. An admin can enter it again in the AI section. Nothing was changed.", code: "key_unreadable" };
       if (outcome.failure === "refused") return { status: 422, error: "The AI declined to read this. Nothing was changed: fill the quote in by hand.", code: "refused" };
@@ -88,7 +90,7 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     console.error("[ai-helper] reserve refused", error.code ?? "error");
     return { kind: "unavailable" };
   }
-  const answer = reserved as { ok?: boolean; reason?: string; request_id?: string } | null;
+  const answer = reserved as { ok?: boolean; reason?: string; request_id?: string; key_source?: "own" | "tolra" } | null;
   if (!answer?.request_id) return { kind: "unavailable" };
   const requestId = answer.request_id;
   if (!answer.ok) return answer.reason === "cap" ? { kind: "cap", requestId } : { kind: "no_key", requestId };
@@ -105,13 +107,20 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
 
   let apiKey: string;
   try {
-    // The reservation passed, so this company has a key: read it for this company only.
-    const { data: secret, error: secretError } = await service.from("ai_helper_secrets").select("api_key_enc").eq("organization_id", input.organizationId).maybeSingle();
-    if (secretError) throw secretError;
-    apiKey = decryptSecret(String((secret as { api_key_enc?: unknown } | null)?.api_key_enc ?? ""), { organizationId: input.organizationId, provider: "anthropic", purpose: "api_key" });
+    if (answer.key_source === "tolra") {
+      // Service-only RPC checks the reserved request, its company and its recorded
+      // source again. No key is read before the caller's atomic cap reservation.
+      const { data: encrypted, error: keyError } = await service.rpc("ai_helper_tolra_key", { p_request: requestId, p_org: input.organizationId });
+      if (keyError) throw keyError;
+      apiKey = decryptSecret(typeof encrypted === "string" ? encrypted : "", TOLRA_AI_KEY_CONTEXT);
+    } else {
+      const { data: secret, error: secretError } = await service.from("ai_helper_secrets").select("api_key_enc").eq("organization_id", input.organizationId).maybeSingle();
+      if (secretError) throw secretError;
+      apiKey = decryptSecret(String((secret as { api_key_enc?: unknown } | null)?.api_key_enc ?? ""), { organizationId: input.organizationId, provider: "anthropic", purpose: "api_key" });
+    }
   } catch {
     await settle("failed", "unavailable", none, null, null);
-    return { kind: "failed", failure: "unavailable", detail: "key" };
+    return { kind: "failed", failure: "unavailable", detail: answer.key_source === "tolra" ? "tolra_key" : "key" };
   }
   const provider = input.provider === undefined ? aiHelperProvider() : input.provider;
   if (!provider) {
@@ -130,7 +139,7 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
     // refused / invalid). Anything else (timeout, 5xx, connection, unknown) may have been billed: settled at the full reservation.
     const certain = err instanceof AiProviderError && (err.rejectedBeforeWork || err.kind !== "unavailable");
     await settle("failed", failure, usage, model, null, certain ? undefined : estimate);
-    return { kind: "failed", failure, detail: err instanceof AiProviderError ? err.detail : undefined };
+    return { kind: "failed", failure, detail: err instanceof AiProviderError ? (answer.key_source === "tolra" && err.detail === "auth" ? "tolra_auth" : err.detail) : undefined };
   }
 
   let checked;

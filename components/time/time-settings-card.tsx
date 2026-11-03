@@ -19,7 +19,7 @@ import { type TimeSettings, DEFAULT_TIME_SETTINGS, settingsFromRow } from "@/lib
  * settings (after N hours, Saturday / Sunday / bank holiday, rate) are hidden: they are not used for any figure, but the database still has
  * them, so they are loaded and saved back unchanged.
  */
-export function TimeSettingsCard() {
+export function TimeSettingsCard({ onSettings }: { onSettings?: (settings: TimeSettings) => void }) {
   const [s, setS] = useState<TimeSettings>(DEFAULT_TIME_SETTINGS);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -42,10 +42,12 @@ export function TimeSettingsCard() {
         setLoadError(friendlyError(error, "Couldn't load the hours settings. Reload the page to try again."));
         return;
       }
-      setS(settingsFromRow(data as Record<string, unknown> | null));
+      const next = settingsFromRow(data as Record<string, unknown> | null);
+      setS(next);
+      onSettings?.(next);
       setLoaded(true);
     })();
-  }, []);
+  }, [onSettings]);
 
   async function save() {
     if (!supabase) return;
@@ -58,7 +60,7 @@ export function TimeSettingsCard() {
     } });
     setSaving(false);
     if (error) toast.error(friendlyError(error, "Couldn't save the hours settings."));
-    else toast.success("Hours settings saved.");
+    else { onSettings?.(s); toast.success("Hours settings saved."); }
   }
 
   const num = (key: keyof TimeSettings, label: string, step = 1, hint?: string) => (

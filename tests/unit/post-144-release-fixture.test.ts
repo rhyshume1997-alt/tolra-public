@@ -1,0 +1,26 @@
+import { expect, it } from "vitest";
+import { preparePost144Fixture } from "../support/post-144-release-fixture";
+import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
+function fixture(initial=false) {
+  const calls:string[]=[];const states=[initial,initial];
+  return { calls, states, verify:async()=>{calls.push("identity");},query:async(sql:string)=>{
+    calls.push(sql);
+    if(sql.includes("-- Post-144 release step 145")) states[0]=true;
+    if(sql.includes("-- Post-144 release step 146")) {expect(states[0]).toBe(true);states[1]=true;}
+    return {rows:states.map((v,i)=>({check:i===0?"post-144 marker 145 company_setup":"post-144 marker 146 tolra_provided_ai",value:v?"applied":"not applied"}))};
+  }};
+}
+it("prepares 145 before 146 only after identity, verifies both and unlocks",async()=>{
+ const f=fixture();await preparePost144Fixture(f);expect(f.calls[0]).toBe("identity");
+ const a=f.calls.findIndex(s=>s.includes("-- Post-144 release step 145")),b=f.calls.findIndex(s=>s.includes("-- Post-144 release step 146"));
+ expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true]);
+});
+it("does not reapply already verified releases",async()=>{const f=fixture(true);await preparePost144Fixture(f);expect(f.calls.some(s=>s.includes("-- Post-144 release step"))).toBe(false);});
+it("does not read or write SQL if backend identity refuses",async()=>{const f=fixture();f.verify=async()=>{throw new Error("foreign company");};await expect(preparePost144Fixture(f)).rejects.toThrow("foreign company");expect(f.calls).toEqual([]);});
+it("fails if preflight is missing and always releases the lock",async()=>{const f=fixture();f.query=async(sql:string)=>{f.calls.push(sql);return {rows:[]};};await expect(preparePost144Fixture(f)).rejects.toThrow("Missing release preflight");expect(f.calls.at(-1)).toContain("pg_advisory_unlock");});
+it("ranks every post-release proof after every baseline file without dropping any",()=>{
+ const baseline=["catalogue","definer-functions","time-labour","workshop-network-128"].map(f=>`/repo/tests/db/${f}.test.ts`);
+ const proofs=post144ProofFiles.map(f=>`/repo/tests/db/${f}`);const files=[...proofs,...baseline];
+ const sorted=files.toSorted((a,b)=>releaseRank(a)-releaseRank(b));expect(sorted).toHaveLength(files.length);
+ expect(sorted.slice(0,baseline.length)).toEqual(baseline);expect(sorted.slice(baseline.length)).toEqual(proofs);
+});

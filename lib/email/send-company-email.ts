@@ -46,7 +46,7 @@ export interface CompanyEmailInput {
 }
 export type CompanyEmailResult =
   | { ok: true; mode: "sent" | "drafted"; provider: "resend" | "microsoft" | "mock" | "none"; providerMessageId?: string; historyId?: string }
-  | { ok: false; error: string; code: "no_provider" | "recipient_refused" | "provider_error" | "rate_limited" | "invalid" };
+  | { ok: false; error: string; uncertain?: boolean; code: "no_provider" | "recipient_refused" | "provider_error" | "rate_limited" | "invalid" };
 
 /** For tests and callers that write the history through their own session (RLS) instead of the service role. */
 export type CompanyEmailDeps = {
@@ -180,8 +180,8 @@ const isMissingFunction = (error: { code?: string } | null) => error?.code === "
 function replayResult(r: Reservation, providerName: "resend" | "microsoft" | "mock" | "none"): CompanyEmailResult {
   if (r.status === "accepted") return { ok: true, mode: "sent", provider: providerName, historyId: r.history_id };
   if (r.status === "drafted") return { ok: true, mode: "drafted", provider: "none", historyId: r.history_id };
-  if (r.status === "sending") return { ok: false, error: "This e-mail is already being sent.", code: "provider_error" };
-  return { ok: false, error: UNKNOWN_OUTCOME_MESSAGE, code: "provider_error" };
+  if (r.status === "sending") return { ok: false, error: "This e-mail is already being sent.", uncertain: true, code: "provider_error" };
+  return { ok: false, error: UNKNOWN_OUTCOME_MESSAGE, uncertain: true, code: "provider_error" };
 }
 
 export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEmailDeps = {}): Promise<CompanyEmailResult> {
@@ -226,10 +226,10 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
 
 function outcomeResult(result: { outcome: string; rateLimited?: boolean; providerMessageId?: string; detail: string }, name: "resend" | "microsoft" | "mock", historyId: string): CompanyEmailResult {
   if (result.outcome === "accepted") return { ok: true, mode: "sent", provider: name, providerMessageId: result.providerMessageId, historyId };
+  if (result.outcome !== "failed") return { ok: false, error: UNKNOWN_OUTCOME_MESSAGE, uncertain: true, code: "provider_error" };
   if (result.rateLimited) return { ok: false, error: "The e-mail service is busy. Wait a minute and try again.", code: "rate_limited" };
   if (result.detail === "attachment_too_large") return { ok: false, error: "The PDF is too large for your Microsoft 365 mailbox (3 MB at most). Use Open in my mail app instead.", code: "invalid" };
-  if (result.outcome === "failed") return { ok: false, error: "The e-mail service refused this e-mail. Check the addresses and try again.", code: "provider_error" };
-  return { ok: false, error: UNKNOWN_OUTCOME_MESSAGE, code: "provider_error" };
+  return { ok: false, error: "The e-mail service refused this e-mail. Check the addresses and try again.", code: "provider_error" };
 }
 
 /** Before 106 is applied: the history row written directly, the outcome recorded on it (no ledger, so no retry guard but Resend's). */
