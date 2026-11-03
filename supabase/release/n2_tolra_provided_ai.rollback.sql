@@ -16,6 +16,8 @@ DROP FUNCTION public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER);
 DROP FUNCTION public.ai_helper_status();
 DROP FUNCTION public.ai_helper_set_tolra_mode(BOOLEAN);
 DROP FUNCTION public.ai_helper_tolra_key(UUID,UUID);
+DROP FUNCTION public.ai_helper_tolra_caps();
+DROP FUNCTION public.ai_helper_tolra_set_cap(UUID,INTEGER,UUID);
 DROP FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID);
 DROP FUNCTION public.ai_helper_tolra_owner_status();
 DROP FUNCTION public._ai_helper_reserve_tolra(TEXT,INTEGER,TEXT,INTEGER);

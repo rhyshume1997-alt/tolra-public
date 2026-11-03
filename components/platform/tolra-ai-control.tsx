@@ -30,7 +30,7 @@ export function TolraAiControl() {
     finally {setBusy(false);}
   }
   return <Card><CardHeader><CardTitle>Tolra-provided AI</CardTitle></CardHeader><CardContent className="space-y-3">
-    <p className="text-sm">Off until you add your provider key and switch it on. Companies then choose on or off, with a £10 monthly allowance each. The existing server AI switch must also be on.</p>
+    <p className="text-sm">Off until you add your provider key and switch it on. Companies then choose on or off. Each starts with a £10 monthly allowance; set individual limits below, up to £1,000. The existing server AI switch must also be on.</p>
     {status && <><p>{status.enabled?"On":"Off"}. {status.key_set?"A provider key is saved. It is never shown again.":"No provider key saved."}</p>
     <label className="grid gap-1 text-sm">{status.key_set?"Replacement Anthropic key":"Anthropic key"}<Input aria-label="Tolra Anthropic key" type="password" autoComplete="new-password" value={key} onChange={e=>setKey(e.target.value)} disabled={busy}/></label>
     <div className="flex gap-2"><Button disabled={busy||(!status.key_set&&!key.trim())} onClick={()=>void save(true)}>Switch on{key.trim()?" and save key":""}</Button><Button variant="outline" disabled={busy} onClick={()=>void save(false)}>Switch off</Button></div></>}
