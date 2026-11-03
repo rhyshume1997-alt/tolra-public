@@ -91,3 +91,9 @@ describe("Approve and send refuses", () => {
     expect((await approve()).status).toBe("sent");
   });
 });
+
+ it("refuses a stale reviewed snapshot before a provider call or send", async () => {
+  const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Earlier subject", expectedBody: "Earlier text" }, { db: db as never, admin: admin as never, provider: vi.fn(), send, allowlisted: () => false });
+  expect(out).toMatchObject({ status: "refused", http: 409 });
+  expect(send).not.toHaveBeenCalled(); expect(db.log).toEqual([]);
+ });
