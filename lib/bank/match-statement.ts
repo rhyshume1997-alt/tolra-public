@@ -18,6 +18,7 @@ function splitCsv(csv: string): string[][] {
       row = [];
     } else field += char;
   }
+  if (quoted) throw new Error("Unclosed CSV quote");
   row.push(field);
   if (row.some(value => value.trim())) rows.push(row);
   return rows;
@@ -30,8 +31,16 @@ function parseDate(value: string): string | null {
   if (match) [, year, month, day] = match.map(Number);
   else {
     match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(text);
-    if (!match) return null;
-    [, day, month, year] = match.map(Number);
+    if (match) [, day, month, year] = match.map(Number);
+    else {
+      const named = /^(\d{1,2})[ -]([A-Za-z]{3,9})[ -](\d{4})$/.exec(text);
+      if (!named) return null;
+      const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+      const name = named[2].toLowerCase();
+      month = months.findIndex(m => name === m || name === m.slice(0, 3)) + 1;
+      if (!month) return null;
+      day = Number(named[1]); year = Number(named[3]);
+    }
   }
   const result = new Date(Date.UTC(year, month - 1, day));
   if (result.getUTCFullYear() !== year || result.getUTCMonth() !== month - 1 || result.getUTCDate() !== day) return null;
@@ -39,11 +48,11 @@ function parseDate(value: string): string | null {
 }
 
 function parsePence(value: string): number | null {
-  const clean = value.trim().replace(/[£,\s]/g, '');
+  const clean = value.trim();
   if (!clean) return 0;
-  const match = /^([+-]?)(\d+)(?:\.(\d{1,2}))?$/.exec(clean);
+  const match = /^([+-]?)(?:£\s*)?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?$/.exec(clean);
   if (!match) return null;
-  const pounds = Number(match[2]);
+  const pounds = Number(match[2].replaceAll(',', ''));
   const pennies = Number((match[3] ?? '').padEnd(2, '0'));
   const amount = pounds * 100 + pennies;
   if (!Number.isSafeInteger(amount)) return null;
@@ -58,24 +67,29 @@ export function parseStatementCsv(csv: string): { lines: BankLine[]; errors: str
     const rows = splitCsv(typeof csv === 'string' ? csv.replace(/^\uFEFF/, '') : '');
     const aliases = {
       date: ['date', 'transactiondate', 'valuedate', 'posteddate'],
-      description: ['description', 'details', 'narrative', 'reference', 'transactiondescription', 'transactiondetails'],
-      amount: ['amount', 'transactionamount'],
-      credit: ['paidin', 'credit', 'moneyin', 'deposit'],
-      debit: ['paidout', 'debit', 'moneyout', 'withdrawal'],
+      description: ['description', 'details', 'narrative', 'reference', 'transactiondescription', 'transactiondetails', 'memo', 'counterparty', 'name', 'notesandtags'],
+      amount: ['amount', 'transactionamount', 'value', 'amountgbp'],
+      credit: ['paidin', 'credit', 'moneyin', 'deposit', 'creditamount'],
+      debit: ['paidout', 'debit', 'moneyout', 'withdrawal', 'debitamount'],
     };
     const indexOf = (row: string[], type: keyof typeof aliases) => row.findIndex(header => aliases[type].includes(key(header)));
     const headerAt = rows.findIndex(row => indexOf(row, 'date') >= 0 && indexOf(row, 'description') >= 0 &&
       (indexOf(row, 'amount') >= 0 || indexOf(row, 'credit') >= 0 || indexOf(row, 'debit') >= 0));
     if (headerAt < 0) return { lines, errors: ['No recognised bank statement header'] };
     const header = rows[headerAt];
-    const dateCol = indexOf(header, 'date'), descCol = indexOf(header, 'description');
+    const dateCol = indexOf(header, 'date');
+    const descCols = header.map((h, i) => aliases.description.includes(key(h)) ? i : -1).filter(i => i >= 0);
+    const currencyCol = header.findIndex(h => key(h) === 'currency');
     const amountCol = indexOf(header, 'amount'), creditCol = indexOf(header, 'credit'), debitCol = indexOf(header, 'debit');
     rows.slice(headerAt + 1).forEach((row, i) => {
       const date = parseDate(row[dateCol] ?? '');
-      const description = (row[descCol] ?? '').trim();
+      const description = [...new Set(descCols.map(col => (row[col] ?? '').trim()).filter(Boolean))].join(' · ');
       const money = amountCol >= 0 ? parsePence(row[amountCol] ?? '') : parsePence(row[creditCol] ?? '');
       const debit = amountCol < 0 && debitCol >= 0 ? parsePence(row[debitCol] ?? '') : 0;
-      if (row.length !== header.length || !date || !description || money === null || debit === null) {
+      if (row.length !== header.length || !date || !description || money === null || debit === null ||
+          (amountCol >= 0 && !(row[amountCol] ?? '').trim()) ||
+          (amountCol < 0 && (!(row[creditCol] ?? '').trim() && !(row[debitCol] ?? '').trim() || money < 0 || money !== 0 && debit !== 0)) ||
+          (currencyCol >= 0 && (row[currencyCol] ?? '').trim().toUpperCase() !== 'GBP')) {
         errors.push('Row ' + (headerAt + i + 2) + ': invalid date, description or amount');
         return;
       }
