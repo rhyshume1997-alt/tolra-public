@@ -18,7 +18,7 @@ const NAMED_FIELDS = [
   "Email",
   "Website",
   "Sign-in tagline",
-  "Eyebrow line (dark style)",
+  "Small heading (dark style)",
   "Default quote terms",
   "Default invoice terms",
 ] as const;
