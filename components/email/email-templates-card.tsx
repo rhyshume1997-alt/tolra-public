@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FileText } from "lucide-react";
 
+import { TemplateDetailField } from "@/components/email/template-detail-field";
+import { emailSections, sectionsBody, type EmailSections } from "@/lib/email/templates/editor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   BODY_MAX, DEFAULT_TEMPLATES, SAMPLE_VARS, SUBJECT_MAX, TEMPLATE_KEYS, type TemplateKey, type TemplateText, renderTemplate, unknownPlaceholders,
 } from "@/lib/email/templates/defaults";
@@ -45,6 +45,23 @@ export function EmailTemplateEditor({ templateKey, value, custom, dirty, canEdit
   const preview = renderTemplate(templateKey, SAMPLE_VARS, value);
   const unknown = unknownPlaceholders(`${value.subject}\n${value.body}`);
   const id = `email-template-${templateKey}`;
+  // Split old saved text only on load/reset. Re-parsing every keystroke would move a
+  // half-written greeting or sign-off into the main message.
+  const [sections, setSections] = useState(() => emailSections(value.body));
+  const ownBody = useRef(value.body);
+  useEffect(() => {
+    if (value.body !== ownBody.current) {
+      ownBody.current = value.body;
+      setSections(emailSections(value.body));
+    }
+  }, [value.body]);
+  function editSection(section: keyof EmailSections, text: string) {
+    const next = { ...sections, [section]: text };
+    const body = sectionsBody(next);
+    ownBody.current = body;
+    setSections(next);
+    onChange({ ...value, body });
+  }
   return (
     <section className="rounded-lg border p-4" aria-labelledby={`${id}-title`} data-testid={id}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -54,11 +71,11 @@ export function EmailTemplateEditor({ templateKey, value, custom, dirty, canEdit
       <p className="mt-1 text-xs text-slate-500">{definition.usedFor}</p>
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
         <div className="grid content-start gap-2">
-          <label htmlFor={`${id}-subject`} className="text-xs font-semibold text-slate-700">Subject</label>
-          <Input id={`${id}-subject`} value={value.subject} maxLength={SUBJECT_MAX} readOnly={!canEdit} onChange={(event) => onChange({ ...value, subject: event.target.value.replace(/[\r\n]+/g, " ") })} />
-          <label htmlFor={`${id}-body`} className="text-xs font-semibold text-slate-700">Text</label>
-          <Textarea id={`${id}-body`} className="min-h-48" value={value.body} maxLength={BODY_MAX} readOnly={!canEdit} onChange={(event) => onChange({ ...value, body: event.target.value })} />
-          <p className="text-xs text-slate-500">Placeholders: {definition.placeholders.map((name) => `{{${name}}}`).join(" ")}</p>
+          <TemplateDetailField id={`${id}-subject`} label="Subject line" hint="The short heading people see in their inbox." value={value.subject} singleLine allowed={definition.placeholders} readOnly={!canEdit || busy} onChange={subject=>onChange({...value,subject})} />
+          <TemplateDetailField id={`${id}-greeting`} label="Greeting" hint="How you say hello. Add a customer or contact name with Add detail." value={sections.greeting} allowed={definition.placeholders} readOnly={!canEdit || busy} onChange={text=>editSection("greeting",text)} />
+          <TemplateDetailField id={`${id}-body`} label="Main message" hint="What you want to say. Use Add detail for the amount, due date, document number or job." value={sections.message} allowed={definition.placeholders} readOnly={!canEdit || busy} onChange={text=>editSection("message",text)} />
+          <TemplateDetailField id={`${id}-signoff`} label="Sign-off" hint="How you finish the email, including your company name if you want it." value={sections.signoff} allowed={definition.placeholders} readOnly={!canEdit || busy} onChange={text=>editSection("signoff",text)} />
+          <p className="text-xs text-slate-500">Subject: {value.subject.length} of {SUBJECT_MAX} characters. Message: {value.body.length} of {BODY_MAX} characters.</p>
           {unknown.length ? <p role="alert" className="text-xs text-amber-700">Not a placeholder this e-mail fills in, so it will show as typed: {unknown.map((name) => `{{${name}}}`).join(" ")}</p> : null}
           {canEdit ? (
             <div className="flex flex-wrap gap-2">
@@ -153,7 +170,7 @@ export function EmailTemplatesCard() {
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-5 text-brand-accent" /> Email templates</CardTitle></CardHeader>
       <CardContent className="space-y-4 text-sm">
-        <p className="text-slate-600">The text of each e-mail the app prepares. Words in double curly brackets, like {"{{document_number}}"}, are filled in for each e-mail. The preview shows example details as you type.</p>
+        <p className="text-slate-600">Write each part in its own box. Use Add detail to insert names, amounts and dates without typing markers. The preview shows example details as you type. Saved templates keep the same format and still need approval before sending when approval is required.</p>
         <EmailTemplatesBody state={state} canEdit={canEdit} overrides={overrides} drafts={drafts} busyKey={busyKey}
           onChange={(key, next) => setDrafts((current) => ({ ...current, [key]: next }))} onSave={(key) => void save(key)} onReset={(key) => void reset(key)} />
       </CardContent>
