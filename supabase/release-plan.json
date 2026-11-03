@@ -20,13 +20,19 @@
       "rollback": "supabase/release/146_tolra_provided_ai.rollback.sql",
       "verify": "supabase/verify/tolra_provided_ai_146.sql",
       "marker": "post-144 marker 146 tolra_provided_ai"
+    },
+    {
+      "number": 147,
+      "after": "146",
+      "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
+      "release": "supabase/release/147_chase_settings_atomic.release.sql",
+      "rollback": "supabase/release/147_chase_settings_atomic.rollback.sql",
+      "verify": "supabase/verify/chase_settings_atomic_147.sql",
+      "marker": "post-144 marker 147 chase_settings_atomic",
+      "checksums": "supabase/release/147_chase_settings_atomic.checksums.json"
     }
   ],
   "other_proposals": [
-    {
-      "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
-      "disposition": "separate chase settings release decision; requires 138; browser fixture is not production packaging"
-    },
     {
       "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
       "disposition": "deferred: requires costing 143, absent from this candidate"

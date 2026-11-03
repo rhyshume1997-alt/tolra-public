@@ -209,7 +209,7 @@ proposal_files(file, disposition) AS (
   VALUES
     ('supabase/proposals/n5_company_setup.sql', 'post-144 release 145; apply only after 144'),
     ('supabase/proposals/n2_tolra_provided_ai.sql', 'post-144 release 146; apply only after 145'),
-    ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
+    ('supabase/proposals/builder2_chase_settings_atomic.sql', 'post-144 release 147; requires verified 138; ordered after 146; no costing'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'deferred: requires costing 143, absent from this candidate'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
 ),
@@ -247,7 +247,12 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_assistant_own_key(integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(prosrc,'\s','','g')) = '3ef44c838451b46ea14030164d9b1384')
       AND NOT has_function_privilege('authenticated', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')
-      AND has_function_privilege('service_role', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')), FALSE))
+      AND has_function_privilege('service_role', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 147 chase_settings_atomic', coalesce((SELECT md5(regexp_replace(prosrc,'\s','','g'))='63145f3026fdc7db5dc1ba0a5928177a' AND NOT prosecdef AND proconfig=ARRAY['search_path=pg_catalog, public'] AND prorettype='jsonb'::regtype AND provolatile='v'
+       AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid=to_regclass('public.chase_steps')),false)
+       AND has_function_privilege('authenticated',oid,'EXECUTE') AND NOT has_function_privilege('anon',oid,'EXECUTE') AND NOT has_function_privilege('service_role',oid,'EXECUTE')
+       AND NOT EXISTS(SELECT 1 FROM aclexplode(proacl) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE')
+       FROM pg_proc WHERE oid=to_regprocedure('public.save_chase_steps_atomic(uuid,jsonb,jsonb)')),false))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -556,7 +561,7 @@ checks(n, check_name, value, expected) AS (
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
-    'One-time post-144 phase: 145 N5 before 146 N2; both applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+    'One-time post-144 order: 145 N5, 146 N2, then separately reviewed 147 chase settings. Costing 143 is absent; no costing atomic release. Baseline replay first.' FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )

@@ -1,0 +1,14 @@
+{
+  "reviewOnly": true,
+  "function": "public.save_chase_steps_atomic(uuid,jsonb,jsonb)",
+  "bodyMd5WithoutWhitespace": "63145f3026fdc7db5dc1ba0a5928177a",
+  "sha256": {
+    "supabase/proposals/builder2_chase_settings_atomic.sql": "bcd576c013c50a3fb0348eee3b09674b67f4307251390df13d52347907f2f606",
+    "supabase/release/147_chase_settings_atomic.release.sql": "156dc0dd871068243fd559f8080b4979a5e22420f61dee6e076a493e75b06659",
+    "supabase/release/147_chase_settings_atomic.rollback.sql": "beb54acb23672a1ed40936c3fef442e3961eb2e06af6ee583d9e928edcd2409b",
+    "supabase/verify/chase_settings_atomic_147.sql": "5b48a9e77f0155007919ba4a55b03c34dddbdce0d7b641a266c0ca58eed6f770",
+    "supabase/verify/chase_steps_138.sql": "3ca0475b3b7d6673ce9ed29f2dc4613799cfe53e57c0b36c4d84f7349e88c95d",
+    "supabase/verify/release_preflight.sql": "febf54b14957ad97d1c9dc9e75f8bb07da82e0b11df98ce7f3630e6e5eed478e",
+    "supabase/release-plan.json": "3fc1cd1d48038d5d67d4c501e312a718e2df9838d12666245a5380b6a379b87d"
+  }
+}
