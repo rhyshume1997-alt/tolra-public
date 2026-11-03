@@ -1,0 +1,1664 @@
+{
+  "shared": {
+    "components/bank/bank-check.tsx": [
+      116,
+      139
+    ],
+    "components/chase/approval-card.tsx": [
+      112,
+      132,
+      139
+    ],
+    "components/chase/connected-settings.tsx": [
+      132,
+      134
+    ],
+    "components/chase/customer-says-paid.tsx": [
+      113,
+      132,
+      139
+    ],
+    "components/chase/settings-card.tsx": [
+      111,
+      132,
+      134,
+      139
+    ],
+    "components/costing/connected-costing.tsx": [
+      123,
+      139
+    ],
+    "components/costing/costing-rates-editor.tsx": [
+      110,
+      123,
+      139
+    ],
+    "components/costing/price-this-part.tsx": [
+      110,
+      123,
+      135,
+      139
+    ],
+    "components/costing/types.ts": [
+      110,
+      123
+    ],
+    "docs/BUILDER2-FULL-SUITE-FAILURES.md": [
+      142,
+      143
+    ],
+    "docs/BUILDER2-FULL-SUITE-RESULTS.json": [
+      142,
+      143
+    ],
+    "docs/BUILDER2-FULL-SUITE-RUN.md": [
+      142,
+      143
+    ],
+    "docs/BUILDER2-PR-REVIEW.md": [
+      135,
+      143
+    ],
+    "docs/CHATGPT-BUILD-HANDOVER-2.md": [
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      140,
+      141,
+      142,
+      143
+    ],
+    "docs/TOLRA-CODEX-BUILD-HANDOVER.md": [
+      130,
+      131
+    ],
+    "docs/TOLRA-WORK-OWNERSHIP.md": [
+      130,
+      131,
+      132,
+      133,
+      134,
+      135,
+      136,
+      137,
+      138,
+      139,
+      140,
+      141,
+      142,
+      143
+    ],
+    "docs/staff-walkthrough.md": [
+      115,
+      139
+    ],
+    "lib/bank/match-statement.ts": [
+      109,
+      116,
+      131,
+      136,
+      139
+    ],
+    "lib/chase/paid-claim.ts": [
+      107,
+      117,
+      137
+    ],
+    "lib/chase/steps.ts": [
+      108,
+      118
+    ],
+    "lib/costing/engine.ts": [
+      110,
+      123
+    ],
+    "package-lock.json": [
+      111,
+      112,
+      113
+    ],
+    "package.json": [
+      111,
+      112,
+      113
+    ],
+    "tests/support/optional-backend.ts": [
+      134,
+      140
+    ],
+    "tests/unit/bank-match-statement.test.ts": [
+      109,
+      131
+    ],
+    "tests/unit/costing-ui.test.ts": [
+      110,
+      139
+    ]
+  },
+  "conflicts": [
+    {
+      "a": 143,
+      "b": 142,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 141,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 140,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 139,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 138,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 137,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 135,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 143,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 141,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 140,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 139,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 138,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 137,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 135,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 142,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 140,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 139,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 138,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 137,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 135,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 134,
+      "messages": [
+        "CONFLICT (content): Merge conflict in components/email-schedules/settings-card.tsx",
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 132,
+      "messages": [
+        "CONFLICT (content): Merge conflict in components/email-schedules/settings-card.tsx",
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 141,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 138,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 137,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx",
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx",
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx",
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx",
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 121,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/costing/costing-rates-editor.tsx",
+        "CONFLICT (add/add): Merge conflict in components/costing/price-this-part.tsx",
+        "CONFLICT (add/add): Merge conflict in lib/costing/engine.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-ui.test.ts"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 120,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 116,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/bank/bank-check.tsx",
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 115,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/staff-walkthrough.md"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 113,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 111,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 110,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/costing/costing-rates-editor.tsx",
+        "CONFLICT (add/add): Merge conflict in components/costing/price-this-part.tsx",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-ui.test.ts"
+      ]
+    },
+    {
+      "a": 140,
+      "b": 109,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 138,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 137,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx",
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx",
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx",
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx",
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 121,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/costing/costing-rates-editor.tsx",
+        "CONFLICT (add/add): Merge conflict in components/costing/price-this-part.tsx",
+        "CONFLICT (add/add): Merge conflict in lib/costing/engine.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-ui.test.ts"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 120,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 116,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/bank/bank-check.tsx",
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 115,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/staff-walkthrough.md"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 113,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 111,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 110,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/costing/costing-rates-editor.tsx",
+        "CONFLICT (add/add): Merge conflict in components/costing/price-this-part.tsx",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-ui.test.ts"
+      ]
+    },
+    {
+      "a": 139,
+      "b": 109,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 137,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 135,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 138,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 136,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 135,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 137,
+      "b": 117,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/chase/paid-claim.ts"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 135,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 136,
+      "b": 116,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 134,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md",
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 121,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/costing/price-this-part.tsx",
+        "CONFLICT (add/add): Merge conflict in lib/costing/engine.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts"
+      ]
+    },
+    {
+      "a": 135,
+      "b": 110,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/costing/price-this-part.tsx",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 133,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 118,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/chase/steps.ts"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 113,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx"
+      ]
+    },
+    {
+      "a": 134,
+      "b": 111,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/settings-card.tsx"
+      ]
+    },
+    {
+      "a": 133,
+      "b": 132,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 133,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 133,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 133,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 132,
+      "b": 131,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 132,
+      "b": 130,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "a": 132,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 132,
+      "b": 118,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/chase/steps.ts"
+      ]
+    },
+    {
+      "a": 132,
+      "b": 113,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in components/chase/customer-says-paid.tsx"
+      ]
+    },
+    {
+      "a": 131,
+      "b": 116,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/bank/match-statement.ts"
+      ]
+    },
+    {
+      "a": 130,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 125,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 124,
+      "b": 123,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 122,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 121,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/costing/engine.ts",
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 118,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 117,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 116,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 115,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 114,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 113,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 112,
+      "messages": [
+        "CONFLICT (content): Merge conflict in supabase/verify/release_preflight.sql"
+      ]
+    },
+    {
+      "a": 123,
+      "b": 110,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in tests/unit/costing-golden.test.ts"
+      ]
+    },
+    {
+      "a": 119,
+      "b": 118,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/chase/steps.ts"
+      ]
+    },
+    {
+      "a": 118,
+      "b": 108,
+      "messages": [
+        "CONFLICT (add/add): Merge conflict in lib/chase/steps.ts"
+      ]
+    }
+  ],
+  "inventory": [
+    {
+      "n": 143,
+      "h": "chatgpt2/final-handover",
+      "b": "main",
+      "s": "60250211e24589ec984213c05dbd0611e97b4853",
+      "title": "Complete builder 2 ownership tracker and integration handover",
+      "files": [
+        "docs/BUILDER2-FULL-SUITE-FAILURES.md",
+        "docs/BUILDER2-FULL-SUITE-RESULTS.json",
+        "docs/BUILDER2-FULL-SUITE-RUN.md",
+        "docs/BUILDER2-INTEGRATION-HANDOVER.md",
+        "docs/BUILDER2-PR-REVIEW.md",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "n": 142,
+      "h": "chatgpt2/full-suite-run",
+      "b": "main",
+      "s": "dfcb5e4a99d032e8b6e46db968e999610a3ae01f",
+      "title": "Record blocked whole-suite matrix with exact commits and failure evidence",
+      "files": [
+        "docs/BUILDER2-FULL-SUITE-FAILURES.md",
+        "docs/BUILDER2-FULL-SUITE-RESULTS.json",
+        "docs/BUILDER2-FULL-SUITE-RUN.md",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "n": 141,
+      "h": "chatgpt2/timesheet-email-tests",
+      "b": "claude/e13-timesheet-days",
+      "s": "f6f76ff3cf3fe8abd7c6409018dc6e259dfb7ca7",
+      "title": "Add timesheet chosen-day DST recipient and duplicate-send tests",
+      "files": [
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "tests/unit/timesheet-days-extra.test.ts"
+      ]
+    },
+    {
+      "n": 140,
+      "h": "chatgpt2/costing-playwright",
+      "b": "chatgpt2/plain-english-pass",
+      "s": "e9d9f6735726e18c8458702db965d1bf2387e6a6",
+      "title": "Add costing settings and quote pricing Playwright smoke specs",
+      "files": [
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "playwright.costing.config.ts",
+        "tests/e2e/costing-smoke.spec.ts",
+        "tests/support/optional-backend.ts"
+      ]
+    },
+    {
+      "n": 139,
+      "h": "chatgpt2/plain-english-pass",
+      "b": "chatgpt2/pr-review",
+      "s": "bc61c03361d8ac7afb3585cbc140806d441c4e3e",
+      "title": "Use plain shop-floor words for new costing chasing and bank controls",
+      "files": [
+        "components/bank/bank-check.tsx",
+        "components/chase/approval-card.tsx",
+        "components/chase/customer-says-paid.tsx",
+        "components/chase/settings-card.tsx",
+        "components/costing/connected-costing.tsx",
+        "components/costing/costing-rates-editor.tsx",
+        "components/costing/price-this-part.tsx",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/PLAIN-ENGLISH-PASS.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "docs/staff-walkthrough.md",
+        "lib/bank/match-statement.ts",
+        "tests/unit/costing-ui.test.ts",
+        "tests/unit/plain-english-extra.test.ts"
+      ]
+    },
+    {
+      "n": 138,
+      "h": "chatgpt2/receivables-tests",
+      "b": "main",
+      "s": "77643f52a8232da3b60268e39c898580a99b96fd",
+      "title": "Cover receivables and pence boundaries and reject invalid overdue dates",
+      "files": [
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "lib/receivables.ts",
+        "tests/unit/receivables-money-extra.test.ts"
+      ]
+    },
+    {
+      "n": 137,
+      "h": "chatgpt2/paid-claim-more-tests",
+      "b": "chatgpt/paid-claim",
+      "s": "3b9713c3bb52423770bc138a156906ddf994f66c",
+      "title": "Add 30 UK paid-claim emails and fix demonstrated detection errors",
+      "files": [
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/PAID-CLAIM-UK-TESTS.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "lib/chase/paid-claim.ts",
+        "tests/unit/paid-claim-uk-more.test.ts"
+      ]
+    },
+    {
+      "n": 136,
+      "h": "chatgpt2/bank-csv-formats",
+      "b": "chatgpt/bank-matcher-more-tests",
+      "s": "6c8c7c81b908dbbd8d387262567866c7ae4e2e92",
+      "title": "Cover six UK bank CSV layouts and fix demonstrated parsing errors",
+      "files": [
+        "docs/BANK-CSV-FORMAT-TESTS.md",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "lib/bank/match-statement.ts",
+        "tests/unit/bank-csv-formats.test.ts"
+      ]
+    },
+    {
+      "n": 135,
+      "h": "chatgpt2/pr-review",
+      "b": "chatgpt/costing-wiring",
+      "s": "ed23f6f3ec506210b3449f0e19f9ff34473c81f1",
+      "title": "Review open Tolra PRs and fix costing preview failures",
+      "files": [
+        "app/(dashboard)/admin/users/page.tsx",
+        "app/api/admin/users/companies/route.ts",
+        "app/api/admin/users/password/route.ts",
+        "app/api/admin/users/route.ts",
+        "app/api/admin/users/sign-in/route.ts",
+        "app/api/auth/change-password/route.ts",
+        "app/api/my-company-logos/route.ts",
+        "components/authenticator-code-dialog.tsx",
+        "components/costing/price-this-part.tsx",
+        "components/sidebar.tsx",
+        "docs/BUILDER2-PR-REVIEW.md",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "lib/admin-user-save.ts",
+        "lib/company-access.ts",
+        "lib/mfa-policy.ts",
+        "lib/mfa-step-up.ts",
+        "lib/server/admin-users.ts",
+        "lib/server/auth.ts",
+        "lib/server/password-ticket.ts",
+        "supabase/migrations/136_recent_second_step_admin_changes.sql",
+        "supabase/migrations/137_password_change_ticket.sql",
+        "supabase/release/136_recent_second_step_admin_changes.release.sql",
+        "supabase/release/136_recent_second_step_admin_changes.rollback.sql",
+        "supabase/release/137_password_change_ticket.release.sql",
+        "supabase/release/137_password_change_ticket.rollback.sql",
+        "supabase/verify/password_change_ticket_137.sql",
+        "supabase/verify/password_change_ticket_137_hosted_check.md",
+        "supabase/verify/recent_second_step_136.sql",
+        "supabase/verify/release_preflight.sql",
+        "tests/db/admin-mfa-onboarding.test.ts",
+        "tests/db/admin-mfa.test.ts",
+        "tests/db/catalogue.snapshot.json",
+        "tests/db/password-change-ticket-137.test.ts",
+        "tests/db/password-gate.test.ts",
+        "tests/db/recent-second-step-136.test.ts",
+        "tests/unit/admin-mfa-onboarding.test.ts",
+        "tests/unit/admin-password-auth-failure.test.ts",
+        "tests/unit/admin-recent-mfa.test.ts",
+        "tests/unit/admin-users-add-existing.test.ts",
+        "tests/unit/admin-users-companies.test.ts",
+        "tests/unit/admin-users-owner-takeover.test.ts",
+        "tests/unit/change-password-route.test.ts",
+        "tests/unit/costing-review-regressions.test.ts",
+        "tests/unit/mfa-guard.test.ts",
+        "tests/unit/mfa-step-up.test.ts",
+        "tests/unit/my-company-logos.test.ts"
+      ]
+    },
+    {
+      "n": 134,
+      "h": "chatgpt2/e2e-chasing",
+      "b": "chatgpt2/chase-wiring",
+      "s": "718baa8b245655ce8e14e00d2f2c416a0adee994",
+      "title": "Add chase screen browser coverage and optional local runner",
+      "files": [
+        "components/chase/connected-settings.tsx",
+        "components/chase/settings-card.tsx",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "playwright.chasing.config.ts",
+        "tests/e2e/chase-steps.spec.ts",
+        "tests/e2e/chasing-controls.spec.ts",
+        "tests/support/optional-backend.ts"
+      ]
+    },
+    {
+      "n": 133,
+      "h": "chatgpt2/go-live-day-checklist",
+      "b": "main",
+      "s": "fa2c266778630929f2872b5178f8efc20afe0d1b",
+      "title": "Add JNR go-live day checklist for Thursday 12 November",
+      "files": [
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/JNR-GO-LIVE-DAY-CHECKLIST.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "n": 132,
+      "h": "chatgpt2/chase-wiring",
+      "b": "claude/chase-steps",
+      "s": "9f08f96dd52cfd9cbffdde913b83a0c9286d32a8",
+      "title": "Wire chase cards into settings approvals and invoice pages",
+      "files": [
+        "app/(dashboard)/approval/page.tsx",
+        "app/(dashboard)/invoices/page.tsx",
+        "components/chase/approval-card.tsx",
+        "components/chase/connected-approval.tsx",
+        "components/chase/connected-settings.tsx",
+        "components/chase/customer-says-paid.tsx",
+        "components/chase/settings-card.tsx",
+        "components/email-schedules/settings-card.tsx",
+        "docs/CHATGPT-BUILD-HANDOVER-2.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "docs/chase-wiring-notes.md",
+        "lib/chase/ui-store.ts",
+        "tests/unit/chase-ui-wiring.test.ts"
+      ]
+    },
+    {
+      "n": 131,
+      "h": "codex/bank-csv-quotes",
+      "b": "chatgpt/bank-matcher-more-tests",
+      "s": "316a9bfa8f63116e26de55990a11c0a9e1c1b4bf",
+      "title": "Reject bank statements containing unclosed CSV quotes",
+      "files": [
+        "docs/TOLRA-CODEX-BUILD-HANDOVER.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md",
+        "lib/bank/match-statement.ts",
+        "tests/unit/bank-match-statement.test.ts"
+      ]
+    },
+    {
+      "n": 130,
+      "h": "codex/work-ownership",
+      "b": "main",
+      "s": "5d09a72cbb06790bec623ef17718741fb78c02fb",
+      "title": "Establish shared ownership tracker and Codex verification handover",
+      "files": [
+        "docs/TOLRA-CODEX-BUILD-HANDOVER.md",
+        "docs/TOLRA-WORK-OWNERSHIP.md"
+      ]
+    },
+    {
+      "n": 125,
+      "h": "chatgpt/wipe-go-live-plain",
+      "b": "main",
+      "s": "88ebf7811f091d18e2524ed0598567f74f8b934f",
+      "title": "Plain JNR wipe and go live guide",
+      "files": [
+        "docs/handover/WIPE-AND-GO-LIVE-PLAIN.md"
+      ]
+    },
+    {
+      "n": 124,
+      "h": "chatgpt/final-handover-1",
+      "b": "main",
+      "s": "a18146010dc3b57d7a6ee9b1006c7c3e070fcfd3",
+      "title": "ChatGPT builder one handover and review checklist",
+      "files": [
+        "docs/CHATGPT-BUILD-HANDOVER-1.md"
+      ]
+    },
+    {
+      "n": 123,
+      "h": "chatgpt/costing-wiring",
+      "b": "claude/costing-in-app",
+      "s": "ad515217a4fa033319e368d9b46cd0b98e078c1f",
+      "title": "Wire company costing rates and quote pricing to live screens",
+      "files": [
+        "app/(dashboard)/quotes/page.tsx",
+        "app/(dashboard)/settings/page.tsx",
+        "components/costing/connected-costing.tsx",
+        "components/costing/costing-rates-editor.tsx",
+        "components/costing/price-this-part.tsx",
+        "components/costing/types.ts",
+        "lib/costing/engine.ts",
+        "tests/unit/costing-wiring.test.ts"
+      ]
+    },
+    {
+      "n": 122,
+      "h": "chatgpt/sliq-risk-tests",
+      "b": "main",
+      "s": "7f6accaf44225c27d47a071a4aa96196bcd8563b",
+      "title": "Add SliQ parsing safety tests",
+      "files": [
+        "tests/unit/sliq-risk-guards.test.ts"
+      ]
+    },
+    {
+      "n": 121,
+      "h": "chatgpt/costing-more-tests",
+      "b": "chatgpt/costing-in-tolra",
+      "s": "bc62b6b921d0122bcfc74cf69bce26ca6023de8f",
+      "title": "Expand TypeScript costing boundary test coverage",
+      "files": [
+        "tests/unit/costing-extra-edge.test.ts"
+      ]
+    },
+    {
+      "n": 120,
+      "h": "chatgpt/bank-matcher-more-tests",
+      "b": "chatgpt/bank-matcher",
+      "s": "aa520be8946d564f0841c55eb15ce9775335a767",
+      "title": "Add bank matching regression scenarios",
+      "files": [
+        "tests/unit/bank-more.test.ts"
+      ]
+    },
+    {
+      "n": 119,
+      "h": "chatgpt/chase-more-tests",
+      "b": "chatgpt/chase-steps",
+      "s": "18617de78d05917b831b449f50e34aeb016d1347",
+      "title": "Add chase calendar and progression regression tests",
+      "files": [
+        "tests/unit/chase-more.test.ts"
+      ]
+    },
+    {
+      "n": 118,
+      "h": "chatgpt/chase-wording",
+      "b": "main",
+      "s": "897eacdb435bbc7d64f559e679b860985ebda23f",
+      "title": "Polish invoice chase reminder wording",
+      "files": [
+        "lib/chase/steps.ts",
+        "tests/unit/chase-wording.test.ts"
+      ]
+    },
+    {
+      "n": 117,
+      "h": "chatgpt/paid-claim-adapter",
+      "b": "main",
+      "s": "79563720f49a0fe3e733c02ad9734dd38f124a3c",
+      "title": "Suggest paid invoices from incoming customer emails",
+      "files": [
+        "lib/chase/paid-claim-adapter.ts",
+        "lib/chase/paid-claim.ts",
+        "tests/unit/paid-claim-adapter.test.ts"
+      ]
+    },
+    {
+      "n": 116,
+      "h": "chatgpt/bank-check-ui",
+      "b": "main",
+      "s": "d2ddea3c3872e0b7931e43a34d9164c7a02ed283",
+      "title": "Bank statement confirmation screen",
+      "files": [
+        "components/bank/bank-check.tsx",
+        "lib/bank/match-statement.ts",
+        "tests/unit/bank-check-ui.test.ts"
+      ]
+    },
+    {
+      "n": 115,
+      "h": "chatgpt2/walkthrough-docs",
+      "b": "main",
+      "s": "40747158fbd5ae53a7e03ca1c379803fcd0b9d5b",
+      "title": "Add simple staff walkthrough for chasing, timesheet emails and costing",
+      "files": [
+        "README.md",
+        "docs/staff-walkthrough.md"
+      ]
+    },
+    {
+      "n": 114,
+      "h": "chatgpt2/sliq-importer-tests",
+      "b": "main",
+      "s": "51de46c4eb0aeae89d9ff82e19650d7eaa88abd8",
+      "title": "Add SliQ importer edge case tests",
+      "files": [
+        "tests/unit/sliq-import-edge-cases.test.ts"
+      ]
+    },
+    {
+      "n": 113,
+      "h": "chatgpt2/customer-says-paid-ui",
+      "b": "main",
+      "s": "3c386f5fdc8cfb79a4ee7d546901a41a3aaa6166",
+      "title": "Add customer says paid invoice controls",
+      "files": [
+        "components/chase/customer-says-paid.tsx",
+        "package-lock.json",
+        "package.json",
+        "tests/unit/customer-says-paid-ui.test.ts"
+      ]
+    },
+    {
+      "n": 112,
+      "h": "chatgpt2/approvals-send-ui",
+      "b": "main",
+      "s": "0e6fede2537ac9fb79347eb171345f625c26c0ea",
+      "title": "Add chase email approval card",
+      "files": [
+        "components/chase/approval-card.tsx",
+        "package-lock.json",
+        "package.json",
+        "tests/unit/chase-approval-ui.test.ts"
+      ]
+    },
+    {
+      "n": 111,
+      "h": "chatgpt2/chase-settings-ui",
+      "b": "main",
+      "s": "c1d141700fb5131d49030badb8a9eefaed2d2464",
+      "title": "Add payment chasing settings card",
+      "files": [
+        "components/chase/settings-card.tsx",
+        "package-lock.json",
+        "package.json",
+        "tests/unit/chase-settings-ui.test.ts"
+      ]
+    },
+    {
+      "n": 110,
+      "h": "chatgpt/costing-in-tolra",
+      "b": "main",
+      "s": "2cd4a39f2d471fa4ec20fe4befce36d2ad6ffe82",
+      "title": "Port Python costing calculations into Tolra TypeScript",
+      "files": [
+        "components/costing/costing-rates-editor.tsx",
+        "components/costing/price-this-part.tsx",
+        "components/costing/types.ts",
+        "lib/costing/engine.ts",
+        "tests/fixtures/costing-golden.json",
+        "tests/unit/costing-engine-parity.test.ts",
+        "tests/unit/costing-golden.test.ts",
+        "tests/unit/costing-ui.test.ts"
+      ]
+    },
+    {
+      "n": 109,
+      "h": "chatgpt/bank-matcher",
+      "b": "main",
+      "s": "4781bb02337b4cc2a3f3343984f131260640c283",
+      "title": "Add bank statement parsing and invoice matching",
+      "files": [
+        "lib/bank/match-statement.ts",
+        "tests/unit/bank-match-statement.test.ts"
+      ]
+    },
+    {
+      "n": 108,
+      "h": "chatgpt/chase-steps",
+      "b": "main",
+      "s": "473a89cf9552aa2e58c9c82911ffafd66df93f25",
+      "title": "Add invoice chase scheduling and message rendering",
+      "files": [
+        "lib/chase/steps.ts",
+        "tests/unit/chase-steps.test.ts"
+      ]
+    },
+    {
+      "n": 107,
+      "h": "chatgpt/paid-claim",
+      "b": "main",
+      "s": "0944385a1e90a31cf5b35331c03acb44be766495",
+      "title": "Add paid claim detection with unit coverage",
+      "files": [
+        "lib/chase/paid-claim.ts",
+        "tests/unit/paid-claim.test.ts"
+      ]
+    }
+  ],
+  "comparisons": 528
+}
