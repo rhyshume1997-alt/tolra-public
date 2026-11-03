@@ -1,5 +1,7 @@
 # Coverage gaps and unrun evidence
 
+Software is **NOT VALIDATED**. All still-unticked DB/browser file inventories, independent reviewer conditions and manual rows are listed in OUTSTANDING-CHECKS.md. Selected extras evidence does not clear the whole suite.
+
 No URS row is wholly unmapped: all 14 have existing candidate tests and numbered manual checks. This does not mean every subcondition is automated or has passed.
 
 **URS-014 has no dedicated inbound-email financial-invariance test on this #247 head.** Its UI test covers paid claims only. G03.4 is the real, unrun manual check. Do not claim the UI test or the old inbound storage test proves the incoming-email condition.

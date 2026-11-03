@@ -1,5 +1,7 @@
 # Validation summary report (VSR) template
 
+Current software validation status: **NOT VALIDATED**. This blank template records no approval. Review every [outstanding database/browser/manual item](OUTSTANDING-CHECKS.md) before Rhys makes his validation decision.
+
 Company: ____  Intended use: ____  Release / commit: ____  Environment: ____
 Testing dates: ____  Prepared by: ____  Validation lead (Rhys): ____
 

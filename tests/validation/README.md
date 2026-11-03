@@ -1,5 +1,7 @@
 # Tolra validation pack
 
+**Software status: NOT VALIDATED.** #258 is SAFE WITH CONDITIONS, not completed validation or release/SQL approval. See the fully unticked [database, browser and manual evidence list](OUTSTANDING-CHECKS.md).
+
 N4 from #220 is mapped to the actual #247 candidate, including the type-only config loader and subsequent 145 policy/CI fixes, N1 paid breaks, both N2 key modes and owner caps, N3 Xero/Sage/QuickBooks, N5 blank guided setup, N6 email editing, exact-text chasing and inbound payment safety. The base revision is recorded in `manifest.json`. AK copies the pack and #248 manual checklist onto that base without merging implementation branches or changing application behaviour.
 
 This is an evidence pack for the company's quality process, not certification or approval. Rhys is the validation lead and signs only after reviewing actual results. Every protocol result, decision and VSR signature remains blank. Never use customer records or real keys in this public repository.
