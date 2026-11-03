@@ -44,7 +44,7 @@ describe("fictional complete SliQ export", () => {
     const dir = copy(), file = path.join(dir, "invoices.csv");
     writeFileSync(file, readFileSync(file, "utf8").replace("720.00", amount));
     const loaded = loadFolder(dir, getProfile("synthetic"));
-    expect(loaded.errors.some(error => /too large/i.test(error.message))).toBe(true);
+    expect(loaded.errors.some((error: { message: string }) => /too large/i.test(error.message))).toBe(true);
     expect(analyse(loaded).report.writable).toBe(false);
   });
   it("an extra banner row is refused for mapping review, never guessed to be a header", () => {
