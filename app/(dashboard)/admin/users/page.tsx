@@ -27,11 +27,12 @@ import type { UserRole } from "@/types";
 import { isValidUsername, normaliseUsername, USERNAME_RULES } from "@/lib/username";
 import { PRODUCT } from "@/lib/product";
 import { countMissingNames, displayNameProblem, hasDisplayName } from "@/lib/display-name";
-import { apiErrorFrom, describePartial, inspectorFlags, saveMemberEdit } from "@/lib/admin-user-save";
+import { callAdminApi, describePartial, sendCompanyAccess, inspectorFlags, saveMemberEdit } from "@/lib/admin-user-save";
 import { ADMIN_MFA_ONBOARDING_NOTICE, type AdminMfaOverview, adminMfaRuleMessage, adminMfaStatusLabel, becomesAdmin, holdsAdmin, parseAdminMfaOverview } from "@/lib/mfa-policy";
 import { disableSignInConfirm, identityActions, parseProtectedList, parseSignInList, type ProtectedState, SIGN_IN_CHECKING_LABEL, SIGN_IN_HELP, type SignInState, signInBadge, signInControls } from "@/lib/sign-in-access";
 import { OnSiteOnlyToggle, useOnSiteOnly } from "@/components/time/on-site-only";
 import { ClockInOffSiteToggle, useClockInOffSite } from "@/components/time/clock-in-off-site";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { AuthorisedInspectors } from "@/components/authorised-inspectors";
 import { databaseHas083 } from "@/lib/inspectors";
 import { type CompanyAccess, type CompanyChange, type CompanyDraft, type CompanyResult, draftCompanies, parseCompanyAccess, parseCompanyResults, planCompanyChanges, summariseCompanyResults } from "@/lib/company-access";
@@ -62,14 +63,6 @@ const ROLE_HELP: Record<UserRole, string> = {
 };
 const selectClass = "h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm";
 const labelClass = "grid gap-1.5 text-sm font-medium text-slate-700";
-
-/** The admin API returns short, fixed messages; anything else gets the generic text. */
-async function callApi<T extends Record<string, unknown>>(url: string, method: "POST" | "PATCH", payload: Record<string, unknown>) {
-  const response = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-  const result = (await response.json().catch(() => ({}))) as T & { ok?: boolean; error?: string };
-  if (!response.ok || result.error || !result.ok) throw apiErrorFrom(result, "Something went wrong. Try again.");
-  return result;
-}
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -154,9 +147,8 @@ function CompanyAccessFields({ drafts, onChange, self, loading, error }: { draft
 }
 
 /** Sends company access changes; every company's outcome comes back, whatever the status. Throws only when there is no answer. */
-async function saveCompanyAccess(userId: string, changes: CompanyChange[]): Promise<{ results: CompanyResult[]; loginDisabled: boolean }> {
-  const response = await fetch("/api/admin/users/companies", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user_id: userId, changes }) });
-  const body = (await response.json().catch(() => null)) as { login_disabled?: boolean; error?: string } | null;
+async function saveCompanyAccess(userId: string, changes: CompanyChange[], requestCode: () => Promise<boolean>): Promise<{ results: CompanyResult[]; loginDisabled: boolean }> {
+  const body = (await sendCompanyAccess(userId, changes, requestCode)) as { login_disabled?: boolean; error?: string } | null;
   const results = parseCompanyResults(body);
   if (!results.length) throw new Error(body?.error || "Couldn't save company access. Reload to check what is stored.");
   return { results, loginDisabled: body?.login_disabled === true };
@@ -168,6 +160,10 @@ export default function UsersPage() {
   const { user: me } = useUser();
   const { profile: company } = useCompanyProfile();
   const { saving, run } = useSaving();
+  // G1: the six sensitive calls below ask for a fresh authenticator code when the server says the last one is over 15 minutes old.
+  const { requestCode, codeDialog } = useCodePrompt();
+  /** The admin API returns short, fixed messages; anything else gets the generic text. */
+  const callApi = <T extends Record<string, unknown>>(url: string, method: "POST" | "PATCH", payload: Record<string, unknown>) => callAdminApi<T>(url, method, payload, requestCode);
   const [rows, setRows] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -357,7 +353,7 @@ export default function UsersPage() {
   /** Saves company access changes and says what happened per company. True unless nothing at all was saved. */
   async function applyCompanyChanges(target: { id: string; name: string }, changes: CompanyChange[]): Promise<boolean> {
     try {
-      const { results, loginDisabled } = await saveCompanyAccess(target.id, changes);
+      const { results, loginDisabled } = await saveCompanyAccess(target.id, changes, requestCode);
       const summary = summariseCompanyResults(results);
       if (summary.tone === "ok") toast.success(summary.text);
       else if (summary.tone === "partial") toast.warning(summary.text);
@@ -775,6 +771,7 @@ export default function UsersPage() {
             ) : null}
           </DialogContent>
         </Dialog>
+        {codeDialog}
       </div>
     </RoleGate>
   );
