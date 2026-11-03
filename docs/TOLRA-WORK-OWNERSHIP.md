@@ -85,4 +85,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 16 | builder2 | chatgpt2/full-suite-run | BLOCKED: FULL-SUITE VERIFICATION INCOMPLETE | #142 |
 | 17 | builder2 | chatgpt2/final-handover | HANDOVER COMPLETE; RELEASE VERIFICATION BLOCKED | #143 |
 | 18a | builder2 | chatgpt2/chase-followup | CODE FIXED; DATABASE PROPOSAL UNAPPLIED | #144 |
-| 18b | builder2 | chatgpt2/costing-followup | CODE FIXED; DATABASE PROPOSAL UNAPPLIED | Pending |
+| 18b | builder2 | chatgpt2/costing-followup | CODE FIXED; DATABASE PROPOSAL UNAPPLIED | #145 |
