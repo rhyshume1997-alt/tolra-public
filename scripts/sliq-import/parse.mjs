@@ -108,6 +108,7 @@ export function parseQuantityMilli(raw) {
   const neg = s.startsWith("-");
   const [i, f = ""] = s.replace("-", "").split(".");
   const v = Number(i) * 1000 + Number(f.padEnd(3, "0"));
+  if (!Number.isSafeInteger(v)) throw new ParseError(`Quantity "${raw}" is too large.`);
   return neg ? -v : v;
 }
 
@@ -118,6 +119,7 @@ export function parsePercentCenti(raw) {
   if (!/^[0-9]+(\.[0-9]{1,2})?$/.test(s)) throw new ParseError(`VAT rate "${raw}" is not a percentage with at most two decimal places.`);
   const [i, f = ""] = s.split(".");
   const centi = Number(i) * 100 + Number(f.padEnd(2, "0"));
+  if (!Number.isSafeInteger(centi)) throw new ParseError(`VAT rate "${raw}" is too large.`);
   if (centi > 0 && centi < 100) throw new ParseError(`VAT rate "${raw}" is under 1%: ambiguous (20% written as a fraction?). Export it as a number such as 20.`);
   return centi;
 }
