@@ -1,22 +1,44 @@
 /*
- * The public pages ("/" and "/privacy"): a drawing sheet. Paper white with a faint 10 mm grid, navy ink, 1px rules, no shadows,
- * no gradients. Signal blue (#1e8fff) is kept for the call to action and active states only. Everything is scoped under .mk-sheet,
- * so the app's own pages are untouched.
+ * The public pages ("/", "/privacy" and the sign-in page's paper): a drawing sheet. Paper white with a faint 10 mm grid, navy ink,
+ * 1px rules, no shadows, no gradients. Signal blue (#1e8fff) marks focus and active states only. Everything that styles whole
+ * elements is scoped under .mk-sheet, so the app's own pages are untouched.
+ *
+ * Motion: one moment only, the stamp landing on the job traveller (.mk-stamp below). Every other state change is instant.
  */
-.mk-sheet {
+.mk-sheet,
+.mk-paper {
   --mk-paper: #fbfcfd;
   --mk-ink: #0b2a5b;
+  --mk-ink-hover: #12397a;
   --mk-ink-2: #3c5277;
   --mk-rule-soft: rgb(11 42 91 / 0.28);
+  --mk-rule-faint: rgb(11 42 91 / 0.14);
   --mk-signal: #1e8fff;
   --mk-signal-ink: #05193a;
   --mk-signal-wash: #e7f2ff;
+  --mk-band: #ffffff;
+  --mk-band-alt: #f5f7fb;
+  /* The 10 mm grid: one 1px line per cell edge, drawn as a tiny SVG tile (no gradient), scaled to 10 mm. */
+  --mk-grid: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 .5H40M.5 0V40' fill='none' stroke='%230b2a5b' stroke-opacity='.075'/%3E%3C/svg%3E");
+  /* One spacing scale for the inside of every boxed element (traveller, drawings, figures, tables, title block). */
+  --mk-box: 1rem;
+  --mk-box-y: 0.75rem;
+  /* One section rhythm. */
+  --mk-section: clamp(56px, 8vw, 112px);
+}
+@media (min-width: 640px) {
+  .mk-sheet,
+  .mk-paper {
+    --mk-box: 1.5rem;
+    --mk-box-y: 1rem;
+  }
+}
 
+.mk-sheet {
   flex: 1 0 auto;
   color: var(--mk-ink);
   background-color: var(--mk-paper);
-  /* The 10 mm grid: one 1px line per cell edge, drawn as a tiny SVG tile (no gradient), scaled to 10 mm. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 .5H40M.5 0V40' fill='none' stroke='%230b2a5b' stroke-opacity='.075'/%3E%3C/svg%3E");
+  background-image: var(--mk-grid);
   background-size: 10mm 10mm;
   font-family: var(--mk-font-sans), "IBM Plex Sans", system-ui, sans-serif;
   font-size: 1.0625rem;
@@ -24,20 +46,55 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* The blueprint paper on its own (the sign-in page). */
+.mk-paper {
+  background-color: var(--mk-paper);
+  background-image: var(--mk-grid);
+  background-size: 10mm 10mm;
+}
+
+/* Running text never runs wider than a comfortable line (in the base layer, so a narrower max-w-* utility still wins). */
+@layer base {
+  .mk-sheet p {
+    max-width: 62ch;
+    text-wrap: pretty;
+  }
+
+  /* The focus ring, also in the base layer so an outline-offset utility can pull it inside a row. */
+  .mk-sheet :focus-visible {
+    outline: 2px solid var(--mk-signal);
+    outline-offset: 3px;
+  }
+}
+
 .mk-sheet ::selection {
   background: var(--mk-ink);
   color: #ffffff;
 }
 
-.mk-sheet :focus-visible {
-  outline: 2px solid var(--mk-signal);
-  outline-offset: 3px;
-}
-
 .mk-sheet h1,
 .mk-sheet h2,
-.mk-sheet h3 {
+.mk-sheet h3,
+.mk-sheet h4 {
   letter-spacing: 0;
+}
+
+/* A section of the page: full-bleed band, white or pale blue in turn, the grid faint on both, one padding. */
+.mk-band {
+  background-color: var(--mk-band);
+  background-image: var(--mk-grid);
+  background-size: 10mm 10mm;
+  padding-block: var(--mk-section);
+}
+.mk-band-alt {
+  background-color: var(--mk-band-alt);
+}
+.mk-band + .mk-band {
+  border-top: 1px solid var(--mk-rule-faint);
+}
+/* The hero starts closer to the header, so the first view holds the headline, the subhead and the call to action. */
+.mk-hero {
+  padding-top: clamp(32px, 5vw, 64px);
 }
 
 .mk-display {
@@ -52,15 +109,31 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Small drawing lettering: field labels in the title block, the traveller and the drawn documents. */
+/* Small drawing lettering: field labels in the title block, the traveller and the drawn documents. Never below 12px. */
 .mk-label {
   font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mk-ink-2);
-  line-height: 1.3;
+  line-height: 1.35;
+}
+
+/* The leading word of a heading or sentence ("Today:", "In Tolra:"), set in the label face on the same line. */
+.mk-lead {
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mk-ink-2);
+  margin-right: 0.5em;
+  white-space: nowrap;
+}
+.mk-display .mk-lead {
+  font-size: 0.5em;
+  vertical-align: 0.2em;
 }
 
 .mk-link {
@@ -73,16 +146,18 @@
   text-decoration-thickness: 2px;
 }
 
-/* The call to action: the one filled signal-blue object on the sheet. */
+/* The call to action: the one filled navy object on the sheet. White on #0b2a5b, hover #12397a; no transition. */
 .mk-cta {
   display: inline-flex;
   min-height: 3.25rem;
   align-items: center;
   justify-content: center;
+  gap: 0.5rem;
   padding: 0.5rem 1.5rem;
-  background: var(--mk-signal);
-  color: var(--mk-signal-ink);
-  border: 1px solid var(--mk-signal-ink);
+  background: #0b2a5b;
+  color: #ffffff;
+  border: 1px solid #0b2a5b;
+  border-radius: 0;
   font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif;
   font-size: 1.25rem;
   font-weight: 600;
@@ -90,49 +165,55 @@
   text-transform: uppercase;
   line-height: 1.1;
   text-align: center;
-  transition: background-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
 }
 .mk-cta:hover {
-  background: #4ba6ff;
+  background: #12397a;
+  border-color: #12397a;
 }
+/* 3px signal-blue ring, offset from the button so it reads on paper and on navy alike. */
 .mk-cta:focus-visible {
-  outline-color: var(--mk-ink);
+  outline: 3px solid #1e8fff;
+  outline-offset: 3px;
+}
+.mk-cta:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-/* Dimension-line section divider: extension lines, a line with an arrowhead at each end, and a section reference. */
-.mk-dim {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  color: var(--mk-ink);
+/* Hero notes: numbered by the list, the numbers drawn in the label face and kept out of the text and the accessibility tree. */
+.mk-notes {
+  counter-reset: mk-note;
+  list-style: none;
+  padding: 0;
 }
-.mk-dim-ext {
-  width: 1px;
-  height: 1.5rem;
-  background: var(--mk-ink);
-  flex: none;
+.mk-notes > li {
+  counter-increment: mk-note;
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
 }
-.mk-dim-line {
-  position: relative;
-  flex: 1 1 auto;
-  height: 1px;
-  background: var(--mk-ink);
+.mk-notes > li::before {
+  content: counter(mk-note) ".";
+  content: counter(mk-note) "." / "";
+  font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--mk-ink-2);
 }
-.mk-dim-line::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  border-style: solid;
+
+/* Numbered headings (the privacy page): the number in the heading face, outside the heading's own name. */
+.mk-numbered {
+  counter-reset: mk-section;
 }
-.mk-dim-line[data-end="start"]::before {
-  left: 0;
-  border-width: 4.5px 11px 4.5px 0;
-  border-color: transparent var(--mk-ink) transparent transparent;
+.mk-numbered h2 {
+  counter-increment: mk-section;
 }
-.mk-dim-line[data-end="end"]::before {
-  right: 0;
-  border-width: 4.5px 0 4.5px 11px;
-  border-color: transparent transparent transparent var(--mk-ink);
+.mk-numbered h2::before {
+  content: counter(mk-section) ".";
+  content: counter(mk-section) "." / "";
+  display: inline-block;
+  min-width: 1.15em;
+  margin-right: 0.3em;
+  color: var(--mk-ink-2);
 }
 
 /* Callout balloon: a numbered circle on a leader line, as on a drawing. */
@@ -175,8 +256,8 @@
 .mk-stampbox {
   position: relative;
   display: grid;
-  width: 5.75rem;
-  height: 2.5rem;
+  width: 6.25rem;
+  height: 2.75rem;
   place-items: center;
   border: 1px dashed var(--mk-rule-soft);
   flex: none;
@@ -184,15 +265,15 @@
 .mk-stamp {
   display: grid;
   justify-items: center;
-  padding: 0.125rem 0.375rem;
+  padding: 0.0625rem 0.375rem;
   border: 3px double var(--mk-ink);
   background: rgb(255 255 255 / 0.6);
   color: var(--mk-ink);
   font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  line-height: 1.2;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
   text-transform: uppercase;
   white-space: nowrap;
   transform: rotate(-4deg);
@@ -200,6 +281,7 @@
 .mk-stampbox[data-stamped="false"] .mk-stamp {
   visibility: hidden;
 }
+/* The page's one moment of motion: the stamp lands (scales down and settles) as each stage is stamped. */
 .mk-stampbox[data-stamped="true"][data-fresh="true"] .mk-stamp {
   animation: mk-stamp-hit 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -217,13 +299,12 @@
   }
 }
 
-/* The FAQ's plus: two 1px strokes that turn to a cross when the answer is open. */
+/* The FAQ's plus: two strokes that turn to a cross when the answer is open (instantly). */
 .mk-plus {
   position: relative;
   width: 1rem;
   height: 1rem;
   flex: none;
-  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .mk-plus::before,
 .mk-plus::after {
@@ -264,8 +345,8 @@ details[open] > summary .mk-plus {
 }
 
 /*
- * "How Tolra handles it" (components/ui/ink-orbit-features.tsx): three live drawings on an asymmetric grid. Ink on white, 1px rules,
- * square corners; signal blue marks only what is active (a lit leader, a travelling sheet, the handle). Registration marks open on hover.
+ * "How Tolra handles it" (components/ui/ink-orbit-features.tsx): three drawings on an asymmetric grid. Ink on white, 1px rules,
+ * square corners; signal blue marks only what is selected. Nothing moves on its own: hover, focus, tap and drag change state at once.
  */
 .io-grid {
   display: grid;
@@ -291,14 +372,12 @@ details[open] > summary .mk-plus {
   background: #ffffff;
 }
 .io-head {
-  padding: 0.875rem 1rem 0.75rem;
+  padding: var(--mk-box-y) var(--mk-box);
   border-bottom: 1px solid var(--mk-rule-soft);
 }
 .io-body {
-  padding: 1rem 1rem 0.25rem;
-}
-/* Wide or compact drawing, by the width the drawing actually has. */
-.io-body {
+  padding: var(--mk-box) var(--mk-box) 0.25rem;
+  /* Wide or compact drawing, by the width the drawing actually has. */
   container-type: inline-size;
 }
 @container (max-width: 519px) {
@@ -309,36 +388,30 @@ details[open] > summary .mk-plus {
 }
 .io-status {
   min-height: 2.75rem;
-  margin: 0 1rem;
+  margin: 0 var(--mk-box);
   padding: 0.5rem 0;
   border-top: 1px dashed var(--mk-rule-soft);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.45;
   color: var(--mk-ink);
 }
 .io-foot {
   margin-top: auto;
-  padding: 0.75rem 1rem 1rem;
+  padding: var(--mk-box-y) var(--mk-box) var(--mk-box);
   border-top: 1px solid var(--mk-ink);
   color: var(--mk-ink-2);
 }
 .io-illustration {
   justify-self: end;
 }
-@media (min-width: 640px) {
-  .io-head, .io-foot { padding-left: 1.25rem; padding-right: 1.25rem; }
-  .io-body { padding-left: 1.25rem; padding-right: 1.25rem; }
-  .io-status { margin: 0 1.25rem; }
-}
 
-/* Registration marks at the corners of each drawing. */
+/* Registration marks at the corners of each drawing; they open out on hover or focus, at once. */
 .io-c {
   position: absolute;
   width: 0.75rem;
   height: 0.75rem;
   border: 0 solid var(--mk-ink);
   pointer-events: none;
-  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .io-c-tl { top: -0.4375rem; left: -0.4375rem; border-top-width: 1px; border-left-width: 1px; }
 .io-c-tr { top: -0.4375rem; right: -0.4375rem; border-top-width: 1px; border-right-width: 1px; }
@@ -349,7 +422,7 @@ details[open] > summary .mk-plus {
 .io-cell:hover .io-c-bl, .io-cell:focus-within .io-c-bl { transform: translate(-3px, 3px); }
 .io-cell:hover .io-c-br, .io-cell:focus-within .io-c-br { transform: translate(3px, 3px); }
 
-/* The drawings. */
+/* The drawings. SVG lettering is sized so it renders at 12px or more on a 390px phone. */
 .io-svg {
   display: block;
   width: 100%;
@@ -361,29 +434,20 @@ details[open] > summary .mk-plus {
   fill: none;
   stroke: var(--mk-rule-soft);
   stroke-width: 1.25;
-  transition: stroke 200ms ease-out;
 }
 .io-lead-on {
   stroke: var(--mk-signal);
 }
 .io-dash {
   stroke-dasharray: 4 4;
-  animation: io-dash 1.2s linear infinite;
 }
 .io-progress {
   stroke-width: 2.5;
-  transition: d 320ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.io-pkt {
-  fill: #ffffff;
-  stroke: var(--mk-signal);
-  stroke-width: 1.25;
 }
 .io-node {
   fill: #ffffff;
   stroke: var(--mk-ink);
   stroke-width: 1;
-  transition: stroke 200ms ease-out, stroke-width 200ms ease-out;
 }
 .io-node-hub {
   fill: var(--mk-paper);
@@ -410,9 +474,6 @@ details[open] > summary .mk-plus {
 .io-sheet-back {
   stroke: var(--mk-rule-soft);
 }
-.io-sheet-new {
-  animation: io-print 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
 .io-rule {
   fill: none;
   stroke: var(--mk-rule-soft);
@@ -424,9 +485,6 @@ details[open] > summary .mk-plus {
 }
 .io-tick-on {
   stroke: var(--mk-ink);
-}
-.io-handle {
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .io-handle-mark {
   fill: var(--mk-signal);
@@ -446,13 +504,13 @@ details[open] > summary .mk-plus {
 .io-t-label {
   font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace;
   font-weight: 500;
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  letter-spacing: 0.06em;
   fill: var(--mk-ink-2);
 }
 .io-t-tight {
-  font-size: 10px;
-  letter-spacing: 0.02em;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
 }
 .io-t-on {
   fill: var(--mk-ink);
@@ -486,38 +544,11 @@ details[open] > summary .mk-plus {
 }
 .io-invoice {
   border: 1px dashed var(--mk-ink-2);
-  padding: 0.625rem 0.75rem;
+  padding: var(--mk-box-y) var(--mk-box);
   color: var(--mk-ink-2);
-  transition: border-color 200ms ease-out, color 200ms ease-out;
 }
 .io-invoice-on {
   border-style: solid;
   border-color: var(--mk-ink);
   color: var(--mk-ink);
-}
-
-@keyframes io-dash {
-  to { stroke-dashoffset: -16; }
-}
-@keyframes io-print {
-  from { opacity: 0; transform: translate(10px, -8px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* The glass mark in the closing panel. */
-.mk-glass {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: 12rem;
-  border: 1px solid var(--mk-rule-soft);
-  background: #ffffff;
-}
-@media (min-width: 1024px) {
-  .mk-glass { height: 15rem; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .io-sheet-new, .io-dash { animation: none !important; }
-  .io-handle, .io-progress, .io-c { transition: none !important; }
 }

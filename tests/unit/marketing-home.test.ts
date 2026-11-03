@@ -36,15 +36,21 @@ describe("home page content", () => {
     expect(visible).not.toMatch(/\b(?:price|pricing|per month|testimonial)\b/i);
   });
 
-  it("labels every made-up example as Illustration (Demo data only on real screenshots), and gives every image alt text", async () => {
+  it("labels every made-up example as Illustration and every real screenshot as Screenshot, and gives every image alt text", async () => {
     const { html, marketing } = await render({});
-    // The traveller plus one drawn figure per feature; none of them is a screenshot, so none may say Demo data.
+    // One drawn figure per feature, plus the two real screenshots at the top of "What it does".
     const figures = html.match(/<figure\b[\s\S]*?<\/figure>/g) ?? [];
-    expect(figures).toHaveLength(marketing.FEATURES.length);
-    for (const figure of figures) expect(text(figure)).toMatch(/Illustration\s*$/);
-    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 2); // + the traveller and the "How Tolra handles it" drawings
+    expect(figures).toHaveLength(marketing.FEATURES.length + marketing.SCREENSHOTS.length);
+    const screenshots = figures.filter((figure) => /<img\b/.test(figure));
+    expect(screenshots).toHaveLength(marketing.SCREENSHOTS.length + marketing.FEATURES.filter((feature) => feature.shot).length);
+    for (const figure of figures) expect(text(figure)).toMatch(screenshots.includes(figure) ? /Screenshot\s*$/ : /Illustration\s*$/);
+    // + the traveller, its short copy for phones (hidden from assistive tech) and the "How Tolra handles it" drawings
+    expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 3);
     const shots = marketing.FEATURES.filter((feature) => feature.shot).length;
-    expect(text(html).match(/Demo data/g)?.length ?? 0).toBe(shots);
+    expect(text(html).match(/Screenshot/g)?.length ?? 0).toBe(marketing.SCREENSHOTS.length + shots);
+    expect(text(html)).not.toContain("Demo data");
+    // The screenshots are redacted: no pilot company or person is named in their alt text.
+    for (const shot of marketing.SCREENSHOTS) expect(shot.alt).not.toMatch(/JNR|Marpet|Rhys/i);
     const images = html.match(/<img\b[^>]*>/g) ?? [];
     for (const image of images) expect(image).toMatch(/\balt="[^"]+"/);
   });

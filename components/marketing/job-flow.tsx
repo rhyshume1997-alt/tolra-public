@@ -79,7 +79,7 @@ export function JobFlow() {
   const step = FLOW_STEPS[active];
   return (
     <div ref={root} className="border border-[#0b2a5b] bg-white">
-      <div className="flex items-start justify-between gap-4 border-b border-[#0b2a5b] px-4 py-3">
+      <div className="flex items-start justify-between gap-4 border-b border-[#0b2a5b] px-[var(--mk-box)] py-[var(--mk-box-y)]">
         <h2 id="flow-title" className="mk-display scroll-mt-24 text-[1.625rem] uppercase sm:text-[1.875rem]">{FLOW_TITLE}</h2>
         <p className="shrink-0 pt-1 text-right">
           <span className="mk-mono block text-base font-medium">{FLOW_JOB.number}</span>
@@ -88,17 +88,17 @@ export function JobFlow() {
       </div>
       <dl className="grid grid-cols-[1.3fr_1.3fr_0.8fr] border-b border-[#0b2a5b]">
         {FLOW_JOB.fields.map(([label, value]) => (
-          <div key={label} className="min-w-0 border-r border-[#0b2a5b]/30 px-4 py-2 last:border-r-0">
+          <div key={label} className="min-w-0 border-r border-[#0b2a5b]/30 px-3 py-2 first:pl-[var(--mk-box)] last:border-r-0">
             <dt className="mk-label">{label}</dt>
             <dd className="text-[0.9375rem] leading-snug">{value}</dd>
           </div>
         ))}
       </dl>
 
-      <div aria-hidden className="mk-label grid grid-cols-[3rem_1fr_6.75rem] border-b border-[#0b2a5b]/30 px-0 py-1.5">
-        <span className="pl-4">{SHEET_LABELS.op}</span>
+      <div aria-hidden className="mk-label grid grid-cols-[3.25rem_1fr_7.25rem] sm:grid-cols-[4rem_1fr_7.75rem] border-b border-[#0b2a5b]/30 px-0 py-1.5">
+        <span className="pl-[var(--mk-box)]">{SHEET_LABELS.op}</span>
         <span>{SHEET_LABELS.stage}</span>
-        <span className="pr-4 text-right">{SHEET_LABELS.stamp}</span>
+        <span className="pr-[var(--mk-box)] text-right">{SHEET_LABELS.stamp}</span>
       </div>
       <div role="tablist" aria-label={FLOW_TITLE} aria-orientation="vertical" onKeyDown={onKeyDown}>
         {FLOW_STEPS.map((s, index) => {
@@ -115,13 +115,13 @@ export function JobFlow() {
               aria-controls="flow-panel"
               tabIndex={selected ? 0 : -1}
               onClick={() => select(index, false)}
-              className={`grid min-h-12 w-full grid-cols-[3rem_1fr_6.75rem] items-center border-b border-[#0b2a5b]/30 text-left focus-visible:outline-offset-[-3px] ${selected ? "bg-[#e7f2ff]" : "hover:bg-[#f3f6fa]"}`}
+              className={`grid min-h-12 w-full grid-cols-[3.25rem_1fr_7.25rem] sm:grid-cols-[4rem_1fr_7.75rem] items-center border-b border-[#0b2a5b]/30 text-left focus-visible:outline-offset-[-3px] ${selected ? "bg-[#e7f2ff]" : "hover:bg-[#f3f6fa]"}`}
             >
-              <span className={`mk-mono flex h-full items-center pl-4 text-sm ${selected ? "font-medium text-[#05193a]" : "text-[#3c5277]"}`}>
+              <span className={`mk-mono flex h-full items-center pl-[var(--mk-box)] text-sm ${selected ? "font-medium text-[#05193a]" : "text-[#3c5277]"}`}>
                 <span className={selected ? "border-b-2 border-[#1e8fff]" : ""}>{s.op}</span>
               </span>
               <span className="mk-display text-[1.3125rem] font-semibold">{s.label}</span>
-              <span className="flex justify-end pr-3">
+              <span className="flex justify-end pr-[var(--mk-box)]">
                 <span className="mk-stampbox" data-stamped={isStamped} data-fresh={animate}>
                   <span className="mk-stamp">
                     <span>{s.stamp}</span>
@@ -134,7 +134,7 @@ export function JobFlow() {
         })}
       </div>
 
-      <div role="tabpanel" id="flow-panel" aria-labelledby={`flow-tab-${step.id}`} tabIndex={0} className="grid gap-3 px-4 py-4">
+      <div role="tabpanel" id="flow-panel" aria-labelledby={`flow-tab-${step.id}`} tabIndex={0} className="grid gap-3 p-[var(--mk-box)]">
         <div>
           <p className="mk-label">{SHEET_LABELS.op} {step.op}: {step.label}</p>
           <p className="mt-1.5 text-[0.9375rem] leading-relaxed">{step.caption}</p>
@@ -148,7 +148,7 @@ export function JobFlow() {
           ))}
         </dl>
       </div>
-      <p className="border-t border-[#0b2a5b]/30 px-4 py-2 text-sm text-[#3c5277]">{FLOW_HINT}</p>
+      <p className="border-t border-[#0b2a5b]/30 px-[var(--mk-box)] py-3 text-sm text-[#3c5277]">{FLOW_HINT}</p>
     </div>
   );
 }

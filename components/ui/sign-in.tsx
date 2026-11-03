@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CalendarClock, ClipboardList, Eye, EyeOff, FileText, Lock } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { marketingFontVariables } from "@/components/marketing/fonts";
+import "@/components/marketing/marketing.css";
 import { Input } from "@/components/ui/input";
 import { DarkSignIn } from "@/components/ui/sign-in-dark";
 import { type LoginBranding, PRODUCT_BRANDING, textOn } from "@/lib/branding";
@@ -28,6 +30,8 @@ const FEATURES = [
   { icon: ClipboardList, title: "Job worksheets", detail: "Drawings, materials, machine times and sign-off in one place." },
   { icon: CalendarClock, title: "Machine schedule", detail: "See which machines are free and when each job will finish." },
 ];
+
+const SANS = 'var(--mk-font-sans), "IBM Plex Sans", system-ui, sans-serif';
 
 function Monogram({ name, className }: { name: string; className: string }) {
   const letters = name.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 3).toUpperCase() || "QF";
@@ -53,7 +57,9 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
   const primary = brand?.primary ?? PRODUCT_BRANDING.primary;
   const accent = brand?.accent ?? PRODUCT_BRANDING.accent;
   const onPrimary = textOn(primary);
-  const theme = { "--brand": primary, "--brand-accent": accent, "--brand-text": onPrimary } as React.CSSProperties;
+  // The public site's faces (components/marketing/fonts.ts, the same next/font instances, so nothing is loaded twice): Barlow
+  // Condensed for headings, IBM Plex Sans for the rest.
+  const theme = { "--brand": primary, "--brand-accent": accent, "--brand-text": onPrimary, fontFamily: SANS } as React.CSSProperties;
 
   const logoMark = (size: "lg" | "sm") => logo ? (
     <div className={size === "lg" ? "rounded-2xl bg-white p-4 shadow-2xl shadow-black/20 ring-1 ring-white/40" : "rounded-xl bg-white p-2 shadow-md ring-1 ring-slate-200"}>
@@ -65,7 +71,7 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
   ) : null;
 
   return (
-    <div style={theme} className="grid min-h-screen bg-slate-50 lg:grid-cols-[1.15fr_1fr]">
+    <div style={theme} className={`${marketingFontVariables} mk-paper grid min-h-screen lg:grid-cols-[1.15fr_1fr]`}>
       <style>{`
         @keyframes qfRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
         .qf-rise { animation: qfRise .6s cubic-bezier(.2,.7,.2,1) both; }
@@ -82,12 +88,12 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
         <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
           <div className="qf-rise flex items-center gap-5">
             {logoMark("lg")}
-            {!logo ? <p className="text-4xl font-black tracking-tight">{name}</p> : null}
+            {!logo ? <p className="mk-display text-5xl uppercase tracking-[0.06em]">{name}</p> : null}
           </div>
 
           <div className="qf-rise max-w-xl" style={{ animationDelay: "120ms" }}>
             {logo ? <p className="text-sm font-semibold uppercase tracking-[0.25em] opacity-70">{name}</p> : null}
-            <h2 className="mt-3 text-4xl font-bold leading-tight tracking-tight xl:text-5xl">{tagline}</h2>
+            <h2 className="mk-display mt-3 text-5xl uppercase xl:text-6xl">{tagline}</h2>
             <div className="mt-10 grid gap-3">
               {FEATURES.map(({ icon: Icon, title, detail }, index) => (
                 <div key={title} className="qf-rise flex items-start gap-4 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md" style={{ animationDelay: `${220 + index * 90}ms` }}>
@@ -112,20 +118,20 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
           <div className="qf-rise w-full max-w-md">
             <div className="mb-8 flex flex-col items-center text-center">
               <div className="lg:hidden">{logoMark("sm")}</div>
-              {!brand ? <p className="text-3xl font-black tracking-tight text-[var(--brand)]">{PRODUCT.name}</p> : null}
-              <h1 className="mt-5 text-3xl font-bold tracking-tight text-slate-950">{brand ? `Sign in to ${name}` : "Welcome back"}</h1>
+              {!brand ? <p className="mk-display text-[2.25rem] uppercase tracking-[0.1em] text-[#0b2a5b]">{PRODUCT.name}</p> : null}
+              <h1 className="mk-display mt-5 text-[2.5rem] uppercase text-[#0b2a5b]">{brand ? `Sign in to ${name}` : "Welcome back"}</h1>
               <p className="mt-2 text-sm text-slate-500">{brand ? "Use the username or email your administrator gave you." : `Sign in to your workshop's ${PRODUCT.name} account.`}</p>
               {!brand ? (
-                <p className="mt-3 text-sm text-slate-600 lg:hidden">Quotes, jobs and invoices for small CNC and fabrication shops. <Link href="/" className="font-semibold text-[var(--brand-accent)] underline underline-offset-2">What is Tolra?</Link></p>
+                <p className="mt-3 text-sm text-slate-600 lg:hidden">Quotes, jobs and invoices for small CNC and fabrication shops. <Link href="/" className="-my-3 inline-block py-3 font-semibold text-[#0b2a5b] underline underline-offset-2">What is Tolra?</Link></p>
               ) : null}
             </div>
 
-            <div className="rounded-3xl border border-slate-200/80 bg-white p-7 shadow-xl shadow-slate-900/5 sm:p-8">
+            <div className="rounded-[2px] border border-[#0b2a5b] bg-white p-6 sm:p-8">
               <form ref={formRef} onSubmit={onSubmit} className="space-y-5">
                 <label className="grid gap-2 text-sm font-medium text-slate-700">
                   Username or email
                   <Input name="identifier" type="text" value={email} onChange={(event) => setEmail(event.target.value)} required autoComplete="username" autoCapitalize="none" spellCheck={false}
-                    className="h-12 rounded-xl border-slate-200 bg-slate-50/60 px-4 focus-visible:border-[var(--brand)] focus-visible:ring-[var(--brand)]/30" />
+                    className="h-12 rounded-[2px] border-slate-300 bg-slate-50/60 px-4 focus-visible:border-[var(--brand)] focus-visible:ring-[var(--brand)]/30" />
                 </label>
                 <div>
                   <div className="mb-2 flex items-center justify-between text-sm">
@@ -137,30 +143,32 @@ function LightSignIn({ onSubmit, onResetPassword, error, canRetry, messageType =
                   </div>
                   <div className="relative">
                     <Input id="password" name="password" type={showPassword ? "text" : "password"} required autoComplete="current-password"
-                      className="h-12 rounded-xl border-slate-200 bg-slate-50/60 px-4 pr-12 focus-visible:border-[var(--brand)] focus-visible:ring-[var(--brand)]/30" />
+                      className="h-12 rounded-[2px] border-slate-300 bg-slate-50/60 px-4 pr-12 focus-visible:border-[var(--brand)] focus-visible:ring-[var(--brand)]/30" />
                     <button type="button" aria-label={showPassword ? "Hide password" : "Show password"} onClick={() => setShowPassword((value) => !value)}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-2.5 text-slate-400 hover:text-slate-600">
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[2px] p-3 text-slate-500 hover:text-slate-600">
                       {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                     </button>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="remember" className="size-4 accent-[var(--brand)]" />Keep me signed in</label>
+                <label className="flex min-h-11 items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="remember" className="size-4 accent-[var(--brand)]" />Keep me signed in</label>
                 {error ? (
                   <div aria-live="polite"
-                    className={messageType === "success" ? "rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700" : "rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"}>
+                    className={messageType === "success" ? "rounded-[2px] border border-green-200 bg-green-50 p-3 text-sm text-green-700" : "rounded-[2px] border border-red-200 bg-red-50 p-3 text-sm text-red-700"}>
                     {error}
-                    {canRetry && messageType === "error" ? <button type="button" disabled={loading} onClick={() => formRef.current?.requestSubmit()} className="mt-2 block font-semibold underline disabled:opacity-60">Retry</button> : null}
+                    {canRetry && messageType === "error" ? <button type="button" disabled={loading} onClick={() => formRef.current?.requestSubmit()} className="mt-1 flex min-h-11 items-center font-semibold underline disabled:opacity-60">Retry</button> : null}
                   </div>
                 ) : null}
+                {/* The public site's call-to-action button: navy, white text, #12397a on hover, a 3px offset ring on focus, no transition.
+                    A company's own sign-in keeps its brand colour on the same shape. */}
                 <button type="submit" disabled={loading}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-none font-mono text-[0.75rem] font-medium uppercase tracking-[0.12em] transition hover:brightness-90 active:translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--brand)]/30 disabled:opacity-70"
-                  style={{ background: primary, color: onPrimary }}>
+                  className={`mk-cta w-full ${brand ? "hover:brightness-90" : ""}`}
+                  style={brand ? { background: primary, borderColor: primary, color: onPrimary } : undefined}>
                   <Lock className="size-4" aria-hidden />{loading ? "Signing in..." : "Sign in"}
                 </button>
               </form>
             </div>
 
-            <p className="mt-8 text-center text-xs text-slate-400">{brand ? withProductCredit(name) : `© ${PRODUCT.name}`}</p>
+            <p className="mt-8 text-center text-xs text-[#3c5277]">{brand ? withProductCredit(name) : `© ${PRODUCT.name}`}</p>
           </div>
         </div>
       </section>
