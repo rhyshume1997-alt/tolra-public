@@ -8,7 +8,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 // so the picker can't download the others client-side. The company list comes from my_organizations() run AS THE CALLER (their own
 // session, never the service role): only their own active companies. Only those ids are looked up, with the service role, by the
 // same rules as the sign-in logo (lib/server/branding.ts loadLogo). The sign-in "branded login" opt-in does not apply: a member
-// may see their own company's logo. Answers { [organization_id]: dataUrl | null } and nothing else from the company profile.
+// may see their own company's logo. A deactivated login gets 403. Answers { [organization_id]: dataUrl | null } and nothing else from the company profile.
 
 const HEADERS = { "Cache-Control": "private, no-store" };
 
@@ -18,6 +18,11 @@ export async function GET() {
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) return jsonError("Unauthorized", 401, { headers: HEADERS });
+
+  // The login itself must be active (user_profiles.active, read as the caller). my_organizations() applies the same rule; this stops a
+  // deactivated login whose session has not expired yet from reaching anything here, and an unreadable profile counts as not active.
+  const { data: profile, error: profileError } = await supabase.from("user_profiles").select("active").eq("id", userData.user.id).maybeSingle();
+  if (profileError || profile?.active !== true) return jsonError("Forbidden", 403, { headers: HEADERS });
 
   const { data: companies, error: listError } = await supabase.rpc("my_organizations");
   if (listError) return jsonError("Couldn't load your companies.", 500, { headers: HEADERS });
