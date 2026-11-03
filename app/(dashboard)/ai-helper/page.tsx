@@ -7,6 +7,7 @@ import { AiRfqPanel } from "@/components/ai-helper/rfq-panel";
 import { AiRoundupPanel } from "@/components/ai-helper/roundup-panel";
 import { anyFeatureOn, useAiHelperStatus } from "@/components/ai-helper/use-ai-helper-status";
 import { AiWhatItShows } from "@/components/ai-helper/what-it-shows";
+import { TolraAiConnectionCard } from "@/components/integrations/tolra-ai-card";
 import { RoleGate } from "@/components/role-gate";
 
 /**
@@ -33,9 +34,10 @@ export default function AiHelperPage() {
             {!anyFeatureOn(status) ? (
               <p className="rounded-lg border p-3 text-sm text-slate-600" data-testid="ai-helper-off">AI is off for this company.{status.can_manage ? " Turn it on below." : " An admin can turn it on in this section."}</p>
             ) : null}
-            <AiMasterCard status={status} onStatus={setStatus} />
+            <TolraAiConnectionCard onChanged={reload} />
+            {!status.tolra_enabled && <AiMasterCard status={status} onStatus={setStatus} />}
             <AiWhatItShows />
-            <AiCustomisedCard status={status} onStatus={setStatus} />
+            {!status.tolra_enabled && <AiCustomisedCard status={status} onStatus={setStatus} />}
             {status.roundup_enabled ? <AiRoundupPanel onUsed={() => void reload()} /> : null}
             {status.rfq_enabled ? <AiRfqPanel onUsed={() => void reload()} /> : null}
             {status.assistant_available && status.assistant_enabled ? <AiAssistantPanel onUsed={() => void reload()} /> : null}
