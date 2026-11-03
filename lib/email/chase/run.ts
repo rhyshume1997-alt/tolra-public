@@ -14,7 +14,7 @@ import { isChaseTone, pauseActive } from "@/lib/email/chase/steps";
 import { StoreError, isMissingTable, loadCompanyName, readAll } from "@/lib/email/schedules/store";
 import { type TemplateKey, type TemplateText, invoiceReminderVars, renderTemplate } from "@/lib/email/templates/defaults";
 import { fmtDate } from "@/lib/dates";
-import { fromPence, gbp, toPence } from "@/lib/money";
+import { gbp, toPence } from "@/lib/money";
 import { balanceDue, daysPastDue, invoiceLifecycle } from "@/lib/receivables";
 
 export const CHASE_NOT_APPLIED = "database update 138 not applied";
@@ -167,7 +167,9 @@ export async function runChase(
   const pausedCustomerIds = new Set(pauses.filter((p) => p.customer_id && pauseActive(p.paused_until, input.today)).map((p) => p.customer_id as string));
   const customers = new Map<string, { name: string; email: string | null; contact_name: string | null }>();
   const pausedNames = new Set<string>();
+  const nameCounts = new Map<string, number>();
   for (const c of customersList) {
+    nameCounts.set(key(c.name), (nameCounts.get(key(c.name)) ?? 0) + 1);
     if (pausedCustomerIds.has(c.id)) pausedNames.add(key(c.name));
     const email = c.email?.trim() ?? "";
     if (email && looksLikeEmail(email) && !customers.has(key(c.name))) customers.set(key(c.name), c);
@@ -184,6 +186,7 @@ export async function runChase(
   // What each invoice gets today, before any job lookup.
   const planned: Array<{ invoice: ChaseCandidate; step: ChaseStep }> = [];
   for (const invoice of candidates) {
+    if ((nameCounts.get(key(invoice.customer)) ?? 0) > 1) { skip("ambiguous_customer"); continue; }
     if (pausedInvoices.has(invoice.id)) { skip("invoice_paused"); continue; }
     if (pausedNames.has(key(invoice.customer))) { skip("customer_paused"); continue; }
     const due = dueChaseSteps(steps, { id: invoice.id, dueDate: invoice.due_date as string, balancePence: toPence(invoice.balance), paused: false }, input.today, history.get(invoice.id));
@@ -209,7 +212,7 @@ export async function runChase(
     const mail = own
       ? renderTemplate(template, invoiceReminderVars({
         reference: invoice.invoice_ref ?? "",
-        total: gbp(fromPence(toPence(invoice.balance) + toPence(received)), 2),
+        total: gbp(Number(invoice.total) || 0, 2),
         dueDate,
         daysOverdue: Math.max(0, invoice.daysFromDue),
         companyName,
