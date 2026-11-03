@@ -13,8 +13,8 @@ let admin: FakeDb & { rpc: ReturnType<typeof vi.fn> };
 const send = vi.fn<(input: CompanyEmailInput) => Promise<CompanyEmailResult>>();
 let provider: unknown;
 
-const approve = (extra: { subject?: string; body?: string } = {}) => approveChaseDraft(
-  { organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", ...extra },
+const approve = (extra: { expectedSubject?: string; expectedBody?: string } = {}) => approveChaseDraft(
+  { organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay", ...extra },
   { db: db as never, admin: admin as never, provider: async () => provider, send, allowlisted: () => false },
 );
 
@@ -45,14 +45,16 @@ describe("Approve and send", () => {
     expect(approveKey(DRAFT)).toMatch(/^[A-Za-z0-9:._-]{8,200}$/);
     expect(approveKey(DRAFT)).toBe(approveKey(DRAFT));
   });
-  it("an edit in the dialog is saved on the draft, then that text is sent", async () => {
-    await approve({ subject: "Invoice INV-1\r\nBcc: x", body: "Edited text" });
-    expect(db.rows("email_history")[0]).toMatchObject({ subject: "Invoice INV-1 Bcc: x", body: "Edited text" });
-    expect(send.mock.calls[0][0]).toMatchObject({ subject: "Invoice INV-1 Bcc: x", text: "Edited text" });
+  it("an edit invalidates the previously reviewed snapshot", async () => {
+    db.rows("email_history")[0].body = "Edited text";
+    expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+    expect(send).not.toHaveBeenCalled();
+    expect((await approve({ expectedBody: "Edited text" })).status).toBe("sent");
+    expect(send.mock.calls[0][0]).toMatchObject({ text: "Edited text" });
   });
   it("no mailer set up: says so, sends nothing and writes nothing (the draft stays for copy / mail app / mark sent)", async () => {
     provider = null;
-    expect(await approve({ body: "Edited" })).toEqual({ status: "no_provider", message: NO_PROVIDER_MESSAGE });
+    expect(await approve()).toEqual({ status: "no_provider", message: NO_PROVIDER_MESSAGE });
     expect(send).not.toHaveBeenCalled();
     expect(admin.rpc).not.toHaveBeenCalled();
     expect(db.rows("email_history")[0]).toMatchObject({ status: "drafted" });
@@ -90,4 +92,33 @@ describe("Approve and send refuses", () => {
     db.rows("email_history")[0].to_email = "office@jnr.test";
     expect((await approve()).status).toBe("sent");
   });
+});
+
+ it("refuses a stale reviewed snapshot before a provider call or send", async () => {
+  const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Earlier subject", expectedBody: "Earlier text" }, { db: db as never, admin: admin as never, provider: vi.fn(), send, allowlisted: () => false });
+  expect(out).toMatchObject({ status: "refused", http: 409 });
+  expect(send).not.toHaveBeenCalled(); expect(db.log).toEqual([]);
+ });
+
+
+it("an edit while the provider is checked invalidates approval before claiming or sending", async () => {
+ const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay" }, {
+  db: db as never, admin: admin as never, provider: async () => { db.rows("email_history")[0].body = "Changed by another person"; return {}; }, send, allowlisted: () => false
+ });
+ expect(out).toMatchObject({ status: "refused", http: 409 }); expect(send).not.toHaveBeenCalled();
+});
+it("claims the text before sending, blocking a concurrent draft editor", async () => {
+ send.mockImplementationOnce(async (input) => {
+  const edit = await db.from("email_history").update({ body: "Too late" }).eq("id", DRAFT).eq("status", "drafted").select("id");
+  expect(edit.data).toEqual([]); expect(input.text).toBe("Hi Acme Ltd\n\nPlease pay");
+  return { ok: true, mode: "sent", provider: "mock", historyId: "sent-1" };
+ });
+ expect((await approve()).status).toBe("sent");
+});
+it("two concurrent approvals call the mailer once", async () => {
+ const outcomes=await Promise.all([approve(),approve()]);
+ expect(outcomes.filter(r=>r.status==="sent")).toHaveLength(1); expect(send).toHaveBeenCalledTimes(1);
+});
+it("a missing reviewed snapshot cannot send", async () => {
+ expect(await approve({expectedSubject: undefined})).toMatchObject({status:"refused",http:409}); expect(send).not.toHaveBeenCalled();
 });

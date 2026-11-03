@@ -11,7 +11,12 @@ describe('dueSteps', () => {
   it('sends no future steps', () => expect(dueSteps(steps, invoice, '2026-11-06')).toEqual([]));
   it('sends reminder before due', () => expect(dueSteps(steps, invoice, '2026-11-07')[0].id).toBe('pre'));
   it('chooses only the most advanced overdue step', () => expect(dueSteps(steps, invoice, '2026-11-30').map(x => x.id)).toEqual(['final']));
-  it('chooses the most advanced unsent step', () => expect(dueSteps(steps, { ...invoice, alreadySentStepIds: ['final'] }, '2026-11-30')[0].id).toBe('firm'));
+  it('chooses the most advanced unsent step after an earlier step was sent', () => expect(dueSteps(steps, { ...invoice, alreadySentStepIds: ['friendly'] }, '2026-11-18')[0].id).toBe('firm'));
+  it('never sends an earlier step after the final step was sent', () => expect(dueSteps(steps, { ...invoice, alreadySentStepIds: ['final'] }, '2026-11-30')).toEqual([]));
+  it.each(['2026-11-01', '2026-12-01'])('never sends 7 or 14 day reminders after a 30 day reminder on %s', today => {
+    const custom: Step[] = [14, 30, 7].map(n => ({ id: 's' + n, offsetDays: n, tone: 'firm' }));
+    expect(dueSteps(custom, { ...invoice, dueDate: '2026-10-01', alreadySentStepIds: ['s30'] }, today)).toEqual([]);
+  });
   it('does not repeat sent steps', () => expect(dueSteps(steps, { ...invoice, alreadySentStepIds: ['pre'] }, '2026-11-07')).toEqual([]));
   it('returns none when paused', () => expect(dueSteps(steps, { ...invoice, paused: true }, '2026-11-30')).toEqual([]));
   it('returns none when settled', () => expect(dueSteps(steps, { ...invoice, balancePence: 0 }, '2026-11-30')).toEqual([]));
