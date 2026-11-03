@@ -41,3 +41,8 @@ Latest instruction prohibits touching held jobs. `claude/work-ownership:docs/TOL
 | Job | Work done | Branch | PR | Tests | Blocker |
 | --- | --- | --- | --- | --- | --- |
 | full-suite / bank privacy cleanup | Removed both tracker files from code PR diff; retained quote fix and tests | codex/bank-csv-quotes @ 0a6b970 | #131 | 365 files / 4,787 tests pass; tsc exit 0; full eslint exit 0 | Integration not run; no Ready label |
+| manual-checks / full-suite | Published reused checklist with requested sender rule and fractional pennies; final verification complete | codex/manual-checks @ 6200405 | #183 | 368 files / 4,986 tests pass; tsc and full eslint exit 0; CI run 41587860353 success (Markdown-only change, not integration proof) | Manual steps not executed; feature wiring holds remain |
+
+## NEXT UP — 3 November
+
+Jobs 1–5 remain blocked by the existing IN PROGRESS ownership rows. No other owner's source changed. Inbox suggestion persistence, bank page/confirmation persistence, cross-export duplicate identity and actual database exact-approved-text send checks are outstanding. Costing base lacks its engine, so 60 golden prices and rounding are skipped, not passed. Manual checklist is delivered in #183. No AVAILABLE row was found. No Ready labels, migrations, production SQL, merges or deployments performed.

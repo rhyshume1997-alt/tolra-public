@@ -59,7 +59,7 @@ House rules for every builder (Claude Code, ChatGPT builders, Codex):
 | e13-tests | Existing E13 owner retained | claude/e13-timesheet-days | BLOCKED | — |
 | sliq-import-tests | Existing SLIQ owner retained | claude/sliq-import | BLOCKED | — |
 | costing-check | Existing COSTING owners retained | chatgpt/costing-in-tolra; chatgpt/costing-wiring | BLOCKED | #110, #123 |
-| full-suite | Codex (own branch only) | codex/bank-csv-quotes | DONE IN PR | #131; 4,787 unit tests pass, integration unverified |
+| full-suite | Codex (own branch only) | codex/bank-csv-quotes | DONE IN PR | #131; 4,787 tests, tsc, full eslint pass on 0a6b970; integration unverified |
 
 ## 3 November queue
 
@@ -67,5 +67,5 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
-| manual-checks | Codex | codex/manual-checks | DONE IN PR | #183; checks running |
+| manual-checks | Codex | codex/manual-checks | DONE IN PR | #183; 4,986 tests, tsc, eslint pass |
 | costing-check (read-only report) | Codex | claude/costing-in-app unchanged | BLOCKED | #130; engine absent, 60 prices skipped |
