@@ -7,6 +7,7 @@ import { jsonError, readJson } from "@/lib/server/auth";
 import { passwordProblem, PASSWORD_MAX } from "@/lib/password";
 import { PRODUCT } from "@/lib/product";
 import { setMustChange } from "@/lib/server/password-setup";
+import { issuePasswordChangeTicket, revokePasswordChangeTicket } from "@/lib/server/password-ticket";
 
 // An admin sets a new password for a member of their current organisation (no e-mail involved).
 // Refused for yourself (use "Change password") and for a login that also belongs to another organisation: that
@@ -87,11 +88,17 @@ export async function POST(request: Request) {
   if (protectedLogin === null) return jsonError(PROTECTED_CHECK_FAILED, 500);
   if (protectedLogin) return jsonError(PROTECTED_LOGIN, 403);
 
+  // G1 (migration 137): every check above passed, so this login's password may be changed once, now. Issued before anything is
+  // written: if it can't be, nothing has changed.
+  const ticket = await issuePasswordChangeTicket(admin, user_id, "admin_set");
+  if (!ticket.ok) return jsonError("Could not set the password. Nothing was changed; try again.", 503);
+
   // The requirement is stored and verified before the password changes (audit R1): if it can't be saved, the old
   // password stays in place and nothing is reported as done (fail closed).
   const { data: before } = await admin.from("user_profiles").select("must_change_password").eq("id", user_id).maybeSingle();
   if (!(await setMustChange(admin, user_id, must_change_password))) {
     console.error("[admin/users/password] flag update failed; password left unchanged (nothing changed, so nothing audited)");
+    await revokePasswordChangeTicket(admin, ticket.ticket);
     return jsonError(must_change_password
       ? "Couldn't save \"must change password\", so the password was not changed. Try again."
       : "Couldn't remove the change-password requirement, so the password was not changed. Try again.", 500);
@@ -99,6 +106,8 @@ export async function POST(request: Request) {
 
   // The marker is written in the same Auth call as the password, so it can never describe a different password.
   const outcome = await setAuthPassword(admin, user_id, password, must_change_password);
+  // A ticket Auth did not use (a refusal, or a call still unanswered) is dropped, so it can't be used later by anyone.
+  await revokePasswordChangeTicket(admin, ticket.ticket);
   if (outcome.kind === "rejected") {
     // Auth refused the request (4xx), so the password didn't change: put the requirement back as it was.
     if (before && typeof before.must_change_password === "boolean" && before.must_change_password !== must_change_password) {
