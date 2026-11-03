@@ -311,11 +311,12 @@ The diagnostic workflow run head is `510a20431ea4f3c16562e9e05f8adfcaacea8eac` o
 | --- | --- | --- |
 | 145 install and verification | Passed | Entire release or all independent setup follow-ups |
 | 146 install and verification | Passed | Full candidate CI or provider/browser acceptance |
-| Role matrices | Passed, including the reviewed permission conditions | Every unrun SQL file in #251 to #256 |
+| Role matrices (B3) | Passed observational admin/office/workshop/viewer step | Support/outsider/anon and every independent SQL file still need their exact test evidence |
 | Second installs of 145 and 146 | Refused as required | Reinstall after rollback is supported |
 | 146 rollback with outstanding Tolra reservation | Refused as required | Other unrun concurrency/provider conditions |
 | 146 rollback after settling | Completed and kept history, including key_source by design | A rolled-back database is fresh; reset stop rule still applies |
-| Extras seed step | Failed only because #243's mark-disposable.sql is not on #247 | Not a demonstrated seed-guard defect, not a release-SQL failure, not a passed seed rehearsal |
+| Seed D1: hosted-address and missing-marker refusals | Passed | Marker-dependent seed cases or a successful seed |
+| Seed D2: marker-dependent cases | Failed only because #243's mark-disposable.sql is not on #247 | Not a demonstrated seed-guard defect, not a release-SQL failure, not a completed seed rehearsal |
 | Overall extras run | FAILURE | Never report the overall run as green because selected SQL steps passed |
 | Full CI 41722093670 | PENDING / in_progress, no conclusion | Never report a full-suite or browser pass before final evidence |
 
