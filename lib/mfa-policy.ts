@@ -28,6 +28,24 @@ export function holdsAdmin(profile: { role?: string | null; secondary_role?: str
 /** What the API answers (403) when the second step is missing; the browser sends the person to /mfa. */
 export const MFA_REQUIRED_CODE = "mfa_required";
 
+/** What the API answers (403) when an admin passed the second step, but not recently enough for a password change. */
+export const MFA_RECENT_CODE = "mfa_recent_required";
+/** How long after entering an authenticator code an admin may still change their password (seconds). */
+export const RECENT_MFA_MAX_AGE_S = 15 * 60;
+
+/**
+ * True when the session's amr (as getAuthenticatorAssuranceLevel returns it) shows an authenticator (TOTP) code entered within
+ * RECENT_MFA_MAX_AGE_S. Anything else, an entry without a time, or a time in the future, does not count.
+ */
+export function recentSecondStep(methods: unknown, nowSeconds = Date.now() / 1000): boolean {
+  if (!Array.isArray(methods)) return false;
+  return methods.some((entry) => {
+    const { method, timestamp } = (entry ?? {}) as { method?: unknown; timestamp?: unknown };
+    return (method === "totp" || method === "mfa/totp") && typeof timestamp === "number"
+      && timestamp <= nowSeconds + 60 && nowSeconds - timestamp <= RECENT_MFA_MAX_AGE_S;
+  });
+}
+
 // ---- Onboarding a new admin (migration 065) ---------------------------------------------------------------------------------
 // When someone is GIVEN admin by another admin (created as admin, role or second role changed to admin, an admin reactivated, or
 // their two-step sign-in reset), their membership is flagged (organization_members.mfa_enrolment_required). Until they have a
@@ -53,9 +71,10 @@ export function becomesAdmin(before: Roles, after: Roles): boolean {
 }
 
 /**
- * True when a membership change gives or takes admin: the role or second role to or from admin, or reactivating someone who holds
- * it. Such a change hands over (or takes away) the company's admin rights, so it needs the second step always, like creating a user
- * (audit Z1). Fields left undefined are unchanged; a null second role removes it.
+ * True when a membership change gives or takes admin: the role or second role to or from admin, reactivating someone who holds it, or
+ * switching an active admin OFF (deactivating an admin takes their admin rights away: G1). Such a change hands over (or takes away) the
+ * company's admin rights, so it needs the second step always, like creating a user (audit Z1), and a recent authenticator code
+ * (requireRecentAal2; the database asks the same in migration 136). Fields left undefined are unchanged; a null second role removes it.
  */
 export function changesAdmin(before: Roles, change: { role?: string; secondary_role?: string | null; active?: boolean }): boolean {
   const after = {
@@ -63,7 +82,8 @@ export function changesAdmin(before: Roles, change: { role?: string; secondary_r
     secondary_role: change.secondary_role !== undefined ? change.secondary_role : before?.secondary_role,
     active: change.active ?? before?.active,
   };
-  return holdsAdmin(before) !== holdsAdmin(after) || becomesAdmin(before, after);
+  const switchedOff = Boolean(before) && before?.active !== false && holdsAdmin(before) && after.active === false;
+  return holdsAdmin(before) !== holdsAdmin(after) || becomesAdmin(before, after) || switchedOff;
 }
 
 /**

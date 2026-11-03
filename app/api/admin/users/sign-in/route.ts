@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { type AdminContext, audit, banState, companyMayLift, deactivationBanMarker, guard, liftDeactivationBan, loginIsProtected, ownsIdentity } from "@/lib/server/admin-users";
+import { type AdminContext, audit, banState, companyMayLift, deactivationBanMarker, guard, liftDeactivationBan, loginIsProtected, ownsIdentity, requireRecentAal2 } from "@/lib/server/admin-users";
 import { PROTECTED_CHECK_FAILED, PROTECTED_LOGIN } from "@/lib/company-access";
-import { jsonError, mfaRequired, readJson } from "@/lib/server/auth";
+import { jsonError, readJson } from "@/lib/server/auth";
 import { PRODUCT } from "@/lib/product";
 import { protectedStates, signInStates } from "@/lib/server/sign-in-list";
 
@@ -74,9 +74,9 @@ export async function POST(request: Request) {
   const { auth, admin } = ctx;
   const orgId = auth.profile.organization_id;
 
-  // Always the second step for this one, even while REQUIRE_ADMIN_MFA is off: it locks a person out of Tolra.
-  const { data: assurance, error: assuranceError } = await auth.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (assuranceError || assurance?.currentLevel !== "aal2") return mfaRequired();
+  // Always the second step for this one, even while REQUIRE_ADMIN_MFA is off: it locks a person out of Tolra. A recent code too (G1) while it is on.
+  const refused = await requireRecentAal2(auth, "disable or enable sign-in");
+  if (refused) return refused;
 
   const json = await readJson(request, 2048);
   if (!json.ok) return json.response;

@@ -99,6 +99,8 @@ vi.mock("@/lib/server/admin-users", () => ({
   loginIsProtected: async () => state.protectedLogin,
   ownsIdentity: async () => true,
   requireAdminEnrolment: async (_a: unknown, org: string, user: string) => { state.writes.push(`enrol:${org}:${user}`); return true; },
+  // The recent-code rule for giving admin has its own tests (admin-recent-mfa.test.ts); here the caller's code is always recent.
+  requireRecentAal2: async () => null,
 }));
 vi.mock("@/lib/server/password-setup", () => ({ setMustChange: async () => true }));
 
