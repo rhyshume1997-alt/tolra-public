@@ -97,4 +97,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 25 | builder2 | chatgpt2/atomic-sql-tests | DONE IN DRAFT PR | #154 |
 | 26 | builder2 | chatgpt2/costing-wiring-atomic | DONE IN DRAFT PR | #155 |
 | 27 | builder2 | chatgpt2/paid-claim-adapter-sender | DONE IN DRAFT PR | #156 |
-| 28a | builder2 | chatgpt2/paid-claim-reconcile | DONE IN DRAFT PR | Pending |
+| 28a | builder2 | chatgpt2/paid-claim-reconcile | DONE IN DRAFT PR | #157 |
