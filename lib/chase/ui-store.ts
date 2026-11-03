@@ -8,7 +8,7 @@ export async function saveChaseSteps(db: SupabaseClient, org: string, before: Sa
   const problem = stepsProblem(steps.map((s) => ({ offset: String(s.days), tone: s.tone })));
   if (problem) throw new Error(problem);
   if (before.length === steps.length && before.every(s => steps.some(n => n.days === s.days && n.tone === s.tone))) return before;
-  const { data, error } = await db.rpc("save_chase_steps_atomic", { p_expected: before, p_steps: steps });
+  const { data, error } = await db.rpc("save_chase_steps_atomic", { p_org: org, p_expected: before, p_steps: steps });
   if (error) throw new Error(error.code === "40001" ? "The chase steps changed. Reload the page." : "Could not save chase steps. Ask the person who looks after Tolra to check the setup.");
   if (!Array.isArray(data) || data.length !== steps.length || data.some((s) => typeof s.id !== "string" || !steps.some(n => n.days === s.days && n.tone === s.tone))) throw new Error("Could not check the saved steps. Reload the page.");
   return data as SavedStep[];

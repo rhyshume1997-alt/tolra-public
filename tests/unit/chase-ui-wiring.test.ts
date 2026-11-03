@@ -8,7 +8,7 @@ describe("chase screen connections", () => {
     const db = { rpc: vi.fn().mockResolvedValue({ data: saved, error: null }) };
     const before = [{ id: "step", days: 7, tone: "friendly" as const }];
     expect(await saveChaseSteps(db as never, "a", before, [{ days: 7, tone: "firm" }])).toEqual(saved);
-    expect(db.rpc).toHaveBeenCalledWith("save_chase_steps_atomic", { p_expected: before, p_steps: [{ days: 7, tone: "firm" }] });
+    expect(db.rpc).toHaveBeenCalledWith("save_chase_steps_atomic", { p_org: "a", p_expected: before, p_steps: [{ days: 7, tone: "firm" }] });
   });
   it("makes no writes for unchanged steps", async () => {
     const db = new FakeDb();
