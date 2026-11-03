@@ -76,7 +76,7 @@ UNION ALL SELECT 'payment_claim_columns',
   IF v_check.ok IS DISTINCT FROM true THEN RAISE EXCEPTION '147: required verified 138 failed: %',v_check.check_name; END IF;
  END LOOP;
  IF v_count<>12 THEN RAISE EXCEPTION '147: expected all 12 frozen 138 verification checks'; END IF;
-END $post_release_guard$;
+END; $post_release_guard$;
 
 -- REVIEW PROPOSAL ONLY. Depends on 138. Not a numbered migration; not applied by builder2.
 -- One transaction, same company/roles/RLS as 138; existing offset IDs are preserved.
@@ -127,5 +127,5 @@ UNION ALL SELECT '147 underlying RLS retained', coalesce((SELECT relrowsecurity 
   IF v_check.ok IS DISTINCT FROM true THEN RAISE EXCEPTION '147 self-check failed: %',v_check.check_name; END IF;
  END LOOP;
  IF v_count<>4 THEN RAISE EXCEPTION '147 verification incomplete'; END IF;
-END $verify_release$;
+END; $verify_release$;
 COMMIT;
