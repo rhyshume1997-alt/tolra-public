@@ -2,7 +2,8 @@
  * Audit Z7/C9: POST /api/auth/change-password took a new password from any signed-in session: no current password and no second
  * step. Now the current password is checked (a sign-in that is never stored) unless an admin set a temporary one (must change
  * password) or a reset or invite link signed the session in within the hour; and an admin needs aal2 when REQUIRE_ADMIN_MFA is on,
- * except while replacing a temporary password (the middleware sends them to set-up before /mfa). The breached-password check and
+ * except while replacing a temporary password (the middleware sends them to set-up before /mfa). G1: that code must be from the last 15
+ * minutes. The breached-password check and
  * clearing must_change_password are unchanged.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,11 +23,17 @@ const state = {
   memberships: [] as Array<{ role: string; secondary_role: string | null }>,
   membershipError: false,
   level: "aal1",
+  next: null as string | null,
   amr: [] as unknown[],
   unreachable: false,
   checks: [] as string[],
   checkSignOuts: 0,
   updates: [] as string[],
+  /** G1 (137): ticket and Auth calls in order; how the ticket function answers; what updateUser answers. */
+  log: [] as string[],
+  ticket: "ok" as "ok" | "missing" | "error",
+  updateError: null as null | { code?: string; status?: number; message?: string },
+  issued: 0,
 };
 
 const admin = {
@@ -43,6 +50,17 @@ const admin = {
     throw new Error(`unexpected table ${table}`);
   },
   auth: { admin: { updateUserById: async () => ({ error: null }) } },
+  rpc: async (fn: string, args: Record<string, unknown>) => {
+    state.log.push(`${fn}:${String(args.p_user_id ?? args.p_ticket)}:${String(args.p_purpose ?? "")}`);
+    if (fn === "issue_password_change_ticket") {
+      if (state.ticket === "missing") return { data: null, error: { code: "PGRST202", message: "Could not find the function" } };
+      if (state.ticket === "error") return { data: null, error: { code: "XX000", message: "boom" } };
+      state.issued += 1;
+      return { data: `ticket-${state.issued}`, error: null };
+    }
+    if (fn === "revoke_password_change_ticket") return { data: false, error: null };
+    throw new Error(`unexpected rpc ${fn}`);
+  },
 };
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => admin }));
 
@@ -50,8 +68,13 @@ vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({
     auth: {
       getUser: async () => ({ data: { user: { id: USER, email: EMAIL, app_metadata: {} } }, error: null }),
-      updateUser: async ({ password }: { password: string }) => { state.updates.push(password); return { error: null }; },
-      mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: state.level, currentAuthenticationMethods: state.amr }, error: null }) },
+      updateUser: async ({ password }: { password: string }) => {
+        state.log.push("auth.updateUser");
+        if (state.updateError) return { error: state.updateError };
+        state.updates.push(password);
+        return { error: null };
+      },
+      mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: state.level, nextLevel: state.next ?? state.level, currentAuthenticationMethods: state.amr }, error: null }) },
     },
     rpc: async () => ({ data: null, error: null }),
   }),
@@ -80,6 +103,7 @@ vi.mock("@supabase/supabase-js", async (original) => {
 
 const { POST } = await import("@/app/api/auth/change-password/route");
 const { recentLinkSignIn } = await import("@/lib/server/password-setup");
+const { recentSecondStep } = await import("@/lib/mfa-policy");
 
 const change = (body: Record<string, unknown>) =>
   POST(new Request("http://localhost/api/auth/change-password", { method: "POST", headers: { "content-type": "application/json", origin: "http://localhost", host: "localhost" }, body: JSON.stringify(body) }));
@@ -91,7 +115,7 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
   process.env.BREACHED_PASSWORD_CHECK = "off";
-  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [] });
+  Object.assign(state, { mustChange: false, profileError: false, memberships: [{ role: "office", secondary_role: null }], membershipError: false, level: "aal1", next: null, amr: [{ method: "password", timestamp: now() - 60 }], unreachable: false, checks: [], checkSignOuts: 0, updates: [], log: [], ticket: "ok", updateError: null, issued: 0 });
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -176,6 +200,7 @@ describe("an admin needs the second step when REQUIRE_ADMIN_MFA is on", () => {
   it("on, at aal2: changed with the current password", async () => {
     process.env.REQUIRE_ADMIN_MFA = "true";
     state.level = "aal2";
+    state.amr = [{ method: "password", timestamp: now() - 60 }, { method: "totp", timestamp: now() - 30 }];
     expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
   });
   it("on, while replacing a temporary password: no aal2 asked (set-up comes before /mfa), no current password", async () => {
@@ -194,6 +219,142 @@ describe("an admin needs the second step when REQUIRE_ADMIN_MFA is on", () => {
     process.env.REQUIRE_ADMIN_MFA = "true";
     state.memberships = [{ role: "office", secondary_role: null }];
     expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+});
+
+describe("an admin's authenticator code must be recent (15 minutes) when the switch is on", () => {
+  beforeEach(() => { state.memberships = [{ role: "admin", secondary_role: null }]; });
+  const fresh = () => [{ method: "password", timestamp: now() - 600 }, { method: "totp", timestamp: now() - 300 }];
+  const stale = () => [{ method: "password", timestamp: now() - 7200 }, { method: "totp", timestamp: now() - 3600 }];
+
+  it("switch on, aal2 but the code is older than 15 minutes: refused with mfa_recent_required; nothing checked or changed", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.amr = stale();
+    const response = await change({ password: NEW, current_password: CURRENT });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(state.checks).toEqual([]);
+    expect(state.updates).toEqual([]);
+  });
+  it("switch on, aal2 with no time on the code, or no totp entry at all: refused", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    for (const amr of [[{ method: "totp" }], [{ method: "password", timestamp: now() }], []]) {
+      state.amr = amr;
+      expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
+    }
+    expect(state.updates).toEqual([]);
+  });
+  it("switch on, aal2 with a code from the last 15 minutes: changed with the current password", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.amr = fresh();
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+    expect(state.updates).toEqual([NEW]);
+  });
+  it("switch OFF: an admin is never asked (nobody is asked for a code at sign-in), authenticator set up or not", async () => {
+    for (const next of [null, "aal2"]) {
+      state.next = next;
+      state.amr = stale();
+      expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+    }
+  });
+  it("switch on: office staff are never asked for a recent code", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.amr = stale();
+    state.memberships = [{ role: "office", secondary_role: null }];
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+  it("switch on, replacing a temporary password: no second step asked, however old the code", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.amr = stale();
+    state.mustChange = true;
+    expect((await change({ password: NEW })).status).toBe(200);
+  });
+  it("switch on, aal2, memberships unreadable: refused if the code is stale (as if admin), changed if it is fresh", async () => {
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.level = "aal2";
+    state.membershipError = true;
+    state.memberships = [];
+    state.amr = stale();
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
+    state.amr = fresh();
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+  });
+});
+
+describe("G1 (migration 137): a single-use ticket for this login, issued only after every check passed", () => {
+  it("changed: the ticket (own_change, for the caller) is issued right before Auth is asked, then dropped (already used, so nothing to drop)", async () => {
+    const response = await change({ password: NEW, current_password: CURRENT });
+    expect(response.status).toBe(200);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
+  });
+  it("no ticket when a check fails: no current password, a wrong one, or (switch on) an admin's stale code", async () => {
+    await change({ password: NEW });
+    await change({ password: NEW, current_password: "Not-The-Password-1" });
+    process.env.REQUIRE_ADMIN_MFA = "true";
+    state.memberships = [{ role: "admin", secondary_role: null }];
+    state.level = "aal2";
+    state.amr = [{ method: "totp", timestamp: now() - 16 * 60 }];
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(403);
+    expect(state.log).toEqual([]);
+    expect(state.updates).toEqual([]);
+  });
+  it("the ticket can't be issued: 503, Auth is not asked, the requirement stays", async () => {
+    state.mustChange = true;
+    state.ticket = "error";
+    const response = await change({ password: NEW });
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe("Couldn't save your password. Try again.");
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`]);
+    expect(state.updates).toEqual([]);
+    expect(state.mustChange).toBe(true);
+  });
+  it("before 137 is applied (no ticket function): the change goes on as before, and no ticket is dropped", async () => {
+    state.ticket = "missing";
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(200);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser"]);
+    expect(state.updates).toEqual([NEW]);
+  });
+  it("Auth refuses (database refused, weak password): the unused ticket is dropped and the person is told it wasn't saved", async () => {
+    state.updateError = { status: 500, code: "unexpected_failure", message: "Error during password storage" };
+    const response = await change({ password: NEW, current_password: CURRENT });
+    expect(response.status).toBe(500);
+    expect((await response.json()).error).toBe("Couldn't save your password. Try again.");
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
+  });
+});
+
+describe("G1 (137): a failed update does not use up the person's chance to retry (Pack 19d)", () => {
+  it("updateUser fails: the route drops that ticket; the retry issues a fresh ticket and the change succeeds", async () => {
+    state.updateError = { status: 500, code: "unexpected_failure", message: "Error during password storage" };
+    expect((await change({ password: NEW, current_password: CURRENT })).status).toBe(500);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-1:"]);
+    expect(state.updates).toEqual([]);
+    state.log = [];
+    state.updateError = null;
+    const retry = await change({ password: NEW, current_password: CURRENT });
+    expect(retry.status).toBe(200);
+    expect(state.log).toEqual([`issue_password_change_ticket:${USER}:own_change`, "auth.updateUser", "revoke_password_change_ticket:ticket-2:"]);
+    expect(state.updates).toEqual([NEW]);
+  });
+});
+
+describe("recentSecondStep", () => {
+  const t = 1_800_000_000;
+  it("a totp entry within 15 minutes", () => {
+    expect(recentSecondStep([{ method: "totp", timestamp: t - 899 }], t)).toBe(true);
+    expect(recentSecondStep([{ method: "password", timestamp: t - 5000 }, { method: "mfa/totp", timestamp: t - 10 }], t)).toBe(true);
+  });
+  it("not: too old, from the future, a password or link sign-in, no time, or not a list", () => {
+    expect(recentSecondStep([{ method: "totp", timestamp: t - 901 }], t)).toBe(false);
+    expect(recentSecondStep([{ method: "totp", timestamp: t + 3600 }], t)).toBe(false);
+    expect(recentSecondStep([{ method: "password", timestamp: t }, { method: "recovery", timestamp: t }], t)).toBe(false);
+    expect(recentSecondStep([{ method: "totp" }], t)).toBe(false);
+    expect(recentSecondStep(["totp"], t)).toBe(false);
+    expect(recentSecondStep(undefined, t)).toBe(false);
   });
 });
 
