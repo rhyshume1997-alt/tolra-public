@@ -3,7 +3,7 @@
 export const SITE_URL = "https://tolra.co.uk";
 export const SITE_TITLE = "Tolra: job management for small CNC & fabrication shops";
 export const SITE_DESCRIPTION =
-  "Quotes, purchase orders, job worksheets, machine schedule and invoices for small CNC and fabrication shops, in one place. Built by an engineer in Glasgow.";
+  "Quotes, purchase orders, job worksheets, machine schedule and invoices for small CNC and fabrication shops, in one place, with the owner's numbers and a Xero connection. Built by an engineer in Glasgow.";
 
 /** The Google Calendar booking page behind every "Book a free 20-minute chat" button. */
 export const BOOKING_URL = "https://calendar.google.com/calendar/appointments/AcZssZ35nSQ_2lobUifPsul__TiweHpPV1aRWuWbssQ=";
@@ -44,27 +44,27 @@ export const TRUST_ITEMS = ["Admin two-step sign-in", "No tracking cookies on th
 
 /**
  * Every made-up example on the page (the traveller's records, the drawn document layouts) carries this label. They are drawn from the
- * real layouts in the app's code, with example values; they are not screenshots. Real screenshots of the app (below, and a feature's
- * `shot`) are labelled Screenshot.
+ * real layouts in the app's code, with example values; they are not screenshots. Real screenshots of the app live in /public/screens
+ * (redacted to example names) and are labelled Example data.
  */
 export const ILLUSTRATION_LABEL = "Illustration";
-export const SCREENSHOT_LABEL = "Screenshot";
+export const EXAMPLE_DATA_LABEL = "Example data";
 
 /**
- * Two real screenshots of the app, shown at the top of "What it does". Names, companies and quote numbers in them are redacted to
- * example values. Width and height are the files' own.
+ * Two real screenshots of the app, in /public/screens. Names, companies and quote numbers in them are redacted to example values.
+ * Width and height are the files' own. The Job Board sits at the top of "What it does"; the Dashboard in the owner's section.
  */
 export const SCREENSHOTS = [
   {
     title: "Dashboard",
-    src: "/marketing/tolra-dashboard.jpg",
+    src: "/screens/tolra-dashboard.jpg",
     width: 1523,
     height: 784,
     alt: "Tolra dashboard: the Today view with tiles for quotes with no reply, enquiries not quoted, jobs running late, work waiting to be checked and money late, above a Needs your attention list of expired quotes",
   },
   {
     title: "Job Board",
-    src: "/marketing/tolra-job-board.jpg",
+    src: "/screens/tolra-job-board.jpg",
     width: 1523,
     height: 784,
     alt: "Tolra Job Board in Cards view: tiles for open, not started, running, waiting for inspection and complete jobs, with filters for status, type, group, due date, tag and stage",
@@ -165,17 +165,26 @@ export const HANDLES_STAGES = {
 /**
  * "What it does": alternating rows of text and a figure. Each figure is drawn from the real layout in the app's code (field names as the
  * app prints them) with example values, and is labelled Illustration. When a real screenshot fits a row, set `shot`
- * ({ src under /public, alt, width, height }) and the row shows the screenshot, labelled Screenshot, instead of the drawing.
+ * ({ src under /public/screens, alt, width, height }) and the row shows the screenshot, labelled Example data, instead of the drawing.
+ *
+ * `inDevelopment`: the feature is in the code on main but not yet working for the shops, so its row carries the In development tag.
+ * Checked against main on 3 Nov: quotes, POs and invoices (components/pdf, lib/numbering.ts), job worksheets (components/job-worksheet-form.tsx,
+ * lib/job-signoff.ts), the machine schedule (app/(dashboard)/schedule, lib/machine-schedule.ts) and the owner's numbers
+ * (app/(dashboard)/dashboard, lib/dashboard-tiles.ts) work today. The AI helper is built (app/api/ai-helper) but switched off on the
+ * server (AI_HELPER_ENABLED) and per company (migration 134), and migration 133 is the work before it is switched on for any company.
  */
 export type FeatureShot = { src: string; alt: string; width: number; height: number } | null;
 export type FeatureFigure =
   | { kind: "document"; caption: string; title: string; company: string; keyValues: ReadonlyArray<readonly [string, string]>; columns: readonly string[]; lines: ReadonlyArray<readonly string[]> }
   | { kind: "worksheet"; caption: string; title: string; jobNo: string; fields: ReadonlyArray<readonly [string, string]>; signOff: string }
   | { kind: "schedule"; caption: string; days: readonly string[]; machines: ReadonlyArray<{ name: string; bars: ReadonlyArray<{ job: string; from: number; to: number }> }>; key: string }
-  | { kind: "draft"; caption: string; title: string; fields: ReadonlyArray<readonly [string, string]>; flag: string };
+  | { kind: "draft"; caption: string; title: string; fields: ReadonlyArray<readonly [string, string]>; flag: string }
+  | { kind: "overview"; caption: string; title: string; tiles: readonly string[]; blank: string };
 
 export const FEATURES_TITLE = "What it does";
-export const FEATURES: ReadonlyArray<{ title: string; detail: string; figure: FeatureFigure; shot: FeatureShot }> = [
+export const IN_DEVELOPMENT_LABEL = "In development";
+export const PILOT_NOTE = "Tolra is in pilot and still being developed with the shops using it.";
+export const FEATURES: ReadonlyArray<{ title: string; detail: string; figure: FeatureFigure; shot: FeatureShot; inDevelopment?: boolean }> = [
   {
     title: "Quotes, purchase orders and invoices",
     detail: "Documents with your logo, each with its own running number, VAT and your terms.",
@@ -213,6 +222,16 @@ export const FEATURES: ReadonlyArray<{ title: string; detail: string; figure: Fe
     shot: null,
   },
   {
+    title: "The owner's numbers",
+    detail: "Money owed, revenue, your top customers and how the machines are earning, worked out from the work already in Tolra.",
+    figure: {
+      kind: "overview", caption: "The owner's Dashboard, values left blank", title: "Dashboard",
+      tiles: ["Money owed", "This month's revenue", "Average days to pay", "Jobs against estimate", "Finished on time", "Pounds per machine hour"],
+      blank: "–",
+    },
+    shot: null,
+  },
+  {
     title: "Optional AI helper",
     detail: "Paste in an enquiry email and it drafts a quote for you to check. It stays off until your admin switches it on, and nothing is saved until you approve it, and then only as a draft.",
     figure: {
@@ -221,6 +240,66 @@ export const FEATURES: ReadonlyArray<{ title: string; detail: string; figure: Fe
       flag: "Needs human review",
     },
     shot: null,
+    inDevelopment: true,
+  },
+];
+
+/**
+ * The owner's section, after "What it does". Every line names something on main (checked 3 Nov), and where it lives in the app:
+ *   Dashboard  lib/dashboard-tiles.ts and app/(dashboard)/dashboard/page.tsx (revenue-trend, this-month-revenue, money-owed, money-by-age,
+ *              avg-days-to-pay, top-customers, jobs-vs-estimate, on-time-delivery, right-first-time, per-machine-hour, machine-load)
+ *   Invoicing  app/(dashboard)/invoices/page.tsx, "Late Payer Patterns" (customers with overdue invoices, worst first)
+ *   Numbers    app/(dashboard)/numbers/page.tsx and lib/numbers.ts (the three questions)
+ *   Weekly hours  components/time/payroll-export.tsx (admin and office, on the weekly hours page)
+ *   Admin      app/(dashboard)/admin/activity (activity log, admin only), lib/integrations and app/api/integrations/xero (migration 084)
+ *   Accountant components/accountant-invite-card.tsx and lib/integrations/accountant-invite.ts (migration 129: one use, viewer role)
+ * No figures: the listing names what you see, never a value.
+ */
+export const OWNER_TITLE = "See the patterns and numbers you didn't know you needed";
+export const OWNER_LEAD = "Then send everything straight to your accountant.";
+export const OWNER_XERO = "Connects to your accounts package, Xero today.";
+export const OWNER_FROM = "Worked out from the quotes, jobs, invoices and machine time already in Tolra.";
+export const OWNER_SHEET = { title: "Owner's sheet", where: "Where", what: "What you see" } as const;
+export const OWNER_ROWS: ReadonlyArray<{ where: string; items: ReadonlyArray<readonly [string, string]> }> = [
+  {
+    where: "Dashboard",
+    items: [
+      ["Revenue trend", "Month by month, invoiced or received."],
+      ["This month's revenue", "So far, against last month."],
+      ["Money owed", "What is unpaid, and how much of it is overdue."],
+      ["Money owed by age", "How late the unpaid money is."],
+      ["Average days to pay", "How long customers take to pay you."],
+      ["Top customers", "Who your invoicing comes from."],
+      ["Jobs against estimate", "Recorded machine time against the time planned."],
+      ["Finished on time", "Jobs finished by the date they were needed."],
+      ["Right first time", "Jobs that passed their first inspection."],
+      ["Pounds per machine hour", "Invoiced work over the machine hours recorded on it."],
+      ["Machine load", "The hours booked on each machine this week."],
+    ],
+  },
+  { where: "Invoicing", items: [["Customers with overdue invoices", "The late payers, worst first."]] },
+  {
+    where: "Numbers",
+    items: [
+      ["Invoiced against money received", "Each month, side by side."],
+      ["Which customers you rely on", "How much of your work comes from each one."],
+      ["Machine time", "Where the recorded hours go, machine by machine."],
+    ],
+  },
+  { where: "Weekly hours", items: [["Time and payroll export", "Everyone's paid hours in one spreadsheet for payroll."]] },
+  {
+    where: "Admin",
+    items: [
+      ["Activity log", "Who changed what, and when."],
+      ["Xero connection", "Issued invoices and credit notes go across to Xero."],
+    ],
+  },
+  {
+    where: "Accountant",
+    items: [
+      ["Invite your accountant", "A one-use link that lets them see your company in Tolra, read only."],
+      ["Or send them exports", "Your records as spreadsheets, and a year-end pack of document PDFs."],
+    ],
   },
 ];
 
@@ -253,9 +332,9 @@ export const FAQ = [
       "Yes. Customers, suppliers, quotes, sales orders, purchase orders, jobs and invoices each download as a CSV or Excel file. A year-end export gives you one zip with the PDF of every issued invoice, sent quote, purchase order and delivery note for the period, plus spreadsheets of the totals and payments.",
   },
   {
-    question: "Does it work with Xero or Sage?",
+    question: "Does it work with my accounts package?",
     answer:
-      "Xero: not yet. Sage: not yet.",
+      "Yes, with Xero. Once an admin connects your Xero and picks which accounts and VAT rates to use, every invoice and credit note you issue in Tolra is sent across, and an invoice you void in Tolra is voided in Xero too. Payments are not sent to Xero or read back from it, so you mark an invoice paid in Tolra.",
   },
   { question: "What does it cost?", answer: "I'll talk it through with you on the call." },
 ] as const;

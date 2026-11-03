@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 
 import { BracketT } from "@/components/marketing/bracket-t";
 import { Cta } from "@/components/marketing/cta";
-import { FeatureFigure, ScreenFigure } from "@/components/marketing/feature-figure";
+import { FeatureFigure, InDevelopmentTag, ScreenFigure } from "@/components/marketing/feature-figure";
 import { JobCardCompact } from "@/components/marketing/job-card-compact";
 import { JobFlow } from "@/components/marketing/job-flow";
+import { OwnerSection } from "@/components/marketing/owner-section";
 import { MarketingSheet } from "@/components/marketing/sheet";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import InkOrbitFeatures from "@/components/ui/ink-orbit-features";
 import {
   CLOSE_CALL_LINE, CLOSE_TITLE, FAQ, FAQ_TITLE, FEATURES, FEATURES_TITLE, FOUNDER_LINK_LABEL, FOUNDER_NAME, FOUNDER_NOTE, FOUNDER_TITLE, FOUNDER_URL,
-  HANDLES_HINT, HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PROOF_LINE, SCREENSHOTS, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
+  HANDLES_HINT, HANDLES_TITLE, HERO_SUBHEAD, HERO_TITLE, IN_DEVELOPMENT_LABEL, MARKETING_ICONS, PAIN_CARDS, PAIN_TITLE, PILOT_NOTE, PROOF_LINE, SCREENSHOTS, SEE_HOW_LABEL, SHEET_LABELS, SITE_DESCRIPTION,
   SITE_TITLE, SITE_URL, START_STEPS, START_TITLE, TRUST_ITEMS, WHO_TEXT, WHO_TITLE, jsonLd,
 } from "@/lib/marketing";
 
@@ -33,14 +34,16 @@ export const metadata: Metadata = {
 const SHEET = "mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-10";
 /**
  * A section: a full-width band, white and pale blue in turn (marketing.css .mk-band / .mk-band-alt), with one vertical padding,
- * clamp(56px, 8vw, 112px). Order: hero (white), problems and answers (blue), what it does (white), founder (blue),
- * who and getting started (white), questions (blue), close (white).
+ * clamp(56px, 8vw, 112px). Order: hero (white), problems and answers (blue), what it does (white), the owner's sheet (blue),
+ * founder (white), who and getting started (blue), questions (white), close (blue).
  */
 const BAND = "mk-band";
 const BAND_ALT = "mk-band mk-band-alt";
 const H1 = "mk-display text-[clamp(2.5rem,4.8vw,4rem)] uppercase";
 const H2 = "mk-display text-[clamp(2rem,3.6vw,3rem)] uppercase";
 const MUTED = "text-[#3c5277]";
+/** The Job Board screen heads "What it does"; the Dashboard screen goes with the owner's sheet (components/marketing/owner-section.tsx). */
+const jobBoard = SCREENSHOTS.find((shot) => shot.title === "Job Board");
 
 export default function Home() {
   return (
@@ -106,10 +109,10 @@ export default function Home() {
 
         <section aria-labelledby="features-title" className={BAND}>
           <div className={SHEET}>
-            <h2 id="features-title" className={H2}>{FEATURES_TITLE}</h2>
-            {/* Two real screens from the app (redacted to example names), framed like the drawings; each opens full size on a tap. */}
-            <div className="mt-10 grid gap-8 lg:mt-14 lg:grid-cols-2 lg:gap-10">
-              {SCREENSHOTS.map((shot) => <ScreenFigure key={shot.src} shot={shot} />)}
+            {/* A real screen from the app (redacted to example names), framed like the drawings; it opens full size on a tap. */}
+            <div className="grid gap-10 lg:grid-cols-12 lg:gap-10">
+              <h2 id="features-title" className={`${H2} lg:col-span-4`}>{FEATURES_TITLE}</h2>
+              {jobBoard ? <div className="lg:col-span-8"><ScreenFigure shot={jobBoard} sizes="(min-width: 1240px) 760px, (min-width: 1024px) 62vw, calc(100vw - 2rem)" /></div> : null}
             </div>
             <ol className="mt-16 space-y-16 lg:mt-24 lg:space-y-24">
               {FEATURES.map((feature, index) => {
@@ -123,6 +126,7 @@ export default function Home() {
                       </div>
                       <div className={flip ? "lg:pl-12" : "lg:pr-12"}>
                         <h3 className="mk-display mt-5 text-[2rem]">{feature.title}</h3>
+                        {feature.inDevelopment ? <InDevelopmentTag label={IN_DEVELOPMENT_LABEL} className="mt-3" /> : null}
                         <p className={`mt-2 max-w-[42ch] ${MUTED}`}>{feature.detail}</p>
                       </div>
                     </div>
@@ -133,10 +137,15 @@ export default function Home() {
                 );
               })}
             </ol>
+            <div className="mt-16 border-t border-[#0b2a5b] pt-4 lg:mt-24">
+              <p className="font-semibold">{PILOT_NOTE}</p>
+            </div>
           </div>
         </section>
 
-        <section aria-labelledby="builder-title" className={BAND_ALT}>
+        <OwnerSection className={BAND_ALT} />
+
+        <section aria-labelledby="builder-title" className={BAND}>
           <div className={`${SHEET} grid gap-6 lg:grid-cols-12 lg:gap-10`}>
             <h2 id="builder-title" className={`${H2} lg:col-span-4`}>{FOUNDER_TITLE}</h2>
             <div className="border-l border-[#0b2a5b] pl-5 sm:pl-8 lg:col-span-7 lg:col-start-6">
@@ -154,7 +163,7 @@ export default function Home() {
           </div>
         </section>
 
-        <div className={BAND}>
+        <div className={BAND_ALT}>
           <div className={`${SHEET} grid gap-14 lg:grid-cols-12 lg:gap-10`}>
             <section aria-labelledby="who-title" className="lg:col-span-4">
               <h2 id="who-title" className={H2}>{WHO_TITLE}</h2>
@@ -183,7 +192,7 @@ export default function Home() {
           </div>
         </div>
 
-        <section aria-labelledby="faq-title" className={BAND_ALT}>
+        <section aria-labelledby="faq-title" className={BAND}>
           <div className={`${SHEET} grid gap-8 lg:grid-cols-12 lg:gap-10`}>
             <h2 id="faq-title" className={`${H2} self-start lg:sticky lg:top-8 lg:col-span-4`}>{FAQ_TITLE}</h2>
             <div className="border-t border-[#0b2a5b] lg:col-span-8">
@@ -200,7 +209,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section aria-labelledby="close-title" className={BAND}>
+        <section aria-labelledby="close-title" className={BAND_ALT}>
           <div className={SHEET}>
             <div className="grid gap-8 border border-[#0b2a5b] bg-white p-6 sm:p-8 lg:grid-cols-12 lg:gap-10 lg:p-12">
               <div className="lg:col-span-7">

@@ -36,19 +36,22 @@ describe("home page content", () => {
     expect(visible).not.toMatch(/\b(?:price|pricing|per month|testimonial)\b/i);
   });
 
-  it("labels every made-up example as Illustration and every real screenshot as Screenshot, and gives every image alt text", async () => {
+  it("labels every made-up example as Illustration and every real screenshot as Example data, and gives every image alt text", async () => {
     const { html, marketing } = await render({});
-    // One drawn figure per feature, plus the two real screenshots at the top of "What it does".
+    // One drawn figure per feature, plus the two real screenshots (the Job Board in "What it does", the Dashboard in the owner's section).
     const figures = html.match(/<figure\b[\s\S]*?<\/figure>/g) ?? [];
     expect(figures).toHaveLength(marketing.FEATURES.length + marketing.SCREENSHOTS.length);
     const screenshots = figures.filter((figure) => /<img\b/.test(figure));
     expect(screenshots).toHaveLength(marketing.SCREENSHOTS.length + marketing.FEATURES.filter((feature) => feature.shot).length);
-    for (const figure of figures) expect(text(figure)).toMatch(screenshots.includes(figure) ? /Screenshot\s*$/ : /Illustration\s*$/);
+    for (const figure of figures) expect(text(figure)).toMatch(screenshots.includes(figure) ? /Example data\s*$/ : /Illustration\s*$/);
     // + the traveller, its short copy for phones (hidden from assistive tech) and the "How Tolra handles it" drawings
     expect(text(html).match(/Illustration/g)!.length).toBe(marketing.FEATURES.length + 3);
     const shots = marketing.FEATURES.filter((feature) => feature.shot).length;
-    expect(text(html).match(/Screenshot/g)?.length ?? 0).toBe(marketing.SCREENSHOTS.length + shots);
+    expect(text(html).match(/Example data/g)?.length ?? 0).toBe(marketing.SCREENSHOTS.length + shots);
+    expect(text(html)).not.toContain("Screenshot");
     expect(text(html)).not.toContain("Demo data");
+    // Real screenshots live in /public/screens only.
+    for (const shot of marketing.SCREENSHOTS) expect(shot.src).toMatch(/^\/screens\//);
     // The screenshots are redacted: no pilot company or person is named in their alt text.
     for (const shot of marketing.SCREENSHOTS) expect(shot.alt).not.toMatch(/JNR|Marpet|Rhys/i);
     const images = html.match(/<img\b[^>]*>/g) ?? [];
@@ -160,15 +163,21 @@ describe("round 2 sections", () => {
   it("FAQ: only the six questions, native details/summary, and the FAQPage JSON-LD describes exactly those", async () => {
     const { html, marketing } = await render({});
     expect(marketing.FAQ.map((item) => item.question)).toEqual([
-      "How is it secured?", "Where is my data hosted?", "Is there a phone app?", "Can I export my data?", "Does it work with Xero or Sage?", "What does it cost?",
+      "How is it secured?", "Where is my data hosted?", "Is there a phone app?", "Can I export my data?", "Does it work with my accounts package?", "What does it cost?",
     ]);
     expect(html.match(/<details\b/g)).toHaveLength(6);
     expect(html.match(/<summary\b/g)).toHaveLength(6);
     const visible = text(html);
     expect(visible).toContain("I'll talk it through with you on the call.");
     expect(visible).toContain("In the UK. The database, sign-ins and stored files are in London, and the app runs on servers in London.");
-    // Rhys, 3 Nov: Xero is shown only once it is switched on in production; until then "not yet".
-    expect(visible).toContain("Xero: not yet. Sage: not yet.");
+    // Rhys, N7: the Xero integration as built (lib/integrations, migration 084): issued invoices and credit notes sent, voids voided,
+    // payments neither sent nor read back. Nothing about any other accounts package.
+    const xero = marketing.FAQ.find((item) => item.question === "Does it work with my accounts package?")!.answer;
+    expect(xero).toMatch(/^Yes, with Xero\./);
+    expect(xero).toContain("every invoice and credit note you issue in Tolra is sent across");
+    expect(xero).toContain("Payments are not sent to Xero or read back from it");
+    expect(visible).not.toMatch(/\b(?:Sage|QuickBooks)\b/);
+    expect(visible).not.toContain("not yet");
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]!.replace(/\\u003c/g, "<"));
     const faq = ld.find((d: { "@type": string }) => d["@type"] === "FAQPage");
     expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(marketing.FAQ.map((item) => item.question));
@@ -198,6 +207,38 @@ describe("round 2 sections", () => {
     expect(text(html)).toContain("Tell me how your shop runs and I'll show you whether Tolra fits.");
     expect(text(html)).not.toMatch(/No sales pressure/i);
     expect(text(html)).toContain(marketing.CLOSE_CALL_LINE);
+  });
+
+  it("owner's section: the heading, the Xero line, every listed item, the Dashboard screen, and no AI helper or other package in it", async () => {
+    const { html, marketing } = await render({});
+    const section = html.match(/<section aria-labelledby="owner-title"[\s\S]*?<\/section>/)![0];
+    const visible = text(section);
+    expect(visible).toContain("See the patterns and numbers you didn't know you needed");
+    expect(visible).toContain("Then send everything straight to your accountant.");
+    expect(visible).toContain("Connects to your accounts package, Xero today.");
+    for (const row of marketing.OWNER_ROWS) for (const [name, what] of row.items) { expect(visible).toContain(name); expect(visible).toContain(what); }
+    expect(section).toContain('src="/_next/image?url=%2Fscreens%2Ftolra-dashboard.jpg');
+    expect(visible).not.toMatch(/\b(?:AI|Sage|QuickBooks)\b/);
+    expect(visible).not.toMatch(/\d/);
+    // The owner's section sits between "What it does" and the founder's note, on the pale blue band.
+    expect(html.indexOf('aria-labelledby="features-title"')).toBeLessThan(html.indexOf('aria-labelledby="owner-title"'));
+    expect(html.indexOf('aria-labelledby="owner-title"')).toBeLessThan(html.indexOf('aria-labelledby="builder-title"'));
+    expect(section).toMatch(/^<section aria-labelledby="owner-title" class="mk-band mk-band-alt"/);
+  });
+
+  it("bands alternate white and pale blue down the page", async () => {
+    const { html } = await render({});
+    const bands = (html.match(/<(?:section|div)\b[^>]*class="mk-band[^"]*"/g) ?? []).map((tag) => tag.includes("mk-band-alt"));
+    expect(bands.length).toBe(8);
+    bands.forEach((alt, index) => expect(alt).toBe(index % 2 === 1));
+  });
+
+  it("In development: only the features flagged in the copy carry the tag, and the pilot note follows the features", async () => {
+    const { html, marketing } = await render({});
+    const tagged = marketing.FEATURES.filter((feature) => feature.inDevelopment).map((feature) => feature.title);
+    expect(tagged).toEqual(["Optional AI helper"]);
+    expect(html.match(/class="mk-tag[^"]*">In development</g)).toHaveLength(tagged.length);
+    expect(text(html)).toContain("Tolra is in pilot and still being developed with the shops using it.");
   });
 
   it("job flow keeps the ARIA tabs pattern: one tablist, seven tabs, one selected with tabindex 0, a controlled tabpanel", async () => {
