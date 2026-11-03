@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 
 import { AiConnectionCard } from "@/components/integrations/ai-connection-card";
+import { TolraAiConnectionCard } from "@/components/integrations/tolra-ai-card";
 import { XeroBatchCard } from "@/components/integrations/xero-batch-card";
 import { IntegrationsPanel } from "@/components/integrations-panel";
 import { RoleGate } from "@/components/role-gate";
@@ -20,6 +21,7 @@ export default function AdminIntegrationsPage() {
           <IntegrationsPanel />
           <AiConnectionCard />
           <XeroBatchCard />
+          <TolraAiConnectionCard />
         </Suspense>
       </div>
     </RoleGate>

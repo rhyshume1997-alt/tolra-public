@@ -15,6 +15,10 @@ export type AiHelperStatus = {
   month_spent_pence: number;
   month_reserved_pence: number;
   can_manage: boolean;
+  /** Absent until N2 SQL is reviewed/applied; provided AI stays hidden/off. */
+  tolra_available?: boolean;
+  tolra_enabled?: boolean;
+  tolra_cap_pence?: number;
   /** The company's finance-check switch and whether the database can hold it (migration 106). Missing from an older answer = not available. */
   finance_check_enabled?: boolean;
   finance_check_available?: boolean;
