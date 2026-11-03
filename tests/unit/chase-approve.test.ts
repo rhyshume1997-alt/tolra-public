@@ -122,3 +122,50 @@ it("two concurrent approvals call the mailer once", async () => {
 it("a missing reviewed snapshot cannot send", async () => {
  expect(await approve({expectedSubject: undefined})).toMatchObject({status:"refused",http:409}); expect(send).not.toHaveBeenCalled();
 });
+
+it.each(["invalid", "recipient_refused", "rate_limited", "no_provider", "provider_error"] as const)("releases a clear %s failure and retries only the reviewed text", async (code) => {
+  send.mockResolvedValueOnce({ ok: false, code, error: "Definitely not sent" });
+  await approve();
+  expect(db.rows("email_history")[0].status).toBe("drafted");
+  expect(admin.rpc).not.toHaveBeenCalled();
+  expect((await approve()).status).toBe("sent");
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(send.mock.calls[1][0]).toMatchObject({ text: "Hi Acme Ltd\n\nPlease pay", subject: "Overdue invoice INV-1", idempotencyKey: approveKey(DRAFT) });
+});
+
+it.each(["returned", "thrown"])("marks a %s uncertain result Needs checking and refuses every retry", async (kind) => {
+  if (kind === "thrown") send.mockRejectedValueOnce(new Error("Connection lost"));
+  else send.mockResolvedValueOnce({ ok: false, code: "provider_error", uncertain: true, error: "Unknown outcome" });
+  expect(await approve()).toMatchObject({ status: "refused", http: 502, message: expect.stringContaining("needs checking") });
+  expect(db.rows("email_history")[0].status).toBe("unknown");
+  expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(admin.rpc).not.toHaveBeenCalled();
+});
+
+it("a second click while the first send is pending cannot send or release its claim", async () => {
+  let finish!: (value: CompanyEmailResult) => void;
+  send.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const first = approve();
+  await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+  expect(db.rows("email_history")[0].status).toBe("sending");
+  finish({ ok: false, code: "provider_error", uncertain: true, error: "Unknown" });
+  await first;
+  expect(db.rows("email_history")[0].status).toBe("unknown");
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it("editing a released draft cancels the previous approval", async () => {
+  send.mockResolvedValueOnce({ ok: false, code: "provider_error", error: "Refused" });
+  await approve();
+  db.rows("email_history")[0].body = "New body";
+  expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it.each([" Subject ", "Subject\u2028changed", "Subject\0changed"])("refuses a subject the mailer would transform: %j", async (subject) => {
+  db.rows("email_history")[0].subject = subject;
+  expect(await approve({ expectedSubject: subject })).toMatchObject({ status: "refused", http: 400 });
+  expect(send).not.toHaveBeenCalled();
+});

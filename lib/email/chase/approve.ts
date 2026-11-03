@@ -98,7 +98,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   if (!to.length || outside().length) return refused(403, "A chase can only go to the customer's e-mail address on file, your reminder recipients or your own team. Update the customer's e-mail first.");
 
   // Approval covers only saved, reviewed text. Edits must be saved and reviewed separately.
-  if (!draft.subject.trim() || draft.subject.length > 200 || !draft.body.trim() || draft.body.length > 100_000 || /[\r\n]/.test(draft.subject)) return refused(400, "Check the subject and message before sending.");
+  if (draft.subject !== draft.subject.trim() || !draft.subject.trim() || draft.subject.length > 200 || !draft.body.trim() || draft.body.length > 100_000 || /[\r\n\u2028\u2029\0]/.test(draft.subject)) return refused(400, "Check the subject and message before sending.");
   const subject = input.expectedSubject;
   const body = input.expectedBody;
 
@@ -113,12 +113,26 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
     .eq("subject", subject).eq("body", body).eq("to_email", draft.to_email).select("id");
   if (claimError || !Array.isArray(claimed) || claimed.length !== 1) return refused(409, "The draft changed after you checked it. Reload and review it before sending.");
 
+  const settleClaim = async (status: "drafted" | "unknown") => {
+    const { data, error } = await db.from("email_history").update({ status })
+      .eq("id", draft.id).eq("organization_id", org).eq("status", "sending")
+      .eq("subject", subject).eq("body", body).eq("to_email", draft.to_email).select("id");
+    if (error || !Array.isArray(data) || data.length !== 1) {
+      // Keep the claim closed if persistence failed; a retry must never guess whether mail went out.
+      return false;
+    }
+    return true;
+  };
+  const needsChecking = () => refused(502, "The send result needs checking. Do not send this reminder again until it has been checked.");
+
   let sent: CompanyEmailResult;
   try { sent = await deps.send({
     organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body, html: escapeHtml(body).replace(/\r?\n/g, "<br>\n"),
     recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: approveKey(draft.id),
-  }); } catch { return refused(502, "The send result needs checking. Do not send this reminder again until it has been checked."); }
+  }); } catch { await settleClaim("unknown"); return needsChecking(); }
   if (!sent.ok) {
+    if (sent.uncertain) { await settleClaim("unknown"); return needsChecking(); }
+    if (!await settleClaim("drafted")) return needsChecking();
     const http = sent.code === "invalid" ? 400 : sent.code === "recipient_refused" ? 403 : sent.code === "rate_limited" ? 429 : sent.code === "no_provider" ? 503 : 502;
     if (sent.code === "no_provider") return { status: "no_provider", message: NO_PROVIDER_MESSAGE };
     return refused(http, sent.error);
