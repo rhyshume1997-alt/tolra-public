@@ -104,5 +104,6 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 30 | builder2 | chatgpt2/*-code-only | DONE: CODE-ONLY TWINS | #160, #161, #162, #163, #164, #165, #166, #167, #168, #169, #170, #171, #172, #173, #174, #175, #176, #177 |
 | 31 | builder2 | chatgpt2/costing-wiring-atomic; chatgpt2/costing-wiring-atomic-code-only | CONFLICT RESOLVED | #155 / #174 |
 | 33 | builder2 | chatgpt2/manual-checks | DONE: PLAN WRITTEN | #179 |
+| 34 | builder2 | chatgpt2/chase-customer-review-code-only; chatgpt2/sliq-numeric-review-code-only | REVIEW COMPLETE; SOURCE-PR COMMENT TARGETS ABSENT | #180 / #181 |
 | 34a | builder2 | chatgpt2/chase-customer-review-code-only | CODE FIX IN DRAFT PR | #180 |
 | 34b | builder2 | chatgpt2/sliq-numeric-review-code-only | CODE FIX IN DRAFT PR | #181 |
