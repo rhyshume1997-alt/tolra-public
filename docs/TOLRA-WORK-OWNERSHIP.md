@@ -27,13 +27,51 @@ Rhys authorised Codex follow-up fixes on separate branches in this session. Orig
 | Job code | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
 | — (bank reconciliation #109; original code unavailable) | Codex | codex/bank-csv-quotes; atomic claim claims/pr109-csv-quotes | DONE IN PR | #131 (local checks pass; CI pending) |
+# Tolra work ownership
 
-## Builder 2 master queue (Rhys, 2 November 2026)
+Who owns each piece of work. Read this before claiming anything. Add a row for your own work; never take a row someone else owns.
+
+House rules for every builder (Claude Code, ChatGPT builders, Codex):
+- Merges to main, migration numbers, and applying migrations to production are done by Claude Code only, after a reviewer SAFE verdict and a green ci-gate.
+- Nobody deploys, and nobody commits directly to main.
+- A builder adds the `Ready` label only to its own PRs, and only when its own checks pass.
+- Migration numbers in use or reserved: 136, 137 (live); 138 chasing; 140, 141 SliQ; 142 timesheet emails; 143 costing. Ask Claude Code before taking a new number.
+
+| Job code | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| G1 admin recent code + password tickets (136, 137) | Claude Code | claude/g1-logos-mfa-redirects | Done: merged, live in production 2 Nov | #106 |
+| CHASE-P1 chase steps, drafts, approve and send, pause (138) | Claude Code | claude/chase-steps | Built; waiting on review verdict, then PR | - |
+| CHASE-P2 "customer says paid" database side (in 138) | Claude Code | claude/chase-steps | Built inside 138 | - |
+| CHASE-P2/P3 screens and wiring (inbox, approvals, bank check page) | ChatGPT builders, joined by Claude Code | chatgpt/*, chatgpt2/* (PRs into claude/chase-steps where they need 138) | In progress | #111-#113, #116, #117 |
+| E13 timesheet emails on chosen days (142) | Claude Code | claude/e13-timesheet-days | Built; waiting on review verdict, then PR | - |
+| SLIQ importer (140, 141) | Claude Code | claude/sliq-import | Built; waiting on review verdict and John's export headers | - |
+| COSTING in Tolra: tables, rates code, golden answers (143) | Claude Code | claude/costing-in-app | Built | - |
+| COSTING maths and screens | ChatGPT builder 1, joined by Claude Code | chatgpt/costing-in-tolra, chatgpt/costing-wiring | In review | #110, #123 |
+| WIPE kit for JNR test data | Claude Code (private docs) | not in this repo | Built; waiting on review verdict | - |
+
+## Codex master queue dispositions
+
+| Job code | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| paid-claim-wiring | Existing CHASE-P2/P3 owners retained | claude/chase-steps | BLOCKED | #117 |
+| bank-check-wiring | Existing CHASE-P2/P3 owners retained | chatgpt/bank-check-ui | BLOCKED | #116 |
+| chase-ui-wiring | Existing CHASE-P2/P3 owners retained | chatgpt2/* | BLOCKED | #111–#113 |
+| e13-tests | Existing E13 owner retained | claude/e13-timesheet-days | BLOCKED | — |
+| sliq-import-tests | Existing SLIQ owner retained | claude/sliq-import | BLOCKED | — |
+| costing-check | Existing COSTING owners retained | chatgpt/costing-in-tolra; chatgpt/costing-wiring | BLOCKED | #110, #123 |
+| full-suite | Codex (own branch only) | codex/bank-csv-quotes | DONE IN PR | #131; 4,787 unit tests pass, integration unverified |
+
+## Builder 2 master queue (Rhys, updated 3 November 2026)
 
 The numbered jobs below are explicitly assigned to builder2. Changes stay on builder2 branches. No handoff of other builders’ source branches is implied.
 
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
+| 1 | builder2 | chatgpt2/chase-settings-ui | DRAFT PR; INTEGRATION PENDING | #111 |
+| 2 | builder2 | chatgpt2/approvals-send-ui | DRAFT PR; INTEGRATION PENDING | #112 |
+| 3 | builder2 | chatgpt2/customer-says-paid-ui | DRAFT PR; INTEGRATION PENDING | #113 |
+| 4 | builder2 | chatgpt2/sliq-importer-tests | DRAFT PR; INTEGRATION PENDING | #114 |
+| 5 | builder2 | chatgpt2/walkthrough-docs | DRAFT PR; INTEGRATION PENDING | #115 |
 | 6 | builder2 | chatgpt2/chase-wiring | DONE WITH INTEGRATION GAPS | #132 |
 | 7 | builder2 | chatgpt2/go-live-day-checklist | DONE IN DRAFT PR | #133 |
 | 8 | builder2 | chatgpt2/e2e-chasing | DONE IN DRAFT PR | #134 |
@@ -43,3 +81,8 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 12 | builder2 | chatgpt2/receivables-tests | DONE IN DRAFT PR | #138 |
 | 13 | builder2 | chatgpt2/plain-english-pass | DONE IN DRAFT PR | #139 |
 | 14 | builder2 | chatgpt2/costing-playwright | DONE IN DRAFT PR | #140 |
+| 15 | builder2 | chatgpt2/timesheet-email-tests | DONE IN DRAFT PR | #141 |
+| 16 | builder2 | chatgpt2/full-suite-run | BLOCKED: FULL-SUITE VERIFICATION INCOMPLETE | #142 |
+| 17 | builder2 | chatgpt2/final-handover | HANDOVER COMPLETE; RELEASE VERIFICATION BLOCKED | #143 |
+| 18a | builder2 | chatgpt2/chase-followup | CODE FIXED; DATABASE PROPOSAL UNAPPLIED | #144 |
+| 18b | builder2 | chatgpt2/costing-followup | CODE FIXED; DATABASE PROPOSAL UNAPPLIED | #145 |
