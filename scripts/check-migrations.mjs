@@ -17,6 +17,7 @@
  * Exits 1 and prints every problem. Read only.
  */
 import { createHash } from "node:crypto";
+import { checkReleasePlan } from "./check-release-plan.mjs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -94,6 +95,7 @@ export function checkMigrations(root) {
     else if (!new RegExp(`\\('${num} `).test(preflight)) missing.push(`preflight marker ('${num} ...') in supabase/verify/release_preflight.sql`);
     if (missing.length) problems.push(`New migration ${num} (${f}) is missing: ${missing.join("; ")}`);
   }
+  if (existsSync(path.join(root, "supabase/release-plan.json"))) problems.push(...checkReleasePlan(root));
   return { problems, applied: Object.keys(manifest).length, added };
 }
 

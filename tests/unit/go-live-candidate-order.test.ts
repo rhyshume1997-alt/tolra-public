@@ -17,8 +17,8 @@ describe("combined go-live candidate keeps both release lines and proposal proof
   it("runs the numbered catalogue and upgrade before both guarded proposal proofs", () => {
     const ci = read(".github/workflows/ci.yml");
     const upgrade = ci.indexOf("run: scripts/upgrade-rehearsal.sh 013");
-    const n5 = ci.indexOf("-f supabase/proposals/n5_company_setup.sql");
-    const n2 = ci.indexOf("-f supabase/proposals/n2_tolra_provided_ai.sql");
+    const n5 = ci.indexOf("-f supabase/release/145_company_setup.release.sql");
+    const n2 = ci.indexOf("-f supabase/release/146_tolra_provided_ai.release.sql");
     expect(upgrade).toBeGreaterThan(0);
     expect(n5).toBeGreaterThan(upgrade);
     expect(n2).toBeGreaterThan(n5);
