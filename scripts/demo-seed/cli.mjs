@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fills a THROWAWAY or LOCAL database with the clearly fake "Tolra Demo" company, for screenshots (JOB U). Never run against a hosted project:
- * it refuses anything but loopback addresses and an explicit flag, and it is not wired into any deploy, CI job or migration.
+ * it requires a fresh database identity marker as well as loopback addresses and an explicit flag, and it is not wired into any deploy, CI job or migration.
  *
  *   scripts/test-backend.sh start        # local disposable Supabase, writes .env.test.local
  *   node scripts/demo-seed/cli.mjs --yes-this-is-a-throwaway-database
@@ -14,6 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import pg from "pg";
+import { assertDisposableIdentity } from "./identity.mjs";
 
 import { DEMO_ADMIN_EMAIL, DEMO_NAME, DEMO_SLUG, assertThrowaway, importPayload, planDemoData } from "./plan.mjs";
 
@@ -51,6 +52,7 @@ async function main() {
   const db = new pg.Client({ connectionString: env.TEST_DATABASE_URL });
   await db.connect();
   try {
+    await assertDisposableIdentity(db, env.DEMO_DISPOSABLE_ID);
     const existing = await db.query("select id from public.organizations where slug = $1", [DEMO_SLUG]);
     if (existing.rowCount) throw new Error(`Refusing: a company with slug ${DEMO_SLUG} already exists in this database. Reset the local stack first (scripts/test-backend.sh reset).`);
 
@@ -60,6 +62,7 @@ async function main() {
 
     // Act as the demo admin (authenticated, aal2), exactly like the app, in one transaction.
     const asAdmin = async (fn) => {
+      await assertDisposableIdentity(db, env.DEMO_DISPOSABLE_ID);
       await db.query("begin");
       try {
         await db.query("set local role authenticated");
