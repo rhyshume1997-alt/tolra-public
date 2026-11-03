@@ -46,6 +46,7 @@
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^20",
     "@types/pg": "^8.11.10",
     "@types/react": "^19.3.0",

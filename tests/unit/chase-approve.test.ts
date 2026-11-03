@@ -13,8 +13,8 @@ let admin: FakeDb & { rpc: ReturnType<typeof vi.fn> };
 const send = vi.fn<(input: CompanyEmailInput) => Promise<CompanyEmailResult>>();
 let provider: unknown;
 
-const approve = (extra: { subject?: string; body?: string } = {}) => approveChaseDraft(
-  { organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", subject: "Overdue invoice INV-1", body: "Hi Acme Ltd\n\nPlease pay", ...extra },
+const approve = (extra: { expectedSubject?: string; expectedBody?: string } = {}) => approveChaseDraft(
+  { organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay", ...extra },
   { db: db as never, admin: admin as never, provider: async () => provider, send, allowlisted: () => false },
 );
 
@@ -45,31 +45,12 @@ describe("Approve and send", () => {
     expect(approveKey(DRAFT)).toMatch(/^[A-Za-z0-9:._-]{8,200}$/);
     expect(approveKey(DRAFT)).toBe(approveKey(DRAFT));
   });
-  it("sends separately saved and reviewed edits exactly, without rewriting the draft", async () => {
-    const reviewed = { subject: "Invoice INV-1", body: "Edited text\n\nKeep these line breaks.\n" };
-    Object.assign(db.rows("email_history")[0], reviewed);
-    expect((await approve(reviewed)).status).toBe("sent");
-    expect(send.mock.calls[0][0]).toMatchObject({ subject: reviewed.subject, text: reviewed.body });
-    expect(db.rows("email_history")[0]).toMatchObject(reviewed);
-    expect(db.log).toEqual([]);
-  });
-  it.each(["subject", "body"] as const)("rejects an edit to %s made after review without sending or overwriting it", async (field) => {
-    db.rows("email_history")[0][field] = "Changed in another tab";
+  it("an edit invalidates the previously reviewed snapshot", async () => {
+    db.rows("email_history")[0].body = "Edited text";
     expect(await approve()).toMatchObject({ status: "refused", http: 409 });
     expect(send).not.toHaveBeenCalled();
-    expect(db.rows("email_history")[0][field]).toBe("Changed in another tab");
-    expect(db.log).toEqual([]);
-  });
-  it("rejects an ID-only approval instead of inferring reviewed text from the database", async () => {
-    expect(await approve({ subject: undefined, body: undefined })).toMatchObject({ status: "refused", http: 409 });
-    expect(send).not.toHaveBeenCalled();
-  });
-  it("refuses a reviewed subject the mailer would transform", async () => {
-    const subject = "Invoice INV-1\r\nBcc: x";
-    db.rows("email_history")[0].subject = subject;
-    expect(await approve({ subject })).toMatchObject({ status: "refused", http: 400 });
-    expect(send).not.toHaveBeenCalled();
-    expect(db.rows("email_history")[0].subject).toBe(subject);
+    expect((await approve({ expectedBody: "Edited text" })).status).toBe("sent");
+    expect(send.mock.calls[0][0]).toMatchObject({ text: "Edited text" });
   });
   it("no mailer set up: says so, sends nothing and writes nothing (the draft stays for copy / mail app / mark sent)", async () => {
     provider = null;
@@ -112,3 +93,59 @@ describe("Approve and send refuses", () => {
     expect((await approve()).status).toBe("sent");
   });
 });
+
+ it("refuses a stale reviewed snapshot before a provider call or send", async () => {
+  const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Earlier subject", expectedBody: "Earlier text" }, { db: db as never, admin: admin as never, provider: vi.fn(), send, allowlisted: () => false });
+  expect(out).toMatchObject({ status: "refused", http: 409 });
+  expect(send).not.toHaveBeenCalled(); expect(db.log).toEqual([]);
+ });
+
+
+it("an edit while the provider is checked invalidates approval before claiming or sending", async () => {
+ const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay" }, {
+  db: db as never, admin: admin as never, provider: async () => { db.rows("email_history")[0].body = "Changed by another person"; return {}; }, send, allowlisted: () => false
+ });
+ expect(out).toMatchObject({ status: "refused", http: 409 }); expect(send).not.toHaveBeenCalled();
+});
+it("claims the text before sending, blocking a concurrent draft editor", async () => {
+ send.mockImplementationOnce(async (input) => {
+  const edit = await db.from("email_history").update({ body: "Too late" }).eq("id", DRAFT).eq("status", "drafted").select("id");
+  expect(edit.data).toEqual([]); expect(input.text).toBe("Hi Acme Ltd\n\nPlease pay");
+  return { ok: true, mode: "sent", provider: "mock", historyId: "sent-1" };
+ });
+ expect((await approve()).status).toBe("sent");
+});
+it("two concurrent approvals call the mailer once", async () => {
+ const outcomes=await Promise.all([approve(),approve()]);
+ expect(outcomes.filter(r=>r.status==="sent")).toHaveLength(1); expect(send).toHaveBeenCalledTimes(1);
+});
+it("a missing reviewed snapshot cannot send", async () => {
+ expect(await approve({expectedSubject: undefined})).toMatchObject({status:"refused",http:409}); expect(send).not.toHaveBeenCalled();
+});
+
+  it("sends separately saved and reviewed edits exactly, without rewriting the draft", async () => {
+    const reviewed = { subject: "Invoice INV-1", body: "Edited text\n\nKeep these line breaks.\n" };
+    Object.assign(db.rows("email_history")[0], reviewed);
+    expect((await approve({ expectedSubject: reviewed.subject, expectedBody: reviewed.body })).status).toBe("sent");
+    expect(send.mock.calls[0][0]).toMatchObject({ subject: reviewed.subject, text: reviewed.body });
+    expect(db.rows("email_history")[0]).toMatchObject(reviewed);
+    expect(db.log).toEqual([]);
+  });
+  it.each(["subject", "body"] as const)("rejects an edit to %s made after review without sending or overwriting it", async (field) => {
+    db.rows("email_history")[0][field] = "Changed in another tab";
+    expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+    expect(send).not.toHaveBeenCalled();
+    expect(db.rows("email_history")[0][field]).toBe("Changed in another tab");
+    expect(db.log).toEqual([]);
+  });
+  it("rejects an ID-only approval instead of inferring reviewed text from the database", async () => {
+    expect(await approve({ expectedSubject: undefined, expectedBody: undefined })).toMatchObject({ status: "refused", http: 409 });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("refuses a reviewed subject the mailer would transform", async () => {
+    const subject = "Invoice INV-1\r\nBcc: x";
+    db.rows("email_history")[0].subject = subject;
+    expect(await approve({ expectedSubject: subject })).toMatchObject({ status: "refused", http: 400 });
+    expect(send).not.toHaveBeenCalled();
+    expect(db.rows("email_history")[0].subject).toBe(subject);
+  });
