@@ -10,6 +10,7 @@ const servers = base.webServer ? (Array.isArray(base.webServer) ? base.webServer
 export default defineConfig({
   ...base,
   testMatch: /reviewer\/.*\.spec\.ts/,
+  testIgnore: [],
   webServer: configured ? servers.map(server => ({ ...server, env: { ...server.env,
     INTEGRATIONS_ENCRYPTION_KEY: process.env.REVIEWER_TEST_KEY!, REVIEWER_LOCAL_MOCKS: "1",
     NODE_OPTIONS: `${server.env?.NODE_OPTIONS ?? ""} --require ./tests/support/reviewer-provider-mocks.cjs`,

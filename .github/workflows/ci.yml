@@ -261,6 +261,9 @@ jobs:
         env:
           E2E_SKIP_BUILD: "1"
           SPECS: ${{ inputs.specs }}
+      - name: Reviewer browser conditions (all ten, database required)
+        if: ${{ !cancelled() }}
+        run: REVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts
       - name: Keep run evidence (backend identity, failures)
         if: always()
         uses: actions/upload-artifact@v4
