@@ -1,0 +1,22 @@
+# Builder 2 handover
+
+Draft PRs only. No Ready labels, merges, applied migrations, deployments or main commits. Original builders’ branches are untouched.
+
+| Job | Work done | Branch | PR | Tests | Blocker |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Settings card with callback-only saving | chatgpt2/chase-settings-ui | #111 | 8 tests reported passing | Original Vitest runs did not exit cleanly; see job 16 matrix |
+| 2 | Draft chase approval card | chatgpt2/approvals-send-ui | #112 | 10 tests reported passing | Original Vitest runs did not exit cleanly; see job 16 matrix |
+| 3 | Payment claim invoice controls | chatgpt2/customer-says-paid-ui | #113 | 9 tests reported passing | Original Vitest runs did not exit cleanly; see job 16 matrix |
+| 4 | 36 extra synthetic importer edge cases | chatgpt2/sliq-importer-tests | #114 | 36 tests reported passing | Original Vitest runs did not exit cleanly; see job 16 matrix |
+| 5 | Staff guide for chasing, hours emails and costing | chatgpt2/walkthrough-docs | #115 | Document checks passed; pricing wording corrected in #139 | Original Vitest runs did not exit cleanly; see job 16 matrix |
+| 6 | Connected settings, approval and claim UI; documented atomic-save and live-test gaps | chatgpt2/chase-wiring | #132 | 13 new tests reported passing; tsc and targeted ESLint passed; Vitest process stays open | No disposable database/provider; atomic settings RPC and concurrency check absent |
+| 7 | Added go-live checklist with contact card and payment/email checks | chatgpt2/go-live-day-checklist | #133 | Date, required sections and diff whitespace checked; documentation only | JNR must fill named contacts and phone numbers before first shift |
+| 8 | Added chase UI browser flows and optional isolated-backend runner | chatgpt2/e2e-chasing | #134 | 9 Playwright tests cleanly skipped without DB (not passes); tsc and targeted ESLint passed | No disposable database available for browser execution |
+| 9 | Reviewed and commented on 21 open PRs; fixed costing render and preview total with regressions | chatgpt2/pr-review | #135 | 7 new tests reported passing; tsc and targeted ESLint passed | Other review findings remain open as listed in docs/BUILDER2-PR-REVIEW.md |
+| 10 | Added six-bank layout tests and fixed only reproduced parser faults | chatgpt2/bank-csv-formats | #136 | 15 pre-fix failures; 16/16 new cases reported passing after fix; tsc and ESLint passed | Merge overlap with #131; actual bank export variations still need checking |
+| 11 | Added 30 UK messages and fixed reproduced phrase, future and reference-prefix errors | chatgpt2/paid-claim-more-tests | #137 | 30/30 new and 39/39 original tests reported passing; tsc and ESLint passed | Copied detector in #117 must be reconciled; blank-sender adapter finding remains open |
+| 12 | Added 40 receivables/money cases; fixed invalid-date overdue calculation | chatgpt2/receivables-tests | #138 | 5 failures before fix; new and original receivables tests checked; see exact counts in handover | Full-suite run follows in job 16 |
+| 13 | Plain-English screen pass and correction of the staff guide markup example | chatgpt2/plain-english-pass | #139 | 4 new wording and 3 costing render tests reported passing; tsc and targeted ESLint passed | Consolidate copied components and accessible selectors with chase/bank integration branches |
+| 14 | Added costing settings and Price this part browser smoke coverage | chatgpt2/costing-playwright | #140 | 2 Playwright tests cleanly skipped without DB; tsc and targeted ESLint passed | No disposable database for live execution; requires costing migration 143 in the test stack |
+| 15 | Added 25 chosen-day/time/DST/address/idempotency cases | chatgpt2/timesheet-email-tests | #141 | 95 tests reported passing across new and existing schedule/timesheet files; final new-file rerun 25/25; tsc and ESLint passed | No live database or mail provider checks; full suite follows in job 16 |
+| 16 | Attempted whole-suite matrix on every published source branch; recorded counters, failures and diagnostic causes | chatgpt2/full-suite-run | #142 | BLOCKED: no clean whole-suite pass; main raw 4636 passed / 280 failed; 17 attempts tabulated in BUILDER2-FULL-SUITE-RUN.md | Runner stalls, temp-folder setup and sequential shared-state artefacts; signal-9 cause unconfirmed; supported clean CI required |
