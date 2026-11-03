@@ -196,10 +196,10 @@ describe("SliQ traps", () => {
   it("never trusts the status word for payment: 'Unpaid' with a payment is PARTIAL, 'Paid' needs a payment record", () => {
     const { report } = prov();
     const by = Object.fromEntries(report.balances.items.map((b: { number: string }) => [b.number, b]));
-    expect(by["INV-000123"]).toMatchObject({ state: "PARTIAL", paid: 10000, balance: 14000, statusWord: "Unpaid", paymentToConfirm: false });
+    expect(by["INV-000123"]).toMatchObject({ state: "PARTIAL", paid: 10000, balance: 14000, statusWord: "Unpaid", exception: false });
     expect(report.balances.partial.map((b: { number: string }) => b.number)).toEqual(["INV-000123"]);
     expect(by["INV-000124"]).toMatchObject({ state: "paid", statusWord: "Paid" });
-    expect(by["00045"]).toMatchObject({ state: "unpaid", paymentToConfirm: true });
+    expect(by["00045"]).toMatchObject({ state: "unpaid", exception: false }); // no payment record: owed in full
     expect(report.balances.statusWordConflicts).toEqual([expect.objectContaining({ number: "INV-000123", statusWord: "Unpaid", fromPayments: "PARTIAL" })]);
 
     const dir = tmp();
@@ -207,7 +207,9 @@ describe("SliQ traps", () => {
     writeFileSync(path.join(dir, "payments.csv"), "Invoice Number,Date,Amount,Method,Reference\nINV-000123,15/03/2026,100.00,BACS,PART1\n");
     const r2 = analyse(loadFolder(dir, getProfile("sliq")), { organizationId: ORG }).report;
     const paidNoPay = r2.balances.items.find((b: { number: string }) => b.number === "INV-000124");
-    expect(paidNoPay).toMatchObject({ state: "unpaid", paymentToConfirm: true, statusWord: "Paid" }); // the word "Paid" proves nothing
+    // the word "Paid" proves nothing, and with no payment record it contradicts the payments file: the write stops until it is fixed
+    expect(paidNoPay).toMatchObject({ state: "exception", exception: true, statusWord: "Paid", reason: expect.stringContaining('"Paid" says paid but the payment records add up to £0.00') });
+    expect(r2.unresolvedPaymentCount).toBe(1);
   });
 
   it("plan: evidenced part payment is written, the rest stays unverified", () => {
@@ -263,15 +265,16 @@ describe("credit-note allocations", () => {
     expect(r.report.missingRelationships.allocationsWithoutDocument.map((a: { creditNote: string }) => a.creditNote)).toEqual(["CN-002"]);
     expect(renderMarkdown(r.report)).toContain("never cash, never a payment row");
     expect(r.report.counts.payments).toBe(7);
-    expect(r.plan.invoices.flatMap((i: { payments: unknown[] }) => i.payments)).toHaveLength(4); // unchanged by the allocation
+    expect(r.plan.invoices.flatMap((i: { payments: unknown[] }) => i.payments)).toHaveLength(5); // unchanged by the allocation (S1006 overpaid is paid)
   });
 
-  it("an invoice touched by an allocation is Payment to confirm, not settled by it", () => {
+  it("an invoice touched by an allocation is an exception that stops the write, not settled by it", () => {
     const b = r.report.balances.items.find((x: { number: string }) => x.number === "S1003");
-    expect(b).toMatchObject({ allocated: 2400, paymentToConfirm: true });
+    expect(b).toMatchObject({ allocated: 2400, exception: true, state: "exception" });
+    expect(r.report.balances.exceptions.find((x: { number: string }) => x.number === "S1003").blocksWrite).toBe(true);
     expect(b.reason).toContain("an allocation is not cash");
     const inv = r.plan.invoices.find((i: { number: string }) => i.number === "S1003");
-    expect(inv.final).toEqual({ status: "sent", amountPaid: 0, paidAt: null, unverified: true });
+    expect(inv.final).toMatchObject({ status: "sent", amountPaid: 0, paidAt: null, unverified: true });
   });
 
   it("allocation pointing at a part-paid invoice withholds its cash payments rather than guessing the balance", () => {
@@ -299,7 +302,7 @@ describe("suppliers, products, purchase orders and quote lines", () => {
   it("purchase orders: header only; those that cannot be written are listed with the reason", () => {
     expect(report.purchaseOrders).toMatchObject({ read: 3, written: 1 });
     expect(report.purchaseOrders.notWritten.map((p: { number: string; reasons: string[] }) => [p.number, p.reasons.join()])).toEqual([
-      ["PO-0002", "supplier not found in the suppliers file"],
+      ["PO-0002", "supplier unmatched: no record has this account or name (see the ambiguity report)"],
       ["PO-0003", expect.stringContaining("status not in the source")],
     ]);
     expect(plan.purchaseOrders).toEqual([expect.objectContaining({ number: "PO-0001", supplierName: "Steel Supplies Ltd", status: "sent", total: 25000 })]);

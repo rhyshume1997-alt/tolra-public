@@ -30,7 +30,7 @@
     },
     "purchaseOrders": {
       "file": "purchase-orders.csv",
-      "columns": { "number": "Number", "supplier": "Supplier", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total" }
+      "columns": { "number": "Number", "supplier": "Supplier", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total", "status": "Status", "jobRef": "Job Number" }
     },
     "invoiceLines": {
       "file": ["invoice-lines.csv", "document-lines.csv"],
@@ -42,9 +42,35 @@
   "statusWords": {
     "invoice": { "Draft": "draft", "Unpaid": "sent", "Paid": "sent", "Part Paid": "sent", "Partially Paid": "sent", "Sent": "sent", "Overdue": "sent", "Void": "void", "Cancelled": "void" },
     "quote": { "Draft": "draft", "Sent": "sent", "Accepted": "accepted", "Rejected": "rejected", "Declined": "rejected" },
-    "po": {}
+    "po": { "Draft": "draft", "Open": "sent", "Sent": "sent", "Confirmed": "confirmed", "Part Received": "partial_received", "Partially Received": "partial_received", "Received": "received", "Complete": "received", "Cancelled": "cancelled" }
   },
   "docTypeWords": { "Invoice": "invoice", "Credit Note": "credit_note" },
   "paymentMethodWords": { "BACS": "BACS", "Cheque": "cheque", "Card": "card", "Cash": "cash", "Other": "other" },
-  "reverseChargeCodes": []
+  "reverseChargeCodes": [],
+  "headerCheck": "strict",
+  "ignoreColumns": {},
+  "jobsImport": {
+    "files": {
+      "jobs": {
+        "file": "jobs.csv",
+        "columns": { "number": "Job Number", "customer": "Customer", "quote": "Quote Number", "salesOrder": "Order Number", "description": "Description", "status": "Status", "stage": "Stage", "dueDate": "Due Date", "specification": "Specification", "startedDate": "Start Date", "finishedDate": "Finish Date", "value": "Value" }
+      },
+      "salesOrders": {
+        "file": "sales-orders.csv",
+        "columns": { "number": "Order Number", "customer": "Customer", "quote": "Quote Number", "status": "Status", "orderDate": "Order Date", "deliveryDate": "Delivery Date", "total": "Total", "notes": "Notes", "job": "Job Number" }
+      },
+      "wip": {
+        "file": "wip.csv",
+        "columns": { "job": "Job Number", "description": "Description", "quantity": "Quantity", "value": "Value", "asOf": "Date", "reference": "Reference" }
+      }
+    },
+    "jobStatusWords": {
+      "Open": { "open": true, "status": "on_track" }, "In Progress": { "open": true, "status": "on_track" }, "On Hold": { "open": true, "status": "at_risk" },
+      "Overdue": { "open": true, "status": "overdue" }, "Complete": { "open": false }, "Completed": { "open": false }, "Invoiced": { "open": false }, "Closed": { "open": false }, "Cancelled": { "open": false }
+    },
+    "jobStageWords": { "Material": "material", "Setup": "setup", "Machining": "machining", "Inspection": "inspection" },
+    "salesOrderStatusWords": { "Open": "open", "Confirmed": "confirmed", "In Production": "in_production", "Despatched": "despatched", "Converted": "converted", "Closed": "closed", "Complete": "closed" },
+    "jobNumberPattern": "^J-(\\d{1,9})$",
+    "salesOrderNumberPattern": "^SO-(\\d{1,9})$"
+  }
 }

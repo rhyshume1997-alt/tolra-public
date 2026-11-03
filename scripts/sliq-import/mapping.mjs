@@ -122,6 +122,7 @@ export const CANONICAL = {
     deliveryDate: { type: "date", required: false },
     total: { type: "money", required: false },
     status: { type: "poStatus", required: false },
+    jobRef: { type: "text", required: false }, // the job the order was bought for (linked by jobs-write.mjs)
   },
 };
 

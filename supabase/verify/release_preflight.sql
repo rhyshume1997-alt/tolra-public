@@ -194,7 +194,12 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.issue_password_change_ticket(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a2936196b138dd7dee76db6be3b8ed82')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.revoke_password_change_ticket(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '42f77209ec079fa354f54ef78784a4b4')
                                           AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
-                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19))
+                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19)),
+    ('140 import source ref',            (SELECT count(*) FROM col WHERE table_name IN ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') AND column_name = 'source_ref') = 5
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.source_ref_import_only()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923')),
+    ('141 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'opening_wip' AND p.policyname = 'opening_wip rbac select'
+                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '55ca9a2d4469b23ea4d522e94be4f1a9'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
