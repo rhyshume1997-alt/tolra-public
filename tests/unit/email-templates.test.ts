@@ -222,7 +222,7 @@ describe("Settings > Email templates", () => {
     }));
     expect(html).toContain(`Quote ${SAMPLE_VARS.document_number} for ${SAMPLE_VARS.customer_name}`);
     expect(html).toContain(`Dear ${SAMPLE_VARS.person_name}\n&lt;b&gt;{{nope}}&lt;/b&gt;`);
-    expect(html).toContain("Not a placeholder this e-mail fills in");
+    expect(html).toContain("These words are not filled in for this email, so they will stay as typed:");
     expect(html).toContain("Reset to default");
     expect(html).toContain(">Save<");
     expect(html).toContain("unsaved changes");
