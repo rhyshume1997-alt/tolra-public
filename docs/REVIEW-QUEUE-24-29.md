@@ -9,7 +9,7 @@ Updated 3 November 2026. Draft PRs only; no Ready labels, merges, SQL applicatio
 | 26 | [#155](https://github.com/rhyshume1997-alt/tolra-public/pull/155) | Own branch off costing-wiring: one atomic request, null/zero/explicit machine labour preserved, fractional pennies refused. | 22 focused cases reported passing; TypeScript/lint and latest web passed. |
 | 27 | [#156](https://github.com/rhyshume1997-alt/tolra-public/pull/156) | Own branch off paid-claim-adapter: actual mailbox, strict sender validation, case, exact domain and plus-address checks. | 55 focused cases reported passing; TypeScript/lint and latest web passed. |
 | 28a | [#157](https://github.com/rhyshume1997-alt/tolra-public/pull/157) | One reconciled detector/adapter, all original detector/adapter/UK/sender tests unchanged, plus end-to-end cases. | 139 focused cases reported passing; TypeScript/lint and latest web passed. |
-| 28b | [#158](https://github.com/rhyshume1997-alt/tolra-public/pull/158) | One reconciled bank parser/matcher retaining original quote, six-bank-format and later matching safeguards and assertions. | 73 focused cases reported passing; TypeScript/lint passed; latest web result below. |
+| 28b | [#158](https://github.com/rhyshume1997-alt/tolra-public/pull/158) | One reconciled bank parser/matcher retaining original quote, six-bank-format and later matching safeguards and assertions. | 73 focused cases reported passing; TypeScript/lint and latest web passed. |
 | 29 | This PR | [Merge guide](MERGE-ORDER.md) now includes 48 PR verdicts, supplied independent NOT SAFE results, new fix PRs and canonical integration order. Ownership and handover updated. | Verdict coverage, supplied verdict preservation, PR links and whitespace checked. |
 
 Local Vitest still reports file results then needs timeout cleanup; these counts are reported test-case results, not claims of a clean local process exit. Remote web CI is separate evidence. No full local suite was run for this queue.
@@ -18,7 +18,7 @@ Local Vitest still reports file results then needs timeout cleanup; these counts
 
 | PR | Head | Result at check | Evidence |
 |---|---|---|---|
-| #158 | 63abc9c1a648c8969289bc696b7907a097e9e138 | in_progress | [web](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41579229222/job/125730340757) |
+| #158 | 63abc9c1a648c8969289bc696b7907a097e9e138 | success | [web](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41579229222/job/125730340757) |
 | #157 | 04598b451b019a986414e5bc92d596a5257c67fd | success | [web](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41578950642/job/125729476982) |
 | #156 | a13ff77ee1d85840f9bb37c87f5aae676a26a84a | success | [web](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41578694180/job/125728653857) |
 | #155 | b6000d944b882656950610e7dcdfc79f5ef9c9f7 | success | [web](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41578410671/job/125727713699) |
@@ -38,3 +38,5 @@ Local Vitest still reports file results then needs timeout cleanup; these counts
 The three supplied independent NOT SAFE verdicts (#117/#123/#132) are retained. Other SAFE/SAFE WITH CONDITIONS/NOT SAFE decisions are clearly identified as builder 2 assessments, not fabricated reviewer results.
 
 DONE for this follow-up queue, with the holds above.
+
+Final CI check: all six code PRs #153–158 have PASS web results on the exact heads above. The first #159 documentation head took the intentional docs-only web skip. SQL tests remain NOT RUN; web CI does not execute them.
