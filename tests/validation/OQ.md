@@ -1,6 +1,6 @@
 # OQ: does each control work?
 
-Based on draft #247 at `d7c0019caa51f8a221e1f3b855e67f06d01ac3b4`, including its config-loading fix. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
+Based on draft #247 at `fe7514fbea7eaac2fead0237db0fa7d2abcc6db8`, including its config-loading fix. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
 
 Use only an approved disposable environment and fake data. Run the listed unit checks and perform the numbered rehearsal steps in `tests/MANUAL-CHECKS-GO-LIVE.md`. Database and browser paths are mapped for a separately authorised operator, never run by the evidence command. A unit pass does not complete a database, provider or screen check. Record exact commit, expected/actual result, date, tester and evidence.
 

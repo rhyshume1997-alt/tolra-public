@@ -2,7 +2,7 @@
 
 Company: ____  Intended use: ____  Release/commit: ____  Approved before testing by Rhys / date: ____
 
-Based on draft #247 at `d7c0019caa51f8a221e1f3b855e67f06d01ac3b4`, including its config-loading fix. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
+Based on draft #247 at `fe7514fbea7eaac2fead0237db0fa7d2abcc6db8`, including its config-loading fix. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
 
 | ID | Requirement | Accepted by / date |
 | --- | --- | --- |
