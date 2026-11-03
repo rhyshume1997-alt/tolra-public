@@ -1,12 +1,12 @@
 -- REVIEW PROPOSAL ONLY. Depends on 138. Not a numbered migration; not applied by builder2.
 -- One transaction, same company/roles/RLS as 138; existing offset IDs are preserved.
-CREATE OR REPLACE FUNCTION public.save_chase_steps_atomic(p_expected jsonb, p_steps jsonb)
+CREATE OR REPLACE FUNCTION public.save_chase_steps_atomic(p_org uuid, p_expected jsonb, p_steps jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$
 DECLARE v_org uuid := public.current_user_organization_id(); v_current jsonb; v_expected jsonb; v_session jsonb;
 BEGIN
   PERFORM public.assert_privileged_aal();
   SELECT public.my_session() INTO v_session;
-  IF auth.uid() IS NULL OR v_org IS NULL OR NOT public.has_org_role(ARRAY['admin','office'])
+  IF auth.uid() IS NULL OR v_org IS NULL OR p_org IS DISTINCT FROM v_org OR NOT public.has_org_role(ARRAY['admin','office'])
      OR coalesce((v_session->>'support')::boolean,false) OR coalesce((v_session->>'read_only')::boolean,false) THEN
     RAISE EXCEPTION 'Not permitted' USING ERRCODE='42501';
   END IF;
@@ -30,5 +30,5 @@ BEGIN
   SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'days',offset_days,'tone',tone) ORDER BY offset_days,id),'[]'::jsonb) INTO v_current FROM public.chase_steps WHERE organization_id=v_org;
   RETURN v_current;
 END $$;
-REVOKE ALL ON FUNCTION public.save_chase_steps_atomic(jsonb,jsonb) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.save_chase_steps_atomic(jsonb,jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.save_chase_steps_atomic(uuid,jsonb,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.save_chase_steps_atomic(uuid,jsonb,jsonb) TO authenticated;
