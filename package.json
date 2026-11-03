@@ -16,7 +16,8 @@
     "test:db": "vitest run -c vitest.db.config.ts",
     "test:live": "vitest run -c vitest.live.config.ts",
     "test:e2e": "playwright test",
-    "test:e2e:list": "playwright test --list"
+    "test:e2e:list": "playwright test --list",
+    "test:timesheet-schedule": "vitest run tests/unit/email-schedules-due.test.ts tests/unit/email-schedules-form.test.ts tests/unit/timesheet-schedule-offline.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
