@@ -68,8 +68,15 @@ export function customerCredit(invoice: { status?: string | null; total?: number
 /** Whole days past the due date (positive = late, 0 = due today, negative = not yet due); null without a due date. */
 export function daysPastDue(dueDate: string | null | undefined, today: string): number | null {
   if (!dueDate) return null;
-  const day = (iso: string) => Date.parse(`${iso.slice(0, 10)}T00:00:00Z`);
-  return Math.round((day(today) - day(dueDate)) / 86_400_000);
+  const day = (iso: string): number | null => {
+    const text = iso.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+    const timestamp = Date.parse(`${text}T00:00:00Z`);
+    if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== text) return null;
+    return timestamp;
+  };
+  const due = day(dueDate), current = day(today);
+  return due === null || current === null ? null : Math.round((current - due) / 86_400_000);
 }
 
 /** Amount still to collect on an invoice (0 when paid, not collectible, or its payment is still to be confirmed). */
