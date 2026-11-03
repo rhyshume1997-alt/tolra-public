@@ -14,24 +14,26 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(preflight).toContain("('144 accounting connections'");
     expect(preflight).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
   });
-  it("runs the numbered catalogue and upgrade before both guarded proposal proofs", () => {
+  it("runs the full ordered database proofs once, then the independent upgrade rehearsal", async () => {
     const ci = read(".github/workflows/ci.yml");
     const upgrade = ci.indexOf("run: scripts/upgrade-rehearsal.sh 013");
-    const n5 = ci.indexOf("-f supabase/release/145_company_setup.release.sql");
-    const n2 = ci.indexOf("-f supabase/release/146_tolra_provided_ai.release.sql");
     expect(upgrade).toBeGreaterThan(0);
-    expect(n5).toBeGreaterThan(upgrade);
-    expect(n2).toBeGreaterThan(n5);
-    const specs = ["company-setup-isolation", "tolra-provided-ai", "tolra-ai-cap-concurrency"];
-    for (const spec of specs) {
-      expect(ci.slice(0, upgrade)).toContain("run: npm run test:db");
-      expect(ci.slice(0, upgrade)).not.toContain("--exclude");
-      expect(ci.slice(upgrade)).toContain(`tests/db/${spec}.test.ts`);
-    }
-    for (const [start, end] of [[ci.lastIndexOf("      - name:", n5), n2], [ci.lastIndexOf("      - name:", n2), ci.indexOf("      - name: Build against", n2)]]) {
-      expect(ci.slice(start, end)).toContain('case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*)');
-      expect(ci.slice(start, end)).toContain('END {exit (bad || NR == 0)}');
-    }
+    expect(ci.slice(0, upgrade)).toContain("run: npm run test:db");
+    expect(ci.slice(0, upgrade)).not.toContain("--exclude");
+    expect(ci.match(/run: npm run test:db/g)).toHaveLength(1);
+    expect(ci).not.toContain("-f supabase/release/145_company_setup.release.sql");
+    expect(ci).not.toContain("-f supabase/release/146_tolra_provided_ai.release.sql");
+    const {default: ReleaseSequencer, post144ProofFiles} = await import("../support/db-release-sequencer");
+    const paths = readdirSync(resolve(__dirname, "../../tests/db")).filter(file => file.endsWith(".test.ts")).map(file => ({moduleId: `/repo/tests/db/${file}`}));
+    const sequencer = new ReleaseSequencer({} as ConstructorParameters<typeof ReleaseSequencer>[0]);
+    const sorted = await sequencer.sort(paths.toReversed());
+    expect(sorted).toHaveLength(paths.length);
+    expect(new Set(sorted.map(file=>file.moduleId))).toEqual(new Set(paths.map(file=>file.moduleId)));
+    expect(sorted.slice(-3).map(file=>file.moduleId)).toEqual(post144ProofFiles.map(file=>`/repo/tests/db/${file}`));
+    const fixture = read("tests/support/post-144-release-fixture.ts");
+    expect(fixture.indexOf('verifyFile: "supabase/verify/company_setup_145.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"'));
+    expect(fixture).toContain("verify: verifyBackendIdentity");
+    expect(fixture).toContain("checks.some(row => (row.ok ?? row.passed) !== true)");
   });
   it("keeps both independently named functions and chase tables in the numbered snapshot, with no proposal tables", () => {
     const catalogue = JSON.parse(read("tests/db/catalogue.snapshot.json")) as Array<{kind: string; object: string}>;

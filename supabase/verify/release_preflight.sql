@@ -222,8 +222,8 @@ post_release_markers(label, present) AS (
       AND (SELECT count(*) = 3 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'company_setup_progress')
       AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'company_setup_progress'
         AND (roles <> ARRAY['authenticated']::name[] OR cmd NOT IN ('SELECT','INSERT','UPDATE')
-          OR (cmd IN ('SELECT','UPDATE') AND (qual IS NULL OR qual NOT LIKE '%current_user_organization_id%' OR qual NOT LIKE '%has_org_role%' OR qual NOT LIKE '%is_support%' OR qual ~ '\mOR\M'))
-          OR (cmd IN ('INSERT','UPDATE') AND (with_check IS NULL OR with_check NOT LIKE '%current_user_organization_id%' OR with_check NOT LIKE '%has_org_role%' OR with_check NOT LIKE '%is_support%' OR with_check ~ '\mOR\M'))))
+          OR (cmd IN ('SELECT','UPDATE') AND (qual IS NULL OR qual NOT LIKE '%current_user_organization_id%' OR qual NOT LIKE '%has_org_role%' OR qual NOT LIKE '%my_session%' OR qual NOT LIKE '%support%' OR qual LIKE '%_session_membership%' OR qual ~ '\mOR\M'))
+          OR (cmd IN ('INSERT','UPDATE') AND (with_check IS NULL OR with_check NOT LIKE '%current_user_organization_id%' OR with_check NOT LIKE '%has_org_role%' OR with_check NOT LIKE '%my_session%' OR with_check NOT LIKE '%support%' OR with_check LIKE '%_session_membership%' OR with_check ~ '\mOR\M'))))
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.company_setup_progress') AND tgname = 'support_read_only' AND tgenabled = 'O' AND tgfoid = to_regprocedure('public.support_readonly_guard()'))), FALSE)),
     ('post-144 marker 146 tolra_provided_ai', coalesce((to_regclass('public.ai_helper_tolra_control') IS NOT NULL AND to_regclass('public.ai_helper_tolra_companies') IS NOT NULL
       AND (SELECT count(*) = 2 AND bool_and(relrowsecurity) FROM pg_class WHERE oid IN (to_regclass('public.ai_helper_tolra_control'),to_regclass('public.ai_helper_tolra_companies')))

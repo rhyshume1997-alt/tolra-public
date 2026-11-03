@@ -58,8 +58,10 @@ it("the unapplied database policy requires own-company admin and non-support for
     const clauses = action === "UPDATE" ? 2 : 1;
     expect(compact.match(/organization_id = \(SELECT public\.current_user_organization_id\(\)\)/g)).toHaveLength(clauses);
     expect(compact.match(/public\.has_org_role\(ARRAY\['admin'\]\)/g)).toHaveLength(clauses);
-    expect(compact.match(/NOT coalesce\(\(SELECT s\.is_support FROM public\._session_membership\(\) s\),true\)/g)).toHaveLength(clauses);
+    expect(compact.match(/NOT coalesce\(\(\(SELECT public\.my_session\(\)\) ->> 'support'\)::boolean,true\)/g)).toHaveLength(clauses);
     expect(compact).not.toMatch(/\bOR\b/i);
+    expect(compact).not.toContain("_session_membership");
+    expect(compact).not.toContain("session_read_only");
   }
   expect(sql).toContain("REVOKE ALL ON public.company_setup_progress FROM PUBLIC, anon, authenticated");
   expect(sql).toContain("EXECUTE FUNCTION public.support_readonly_guard()");

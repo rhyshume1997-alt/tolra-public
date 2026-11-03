@@ -5,6 +5,7 @@ function fixture(initial=false) {
   const calls:string[]=[];const states=[initial,initial];
   return { calls, states, verify:async()=>{calls.push("identity");},query:async(sql:string)=>{
     calls.push(sql);
+    if (sql.includes("AS check_name")) return {rows:[{ok:true,passed:true}]};
     if(sql.includes("-- Post-144 release step 145")) states[0]=true;
     if(sql.includes("-- Post-144 release step 146")) {expect(states[0]).toBe(true);states[1]=true;}
     return {rows:states.map((v,i)=>({check:i===0?"post-144 marker 145 company_setup":"post-144 marker 146 tolra_provided_ai",value:v?"applied":"not applied"}))};
@@ -39,4 +40,28 @@ it("sorts real sequencer input without dropping files, keeping 145, 146 and the 
  expect(await sequencer.shard(input)).toEqual(input);
  const windows = proofs.toReversed().map(spec => ({moduleId:spec.moduleId.replaceAll("/", "\\")}));
  expect((await sequencer.sort(windows)).map(spec => spec.moduleId.replaceAll("\\", "/"))).toEqual(proofs.map(spec => spec.moduleId));
+});
+
+it("still runs both verification files when releases are already installed", async () => {
+ const f=fixture(true);await preparePost144Fixture(f);
+ expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(2);
+ expect(f.calls.some(sql=>sql.includes("private membership helper stays private"))).toBe(true);
+ expect(f.calls.some(sql=>sql.includes("original reserve is not a public bypass"))).toBe(true);
+});
+it.each(["empty", "false"])("refuses %s verification rows and always unlocks", async failure => {
+ const f=fixture(true),original=f.query;
+ f.query=async(sql:string)=>{
+  if(sql.includes("AS check_name")){f.calls.push(sql);return {rows:failure==="empty"?[]:[{ok:false,passed:false}]};}
+  return original(sql);
+ };
+ await expect(preparePost144Fixture(f)).rejects.toThrow("Release verification failed");
+ expect(f.calls.at(-1)).toContain("pg_advisory_unlock");
+});
+it("CI has one release owner and retains the full database command and upgrade rehearsal",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const ci=readFileSync(".github/workflows/ci.yml","utf8");
+ expect(ci).toContain("run: npm run test:db");
+ expect(ci).toContain("run: scripts/upgrade-rehearsal.sh 013");
+ expect(ci).not.toContain("-f supabase/release/145_company_setup.release.sql");
+ expect(ci).not.toContain("-f supabase/release/146_tolra_provided_ai.release.sql");
 });

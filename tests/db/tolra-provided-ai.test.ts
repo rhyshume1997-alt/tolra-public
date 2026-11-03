@@ -4,6 +4,8 @@ import { preparePost144Backend } from "../support/post-144-release-fixture";
  * the separately reviewed N2 proposal on an isolated disposable database.
  * The verified fixture prepares releases 145/146 after baseline checks; synthetic data changes roll back.
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Client } from "pg";
 import { beforeAll, expect, it } from "vitest";
@@ -24,7 +26,7 @@ async function refused(db:Client,sql:string,args:unknown[]=[]) {
   await db.query("RELEASE SAVEPOINT refused_call");
 }
 
-it("isolates company use, enforces the cap and keeps Tolra's key service-only",async()=>{
+it("isolates company use, enforces the cap, keeps Tolra's key service-only and refuses rollback with an outstanding reservation",async()=>{
   await withDb(async db=>{
     await db.query("BEGIN");
     try {
@@ -51,6 +53,9 @@ it("isolates company use, enforces the cap and keeps Tolra's key service-only",a
       const reserve=()=>db.query("SELECT public.ai_helper_reserve('rfq',400,$1,10) AS r",[DIGEST]);
       const first=(await reserve()).rows[0].r;
       expect(first).toMatchObject({ok:true,key_source:"tolra"});
+      await db.query("RESET ROLE");
+      await assertOutstandingRollbackRefuses(db, first.request_id, alpha);
+      await db.query("SET LOCAL ROLE authenticated");
       expect((await reserve()).rows[0].r.ok).toBe(true);
       expect((await reserve()).rows[0].r).toMatchObject({ok:false,reason:"cap"});
       await refused(db,"SELECT api_key_enc FROM public.ai_helper_tolra_control");
@@ -72,4 +77,39 @@ it("isolates company use, enforces the cap and keeps Tolra's key service-only",a
       await refused(db,"SELECT public.ai_helper_reserve('rfq',1,$1,10)",[DIGEST]);
     } finally { await db.query("ROLLBACK"); }
   });
+});
+
+function releaseBody(file: string) {
+ const sql=readFileSync(path.resolve(__dirname,"../../supabase/release",file),"utf8");
+ expect(sql.match(/^BEGIN;$/gm)).toHaveLength(1);
+ expect(sql.match(/^COMMIT;\s*$/gm)).toHaveLength(1);
+ return sql.replace(/^BEGIN;$/m,"").replace(/^COMMIT;\s*$/m,"");
+}
+async function assertOutstandingRollbackRefuses(db: Client, request: string, org: string) {
+ const before=(await db.query("SELECT id,status,key_source,reserved_pence FROM public.ai_helper_requests WHERE id=$1",[request])).rows;
+ expect(before).toHaveLength(1);expect(before[0]).toMatchObject({status:"reserved",key_source:"tolra"});
+ const usage=(await db.query("SELECT * FROM public.ai_helper_usage WHERE organization_id=$1 ORDER BY month",[org])).rows;
+ const definitions=(await db.query("SELECT oid,prosrc FROM pg_proc WHERE oid IN (to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'),to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)')) ORDER BY oid")).rows;
+ await db.query("SAVEPOINT outstanding_rollback");
+ await expect(db.query(releaseBody("146_tolra_provided_ai.rollback.sql"))).rejects.toMatchObject({code:"P0001",message:"Settle outstanding Tolra requests before rollback."});
+ await db.query("ROLLBACK TO SAVEPOINT outstanding_rollback");
+ expect((await db.query("SELECT id,status,key_source,reserved_pence FROM public.ai_helper_requests WHERE id=$1",[request])).rows).toEqual(before);
+ expect((await db.query("SELECT * FROM public.ai_helper_usage WHERE organization_id=$1 ORDER BY month",[org])).rows).toEqual(usage);
+ expect((await db.query("SELECT oid,prosrc FROM pg_proc WHERE oid IN (to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'),to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)')) ORDER BY oid")).rows).toEqual(definitions);
+ expect((await db.query("SELECT to_regclass('public.ai_helper_tolra_control') IS NOT NULL AS control,to_regclass('public.ai_helper_tolra_companies') IS NOT NULL AS companies")).rows[0]).toEqual({control:true,companies:true});
+}
+it("release 146 refuses a second install without changing wrappers or retained history",async()=>{
+ await withDb(async db=>{
+  await db.query("BEGIN");
+  try {
+   const snapshot=()=>db.query("SELECT p.proname,md5(p.prosrc) AS body,p.proacl FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE '%ai_helper%' ORDER BY p.oid");
+   const before=(await snapshot()).rows;
+   const history=(await db.query("SELECT id,status,key_source,reserved_pence,cost_pence FROM public.ai_helper_requests ORDER BY id")).rows;
+   await db.query("SAVEPOINT second_install");
+   await expect(db.query(releaseBody("146_tolra_provided_ai.release.sql"))).rejects.toMatchObject({code:"P0001",message:"Review the existing reserve functions before applying N2; expected 133 and 134."});
+   await db.query("ROLLBACK TO SAVEPOINT second_install");
+   expect((await snapshot()).rows).toEqual(before);
+   expect((await db.query("SELECT id,status,key_source,reserved_pence,cost_pence FROM public.ai_helper_requests ORDER BY id")).rows).toEqual(history);
+  } finally {await db.query("ROLLBACK");}
+ });
 });
