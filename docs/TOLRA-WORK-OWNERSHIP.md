@@ -75,5 +75,5 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
 | costing-join / costing-save-all-or-nothing | Codex (Rhys explicitly assigned this integration) | codex/costing-join | DONE IN PR | #184; SQL execution blocked |
-| chase-join-check | Codex (Rhys explicitly assigned this integration) | codex/chase-join | CLAIMED | — |
-| money-edge-tests | Codex | codex/money-edge-tests | CLAIMED | — |
+| chase-join-check | Codex (Rhys explicitly assigned this integration) | codex/chase-join | BLOCKED | #186; progression test conflict |
+| money-edge-tests | Codex | codex/money-edge-tests | DONE IN PR | #185 |
