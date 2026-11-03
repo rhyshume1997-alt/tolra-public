@@ -23,15 +23,12 @@ export function ConnectedChaseSettings({ organizationId, canEdit }: { organizati
   async function save(steps: ChaseStep[]) {
     if (!supabase || !state || !canEdit) throw new Error("Changes are not available.");
     try {
-      await saveChaseSteps(supabase, organizationId, state.rows, steps);
-      // Keep the card mounted so its own saved message survives. Fetch IDs for the next save.
-      const { data, error } = await supabase.from("chase_steps").select("id, offset_days, tone").eq("organization_id", organizationId).order("offset_days");
-      if (error) throw error;
-      setState((s) => ({ rows: (data ?? []).map((r) => ({ id: r.id, days: r.offset_days, tone: r.tone })), version: s!.version }));
+      const rows = await saveChaseSteps(supabase, organizationId, state.rows, steps);
+      setState((s) => ({ rows, version: s!.version }));
       setSuggested(false);
       setError("");
     } catch (failure) {
-      setError("Could not save all chase steps. Some may have changed. Reload this page before trying again.");
+      setError("Could not save chase steps. Reload this page before trying again; if it still fails, ask the person who looks after Tolra.");
       throw failure;
     }
   }

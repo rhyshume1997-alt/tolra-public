@@ -4,9 +4,11 @@ import { FakeDb } from "../support/fake-db";
 
 describe("chase screen connections", () => {
   it("preserves existing step IDs and scopes edits to the company", async () => {
-    const db = new FakeDb({ chase_steps: [{ id: "step", organization_id: "a", offset_days: 7, tone: "friendly" }, { id: "foreign", organization_id: "b", offset_days: 7, tone: "friendly" }] });
-    await saveChaseSteps(db as never, "a", [{ id: "step", days: 7, tone: "friendly" }], [{ days: 7, tone: "firm" }]);
-    expect(db.tables.chase_steps).toEqual([{ id: "step", organization_id: "a", offset_days: 7, tone: "firm" }, { id: "foreign", organization_id: "b", offset_days: 7, tone: "friendly" }]);
+    const saved = [{ id: "step", days: 7, tone: "firm" }];
+    const db = { rpc: vi.fn().mockResolvedValue({ data: saved, error: null }) };
+    const before = [{ id: "step", days: 7, tone: "friendly" as const }];
+    expect(await saveChaseSteps(db as never, "a", before, [{ days: 7, tone: "firm" }])).toEqual(saved);
+    expect(db.rpc).toHaveBeenCalledWith("save_chase_steps_atomic", { p_expected: before, p_steps: [{ days: 7, tone: "firm" }] });
   });
   it("makes no writes for unchanged steps", async () => {
     const db = new FakeDb();
@@ -21,20 +23,20 @@ describe("chase screen connections", () => {
     expect(db.log).toEqual([]);
   });
   it("does not claim a successful save when RLS or concurrent changes update no rows", async () => {
-    const db = new FakeDb({ chase_steps: [] });
+    const db = { rpc: vi.fn().mockResolvedValue({ data: null, error: { code: "40001" } }) };
     await expect(saveChaseSteps(db as never, "a", [{ id: "gone", days: 7, tone: "friendly" }], [{ days: 7, tone: "firm" }])).rejects.toThrow(/Reload/);
   });
-  it("uses the approval route with only a draft ID", async () => {
+  it("uses the approval route with the exact reviewed text", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "sent", recorded: true })));
-    await expect(approveDraft("draft", request)).resolves.toMatchObject({ status: "sent" });
-    expect(request).toHaveBeenCalledWith("/api/chase/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ history_id: "draft" }) }));
+    await expect(approveDraft("draft", { subject: "Reviewed", body: "Text" }, request)).resolves.toMatchObject({ status: "sent" });
+    expect(request).toHaveBeenCalledWith("/api/chase/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ history_id: "draft", expected_subject: "Reviewed", expected_body: "Text" }) }));
   });
   it.each([409, 403, 500])("retains errors instead of treating HTTP %s as sent", async (status) => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "no_provider", error: "Sending is not set up." }), { status }));
-    await expect(approveDraft("draft", request)).rejects.toThrow("Sending is not set up.");
+    await expect(approveDraft("draft", { subject: "Reviewed", body: "Text" }, request)).rejects.toThrow("Sending is not set up.");
   });
   it("does not treat a successful response containing a draft as sent", async () => {
-    await expect(approveDraft("draft", vi.fn().mockResolvedValue(new Response('{"status":"drafted"}')))).rejects.toThrow();
+    await expect(approveDraft("draft", { subject: "Reviewed", body: "Text" }, vi.fn().mockResolvedValue(new Response('{"status":"drafted"}')))).rejects.toThrow();
   });
   it("clears a claim only through its scoped RPC, never by updating payments", async () => {
     const db = { rpc: vi.fn().mockResolvedValue({ error: null }) };

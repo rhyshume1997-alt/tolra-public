@@ -15,6 +15,8 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
  */
 const schema = z.object({
   history_id: z.string().uuid(),
+  expected_subject: z.string().max(400),
+  expected_body: z.string().max(100_000),
   subject: z.string().max(400).optional(),
   body: z.string().max(100_000).optional(),
 });
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
   const { data: schedule } = await admin.from("email_schedules").select("timezone").eq("organization_id", profile.organization_id).eq("kind", "invoice_reminder").maybeSingle();
   const zone = (schedule as { timezone?: string } | null)?.timezone || "Europe/London";
   const result = await approveChaseDraft(
-    { organizationId: profile.organization_id, userId: user.id, draftId: parsed.data.history_id, subject: parsed.data.subject, body: parsed.data.body, today: localDate(new Date(), zone) },
+    { organizationId: profile.organization_id, userId: user.id, draftId: parsed.data.history_id, expectedSubject: parsed.data.expected_subject, expectedBody: parsed.data.expected_body, subject: parsed.data.subject, body: parsed.data.body, today: localDate(new Date(), zone) },
     {
       db: supabase,
       admin,

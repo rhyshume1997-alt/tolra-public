@@ -43,9 +43,9 @@ export function ConnectedChaseApproval({ id, onDone, manualActions }: { id: stri
       const { data, error } = await supabase.from("email_history").update(email).eq("organization_id", org!).eq("id", draftId).eq("status", "drafted").select("id");
       if (error || data?.length !== 1) throw new Error("The draft has changed. Reload the page before sending.");
       onDone();
-    })} onApproveAndSend={(draftId) => checked(async () => {
+    })} onApproveAndSend={(draftId, reviewed) => checked(async () => {
       if (!canEdit) throw new Error("Sending is not available.");
-      const result = await approveDraft(draftId);
+      const result = await approveDraft(draftId, reviewed);
       if (!result.recorded) toast.warning("The email was sent, but its chase record needs checking. Do not send it again.");
       onDone();
     })} onSkip={(draftId) => checked(async () => {
