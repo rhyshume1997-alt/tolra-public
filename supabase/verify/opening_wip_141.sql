@@ -6,12 +6,13 @@ UNION ALL SELECT 'columns',
    WHERE table_schema = 'public' AND table_name = 'opening_wip')
     = 'as_of:date:YES,description:text:YES,id:uuid:NO,imported_at:timestamp with time zone:NO,job_id:uuid:YES,organization_id:uuid:NO,'
       'quantity:numeric:YES,source:text:NO,source_job_ref:text:YES,source_key:text:NO,source_reference:text:YES,value:numeric:YES'
--- One read policy: admin and office of the session's company. No other policy.
+-- One read policy: admin and office of the session's company, each helper inside a sub-select (asked once per statement, as 131
+-- requires of every policy). No other policy. The md5 is 141's exact policy text (the same read rule as 131's "invoices rbac select").
 UNION ALL SELECT 'one_select_policy_admin_office',
   (SELECT string_agg(policyname || ' ' || permissive || ' ' || cmd, ',' ORDER BY policyname) FROM pg_policies
    WHERE schemaname = 'public' AND tablename = 'opening_wip') = 'opening_wip rbac select PERMISSIVE SELECT'
-  AND (SELECT qual FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip') LIKE '%current_user_organization_id()%'
-  AND (SELECT qual FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip') LIKE '%has_org_role(ARRAY[''admin''::text, ''office''::text])%'
+  AND (SELECT md5(coalesce(qual, '') || '|' || coalesce(with_check, '')) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip')
+      = '6a18e9fed9ee8dd956c314df2b296562'
 -- Signed-in people read (the policy filters), write nothing; anon nothing.
 UNION ALL SELECT 'grants_read_only',
   has_table_privilege('authenticated', 'public.opening_wip', 'SELECT')

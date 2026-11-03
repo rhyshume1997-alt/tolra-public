@@ -61,7 +61,7 @@ CREATE INDEX IF NOT EXISTS opening_wip_by_job ON public.opening_wip (organizatio
 ALTER TABLE public.opening_wip ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "opening_wip rbac select" ON public.opening_wip;
 CREATE POLICY "opening_wip rbac select" ON public.opening_wip FOR SELECT TO authenticated
-  USING (organization_id = public.current_user_organization_id() AND public.has_org_role(ARRAY['admin', 'office']));
+  USING (organization_id = (SELECT public.current_user_organization_id()) AND (SELECT public.has_org_role(ARRAY['admin', 'office'])));
 REVOKE ALL ON public.opening_wip FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.opening_wip TO authenticated;
 

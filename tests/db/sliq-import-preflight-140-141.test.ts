@@ -18,7 +18,7 @@ const ROOT = path.resolve(__dirname, "../..");
 const read = (file: string) => readFileSync(path.join(ROOT, file), "utf8");
 const unwrapped = (sql: string) => sql.replace(/^BEGIN;$/m, "").replace(/^COMMIT;\s*$/m, "");
 const MD5_140 = "169cd2798340f7ba1d43b8b85e3be923";
-const MD5_141_POLICY = "55ca9a2d4469b23ea4d522e94be4f1a9";
+const MD5_141_POLICY = "6a18e9fed9ee8dd956c314df2b296562"; // each helper in a sub-select (131); the same read rule as 131's "invoices rbac select"
 const FN = "public.source_ref_import_only()";
 
 /** fn inside one transaction that is always rolled back. */
@@ -52,7 +52,7 @@ const alterFn = (db: Client) =>
 /** The same read rule with its two conditions swapped: same rows, a different policy text. */
 const alterPolicy = (db: Client) =>
   db.query(`alter policy "opening_wip rbac select" on public.opening_wip
-              using (public.has_org_role(ARRAY['admin', 'office']) AND organization_id = public.current_user_organization_id())`);
+              using ((SELECT public.has_org_role(ARRAY['admin', 'office'])) AND organization_id = (SELECT public.current_user_organization_id()))`);
 
 beforeAll(async () => {
   await verifyBackendIdentity();
@@ -66,7 +66,8 @@ describe("140 and 141 and the release preflight: exact bodies only", () => {
     expect(at("('140 import source ref'")).toBeGreaterThan(at("('135 job spec customer po'"));
     expect(at("('141 opening wip'")).toBeGreaterThan(at("('140 import source ref'"));
     expect(text.split(`'${MD5_140}'`).length).toBe(2);
-    expect(text.split(`'${MD5_141_POLICY}'`).length).toBe(2);
+    expect(text.slice(at("('141 opening wip'")).split(`'${MD5_141_POLICY}'`).length).toBe(2); // 131's marker pins the same text for invoices
+    expect(read("supabase/verify/opening_wip_141.sql")).toContain(`'${MD5_141_POLICY}'`);
     for (const f of ["supabase/migrations/140_import_source_ref.sql", "supabase/release/140_import_source_ref.release.sql"]) {
       expect(read(f).split(`'${MD5_140}'`).length).toBe(3); // the guard and the self-check
     }

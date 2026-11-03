@@ -4937,7 +4937,7 @@
  {
   "kind": "policy",
   "object": "public.opening_wip :: opening_wip rbac select",
-  "detail": "PERMISSIVE SELECT authenticated 55ca9a2d4469b23ea4d522e94be4f1a9"
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",

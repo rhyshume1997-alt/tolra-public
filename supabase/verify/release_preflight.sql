@@ -192,7 +192,7 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.source_ref_import_only()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923')),
     ('141 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'opening_wip' AND p.policyname = 'opening_wip rbac select'
-                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '55ca9a2d4469b23ea4d522e94be4f1a9'))
+                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '6a18e9fed9ee8dd956c314df2b296562'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
