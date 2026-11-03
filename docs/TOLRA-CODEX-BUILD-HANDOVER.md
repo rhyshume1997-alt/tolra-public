@@ -24,3 +24,16 @@ Latest instruction prohibits touching held jobs. `claude/work-ownership:docs/TOL
 
 - Jobs 1–6: blocked by the explicit current ownership assignments on claude/work-ownership. They need an ownership release before Codex can change them under the latest queue rule.
 - Job 7: all unit tests passed on Codex’s application branch. Coordination branch changes only Markdown, so no runtime suite applies. Database/browser integration remains unverified; no release sign-off.
+
+## 3 November queue execution
+
+| Job | Work done | Branch | PR | Tests | Blocker |
+| --- | --- | --- | --- | --- | --- |
+| paid-claim-wiring | Read current tracker and #159; canonical sender fixes already in #156/#157 | Existing branches untouched | #156/#157 | Not executed here | CHASE-P2/P3 marked in progress by another owner; inbox integration still required |
+| bank-check-wiring | Confirmed #158 combines parser fixes; removed docs from own code PR | codex/bank-csv-quotes | #131 | Full checks running | Bank parent page, durable cross-export payment identity and confirmation persistence remain; active CHASE owner |
+| chase-ui-wiring | Read #159 dependency conditions for #132/#153/#154 | Existing branches untouched | #132/#153/#154 | SQL tests not run; no migrations applied | Active CHASE owner; real database exact-text claim/edit/send remains unverified |
+| e13-tests | Existing E13 IN PROGRESS claim preserved | claude/e13-timesheet-days unchanged | — | Not executed | Other owner holds E13 |
+| sliq-import-tests | Existing G9 IN PROGRESS claim preserved | claude/sliq-import unchanged | — | Not executed | Other owner holds G9 |
+| costing-check | Executed exact requested branch 8c4c7fe, inspected labour fallback | claude/costing-in-app unchanged | #130 | 15 pass, 472 skipped (including all 60 golden prices); fixture has 60 cases | lib/costing/engine.ts absent: parity and half-even cannot be verified here. Machine helper preserves explicit zero using nullish fallback; 14 rates-store tests pass |
+| manual-checks | Reused existing checklist, corrected requested plus rule and added fractional pennies | codex/manual-checks | #183 | diff check pass; full checks running | Missing feature pages must be marked BLOCKED during manual run |
+| available-jobs | Checked tracker rows | codex/work-ownership | #130 | Read-only | No AVAILABLE row found |

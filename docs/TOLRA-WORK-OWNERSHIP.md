@@ -67,5 +67,5 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
-| manual-checks | Codex | codex/manual-checks | CLAIMED | — |
-| costing-check (read-only report) | Codex | claude/costing-in-app unchanged | IN PROGRESS | #130 |
+| manual-checks | Codex | codex/manual-checks | DONE IN PR | #183; checks running |
+| costing-check (read-only report) | Codex | claude/costing-in-app unchanged | BLOCKED | #130; engine absent, 60 prices skipped |
