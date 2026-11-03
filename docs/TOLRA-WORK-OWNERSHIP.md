@@ -60,3 +60,12 @@ House rules for every builder (Claude Code, ChatGPT builders, Codex):
 | sliq-import-tests | Existing SLIQ owner retained | claude/sliq-import | BLOCKED | — |
 | costing-check | Existing COSTING owners retained | chatgpt/costing-in-tolra; chatgpt/costing-wiring | BLOCKED | #110, #123 |
 | full-suite | Codex (own branch only) | codex/bank-csv-quotes | DONE IN PR | #131; 4,787 unit tests pass, integration unverified |
+
+## 3 November queue
+
+Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queue. Existing IN PROGRESS rows remain held; no AVAILABLE job row found.
+
+| Job | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| manual-checks | Codex | codex/manual-checks | CLAIMED | — |
+| costing-check (read-only report) | Codex | claude/costing-in-app unchanged | IN PROGRESS | #130 |
