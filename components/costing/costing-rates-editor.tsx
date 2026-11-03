@@ -17,7 +17,7 @@ export function CostingRatesEditor({ value, onChange, onSave, saving }: CostingR
       <input aria-label={'Material name ' + (index + 1)} className="border p-2" value={m.name} onChange={e => modifyMaterial(m.id, { name: e.target.value })} />
       <select aria-label={'Material unit ' + (index + 1)} value={m.unit} onChange={e => modifyMaterial(m.id, { unit: e.target.value as 'kg' | 'each' })}><option value="kg">Per kg</option><option value="each">Each</option></select>
       {input('Price £ ' + (index + 1), m.price, price => modifyMaterial(m.id, { price }))}
-      {input('Extra material for waste % ' + (index + 1), m.scrapPct, scrapPct => modifyMaterial(m.id, { scrapPct }))}
+      {input('Scrap % (extra material for waste) ' + (index + 1), m.scrapPct, scrapPct => modifyMaterial(m.id, { scrapPct }))}
       <button type="button" onClick={() => change({ materials: value.materials.filter(x => x.id !== m.id) })}>Remove material</button>
     </div>)}
     <button type="button" onClick={() => change({ materials: [...value.materials, { id: crypto.randomUUID(), name: '', unit: 'kg', price: 0, scrapPct: 5 }] })}>Add material</button>
@@ -31,8 +31,8 @@ export function CostingRatesEditor({ value, onChange, onSave, saving }: CostingR
     <div className="grid gap-3 sm:grid-cols-2">
       {input('Labour £ per hour', value.labourPerHour, labourPerHour => change({ labourPerHour }))}
       {input('Programming £ per hour', value.programmingPerHour, programmingPerHour => change({ programmingPerHour }))}
-      {input('Other running costs %', value.overheadPct, overheadPct => change({ overheadPct }))}
-      {input('Profit added %', value.marginPct, marginPct => change({ marginPct }))}
+      {input('Overhead % (other running costs)', value.overheadPct, overheadPct => change({ overheadPct }))}
+      {input('Margin % (profit added)', value.marginPct, marginPct => change({ marginPct }))}
     </div>
     {onSave && <button type="button" disabled={saving} onClick={onSave}>Save costing rates</button>}
     </fieldset>

@@ -58,7 +58,7 @@ export function PriceThisPart({ rates, onAdd }: PricePartProps) {
       <div>Other running costs: £{estimate.cost_breakdown.overhead_cost.toFixed(2)}</div>
       <div>Cost per part: £{estimate.summary.unit_cost.toFixed(2)}</div>
       <div>Price per part: £{estimate.summary.unit_price.toFixed(2)}</div>
-      <div>Quote line total before VAT: £{previewLineTotal(quantity, estimate.summary.unit_price).toFixed(2)}</div>
+      <div>Total quote line before VAT: £{previewLineTotal(quantity, estimate.summary.unit_price).toFixed(2)}</div>
     </div>}
     <button type="button" disabled={!estimate || !description.trim()} onClick={() => {
       if (estimate && description.trim()) onAdd({ description: description.trim(), quantity, unitPrice: estimate.summary.unit_price });
