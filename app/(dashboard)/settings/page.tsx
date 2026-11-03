@@ -651,10 +651,10 @@ export default function SettingsPage() {
       <div className="space-y-6">
         <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
         {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
-        <CompanyDetailsCard timeSettings={timeSettings} />
+        <section id="setup-company"><CompanyDetailsCard timeSettings={timeSettings} /></section>
         <ArchiveSettingsCard />
         <AutoConvertCard />
-        <TimeSettingsCard key={organizationId} onSettings={onTimeSettings} />
+        <section id="setup-breaks"><TimeSettingsCard key={organizationId} onSettings={onTimeSettings} /></section>
         <SiteNetworkCard />
         <ClockInLockCard />
         <CustomerSignOffCard />
@@ -731,7 +731,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         <WorkshopEmailCard />
-        <EmailTemplatesCard />
+        <section id="setup-email"><EmailTemplatesCard /></section>
       </div>
     </RoleGate>
   );
