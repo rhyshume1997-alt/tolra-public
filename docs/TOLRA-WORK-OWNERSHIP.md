@@ -92,4 +92,4 @@ The numbered jobs below are explicitly assigned to builder2. Changes stay on bui
 | 20 | builder2 | chatgpt2/base-conflict-review | DONE IN DRAFT PR | #149 |
 | 21 | builder2 | chatgpt2/merge-order | DONE IN DRAFT PR | #150 |
 | 22 | builder2 | chatgpt2/overlap-review | DONE IN DRAFT PR | #151 |
-| 23 | builder2 | chatgpt2/final-coordination | DONE IN DRAFT PR | Pending |
+| 23 | builder2 | chatgpt2/final-coordination | DONE IN DRAFT PR | #152 |
