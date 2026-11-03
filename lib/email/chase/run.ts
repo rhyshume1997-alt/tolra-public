@@ -165,14 +165,14 @@ export async function runChase(
   ]);
   const pausedInvoices = new Set(pauses.filter((p) => p.invoice_id && pauseActive(p.paused_until, input.today)).map((p) => p.invoice_id as string));
   const pausedCustomerIds = new Set(pauses.filter((p) => p.customer_id && pauseActive(p.paused_until, input.today)).map((p) => p.customer_id as string));
-  const customers = new Map<string, { name: string; email: string | null; contact_name: string | null }>();
+  // A null entry is ambiguous, even if only one of the records has a usable address.
+  // Never retain the first matching mailbox for a duplicate name.
+  const customers = new Map<string, { name: string; email: string | null; contact_name: string | null } | null>();
   const pausedNames = new Set<string>();
-  const nameCounts = new Map<string, number>();
   for (const c of customersList) {
-    nameCounts.set(key(c.name), (nameCounts.get(key(c.name)) ?? 0) + 1);
-    if (pausedCustomerIds.has(c.id)) pausedNames.add(key(c.name));
-    const email = c.email?.trim() ?? "";
-    if (email && looksLikeEmail(email) && !customers.has(key(c.name))) customers.set(key(c.name), c);
+    const name = key(c.name);
+    customers.set(name, customers.has(name) ? null : c);
+    if (pausedCustomerIds.has(c.id)) pausedNames.add(name);
   }
   const history = new Map<string, { stepIds: string[]; offsets: number[] }>();
   for (const s of sends) {
@@ -186,7 +186,7 @@ export async function runChase(
   // What each invoice gets today, before any job lookup.
   const planned: Array<{ invoice: ChaseCandidate; step: ChaseStep }> = [];
   for (const invoice of candidates) {
-    if ((nameCounts.get(key(invoice.customer)) ?? 0) > 1) { skip("ambiguous_customer"); continue; }
+    if (customers.get(key(invoice.customer)) === null) { skip("ambiguous_customer"); continue; }
     if (pausedInvoices.has(invoice.id)) { skip("invoice_paused"); continue; }
     if (pausedNames.has(key(invoice.customer))) { skip("customer_paused"); continue; }
     const due = dueChaseSteps(steps, { id: invoice.id, dueDate: invoice.due_date as string, balancePence: toPence(invoice.balance), paused: false }, input.today, history.get(invoice.id));
@@ -201,7 +201,11 @@ export async function runChase(
   for (const { invoice, step } of planned) {
     if (deps.deadline !== undefined && clock() > deps.deadline) { stoppedEarly = true; break; }
     const customer = customers.get(key(invoice.customer));
-    const to = fixed.length ? fixed : customer?.email ? [customer.email.trim()] : [];
+    // Refuse at recipient resolution too, including schedules with fixed recipients:
+    // an ambiguous invoice must not become a draft that can be copied or sent by hand.
+    if (customer === null) { skip("ambiguous_customer"); continue; }
+    const email = customer?.email?.trim() ?? "";
+    const to = fixed.length ? fixed : looksLikeEmail(email) ? [email] : [];
     if (!to.length) { skip("no_address"); continue; }
     const job = invoice.job_id ? context.jobs.get(invoice.job_id) ?? null : null;
     const jobVars = chaseJobVars(job ? chaseJobFacts(job, context.orders.get(invoice.job_id as string) ?? []) : null);
