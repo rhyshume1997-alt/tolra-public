@@ -1,0 +1,137 @@
+# Diagnostic only (never merge): throwaway-database rehearsal extras for #247 / #245 / #243. Loopback database only; identity is proven first.
+#  A. identity proof (loopback + empty database); B. releases 145 then 146 with verify; C. rollback 146 then 145 with verify;
+#  D. #243 seed refusal cases (missing marker, wrong marker, another company present, hosted address) and one positive run.
+name: Rehearsal 247 extras (diagnostic)
+on:
+  push:
+    branches: [claude/247-rehearsal-d7c0019]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  extras:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+      - uses: actions/checkout@v4
+      - run: echo "HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Helpers
+        run: |
+          cat > "$RUNNER_TEMP/h.sh" <<'SH'
+          set -euo pipefail
+          load_env() { set -a; . ./.env.test.local; set +a; }
+          psql_local() {
+            case "${TEST_DATABASE_URL:-}" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not a loopback database" >&2; return 1 ;; esac
+            psql "$TEST_DATABASE_URL" -X -v ON_ERROR_STOP=1 "$@"
+          }
+          verify_sql() { echo "== verify $1"; psql_local -At -F '|' -f "$1" | awk -F '|' '{print} NF != 2 || $2 != "t" {bad=1} END {exit (bad || NR == 0)}'; }
+          SH
+      - name: A. Start disposable Supabase and prove its identity
+        run: |
+          source "$RUNNER_TEMP/h.sh"
+          echo "head $HEAD_SHA"
+          npm run test:backend
+          load_env
+          psql_local -At -c "select 'database', current_database(), 'user', current_user, 'organizations', (select count(*) from public.organizations)"
+          test "$(psql_local -At -c 'select count(*) from public.organizations')" = "0"
+      - name: B. Release 145 then 146, with verify
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          psql_local -At -F '|' -f supabase/verify/release_preflight.sql | grep -E "post-144 marker" || true
+          psql_local -f supabase/release/145_company_setup.release.sql
+          verify_sql supabase/verify/company_setup_145.sql
+          psql_local -f supabase/release/146_tolra_provided_ai.release.sql
+          psql_local -c "NOTIFY pgrst, 'reload schema';"
+          verify_sql supabase/verify/tolra_provided_ai_146.sql
+          psql_local -At -F '|' -f supabase/verify/release_preflight.sql | grep -E "post-144 marker" || true
+      - name: B2. Second install must refuse (145 and 146 already installed)
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          for f in 145_company_setup 146_tolra_provided_ai; do
+            echo "== second install of $f must refuse"
+            if psql_local -f "supabase/release/$f.release.sql"; then echo "FAIL: second install of $f was accepted" >&2; exit 1; else echo "refused as expected: $f"; fi
+          done
+      - name: B3. Role matrix on 145 and 146 (observational, admin/office/workshop/viewer)
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          npx vitest run -c vitest.db.config.ts tests/db/rehearsal-role-matrix.test.ts 2>&1 | grep -E "ROLE-MATRIX|Test Files|Tests |FAIL|Error" | cut -c1-6000
+      - name: B4. 146 rollback must refuse while a Tolra AI reservation is outstanding, then succeed once settled; usage history kept
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          psql_local -c "insert into public.organizations (name, slug) values ('Rehearsal Co', 'rehearsal-co')"
+          psql_local -c "insert into public.ai_helper_requests (organization_id, user_id, feature, month, status, input_digest, input_bytes, reserved_pence, key_source) select id, gen_random_uuid(), 'rfq', date_trunc('month', now())::date, 'reserved', repeat('a', 64), 0, 100, 'tolra' from public.organizations where slug = 'rehearsal-co'"
+          echo "== outstanding reservation: rollback must refuse"
+          if psql_local -f supabase/release/146_tolra_provided_ai.rollback.sql; then echo "FAIL: rollback accepted with an outstanding reservation" >&2; exit 1; else echo "refused as expected"; fi
+          echo "== settle it, then rollback succeeds and the request history is kept"
+          psql_local -c "update public.ai_helper_requests set status = 'failed', failure = 'unavailable', settled_at = now() where key_source = 'tolra' and status = 'reserved'"
+          psql_local -f supabase/release/146_tolra_provided_ai.rollback.sql
+          psql_local -At -c "select 'requests kept', count(*), 'key_source column kept', (select count(*) from information_schema.columns where table_name = 'ai_helper_requests' and column_name = 'key_source') from public.ai_helper_requests"
+          psql_local -c "delete from public.ai_helper_requests where organization_id in (select id from public.organizations where slug = 'rehearsal-co')"
+          psql_local -c "delete from public.organizations where slug = 'rehearsal-co'"
+          echo "== note: 146 rollback deliberately keeps key_source, so 146 cannot be installed again on this database (reset to re-install)"
+          scripts/test-backend.sh reset
+          load_env
+          psql_local -f supabase/release/145_company_setup.release.sql
+          psql_local -f supabase/release/146_tolra_provided_ai.release.sql
+          psql_local -c "NOTIFY pgrst, 'reload schema';"
+      - name: C. Roll back 146 then 145, with verify
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          psql_local -f supabase/release/146_tolra_provided_ai.rollback.sql
+          verify_sql supabase/verify/ai_helper_pre_enable_133.sql
+          verify_sql supabase/verify/ai_assistant_134.sql
+          psql_local -f supabase/release/145_company_setup.rollback.sql
+          test "$(psql_local -At -c "select to_regclass('public.company_setup_progress') is null")" = "t"
+          psql_local -At -F '|' -f supabase/verify/release_preflight.sql | grep -E "post-144 marker" || true
+      - name: D1. Seed refusals before any marker (hosted address, missing marker)
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          FLAG=--yes-this-is-a-throwaway-database
+          echo "== hosted address must refuse"
+          if TEST_DATABASE_URL="postgresql://u:p@db.example.supabase.co:5432/postgres" TEST_SUPABASE_URL="https://example.supabase.co" DEMO_DISPOSABLE_ID="$(cat /proc/sys/kernel/random/uuid)" node scripts/demo-seed/cli.mjs $FLAG; then echo "FAIL: expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
+          echo "== missing marker must refuse"
+          if DEMO_DISPOSABLE_ID="$(cat /proc/sys/kernel/random/uuid)" node scripts/demo-seed/cli.mjs $FLAG; then echo "FAIL: expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
+      - name: D2. Seed refusals with a marker (wrong id, another company present)
+        if: ${{ !cancelled() }}
+        run: |
+          source "$RUNNER_TEMP/h.sh"; load_env
+          FLAG=--yes-this-is-a-throwaway-database
+          ID="$(cat /proc/sys/kernel/random/uuid)"
+          psql_local -v disposable_id="$ID" -f tests/demo-seed/mark-disposable.sql
+          echo "== wrong marker id must refuse"
+          if DEMO_DISPOSABLE_ID="$(cat /proc/sys/kernel/random/uuid)" node scripts/demo-seed/cli.mjs $FLAG; then echo "FAIL: expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
+          echo "== another company present must refuse"
+          psql_local -c "insert into public.organizations (name, slug) values ('Other Test Co', 'other-test-co')"
+          if DEMO_DISPOSABLE_ID="$ID" node scripts/demo-seed/cli.mjs $FLAG; then echo "FAIL: expected a refusal" >&2; exit 1; else echo "refused as expected"; fi
+          psql_local -c "delete from public.organizations where slug = 'other-test-co'"
+          echo "== correct marker, empty of other companies: seeds"
+          DEMO_DISPOSABLE_ID="$ID" node scripts/demo-seed/cli.mjs $FLAG | sed -E 's/(one-time password: ).*/\1[hidden]/'
+      - name: Stop disposable Supabase
+        if: always()
+        run: npm run test:backend:stop
