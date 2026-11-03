@@ -1,0 +1,2 @@
+export const DEFAULT_TOLRA_CAP_PENCE = 1000;
+export const MAX_TOLRA_CAP_PENCE = 100_000;

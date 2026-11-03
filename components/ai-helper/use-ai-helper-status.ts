@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { type AiFeatureStates } from "@/lib/ai-helper/master-switch";
 import { useAiFeatures } from "@/components/ai-features";
@@ -15,6 +15,10 @@ export type AiHelperStatus = {
   month_spent_pence: number;
   month_reserved_pence: number;
   can_manage: boolean;
+  /** Absent until N2 SQL is reviewed/applied; provided AI stays hidden/off. */
+  tolra_available?: boolean;
+  tolra_enabled?: boolean;
+  tolra_cap_pence?: number;
   /** The company's finance-check switch and whether the database can hold it (migration 106). Missing from an older answer = not available. */
   finance_check_enabled?: boolean;
   finance_check_available?: boolean;
@@ -33,13 +37,19 @@ export function useAiHelperStatus() {
   const { aiHelper } = useAiFeatures();
   const { profile, activeRole } = useUser();
   const allowed = Boolean(aiHelper && profile && (activeRole === "admin" || activeRole === "office"));
-  const [status, setStatus] = useState<AiHelperStatus | null>(null);
-  const [loaded, setLoaded] = useState(false);
+  const scope = `${profile?.id ?? ""}:${profile?.organization_id ?? ""}`;
+  const currentScope = useRef(scope);
+  currentScope.current = scope;
+  const [snapshot, setSnapshot] = useState<{ scope: string; status: AiHelperStatus | null; loaded: boolean } | null>(null);
+  const status = snapshot?.scope === scope ? snapshot.status : null;
+  const loaded = snapshot?.scope === scope && snapshot.loaded;
+  const setStatus = useCallback((next: AiHelperStatus | null) => {
+    if (currentScope.current === scope) setSnapshot({ scope, status: next, loaded: true });
+  }, [scope]);
 
   const reload = useCallback(async () => {
     if (!allowed) {
       setStatus(null);
-      setLoaded(true);
       return;
     }
     try {
@@ -47,10 +57,8 @@ export function useAiHelperStatus() {
       setStatus(response.ok ? ((await response.json()) as AiHelperStatus) : null);
     } catch {
       setStatus(null);
-    } finally {
-      setLoaded(true);
     }
-  }, [allowed]);
+  }, [allowed, setStatus]);
 
   useEffect(() => { void reload(); }, [reload]);
 
