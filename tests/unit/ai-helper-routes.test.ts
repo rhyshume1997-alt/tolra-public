@@ -687,7 +687,7 @@ describe("never-do list (source)", () => {
     for (const f of files) if (f !== server) expect(source(f), f).not.toMatch(/supabase-admin|createSupabaseAdminClient|SERVICE_ROLE/);
     const text = source(server);
     expect(text).not.toMatch(/SERVICE_ROLE/);
-    expect([...text.matchAll(/\bservice\.(\w+)\(("[a-z_]+")?/g)].map((m) => `${m[1]}(${m[2] ?? ""})`).sort()).toEqual(['from("ai_helper_secrets")', 'rpc("ai_helper_settle")']);
+    expect([...text.matchAll(/\bservice\.(\w+)\(("[a-z_]+")?/g)].map((m) => `${m[1]}(${m[2] ?? ""})`).sort()).toEqual(['from("ai_helper_secrets")', 'rpc("ai_helper_settle")', 'rpc("ai_helper_tolra_key")']);
     // The person's own session reserves; it never settles.
     expect(text).toMatch(/input\.supabase\.rpc\("ai_helper_reserve"/);
     expect(text).not.toMatch(/input\.supabase\.rpc\("ai_helper_settle"/);
@@ -703,7 +703,9 @@ describe("never-do list (source)", () => {
     const allowed = new Set(["ai_helper_status", "ai_helper_save_settings", "ai_helper_set_finance_check", "ai_helper_set_assistant", "ai_helper_set_key", "ai_helper_reserve", "ai_helper_reserve_assistant", "ai_helper_settle", "ai_helper_decide"]);
     for (const call of rpcs) {
       const [file, fn] = call.split(":");
-      expect(allowed.has(fn) || (["next_doc_number", "create_with_lines"].includes(fn) && file === path.join("lib", "ai-helper", "approve.ts")), call).toBe(true);
+      const companyMode = fn === "ai_helper_set_tolra_mode" && file === path.join("app", "api", "ai-helper", "tolra-mode", "route.ts");
+      const reservedTolraKey = fn === "ai_helper_tolra_key" && file === path.join("lib", "ai-helper", "server.ts");
+      expect(allowed.has(fn) || companyMode || reservedTolraKey || (["next_doc_number", "create_with_lines"].includes(fn) && file === path.join("lib", "ai-helper", "approve.ts")), call).toBe(true);
     }
   });
 
