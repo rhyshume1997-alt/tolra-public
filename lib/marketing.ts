@@ -185,7 +185,7 @@ export const FAQ = [
   {
     question: "Does it work with Xero or Sage?",
     answer:
-      "Xero, yes: an admin connects your company's own Xero and maps your account codes and VAT rates, and then issued invoices and credit notes are sent to Xero. Payments aren't synced either way. Sage isn't supported yet.",
+      "Xero: not yet. Sage: not yet.",
   },
   { question: "What does it cost?", answer: "I'll talk it through with you on the call." },
 ] as const;
@@ -193,8 +193,8 @@ export const FAQ = [
 /** The founder's note, mid-page. First person. No photo has been supplied, so there is none (and no placeholder). */
 export const FOUNDER_TITLE = "Built by an engineer in Glasgow";
 export const FOUNDER_NOTE = [
-  "My background is validation in medical devices, where every step of a job is written down, checked and signed before it moves on.",
-  "I built Tolra because small CNC and fabrication shops deserve software that follows the way they actually work, from the enquiry on the bench to the invoice in the post.",
+  "I've spent nearly three years validating computer systems in medical device manufacturing, so I built Tolra to be checked, traceable and simple.",
+  "Small CNC and fabrication shops deserve software that follows the way they actually work, from the enquiry on the bench to the invoice in the post.",
   "If Tolra fits your shop, I set it up with you personally.",
 ] as const;
 export const FOUNDER_LINK_LABEL = "More about Tolra and who is behind it";

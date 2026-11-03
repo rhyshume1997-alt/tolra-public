@@ -161,9 +161,8 @@ describe("round 2 sections", () => {
     const visible = text(html);
     expect(visible).toContain("I'll talk it through with you on the call.");
     expect(visible).toContain("In the UK. The database, sign-ins and stored files are in London, and the app runs on servers in London.");
-    // Worded as far as main's code goes (Admin > Integrations: connect, account and VAT mappings, issued invoices and credit notes sent;
-    // payments never sent or pulled, lib/integrations/xero/policy.ts).
-    expect(visible).toContain("issued invoices and credit notes are sent to Xero. Payments aren't synced either way. Sage isn't supported yet.");
+    // Rhys, 3 Nov: Xero is shown only once it is switched on in production; until then "not yet".
+    expect(visible).toContain("Xero: not yet. Sage: not yet.");
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)![1]!.replace(/\\u003c/g, "<"));
     const faq = ld.find((d: { "@type": string }) => d["@type"] === "FAQPage");
     expect(faq.mainEntity.map((q: { name: string }) => q.name)).toEqual(marketing.FAQ.map((item) => item.question));
