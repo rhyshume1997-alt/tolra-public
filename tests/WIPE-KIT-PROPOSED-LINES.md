@@ -40,7 +40,7 @@ CREATE TABLE security_audit.chase_approval_evidence (
   evidence jsonb NOT NULL,
   evidence_sha256 text NOT NULL CHECK (
     evidence_sha256 = encode(extensions.digest(
-      convert_to(public.canonical_jsonb(evidence), 'UTF8'), 'sha256'), 'hex')
+      convert_to(evidence::text, 'UTF8'), 'sha256'), 'hex')
   ),
   archived_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (organization_id, chase_send_id)
@@ -109,7 +109,7 @@ BEGIN
     INSERT INTO security_audit.chase_approval_evidence
       (organization_id, chase_send_id, evidence, evidence_sha256)
     VALUES (r.organization_id, r.id, r.evidence,
-      encode(extensions.digest(convert_to(public.canonical_jsonb(r.evidence), 'UTF8'), 'sha256'), 'hex'))
+      encode(extensions.digest(convert_to(r.evidence::text, 'UTF8'), 'sha256'), 'hex'))
     ON CONFLICT (organization_id, chase_send_id) DO NOTHING;
     GET DIAGNOSTICS v_inserted = ROW_COUNT;
     IF NOT EXISTS (
@@ -117,14 +117,14 @@ BEGIN
       WHERE a.organization_id = r.organization_id AND a.chase_send_id = r.id
         AND a.evidence = r.evidence
         AND a.evidence_sha256 = encode(extensions.digest(
-          convert_to(public.canonical_jsonb(r.evidence), 'UTF8'), 'sha256'), 'hex')
+          convert_to(r.evidence::text, 'UTF8'), 'sha256'), 'hex')
     ) THEN
       RAISE EXCEPTION 'REFUSED: archived approval evidence differs. Nothing changed.';
     END IF;
     IF v_inserted = 1 THEN
       PERFORM security_audit.log_named_event(r.organization_id, 'CHASE_EVIDENCE_ARCHIVED',
         'chase_sends', r.id::text, jsonb_build_object('evidence_sha256',
-          encode(extensions.digest(convert_to(public.canonical_jsonb(r.evidence), 'UTF8'), 'sha256'), 'hex')));
+          encode(extensions.digest(convert_to(r.evidence::text, 'UTF8'), 'sha256'), 'hex')));
     END IF;
   END LOOP;
 END;
@@ -154,3 +154,5 @@ Its refusal branch says disconnect JNR's Xero/Sage/QuickBooks first. Do not dele
 The public `tests/fixtures/wipe-kit/reviewed-table-list.json` contains sanitized ord/action/table names from Y, not private data. The unit parser applies these proposed list rows to that reviewed list and rejects duplicate ordinals, changed kept-table classifications, wrong new-table actions, unscoped WIPE rows and bad send-before-parent ordering. It also checks the archive-preserve/verify design. These are static proofs, not database execution.
 
 No private repo touched, SQL applied, archive created, wipe run, connection opened or deploy performed. The reviewer must separately prove archive DDL/permissions/immutability, full evidence equality/digests, inserted audit chain, dry rollback, failed/partial archive rollback, safe FK deletion, and unchanged Marpet/settings/logins/numbering/history on a disposable restored copy before any live decision. Refresh the current kit/table list and reviewed hashes first.
+
+AH follow-up assumption: digest the stored JSONB text on the same PostgreSQL engine used for verification. Do not call the job-signoff canonicalizer: it rejects numeric JSON, while invoice and send snapshots contain numbers. Equality of the full JSONB evidence is checked independently of its digest. Cross-version restores must verify both equality and digests before any deletion. The reviewed list is a sanitized public fixture, not a fresh read of the private repo.

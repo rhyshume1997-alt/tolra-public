@@ -21,3 +21,12 @@ it("preserves exact evidence before protected capture and keeps immutable histor
  expect(source).toContain("provider IN ('xero', 'sage', 'quickbooks')");expect(source).toContain('WHERE organization_id = c_jnr');
  expect(source).not.toMatch(/ALTER TABLE[^\n]*DISABLE|DELETE FROM public\./);
 });
+
+it("refuses duplicate table aliases and foreign-company archive scope",()=>{
+ expect(validateWipeRows(existing,[...proposed,{...proposed[0],ord:88}])).toContain('Duplicate table public.chase_sends');
+ expect(validateWipeRows(existing,proposed.map(r=>r.table==='security_audit.chase_approval_evidence'?{...r,predicate:'TRUE'}:r))).toContain('Wrong company scope: security_audit.chase_approval_evidence');
+});
+it("uses a numeric-safe stored JSONB digest, never the numbers-forbidden signoff canonicalizer",()=>{
+ expect(source).toContain("convert_to(evidence::text, 'UTF8')");expect(source).toContain("convert_to(r.evidence::text, 'UTF8')");
+ expect(source).not.toContain('public.canonical_jsonb(');
+});

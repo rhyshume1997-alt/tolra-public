@@ -26,6 +26,14 @@ export function validateWipeRows(existing:WipeRow[],proposed:WipeRow[]) {
  }
  const control=proposed.find(r=>r.table==='public.ai_helper_tolra_control');
  if(control?.predicate!==null||control.export!==false)problems.push('Global control must be KEEP, no company predicate, never export');
+ const baselineCounts=new Map<string,number>();
+ for(const row of existing)baselineCounts.set(row.table,(baselineCounts.get(row.table)??0)+1);
+ const tables=new Map<string,number>();
+ for(const row of updated.values()) {
+  const count=(tables.get(row.table)??0)+1;tables.set(row.table,count);
+  if(count>Math.max(1,baselineCounts.get(row.table)??0))problems.push(`Duplicate table ${row.table}`);
+ }
+ for(const row of proposed)if(row.table!=='public.ai_helper_tolra_control'&&row.predicate!=='organization_id = {org}')problems.push(`Wrong company scope: ${row.table}`);
  const archive=proposed.find(r=>r.table==='security_audit.chase_approval_evidence');
  if(archive?.action!=='KEEP'||archive.export!==false)problems.push('Evidence archive must be protected and not exported');
  for(const table of ['ai_helper_requests','ai_helper_usage'])if(!proposed.some(r=>r.table===`public.${table}`&&r.action==='KEEP'))problems.push(`AI history must be kept: ${table}`);
