@@ -69,6 +69,7 @@ import { GET,POST } from "@/app/api/accounting/[provider]/[action]/route";
 import { decryptSecret } from "@/lib/integrations/crypto";
 
 beforeEach(()=>{
+  fixture.org="00000000-0000-4000-8000-0000000000a1";fixture.user="admin-a";
   fixture.connections.clear();fixture.pending.clear();fixture.rpcs=[];fixture.http=[];
   fixture.tokens={sage:{access:"synthetic-sage-access",refresh:"synthetic-sage-refresh"},quickbooks:{access:"synthetic-qbo-access",refresh:"synthetic-qbo-refresh"}};
   vi.stubEnv("INTEGRATIONS_ENCRYPTION_KEY",Buffer.alloc(32,31).toString("base64"));
@@ -171,4 +172,26 @@ it("two connected providers keep tokens, invoices and results separate, includin
   expect(fixture.rpcs.filter(c=>c.name==="integration_token_store").map(c=>c.args.p_provider)).toEqual(["sage"]);
   expect(fixture.http.some(c=>c.url.includes("sales_invoices")&&c.business===tenant.sage&&c.authorization===`Bearer ${fixture.tokens.sage.access}`)).toBe(true);
   expect(fixture.http.some(c=>c.url.includes(`/company/${tenant.quickbooks}/query`)&&c.authorization===`Bearer ${fixture.tokens.quickbooks.access}`)).toBe(true);
+});
+
+
+it("Company B cannot read Company A's connected provider, tenant or balance even when A's IDs are supplied", async () => {
+  await connect("sage"); await connect("quickbooks");
+  const companyA = fixture.org;
+  const stored = structuredClone([...fixture.connections.entries()]);
+  const requestsBefore = fixture.http.length;
+  fixture.org = "00000000-0000-4000-8000-0000000000b2"; fixture.user = "admin-b";
+  for (const provider of ["sage", "quickbooks"] as const) {
+    const url = new URL(`https://tolra.example.test/api/accounting/${provider}/status`);
+    url.searchParams.set("organizationId", companyA); url.searchParams.set("tenantId", tenant[provider]);
+    const response = await GET(new Request(url), context(provider, "status"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ configured: true, status: "not_connected", tenantName: null });
+    const check = await post(provider, "check", { invoiceId: invoiceIds.shared, organizationId: companyA, tenantId: tenant[provider] });
+    expect(check.status).toBe(502);
+    expect(await check.json()).toEqual({ error: "Could not complete the accounting check. Reconnect or try again." });
+  }
+  expect(fixture.http).toHaveLength(requestsBefore);
+  expect([...fixture.connections.entries()]).toEqual(stored);
+  expect(fixture.rpcs.filter(call => call.name === "integration_token_lease" && call.args.p_org === fixture.org)).toEqual([]);
 });
