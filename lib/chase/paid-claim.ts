@@ -36,7 +36,9 @@ export function detectPaidClaim(
     const negative = /\b(?:not yet paid|not paid|haven't paid|have not paid|hasn't paid|unpaid|still to pay|will pay|going to pay|intend to pay|plan to pay|please send (?:the |an? )?invoice|could you send (?:the |an? )?invoice|can you confirm (?:whether |if )?(?:you(?:'ve| have) )?received (?:the |our )?payment|have you received (?:the |our )?payment|payment (?:is|will be) due|payment pending)\b/i;
     const phrases = [
       /\bpayment (?:has been |was )?made(?: today| yesterday| on \w+| this morning| this afternoon)?\b/i,
-      /\b(?:bacs|bank transfer|faster payment) (?:has been )?(?:sent|made|completed)\b/i,
+      /\b(?:bacs|bank transfer|faster payment) (?:has been |was )?(?:sent|made|completed)\b/i,
+      /\b(?:we |i )?(?:have )?sent (?:the )?bacs\b/i,
+      /\b(?:invoice|ref(?:erence)?)\s+[A-Z0-9][A-Z0-9 /-]{0,40}\s+(?:has been |was |is now )?(?:paid|settled)\b/i,
       /\b(?:i|we|our accounts team)\s+(?:have |has )?(?:paid|transferred|settled|sent (?:the )?payment)\b/i,
       /\bpaid (?:on (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}\/\d{1,2})|today|yesterday|in full|last week)\b/i,
       /\bremittance (?:advice )?(?:is |has been )?attached\b/i,
@@ -44,13 +46,21 @@ export function detectPaidClaim(
       /\b(?:transferred|settled) (?:the |your |our )?(?:amount|balance|invoice|payment|funds|account)\b/i,
     ];
     const sentenceParts = clean.split(/(?<=[.!?;])\s+|\n+/);
-    const evidence = sentenceParts.filter(part => phrases.some(pattern => pattern.test(part)) && !negative.test(part) &&
+    const evidence = sentenceParts.filter(part => phrases.some(pattern => pattern.test(part)) && !negative.test(part) && !part.includes("?") &&
+      !/\b(?:if|once|when|after|before)\b[^.!?]*\b(?:paid|payment|transferred|settled)\b/i.test(part) &&
+      !/\b(?:tomorrow|next week|next month|scheduled|expected|expect|once approved)\b/i.test(part) &&
       !/\b(?:did you|have you|could you|can you|please|if|once|when|after|before|not|never)\b[^.!?]*\b(?:paid|payment made|transferred|settled)\b/i.test(part));
     const claimsPaid = evidence.length > 0;
     if (!claimsPaid) return { claimsPaid: false, invoiceRefs: [], confidence: 'low', reason: negative.test(clean) ? 'No completed payment claim; message discusses future, missing or unconfirmed payment' : 'No completed payment claim detected' };
-    const compact = normalise(text);
-    const invoiceRefs = [...new Set((Array.isArray(knownInvoiceRefs) ? knownInvoiceRefs : []).filter((ref): ref is string => typeof ref === 'string' && !!normalise(ref))
-      .filter(ref => compact.includes(normalise(ref))))];
+    // Match complete references, allowing separators but never a prefix of another reference.
+    const hasRef = (value: string, ref: string) => {
+      const pattern = normalise(ref).split('').join('[^A-Z0-9]*');
+      return new RegExp('(?:^|[^A-Z0-9])' + pattern + '(?![A-Z0-9])', 'i').test(value);
+    };
+    const known = (Array.isArray(knownInvoiceRefs) ? knownInvoiceRefs : []).filter((ref): ref is string => typeof ref === 'string' && !!normalise(ref));
+    const evidenceRefs = known.filter(ref => hasRef(evidence.join(' '), ref));
+    const allowedContext = sentenceParts.filter(part => !negative.test(part) && !/\b(?:tomorrow|next week|next month)\b/i.test(part)).join(' ');
+    const invoiceRefs = [...new Set(evidenceRefs.length ? evidenceRefs : known.filter(ref => hasRef(allowedContext, ref)))];
     const confidence = invoiceRefs.length ? 'high' : /\b(?:remittance|bacs|payment made|paid|settled|transferred)\b/i.test(evidence.join(' ')) ? 'medium' : 'low';
     return { claimsPaid: true, invoiceRefs, confidence, reason: invoiceRefs.length ? 'Completed payment claim mentions known invoice reference' : 'Completed payment claim without a known invoice reference' };
   } catch {
