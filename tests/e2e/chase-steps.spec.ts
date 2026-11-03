@@ -76,7 +76,10 @@ test.describe("Chase steps in their own company", () => {
     await expect(steps.getByTestId("chase-steps-suggested")).toBeVisible();
     await expect(steps.getByTestId("chase-step")).toHaveCount(4);
     expect((await adminClient().from("chase_steps").select("id").eq("organization_id", org.id)).data).toEqual([]);
+    const savedRequest = page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/rpc/save_chase_steps_atomic") && response.request().method() === "POST");
     await steps.getByRole("button", { name: "Save chase steps" }).click();
+    const savedResponse = await savedRequest;
+    expect(savedResponse.status(), "The real atomic save must succeed before showing success").toBe(200);
     await expect(page.getByText("Chase steps saved.", { exact: true }).first()).toBeVisible();
     await expect.poll(async () => ((await adminClient().from("chase_steps").select("offset_days, tone").eq("organization_id", org.id).order("offset_days")).data ?? []))
       .toEqual([{ offset_days: -3, tone: "before_due" }, { offset_days: 7, tone: "friendly" }, { offset_days: 14, tone: "firm" }, { offset_days: 30, tone: "final" }]);
