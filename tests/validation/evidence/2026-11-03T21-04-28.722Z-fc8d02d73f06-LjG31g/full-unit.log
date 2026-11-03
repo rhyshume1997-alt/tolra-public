@@ -1,0 +1,6 @@
+
+> quoteflow-jnr@0.1.0 test
+> vitest run --config vitest.config.ts --maxWorkers=4 --minWorkers=1 --reporter=json --outputFile=/tmp/ak-final-full-unit.json
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+JSON report written to /tmp/ak-final-full-unit.json
