@@ -1,0 +1,593 @@
+{
+  "requirements": [
+    {
+      "id": "URS-001",
+      "risk": "RISK-001",
+      "oq": "OQ-001",
+      "requirement": "Signed-in people see only their own company’s records.",
+      "hazard": "Wrong company sees private records",
+      "severity": "High",
+      "action": "Use two fake companies with reused document numbers. Sign in to each and attempt to open the other company’s record.",
+      "expected": "Other company’s records cannot be read or changed.",
+      "unit": [
+        "tests/unit/isolation.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/company-switch-two-tabs.spec.ts"
+      ],
+      "database": [
+        "tests/db/opening-wip-141-isolation.test.ts",
+        "tests/db/sliq-import-preflight-140-141.test.ts"
+      ],
+      "pq": [
+        "PQ-001",
+        "PQ-005"
+      ],
+      "manual": [
+        "G01.4",
+        "G08.2",
+        "G08.5"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-002",
+      "risk": "RISK-002",
+      "oq": "OQ-002",
+      "requirement": "Only people with the right role may perform restricted actions.",
+      "hazard": "Staff can approve or administer without permission",
+      "severity": "High",
+      "action": "Try restricted navigation and actions as workshop, office and admin.",
+      "expected": "Each action follows the role gate; denied actions change nothing.",
+      "unit": [
+        "tests/unit/middleware-route-roles.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/two-level-access.spec.ts"
+      ],
+      "database": [],
+      "pq": [
+        "PQ-001",
+        "PQ-005"
+      ],
+      "manual": [
+        "G07.2",
+        "G07.4",
+        "G08.5"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-003",
+      "risk": "RISK-003",
+      "oq": "OQ-003",
+      "requirement": "Money calculations keep exact pence and handle rounding consistently.",
+      "hazard": "Incorrect invoice or credit totals",
+      "severity": "High",
+      "action": "Run the money edge cases; make a fake quote with fractional quantities and VAT. Compare its saved and printed totals.",
+      "expected": "Expected pence match; no silent fractional-penny drift.",
+      "unit": [
+        "tests/unit/money.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/zero-rows.spec.ts"
+      ],
+      "database": [],
+      "pq": [
+        "PQ-002",
+        "PQ-005"
+      ],
+      "manual": [
+        "G01.2",
+        "G01.3",
+        "G13.1"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-004",
+      "risk": "RISK-004",
+      "oq": "OQ-004",
+      "requirement": "A draft invoice does not count as an issued invoice or an approved payment.",
+      "hazard": "Draft changes alter money owed",
+      "severity": "High",
+      "action": "Create a fake draft and try the draft-payment cases.",
+      "expected": "Draft remains a draft; no issued debt or payment is created.",
+      "unit": [
+        "tests/unit/invoice-draft-payment.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/approvals-display.spec.ts"
+      ],
+      "database": [],
+      "pq": [
+        "PQ-002",
+        "PQ-005"
+      ],
+      "manual": [
+        "G01.2",
+        "G01.3",
+        "G13.1"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-005",
+      "risk": "RISK-005",
+      "oq": "OQ-005",
+      "requirement": "Reopening a finished job requires confirmation, approval handling and a recorded reason.",
+      "hazard": "Work restarts without a trace",
+      "severity": "High",
+      "action": "Reopen a fake finished job. Try cancel, admin approval and notification without an admin present.",
+      "expected": "Cancel does nothing; confirmed route records approval/notification and reason without blaming staff.",
+      "unit": [
+        "tests/unit/reopen-sign-off.test.ts"
+      ],
+      "browser": [],
+      "database": [],
+      "pq": [
+        "PQ-003",
+        "PQ-005"
+      ],
+      "manual": [
+        "G13.2"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-006",
+      "risk": "RISK-006",
+      "oq": "OQ-006",
+      "requirement": "Hours use the saved company break rule; JNR starts with unpaid breaks.",
+      "hazard": "Incorrect paid hours",
+      "severity": "High",
+      "action": "Run clock and break cases; compare an eight-hour fake shift with breaks paid and unpaid.",
+      "expected": "Saved rule is followed and the displayed paid hours agree with clock records.",
+      "unit": [
+        "tests/unit/time-sheet.test.ts",
+        "tests/unit/company-paid-breaks.test.ts",
+        "tests/unit/paid-breaks-two-companies.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/reviewer/setup-email-hours.spec.ts"
+      ],
+      "database": [
+        "tests/db/time-attendance.test.ts",
+        "tests/db/time-week-review.test.ts"
+      ],
+      "pq": [
+        "PQ-003",
+        "PQ-005"
+      ],
+      "manual": [
+        "G04.1",
+        "G04.2",
+        "G04.3"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-007",
+      "risk": "RISK-007",
+      "oq": "OQ-007",
+      "requirement": "The print pack uses the selected company layout and matching document totals.",
+      "hazard": "Wrong drawing or paperwork reaches the floor",
+      "severity": "Medium",
+      "action": "Preview JNR and basic print layouts using fake records.",
+      "expected": "Selected layout, document number, drawing and totals belong to the selected job/company.",
+      "unit": [
+        "tests/unit/print-layout-jnr.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/print-layout-settings.spec.ts"
+      ],
+      "database": [],
+      "pq": [
+        "PQ-003",
+        "PQ-005"
+      ],
+      "manual": [
+        "G13.3"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-008",
+      "risk": "RISK-008",
+      "oq": "OQ-008",
+      "requirement": "Important changes have a who, what and when record.",
+      "hazard": "Company cannot explain a change",
+      "severity": "High",
+      "action": "Change a fake record as an ordinary user and inspect the audit as an admin.",
+      "expected": "Audit records actor, action and time; staff cannot erase the history.",
+      "unit": [
+        "tests/unit/audit-contract.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/who-did-what.spec.ts"
+      ],
+      "database": [],
+      "pq": [
+        "PQ-003",
+        "PQ-005"
+      ],
+      "manual": [
+        "G13.4"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-009",
+      "risk": "RISK-009",
+      "oq": "OQ-009",
+      "requirement": "Xero, Sage and QuickBooks keep encrypted tokens, company records and provider results separate; exports require connection, mappings and a permitted action.",
+      "hazard": "Leaked tokens, mixed company/provider records or duplicate accounting exports",
+      "severity": "High",
+      "action": "Rehearse Xero, Sage and QuickBooks separately and side by side with fake provider accounts; verify missing setup, token privacy, mappings, roles, disconnect and uncertain delivery.",
+      "expected": "Only the selected company/provider is used; tokens stay encrypted and hidden; unconfigured/unmapped or unauthorised sends refuse; uncertain results are checked before retry.",
+      "unit": [
+        "tests/unit/integrations-engine.test.ts",
+        "tests/unit/accounting-token-isolation.test.ts",
+        "tests/unit/accounting-cloud-adapters.test.ts",
+        "tests/unit/accounting-routes.test.ts",
+        "tests/unit/integrations-crypto-oauth.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/xero-batch.spec.ts",
+        "tests/e2e/reviewer/accounting.spec.ts"
+      ],
+      "database": [
+        "tests/db/integrations-084.test.ts",
+        "tests/db/integrations-connect-107.test.ts"
+      ],
+      "pq": [
+        "PQ-004",
+        "PQ-008",
+        "PQ-005"
+      ],
+      "manual": [
+        "G06.1",
+        "G06.2",
+        "G06.3",
+        "G06.4",
+        "G09.1",
+        "G09.2",
+        "G09.3",
+        "G09.4"
+      ],
+      "gap": "Expanded Sage/QuickBooks SQL permissions (reviewer-accounting-permissions, #256) are not integrated in the final candidate. Successful provider rehearsals remain NOT RUN until sandbox registrations exist (R2)."
+    },
+    {
+      "id": "URS-010",
+      "risk": "RISK-010",
+      "oq": "OQ-010",
+      "requirement": "AI is off until allowed; own-key and Tolra-provided modes never share keys; only Rhys with MFA sets each company cap (default 1000p, maximum 100000p); concurrent reservations never exceed it; suggestions need a person.",
+      "hazard": "Cross-company key disclosure, unauthorised cap changes or overspending",
+      "severity": "High",
+      "action": "Switch both configured AI modes, test key isolation and refusal, owner MFA and separate company caps, then obtain real independent-session near-cap race evidence.",
+      "expected": "Off stays off; saved keys never appear; no fallback to the other key; company admins cannot raise provided caps; A changes leave B unchanged; over-cap and racing reservations cannot overspend.",
+      "unit": [
+        "tests/unit/ai-master-switch.test.ts",
+        "tests/unit/ai-mode-key-isolation.test.ts",
+        "tests/unit/ai-company-setting-isolation.test.ts",
+        "tests/unit/tolra-ai.test.ts",
+        "tests/unit/tolra-ai-caps.test.ts",
+        "tests/unit/tolra-ai-caps-ui.test.ts",
+        "tests/unit/tolra-ai-controls-ui.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/reviewer/ai-support.spec.ts",
+        "tests/e2e/n1-n6/n2-tolra-ai.spec.ts"
+      ],
+      "database": [
+        "tests/db/tolra-provided-ai.test.ts",
+        "tests/db/tolra-ai-cap-concurrency.test.ts"
+      ],
+      "pq": [
+        "PQ-004",
+        "PQ-008",
+        "PQ-005"
+      ],
+      "manual": [
+        "G05.1",
+        "G05.2",
+        "G05.3",
+        "G05.4",
+        "G05.5",
+        "G12.1",
+        "G12.2",
+        "G12.3",
+        "G12.4"
+      ],
+      "gap": "Owner cap SQL ACL expansion (reviewer-cap-conditions, #254/#256) is not integrated in the final candidate. The real two-session cap race is mapped (tests/db/tolra-ai-cap-concurrency.test.ts); a pass is recorded from CI only, never from a unit mock."
+    },
+    {
+      "id": "URS-011",
+      "risk": "RISK-011",
+      "oq": "OQ-011",
+      "requirement": "N5 creates a blank company and saves the guided setup only for its own admins, across existing Settings, Users, Integrations and Import pages.",
+      "hazard": "Another company data or unauthorised setup progress appears",
+      "severity": "High",
+      "action": "Create a third unused company, inspect all business lists, follow every setup link, save selected progress and repeat as staff and both support modes.",
+      "expected": "No sample or other-company records appear; setup progress persists only for own admins; optional integrations stay off.",
+      "unit": [
+        "tests/unit/company-setup.test.ts",
+        "tests/unit/company-setup-access.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/reviewer/ai-support.spec.ts",
+        "tests/e2e/reviewer/setup-email-hours.spec.ts",
+        "tests/e2e/n1-n6/n5-setup.spec.ts"
+      ],
+      "database": [
+        "tests/db/company-setup-isolation.test.ts"
+      ],
+      "manual": [
+        "G08.1",
+        "G08.2",
+        "G08.3",
+        "G08.4",
+        "G08.5"
+      ],
+      "pq": [
+        "PQ-006",
+        "PQ-005"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-012",
+      "risk": "RISK-012",
+      "oq": "OQ-012",
+      "requirement": "N6 uses labelled subject, greeting, main message and sign-off boxes, detail buttons and an example preview for chase and timesheet templates; old saved text stays exact and read-only staff cannot save.",
+      "hazard": "Template editing changes legacy email text or allows unauthorised changes",
+      "severity": "High",
+      "action": "Edit chase and timesheet examples using detail buttons, compare previews and saved legacy text, then repeat as read-only staff.",
+      "expected": "No bracket typing needed; preview alone saves/sends nothing; old stored text remains exact; read-only cannot save.",
+      "unit": [
+        "tests/unit/email-template-editor-parts.test.ts",
+        "tests/unit/email-template-editor-ui.test.ts",
+        "tests/unit/email-templates.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/reviewer/setup-email-hours.spec.ts",
+        "tests/e2e/n1-n6/n6-editor.spec.ts"
+      ],
+      "database": [
+        "tests/db/email-templates-106.test.ts"
+      ],
+      "manual": [
+        "G10.1",
+        "G10.2",
+        "G10.3",
+        "G10.4"
+      ],
+      "pq": [
+        "PQ-006",
+        "PQ-007",
+        "PQ-005"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "URS-013",
+      "risk": "RISK-013",
+      "oq": "OQ-013",
+      "requirement": "Chasing sends only the exact approved recipient, subject and body once; edits invalidate approval; ambiguous customer names refuse at draft creation and approval; uncertain delivery never automatically resends.",
+      "hazard": "Wrong customer or unapproved/duplicate message is sent",
+      "severity": "High",
+      "action": "Use duplicate-name fake customers, review and edit a ZZ draft, compare the exact catcher text, double-send, stale review and uncertain delivery.",
+      "expected": "No ambiguous draft/send; exact saved text is sent once; stale review refuses; uncertain result needs checking and does not resend.",
+      "unit": [
+        "tests/unit/chase-approve.test.ts",
+        "tests/unit/chase-reviewed-text.test.ts",
+        "tests/unit/chase-draft-customer-match.test.ts",
+        "tests/unit/chase-approval-ui.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/chase-steps.spec.ts",
+        "tests/e2e/reviewer/chase.spec.ts"
+      ],
+      "database": [
+        "tests/db/chase-steps-138.test.ts",
+        "tests/db/reviewer-chase-conditions.test.ts"
+      ],
+      "manual": [
+        "G02.1",
+        "G02.2",
+        "G02.3",
+        "G02.4",
+        "G02.5",
+        "G02.6",
+        "G11.1",
+        "G11.2"
+      ],
+      "pq": [
+        "PQ-007",
+        "PQ-005"
+      ],
+      "gap": "The #255 DB-backed approved-text, edit-invalidation, paid-claim, duplicate-approval and cross-company proofs are now in the final candidate as tests/db/reviewer-chase-conditions.test.ts, with browser cases V-CHASE-EDIT, V-CHASE-DOUBLE and V-CHASE-UNKNOWN. CI run 41816512073 reported them passing; that is recorded evidence for Rhys to review, not a completed OQ-013. Real mail-provider delivery is not proved (R5)."
+    },
+    {
+      "id": "URS-014",
+      "risk": "RISK-014",
+      "oq": "OQ-014",
+      "requirement": "Customer paid claims and inbound paid/remittance/payment-sent emails never record a payment or change invoice paid fields, balance or status automatically.",
+      "hazard": "An email incorrectly clears a real debt",
+      "severity": "High",
+      "action": "Record a fake paid claim, resume it without receipt, then feed all three inbound phrases and compare complete invoice/payment snapshots for two companies and duplicate messages.",
+      "expected": "Claims pause chasing only; inbound evidence is retained; only a separately authorised payment action changes paid financials.",
+      "unit": [
+        "tests/unit/customer-says-paid-ui.test.ts"
+      ],
+      "browser": [
+        "tests/e2e/reviewer/chase.spec.ts"
+      ],
+      "database": [
+        "tests/db/reviewer-inbound-conditions.test.ts",
+        "tests/db/reviewer-chase-conditions.test.ts"
+      ],
+      "manual": [
+        "G03.1",
+        "G03.2",
+        "G03.3",
+        "G03.4"
+      ],
+      "pq": [
+        "PQ-007",
+        "PQ-005"
+      ],
+      "gap": "The URS-014 inbound-email subcondition now has tests/db/reviewer-inbound-conditions.test.ts (#253) and browser case V-INBOUND in the final candidate. CI run 41816512073 reported the DB test 1/1 passed; that is recorded evidence for Rhys to review, not a completed OQ-014. G03.4 is the mapped manual proof and remains NOT RUN. The customer-says-paid UI unit is supporting claim evidence only."
+    }
+  ],
+  "schemaVersion": 2,
+  "base": {
+    "pr": 247,
+    "branch": "claude/247-final",
+    "head": "9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8",
+    "validationSourcePr": 220,
+    "manualSourcePr": 248,
+    "packPr": 258,
+    "contains": [
+      "#247",
+      "#245 reviewer browser specs",
+      "#253 inbound proof",
+      "#255 chasing proofs",
+      "SliQ 140/141",
+      "CI reinstall of 145/146"
+    ]
+  },
+  "iq": [
+    {
+      "id": "IQ-001",
+      "manual": [
+        "G00.1"
+      ]
+    },
+    {
+      "id": "IQ-002",
+      "manual": [
+        "G00.2"
+      ]
+    },
+    {
+      "id": "IQ-003",
+      "manual": [
+        "G00.3"
+      ]
+    },
+    {
+      "id": "IQ-004",
+      "manual": [
+        "G00.4"
+      ]
+    },
+    {
+      "id": "IQ-005",
+      "manual": [
+        "G00.5"
+      ]
+    },
+    {
+      "id": "IQ-006",
+      "manual": [
+        "G00.6"
+      ]
+    }
+  ],
+  "pq": [
+    {
+      "id": "PQ-001",
+      "manual": [
+        "G01.4",
+        "G08.5"
+      ]
+    },
+    {
+      "id": "PQ-002",
+      "manual": [
+        "G01.2",
+        "G01.3",
+        "G13.1"
+      ]
+    },
+    {
+      "id": "PQ-003",
+      "manual": [
+        "G04.2",
+        "G13.2",
+        "G13.3",
+        "G13.4"
+      ]
+    },
+    {
+      "id": "PQ-004",
+      "manual": [
+        "G05.1",
+        "G06.3"
+      ]
+    },
+    {
+      "id": "PQ-005",
+      "manual": [
+        "G14.1"
+      ]
+    },
+    {
+      "id": "PQ-006",
+      "manual": [
+        "G08.3",
+        "G08.4",
+        "G10.1",
+        "G10.3"
+      ]
+    },
+    {
+      "id": "PQ-007",
+      "manual": [
+        "G02.4",
+        "G02.6",
+        "G03.4",
+        "G10.2",
+        "G11.1",
+        "G11.2"
+      ]
+    },
+    {
+      "id": "PQ-008",
+      "manual": [
+        "G09.3",
+        "G09.4",
+        "G12.2",
+        "G12.3",
+        "G12.4"
+      ]
+    }
+  ],
+  "releaseOrder": [
+    138,
+    140,
+    141,
+    144,
+    145,
+    146
+  ],
+  "ci": {
+    "repository": "rhyshume1997-alt/tolra-public",
+    "finalFullRun": null,
+    "runs": [
+      {
+        "id": "41816512073",
+        "role": "first full ci.yml run on the final SHA",
+        "conclusion": "failure",
+        "note": "598 passed, 1 failed: tests/e2e/attention.spec.ts:18 (unrelated to the pack); every other recorded evidence line in P1 passed"
+      },
+      {
+        "id": "41827547312",
+        "role": "targeted attention.spec rerun on the final SHA",
+        "conclusion": "success",
+        "note": "targeted rerun only, not a full suite"
+      }
+    ]
+  }
+}
