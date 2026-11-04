@@ -15,3 +15,9 @@ The 14 tests cover a good synthetic chain and wrong checkout/executed heads, non
 Limits: this tool checks the supplied metadata and retained bytes. It cannot prove a claimed exit code was captured from the correct process, that a copied log is genuine, or that the identity nonce actually came from a new container. Code must bind each manifest to an independently retained execution/identity journal. A good hash proves byte identity, not truth. No actual external profile manifest/log population was supplied.
 
 Own overnight runs record source commit `31f965e7f0cbb2d9caf336b0a2067411bec8fb45`, environment, UTC start/end, exit code, SQL-input manifest hash and original-log SHA-256. Counter SQL adds a per-statement journal and external nonce/container receipt before writes. Original setup/readiness/network failures are retained; no rerun overwrites them. Initial CLI/Docker diagnostics before the recorder were not counted as completed gap proof. For actual Code evidence, fill the existing G18 template (#370) and independently check the full chain; do not reuse a workflow branch’s SHA as the app checkout without evidence.
+
+## Exact committed-code rerun
+
+Executed checkout `9d580c6dafc26a31df35c1f4aaf6eea6ec7e1946`; UTC 2026-11-04T21:57:40.488542+00:00; exit 0; duration 0.215 seconds. Full environment, SQL manifest/log hashes and command file hashes are in `evidence/2026-11-04T21-57-40.488542+00-00-committed-provenance-443d3a/run.json`; original log bytes retained. This supersedes contextual checkout ambiguity for earlier uncommitted test overlays. Later commits only attach review/evidence.
+
+Fourteen named offline verifier tests passed; actual Code profiles remain unverified.
