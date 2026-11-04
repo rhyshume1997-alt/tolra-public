@@ -1,0 +1,28 @@
+{
+  "source_commit": "241f434f3c4375ef53e454c3303123249efc84b1",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "start_utc": "2026-11-04T21:57:40.685546+00:00",
+  "command": [
+    "node",
+    "/workspace/tolra-public/node_modules/vitest/vitest.mjs",
+    "run",
+    "tests/unit/b5-g20-g27-adversarial.test.ts"
+  ],
+  "sql_manifest_sha256": "ef36b393fb05d68ef819a0731ad2925976aa6dfc5d76a9bb037ca71ddaa6bf4b",
+  "sql_files": 404,
+  "database_identity": "NOT_CONNECTED unless identity evidence is explicitly supplied by the test",
+  "profile": "synthetic-only",
+  "working_directory": "/workspace/tolra-public/work/overnight/g20-g27",
+  "working_tree_status": [],
+  "command_file_hashes": {
+    "/workspace/tolra-public/node_modules/vitest/vitest.mjs": "39db22f579acf5639bbb17a261408debbde03f4692c0c439e77e7f13aeba74d6"
+  },
+  "exit_code": 1,
+  "end_utc": "2026-11-04T21:57:43.033258+00:00",
+  "duration_seconds": 2.161,
+  "log_sha256": "30857ffb7c86e29bf30ecd48ccea69fad0bc5b251e91c1e8f8ad59fa9cc8ad7c"
+}

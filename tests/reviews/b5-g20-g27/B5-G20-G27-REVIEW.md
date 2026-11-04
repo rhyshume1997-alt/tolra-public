@@ -24,3 +24,9 @@ Review [lib/accounting/connections.ts](https://github.com/rhyshume1997-alt/tolra
 ## G27 remaining tests
 
 Run per-company reservations/settlement under concurrency at the approved 500p boundary, cross-company key/request/cap access refusal, owner-vs-support permissions, disabled defaults and prompt-injection/action refusal on the final combined SHA. Enabling live AI, changing a production cap or reinstalling 146 after rollback is outside this work. Full Supabase startup failed on the policy-blocked registry; that failed original log is retained. No ISO work started.
+
+## Exact committed-code rerun
+
+Executed checkout `241f434f3c4375ef53e454c3303123249efc84b1`; UTC 2026-11-04T21:57:40.685546+00:00; exit 1; duration 2.161 seconds. Full environment, SQL manifest/log hashes and command file hashes are in `evidence/2026-11-04T21-57-40.685546+00-00-committed-ai-security-6f6299/run.json`; original log bytes retained. This supersedes contextual checkout ambiguity for earlier uncommitted test overlays. Later commits only attach review/evidence.
+
+Twelve tests: ten passed, two required-500p assertions failed. No expected value changed.
