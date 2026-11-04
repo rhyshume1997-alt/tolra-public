@@ -13,7 +13,3 @@
 **Something wrong?** Tell John / office duty lead. Access problems or another company's data: stop and call Rhys. Use the private D3 contact sheet for numbers.
 
 **Tolra down?** Start the numbered paper register. Tell workshop staff when paper starts and who collects it. When Tolra returns, check saved and waiting-device work first. Enter only missing work and have someone else check it. Keep the sheets and any unresolved items.
-
-Trainer check before 6 November: an office user finds a fake job, saves once, checks a draft versus a sent email, and corrects a fake missing time. Record name/date/result privately. Not rehearsed by this builder. Print this file alone on one A4 page; check print preview at 100% before issuing it.
-
-Prepared 4 November 2026 by builder 4. Build and test deadline: Friday 6 November; go-live target: Thursday 12 November. This document does not approve a release. Practical rehearsal and named sign-off remain required.

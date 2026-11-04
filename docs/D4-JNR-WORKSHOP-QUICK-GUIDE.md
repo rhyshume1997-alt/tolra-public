@@ -15,7 +15,3 @@
 **Tolra down?** Write your name, date, job number, start/stop times, breaks and work done on the numbered paper sheet. Tell the office. Keep the sheet. The office checks what was already saved before entering missing work. Do not enter it again yourself.
 
 **Need help?** Workshop supervisor first, then John / office duty lead. Use the filled-in private contact sheet beside this guide. If you cannot confirm safe instructions, stop that job.
-
-Trainer check before 6 November: ask a workshop user to show one clock-in, job start/stop, break and clock-out on the approved training site. Record name/date/result privately. Not rehearsed by this builder. Print this file alone on one A4 page; check print preview at 100% before issuing it.
-
-Prepared 4 November 2026 by builder 4. Build and test deadline: Friday 6 November; go-live target: Thursday 12 November. This document does not approve a release. Practical rehearsal and named sign-off remain required.

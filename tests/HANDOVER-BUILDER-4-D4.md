@@ -7,3 +7,5 @@ Delivered: `docs/D4-JNR-WORKSHOP-QUICK-GUIDE.md` and `docs/D4-JNR-OFFICE-QUICK-G
 Checks: documentation/source review and `git diff --check`. No runtime behavior changed; no runtime tests added. All operator rehearsals, contacts and live evidence remain explicitly unfilled / NOT RUN. No merge, deployment, production SQL or live email.
 
 Next: independent review; John/Rhys fill private contacts/approvals and rehearse by 6 November. Go-live remains conditional on 12 November. One draft PR for this job into main.
+
+Print each role sheet on its own A4 page at a readable size; print preview and staff rehearsal remain NOT RUN. Workshop trainer checks clock-in, job start/stop, break and clock-out; office trainer checks a fake save, draft-versus-sent email and a missing-time escalation to admin. Record each trainer/user/date/result privately by 6 November.
