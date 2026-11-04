@@ -79,9 +79,72 @@ Actual original filename/workbook ____; tab ____; header row ____; export/filter
 
 Other original columns/meaning (do not discard) ____; missing-field source/report/join/approved handling ____; John meaning checked ____ date ____; Code issue owner/review date ____; [ ] Ready for mapping review [ ] Gap remains.
 
-## 04. invoices.csv — existing importer mapping kind
+## 04. invoices.csv — JNR SliQ Invoicing Plus screen and mapping review
+
+**New evidence, 4 November 2026:** Rhys supplied the following observations from his JNR SliQ Invoicing Plus photo through this chat. This records his reported screen labels/values; the photo/export was not independently inspected here. These are **observed screen columns, not confirmed CSV/XLSX export headers**. John still fills the actual-export-heading column below from original files. Keep the filled copy, photo, customer/contact details and real payment examples private.
 
 Actual original filename/workbook ____; tab ____; header row ____; export/filter time ____; row count ____; source totals/basis ____; file hash (Code) ____; [ ] Supplied [ ] Empty with proof [ ] Not exported (reason/owner ____).
+
+### Invoice-list columns reported by Rhys
+
+| Visible screen label | Observed values / meaning reported | Mapping implication / still to confirm |
+| --- | --- | --- |
+| Type | Invoice or Credit Note | Candidate `invoices.docType`; existing word map recognises both, but the current provisional invoice column map omits this field. Confirm actual export header/type words and credit sign/original-invoice link. |
+| Num | Examples INV-2283 to INV-2315 | Candidate `invoices.number`; preserve the full text prefix/digits. Provisional map expects `Number`, not confirmed `Num`. This visible range is not proof of complete history or the next unused number. |
+| Date | dd/mm/yyyy on screen | Candidate `invoices.date`; provisional map expects `Invoice Date`. Confirm actual export date/header/cell type separately; screen formatting alone does not establish it. |
+| Customer | Customer shown | Candidate `invoices.customer`; obtain stable account code and customers-file join. A display name alone cannot resolve duplicates safely. |
+| Total | Amount shown | Potential `invoices.gross` ONLY if confirmed VAT-inclusive; net/gross/VAT basis unknown. Parser requires separate net, VAT and gross; never invent the missing amounts. |
+| Paid | No / Yes / Overdue | A display status, **not a numeric paid amount**. No/Yes are absent from the provisional invoice status-word map; Overdue maps to issued/sent there, not a payment. Confirm lifecycle and partial-payment semantics before any status mapping. |
+| Sent | Tick | Separate sending indicator; no `invoices.sent`/sent-tick canonical key. Do not confuse this tick with Paid or proof of recipient receipt. Writer currently sets legacy invoice `sent_date` to null. |
+| Notes | Notes | Candidate `invoices.notes`, but provisional map omits it; parsing notes does not establish their preservation in the invoice writer (see gaps below). |
+| Month Raised | Month Raised | No invoice canonical key; ask whether a derived report grouping or distinct accounting period. Do not substitute it for invoice Date. |
+| Due Date | Due Date | Candidate `invoices.dueDate`; that header is in the provisional profile, but the real export and blanks/default rules remain unconfirmed. |
+| Order | Customer PO | No invoice canonical customer-PO field in this mapping. This is the customer's order reference, not automatically a Tolra purchase order or sales-order ID. Preserve source and agree a reviewed route. |
+| Quote | QUO-nnnn | No invoice canonical quote-link key. Preserve exact text and confirm the quote-file join. **Do not map a quote number to `invoices.relatedInvoice`.** |
+
+### Detail pane reported by Rhys
+
+| Visible detail | How it helps / mapping gap |
+| --- | --- |
+| Invoice No | Compare with list Num and each exported parent reference; confirm Credit Note detail/numbering too. |
+| Outstanding | Balance-comparison evidence; no `invoices.outstanding` key. Do not infer cash paid as Total minus Outstanding without reconciling VAT basis, credits, allocations, refunds and payment records. |
+| Age | No canonical invoice-age key; ask what date/period drives it. Do not treat age as another date or paid amount. |
+| Contact / Email | Customer/contact evidence; corresponding customer-file contact/email fields exist. Confirm stable customer identity, whether invoice-specific overrides exist and how they export; not direct invoice-header fields. |
+| Related Quote | Quote relationship, not the original invoice for a credit note. No canonical invoice quote-link field; confirm exported join and preservation route. |
+| Tel / Mobile / Fax | Confirm separate export fields and whether customer-level or invoice-specific. Customer canonical `phone` exists; separate mobile/fax keys do not. Do not silently collapse/discard distinct numbers. |
+| Payments list: Amount, Date, Kind, Info | Candidates for `payments.amount`, `.date`, `.method`, `.reference`; exact meaning/header mapping and parent `payments.invoiceNumber` still require proof. In particular Kind is not assumed to match current method words, and Info is not assumed to be only a payment reference. |
+
+### Questions John must answer before invoice mapping can be confirmed
+
+| Question for John — supply original export/private example, do not guess | John's answer / private evidence / Code check |
+| --- | --- |
+| Is Total VAT-inclusive on this screen and in the export? Where are net, VAT amount, VAT code/rate, discounts and invoice lines exported, including zero/exempt/reverse-charge cases? | ____ |
+| How are part payments displayed: does Paid stay No, become Yes, show Overdue, or another value? Supply one unpaid, fully paid, part-paid and overdue-with-part-payment example, including total/outstanding and every payment row. | ____ |
+| Does Paid Yes mean cash receipt, or can credit allocation/write-off/other adjustment make it Yes? How do refunds, reversals, negative entries and overpayments appear? | ____ |
+| What actual export is available (CSV/XLSX/other), with what filenames, tabs, headers, date/cell format, encoding/delimiter, date ranges and filters? Does it include the detail pane and payment rows, or require separate reports? Send originals unchanged. | ____ |
+| Where do delivery notes live in SliQ: which menu/report/export? Supply the original report with delivery number/date, invoice/order/job links and line quantities, or mark unavailable with owner/next step. The invoice screen is not delivery-note evidence. | ____ |
+| For Credit Note type: what number/sign/status rules apply, where is the ORIGINAL INVOICE reference, and how are credit-to-invoice allocations exported? Is Related Quote only a quote link? | ____ |
+| What stable customer account code appears in the export and customers report? Are Contact/Email/Tel/Mobile/Fax invoice-specific overrides or the customer record? | ____ |
+| What does Sent tick mean (email, printed/post, marked manually)? Is there an actual sent date or history export? A tick does not prove receipt. | ____ |
+| Is Month Raised derived from Date or a different accounting period, and what drives Age? What happens when Due Date is blank or edited? | ____ |
+| Does Order export the exact customer PO, and do Quote/Related Quote export the same QUO reference? Which fields/joins preserve them? | ____ |
+| In the payments export, which field links each row to Invoice No, what are ALL Kind values and what exactly is Info? Confirm duplicates, repeated amounts/dates, adjustments and amount signs. | ____ |
+| Are INV-2283–INV-2315 only the visible/filtered rows? Provide complete agreed history/cut-off/filter totals and actual next-number/prefix evidence rather than assuming INV-2316. | ____ |
+
+### Gaps against the existing importer — not a confirmed profile
+
+Checked at candidate `9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8`:
+
+- `scripts/sliq-import/mappings/sliq.json` is still `provisional`, `confirmed: false`. Its invoice headers are `Number`, `Customer`, `Invoice Date`, `Due Date`, `Net`, `VAT`, `Gross`, `Status`, `Discount`; the photo's Num/Date/Total/Paid are not confirmed equivalents. Notes, docType, numeric amountPaid and relatedInvoice are canonical fields but are not mapped by that provisional invoice profile.
+- `scripts/sliq-import/mapping.mjs` requires invoice number/date/customer/net/VAT/gross/status. The reported screen alone lacks confirmed net/VAT, lifecycle status and stable customer-code evidence. No/Yes cannot be fed into the existing status map unchanged; numeric paid amount must come from reconciled payment evidence, not the Paid label. Date is screen-confirmed dd/mm/yyyy only; actual export date format remains a question.
+- `scripts/sliq-import/reconcile.mjs` separates Credit Note type rows (and suspicious negative totals) from ordinary invoices; credits/allocations are not cash. A header Paid flag never substitutes for numeric `amountPaid` and matched payments. Missing evidence stays held/unverified under existing rules; do not force it to paid. Original invoice references and credit allocations remain required; Related Quote is not that relationship.
+- `scripts/sliq-import/write.mjs` uses `import_legacy_tenant` plus same-transaction line/payment writes. The invoice legacy payload sets `job_id`, `description`, `sent_date` and `paid_date` to null before its documented follow-up money/date updates; it does not carry the screen's Order/customer PO, Quote/Related Quote, Month Raised, Age or Outstanding as invoice fields. Canonical Notes is used by analysis/review but is not persisted as invoice notes by this writer. Agree preservation/handling for each gap rather than promising screen-complete import.
+- Customer/contact and payments files have relevant canonical fields, but actual headers/parent joins/Kind/Info meanings still need John's originals and Code's review. Preserve additional columns and unresolved contact overrides privately instead of inventing unsupported invoice/mobile/fax fields.
+- Credit/delivery **RPC** import support tested in L11/#355 is separate from this SliQ CLI: a passing safeupdate proof does not add a credit/delivery CLI writer or establish delivery-note location. Delivery reports remain comparison-only here, and credit/allocations still need actual confirmed mapping and an approved handling route. No new importer functionality/profile flag or data write is made by this update.
+
+### Code's canonical invoice fields — actual export headers still blank
+
+The observations above narrow John's questions; they do not prefill these cells as verified export headers. Code maps only after receiving and checking the originals.
 
 | Meaning / code key / parser type and minimum | Actual SliQ heading(s), exactly copied — John | Private sample row(s) / format or join explanation | Code checked mapping / unresolved issue |
 | --- | --- | --- | --- |
