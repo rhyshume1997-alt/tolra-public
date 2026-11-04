@@ -42,6 +42,17 @@ export function releaseGate(manifest,actualHead,readArtifact,checkoutClean=true)
     }
    }
   }
+  if(id==='operations-pack'){
+   const checks=evidence.checks;
+   if(!hash.test(evidence.sourcePackSha256??'')||evidence.inventoryComplete!==true||evidence.inventoryReviewedBy!=='Rhys')errors.push('Authoritative operations pack inventory not proved');
+   if(!Array.isArray(checks)||!checks.length)errors.push('Operations pack results missing');
+   else{
+    const names=checks.map(row=>row?.id);
+    if(names.some(name=>typeof name!=='string'||!name.trim())||new Set(names).size!==names.length)errors.push('Invalid/duplicate operations pack checks');
+    for(const check of checks)if(!check||check.commit!==actualHead||check.status!=='PASS'||typeof check.evidenceRef!=='string'||!check.evidenceRef.trim())errors.push('Operations pack check missing/failed/stale/unreferenced');
+    for(const required of policy.requiredWipeChecks)if(!names.includes(required))errors.push(`Missing combined wipe condition ${required}`);
+   }
+  }
   if(id==='backup-restore'&&(!hash.test(evidence.backupSha256??'')||!hash.test(evidence.beforeFingerprint??'')||evidence.beforeFingerprint!==evidence.restoredFingerprint||evidence.restoredOnDisposable!==true||evidence.integrityMatch!==true))errors.push('Backup restore integrity not proved');
   if(id==='preflight'){
    if(JSON.stringify(evidence.appliedReleases)!==JSON.stringify(policy.requiredReleases))errors.push('Required migration order missing/differs');

@@ -18,6 +18,11 @@ const rowFor = (file, id) => read(file).split('\n').filter(line => line.startsWi
 function requireRow(file, id) {
   const rows = rowFor(file, id);
   if (rows.length !== 1) fail(`Expected exactly one ${id} in ${file}`);
+  const expected = file === 'URS.md' ? 3 : file === 'RISK-ASSESSMENT.md' ? 7 : file === 'OQ.md' ? 9 : file === 'TRACEABILITY.md' ? (id.startsWith('URS-') ? 6 : 3) : file === 'COVERAGE-GAPS.md' ? 2 : 6;
+  if (rows[0].split('|').slice(1, -1).length !== expected) fail(`Malformed protocol columns in ${file}: ${id}`);
+  const lines = read(file).split('\n');
+  const position = lines.indexOf(rows[0]);
+  if (position < 1 || !lines[position - 1].startsWith('| ')) fail(`Detached table row in ${file}: ${id}`);
   return rows[0];
 }
 function manualRefs(refs, id) {

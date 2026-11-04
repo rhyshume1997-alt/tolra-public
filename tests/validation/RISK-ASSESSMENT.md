@@ -1,6 +1,6 @@
 # Risk assessment
 
-Based on the unmerged CA to CD review integration at `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`, including its config-loading fix. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
+Based on the CA to CI code checkpoint `0cc2463d0a6375ada1d65e249939efa02e3b3cf2`, including the command-exit gate correction. The actual final full review-head SHA and checks are recorded in PR #280, not assumed to be this earlier code checkpoint. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
 
 High means wrong money, disclosure, permission or an untraceable change. The process owner approves likelihood and remaining risk. Any failed high-risk check blocks release.
 
@@ -20,5 +20,4 @@ High means wrong money, disclosure, permission or an untraceable change. The pro
 | RISK-012 | URS-012 | Template editing changes legacy email text or allows unauthorised changes | High | OQ-012, G10.1, G10.2, G10.3, G10.4; mapped tests in OQ. | ____ / ____ | ____ |
 | RISK-013 | URS-013 | Wrong customer or unapproved/duplicate message is sent | High | OQ-013, G02.1, G02.2, G02.3, G02.4, G02.5, G02.6, G11.1, G11.2; mapped tests in OQ. | ____ / ____ | ____ |
 | RISK-014 | URS-014 | An email incorrectly clears a real debt | High | OQ-014, G03.1, G03.2, G03.3, G03.4; mapped tests in OQ. | ____ / ____ | ____ |
-
-| RISK-015 | URS-015 | Wrong data or incomplete evidence accepted at cutover | High | OQ-015; G15.1, G15.2, G15.3, G15.4; refuse missing evidence and reconcile exact pence | ____ |
+| RISK-015 | URS-015 | Wrong data or incomplete evidence accepted at cutover | High | OQ-015; G15.1, G15.2, G15.3, G15.4; refuse missing evidence and reconcile exact pence | ____ / ____ | ____ |

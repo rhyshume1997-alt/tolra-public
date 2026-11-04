@@ -6,7 +6,7 @@ Run on a disposable test installation, never on production. The pack does not in
 
 | Step | Action | Expected result | Pass / Fail / Not run | Actual result / evidence | Tester / date |
 | --- | --- | --- | --- | --- | --- |
-| IQ-001 | Run `git rev-parse HEAD` and `git status --short`. Record release and any differences. | Exact tested code is identified; differences are understood and approved. | PASS, local checkout identification only | Frozen clean code head d73bb240a23b38a7080c0933e4f5b62ddd529f5f; CURRENT-RESULTS.md. This does not identify a deployed installation. | Codex, 2026-11-04 UTC |
+| IQ-001 | Run `git rev-parse HEAD` and `git status --short`. Record release and any differences. | Exact tested code is identified; differences are understood and approved. | NOT TESTED for final installation | Frozen clean code head d73bb240a23b38a7080c0933e4f5b62ddd529f5f; CURRENT-RESULTS.md. Historical local identification only; actual final review head is in PR #280. This does not identify a deployed installation. | Codex, 2026-11-04 UTC |
 | IQ-002 | Run `node --version` and `npm --version`; compare Node with the repository CI configuration. | Supported versions recorded; differences approved before testing. | NOT TESTED | No exact-head runtime/manual evidence | NOT TESTED |
 | IQ-003 | Run `npm ci` from repository root. | Locked dependencies install successfully. Save the exit code and log. | NOT TESTED | No exact-head runtime/manual evidence | NOT TESTED |
 | IQ-004 | Owner checks test URL, database identity, migration inventory and backup/restore arrangements. Do not print secrets. | Disposable environment is confirmed; no real customer data; required schema is present. | NOT TESTED | No exact-head runtime/manual evidence | NOT TESTED |

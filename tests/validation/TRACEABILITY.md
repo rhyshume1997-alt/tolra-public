@@ -18,6 +18,7 @@ IQ-001 to IQ-006 prepare every OQ/PQ step. Each risk has one matching URS and OQ
 | URS-012 | RISK-012 | OQ-012 | PQ-006, PQ-007, PQ-005 | G10.1, G10.2, G10.3, G10.4 | ____ |
 | URS-013 | RISK-013 | OQ-013 | PQ-007, PQ-005 | G02.1, G02.2, G02.3, G02.4, G02.5, G02.6, G11.1, G11.2 | ____ |
 | URS-014 | RISK-014 | OQ-014 | PQ-007, PQ-005 | G03.1, G03.2, G03.3, G03.4 | ____ |
+| URS-015 | RISK-015 | OQ-015 | PQ-009 | G15.1, G15.2, G15.3, G15.4 | CURRENT-RESULTS.md; runtime NOT TESTED |
 
 ## Installation and working-day mapping
 
@@ -37,9 +38,6 @@ IQ-001 to IQ-006 prepare every OQ/PQ step. Each risk has one matching URS and OQ
 | PQ-006 | G08.3, G08.4, G10.1, G10.3 | ____ |
 | PQ-007 | G02.4, G02.6, G03.4, G10.2, G11.1, G11.2 | ____ |
 | PQ-008 | G09.3, G09.4, G12.2, G12.3, G12.4 | ____ |
+| PQ-009 | G15.1, G15.2, G15.3, G15.4 | NOT TESTED |
 
 VSR-TEMPLATE.md links to IQ.md, OQ.md, PQ.md, TRACEABILITY.md and COVERAGE-GAPS.md. No report result or Rhys sign-off is filled automatically.
-
-| URS-015 | RISK-015 | OQ-015 | PQ-009 | G15.1, G15.2, G15.3, G15.4 | CURRENT-RESULTS.md; runtime NOT TESTED |
-
-| PQ-009 | G15.1, G15.2, G15.3, G15.4 | NOT TESTED |

@@ -1,0 +1,683 @@
+{
+  "state": "STOPPED by Rhys priority change, incomplete",
+  "completed": 52,
+  "planned": 61,
+  "results": [
+    {
+      "branch": "codex/ac-wipe-kit-proposed-lines",
+      "head": "f2ca4650e4032800c11d5ab65fb85e39ae0f22fd",
+      "counts": {
+        "total": 5113,
+        "passed": 5113,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/cc-jnr-reconcile",
+      "head": "d88f06333556e5c2a80e183a5067c5f7117562fa",
+      "counts": {
+        "total": 5558,
+        "passed": 5558,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/e13-offline-schedule",
+      "head": "1671a07d096f66821b1538eaf8778d1950b4fb49",
+      "counts": {
+        "total": 5011,
+        "passed": 5011,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/cb-release-gate",
+      "head": "ff13614fcd8bd37d989faec74d387371ef7ac378",
+      "counts": {
+        "total": 5523,
+        "passed": 5523,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/accounting-connections",
+      "head": "53030fd4224c6b2451f2af386fdb9d692b0ee8fc",
+      "counts": {
+        "total": 5132,
+        "passed": 5132,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-join",
+      "head": "474a90f63c4625cd29a8253343cd0899aa28f1cc",
+      "counts": {
+        "total": 5077,
+        "passed": 5077,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/aw-data-load",
+      "head": "e26fd743e5145f5d9ee56878cc3733d88d147bdf",
+      "counts": {
+        "total": 4798,
+        "passed": 4798,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/161-reviewed-text",
+      "head": "7f30174b6e6e763c90eaef5681c36f50dc7ee783",
+      "counts": {
+        "total": 5013,
+        "passed": 5013,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 1,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/costing-join",
+      "head": "a4bd28f9d2b287001cdb6ee7ab11ac6728e7c0e2",
+      "counts": {
+        "total": 5285,
+        "passed": 5285,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/cd-sliq-no-write",
+      "head": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+      "counts": {
+        "total": 5567,
+        "passed": 5567,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/manual-checks",
+      "head": "6200405e7c6d34f653a6460069738c7db71aa05c",
+      "counts": {
+        "total": 4986,
+        "passed": 4986,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/bank-csv-quotes",
+      "head": "0a6b970ababe6b5c8e0f449084e1e81159fa68dd",
+      "counts": {
+        "total": 4787,
+        "passed": 4787,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ax-review-packets",
+      "head": "4fae060450fdfaa180acb073950153a27d6a2cf0",
+      "counts": {
+        "total": 5110,
+        "passed": 5110,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ba-evidence",
+      "head": "89849ae3331bb6703a7d076d540843c4f63b6bc9",
+      "counts": {
+        "total": 5451,
+        "passed": 5451,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ca-sliq-releases",
+      "head": "ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b",
+      "counts": {
+        "total": 5457,
+        "passed": 5457,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-combined",
+      "head": "8a7daaedebc03c5640bc214c49c2089702998a46",
+      "counts": {
+        "total": 5129,
+        "passed": 5129,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/costing-preflight-main",
+      "head": "c3d7cbd7f856122e9c12a6ce22a3acfd91ca43a2",
+      "counts": {
+        "total": 5598,
+        "passed": 5126,
+        "failed": 0,
+        "skipped": 472,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/bb-fake-data",
+      "head": "4f210972adbffa2d5cd5c4148b1065a8df7548ef",
+      "counts": {
+        "total": 4809,
+        "passed": 4809,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/company-paid-breaks",
+      "head": "cc2d3f2a89b4c32276d014fa6f2bb0cbc40d0678",
+      "counts": {
+        "total": 5114,
+        "passed": 5114,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/sliq-fake-export",
+      "head": "8b805d5098cc4fb577fc00eeb116516b0d43c67e",
+      "counts": {
+        "total": 4841,
+        "passed": 4841,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/161-jsdom-build",
+      "head": "92efcfab20406f4e1ec45d3b962084c6cca06c52",
+      "counts": {
+        "total": 5014,
+        "passed": 5014,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ce-validation-final",
+      "head": "e71a80072148077a4c0f05184fe40d79688c01ee",
+      "counts": {
+        "total": 5567,
+        "passed": 5567,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/plain-english-main",
+      "head": "09dc47b23b65cb6b13028c958231a129820bf697",
+      "counts": {
+        "total": 5618,
+        "passed": 5206,
+        "failed": 0,
+        "skipped": 412,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/cg-go-no-go-evidence",
+      "head": "8d667ffc7d779d4487fcf19eb052b123ec98baa8",
+      "counts": {
+        "total": 5567,
+        "passed": 5567,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ca-ci-ownership",
+      "head": "66847581fe2bc9f5a62da9515c0605cc36da1016",
+      "counts": {
+        "total": 4928,
+        "passed": 4928,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/cf-db-day-runbook",
+      "head": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+      "counts": {
+        "total": 5567,
+        "passed": 5567,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-progression-fix",
+      "head": "eea9aecc9d94facf44b84bc6d16f4a15c14201ab",
+      "counts": {
+        "total": 5078,
+        "passed": 5078,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/az-acceptance",
+      "head": "94449be9b8a711b2f8eae96f5b30403b22296c7b",
+      "counts": {
+        "total": 5451,
+        "passed": 5451,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ar-manual-final",
+      "head": "8cecd36e5fc852ae52e564db422f6201c8960a56",
+      "counts": {
+        "total": 5110,
+        "passed": 5110,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/money-edge-tests",
+      "head": "c857559f517c77ccaed4bac1446757c260bb52e3",
+      "counts": {
+        "total": 5004,
+        "passed": 5004,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/o-accounting-combined",
+      "head": "86eda4bd48b1237b42140dbd72ace7cb73442f4b",
+      "counts": {
+        "total": 5135,
+        "passed": 5135,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ai-integration-switch",
+      "head": "02c983894e867d43c0f7eb0edf45850d72ffc3fa",
+      "counts": {
+        "total": 5115,
+        "passed": 5115,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/av-rollback-tests",
+      "head": "fcb4e9bac74447aef90f9c2d1d1333536024c6f4",
+      "counts": {
+        "total": 5451,
+        "passed": 5451,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/p-reviewer-manual-checks",
+      "head": "ad17969b9453163e8c46a57e32114f2b84395522",
+      "counts": {
+        "total": 5117,
+        "passed": 5117,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-layout-main",
+      "head": "29c9a18165a860e665c7fb27c1c3e9b7a62bea9f",
+      "counts": {
+        "total": 5311,
+        "passed": 5311,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/neutral-login",
+      "head": "817b6da88d6b6404f22ffa28dcf0bed2e8fda626",
+      "counts": {
+        "total": 5028,
+        "passed": 5028,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/manual-checks-main",
+      "head": "321a2a7ef560296f56e52164fe11d9ae71a4d889",
+      "counts": {
+        "total": 5110,
+        "passed": 5110,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-send-recovery",
+      "head": "b900aa36f5e0980a132c97f39d403b01d329b381",
+      "counts": {
+        "total": 5123,
+        "passed": 5123,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/costing-sql-test-plan",
+      "head": "6431e60284a4591ab6c9552de5bc0dd0468973f3",
+      "counts": {
+        "total": 5357,
+        "passed": 5357,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 2
+    },
+    {
+      "branch": "codex/q-setup-access-tests",
+      "head": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+      "counts": {
+        "total": 5146,
+        "passed": 5146,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/plain-english-privacy",
+      "head": "23ca102d25b49bc3e37337ba251a01daa2096300",
+      "counts": {
+        "total": 5436,
+        "passed": 5024,
+        "failed": 0,
+        "skipped": 412,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/s-inbound-payment-evidence",
+      "head": "f96087a58bf7dd9030e447e71a10b52ba54671d9",
+      "counts": {
+        "total": 5318,
+        "passed": 5318,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/n-company-setup-email-combined",
+      "head": "d54d90b0408fbd490f03ada687b27af03bba9800",
+      "counts": {
+        "total": 5138,
+        "passed": 5138,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/q-accounting-company-read-tests",
+      "head": "3692debaa9a724762f230412eff17aa911a85ba2",
+      "counts": {
+        "total": 5135,
+        "passed": 5135,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-draft-pages",
+      "head": "ccad65bcd30ec6bae8acfc4fd1b01731b1eadb26",
+      "counts": {
+        "total": 5039,
+        "passed": 5039,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ch-review-packets",
+      "head": "4bb59c0ecfda0a545ec7221ef569dcc1184418db",
+      "counts": {
+        "total": 5567,
+        "passed": 5567,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/aq-morning-checklist",
+      "head": "6be692d3e3fde62baed099c71dc518bfbf2930a5",
+      "counts": {
+        "total": 5110,
+        "passed": 5110,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/161-approval-test-only",
+      "head": "96dd1bd11f4df024fa95764c3df51e8f423cdf7c",
+      "counts": {
+        "total": 5009,
+        "passed": 5009,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/chase-evidence-integration",
+      "head": "8eb7f3370b7024ba36b04d299088cd475906a224",
+      "counts": {
+        "total": 5525,
+        "passed": 5525,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/161-approval-test-fix",
+      "head": "9af247b690a86824e61a45b77b08f945ccad59fb",
+      "counts": {
+        "total": 5009,
+        "passed": 5009,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/ay-db-runbook",
+      "head": "9795ee1a8f5985dcaffb7823f9d55ded8698892d",
+      "counts": {
+        "total": 5451,
+        "passed": 5451,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    },
+    {
+      "branch": "codex/sliq-preflight-main",
+      "head": "476a1af11c94cf37d657dbb06c9bea08ba5a1474",
+      "counts": {
+        "total": 5165,
+        "passed": 5165,
+        "failed": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "unitExit": 0,
+      "tscExit": 0
+    }
+  ]
+}

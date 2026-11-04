@@ -56,6 +56,13 @@ For every line, provide actual final 40-character commit, command, UTC time, exa
 | unit | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
 | typecheck | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
 | lint | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+| operations-pack | NOT TESTED | Actual same-final-head artifact required; operations inventory needs Rhys review and all 18 CW results with private evidence references. |
+| db-wipe-archive | NOT TESTED | Actual same-final-head artifact required; operations inventory needs Rhys review and all 18 CW results with private evidence references. |
+| db-wipe-permissions | NOT TESTED | Actual same-final-head artifact required; operations inventory needs Rhys review and all 18 CW results with private evidence references. |
+| db-wipe-refusals | NOT TESTED | Actual same-final-head artifact required; operations inventory needs Rhys review and all 18 CW results with private evidence references. |
+| db-wipe-preservation | NOT TESTED | Actual same-final-head artifact required; operations inventory needs Rhys review and all 18 CW results with private evidence references. |
+| db-wipe-disconnects | NOT TESTED | Actual same-final-head artifact required; operations inventory needs Rhys review and all 18 CW results with private evidence references. |
+
 
 ## Required migration inventory and order
 
