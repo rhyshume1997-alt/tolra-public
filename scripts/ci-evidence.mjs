@@ -15,9 +15,11 @@ if (cmd === "vitest-summary") { // <json> <label>  (totals computed from the vit
   const rep = json(args[0]), files = rep.testResults.length, badFiles = rep.testResults.filter(f => f.status === "failed").length;
   console.log(`${args[1]} vitest totals: files=${files} (failed ${badFiles}) tests=${rep.numTotalTests} passed=${rep.numPassedTests} failed=${rep.numFailedTests} skipped/pending=${rep.numPendingTests + (rep.numTodoTests || 0)}`);
   out(`${args[1]} summary`, rep.numFailedTests === 0 && badFiles === 0 && rep.numTotalTests > 0, `${rep.numPassedTests}/${rep.numTotalTests} passed, ${rep.numFailedTests} failed`);
-} else if (cmd === "list-all") { // <json> <label>
-  const all = cases(json(args[0])); for (const c of all) console.log(`  ${c.status.toUpperCase()} ${c.file} :: ${c.group ? c.group + " > " : ""}${c.title}`);
-  out(`${args[1]} cases`, all.length > 0 && all.every(c => c.status === "passed"), `${all.filter(c => c.status === "passed").length}/${all.length} passed`);
+} else if (cmd === "list-all") { // <json> <label> [allowedSkipTitleRegex]
+  const all = cases(json(args[0])), allow = args[2] ? new RegExp(args[2]) : null;
+  for (const c of all) console.log(`  ${c.status.toUpperCase()} ${c.file} :: ${c.group ? c.group + " > " : ""}${c.title}`);
+  const passed = all.filter(c => c.status === "passed"), skipped = all.filter(c => c.status === "skipped" || c.status === "todo"), stray = skipped.filter(c => !allow || !allow.test(c.title));
+  out(`${args[1]} cases`, all.length > 0 && passed.length + skipped.length === all.length && stray.length === 0, `${passed.length} passed, ${skipped.length} skipped (${skipped.length - stray.length} allowed by title ${args[2] || "none"}), ${all.length - passed.length - skipped.length} failed, of ${all.length}`);
 } else if (cmd === "db-skips") { // <json>
   const all = cases(json(args[0])), skipped = all.filter(c => c.status === "skipped" || c.status === "todo");
   const count = s => all.filter(c => c.status === s).length;

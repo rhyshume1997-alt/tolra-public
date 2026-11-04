@@ -270,7 +270,7 @@ jobs:
         if: ${{ always() && hashFiles('evidence/rehearsal.json') != '' }}
         shell: bash
         run: |
-          node scripts/ci-evidence.mjs list-all evidence/rehearsal.json REHEARSAL
+          node scripts/ci-evidence.mjs list-all evidence/rehearsal.json REHEARSAL '^D2'
           node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
