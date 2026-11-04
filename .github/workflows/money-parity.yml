@@ -1,0 +1,74 @@
+name: Money rounding parity (one-off)
+# Manual only: never runs on a push or a pull request. A disposable runner-owned local Supabase stack (every migration of the
+# candidate, 000-144, as ci.yml's integration job) and the money parity tests under it (scripts/money-parity/run.sh): draft
+# PR #284's tests/db/money-rounding-parity.test.ts, byte-identical to its head, and the 38 tie cases. Candidate under test:
+# 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8, app tree unchanged (scripts/money-parity/shas.sh fails otherwise). Synthetic data
+# only; read-only SELECTs. No hosted database, no secret beyond the job's own read-only token for the image pulls.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  money-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # As ci.yml's integration job: keep the Supabase ports out of the outgoing-connection range, then check they are free.
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import sys
+          s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+          reserved = set()
+          for part in filter(None, s.split(",")):
+              lo, _, hi = part.partition("-")
+              reserved.update(range(int(lo), int(hi or lo) + 1))
+          missing = [p for p in range(54320, 54330) if p not in reserved]
+          print("reserved ports now:", s)
+          sys.exit(f"not reserved: {missing}" if missing else 0)
+          PY
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Record and check the SHAs (candidate, branch head, PR 284 source)
+        run: bash scripts/money-parity/shas.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Supabase ports are free
+        run: |
+          python3 - <<'PY'
+          import socket, sys
+          busy = []
+          for port in (54321, 54322, 54324):
+              s = socket.socket()
+              try:
+                  s.bind(("0.0.0.0", port))
+              except OSError as e:
+                  busy.append(f"{port}: {e}")
+              finally:
+                  s.close()
+          print("busy:", busy or "none")
+          sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+          PY
+      - name: Disposable stack, parity tests with JSON report, named gate
+        run: bash scripts/money-parity/run.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: money-parity-evidence
+          path: work/money-parity-*/
+          if-no-files-found: error
