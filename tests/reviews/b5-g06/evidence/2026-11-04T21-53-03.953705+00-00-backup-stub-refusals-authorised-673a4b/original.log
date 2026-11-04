@@ -1,0 +1,46 @@
+ok   (a) empty storage, valid versions: exits 0
+ok   (a) prints [done]
+ok   (a) logs the recorded versions
+ok   (a) encrypted archive written
+ok   (a) .sha256 matches
+ok   (a) archive auth-version = v2.180.0
+ok   (a) archive storage-version = 1.28.2
+ok   (a) auth-version is a valid version (restore-check's pattern)
+ok   (a) storage-version is a valid version (restore-check's pattern)
+ok   (a) schema.sql, data.sql present; no stored files
+ok   (b) BACKUP_SUPABASE_URL unset: exits non-zero (1)
+ok   (b) BACKUP_SUPABASE_URL unset: no [done] line
+ok   (b) BACKUP_SUPABASE_URL unset: no archive left in the output dir
+ok   (b) BACKUP_SUPABASE_URL unset: error names BACKUP_SUPABASE_URL
+ok   (b) BACKUP_SUPABASE_URL empty: exits non-zero (1)
+ok   (b) BACKUP_SUPABASE_URL empty: no [done] line
+ok   (b) BACKUP_SUPABASE_URL empty: no archive left in the output dir
+ok   (b) BACKUP_SUPABASE_URL empty: error names BACKUP_SUPABASE_URL
+ok   (b) BACKUP_SERVICE_KEY unset: exits non-zero (1)
+ok   (b) BACKUP_SERVICE_KEY unset: no [done] line
+ok   (b) BACKUP_SERVICE_KEY unset: no archive left in the output dir
+ok   (b) BACKUP_SERVICE_KEY unset: error names BACKUP_SERVICE_KEY
+ok   (b) BACKUP_SERVICE_KEY empty: exits non-zero (1)
+ok   (b) BACKUP_SERVICE_KEY empty: no [done] line
+ok   (b) BACKUP_SERVICE_KEY empty: no archive left in the output dir
+ok   (b) BACKUP_SERVICE_KEY empty: error names BACKUP_SERVICE_KEY
+ok   (c) HTTP 500: exits non-zero (22)
+ok   (c) HTTP 500: no [done] line
+ok   (c) HTTP 500: no archive left in the output dir
+ok   (c) unreachable: exits non-zero (7)
+ok   (c) unreachable: no [done] line
+ok   (c) unreachable: no archive left in the output dir
+ok   (c) rejected key (401): exits non-zero (22)
+ok   (c) rejected key (401): no [done] line
+ok   (c) rejected key (401): no archive left in the output dir
+ok   (d) auth health is not JSON: exits non-zero (5)
+ok   (d) auth health is not JSON: no [done] line
+ok   (d) auth health is not JSON: no archive left in the output dir
+ok   (d) auth health has no version: exits non-zero (1)
+ok   (d) auth health has no version: no [done] line
+ok   (d) auth health has no version: no archive left in the output dir
+ok   (d) says which version is invalid
+ok   (d) storage version malformed: exits non-zero (1)
+ok   (d) storage version malformed: no [done] line
+ok   (d) storage version malformed: no archive left in the output dir
+ok   (d) says which version is invalid

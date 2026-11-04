@@ -1,0 +1,398 @@
+[
+  {
+    "utc": "2026-11-04T21:54:18.427490+00:00",
+    "source": "fixture",
+    "sql_sha256": "b034bbf5b5246777e3bb7e16fcda49785294bc2da548b69141e1df6bc03616cc",
+    "exit_code": 0,
+    "seconds": 0.0871,
+    "stdout": "CREATE SCHEMA\nCREATE TABLE\nINSERT 0 1\nREVOKE\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:18.620930+00:00",
+    "source": "fixture",
+    "sql_sha256": "a496b1be4403c2ec3b4ddf56e3f72eacde287910da0ff171dddf8a0cef451be9",
+    "exit_code": 0,
+    "seconds": 0.0918,
+    "stdout": "CREATE SCHEMA\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nINSERT 0 2\nINSERT 0 2\nINSERT 0 2\nCREATE ROLE\nCREATE ROLE\nGRANT\nGRANT\nGRANT\nCREATE FUNCTION\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:18.821935+00:00",
+    "source": "147 numbering guard, byte slice of reviewed source",
+    "sql_sha256": "39e1c0dd3163d9ecdce3f595d78c2f77594bb463be669418723a7c546c2f1bd4",
+    "exit_code": 0,
+    "seconds": 0.0878,
+    "stdout": "CREATE FUNCTION\nREVOKE\nCREATE TRIGGER\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:19.000170+00:00",
+    "source": "fixture",
+    "sql_sha256": "047b8e0ae747b1f3fb5a87d4cb74f06522f11f3f2e62bcf1d7adf784bf81ff9f",
+    "exit_code": 0,
+    "seconds": 0.0817,
+    "stdout": "{\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:19.180104+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0831,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":0}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\"}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : null}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:19.356354+00:00",
+    "source": "supabase/cutover/set_dln_next_number.sql",
+    "sql_sha256": "a8845164b769b025705a659df6532e94e996e202c46fa871ab9a6fa2dc4c27c2",
+    "exit_code": 3,
+    "seconds": 0.081,
+    "stdout": "BEGIN\n-1|t-b5-jnr|\n",
+    "stderr": "ERROR:  DLN step refused: last pad number \"-1\" is not a positive whole number (1 to 999999999, no leading zero). Nothing changed.\nCONTEXT:  PL/pgSQL function inline_code_block line 16 at RAISE\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:19.539762+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0823,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":0}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\"}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : null}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:19.720216+00:00",
+    "source": "supabase/cutover/set_dln_next_number.sql",
+    "sql_sha256": "a8845164b769b025705a659df6532e94e996e202c46fa871ab9a6fa2dc4c27c2",
+    "exit_code": 0,
+    "seconds": 0.0835,
+    "stdout": "BEGIN\n100|t-b5-jnr|\nDO\nCOMMIT\n",
+    "stderr": "NOTICE:  DLN step done for Synthetic JNR: counter 0 -> 100, next delivery note DLN-0101; delivery notes unlocked (was held: t).\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:19.912214+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0937,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":100}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : null}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:20.092388+00:00",
+    "source": "supabase/cutover/set_dln_next_number.sql",
+    "sql_sha256": "a8845164b769b025705a659df6532e94e996e202c46fa871ab9a6fa2dc4c27c2",
+    "exit_code": 3,
+    "seconds": 0.0806,
+    "stdout": "BEGIN\n200|t-b5-jnr|\n",
+    "stderr": "ERROR:  DLN step refused: it has already been run for Synthetic JNR (see security_audit.audit_log DLN_COUNTER_SET or DLN_HOLD_RELEASED). Nothing changed.\nCONTEXT:  PL/pgSQL function inline_code_block line 34 at RAISE\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:20.278476+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0813,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":100}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : null}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:20.460183+00:00",
+    "source": "supabase/cutover/undo_dln_next_number.sql",
+    "sql_sha256": "c5064152a0c6b53d066a6ea6e4da82af1b4d73fa51bae62b3de90d47fb0a18f0",
+    "exit_code": 0,
+    "seconds": 0.0878,
+    "stdout": "BEGIN\nt-b5-jnr\nDO\nCOMMIT\n",
+    "stderr": "NOTICE:  DLN undo done for Synthetic JNR: counter 100 -> 0.\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:20.640653+00:00",
+    "source": "fixture",
+    "sql_sha256": "a08ddbfb05b3c38d48d722efb7ab221ffb7e86aab9379a958de8d34c249a573d",
+    "exit_code": 0,
+    "seconds": 0.0827,
+    "stdout": "0\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:20.821559+00:00",
+    "source": "fixture",
+    "sql_sha256": "d512e8da29ca2ceb1d61ba32783dddcd4134bc4027a352489deab4bd85a17115",
+    "exit_code": 0,
+    "seconds": 0.0838,
+    "stdout": "1\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:21.027241+00:00",
+    "source": "concurrent day-of setter",
+    "sql_sha256": "a8845164b769b025705a659df6532e94e996e202c46fa871ab9a6fa2dc4c27c2",
+    "exit_code": 0,
+    "seconds": 0.0985,
+    "stdout": "BEGIN\n400|t-b5-jnr|\nDO\nCOMMIT\n",
+    "stderr": "NOTICE:  DLN step done for Synthetic JNR: counter 0 -> 400, next delivery note DLN-0401; delivery notes unlocked (was held: t).\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:21.045655+00:00",
+    "source": "concurrent day-of setter",
+    "sql_sha256": "a8845164b769b025705a659df6532e94e996e202c46fa871ab9a6fa2dc4c27c2",
+    "exit_code": 3,
+    "seconds": 0.1004,
+    "stdout": "BEGIN\n300|t-b5-jnr|\n",
+    "stderr": "ERROR:  DLN step refused: it has already been run for Synthetic JNR (see security_audit.audit_log DLN_COUNTER_SET or DLN_HOLD_RELEASED). Nothing changed.\nCONTEXT:  PL/pgSQL function inline_code_block line 34 at RAISE\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:21.226860+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0836,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":400}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : null}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:21.421727+00:00",
+    "source": "fixture",
+    "sql_sha256": "8552608927fce6b8940550c126b523f53b88a44f5cda00ba1a11860bbc4f887d",
+    "exit_code": 3,
+    "seconds": 0.0938,
+    "stdout": "BEGIN\nSET\n",
+    "stderr": "ERROR:  A delivery note's number comes from the delivery note series: leave it empty and Tolra gives the next one.\nHINT:  dn_number_from_counter\nCONTEXT:  PL/pgSQL function delivery_notes_numbering_guard() line 23 at RAISE\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:21.599143+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0804,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":400}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : null}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:22.839042+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.5988,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:22.942417+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.6943,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:22.968327+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.6343,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:22.981303+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.6396,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.026809+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.7676,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.047935+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.7136,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.052699+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.6764,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.056008+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.582,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.071330+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.6386,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.077663+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.7199,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.080987+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.5284,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.094472+00:00",
+    "source": "fixture",
+    "sql_sha256": "b782266b79a296975a66b0ec4cca626a47db6782f93b99da4333b7a843317290",
+    "exit_code": 0,
+    "seconds": 0.6169,
+    "stdout": "BEGIN\nSET\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.309712+00:00",
+    "source": "fixture",
+    "sql_sha256": "c19842c911ba39464695088bda42deb67c27c2688ff5b0d55a7f8f9caa706d4f",
+    "exit_code": 0,
+    "seconds": 0.0826,
+    "stdout": "12|12\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.491865+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.084,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":412}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : [{\"id\":2,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0401\",\"created_at\":\"2026-11-04T21:54:22.778024+00:00\"}, \n {\"id\":3,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0402\",\"created_at\":\"2026-11-04T21:54:22.87541+00:00\"}, \n {\"id\":4,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0403\",\"created_at\":\"2026-11-04T21:54:22.943582+00:00\"}, \n {\"id\":5,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0404\",\"created_at\":\"2026-11-04T21:54:22.964485+00:00\"}, \n {\"id\":6,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0405\",\"created_at\":\"2026-11-04T21:54:22.97193+00:00\"}, \n {\"id\":7,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0406\",\"created_at\":\"2026-11-04T21:54:22.982067+00:00\"}, \n {\"id\":8,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0407\",\"created_at\":\"2026-11-04T21:54:23.043577+00:00\"}, \n {\"id\":9,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0408\",\"created_at\":\"2026-11-04T21:54:23.049374+00:00\"}, \n {\"id\":10,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0409\",\"created_at\":\"2026-11-04T21:54:23.065083+00:00\"}, \n {\"id\":11,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0410\",\"created_at\":\"2026-11-04T21:54:23.068229+00:00\"}, \n {\"id\":12,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0411\",\"created_at\":\"2026-11-04T21:54:23.074082+00:00\"}, \n {\"id\":13,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0412\",\"created_at\":\"2026-11-04T21:54:23.088896+00:00\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:23.681886+00:00",
+    "source": "supabase/cutover/undo_dln_next_number.sql",
+    "sql_sha256": "c5064152a0c6b53d066a6ea6e4da82af1b4d73fa51bae62b3de90d47fb0a18f0",
+    "exit_code": 3,
+    "seconds": 0.0858,
+    "stdout": "BEGIN\nt-b5-jnr\n",
+    "stderr": "ERROR:  DLN undo refused: a number has already been taken for Synthetic JNR since the step (counter 412, set to 400). It must not be undone. Nothing changed.\nCONTEXT:  PL/pgSQL function inline_code_block line 23 at RAISE\n"
+  },
+  {
+    "utc": "2026-11-04T21:54:23.860265+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0824,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":412}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : [{\"id\":2,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0401\",\"created_at\":\"2026-11-04T21:54:22.778024+00:00\"}, \n {\"id\":3,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0402\",\"created_at\":\"2026-11-04T21:54:22.87541+00:00\"}, \n {\"id\":4,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0403\",\"created_at\":\"2026-11-04T21:54:22.943582+00:00\"}, \n {\"id\":5,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0404\",\"created_at\":\"2026-11-04T21:54:22.964485+00:00\"}, \n {\"id\":6,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0405\",\"created_at\":\"2026-11-04T21:54:22.97193+00:00\"}, \n {\"id\":7,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0406\",\"created_at\":\"2026-11-04T21:54:22.982067+00:00\"}, \n {\"id\":8,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0407\",\"created_at\":\"2026-11-04T21:54:23.043577+00:00\"}, \n {\"id\":9,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0408\",\"created_at\":\"2026-11-04T21:54:23.049374+00:00\"}, \n {\"id\":10,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0409\",\"created_at\":\"2026-11-04T21:54:23.065083+00:00\"}, \n {\"id\":11,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0410\",\"created_at\":\"2026-11-04T21:54:23.068229+00:00\"}, \n {\"id\":12,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0411\",\"created_at\":\"2026-11-04T21:54:23.074082+00:00\"}, \n {\"id\":13,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0412\",\"created_at\":\"2026-11-04T21:54:23.088896+00:00\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:24.038758+00:00",
+    "source": "fixture",
+    "sql_sha256": "047b8e0ae747b1f3fb5a87d4cb74f06522f11f3f2e62bcf1d7adf784bf81ff9f",
+    "exit_code": 0,
+    "seconds": 0.0801,
+    "stdout": "{\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:24.223538+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.082,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":412}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : [{\"id\":2,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0401\",\"created_at\":\"2026-11-04T21:54:22.778024+00:00\"}, \n {\"id\":3,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0402\",\"created_at\":\"2026-11-04T21:54:22.87541+00:00\"}, \n {\"id\":4,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0403\",\"created_at\":\"2026-11-04T21:54:22.943582+00:00\"}, \n {\"id\":5,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0404\",\"created_at\":\"2026-11-04T21:54:22.964485+00:00\"}, \n {\"id\":6,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0405\",\"created_at\":\"2026-11-04T21:54:22.97193+00:00\"}, \n {\"id\":7,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0406\",\"created_at\":\"2026-11-04T21:54:22.982067+00:00\"}, \n {\"id\":8,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0407\",\"created_at\":\"2026-11-04T21:54:23.043577+00:00\"}, \n {\"id\":9,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0408\",\"created_at\":\"2026-11-04T21:54:23.049374+00:00\"}, \n {\"id\":10,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0409\",\"created_at\":\"2026-11-04T21:54:23.065083+00:00\"}, \n {\"id\":11,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0410\",\"created_at\":\"2026-11-04T21:54:23.068229+00:00\"}, \n {\"id\":12,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0411\",\"created_at\":\"2026-11-04T21:54:23.074082+00:00\"}, \n {\"id\":13,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0412\",\"created_at\":\"2026-11-04T21:54:23.088896+00:00\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:24.406367+00:00",
+    "source": "fixture",
+    "sql_sha256": "558bb91a2a1af061fa22bdc4b157a72d08b59e561ddaa15e652fe27ebabb7ae5",
+    "exit_code": 0,
+    "seconds": 0.0865,
+    "stdout": "BEGIN\nSET\non\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:24.604096+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0894,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":412}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : [{\"id\":2,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0401\",\"created_at\":\"2026-11-04T21:54:22.778024+00:00\"}, \n {\"id\":3,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0402\",\"created_at\":\"2026-11-04T21:54:22.87541+00:00\"}, \n {\"id\":4,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0403\",\"created_at\":\"2026-11-04T21:54:22.943582+00:00\"}, \n {\"id\":5,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0404\",\"created_at\":\"2026-11-04T21:54:22.964485+00:00\"}, \n {\"id\":6,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0405\",\"created_at\":\"2026-11-04T21:54:22.97193+00:00\"}, \n {\"id\":7,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0406\",\"created_at\":\"2026-11-04T21:54:22.982067+00:00\"}, \n {\"id\":8,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0407\",\"created_at\":\"2026-11-04T21:54:23.043577+00:00\"}, \n {\"id\":9,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0408\",\"created_at\":\"2026-11-04T21:54:23.049374+00:00\"}, \n {\"id\":10,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0409\",\"created_at\":\"2026-11-04T21:54:23.065083+00:00\"}, \n {\"id\":11,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0410\",\"created_at\":\"2026-11-04T21:54:23.068229+00:00\"}, \n {\"id\":12,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0411\",\"created_at\":\"2026-11-04T21:54:23.074082+00:00\"}, \n {\"id\":13,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0412\",\"created_at\":\"2026-11-04T21:54:23.088896+00:00\"}, \n {\"id\":14,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-BYPASS-9\",\"created_at\":\"2026-11-04T21:54:24.399993+00:00\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:24.794114+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0855,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":412}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : [{\"id\":2,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0401\",\"created_at\":\"2026-11-04T21:54:22.778024+00:00\"}, \n {\"id\":3,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0402\",\"created_at\":\"2026-11-04T21:54:22.87541+00:00\"}, \n {\"id\":4,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0403\",\"created_at\":\"2026-11-04T21:54:22.943582+00:00\"}, \n {\"id\":5,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0404\",\"created_at\":\"2026-11-04T21:54:22.964485+00:00\"}, \n {\"id\":6,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0405\",\"created_at\":\"2026-11-04T21:54:22.97193+00:00\"}, \n {\"id\":7,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0406\",\"created_at\":\"2026-11-04T21:54:22.982067+00:00\"}, \n {\"id\":8,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0407\",\"created_at\":\"2026-11-04T21:54:23.043577+00:00\"}, \n {\"id\":9,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0408\",\"created_at\":\"2026-11-04T21:54:23.049374+00:00\"}, \n {\"id\":10,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0409\",\"created_at\":\"2026-11-04T21:54:23.065083+00:00\"}, \n {\"id\":11,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0410\",\"created_at\":\"2026-11-04T21:54:23.068229+00:00\"}, \n {\"id\":12,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0411\",\"created_at\":\"2026-11-04T21:54:23.074082+00:00\"}, \n {\"id\":13,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0412\",\"created_at\":\"2026-11-04T21:54:23.088896+00:00\"}, \n {\"id\":14,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-BYPASS-9\",\"created_at\":\"2026-11-04T21:54:24.399993+00:00\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:24.979584+00:00",
+    "source": "fixture",
+    "sql_sha256": "b8e75577da6439fbda758fee8cc3c830a1e54dd45582bb79e363f659557012cc",
+    "exit_code": 0,
+    "seconds": 0.0836,
+    "stdout": "BEGIN\nSET\n11111111-1111-4111-8111-111111111111\nINSERT 0 1\nCOMMIT\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:25.169592+00:00",
+    "source": "fixture",
+    "sql_sha256": "33002ddc7ea3ab605fe0eef3e7e5ac8ea0ae88f537a3d686d84d96f70a42e9f4",
+    "exit_code": 0,
+    "seconds": 0.0868,
+    "stdout": "{\"c\" : [{\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"prefix\":\"DLN\",\"last\":412}, \n {\"organization_id\":\"22222222-2222-4222-8222-222222222222\",\"prefix\":\"DLN\",\"last\":77}], \"h\" : [{\"organization_id\":\"22222222-2222-4222-8222-222222222222\"}], \"n\" : [{\"id\":2,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0401\",\"created_at\":\"2026-11-04T21:54:22.778024+00:00\"}, \n {\"id\":3,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0402\",\"created_at\":\"2026-11-04T21:54:22.87541+00:00\"}, \n {\"id\":4,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0403\",\"created_at\":\"2026-11-04T21:54:22.943582+00:00\"}, \n {\"id\":5,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0404\",\"created_at\":\"2026-11-04T21:54:22.964485+00:00\"}, \n {\"id\":6,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0405\",\"created_at\":\"2026-11-04T21:54:22.97193+00:00\"}, \n {\"id\":7,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0406\",\"created_at\":\"2026-11-04T21:54:22.982067+00:00\"}, \n {\"id\":8,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0407\",\"created_at\":\"2026-11-04T21:54:23.043577+00:00\"}, \n {\"id\":9,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0408\",\"created_at\":\"2026-11-04T21:54:23.049374+00:00\"}, \n {\"id\":10,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0409\",\"created_at\":\"2026-11-04T21:54:23.065083+00:00\"}, \n {\"id\":11,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0410\",\"created_at\":\"2026-11-04T21:54:23.068229+00:00\"}, \n {\"id\":12,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0411\",\"created_at\":\"2026-11-04T21:54:23.074082+00:00\"}, \n {\"id\":13,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-0412\",\"created_at\":\"2026-11-04T21:54:23.088896+00:00\"}, \n {\"id\":14,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-BYPASS-9\",\"created_at\":\"2026-11-04T21:54:24.399993+00:00\"}, \n {\"id\":15,\"organization_id\":\"11111111-1111-4111-8111-111111111111\",\"dn_number\":\"DLN-BYPASS-10\",\"created_at\":\"2026-11-04T21:54:24.974739+00:00\"}]}\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:25.497871+00:00",
+    "source": "fixture",
+    "sql_sha256": "622f2f220b4a0f3b95c52daef30430d31fb8ae7fe2f2ddfb5e724baa40e537a2",
+    "exit_code": 0,
+    "seconds": 0.1043,
+    "stdout": "CREATE DATABASE\n",
+    "stderr": ""
+  },
+  {
+    "utc": "2026-11-04T21:54:25.716258+00:00",
+    "source": "synthetic fixture pg_dump --clean --if-exists",
+    "sql_sha256": "3e7f479555f8e4294bc315c31387571b2feef96f34365e2bf9463bc508bded80",
+    "exit_code": 0,
+    "seconds": 0.1151,
+    "stdout": "SET\nSET\nSET\nSET\nSET\nSET\n set_config \n------------\n \n(1 row)\n\nSET\nSET\nSET\nSET\nDROP TRIGGER\nALTER TABLE\nALTER TABLE\nALTER TABLE\nALTER TABLE\nDROP TABLE\nDROP TABLE\nDROP TABLE\nDROP TABLE\nDROP TABLE\nDROP FUNCTION\nDROP FUNCTION\nDROP SCHEMA\nDROP SCHEMA\nCREATE SCHEMA\nCOMMENT\nCREATE SCHEMA\nCREATE FUNCTION\nCREATE FUNCTION\nSET\nSET\nCREATE TABLE\nALTER TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nCREATE TABLE\nALTER TABLE\nCOPY 14\nCOPY 1\nCOPY 2\nCOPY 2\nCOPY 3\n setval \n--------\n     15\n(1 row)\n\n setval \n--------\n      3\n(1 row)\n\nALTER TABLE\nALTER TABLE\nALTER TABLE\nALTER TABLE\nCREATE TRIGGER\n",
+    "stderr": ""
+  }
+]

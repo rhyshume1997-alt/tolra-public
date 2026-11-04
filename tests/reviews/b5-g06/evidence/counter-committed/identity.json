@@ -1,0 +1,8 @@
+{
+  "container": "0e2207444f70677a4bcba3815f57e62a4391312d725c6cf2ba09a1846986cb66",
+  "nonce": "9c9eda0c5e8b4bdb917094e7a6ca66bd",
+  "image_id": "sha256:81edcaa5ff2923f7be9c1f43d3e5076f29c6c9c216c86964b5fd038959404429",
+  "network": "none",
+  "ports": [],
+  "initial_readonly": "postgres|postgres|0"
+}

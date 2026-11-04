@@ -1,0 +1,57 @@
+[
+  {
+    "id": "invalid-number-atomic",
+    "result": "passed"
+  },
+  {
+    "id": "set-releases-hold",
+    "result": "passed"
+  },
+  {
+    "id": "repeat-refuses-atomic",
+    "result": "passed"
+  },
+  {
+    "id": "undo-restores-counter-and-hold",
+    "result": "passed"
+  },
+  {
+    "id": "concurrent-setters-one-wins",
+    "result": "passed"
+  },
+  {
+    "id": "manual-typed-number-refused",
+    "result": "passed"
+  },
+  {
+    "id": "concurrent-manual-numbering-unique",
+    "result": "passed"
+  },
+  {
+    "id": "undo-after-use-refused-atomic",
+    "result": "passed"
+  },
+  {
+    "id": "synthetic-marpet-counter-unchanged",
+    "result": "passed"
+  },
+  {
+    "id": "forged-quoteflow.delivery_note_new",
+    "result": "failed",
+    "expected": "refused with no state change",
+    "changed": true
+  },
+  {
+    "id": "forged-quoteflow.data_import",
+    "result": "failed",
+    "expected": "refused with no state change",
+    "changed": true
+  },
+  {
+    "id": "fixture-object-restore",
+    "result": "passed",
+    "dump_sha256": "5163b591a183c7a60b8dee9b7dd927cf87ef96a28ec3aafdf43a1de73a2d7a25",
+    "recovery_seconds": 0.7433,
+    "scope": "four fixture tables only; not full app/storage/roles"
+  }
+]
