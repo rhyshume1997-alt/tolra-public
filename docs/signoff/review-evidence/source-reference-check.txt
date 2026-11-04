@@ -1,0 +1,3 @@
+CS/CT pinned line anchors: 281 occurrences, 203 unique; all file/line targets exist.
+Manual unique ID sets: 35 < 60 < 64; last four additions are G15.1-G15.4.
+Source/document validation only; no runtime protocol completed.

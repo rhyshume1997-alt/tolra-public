@@ -1,0 +1,59 @@
+# Builder 4 cross-review of builder 3's latest queue
+
+Reviewed 4 November 2026 under Rhys's explicit instruction. Scope: earlier CM/CN/CO/CP/CQ drafts #285–#289 plus newly published CR/CS/CT/CU #298/#299/#300/#305, not the stopped broad historical audit. One correction PR targets #305 (`codex/cu-first-day-smoke`); all original source branches remain unchanged. No permission or calculation change.
+
+## Findings fixed in this PR
+
+1. **High: real-data rehearsal can disclose data to external AI without written permission.** #286's opening checklist blocks customer mail and real accounting, but PQ-008 asks John to use own/Tolra AI on a restored copy of real records. Both modes can call Anthropic. The prerequisite now blocks external AI, uses a controlled fake provider and trial inputs, and requires the separate written AI-APPROVE decision before any real-data sharing. It also distinguishes the real-data manual copy from the separate synthetic-only automated backend. This is an instruction correction; no transport or isolation guard was changed.
+2. **Medium: impossible Sage/QuickBooks export acceptance steps.** #286 PQ-004 and PQ-008 tell John to test missing account mappings and later exports without limiting those instructions to Xero. `components/integrations/accounting-cloud-cards.tsx` offers connect/disconnect/check; the Sage/QuickBooks adapters read balances and expose no invoice export. The guide now keeps mapping/export tests for Xero, uses trial balance checks for Sage/QuickBooks and explains that zero balance may be a credit. It retains connection, company isolation, permissions and no-automatic-paid-mark checks; no required proof was deleted.
+
+3. **Medium: required MFA challenge could be absent yet the smoke login pass.** #305 says complete the extra check “if asked” and does not explicitly require that it appear. The corrected row demands a real challenge and refusal before a valid code; missing challenge is STOP. It also narrows the AI-off row to what those clicks actually show: saved off states and assistant refusal. Opening the assistant alone is not proof every feature/API is off. Full existing security proofs remain mandatory.
+
+## Exact sources reviewed
+
+| PR / item | Full reviewed head | Review and result |
+| --- | --- | --- |
+| #285 CM | `a4c89af3723703ba5e284bb6500553d42975f925` | Read the one-line default-env projection, helper and its nine isolation/ownership tests. No new defect found in that change. Nine focused tests passed; exact-worktree typecheck and explicit helper/test lint passed. No costing maths, SQL or golden answer changed/run. |
+| #286 CN | `50b1877982808084aed13b2c0eced461d48dd7f6` | Read all eight manual checks against permissions, AI request builders and accounting UI/adapters. Corrected the two findings above. Eight result blocks and the separate ninth PQ transfer requirement retained. |
+| #287 CO | `4b134cbb3f04f63938ef4537e122a43b8af6235f` | Read VSR guidance against the actual VSR/protocols: 6 IQ / 15 OQ / 9 PQ, unfinished/high-risk handling and own-signature rules preserved. No additional mistake found in changed guide. Undefined R6/R8 remain undefined; no invented definitions. |
+| #288 CP | `ce2e6cc1268e5965a490f839083ab0fcd17eeae7` | Read all 25 numbered steps and recovery paragraph against cited release/runbook sources. Required 138→140→141→144→145→146, backups, protected Marpet/history, real versus fake importer and 146 rollback stop retained. Live recovery still needs the detailed D6 runbook/G14 agreement; this review does not execute it. |
+| #289 CQ | `bcf29b1589dfe9a15a593c583984e6c457690b1d` | Read all four changed files against source guides/components and the immediate #284 base. Daily Paid tile selector agrees with StatTile markup; planned/day/week assertions and reload remain. Collected 3 acceptance tests/3 files and changed-spec lint passed. No browser assertion executed. Evidence/packet changes preserve NOT TESTED conditions rather than claiming runtime passes. |
+| #298 CR | `08fd1d1d406529b5bceb4a51f30d9da2d3ca6c60` | Both corrections are valid: cap held capacity can later release, so the existing feature-off switch is the stop control; accounting source is lib/accounting/cloud-adapters.ts. Retained both corrections in this PR's inherited base. Original #294/#296 wording must not overwrite them during final integration. |
+| #299 CS | `ecbf38f36bd4a57a9a93916bb51849b96e239cd5` | Read all cell/restriction/provenance rows against exact f76a5b84 sources. 6/14/8 refreshed protocols are correctly distinguished from older 6/15/9; f76 evidence-pack versus 9c3f app identities and blank results/signatures remain explicit. No additional source mistake found. |
+| #300 CT | `49097c56f05e690b811872e24ff9b159b774f334` | Read 35/60/64 explanation and complete mapping; source ID sets/counts/line anchors checked against exact revisions. All 35 original IDs retained, then G00/G09–G14, then four G15 rows. No check is marked passed or omitted by counting it. |
+| #305 CU | `73e35550b41df9f7799bf20c24b4b47b05438780` | Read all six smoke rows against UI/role controls and release restrictions. Corrected optional-challenge wording and overbroad off-proof implication above; all six result boxes and 146 rollback stop retained. No live smoke run. |
+
+These are scoped review results, not a SAFE/go-live verdict. CI success does not prove a skipped database/browser job. No full suite, build, database, provider, payroll, restore or live browser rehearsal was rerun. Missing disposable backend and independent final-candidate evidence remain open as recorded in the prior handovers.
+
+## Checks on the correction
+
+- Compared the complete #286 guide before/after: all eight numbered checks/result boxes, actual role/company/money/approval conditions and explicit PQ-009 limit retained.
+- Read current `lib/ai-helper/{anthropic,assistant,rfq,roundup}.ts`, relevant API routes, `lib/accounting/cloud-adapters.ts` and accounting card source on the assembled #247 candidate. Both account modes use Anthropic; enquiry/question text is not generally redacted.
+- Documentation-only correction, source/diff review; no artificial text-matching tests added. Actual manual/protocol checks remain NOT RUN.
+- `git diff --check` passes. Test summaries above are scoped to actual detached source worktrees with shared installed dependencies, not clean locked installs or a full final-head CI pass. No test assertion was weakened.
+
+The base #305 contains the CR→CS→CT→CU stack. This draft also carries the complete #286 guide with its narrow corrections because CN is a sibling absent from that base. Other sibling guides (#287/#288), the reviewed source stack and each separate sign-off draft must still be integrated without losing their changes; this PR does not merge source branches or main. Independent reviewer should read the actual final diff and the scope below. John signs his own acceptance, Rhys his own release decision and the accountant their own policy. All signatures stay blank.
+
+## Continuation: CR–CV and BA, after usage reset
+
+CR #298, CS #299, CT #300 and CU #305 still have the full heads recorded above. Their earlier scoped review remains valid for those unchanged files. CV has **no PR in the open/closed PR search** at this snapshot; its published `codex/cv-current-stack-checks` branch is `e7581c43b5f92836ceaedcf2716d495392a9d9e6`. Its one new commit copies the three sibling CN/CO/CP guides into the CU stack. The added files match #286/#287/#288. No new runtime code, test log or result report was added, so the branch is not proof of a successful CV check run. Our corrected CN and smoke guide must win when combining the branches; the CV copies retain the original CN findings corrected here. No source branch was overwritten and no new PR was created for builder 3.
+
+BA #269 is at `89849ae3331bb6703a7d076d540843c4f63b6bc9`. Read all 144 lines and compared its source paths/rows with its pinned sources and the current expanded register. **Its scope summary says G01–G06 although it actually includes G01–G08.** The correction appendix supplies the exact replacement. Its grouped missing-release row also needs to distinguish required 140/141 from deferred 142/143; none of those files exists in its explicitly pinned older #247 tree. This historical observation is not a fresh failure on a newer candidate, and a deferred feature is not automatically a mandatory missing-release failure. All other missing-runtime rows stay open. Historical local PASS counts are carried as reported observations, not independently rerun proof.
+
+`tests/reviews/BA-269-SOURCE-CORRECTIONS.md` contains the corrected wording and integration rule. The complete newer `tests/GO-NO-GO-EVIDENCE.md` remains intact; do not replace its expanded gates with BA's older ledger. Original BA source is preserved, and no absent execution evidence was turned into PASS.
+
+Checks for this continuation: exact-head/file comparison, source/diff review, no new runtime test for documentation corrections. CV measured checks remain NOT TESTED by this worker; actual backend/provider/browser/restore evidence and reviewer sign-off remain open.
+
+### CV #315 subsequently published
+
+After the earlier branch-only check, CV opened as #315 at `727ff228b6bc8575bc4440f409fdd3c41fe4ce5e`. Read its complete `tests/CV-CURRENT-STACK-RESULTS.md`, successful/failed summaries, committed logs and per-file inventories. The report correctly separates tested candidate `e7581c43b5f92836ceaedcf2716d495392a9d9e6` from the later evidence commit and the held CM head. It reports 5,622 passing tests / 415 files and 5,357 / 373 for those respective source trees, not a pass on a future integration.
+
+Checked inventories exactly cover each source tree's tracked unit .test.ts files once, assertion totals sum correctly, all entries record passed/zero failed, successful log hashes and candidate lockfile hash agree. The report preserves the restricted-environment failures, missing-font failure, failed default-cache install and successful locked candidate install; CM's supplied dependencies are explicitly not a locked-install proof. Its note retaining #314's later guide corrections is correct. No new source mistake found in these CV changes.
+
+Limits: these are independently checked **reported local results**, not a fresh execution by builder 4. Original full JSON reporter files/omitted earlier failed logs were not downloaded; their hashes alone do not prove content independently. No actual SQL/provider/browser/PQ/backup/import result or approval is inferred. The report states these limits. `review-evidence/CV-315-SOURCE-CHECK.txt` records the inventory/hash checks. The earlier no-PR/no-report note above is historical and superseded by this paragraph.
+
+### New BA #317: exact first-day evidence ledger
+
+BA subsequently opened a separate current ledger as #317 at `9515eda33b50878a057a431b06498a5b1f15b204`, stacked on CV #315. Read all 41 rows and conditions against its immutable b9d3af36 first-day checklist. It correctly distinguishes 41 boxes from VSR/manual counts, preserves missing Operations Pack status and actual-execution NOT TESTED, and records costing deferral, required admin codes and safe manual-send limits. Its historical #269 counts are not reused as current results.
+
+**Fixed four wrong source links:** DAY-10–DAY-13 pointed to settings/page.tsx line 589, which is the year-end ZIP export description, not company details. The carried `tests/BA-FIRST-DAY-EVIDENCE.md` now points those definition-only links to `CompanyDetailsCard` at line 53 of the same e7581c43 source. Compared every row before/after: exact public item, required proof and MISSING match cells unchanged; all 41 remain NOT TESTED. The supplied ledger is a sibling absent from #314, so it is carried with this narrow correction rather than editing builder 3's branch. This adds no completed evidence or sign-off.
