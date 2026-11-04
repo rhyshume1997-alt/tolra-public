@@ -5,7 +5,7 @@
 | Item | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
 | DUMP | Builder 4 | `codex/b4-q4-dump` | Draft documentation; operational proof/signatures outstanding | #334 |
-| WIPE-DAY | Builder 4 | `codex/b4-q4-wipe-day` | Draft documentation; operational proof/signatures outstanding | this draft |
+| WIPE-DAY | Builder 4 | `codex/b4-q4-wipe-day` | Draft documentation; operational proof/signatures outstanding | #337 |
 | SUPA-PRO | Builder 4 | `codex/b4-q4-supa-pro` | Draft documentation; operational proof/signatures outstanding | #323 |
 | VERCEL-PREV | Builder 4 | `codex/b4-q4-vercel-prev` | Draft documentation; operational proof/signatures outstanding | #325 |
 | LOGINS | Builder 4 | `codex/b4-q4-logins` | Draft documentation; operational proof/signatures outstanding | #328 |
