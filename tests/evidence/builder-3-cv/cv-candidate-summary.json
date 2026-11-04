@@ -1,0 +1,194 @@
+{
+  "scope": "candidate",
+  "head": "e7581c43b5f92836ceaedcf2716d495392a9d9e6",
+  "tree": "a1c21e014ef0e7c201dc48d5f61b09bebd1f9ffc",
+  "initialStatus": "",
+  "node": "v24.22.1",
+  "npm": "11.9.0",
+  "dependencyInstall": "shared preinstalled node_modules; no npm ci performed",
+  "started": "2026-11-04T13:12:30.178064+00:00",
+  "commands": [
+    {
+      "command": [
+        "npx",
+        "eslint",
+        "app",
+        "components",
+        "lib",
+        "tests/e2e/acceptance",
+        "tests/unit/money-rounding-rule.test.ts",
+        "tests/db/money-rounding-parity.test.ts",
+        "tests/fixtures/money-rounding-cases.ts"
+      ],
+      "exit": 0,
+      "seconds": 19.6,
+      "log": "cv-candidate-1.log",
+      "sha256": "345fa23c4114e69d64aaa419d315e4558816ea720cbaa251eb3d69d995f9db44"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck",
+        "--",
+        "--pretty",
+        "false"
+      ],
+      "exit": 0,
+      "seconds": 150.0,
+      "log": "cv-candidate-2.log",
+      "sha256": "201389b46c54df4598fb3d55f10929a90ee688c9208e558b842122f10183dc44"
+    },
+    {
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--maxWorkers=4",
+        "--minWorkers=1",
+        "--reporter=json",
+        "--outputFile=/workspace/work/queue-cr/cv-candidate-unit.json"
+      ],
+      "exit": 1,
+      "seconds": 122.88,
+      "log": "cv-candidate-3.log",
+      "sha256": "ba5a5fac9ed9ce48c31d79d0a6329e85ac024d7dbca0d4838bc97e7987fd9316"
+    }
+  ],
+  "unit": {
+    "numTotalTestSuites": 1636,
+    "numPassedTestSuites": 1623,
+    "numFailedTestSuites": 13,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 5622,
+    "numPassedTests": 5609,
+    "numFailedTests": 13,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "success": false
+  },
+  "failures": [
+    {
+      "file": "/workspace/work/cv/tests/unit/capacity-check.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "the script exit 0 when there is room, 1 when over (the workflow opens the issue), 2 when it could not measure",
+          "messages": [
+            "AssertionError: expected '' to contain 'database: 450 MB of 500 MB (90%) - OV\u2026'\n    at /workspace/work/cv/tests/unit/capacity-check.test.ts:50:25\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "/workspace/work/cv/tests/unit/check-migrations.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "command line exits 0 and says what it checked",
+          "messages": [
+            "Error: spawnSync node EPERM\n    at Object.spawnSync (node:internal/child_process:1191:20)\n    at spawnSync (node:child_process:929:24)\n    at Proxy.execFileSync (node:child_process:972:15)\n    at /workspace/work/cv/tests/unit/check-migrations.test.ts:206:12\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)"
+          ]
+        },
+        {
+          "title": "command line exits 1 and prints the message for an edited applied migration",
+          "messages": [
+            "AssertionError: expected '' to contain 'Applied migration 002 changed: write \u2026'\n    at /workspace/work/cv/tests/unit/check-migrations.test.ts:221:20\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "/workspace/work/cv/tests/unit/cutover-no-write.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "rejects --write before running",
+          "messages": [
+            "AssertionError: expected '' to contain 'REFUSED'\n    at /workspace/work/cv/tests/unit/cutover-no-write.test.ts:11:294\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:633:57\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "title": "rejects --database-url=postgres://example before running",
+          "messages": [
+            "AssertionError: expected '' to contain 'REFUSED'\n    at /workspace/work/cv/tests/unit/cutover-no-write.test.ts:11:294\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:633:57\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "title": "rejects --out=/tmp/report before running",
+          "messages": [
+            "AssertionError: expected '' to contain 'REFUSED'\n    at /workspace/work/cv/tests/unit/cutover-no-write.test.ts:11:294\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:633:57\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "title": "rejects real-customer.csv before running",
+          "messages": [
+            "AssertionError: expected '' to contain 'REFUSED'\n    at /workspace/work/cv/tests/unit/cutover-no-write.test.ts:11:294\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:633:57\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "title": "CLI reports fake-only, zero writes and no approval",
+          "messages": [
+            "Error: spawnSync /opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node EPERM\n    at Object.spawnSync (node:internal/child_process:1191:20)\n    at spawnSync (node:child_process:929:24)\n    at Proxy.execFileSync (node:child_process:972:15)\n    at /workspace/work/cv/tests/unit/cutover-no-write.test.ts:12:81\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "/workspace/work/cv/tests/unit/marketing-local-fonts.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "marketing fonts build without a Google download ships actual WOFF2 data for the same five family/weight combinations",
+          "messages": [
+            "Error: ENOENT: no such file or directory, open '/workspace/work/cv/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2'\n    at Object.openSync (node:fs:621:18)\n    at Proxy.readFileSync (node:fs:487:35)\n    at /workspace/work/cv/tests/unit/marketing-local-fonts.test.ts:21:22\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "/workspace/work/cv/tests/unit/no-network.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "outbound network guard for the server under test blocks connections to other hosts and logs them",
+          "messages": [
+            "AssertionError: expected '' to be 'failed E2E_NETWORK_BLOCKED' // Object.is equality\n    at /workspace/work/cv/tests/unit/no-network.test.ts:27:20\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "title": "outbound network guard for the server under test allows this machine",
+          "messages": [
+            "AssertionError: expected '' to be 'local ok' // Object.is equality\n    at /workspace/work/cv/tests/unit/no-network.test.ts:38:20\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "/workspace/work/cv/tests/unit/sliq-archive.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "command line exits 0 for a good archive and non-zero for each kind of failure",
+          "messages": [
+            "AssertionError: expected '' to contain 'Manifest: 8 files'\n    at /workspace/work/cv/tests/unit/sliq-archive.test.ts:789:26\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "/workspace/work/cv/tests/unit/sliq-reconcile-offline.test.ts",
+      "message": "",
+      "failedAssertions": [
+        {
+          "title": "zero outbound network while the tool runs as a real process under the repo's outbound-network guard, nothing is blocked (and nothing is attempted)",
+          "messages": [
+            "AssertionError: expected '' to contain 'Dry run only: read only and offline'\n    at /workspace/work/cv/tests/unit/sliq-reconcile-offline.test.ts:197:27\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        }
+      ]
+    }
+  ],
+  "finished": "2026-11-04T13:17:22.674443+00:00",
+  "finalStatus": ""
+}
