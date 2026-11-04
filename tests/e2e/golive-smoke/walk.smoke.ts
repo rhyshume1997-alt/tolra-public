@@ -507,7 +507,8 @@ test("go-live smoke walk: customer to quote to job to delivery notes (after the 
     await office.goto("/invoices");
     await expect(office.getByText("Across 1 outstanding invoice", { exact: true })).toBeVisible();
     await expect(office.getByText("£0.25").first()).toBeVisible();
-    await expect(office.getByRole("row").filter({ hasText: st.invoiceRef })).toContainText(/paid/i);
+    // A paid invoice leaves the default (Open) list for Done, so its row is not looked for here: its stored status says it.
+    expect((await service.from("invoices").select("status").eq("id", st.invoiceId).single()).data?.status).toBe("paid");
     knownGap("customer-statement", "no customer statement document or Statement action at 31f965e (none on Customers or Invoices; grep finds no statement feature): the account is checked here as the money owed per customer on the invoices list and in the ledger, to the penny");
     return `ledger per customer: ${customerA} £0.00 (paid in full), ${customerT} £0.25; Invoices shows "Across 1 outstanding invoice" and £0.25 (statement document: KNOWN GAP)`;
   });
