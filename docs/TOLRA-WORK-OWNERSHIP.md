@@ -100,3 +100,19 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | BA | Codex | codex/ba-evidence | BLOCKED | #269 |
 | BB | Codex | codex/bb-fake-data | DONE IN PR | #270 |
 | BC | Codex | codex/work-ownership | DONE IN PR | #130; zero AVAILABLE rows on both trackers |
+
+## Explicit CA to CI handoff, 4 November
+
+Rhys explicitly assigned the new CA to CI integration/evidence queue to this Codex account. Original Claude/ChatGPT implementation rows stay held and unchanged. CA packages existing 140/141 releases on an independent branch; it does not change claude/sliq-import. Implementation branches use codex/<job>. No Ready label will be added, overriding the older general label rule for this queue. Code PRs contain no docs/ files; this dedicated coordination PR owns ledger updates.
+
+| Job code | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| CA | Codex, explicit new queue handoff; claims/CA | codex/ca-sliq-releases | CLAIMED | pending |
+| CB | Codex, explicitly assigned; not claimed yet | codex/cb-release-gate | QUEUED | pending |
+| CC | Codex, explicitly assigned; not claimed yet | codex/cc-jnr-reconciliation | QUEUED | pending |
+| CD | Codex, explicitly assigned; not claimed yet | codex/cd-sliq-dry-run | QUEUED | pending |
+| CE | Codex, explicitly assigned; not claimed yet | codex/ce-validation-final | QUEUED | pending |
+| CF | Codex, explicitly assigned; not claimed yet | codex/cf-db-runbook | QUEUED | pending |
+| CG | Codex, explicitly assigned; not claimed yet | codex/cg-go-no-go | QUEUED | pending |
+| CH | Codex, explicitly assigned; not claimed yet | codex/ch-review-packets | QUEUED | pending |
+| CI | Codex, explicitly assigned; not claimed yet | codex/ci-branch-checks | QUEUED | pending |
