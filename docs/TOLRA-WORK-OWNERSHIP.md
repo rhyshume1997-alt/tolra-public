@@ -113,6 +113,14 @@ Rhys explicitly assigned the new CA to CI integration/evidence queue to this Cod
 | CD | Codex, explicit handoff; claims/CD | codex/cd-sliq-no-write | DONE IN PR, REAL REHEARSAL OPEN | #275; d73bb240a23b38a7080c0933e4f5b62ddd529f5f; 9 focused and 5567 full units pass, zero fail/skip; tsc/lint pass; fake reconciliation INCOMPLETE (WIP accountant), 2 held |
 | CE | Codex, explicit handoff; claims/CE | codex/ce-validation-final | DONE IN PR, VALIDATION OPEN | #276; e71a80072148077a4c0f05184fe40d79688c01ee; 463 mapped units pass, 0 fail/skip; pack check and tsc pass; actual explicit lint 633 files, 0 errors, 3 warnings; old no-argument lint void; baseline full units 5567; DB/browser NOT TESTED, VSR unsigned |
 | CF | Codex, explicit handoff; claims/CF | codex/cf-db-day-runbook | DONE IN PR, EXECUTION OPEN | #277; 87c4bbf52b895c1e618d32205e5023adb4d60cbc; 18 referenced paths/order/146 STOP checked; diff check pass; docs only, actual DB rehearsal NOT TESTED |
-| CG | Codex, explicit handoff; claims/CG | codex/cg-go-no-go-evidence | DONE IN PR, COMPLETENESS BLOCKED | #278; 8d667ffc7d779d4487fcf19eb052b123ec98baa8; 157 evidence rows; all mandatory IDs, 18 CW and every manual row accounted; authoritative Operations Pack missing, actual runtime NOT TESTED |
-| CH | Codex, explicit handoff; claims/CH | codex/ch-review-packets | DONE IN PR, REVIEW OPEN | #279; 4bb59c0ecfda0a545ec7221ef569dcc1184418db; 7 artifact packets with full SHAs, 9 verdict questions checked; documentation only; self-report exact head in PR companion; full runs queued CI |
-| CI | Codex, explicit handoff; claims/CI | codex/ci-branch-checks | IN PROGRESS | #280; checkpoint 0cc2463d0a6375ada1d65e249939efa02e3b3cf2; 73 gate tests pass after 7 failing-first regressions; exact-head full audit still running; original no-argument lint not accepted, explicit lint underway |
+| CG | Codex, explicit handoff; claims/CG + claims/CK | codex/cg-ck-evidence | DONE IN PR, RUNTIME BLOCKED | #282;5aca2efd2755e9bf9dd53e72ad5807c31648a434;22named proof mappings source-checked; Operations Pack missing; actual DB/provider/browser NOT TESTED |
+| CH | Codex, explicit handoff; claims/CH | codex/ch-review-packets-next | DONE IN PR, REVIEW OPEN | #283;22adae9ae28aaeee7988e50cecded708335c9caa;11full-head packets checked;docs only;no suites repeated |
+| CI | Codex, explicit handoff; claims/CI | codex/ci-branch-checks | STOPPED BY RHYS, PARTIAL | #280; f4eacee2236e65e52fdccbdf5cf8f8045fd95d80; 52/61 unit/typecheck heads completed, all61 explicit lint0errors3warnings each;100focused gate pass; final full suite NOT TESTED; do not resume without reprioritisation |
+
+## Budget priority handoff, 4 November
+
+| Job | Owner | Branch | Status | PR / next action |
+| --- | --- | --- | --- | --- |
+| CJ | Codex, explicit handoff; claims/CJ | codex/cj-acceptance-specs | DONE IN PR, RUNTIME NOT TESTED | #281;8c5161c20745fb8be2e4239ecf9076f7507d437f;3named specs collect;tsc/changed ESLint pass;missingDB execution refuses;Code run on fake backend |
+| CK | Codex, explicit handoff; claims/CK | codex/cg-ck-evidence | INCLUDED WITH CG | #282;22N2/N3 named mappings;all final runtime conditions NOT TESTED |
+| CL | Codex, explicit handoff; claims/CL | codex/cl-rounding-rule | DONE IN PR, FOLLOW-UP OPEN | #284;5b89fe469e10cfea74b60ce535e3bf03cf390f84;25focusedmoney tests+3examples pass;costing untouched;Code align/retire optional CC halfEven before financial use |
