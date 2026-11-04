@@ -168,3 +168,49 @@ it("provided mode with no global key refuses every reservation and never falls b
   } finally {await db.query("ROLLBACK");}
  });
 });
+
+// AV: rollback business-data proof; NOT RUN under the no-SQL rule.
+const rollbackBusinessTables = ['organizations', 'customers', 'invoices', 'invoice_payments', 'jobs', 'purchase_orders'];
+async function snapshot(db: Client) {
+  const result: Record<string, unknown[]> = {};
+  for (const table of rollbackBusinessTables) {
+    result[table] = (await db.query(`SELECT to_jsonb(t) - ARRAY['payment_claimed_at','payment_claim_source','payment_claim_evidence','payment_claim_message_id'] AS row FROM public.${table} t ORDER BY to_jsonb(t)::text`)).rows;
+  }
+  return result;
+}
+function rollbackBody(number: string, name: string) {
+  const sql = readFileSync(path.resolve(__dirname, `../../supabase/release/${number}_${name}.rollback.sql`), 'utf8');
+  expect(sql.match(/^BEGIN;$/gm)).toHaveLength(1);
+  expect(sql.match(/^COMMIT;\s*$/gm)).toHaveLength(1);
+  return sql.replace(/^BEGIN;$/m, '').replace(/^COMMIT;\s*$/m, '');
+}
+for (const [number, name] of [['138', 'chase_steps'], ['144', 'accounting_connections'], ['145', 'company_setup'], ['146', 'tolra_provided_ai']]) {
+  it(`release ${number} rollback preserves existing business rows or refuses without changing them`, async () => {
+    await withDb(async db => {
+      await db.query('BEGIN');
+      try {
+        const org = randomUUID();
+        await db.query("INSERT INTO public.organizations(id,name,slug,status) VALUES($1,'Rollback fake company',$2,'active')", [org, `${SYNTHETIC_SLUG_PREFIX}rollback-${org}`]);
+        await db.query("INSERT INTO public.customers(organization_id,name) VALUES($1,'Rollback fake customer')", [org]);
+        await db.query("INSERT INTO public.invoices(organization_id,customer,status,subtotal,vat,total) VALUES($1,'Rollback fake customer','draft',1,0.2,1.2)", [org]);
+        const before = await snapshot(db);
+        expect(before.customers.length).toBeGreaterThan(0);
+        expect(before.invoices.length).toBeGreaterThan(0);
+        // A non-empty positive control prevents a vacuous empty-database pass.
+        expect(before.organizations.length).toBeGreaterThan(0);
+        await db.query('SAVEPOINT rollback_attempt');
+        try {
+          await db.query(rollbackBody(number, name));
+        } catch (error) {
+          // Refusal is valid only for the named documented safety guards.
+          await db.query('ROLLBACK TO SAVEPOINT rollback_attempt');
+          expect((error as { code?: string }).code).toBe('P0001');
+          expect((error as Error).message).toMatch(/stop and compare|Disconnect cloud connections|Settle outstanding Tolra requests/);
+        }
+        expect(await snapshot(db)).toEqual(before);
+      } finally {
+        await db.query('ROLLBACK');
+      }
+    });
+  });
+}
