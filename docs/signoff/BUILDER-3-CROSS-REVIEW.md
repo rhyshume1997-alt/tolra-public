@@ -1,0 +1,36 @@
+# Builder 4 cross-review of builder 3's latest queue
+
+Reviewed 4 November 2026 under Rhys's explicit instruction. Scope: earlier CM/CN/CO/CP/CQ drafts #285–#289 plus newly published CR/CS/CT/CU #298/#299/#300/#305, not the stopped broad historical audit. One correction PR targets #305 (`codex/cu-first-day-smoke`); all original source branches remain unchanged. No permission or calculation change.
+
+## Findings fixed in this PR
+
+1. **High: real-data rehearsal can disclose data to external AI without written permission.** #286's opening checklist blocks customer mail and real accounting, but PQ-008 asks John to use own/Tolra AI on a restored copy of real records. Both modes can call Anthropic. The prerequisite now blocks external AI, uses a controlled fake provider and trial inputs, and requires the separate written AI-APPROVE decision before any real-data sharing. It also distinguishes the real-data manual copy from the separate synthetic-only automated backend. This is an instruction correction; no transport or isolation guard was changed.
+2. **Medium: impossible Sage/QuickBooks export acceptance steps.** #286 PQ-004 and PQ-008 tell John to test missing account mappings and later exports without limiting those instructions to Xero. `components/integrations/accounting-cloud-cards.tsx` offers connect/disconnect/check; the Sage/QuickBooks adapters read balances and expose no invoice export. The guide now keeps mapping/export tests for Xero, uses trial balance checks for Sage/QuickBooks and explains that zero balance may be a credit. It retains connection, company isolation, permissions and no-automatic-paid-mark checks; no required proof was deleted.
+
+3. **Medium: required MFA challenge could be absent yet the smoke login pass.** #305 says complete the extra check “if asked” and does not explicitly require that it appear. The corrected row demands a real challenge and refusal before a valid code; missing challenge is STOP. It also narrows the AI-off row to what those clicks actually show: saved off states and assistant refusal. Opening the assistant alone is not proof every feature/API is off. Full existing security proofs remain mandatory.
+
+## Exact sources reviewed
+
+| PR / item | Full reviewed head | Review and result |
+| --- | --- | --- |
+| #285 CM | `a4c89af3723703ba5e284bb6500553d42975f925` | Read the one-line default-env projection, helper and its nine isolation/ownership tests. No new defect found in that change. Nine focused tests passed; exact-worktree typecheck and explicit helper/test lint passed. No costing maths, SQL or golden answer changed/run. |
+| #286 CN | `50b1877982808084aed13b2c0eced461d48dd7f6` | Read all eight manual checks against permissions, AI request builders and accounting UI/adapters. Corrected the two findings above. Eight result blocks and the separate ninth PQ transfer requirement retained. |
+| #287 CO | `4b134cbb3f04f63938ef4537e122a43b8af6235f` | Read VSR guidance against the actual VSR/protocols: 6 IQ / 15 OQ / 9 PQ, unfinished/high-risk handling and own-signature rules preserved. No additional mistake found in changed guide. Undefined R6/R8 remain undefined; no invented definitions. |
+| #288 CP | `ce2e6cc1268e5965a490f839083ab0fcd17eeae7` | Read all 25 numbered steps and recovery paragraph against cited release/runbook sources. Required 138→140→141→144→145→146, backups, protected Marpet/history, real versus fake importer and 146 rollback stop retained. Live recovery still needs the detailed D6 runbook/G14 agreement; this review does not execute it. |
+| #289 CQ | `bcf29b1589dfe9a15a593c583984e6c457690b1d` | Read all four changed files against source guides/components and the immediate #284 base. Daily Paid tile selector agrees with StatTile markup; planned/day/week assertions and reload remain. Collected 3 acceptance tests/3 files and changed-spec lint passed. No browser assertion executed. Evidence/packet changes preserve NOT TESTED conditions rather than claiming runtime passes. |
+
+| #298 CR | `08fd1d1d406529b5bceb4a51f30d9da2d3ca6c60` | Both corrections are valid: cap held capacity can later release, so the existing feature-off switch is the stop control; accounting source is lib/accounting/cloud-adapters.ts. Retained both corrections in this PR's inherited base. Original #294/#296 wording must not overwrite them during final integration. |
+| #299 CS | `ecbf38f36bd4a57a9a93916bb51849b96e239cd5` | Read all cell/restriction/provenance rows against exact f76a5b84 sources. 6/14/8 refreshed protocols are correctly distinguished from older 6/15/9; f76 evidence-pack versus 9c3f app identities and blank results/signatures remain explicit. No additional source mistake found. |
+| #300 CT | `49097c56f05e690b811872e24ff9b159b774f334` | Read 35/60/64 explanation and complete mapping; source ID sets/counts/line anchors checked against exact revisions. All 35 original IDs retained, then G00/G09–G14, then four G15 rows. No check is marked passed or omitted by counting it. |
+| #305 CU | `73e35550b41df9f7799bf20c24b4b47b05438780` | Read all six smoke rows against UI/role controls and release restrictions. Corrected optional-challenge wording and overbroad off-proof implication above; all six result boxes and 146 rollback stop retained. No live smoke run. |
+
+These are scoped review results, not a SAFE/go-live verdict. CI success does not prove a skipped database/browser job. No full suite, build, database, provider, payroll, restore or live browser rehearsal was rerun. Missing disposable backend and independent final-candidate evidence remain open as recorded in the prior handovers.
+
+## Checks on the correction
+
+- Compared the complete #286 guide before/after: all eight numbered checks/result boxes, actual role/company/money/approval conditions and explicit PQ-009 limit retained.
+- Read current `lib/ai-helper/{anthropic,assistant,rfq,roundup}.ts`, relevant API routes, `lib/accounting/cloud-adapters.ts` and accounting card source on the assembled #247 candidate. Both account modes use Anthropic; enquiry/question text is not generally redacted.
+- Documentation-only correction, source/diff review; no artificial text-matching tests added. Actual manual/protocol checks remain NOT RUN.
+- `git diff --check` passes. Test summaries above are scoped to actual detached source worktrees with shared installed dependencies, not clean locked installs or a full final-head CI pass. No test assertion was weakened.
+
+The base #305 contains the CR→CS→CT→CU stack. This draft also carries the complete #286 guide with its narrow corrections because CN is a sibling absent from that base. Other sibling guides (#287/#288), the reviewed source stack and each separate sign-off draft must still be integrated without losing their changes; this PR does not merge source branches or main. Independent reviewer should read the actual final diff and the scope below. John signs his own acceptance, Rhys his own release decision and the accountant their own policy. All signatures stay blank.

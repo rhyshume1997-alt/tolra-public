@@ -1,0 +1,5 @@
+Listing tests:
+  acceptance/n1-paid-breaks.spec.ts:7:5 › CJ-N1: paid and unpaid companies show separate planned hours matching their real timesheets
+  acceptance/n5-blank-setup.spec.ts:6:5 › CJ-N5: blank company keeps its setup across all four screens and never sees another company
+  acceptance/n6-email-editor.spec.ts:7:5 › CJ-N6: chase and timesheet details use buttons, preview and persist without typing brackets
+Total: 3 tests in 3 files
