@@ -110,7 +110,7 @@ Rhys explicitly assigned the new CA to CI integration/evidence queue to this Cod
 | CA | Codex, explicit new queue handoff; claims/CA | codex/ca-sliq-releases | DONE IN PR, RUNTIME BLOCKED | #272; ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b; 5457 unit pass, 0 failed/skipped; 19 focused pass; tsc/lint/checksums pass; real DB BLOCKED by managed image-store ENOSPC |
 | CB | Codex, explicit handoff; claims/CB | codex/cb-release-gate | DONE IN PR, EVIDENCE OPEN | #273; ff13614fcd8bd37d989faec74d387371ef7ac378; 66 unit pass, 0 failed/skipped; tsc and changed-file lint pass; actual release evidence NOT TESTED |
 | CC | Codex, explicit handoff; claims/CC | codex/cc-jnr-reconciliation | DONE IN PR, EVIDENCE OPEN | #274; d88f06333556e5c2a80e183a5067c5f7117562fa; 35 focused units pass, zero fail/skip; tsc and changed ESLint pass; supplied snapshots only, no live proof |
-| CD | Codex, explicitly assigned; not claimed yet | codex/cd-sliq-dry-run | QUEUED | pending |
+| CD | Codex, explicit handoff; claims/CD | codex/cd-sliq-dry-run | DONE IN PR, REAL REHEARSAL OPEN | #275; d73bb240a23b38a7080c0933e4f5b62ddd529f5f; 9 focused and 5567 full units pass, zero fail/skip; tsc/lint pass; fake reconciliation INCOMPLETE (WIP accountant), 2 held |
 | CE | Codex, explicitly assigned; not claimed yet | codex/ce-validation-final | QUEUED | pending |
 | CF | Codex, explicitly assigned; not claimed yet | codex/cf-db-runbook | QUEUED | pending |
 | CG | Codex, explicitly assigned; not claimed yet | codex/cg-go-no-go | QUEUED | pending |
