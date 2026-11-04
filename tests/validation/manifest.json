@@ -574,7 +574,7 @@
   ],
   "ci": {
     "repository": "rhyshume1997-alt/tolra-public",
-    "finalFullRun": null,
+    "finalFullRun": "41831505835",
     "runs": [
       {
         "id": "41816512073",
@@ -587,6 +587,12 @@
         "role": "targeted attention.spec rerun on the final SHA",
         "conclusion": "success",
         "note": "targeted rerun only, not a full suite"
+      },
+      {
+        "id": "41831505835",
+        "role": "final complete ci.yml run on the final SHA 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8",
+        "conclusion": "success",
+        "note": "completed success 14:04 UTC; browser suite 599 passed (1.1h); DB suite 1690/1697 passed, 0 failed, 7 skipped (all safeupdate or IMPORT_TIMING); reviewer browser 10 passed, 0 failed, 0 skipped, 0 flaky; rehearsal 23 passed, 0 failed, 2 skipped; recorded, not accepted"
       }
     ]
   }
