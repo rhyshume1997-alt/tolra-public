@@ -1,0 +1,21 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/overnight/source-359
+
+ ❯ tests/unit/b5-g20-g27-adversarial.test.ts (0 test)
+ ✓ tests/unit/b5-g25-evidence-only.test.ts (9 tests) 6ms
+ ✓ tests/unit/b5-g10-access-boundaries.test.ts (9 tests) 3ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-g20-g27-adversarial.test.ts [ tests/unit/b5-g20-g27-adversarial.test.ts ]
+Error: This module cannot be imported from a Client Component module. It should only be used from a Server Component.
+ ❯ Object.<anonymous> ../../../node_modules/server-only/index.js:1:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  18 passed (18)
+   Start at  21:50:28
+   Duration  845ms (transform 214ms, setup 0ms, collect 247ms, tests 9ms, environment 0ms, prepare 155ms)
+
