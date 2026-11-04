@@ -387,3 +387,5 @@ Read this file from #257 and the latest ownership ledger from #130, plus Claude'
 Code branches use codex/<job>; ledger changes stay in a dedicated docs-only coordination PR. No Ready labels, merges, main pushes, deploys, real-data SQL, secrets or weakened tests. Every pass must name its real evidence; no promise of a reviewer SAFE result. Earlier AQ/AR work from the prior Codex owner is already #262/#263 and is not duplicated by the new queue.
 
 - CA: PR #272, head `ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b`, status DONE IN PR, RUNTIME BLOCKED. Checks: 5457 unit pass, 0 failed/skipped; 19 focused pass; tsc/lint/checksums pass; real DB BLOCKED by managed image-store ENOSPC. No reviewer approval inferred; unrun real-data/cutover evidence remains open.
+
+- CB: PR #273, head `ff13614fcd8bd37d989faec74d387371ef7ac378`, status DONE IN PR, EVIDENCE OPEN. Checks: 66 unit pass, 0 failed/skipped; tsc and changed-file lint pass; actual release evidence NOT TESTED. No reviewer approval inferred; unrun real-data/cutover evidence remains open.
