@@ -1,0 +1,12 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b4-security
+
+ ✓ tests/unit/sliq-reconcile-output.test.ts (19 tests) 249ms
+ ✓ tests/unit/send-job.test.ts (16 tests) 35ms
+ ✓ tests/unit/email-send-route.test.ts (8 tests) 58ms
+
+ Test Files  3 passed (3)
+      Tests  43 passed (43)
+   Start at  12:37:21
+   Duration  1.81s (transform 418ms, setup 0ms, collect 893ms, tests 341ms, environment 0ms, prepare 174ms)

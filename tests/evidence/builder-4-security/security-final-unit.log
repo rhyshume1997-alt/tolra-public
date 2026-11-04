@@ -1,0 +1,19 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b4-security
+
+ ✓ tests/unit/api-route-guards.test.ts (23 tests) 125ms
+12:33:59 PM [vite] warning: invalid import "../../app/api/${route}/route". A file extension must be included in the static part of the import. For example: import(`./foo/${bar}.js`).
+  Plugin: vite:dynamic-import-vars
+  File: /workspace/tolra-public/work/b4-security/tests/unit/api-role-matrix.test.ts
+ ✓ tests/unit/api-role-matrix.test.ts (49 tests) 617ms
+ ✓ tests/unit/csrf-origin.test.ts (11 tests) 24ms
+ ✓ tests/unit/middleware-role-matrix.test.ts (43 tests) 62ms
+ ✓ tests/unit/csv-and-dates.test.ts (12 tests) 13ms
+ ✓ tests/unit/check-bundle.test.ts (11 tests) 441ms
+ ✓ tests/unit/s3-s4-cutover-inputs.test.ts (15 tests) 7ms
+
+ Test Files  7 passed (7)
+      Tests  164 passed (164)
+   Start at  12:33:58
+   Duration  5.06s (transform 871ms, setup 0ms, collect 2.50s, tests 1.29s, environment 6ms, prepare 379ms)

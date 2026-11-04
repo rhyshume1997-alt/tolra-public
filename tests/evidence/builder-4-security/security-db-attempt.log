@@ -1,0 +1,47 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b4-security
+
+ ❯ tests/db/rls-two-tenant-proof.test.ts (1 test | 1 failed) 11ms
+   × two-company RLS proof over every table with an organization_id > no role of one company, and no signed-out request, reads or changes a row of the other 10ms
+     → Isolated test backend required: TEST_SUPABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+ ❯ tests/db/s1-reverse-tenant-proof.test.ts (1 test | 1 failed) 9ms
+   × S1: reverse company isolation on a disposable database > no beta role or anonymous caller reads or changes alpha rows 8ms
+     → Isolated test backend required: TEST_SUPABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/db/rls-two-tenant-proof.test.ts > two-company RLS proof over every table with an organization_id > no role of one company, and no signed-out request, reads or changes a row of the other
+IsolationError: Isolated test backend required: TEST_SUPABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+ ❯ assertLoopbackUrl tests/support/isolation.ts:41:21
+     39| /** Throws unless `value` is an http(s)/postgres URL on a loopback hos…
+     40| export function assertLoopbackUrl(name: string, value: string | undefi…
+     41|   if (!value) throw new IsolationError(`${name} is not set`);
+       |                     ^
+     42|   const ref = mentionsProduction(value);
+     43|   if (ref) throw new IsolationError(`${name} names production project …
+ ❯ Module.isolatedBackend tests/support/isolation.ts:86:13
+ ❯ Module.verifyBackendIdentity tests/support/fixtures.ts:85:72
+ ❯ tests/db/rls-two-tenant-proof.test.ts:24:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/db/s1-reverse-tenant-proof.test.ts > S1: reverse company isolation on a disposable database > no beta role or anonymous caller reads or changes alpha rows
+IsolationError: Isolated test backend required: TEST_SUPABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+ ❯ assertLoopbackUrl tests/support/isolation.ts:41:21
+     39| /** Throws unless `value` is an http(s)/postgres URL on a loopback hos…
+     40| export function assertLoopbackUrl(name: string, value: string | undefi…
+     41|   if (!value) throw new IsolationError(`${name} is not set`);
+       |                     ^
+     42|   const ref = mentionsProduction(value);
+     43|   if (ref) throw new IsolationError(`${name} names production project …
+ ❯ Module.isolatedBackend tests/support/isolation.ts:86:13
+ ❯ Module.verifyBackendIdentity tests/support/fixtures.ts:85:72
+ ❯ tests/db/s1-reverse-tenant-proof.test.ts:13:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  2 failed (2)
+      Tests  2 failed (2)
+   Start at  12:36:25
+   Duration  1.48s (transform 193ms, setup 0ms, collect 451ms, tests 20ms, environment 1ms, prepare 300ms)
