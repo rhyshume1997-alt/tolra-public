@@ -1,0 +1,35 @@
+# Rounding rule confirmed by Rhys
+
+Normal money rounds to the nearest penny, with halves going up: GBP 0.135 becomes GBP 0.14. App calculations and database calculations must agree. Use exact decimal values, round once at the required money boundary, and retain integer pence. Do not multiply a binary float first and hope it rounds correctly.
+
+The current normal-money implementation is `lib/money.ts`: `toPence`, `linePence` and the shared `roundToScale` use exact decimal arithmetic and half away from zero. For positive money this is Rhys's half-up rule. For negative adjustments the existing matching app/PostgreSQL convention is away from zero, so -0.135 becomes -0.14. Assumption: retain that existing negative convention; this note changes no calculation. PostgreSQL `round(numeric, 2)` matches it. See `supabase/migrations/016_document_economics.sql` and `030_vat_registration_totals.sql`, including rounded line totals and VAT. Do not substitute PostgreSQL double precision or JavaScript Math.round for the exact-decimal path.
+
+## Half-to-even inventory and exceptions
+
+| Place | What uses half-to-even | State / action |
+| --- | --- | --- |
+| `scripts/jnr-reconcile/check.mjs`, exported `halfEven` | Exact rational integer-pence calculations, including positive/negative ties | Optional offline CC helper, not called by the reconciliation CLI's invoice comparison. It is NOT the normal invoice rule or an approved costing exception. Do not use it to round financial cutover amounts; Claude Code must align or retire it under a separately tested follow-up before such use. Imported invoice totals are already integer pence and must not be re-rounded. |
+| `tests/unit/jnr-reconcile.test.ts` | The six explicit half-even examples, plus divisor refusal | Tests the optional helper's actual current behaviour. Listed honestly; unchanged, not weakened to hide the mismatch with normal-money policy. |
+| `lib/costing/engine.ts` on `codex/costing-join`, inspected at a4bd28f9d2b287001cdb6ee7ab11ac6728e7c0e2 | Internal `round` / exported `pyRound`, called by basic/detailed quote cost, machine/labour, price, margin, time and summary serializers | PROTECTED COSTING EXCEPTION. Preserves Python binary64 rounding with ties to even. Engine is outside the current candidate tree; do not copy or change a held branch here. Machine-specific labour rates remain unchanged. |
+| `tests/unit/costing-golden.test.ts`, `tests/unit/costing-engine-parity.test.ts`, `tests/fixtures/costing-golden.json` on that costing integration | Frozen 60 detailed costing examples and Python rounding-reference cases; parity against the same serializers | KEEP AS THEY ARE. No expected value, guard or assertion changed by CL. Historical preflight branch skips 60+412 because its engine is absent; two older wording branches skip412 via the optional pyRound guard. A skip is not proof. |
+| Upstream Python costing provenance | `services/costing-engine/app/services/quoting*.py`, especially `quoting_enhanced.py`, uses Python round; fixture source records claude/a8-costing-activation 9b98c3f | Provenance of the protected port/fixtures, not a file present in this current public candidate. No upstream/private source changed or runtime claimed. |
+
+Inventory method: case-insensitive search of current lib/scripts/unit-test/SQL sources for half-even, ties-even, banker and pyRound, plus inspection of the held public costing integration's rounding helper and fixture provenance. Current candidate contains the CC helper and its tests; the costing engine/golden paths above are explicitly on the separate costing branch. Documentation mentions and historical logs are not additional algorithms. No further half-even implementation was found in that scope; this is not a claim that every possible floating-point call across all historical branches was audited.
+
+This note does not prove all app/database parity at runtime. Database execution is NOT TESTED locally because the disposable backend could not start. Keep non-costing half-even use visible as an unresolved review condition. Costing 143 remains outside this candidate, and Rhys's VSR signature remains blank. No SQL applied, tests weakened, release or validation approval granted.
+
+## CL builder 3: app/database agreement regression
+
+Normal-money test vectors live in `tests/fixtures/money-rounding-cases.ts`. `tests/unit/money-rounding-rule.test.ts` checks 12 scalar values, five fractional line products and four document/VAT cases against fixed expected pence. They include Rhys's 0.135 -> 0.14, 0.125 -> 0.13 and 0.145 -> 0.15 (the latter two detect an accidental half-even replacement), values either side of a tie, negative adjustments and per-line VAT rounding before summing.
+
+`tests/db/money-rounding-parity.test.ts` compares those same expected pence and the real app functions with actual PostgreSQL `numeric` scalar/product/per-line VAT queries. Decimal inputs travel as strings, with explicit `numeric` casts; no binary float multiplication or simulated database result. The test verifies the disposable backend identity first and fails if it is missing. It runs read-only SELECTs, creates no rows and installs no SQL. It proves arithmetic parity when run, not document-write permissions or all persistence paths; those retain their existing integration/manual checks. The VAT expression follows `016_document_economics.sql` and `030_vat_registration_totals.sql`.
+
+Builder 3 checks on 4 November 2026:
+
+- PASS: `npx vitest run tests/unit/money-rounding-rule.test.ts tests/unit/money-decimal.test.ts` — 29 passed, zero failures/skips (21 new rule cases plus eight existing exact-decimal cases).
+- PASS: initial focused invocation `npx vitest run tests/unit/money-rounding-rule.test.ts tests/unit/money.test.ts tests/unit/money-edge.test.ts` — 38 passed in the two existing matched files; `money-edge.test.ts` does not exist and contributed no tests. The precise command above separately verifies the intended new and decimal suites.
+- FAIL / environment blocked: `npx vitest run -c vitest.db.config.ts tests/db/money-rounding-parity.test.ts` — one failed, zero skipped; `TEST_SUPABASE_URL is not set`. No PostgreSQL rounding query ran. Local Docker socket access is denied to UID 1000; the historical ENOSPC result is not this run's diagnostic.
+- PASS: `npx eslint tests/unit/money-rounding-rule.test.ts tests/db/money-rounding-parity.test.ts tests/fixtures/money-rounding-cases.ts` — no findings.
+- PASS: `npx tsc --noEmit` — exit 0 on the local reconstructed candidate with the new tests.
+
+These local checks used the reconstructed #284 candidate source and shared preinstalled dependencies, not a clean locked install or exact-head CI. Claude Code must rerun the focused app command and the real DB command on the actual final integrated SHA after restoring the verified disposable backend. Real parity remains NOT TESTED. No app rounding logic, costing source, costing rate or golden answer was changed. The offline CC helper mismatch remains a reviewer condition, as documented above.
