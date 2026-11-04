@@ -393,3 +393,5 @@ Code branches use codex/<job>; ledger changes stay in a dedicated docs-only coor
 - CC: PR #274, head `d88f06333556e5c2a80e183a5067c5f7117562fa`, status DONE IN PR, EVIDENCE OPEN. Checks: 35 focused units pass, zero fail/skip; tsc and changed ESLint pass; supplied snapshots only, no live proof. No reviewer approval inferred; unrun real-data/cutover evidence remains open.
 
 - CD: PR #275, head `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`, status DONE IN PR, REAL REHEARSAL OPEN. Checks: 9 focused and 5567 full units pass, zero fail/skip; tsc/lint pass; fake reconciliation INCOMPLETE (WIP accountant), 2 held. No reviewer approval inferred; unrun real-data/cutover evidence remains open.
+
+- CE: PR #276, head `e71a80072148077a4c0f05184fe40d79688c01ee`, status DONE IN PR, VALIDATION OPEN. Checks: 463 mapped units pass, 0 fail/skip; pack check, tsc, full lint pass; baseline full units 5567; DB/browser NOT TESTED, VSR unsigned. No reviewer approval inferred; unrun real-data/cutover evidence remains open.

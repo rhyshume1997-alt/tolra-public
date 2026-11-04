@@ -111,7 +111,7 @@ Rhys explicitly assigned the new CA to CI integration/evidence queue to this Cod
 | CB | Codex, explicit handoff; claims/CB | codex/cb-release-gate | DONE IN PR, EVIDENCE OPEN | #273; ff13614fcd8bd37d989faec74d387371ef7ac378; 66 unit pass, 0 failed/skipped; tsc and changed-file lint pass; actual release evidence NOT TESTED |
 | CC | Codex, explicit handoff; claims/CC | codex/cc-jnr-reconciliation | DONE IN PR, EVIDENCE OPEN | #274; d88f06333556e5c2a80e183a5067c5f7117562fa; 35 focused units pass, zero fail/skip; tsc and changed ESLint pass; supplied snapshots only, no live proof |
 | CD | Codex, explicit handoff; claims/CD | codex/cd-sliq-dry-run | DONE IN PR, REAL REHEARSAL OPEN | #275; d73bb240a23b38a7080c0933e4f5b62ddd529f5f; 9 focused and 5567 full units pass, zero fail/skip; tsc/lint pass; fake reconciliation INCOMPLETE (WIP accountant), 2 held |
-| CE | Codex, explicitly assigned; not claimed yet | codex/ce-validation-final | QUEUED | pending |
+| CE | Codex, explicit handoff; claims/CE | codex/ce-validation-final | DONE IN PR, VALIDATION OPEN | #276; e71a80072148077a4c0f05184fe40d79688c01ee; 463 mapped units pass, 0 fail/skip; pack check, tsc, full lint pass; baseline full units 5567; DB/browser NOT TESTED, VSR unsigned |
 | CF | Codex, explicitly assigned; not claimed yet | codex/cf-db-runbook | QUEUED | pending |
 | CG | Codex, explicitly assigned; not claimed yet | codex/cg-go-no-go | QUEUED | pending |
 | CH | Codex, explicitly assigned; not claimed yet | codex/ch-review-packets | QUEUED | pending |
