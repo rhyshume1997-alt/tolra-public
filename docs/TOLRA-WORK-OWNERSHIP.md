@@ -151,3 +151,26 @@ Rhys assigned this follow-up queue. Atomic claims/CM, claims/CN, claims/CO, clai
 | CQ / [#289](https://github.com/rhyshume1997-alt/tolra-public/pull/289) | `codex/cq-pr-corrections` → `codex/cl-rounding-rule` | `bcf29b1589dfe9a15a593c583984e6c457690b1d` | [41830358899](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41830358899) in_progress, no conclusion |
 
 CM: typecheck/lint pass (3 existing warnings), 9 setup tests pass; costing untouched. CN: eight plain-word checks and boxes; separate ninth PQ retained. CO: every VSR cell/evidence/decision/signature explained; no invented R6/R8 meaning or filled signature. CP: 25 owned GO/STOP steps, required six-release order and no 146 reinstall after rollback. CQ: one read of #281–#284; missing N1 daily view and evidence/packet mistakes corrected, lint/types/collection pass, runtime FAIL at missing-backend guard. Actual John/Rhys/cutover/database/browser/backup/import evidence remains NOT TESTED. CI success does not prove skipped integration work. Historical audit remains stopped at 52/61.
+
+
+## Builder 3 explicit CR–BA continuation, 4 November 2026
+
+Rhys assigned CR, CS, CT, CU, CV and BA; CR includes #314 and twelve builder4 sign-off sheets. Atomic claims/CR, CS, CT, CU, CV, BA created without overwriting any ref. Earlier BA #269 is historical; the new explicitly assigned ledger is #317. Original implementation owners retained. Full done / in progress / not started and exact commands: tests/HANDOVER-BUILDER-3.md on this coordination PR.
+
+| Job / draft | Branch | Current head | CI snapshot |
+| --- | --- | --- | --- |
+| CR / [#298](https://github.com/rhyshume1997-alt/tolra-public/pull/298) | `codex/cr-builder4-review` | `8d161eca667cf3a64b4a9aaffb2df6ddba9d673d` | [41839489160](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839489160) in_progress, no conclusion |
+| CS / [#299](https://github.com/rhyshume1997-alt/tolra-public/pull/299) | `codex/cs-vsr-evidence-index` | `ecbf38f36bd4a57a9a93916bb51849b96e239cd5` | [41834666089](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41834666089) completed, success |
+| CT / [#300](https://github.com/rhyshume1997-alt/tolra-public/pull/300) | `codex/ct-manual-count-map` | `49097c56f05e690b811872e24ff9b159b774f334` | [41834921405](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41834921405) completed, success |
+| CU / [#305](https://github.com/rhyshume1997-alt/tolra-public/pull/305) | `codex/cu-first-day-smoke` | `78dc5b7033592f20640b15e61b198c7fcf17930e` | [41839392247](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839392247) completed, success |
+| CV / [#315](https://github.com/rhyshume1997-alt/tolra-public/pull/315) | `codex/cv-current-stack-checks` | `727ff228b6bc8575bc4440f409fdd3c41fe4ce5e` | [41839013622](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839013622) in_progress, no conclusion |
+| BA / [#317](https://github.com/rhyshume1997-alt/tolra-public/pull/317) | `codex/ba-first-day-41-evidence` | `9515eda33b50878a057a431b06498a5b1f15b204` | [41839231198](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839231198) completed, success |
+
+- CR #298: Review #290–#297, #314 and twelve sign-off sheets; cap/path fixes plus exact CN/CU corrections retained.
+- CS #299: 41 fillable VSR cells and eight proposed restrictions mapped to exact refreshed file/line evidence; missing actual results marked.
+- CT #300: All 64 expanded IDs mapped across original 35, refreshed 60 and builder 64 revisions; no invented signed scope.
+- CU #305: Six short smoke rows; exact #314 MFA/AI-off corrections retained.
+- CV #315: Local lint/types pass in both contexts; candidate 5622/5622 and isolated CM 5357/5357, zero failed/skipped/todo.
+- BA #317: All 41 public first-day boxes mapped; 41 exact Operations Pack matches missing, actual execution NOT TESTED.
+
+Reviewed #314 corrections retained in original CN #286 at bfaa31b84ebb04cec74c386787806320c3dee44e and CU #305 at 78dc5b7033592f20640b15e61b198c7fcf17930e. No docs/signoff duplication. CV passes are pinned to e7581c43 (latest-main-containing candidate) and a4c89af3 (isolated CM), not later document/report commits. CR preceding run 41837435184 web passed/integration skipped/ci-gate failed; current pending CI is not green. No Ready label/bypass/main merge/production SQL/deployment. Missing OperationsPack, actual runtime/import/recovery/provider/manual results and Rhys/John/reviewer decisions remain open. Historical 52/61 audit stays stopped.

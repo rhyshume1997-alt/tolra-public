@@ -1,5 +1,52 @@
 # Builder 3 handover for Claude Code — 4 November 2026
 
+## Latest queue: CR, CS, CT, CU, CV, BA — 4 November 2026
+
+This section supersedes older queue-priority instructions below. Rhys explicitly assigned these six jobs and extended CR to #314 and builder 4's twelve sign-off sheets. All six deliverables are committed in one draft PR per job; no sign-off master was duplicated. Atomic claims/CR, claims/CS, claims/CT, claims/CU, claims/CV and claims/BA exist; no existing claim was overwritten. Older BA #269 remains historical; this explicit new assignment has #317. Deadline Friday 6 November, go-live Thursday 12 November 2026.
+
+### Done
+
+- CR #298: Review #290–#297, #314 and twelve sign-off sheets; cap/path fixes plus exact CN/CU corrections retained.
+- CS #299: 41 fillable VSR cells and eight proposed restrictions mapped to exact refreshed file/line evidence; missing actual results marked.
+- CT #300: All 64 expanded IDs mapped across original 35, refreshed 60 and builder 64 revisions; no invented signed scope.
+- CU #305: Six short smoke rows; exact #314 MFA/AI-off corrections retained.
+- CV #315: Local lint/types pass in both contexts; candidate 5622/5622 and isolated CM 5357/5357, zero failed/skipped/todo.
+- BA #317: All 41 public first-day boxes mapped; 41 exact Operations Pack matches missing, actual execution NOT TESTED.
+
+| Job / draft | Branch | Current head | CI snapshot |
+| --- | --- | --- | --- |
+| CR / [#298](https://github.com/rhyshume1997-alt/tolra-public/pull/298) | `codex/cr-builder4-review` | `8d161eca667cf3a64b4a9aaffb2df6ddba9d673d` | [41839489160](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839489160) in_progress, no conclusion |
+| CS / [#299](https://github.com/rhyshume1997-alt/tolra-public/pull/299) | `codex/cs-vsr-evidence-index` | `ecbf38f36bd4a57a9a93916bb51849b96e239cd5` | [41834666089](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41834666089) completed, success |
+| CT / [#300](https://github.com/rhyshume1997-alt/tolra-public/pull/300) | `codex/ct-manual-count-map` | `49097c56f05e690b811872e24ff9b159b774f334` | [41834921405](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41834921405) completed, success |
+| CU / [#305](https://github.com/rhyshume1997-alt/tolra-public/pull/305) | `codex/cu-first-day-smoke` | `78dc5b7033592f20640b15e61b198c7fcf17930e` | [41839392247](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839392247) completed, success |
+| CV / [#315](https://github.com/rhyshume1997-alt/tolra-public/pull/315) | `codex/cv-current-stack-checks` | `727ff228b6bc8575bc4440f409fdd3c41fe4ce5e` | [41839013622](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839013622) in_progress, no conclusion |
+| BA / [#317](https://github.com/rhyshume1997-alt/tolra-public/pull/317) | `codex/ba-first-day-41-evidence` | `9515eda33b50878a057a431b06498a5b1f15b204` | [41839231198](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839231198) completed, success |
+
+CI is a timestamped snapshot, not proof that skipped integration ran. CR's preceding head e1359613 run 41837435184 had web success (including lint/types/unit/build/collection), integration skipped and overall ci-gate failure because the full integration suite had not run. Current CR/CV pending results above are not promoted to success. No Ready label or workflow bypass was used.
+
+### Exact source and test boundaries
+
+- CS successfully read Code's diagnostic/proposal branch `claude/258-refresh` at **f76a5b84da1f01626cc81d17150e08e6069ef794**. It declares application code **9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8**. Do not merge that diagnostic branch. The refreshed form is 6 IQ / 14 OQ / 8 PQ; the older builder form is 6/15/9. R1–R8 are defined proposed restrictions in that refreshed file, unlike the older undefined standalone audit labels in CO. No acceptance/signature was found. CURRENT-RESULTS.md returned 404; actual protocol evidence and private rounding reconciliation were not visible. Use tests/validation/EVIDENCE-INDEX.md for all exact links and gaps; it does not fill Rhys's form.
+- CT sources: original #248 **a38ffd683c370788fa1c3d98a324081c08d37950** has 35 rows; f76a5b84 has 60; builder #289 **bcf29b1589dfe9a15a593c583984e6c457690b1d** has 64, including four G15 transfer gates. tests/validation/MANUAL-35-VS-64.md maps all 64. Rhys's final accepted revision is not visible; selecting a smaller form cannot waive transfer/cutover proof.
+- CR read #314 **bbf21d67ca87c5d161022d149f2ef0ea5ec62ad7** and all twelve source-pinned sheets #301–#313 excluding #305. Exact heads/findings are in tests/CR-BUILDER-4-CROSS-REVIEW.md. No additional error found in those twelve sheets for their stated scope; all remain unsigned, and live portal/business/runtime evidence is open. Original cap/path corrections remain. The exact corrected #314 CN/CU blobs were retained in our existing #286/#305: CN head **bfaa31b84ebb04cec74c386787806320c3dee44e**, CU head **78dc5b7033592f20640b15e61b198c7fcf17930e**. Block external AI on restored real data until separate approval; Sage/QBO are balance checks, exports Xero only; actual MFA challenge/refusal required; AI-off smoke is visible switches/assistant refusal only.
+- CV tested exact candidate **e7581c43b5f92836ceaedcf2716d495392a9d9e6**, tree **a1c21e014ef0e7c201dc48d5f61b09bebd1f9ffc**. Latest main **68f89ca7b801a10587ff9b51d6c820462847b65a** was confirmed ancestor and unchanged after runs. Candidate contains CU spine and original CN/CO/CP sibling documents; later CR extension/CN/CU document corrections and BA are outside the frozen source. Integrate their corrected versions, never overwrite them with older CV documents. CV evidence commit is not itself the executed source head.
+- CV Node24.22.1/npm11.9.0: candidate fresh locked install, lint/typecheck exit0, 5622 passed across 415 files; isolated CM **a4c89af3723703ba5e284bb6500553d42975f925** with supplied dependencies, lint/typecheck exit0, 5357 passed across 373 files. Both have 0 failed/skipped/todo and 3 existing lint warnings. tests/CV-CURRENT-STACK-RESULTS.md gives exact commands and tests/evidence/builder-3-cv/ retains summaries/logs/per-file counts. Initial restricted child-process failures, then candidate missing-font failure, then default npm-cache permission failure are retained honestly; writable workspace-cache locked install and supported network/loopback permission resolved environment failures without source/test/lock changes. No repeated historical audit, DB/browser/build-local claim or costing activation. Original held costing branch and half-even engine/rates/60 golden answers unchanged.
+- BA's readable 41-checkbox source is docs/JNR-GO-LIVE-DAY-CHECKLIST.md at **b9d3af361e9d88ccbd2e5ab840f078c862ff3f37**. All 41 unticked boxes have immutable source lines and individual evidence requests in tests/BA-FIRST-DAY-EVIDENCE.md. This 41 count is unrelated to CS's41 cells. Exact authoritative Operations Pack is missing; public derivative is not a completeness certificate. No private ID/acceptance/result was fabricated.
+
+### In progress / blocked — next actions for Claude Code
+
+1. Obtain the exact versioned authoritative Operations Pack privately, with owner/date/stable reference. Map each DAY01–41 to exact pack item/page/line; document extra/changed/excluded items and supply actual dated final-version evidence, report/hash and independent acceptance. Keep real records/secrets/signatures private.
+2. Combine reviewed drafts with the **corrected** CN/CU and final CR documents. CS currently branches from initial CR; CV/BA include the old CN/CU snapshots by history. Preserve final documents explicitly when integrating. Do not merge f76a5b84 diagnostic code. Reconcile protocol/manual/cutover scopes and restriction proposals before Rhys signs.
+3. Review current CR and CV CI runs; successful local unit commands and docs CI do not clear skipped integration or missing final combined-head proof. Run only required final checks on the actual integrated candidate. Historical61-head audit remains stopped at 52/61.
+4. On an independently verified fake disposable backend, complete CJ browser specs, CL real PostgreSQL rounding parity, named N2/N3 race/MFA/permissions/provider/DB proofs and exact reviewed wipe/archive/recovery/import checks. Current local Docker socket remains unavailable; this queue executed no SQL. Keep automated synthetic target separate from protected manual real-JNR practice copy; external delivery/AI blocked unless separately approved.
+5. John/Rhys must run actual manual/PQ, business, consent/contacts/provider/payroll/retention decisions and sign their own reports. Complete real backup/restore, SliQ mapping/load/WIP/numbering/reconciliation and cutover authority. Twelve unsigned builder4 masters and blank VSR are not approvals. 146 rollback retains history/key_source: STOP; never reapply 146 on that rolled-back database or delete history to force it.
+
+### Not started
+
+No new job beyond the assigned queue. Actual first-day operation, real John/Rhys protocol execution, private pack reconciliation, live provider/portal actions, production SQL, main merge, deployment and signing were not performed. No Ready label, production access, financial change or new feature. Original /workspace/tolra-public checkout remains clean on 68f89ca7; exact local evidence workspaces/logs are under /workspace/work/queue-cr, /workspace/work/cv and /workspace/work/cm. NO GO / NOT VALIDATED remains until the missing operational evidence and independent decisions are complete.
+
+## Historical queue handovers (preserved)
+
 ## Latest queue: CM–CQ, 4 November 2026
 
 This section supersedes the older “continue only CJ/CG/CH/CL” instruction below. Rhys explicitly assigned CM, CN, CO, CP and CQ. All five jobs are committed in separate draft PRs. Claims/CM through claims/CQ were created atomically; existing owner implementation branches were not reassigned. No new scope, main merge, production SQL, Ready label, deployment or broad audit was performed. Build/test deadline remains Friday 6 November; go-live target Thursday 12 November 2026.
