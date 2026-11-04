@@ -52,5 +52,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const problems = checkReleasePlan(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   problems.forEach(p => console.error(`FAIL ${p}`));
   if (problems.length) process.exitCode = 1;
-  else console.log('release-plan: every proposal accounted for; 144 → 145 N5 → 146 N2/cap, no number collisions');
+  else console.log('release-plan: every proposal accounted for; 144 → 145 N5 → 146 N2/cap → 147 C17, no number collisions');
 }

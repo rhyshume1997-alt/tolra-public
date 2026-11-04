@@ -2,19 +2,21 @@ import { expect, it } from "vitest";
 import { preparePost144Fixture } from "../support/post-144-release-fixture";
 import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
 function fixture(initial=false) {
-  const calls:string[]=[];const states=[initial,initial];
+  const calls:string[]=[];const states=[initial,initial,initial];
+  const markers=["post-144 marker 145 company_setup","post-144 marker 146 tolra_provided_ai","post-144 marker 147 job_delivery_note"];
   return { calls, states, verify:async()=>{calls.push("identity");},query:async(sql:string)=>{
     calls.push(sql);
     if (sql.includes("AS check_name")) return {rows:[{ok:true,passed:true}]};
     if(sql.includes("-- Post-144 release step 145")) states[0]=true;
     if(sql.includes("-- Post-144 release step 146")) {expect(states[0]).toBe(true);states[1]=true;}
-    return {rows:states.map((v,i)=>({check:i===0?"post-144 marker 145 company_setup":"post-144 marker 146 tolra_provided_ai",value:v?"applied":"not applied"}))};
+    if(sql.includes("-- Post-144 release step 147")) {expect(states[1]).toBe(true);states[2]=true;}
+    return {rows:states.map((v,i)=>({check:markers[i],value:v?"applied":"not applied"}))};
   }};
 }
-it("prepares 145 before 146 only after identity, verifies both and unlocks",async()=>{
+it("prepares 145 before 146 before 147 only after identity, verifies each and unlocks",async()=>{
  const f=fixture();await preparePost144Fixture(f);expect(f.calls[0]).toBe("identity");
- const a=f.calls.findIndex(s=>s.includes("-- Post-144 release step 145")),b=f.calls.findIndex(s=>s.includes("-- Post-144 release step 146"));
- expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true]);
+ const a=f.calls.findIndex(s=>s.includes("-- Post-144 release step 145")),b=f.calls.findIndex(s=>s.includes("-- Post-144 release step 146")),c=f.calls.findIndex(s=>s.includes("-- Post-144 release step 147"));
+ expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(c).toBeGreaterThan(b);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true,true]);
 });
 it("does not reapply already verified releases",async()=>{const f=fixture(true);await preparePost144Fixture(f);expect(f.calls.some(s=>s.includes("-- Post-144 release step"))).toBe(false);});
 it("does not read or write SQL if backend identity refuses",async()=>{const f=fixture();f.verify=async()=>{throw new Error("foreign company");};await expect(preparePost144Fixture(f)).rejects.toThrow("foreign company");expect(f.calls).toEqual([]);});
@@ -26,13 +28,14 @@ it("ranks every post-release proof after every baseline file without dropping an
  expect(sorted.slice(0,baseline.length)).toEqual(baseline);expect(sorted.slice(baseline.length)).toEqual(proofs);
 });
 
-it("sorts real sequencer input without dropping files, keeping 145, 146 and the cap race last", async () => {
+it("sorts real sequencer input without dropping files, keeping 145, 146, the cap race and 147 last", async () => {
  const { default: ReleaseSequencer } = await import("../support/db-release-sequencer");
  const ctx = {} as ConstructorParameters<typeof ReleaseSequencer>[0];
  const sequencer = new ReleaseSequencer(ctx);
  const baseline = ["catalogue", "definer-functions", "time-labour", "workshop-network-128"].map(name => ({moduleId:`/repo/tests/db/${name}.test.ts`}));
  const proofs = post144ProofFiles.map(name => ({moduleId:`/repo/tests/db/${name}`}));
- const input = [proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
+ expect(post144ProofFiles.slice(-2)).toEqual(["job-delivery-note-147.test.ts", "dln-day-of-counter.test.ts"]);
+ const input = [proofs[4], proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
  const original = [...input];
  const sorted = await sequencer.sort(input);
  expect(sorted).toEqual([...baseline, ...proofs]);
@@ -42,9 +45,10 @@ it("sorts real sequencer input without dropping files, keeping 145, 146 and the 
  expect((await sequencer.sort(windows)).map(spec => spec.moduleId.replaceAll("\\", "/"))).toEqual(proofs.map(spec => spec.moduleId));
 });
 
-it("still runs both verification files when releases are already installed", async () => {
+it("still runs every verification file when releases are already installed", async () => {
  const f=fixture(true);await preparePost144Fixture(f);
- expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(2);
+ expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(3);
+ expect(f.calls.some(sql=>sql.includes("create_job_delivery_note is security definer with a pinned search path"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("private membership helper stays private"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("original reserve is not a public bypass"))).toBe(true);
 });

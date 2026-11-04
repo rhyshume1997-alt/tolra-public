@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -214,6 +214,7 @@ proposal_files(file, disposition) AS (
   VALUES
     ('supabase/proposals/n5_company_setup.sql', 'post-144 release 145; apply only after 144'),
     ('supabase/proposals/n2_tolra_provided_ai.sql', 'post-144 release 146; apply only after 145'),
+    ('supabase/proposals/c17_job_delivery_note.sql', 'post-144 release 147; apply only after 146'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'deferred: requires costing 143, absent from this candidate'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -252,7 +253,19 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_assistant_own_key(integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(prosrc,'\s','','g')) = '3ef44c838451b46ea14030164d9b1384')
       AND NOT has_function_privilege('authenticated', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')
-      AND has_function_privilege('service_role', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')), FALSE))
+      AND has_function_privilege('service_role', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 147 job_delivery_note', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'delivery_notes' AND column_name = 'request_id')
+      AND EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'delivery_notes_org_request_uniq')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)')
+                  AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '0eff98a39b4b111651ca81b1876ae21f' AND p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'])
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_notes_request_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3f0446deb43e1e7eb177aceef58c69e0')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_request_guard' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_notes_numbering_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '61619d558fad51f5689048011f90dd19' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_numbering_guard' AND tgenabled = 'O')
+      AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.dln_numbering_pending')), FALSE)
+      AND NOT has_table_privilege('authenticated', to_regclass('public.dln_numbering_pending'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
+      AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -561,7 +574,7 @@ checks(n, check_name, value, expected) AS (
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
-    'One-time post-144 phase: 145 N5 before 146 N2; both applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )

@@ -2,6 +2,7 @@ import { BaseDocumentPDF } from "@/components/pdf/BaseDocumentPDF";
 import { type CompanyProfile, getCompanyProfile } from "@/lib/company";
 import { customerPoKeyValue } from "@/lib/customer-po";
 import type { PdfCustomerSignOff } from "@/lib/customer-signoff-print";
+import { deliveryNoteSignOffLines } from "@/lib/delivery-note-print";
 
 export type DeliveryNotePdfData = {
   /** DLN-####, the same number as the invoice (INV-0456 <-> DLN-0456). */
@@ -17,6 +18,11 @@ export type DeliveryNotePdfData = {
   customerMessage?: string[];
   /** The job's customer sign-off (072), when it has one: a small block under the message box. */
   customerSignOff?: PdfCustomerSignOff;
+  /** Recorded as signed for: who signed (typed by staff) and the date, already formatted. Without both, the Received by line is left blank to fill in. */
+  signedByName?: string | null;
+  signedDate?: string | null;
+  /** A company's own goods-out wording (not yet stored anywhere); the default in lib/delivery-note-print is used when it is blank. */
+  goodsOutWording?: string | null;
   company?: CompanyProfile;
   logoSrc?: string;
 };
@@ -41,6 +47,11 @@ export function DeliveryNotePDF({ data }: { data: DeliveryNotePdfData }) {
         lineItems: data.items,
         customerMessage: data.customerMessage,
         customerSignOff: data.customerSignOff,
+        closingLines: deliveryNoteSignOffLines(
+          { status: data.signedByName?.trim() ? "signed" : undefined, signedByName: data.signedByName, signedAt: data.signedDate },
+          (value) => value,
+          data.goodsOutWording,
+        ),
         company: data.company ?? getCompanyProfile(),
         logoSrc: data.logoSrc,
       }}
