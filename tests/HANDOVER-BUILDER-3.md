@@ -1,5 +1,57 @@
 # Builder 3 handover for Claude Code — 4 November 2026
 
+## Latest queue: CM–CQ, 4 November 2026
+
+This section supersedes the older “continue only CJ/CG/CH/CL” instruction below. Rhys explicitly assigned CM, CN, CO, CP and CQ. All five jobs are committed in separate draft PRs. Claims/CM through claims/CQ were created atomically; existing owner implementation branches were not reassigned. No new scope, main merge, production SQL, Ready label, deployment or broad audit was performed. Build/test deadline remains Friday 6 November; go-live target Thursday 12 November 2026.
+
+### Done
+
+- CM #285: one-line default-argument fix in `tests/support/costing-proposal-setup.ts`. It reads the same two existing process environment values at call time without assigning ProcessEnv to the weak Environment type. Original held source `6431e60284a4591ab6c9552de5bc0dd0468973f3` reproduced TS2559 at (20,46). After fix, `npx tsc --noEmit` passes. `npx eslint app components lib tests/support/costing-proposal-setup.ts tests/unit/costing-proposal-setup.test.ts` passes with 0 errors and 3 existing warnings (job-photos, rework-dialog, offline/outbox). `npx vitest run tests/unit/costing-proposal-setup.test.ts`: 9 passed, 0 failed/skipped. No costing calculation, rate, golden answer, SQL or assertion changed. Draft targets the held branch; the original branch is still unchanged pending review.
+- CN #286: `tests/JOHN-PQ-RUN-SHEET.md`, plain click/expected-result steps and Pass/Fail/Not run boxes for PQ-001–008, using a protected private copy of real JNR records with Code beside John and delivery blocked. Static check: 8 source headings and 8 result boxes. Current PQ.md/VSR actually plan 9 checks; PQ-009 remains explicitly separate, never silently omitted. John signs his own sheet, not Rhys's decision.
+- CO #287: `tests/RHYS-SIGN-OFF-GUIDE.md`, every VSR field/result/deviation cell, evidence-file source, 6/15/9 count rule, decision choice and signature line. Sources reviewed against the actual VSR, protocols, risk register and evidence files. The repo has no canonical R1–R8 sign-off key; older standalone R1/R2/R3/R4/R5/R7 audit references are cited with their actual scope, and R6/R8 explicitly remain undefined in the reviewed public candidate. Do not equate them to RISK-001–015 or unrelated #6/#8 tests. No actual template, acceptance or signature was filled.
+- CP #288: `tests/CUTOVER-DAY-CHECKLIST.md`, 25 ordered rows with owner, action, GO/STOP conditions and evidence boxes. Confirmed Thursday 12 November date and all six release paths/order 138/140/141/144/145/146. Incorporates the real GO-LIVE-DATA-LOAD process and exact combined-kit protections; fake wrapper is not an importer. STOP after any 146 rollback; never reapply on that database or remove retained history to bypass guards. No step was executed.
+- CQ #289: read the 11 actual changed files in #281–#284 once against immediate source/manual/money context. Corrected N1's missing Hours/day view, planned daily totals/reload/break explanation; retained existing weekly/two-company assertions. Corrected full evidence paths and stale backend directions, 12 misleading reviewer-check paragraphs, and the four reviewed source-head/CI references. Retained all 148 historical packets; no new all-open inventory. Verified 22 N2/N3 rows and 30 exact proof titles. `tests/CQ-REVIEW-281-284.md` records source heads, findings and limits. No CL arithmetic or protected costing source/fixture changed.
+
+### Exact committed heads / CI snapshot
+
+| Job / draft | Branch → target | Head | PR-triggered CI |
+| --- | --- | --- | --- |
+| CM / [#285](https://github.com/rhyshume1997-alt/tolra-public/pull/285) | `codex/cm-costing-typecheck` → `codex/costing-sql-test-plan` | `a4c89af3723703ba5e284bb6500553d42975f925` | [41827875158](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41827875158) completed, failure |
+| CN / [#286](https://github.com/rhyshume1997-alt/tolra-public/pull/286) | `codex/cn-john-pq-run-sheet` → `codex/cl-rounding-rule` | `50b1877982808084aed13b2c0eced461d48dd7f6` | [41828333822](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41828333822) completed, success |
+| CO / [#287](https://github.com/rhyshume1997-alt/tolra-public/pull/287) | `codex/co-rhys-sign-off-guide` → `codex/cl-rounding-rule` | `4b134cbb3f04f63938ef4537e122a43b8af6235f` | [41828752369](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41828752369) completed, success |
+| CP / [#288](https://github.com/rhyshume1997-alt/tolra-public/pull/288) | `codex/cp-cutover-day-checklist` → `codex/cl-rounding-rule` | `ce2e6cc1268e5965a490f839083ab0fcd17eeae7` | [41829266489](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41829266489) completed, success |
+| CQ / [#289](https://github.com/rhyshume1997-alt/tolra-public/pull/289) | `codex/cq-pr-corrections` → `codex/cl-rounding-rule` | `bcf29b1589dfe9a15a593c583984e6c457690b1d` | [41830358899](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41830358899) in_progress, no conclusion |
+
+CM CI 41827875158 has web success, integration skipped and ci-gate failure. This is not a typecheck/lint failure or a full CI pass; do not add Ready or bypass integration to make it green. CQ was still running at the snapshot and must be rechecked. Documentation CI successes do not prove database/browser/PQ checks. The PRs are all open drafts and GitHub reported them mergeable at this check; no merge was performed.
+
+### CQ checks actually run
+
+- `npx eslint tests/e2e/acceptance/n1-paid-breaks.spec.ts`: PASS, exit 0.
+- `npx tsc --noEmit`: PASS, exit 0 on the reconstructed candidate with CQ edits.
+- `REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance --list`: PASS, three tests in three files.
+- `REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance`: FAIL in global setup, TEST_SUPABASE_URL unset, exit 1. No browser assertion or SQL ran. New Hours/day checks remain runtime NOT TESTED.
+- Document/source checks: CN eight headings/result boxes; CO field/count/decision/signature/R1–R8 coverage; CP 25 ordered rows/six releases/date/rollback stop; CQ 22 mappings/30 exact titles/148 retained packet fields/four refreshed source heads. These are static checks, not completed protocols.
+
+Local environment: Node v24.22.1, npm 11.9.0. CM source at `/workspace/work/cm` was reconstructed from local 039529b plus the exact four-file remote delta to held 6431e602. CQ source is `/workspace/work/builder3`, with captured #284 files overlaid before edits. Both use shared preinstalled dependencies; neither is a clean locked install or an exact-head CI claim. Scratch sources/scripts/metadata are under `/workspace/work/next-queue` and `/workspace/work/cq-*`. The original `/workspace/tolra-public` checkout stayed clean. No full unit suite or broad audit was repeated. Last current Docker diagnostic remains UID-1000 socket permission denied; historical ENOSPC is separate.
+
+### In progress / blocked
+
+- Independent review of #285–#289 and any unfinished automatic CI; no SAFE verdict is inferred.
+- Actual CJ/CQ browser execution and CL real PostgreSQL parity remain blocked by the missing verified disposable backend. Do not silently skip or substitute mocks.
+- Operations Pack completeness, N2 real MFA/ACL/cap-race and N3 provider/database/browser evidence, backup/restore and real transfer reconciliation still remain open. NO GO / NOT VALIDATED remains.
+- Undefined standalone R6/R8 need their original source if a reviewer intends a different eight-item list. Do not invent definitions.
+
+### Not started here / Claude Code next steps
+
+1. Review/apply CM #285 to `codex/costing-sql-test-plan` after independent review. It is a one-line follow-up PR, not a direct held-branch update. Preserve costing half-to-even, rates and all 60 golden answers.
+2. CN, CO and CP are independent sibling one-file drafts based on #284; CQ is a separate four-file correction draft based on #284. Integrate all required approved changes into a review candidate without losing a sibling guide. Their source branches were not merged here. The CN/CO/CP cross-references explicitly require the guides to be included in the reviewed pack.
+3. Recover the verified disposable backend, pin the actual final integrated SHA, install locked dependencies and run the exact changed browser command and CL DB parity command recorded above/earlier. Retain genuine command exits, counts, target identity and evidence; do not run synthetic suites against real JNR.
+4. John runs the eight-check sheet on the protected copy of his real data with Code, then retains the separate PQ-009 transfer proof. Rhys and the independent reviewer complete and sign their actual VSR from genuine results. No sheet, signature or protocol was completed by this queue.
+5. Rehearse the cutover checklist first on a disposable restore, retain actual private-kit/archive/preservation/import/WIP/numbering/restore/runtime proof, and obtain the separate operational decisions. This queue gives no production SQL, wipe/import, main merge, deployment or live-opening authority.
+6. Do not restart the stopped 52/61 historical audit. No further new job was started.
+
+## Earlier CJ–CL handover (historical)
+
 Build/test deadline: Friday 6 November 2026. Go-live target: Thursday 12 November 2026. Continue only CJ, CG/CK, CH and CL. The historical CI audit remains stopped at 52/61; do not restart it. No new scope, main merge, production SQL, deployment or Ready label was performed.
 
 Read alongside `tests/HANDOVER-CODEX-1.md` and `docs/TOLRA-WORK-OWNERSHIP.md` on coordination PR #271. Main lacks these files. Existing job drafts #281–#284 were continued, rather than duplicated. Changes were committed through the GitHub plugin because local Git/network access could not connect to the configured proxy and gh's configured token was invalid. No credential was read or printed.

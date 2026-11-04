@@ -137,3 +137,17 @@ Rhys explicitly assigned CJ, CG/CK, CH and CL to builder 3. Existing drafts were
 | CL | codex/cl-rounding-rule / #284 | d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d | 21 new app cases and real PostgreSQL parity test added; 29 focused app tests/lint/types pass. DB test FAIL at missing-backend guard, parity NOT TESTED. Costing engine/rates/60 half-even golden answers untouched. CI 41826433316 pending at handover snapshot. |
 
 Upstream evidence carried through the existing draft stack; no main merge, production SQL, Ready label or deployment. CI success is not proof of skipped database/browser jobs. Current environment blocker is Docker socket permission denied for UID 1000; the old ENOSPC report is historical. NO GO / NOT VALIDATED remains; Claude Code should use the handover's exact commands and remaining-work list.
+
+## Builder 3 explicit CM–CQ queue, 4 November 2026
+
+Rhys assigned this follow-up queue. Atomic claims/CM, claims/CN, claims/CO, claims/CP and claims/CQ exist. Original implementation ownership is retained; CM is a follow-up PR into the held branch, and CN–CQ are independent drafts based on #284. No main merge, production SQL, Ready label, deployment or broad audit. Full results and remaining work: `tests/HANDOVER-BUILDER-3.md` on #271.
+
+| Job / draft | Branch → target | Exact head | CI snapshot |
+| --- | --- | --- | --- |
+| CM / [#285](https://github.com/rhyshume1997-alt/tolra-public/pull/285) | `codex/cm-costing-typecheck` → `codex/costing-sql-test-plan` | `a4c89af3723703ba5e284bb6500553d42975f925` | [41827875158](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41827875158) completed, failure |
+| CN / [#286](https://github.com/rhyshume1997-alt/tolra-public/pull/286) | `codex/cn-john-pq-run-sheet` → `codex/cl-rounding-rule` | `50b1877982808084aed13b2c0eced461d48dd7f6` | [41828333822](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41828333822) completed, success |
+| CO / [#287](https://github.com/rhyshume1997-alt/tolra-public/pull/287) | `codex/co-rhys-sign-off-guide` → `codex/cl-rounding-rule` | `4b134cbb3f04f63938ef4537e122a43b8af6235f` | [41828752369](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41828752369) completed, success |
+| CP / [#288](https://github.com/rhyshume1997-alt/tolra-public/pull/288) | `codex/cp-cutover-day-checklist` → `codex/cl-rounding-rule` | `ce2e6cc1268e5965a490f839083ab0fcd17eeae7` | [41829266489](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41829266489) completed, success |
+| CQ / [#289](https://github.com/rhyshume1997-alt/tolra-public/pull/289) | `codex/cq-pr-corrections` → `codex/cl-rounding-rule` | `bcf29b1589dfe9a15a593c583984e6c457690b1d` | [41830358899](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41830358899) in_progress, no conclusion |
+
+CM: typecheck/lint pass (3 existing warnings), 9 setup tests pass; costing untouched. CN: eight plain-word checks and boxes; separate ninth PQ retained. CO: every VSR cell/evidence/decision/signature explained; no invented R6/R8 meaning or filled signature. CP: 25 owned GO/STOP steps, required six-release order and no 146 reinstall after rollback. CQ: one read of #281–#284; missing N1 daily view and evidence/packet mistakes corrected, lint/types/collection pass, runtime FAIL at missing-backend guard. Actual John/Rhys/cutover/database/browser/backup/import evidence remains NOT TESTED. CI success does not prove skipped integration work. Historical audit remains stopped at 52/61.
