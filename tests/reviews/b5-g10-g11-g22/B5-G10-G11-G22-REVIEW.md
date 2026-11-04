@@ -27,3 +27,9 @@ The Compliance view limits its latest audit entries to 25. [app/(dashboard)/admi
 An invoice list or year-end ZIP is not the whole historic record. [lib/year-end-export.tsx](https://github.com/rhyshume1997-alt/tolra-public/blob/31f965e7f0cbb2d9caf336b0a2067411bec8fb45/lib/year-end-export.tsx) excludes drafts and reports missing/unresolved PDFs in problems.txt; attachments/signature/history must be retrieved separately. A marked-signed status alone is not a retained signature artifact.
 
 Need actual timed samples of historic invoice + amounts/payment history, signed note + signature files, older audit entry, and an excluded original SliQ record with cross-reference. Record exact final SHA, restore identity, sample/time limit, actual start/finish, evidence/hash, tester and approver privately. No historical archive/approved sample or source access was supplied; no synthetic sample is labelled JNR history. Full-stack registry-policy failure is preserved. Earlier blank templates #369/#370 are not completed evidence and were untouched.
+
+## Exact committed-code rerun
+
+Executed checkout `09cb1258a6ac9db625728c23035ea4d64f0cf1e8`; UTC 2026-11-04T21:57:40.566771+00:00; exit 0; duration 1.403 seconds. Full environment, SQL manifest/log hashes and command file hashes are in `evidence/2026-11-04T21-57-40.566771+00-00-committed-access-c2b80a/run.json`; original log bytes retained. This supersedes contextual checkout ambiguity for earlier uncommitted test overlays. Later commits only attach review/evidence.
+
+Nine scoped tests passed with zero skips; this does not establish live or full-database behaviour.
