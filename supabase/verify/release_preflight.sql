@@ -203,6 +203,11 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mark_payment_claimed(uuid,text,text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1ee5cb529645fd03263bd9e481864b1d')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.resolve_payment_claim(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'd3cbee1ab48f8e29d20fe23f8d8603fd')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.invoice_issue_lock()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'aa8c9f3ae3035d0ed566723a28edd827')),
+    ('140 import source ref',            (SELECT count(*) FROM col WHERE table_name IN ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') AND column_name = 'source_ref') = 5
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.source_ref_import_only()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923')),
+    ('141 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'opening_wip' AND p.policyname = 'opening_wip rbac select'
+                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '6a18e9fed9ee8dd956c314df2b296562')),
     ('144 accounting connections', to_regprocedure('public.accounting_cloud_connections_ready()') IS NOT NULL)
 ),
 proposal_files(file, disposition) AS (

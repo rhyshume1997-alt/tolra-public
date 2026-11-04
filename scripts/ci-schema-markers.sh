@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read-only. Prints the SCHEMA MARKER block for releases 138, 144, 145, 146 on the disposable database, straight from the
+# Read-only. Prints the SCHEMA MARKER block for releases 138, 140, 141, 144, 145, 146 on the disposable database, straight from the
 # real release preflight rows, and runs each verify file (every row must be t). A line is printed only when the marker
 # query returned "applied"; otherwise the script exits 1. Loopback database only.
 set -euo pipefail
@@ -8,7 +8,8 @@ case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: n
 psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
 pre="$(psql_q -f supabase/verify/release_preflight.sql)"
 echo "SCHEMA MARKER (read from release_preflight.sql and the verify files just now)"
-for row in "marker 138 chase steps|chase_steps_138|138 chase steps applied" "marker 144 accounting connections|accounting_connections_144|144 accounting connections applied" \
+for row in "marker 138 chase steps|chase_steps_138|138 chase steps applied" \
+           "marker 140 import source ref|import_source_ref_140|140 import source ref applied" "marker 141 opening wip|opening_wip_141|141 opening wip applied" "marker 144 accounting connections|accounting_connections_144|144 accounting connections applied" \
            "post-144 marker 145 company_setup|company_setup_145|145 company_setup applied" "post-144 marker 146 tolra_provided_ai|tolra_provided_ai_146|146 tolra_provided_ai applied"; do
   IFS='|' read -r marker verify label <<< "$row"
   line="$(printf '%s\n' "$pre" | awk -F'|' -v m="$marker" '$1==m')"
