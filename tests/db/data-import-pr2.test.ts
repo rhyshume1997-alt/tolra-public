@@ -434,7 +434,8 @@ describe.runIf(LOADABLE)("with pg-safeupdate loaded (as in Supabase's API sessio
   it("the small and the large path, credit notes and delivery notes included, then undo", async () => {
     const t = randomUUID().slice(0, 6);
     const safe = <T>(who: Who, text: string, params: unknown[]) => withDb(async (db) => {
-      await db.query("LOAD 'safeupdate'");
+      if ((await db.query("select current_setting('safeupdate.enabled', true) as v")).rows[0].v !== "on") await db.query("LOAD 'safeupdate'");
+      expect((await db.query("select current_setting('safeupdate.enabled', true) as v")).rows[0].v).toBe("on");
       await db.query("begin");
       try {
         await become(db, who);
