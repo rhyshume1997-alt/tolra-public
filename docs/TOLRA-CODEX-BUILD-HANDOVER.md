@@ -73,3 +73,5 @@ Run AV's real tests only on the separately authorised disposable rehearsal. Comp
 | AY | Numbered backup/dump/restore/preflight/apply/verify/rollback runbook | codex/ay-db-runbook | #267, 9795ee1a8f5985dcaffb7823f9d55ded8698892d | 12 numbered steps; 14 shell blocks syntax and referenced files/diff pass; SQL NOT RUN | Separately authorised runtime/release proof required |
 
 | AZ | Three named N1/N5/N6 real-browser persisted-state acceptance specs | codex/az-acceptance | #268, 94449be9b8a711b2f8eae96f5b30403b22296c7b | 3 collected; 39 supporting units pass; tsc and changed-file lint pass | Browser/SQL NOT RUN; reviewed145 prerequisite |
+
+| BA | Evidence ledger maps 41 first-day boxes 36 manual steps 8 reviewer conditions plus release gates | codex/ba-evidence | #269, 89849ae3331bb6703a7d076d540843c4f63b6bc9 | Exact source-to-row coverage and diff pass; PASS counts attributed to executed heads | Exact Operations Pack not in fetched history; external/private completeness unverified |
