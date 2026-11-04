@@ -174,3 +174,26 @@ Rhys assigned CR, CS, CT, CU, CV and BA; CR includes #314 and twelve builder4 si
 - BA #317: All 41 public first-day boxes mapped; 41 exact Operations Pack matches missing, actual execution NOT TESTED.
 
 Reviewed #314 corrections retained in original CN #286 at bfaa31b84ebb04cec74c386787806320c3dee44e and CU #305 at 78dc5b7033592f20640b15e61b198c7fcf17930e. No docs/signoff duplication. CV passes are pinned to e7581c43 (latest-main-containing candidate) and a4c89af3 (isolated CM), not later document/report commits. CR preceding run 41837435184 web passed/integration skipped/ci-gate failed; current pending CI is not green. No Ready label/bypass/main merge/production SQL/deployment. Missing OperationsPack, actual runtime/import/recovery/provider/manual results and Rhys/John/reviewer decisions remain open. Historical 52/61 audit stays stopped.
+
+
+## Builder 3 explicit B4/D5–DB queue, 4 November 2026
+
+Rhys explicitly assigned six document/review jobs; atomic claims B4, D5, G9, C6, CY, CZ, DA, DB recorded. G9/C6 is the request only, not takeover of held importer ownership. One new draft per combined job; original implementation and builder4 masters unchanged. Full done/in-progress/not-started state and limits: tests/HANDOVER-BUILDER-3.md on #271.
+
+| Job / draft | Exact head | Branch → target | CI snapshot |
+| --- | --- | --- | --- |
+| B4/D5 / [#319](https://github.com/rhyshume1997-alt/tolra-public/pull/319) | `ae5564652c09af54d09f0b67baed3f9211cf5546` | `codex/b4-d5-john-device-uat` → `main` | [41841871211](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41841871211) completed, success |
+| G9/C6 / [#320](https://github.com/rhyshume1997-alt/tolra-public/pull/320) | `bf664425f819677b6f4256e627444940164f0793` | `codex/g9-c6-sliq-export-request` → `main` | [41842418634](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41842418634) completed, success |
+| CY / [#321](https://github.com/rhyshume1997-alt/tolra-public/pull/321) | `09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d` | `codex/cy-go-no-go-meeting` → `main` | [41845171602](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845171602) completed, success |
+| CZ / [#322](https://github.com/rhyshume1997-alt/tolra-public/pull/322) | `1b4ed92dcd4337e2c0bde4c67520ac3055aba72e` | `codex/cz-restriction-claims` → `codex/ba-first-day-41-evidence` | [41843717998](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41843717998) completed, success |
+| DA / [#324](https://github.com/rhyshume1997-alt/tolra-public/pull/324) | `19b1d6a3f09502d798c1d09618cefa3f17f8cc01` | `codex/da-codex-merge-order` → `main` | [41844705802](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844705802) in_progress, no conclusion |
+| DB / [#333](https://github.com/rhyshume1997-alt/tolra-public/pull/333) | `8ca0aac7067bade11de78272f46d4a19aa0dab5f` | `codex/db-rhys-cutover-week` → `main` | [41844856929](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844856929) completed, success |
+
+- B4/D5 #319: 18 per-device click/expected rows with Pass/Fail/Not run and signature; source/navigation/role boundaries checked.
+- G9/C6 #320: 440-word export handout, sixteen exact code-header/fake-row examples and unsent Rhys message with no full stops/em dashes.
+- CY #321: 490-word Monday agenda: ten decision/evidence rows, Monday preparation decision distinct from final Thursday GO.
+- CZ #322: 27 visible R-key occurrences reviewed; eight corrected proposals, source ledger, CS R8 correction and version notice in older CO.
+- DA #324: All47 PR numbers classified:41open,6closed unmerged; unique code/docs/evidence and conditional closure rules.
+- DB #333: Six dated rows: Fri6 backup/restore, Sat7 conditional wipe, Mon9 meeting, Tue10/Wed11 codes, Thu12 cutover; each has STOP.
+
+No main merge/production SQL/Ready/deployment/newfeature/message send or signature. Source/inventory checks pass; documentation CI statuses above are not runtime/operator proof. Exact exports/pack/private handover, actual UAT and backup/restore/wipe/import/MFA/provider/SQL/browser evidence and John/Rhys/reviewer decisions remain open. DA requires authoritative41c685c4-vs9c3f5c6 base choice and conditional preservation before closures; no closure performed. Protected costing half-even/60golden unchanged. Historical52/61 audit stays stopped. Friday6 deadline / Thursday12 target retained.

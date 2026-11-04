@@ -1,5 +1,55 @@
 # Builder 3 handover for Claude Code — 4 November 2026
 
+## Latest queue: B4/D5, G9/C6, CY, CZ, DA, DB — 4 November 2026
+
+Rhys explicitly assigned these six documentation/review jobs, one draft per job. Claims/B4, D5, G9, C6, CY, CZ, DA and DB were created atomically after checking existing refs/ownership/open PRs. G9/C6 here is only the export-request document; held SliQ implementation owners and all original branches remain unchanged. No new feature, main merge, production SQL, deployment, Ready label, message send or signature. Friday 6 build/test deadline and Thursday 12 go-live target retained. This section supersedes older queue priorities below, which remain history.
+
+### Done
+
+- B4/D5 #319: 18 per-device click/expected rows with Pass/Fail/Not run and signature; source/navigation/role boundaries checked.
+- G9/C6 #320: 440-word export handout, sixteen exact code-header/fake-row examples and unsent Rhys message with no full stops/em dashes.
+- CY #321: 490-word Monday agenda: ten decision/evidence rows, Monday preparation decision distinct from final Thursday GO.
+- CZ #322: 27 visible R-key occurrences reviewed; eight corrected proposals, source ledger, CS R8 correction and version notice in older CO.
+- DA #324: All47 PR numbers classified:41open,6closed unmerged; unique code/docs/evidence and conditional closure rules.
+- DB #333: Six dated rows: Fri 6 backup/restore, Sat7 conditional wipe, Mon9 meeting, Tue10/Wed11 codes, Thu12 cutover; each has STOP.
+
+| Job / draft | Exact head | Branch → target | CI snapshot |
+| --- | --- | --- | --- |
+| B4/D5 / [#319](https://github.com/rhyshume1997-alt/tolra-public/pull/319) | `ae5564652c09af54d09f0b67baed3f9211cf5546` | `codex/b4-d5-john-device-uat` → `main` | [41841871211](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41841871211) completed, success |
+| G9/C6 / [#320](https://github.com/rhyshume1997-alt/tolra-public/pull/320) | `bf664425f819677b6f4256e627444940164f0793` | `codex/g9-c6-sliq-export-request` → `main` | [41842418634](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41842418634) completed, success |
+| CY / [#321](https://github.com/rhyshume1997-alt/tolra-public/pull/321) | `09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d` | `codex/cy-go-no-go-meeting` → `main` | [41845171602](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845171602) completed, success |
+| CZ / [#322](https://github.com/rhyshume1997-alt/tolra-public/pull/322) | `1b4ed92dcd4337e2c0bde4c67520ac3055aba72e` | `codex/cz-restriction-claims` → `codex/ba-first-day-41-evidence` | [41843717998](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41843717998) completed, success |
+| DA / [#324](https://github.com/rhyshume1997-alt/tolra-public/pull/324) | `19b1d6a3f09502d798c1d09618cefa3f17f8cc01` | `codex/da-codex-merge-order` → `main` | [41844705802](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844705802) in_progress, no conclusion |
+| DB / [#333](https://github.com/rhyshume1997-alt/tolra-public/pull/333) | `8ca0aac7067bade11de78272f46d4a19aa0dab5f` | `codex/db-rhys-cutover-week` → `main` | [41844856929](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844856929) completed, success |
+
+CI statuses are snapshots. DA remains in progress at handover; no green result assumed. The five successful documentation runs do not prove a UAT, SQL/browser/backend, physical print, private backup/import/restore, provider receipt or signature. No runtime suite was repeated for this docs-only queue. Prior CV results stay pinned to e7581c43 and a4c89af3, not these new heads.
+
+### Checks actually completed
+
+Source/inventory verification passed: 18 unique UAT rows with 18 result sets; sixteen CSV example blocks with matching header/value widths; message has no full stops/em dashes; ten agenda questions; eight unique proposed R rows with blank acceptance; all 27 visible R-key-bearing lines inventoried; 47/47 PR numbers and actual file lists, 41 open/6 closed; six dates/weekdays correct; primary files have no trailing whitespace. Sources, assumptions and actual missing results are distinguished in each file. Source checks were a Python inventory/CSV/calendar check under /workspace/work/queue-b4-db; no artificial permanent document tests or broad behaviour audit were added. Physical one-page printing remains to check, not claimed passed.
+
+### Material findings and integration limits
+
+1. **SliQ:** importer mapping sliq.json at inspected e7581c43 is provisional/unconfirmed; credits/allocations have no mapped headers, stable party/paid/VAT fields need actual mapping. Ten writer input kinds are distinct from six comparison-only kinds. jobs/sales_orders/delivery_notes are not written by the existing writer; do not promise automatic transfer. John sends untouched original exports/headings, a practice set by Fri 6 and fresh complete final set after agreed cut-off. Code confirms real headers/dates/encoding, resolves held rows, WIP/next numbers and complete comparisons before independent import authority. The sixteen examples are fake format examples, not a coherent accepted import dataset. The short Rhys message is only saved draft text; it was not sent.
+2. **CZ:** read all 14 refreshed validation files at f76a5b84da1f01626cc81d17150e08e6069ef794 and all 17 builder pack files outside generated evidence at #3179515eda3. Exact application/test source read at the refresh’s declared9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8. All 27 visible R1–R8 references are in docs/handover/R1-R8-OCCURRENCES.json. No docs/handover files existed in the checked public main 68f89ca7/#24741c685c4/#3179515eda3/f76a5b84 trees; unseen private handover remains unreviewed. Supply that tree if intended. New restriction document is a corrected docs-only extraction; do not merge diagnostic application code/manifests/counts.
+3. Corrected R claims: no unsupported “proved/validated/rehearsed”; no Sage/QBO export promise; no pre-filled Accepted; disposable reset distinguished from live recovery; existing caps/usage preserved, default £10/max £1,000, registry owner+MFA rather than hard-coded sole Rhys; used+reserved not an off switch;142 weekday scheduling/143 costing exclusions do not remove existing timesheet-email/editor/balance checks; exact manual IDs need a decision, not auto N/A. Ordinary money half-up and protected costing half-even/60 golden unchanged. Private 38-tie result not visible and no SQL parity pass claimed. Declared CI41816512073 is overall FAILURE; selected reported passes do not complete validation.
+4. **DA:** actual PR#247 head41c685c416305637d86b580324fff9e6cda037ff differs from pack-declared application9c3f5c6. Code must choose/identify the authoritative base before folds. CA140/141 release bodies differ from9c; only the two verify blobs match. Reconcile, never blindly overwrite newer guards or call a whole closed PR duplicate. Closed #272/#273/#274/#276/#278/#279 are unmerged, not evidence of integration. Preserve inherited reconciliation/gate foundations and #280 strict refusal tests; audit remains stopped 52/61. Apply #281→#289, #296→#298; adapt #297 from its distinct base. #285 remains held costing, outside cutover.
+5. Keep #314 latest **ce1118393cc0d65bfde426d31222903a802984ff** BA correction: DAY10–13 settings context is CompanyDetailsCard line53, not old line589 year-end ZIP export. Keep corrected CN#286/CU#305, never original versions from CV’s aggregate. Keep #315 evidence only; #316 **359249878c17b7e4586e39bbee4b7e3961c2a2e2** final twelve sign-off masters and unique older handovers. Closure candidates are conditional on recorded replacement commit/path plus unique evidence preserved: #277/#282/#283/#294 and original twelve masters #301–304/#306–313 after#316. No PR was actually closed/retargeted/merged by this job.
+6. **Calendar/authority:** Friday 6 proves dump+complete restore comparison; no proof means stop Saturday7. Saturday’s scheduled clearing needs its own separate written authority, exact-kit rehearsal/review and preservation proof; Monday cannot approve it retrospectively. If live JNR clearing is separately approved, hold agreed target writers until opening while SliQ remains source until final cut-off. Monday9 is preparation/go-no-go, not passing Tuesday10/Wednesday11 code challenges in advance. Thursday 12 needs current recovery checkpoint, fresh final exports, verified138/140/141/144/145/146 and complete final comparison before Rhys’s separate GO. Never blindly repeat Saturday clearing or146 after rollback.
+
+### In progress / blocked — Code’s next actions
+
+- Review DA’s current CI result and all six exact heads; retain this queue’s files in the chosen packet, including the corrected CZ restriction wording. Required affected checks must run on the eventual integrated code; historical results do not transfer automatically.
+- Obtain actual SliQ exports/confirmed mapping and a reviewed route for writer-unsupported transfer data; private Operations Pack and exact 41-item match; unseen intended private docs/handover; actual backup/restore/private combined-kit/wipe/import/WIP/numbering/complete preservation evidence. Missing files are not zero or N/A.
+- John performs/signs the actual desktop/workshop UAT and PQ with Code by Fri 6; check the handout/agenda print layout before use. Rhys/John complete their own business/sharing/contact/provider/retention/payroll/scope choices privately; no unsigned sheet proves acceptance. Meet Mon9, prove required admin challenges with primary/cover on Tue10 and Wed11, then separately decide Thu12.
+- Actual CJ browser, N2/N3/race/security/CL PostgreSQL parity and exact upgrade/rollback/recovery proofs remain required on verified disposable/synthetic targets, separate from the protected manual real-data copy. External AI/delivery stay blocked without separate authority. Preserve the no146reapply-after rollback/history/key_source stop. No live reset workaround.
+
+### Not started
+
+No job beyond this assigned queue. Actual operator UAT/meeting/signature, export acceptance/import, backup/wipe/restore, admin enrolment/challenges, production SQL, live feature/provider operation, merge/closure/retarget, main push and deployment were not performed. Historical61-head audit remains stopped 52/61. Original /workspace/tolra-public is clean on main 68f89ca7; local queue artifacts are /workspace/work/queue-b4-db. NO GO / NOT VALIDATED remains until actual required evidence and independent decisions are complete.
+
+## Earlier queue handovers (preserved)
+
 ## Latest queue: CR, CS, CT, CU, CV, BA — 4 November 2026
 
 This section supersedes older queue-priority instructions below. Rhys explicitly assigned these six jobs and extended CR to #314 and builder 4's twelve sign-off sheets. All six deliverables are committed in one draft PR per job; no sign-off master was duplicated. Atomic claims/CR, claims/CS, claims/CT, claims/CU, claims/CV and claims/BA exist; no existing claim was overwritten. Older BA #269 remains historical; this explicit new assignment has #317. Deadline Friday 6 November, go-live Thursday 12 November 2026.
