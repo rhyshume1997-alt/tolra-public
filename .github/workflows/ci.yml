@@ -215,6 +215,37 @@ jobs:
         run: |
           set -a; . ./.env.test.local; set +a
           NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
+      # DIAGNOSTIC (branch claude/247-plus-245 only; never merge). The upgrade rehearsal ends with `scripts/test-backend.sh reset`, which
+      # rebuilds the disposable database from numbered migrations only, so the one-time releases 145 and 146 that the test:db fixture
+      # installed are gone and the browser backend has no company_setup_progress / Tolra AI tables. Re-install them here the way
+      # tests/support/post-144-release-fixture.ts does (preflight marker, release file, verify file with every row true, schema reload).
+      # Loopback database only; each marker is checked first so a release file is never applied twice.
+      - name: "Install one-time releases 145 and 146 on the disposable database (diagnostic)"
+        run: |
+          set -euo pipefail
+          set -a; . ./.env.test.local; set +a
+          case "$TEST_DATABASE_URL" in
+            postgresql://*@127.0.0.1:*) ;;
+            *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
+          esac
+          psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
+          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai"; do
+            IFS='|' read -r release verify marker <<< "$phase"
+            state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+            [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
+            if [ "$state" != "applied" ]; then
+              psql_q -f "supabase/release/${release}.release.sql"
+              state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+              [ "$state" = "applied" ] || { echo "Release did not verify: $marker" >&2; exit 1; }
+            fi
+            rows="$(psql_q -f "supabase/verify/${verify}.sql")"
+            [ -n "$rows" ] || { echo "Release verification returned no rows: $marker" >&2; exit 1; }
+            if printf '%s\n' "$rows" | awk -F'|' '$NF != "t" {bad=1} END {exit !bad}'; then
+              echo "Release verification failed: $marker" >&2; printf '%s\n' "$rows" >&2; exit 1
+            fi
+          done
+          psql_q -c "NOTIFY pgrst, 'reload schema'"
+          sleep 3
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Browser suite
