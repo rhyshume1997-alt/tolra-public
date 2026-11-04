@@ -450,7 +450,7 @@
   "schemaVersion": 2,
   "base": {
     "pr": 247,
-    "head": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+    "head": "0cc2463d0a6375ada1d65e249939efa02e3b3cf2",
     "validationSourcePr": 220,
     "manualSourcePr": 248,
     "candidateHead": "41c685c416305637d86b580324fff9e6cda037ff",
@@ -458,9 +458,18 @@
       272,
       273,
       274,
-      275
+      275,
+      276,
+      277,
+      278,
+      279,
+      280
     ],
-    "validationRefreshSourcePr": 258
+    "validationRefreshSourcePr": 258,
+    "previousCodeBaseline": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+    "finalReviewCompanionPr": 280,
+    "note": "Code checkpoint includes CI command-exit gate fix. Actual final full reporting head and exact checks are recorded externally in PR280 to avoid self-referential commit SHA claims. Not release approval.",
+    "integrationState": "Unmerged review stack; actual final reporting SHA is external in PR280, no release approval"
   },
   "iq": [
     {

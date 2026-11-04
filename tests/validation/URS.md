@@ -2,7 +2,7 @@
 
 Company: ____  Intended use: ____  Release/commit: ____  Approved before testing by Rhys / date: ____
 
-Based on the unmerged CA to CD review integration at `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`, including its config-loading fix. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
+Based on the CA to CI code checkpoint `0cc2463d0a6375ada1d65e249939efa02e3b3cf2`, including the command-exit gate correction. The actual final full review-head SHA and checks are recorded in PR #280, not assumed to be this earlier code checkpoint. Imported from N4 #220; manual checks come from #248 with AK additions. This is a mapping, not executed IQ/OQ/PQ evidence.
 
 | ID | Requirement | Accepted by / date |
 | --- | --- | --- |
@@ -20,5 +20,4 @@ Based on the unmerged CA to CD review integration at `d73bb240a23b38a7080c0933e4
 | URS-012 | N6 uses labelled subject, greeting, main message and sign-off boxes, detail buttons and an example preview for chase and timesheet templates; old saved text stays exact and read-only staff cannot save. | ____ |
 | URS-013 | Chasing sends only the exact approved recipient, subject and body once; edits invalidate approval; ambiguous customer names refuse at draft creation and approval; uncertain delivery never automatically resends. | ____ |
 | URS-014 | Customer paid claims and inbound paid/remittance/payment-sent emails never record a payment or change invoice paid fields, balance or status automatically. | ____ |
-
 | URS-015 | JNR cutover requires reviewed 140/141, complete exact-pence reconciliation and same-commit release evidence before a human decision. | ____ |

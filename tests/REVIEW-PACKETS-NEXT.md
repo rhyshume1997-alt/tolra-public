@@ -26,7 +26,7 @@ Change: Refuses incomplete, failed, stale or unaccepted skipped release evidence
 
 Tests and evidence: 66 focused units, 0 failed/skipped; typecheck/changed lint pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
 
-NOT PROVED: Synthetic artifacts prove logic only; artifact authenticity and actual mandatory runtime results need independent review.
+NOT PROVED: Synthetic artifacts prove logic only; artifact authenticity and actual mandatory runtime results need independent review. CI audit subsequently found that an all-passed JSON report can accompany a failed command/collection. The CI follow-up requires actual zero command exits and zero unhandled/collection errors, with seven failing-first regression cases. Include that correction before treating the gate as complete; the old #273 head alone does not contain it.
 
 Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
 
@@ -66,7 +66,7 @@ Please review https://github.com/rhyshume1997-alt/tolra-public/pull/276 at full 
 
 Change: Refreshes #258 source pack for the frozen CA to CD integration; old evidence retains its identity.
 
-Tests and evidence: 463 mapped units, 0 failed/skipped/todo on clean 18aa60d51e1eec511517dede02c461c688bbad8a; 15 URS/6 IQ/15 OQ/9 PQ mapping passes; typecheck/full lint preparation passes. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
+Tests and evidence: 463 mapped units, 0 failed/skipped/todo on clean 18aa60d51e1eec511517dede02c461c688bbad8a; 15 URS/6 IQ/15 OQ/9 PQ mapping passes; typecheck preparation passes; the old no-argument npm lint is not accepted evidence, use the CI explicit-path lint result. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
 
 NOT PROVED: Software NOT VALIDATED. No actual DB/browser/provider/complete OQ/PQ or Rhys acceptance/VSR signature; final-head full rerun belongs to CI job.
 

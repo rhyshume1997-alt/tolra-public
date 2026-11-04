@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint app components lib",
     "typecheck": "tsc --noEmit",
     "check:bundle": "node scripts/check-bundle.mjs",
     "check:migrations": "node scripts/check-migrations.mjs",

@@ -26,9 +26,11 @@ export function releaseGate(manifest,actualHead,readArtifact,checkoutClean=true)
    evidence=JSON.parse(text);
    if(evidence.id!==id||evidence.commit!==actualHead||evidence.status!=='PASS')throw Error('artifact identity/status mismatch');
   }catch{errors.push(`Missing, altered or stale artifact: ${id}`);continue;}
+  if(evidence.exitCode!==0)errors.push(`Command did not exit successfully: ${id}`);
   if(!Number.isFinite(Date.parse(evidence.recordedUtc??'')))errors.push(`Missing result date: ${id}`);
   const isSuite=id.startsWith('db-')||['post-release-browser','unit'].includes(id);
   if(isSuite){
+   if(evidence.unhandledErrors!==0||evidence.collectionErrors!==0)errors.push(`Unhandled/collection errors missing or nonzero: ${id}`);
    const c=evidence.counts;
    if(!c||![c.total,c.passed,c.failed,c.skipped].every(n=>Number.isSafeInteger(n)&&n>=0)||c.total===0||c.failed!==0||c.passed+c.skipped!==c.total)errors.push(`Incomplete/failed test counts: ${id}`);
    else if(c.skipped){
@@ -38,6 +40,17 @@ export function releaseGate(manifest,actualHead,readArtifact,checkoutClean=true)
      const w=waivers.find(row=>row&&row.testId===test);
      if(!w||w.commit!==actualHead||w.acceptedBy!=='Rhys'||typeof w.reason!=='string'||!w.reason.trim()||!Number.isFinite(Date.parse(w.acceptedUtc??''))||typeof w.reviewEvidence!=='string'||!w.reviewEvidence.trim())errors.push(`Skip lacks exact-head accepted reason: ${id}/${test}`);
     }
+   }
+  }
+  if(id==='operations-pack'){
+   const checks=evidence.checks;
+   if(!hash.test(evidence.sourcePackSha256??'')||evidence.inventoryComplete!==true||evidence.inventoryReviewedBy!=='Rhys')errors.push('Authoritative operations pack inventory not proved');
+   if(!Array.isArray(checks)||!checks.length)errors.push('Operations pack results missing');
+   else{
+    const names=checks.map(row=>row?.id);
+    if(names.some(name=>typeof name!=='string'||!name.trim())||new Set(names).size!==names.length)errors.push('Invalid/duplicate operations pack checks');
+    for(const check of checks)if(!check||check.commit!==actualHead||check.status!=='PASS'||typeof check.evidenceRef!=='string'||!check.evidenceRef.trim())errors.push('Operations pack check missing/failed/stale/unreferenced');
+    for(const required of policy.requiredWipeChecks)if(!names.includes(required))errors.push(`Missing combined wipe condition ${required}`);
    }
   }
   if(id==='backup-restore'&&(!hash.test(evidence.backupSha256??'')||!hash.test(evidence.beforeFingerprint??'')||evidence.beforeFingerprint!==evidence.restoredFingerprint||evidence.restoredOnDisposable!==true||evidence.integrityMatch!==true))errors.push('Backup restore integrity not proved');
