@@ -92,7 +92,7 @@ function main(argv) {
   for (const line of out.findings) console.log(line);
   if (!out.findings.length) console.log("(none)");
   console.log("== SHAs ==");
-  for (const line of (shas ?? "").split("\n").filter((l) => /^(candidate|branch head|PASS|FAIL|SHA check)/.test(l))) console.log(line);
+  for (const line of (shas ?? "").split("\n").filter((l) => /^(candidate|branch head|tree |files added|PASS|FAIL|SHA check)/.test(l))) console.log(line);
   console.log("== test reports ==");
   for (const line of out.tests) console.log(line);
   const c = out.counts;

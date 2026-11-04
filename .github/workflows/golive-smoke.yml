@@ -145,9 +145,11 @@ jobs:
         if: always()
         shell: bash
         run: |
+          mkdir -p "$GOLIVE_SMOKE_DIR"
+          rc=0
           node scripts/golive-smoke/gate.mjs --results "$GOLIVE_SMOKE_DIR/results.txt" --shas "$GOLIVE_SMOKE_DIR/shas.txt" \
-            --playwright "$GOLIVE_SMOKE_DIR/playwright.json" --vitest "$GOLIVE_SMOKE_DIR/sliq-vitest.json" 2>&1 | tee "$GOLIVE_SMOKE_DIR/gate.txt"
-          rc=${PIPESTATUS[0]}
+            --playwright "$GOLIVE_SMOKE_DIR/playwright.json" --vitest "$GOLIVE_SMOKE_DIR/sliq-vitest.json" > "$GOLIVE_SMOKE_DIR/gate.txt" 2>&1 || rc=$?
+          cat "$GOLIVE_SMOKE_DIR/gate.txt"
           { echo '### Go-live smoke'; echo '```'; cat "$GOLIVE_SMOKE_DIR/gate.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit "$rc"
       # The synthetic users' passwords (tenant.json, and the browser suite's world.json under test-results/e2e-state) are for this
