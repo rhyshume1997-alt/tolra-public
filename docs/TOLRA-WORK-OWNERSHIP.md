@@ -124,3 +124,16 @@ Rhys explicitly assigned the new CA to CI integration/evidence queue to this Cod
 | CJ | Codex, explicit handoff; claims/CJ | codex/cj-acceptance-specs | DONE IN PR, RUNTIME NOT TESTED | #281;8c5161c20745fb8be2e4239ecf9076f7507d437f;3named specs collect;tsc/changed ESLint pass;missingDB execution refuses;Code run on fake backend |
 | CK | Codex, explicit handoff; claims/CK | codex/cg-ck-evidence | INCLUDED WITH CG | #282;22N2/N3 named mappings;all final runtime conditions NOT TESTED |
 | CL | Codex, explicit handoff; claims/CL | codex/cl-rounding-rule | DONE IN PR, FOLLOW-UP OPEN | #284;5b89fe469e10cfea74b60ce535e3bf03cf390f84;25focusedmoney tests+3examples pass;costing untouched;Code align/retire optional CC halfEven before financial use |
+
+## Builder 3 continuation, 4 November 2026
+
+Rhys explicitly assigned CJ, CG/CK, CH and CL to builder 3. Existing drafts were continued; no duplicate job PRs or held owner implementation changes. Historical CI audit remains stopped at 52/61. Handover: `tests/HANDOVER-BUILDER-3.md` on #271. Build/test deadline Friday 6 November; go-live target Thursday 12 November 2026.
+
+| Job | Branch / draft | Current head | Done and remaining |
+| --- | --- | --- | --- |
+| CJ | codex/cj-acceptance-specs / #281 | ff29ca191879ec954e305ec0eb200501789a5bcf | Three specs collect; runtime attempt FAIL in setup, missing disposable backend. Exact commands in tests/CJ-BUILDER-3-RESULTS.md. CI 41825174221 failure; actual browser proof open. |
+| CG/CK | codex/cg-ck-evidence / #282 | b80b274b0f2b8b12444915152383564cc1b9bf52 | Proof paths added to every available gate/manual/CW/release/validation row; 15 URS and existing 22 N2/N3 mappings. Inventory check pass, CI 41826333766 success; Operations Pack/runtime evidence still missing. |
+| CH | codex/ch-review-packets-next / #283 | e40f9edb24a79769efd03b8f900c6c31d8a6729b | 148 open-PR packets with full snapshot heads, CI IDs/statuses and reviewer checks. Metadata checks pass, CI 41826384400 success; no broad audit/suites, independent reviews remain. |
+| CL | codex/cl-rounding-rule / #284 | d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d | 21 new app cases and real PostgreSQL parity test added; 29 focused app tests/lint/types pass. DB test FAIL at missing-backend guard, parity NOT TESTED. Costing engine/rates/60 half-even golden answers untouched. CI 41826433316 pending at handover snapshot. |
+
+Upstream evidence carried through the existing draft stack; no main merge, production SQL, Ready label or deployment. CI success is not proof of skipped database/browser jobs. Current environment blocker is Docker socket permission denied for UID 1000; the old ENOSPC report is historical. NO GO / NOT VALIDATED remains; Claude Code should use the handover's exact commands and remaining-work list.
