@@ -1,0 +1,11 @@
+# Fail-closed release evidence gate
+
+Run `node scripts/release-gate/cli.mjs MANIFEST_JSON ARTIFACT_DIRECTORY` on the actual final, clean Git checkout. Keep the private manifest/artifact directory outside the repository; modified/untracked checkout files refuse. It writes no data and calls no SQL/network/provider. Exit 1 means REFUSE; exit 0 means READY FOR INDEPENDENT REVIEW, never approval. A reviewer and Rhys still decide SAFE/release separately. No production action is performed.
+
+The manifest must contain the full actual HEAD as finalCommit, the SHA-256 of policy.json as policySha256, and one unique result per mandatory policy ID. Every result has id, exact commit, PASS status and artifact path/SHA-256. Each artifact is a JSON attestation with matching id/commit/status and recordedUtc. Keep artifacts private; only fake examples belong in this public repo. Use CI-generated evidence, never hand-edit a PASS. Hashes prove unchanged bytes, not that an untrusted attestation is truthful.
+
+The fixed policy requires backup/restore fingerprints, ordered 138/140/141/144/145/146 markers, every mandatory DB condition, post-release browsers, exact-pence/Marpet reconciliation, fake-only mock production, units, types and lint. Missing, failed, empty, stale, mismatched or altered evidence refuses. Only unit/browser skipped cases can have a per-test, exact-head Rhys acceptance with reason/date/review reference; mandatory DB and backup conditions cannot be waived. This conservative assumption is recorded for review. A waiver does not itself make a reviewer give plain SAFE.
+
+Suite artifacts need counts total/passed/failed/skipped and, for any permitted skipped case, skippedTests and acceptedSkips entries. Backup artifacts need backupSha256, identical beforeFingerprint/restoredFingerprint, restoredOnDisposable:true and integrityMatch:true. Preflight needs appliedReleases in the exact required order and each numbered marker applied. Reconciliation needs exactPence, marpetUnchanged and matched true. Mock production needs fakeDataOnly:true, realDataTouched:false and allStopRulesPassed:true.
+
+No current evidence set is supplied as passing. The actual DB restore/isolation/race/browser/import/wipe/rollback results remain NOT TESTED or blocked until produced on the final integrated commit. An old commit's passing log cannot satisfy this gate.

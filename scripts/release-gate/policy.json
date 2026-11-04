@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "requiredReleases": [138, 140, 141, 144, 145, 146],
+  "required": ["backup-restore", "preflight", "db-full", "db-two-company", "db-import-140-141", "db-chase-atomic", "db-chase-exact-once", "db-chase-edit", "db-paid-claims", "db-inbound-never-paid", "db-cross-company", "db-ai-cap-race", "db-ai-key-isolation", "db-ai-owner-mfa", "db-accounting-isolation", "db-rollback", "post-release-browser", "reconciliation", "mock-production", "unit", "typecheck", "lint"],
+  "skipWaiversAllowedFor": ["post-release-browser", "unit"]
+}
