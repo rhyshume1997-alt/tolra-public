@@ -21,6 +21,17 @@ export function checkReleasePlan(root) {
   if (Math.max(...numbers) !== plan.numbered_through) problems.push('Numbered baseline no longer matches release plan');
   const ids = [...numbers, ...plan.phases.map(p => p.number)];
   if (new Set(ids).size !== ids.length) problems.push('Release/migration number collision');
+  // The numbered releases the JNR cutover applies, in order: each has a migration, release, rollback, verify file and preflight marker.
+  const cutover = plan.jnr_cutover_numbered_order ?? [];
+  let previous = 0;
+  for (const entry of cutover) {
+    if (entry.number <= previous || entry.number > plan.numbered_through) problems.push(`Wrong cutover order or number: ${entry.number}`);
+    previous = entry.number;
+    if (!preflight.includes(`'${entry.marker}'`)) problems.push(`Cutover marker missing: ${entry.marker}`);
+    for (const field of ['migration','release','rollback','verify']) if (!existsSync(path.join(root,entry[field]))) problems.push(`Missing cutover ${field}: ${entry[field]}`);
+    if (!numbers.includes(entry.number)) problems.push(`Cutover number has no migration: ${entry.number}`);
+  }
+  for (const required of [138, 140, 141, 144]) if (!cutover.some(entry => entry.number === required)) problems.push(`Required JNR cutover release missing from the plan: ${required}`);
   let after = plan.numbered_through;
   for (const phase of plan.phases) {
     if (phase.number <= after || Number(phase.after) !== after) problems.push(`Wrong release order: ${phase.number} after ${phase.after}`);

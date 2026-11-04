@@ -1,6 +1,44 @@
 {
   "version": 1,
   "numbered_through": 144,
+  "jnr_cutover_numbered_order": [
+    {
+      "number": 138,
+      "migration": "supabase/migrations/138_chase_steps.sql",
+      "release": "supabase/release/138_chase_steps.release.sql",
+      "rollback": "supabase/release/138_chase_steps.rollback.sql",
+      "verify": "supabase/verify/chase_steps_138.sql",
+      "marker": "138 chase steps"
+    },
+    {
+      "number": 140,
+      "migration": "supabase/migrations/140_import_source_ref.sql",
+      "release": "supabase/release/140_import_source_ref.release.sql",
+      "rollback": "supabase/release/140_import_source_ref.rollback.sql",
+      "verify": "supabase/verify/import_source_ref_140.sql",
+      "marker": "140 import source ref"
+    },
+    {
+      "number": 141,
+      "migration": "supabase/migrations/141_opening_wip.sql",
+      "release": "supabase/release/141_opening_wip.release.sql",
+      "rollback": "supabase/release/141_opening_wip.rollback.sql",
+      "verify": "supabase/verify/opening_wip_141.sql",
+      "marker": "141 opening wip"
+    },
+    {
+      "number": 144,
+      "migration": "supabase/migrations/144_accounting_connections.sql",
+      "release": "supabase/release/144_accounting_connections.release.sql",
+      "rollback": "supabase/release/144_accounting_connections.rollback.sql",
+      "verify": "supabase/verify/accounting_connections_144.sql",
+      "marker": "144 accounting connections"
+    }
+  ],
+  "numbers_not_in_this_candidate": {
+    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover",
+    "143": "costing_rates: deferred, unapplied proposal builder2_costing_settings_atomic.sql"
+  },
   "mode": "post-numbered-one-time",
   "phases": [
     {

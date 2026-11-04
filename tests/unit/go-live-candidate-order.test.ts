@@ -8,10 +8,17 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     const numbers = files.map(f => f.slice(0, 3));
     expect(new Set(numbers).size).toBe(numbers.length);
     expect(files).toContain("138_chase_steps.sql");
+    expect(files).toContain("140_import_source_ref.sql");
+    expect(files).toContain("141_opening_wip.sql");
     expect(files).toContain("144_accounting_connections.sql");
     const preflight = read("supabase/verify/release_preflight.sql");
     expect(preflight).toContain("('138 chase steps'");
+    expect(preflight).toContain("('140 import source ref'");
+    expect(preflight).toContain("('141 opening wip'");
     expect(preflight).toContain("('144 accounting connections'");
+    expect(preflight.indexOf("('138 chase steps'")).toBeLessThan(preflight.indexOf("('140 import source ref'"));
+    expect(preflight.indexOf("('140 import source ref'")).toBeLessThan(preflight.indexOf("('141 opening wip'"));
+    expect(preflight.indexOf("('141 opening wip'")).toBeLessThan(preflight.indexOf("('144 accounting connections'"));
     expect(preflight).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
   });
   it("runs the full ordered database proofs once, then the independent upgrade rehearsal", async () => {
@@ -41,6 +48,8 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(new Set(keys).size).toBe(keys.length);
     for (const name of ["public.accounting_cloud_connections_ready()", "public.accounting_cloud_enqueue()"])
       expect(catalogue.some(row => row.kind === "function" && row.object === name)).toBe(true);
+    for (const name of ["public.opening_wip", "public.source_ref_import_only()"])
+      expect(catalogue.some(row => row.object === name)).toBe(true);
     for (const name of ["public.chase_steps", "public.chase_sends", "public.chase_pauses"])
       expect(catalogue.some(row => row.object === name)).toBe(true);
     expect(catalogue.some(row => /company_setup_progress|ai_helper_tolra_(control|companies)/.test(row.object))).toBe(false);
