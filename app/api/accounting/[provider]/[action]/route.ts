@@ -24,7 +24,7 @@ async function handle(request: Request, context: Context, method: "GET" | "POST"
       const { data, error } = await service.from("integration_connections").select("status,tenant_name").eq("organization_id", org).eq("provider", id).maybeSingle();
       return NextResponse.json({ configured: Boolean(adapter), status: error ? "unavailable" : data?.status ?? "not_connected", tenantName: data?.tenant_name ?? null }, { headers: { "cache-control": "no-store" } });
     }
-    if (!adapter) return jsonError("Not set up yet. The app registration and database update must be ready first.", 503);
+    if (!adapter) return jsonError("This connection is not ready yet. Ask Tolra support to finish setting it up.", 503);
     if (action === "connect") return NextResponse.json({ url: await adapter.begin() });
     if (action === "callback") {
       const url = new URL(request.url);

@@ -32,9 +32,9 @@ export function TolraAiCaps() {
     finally {setBusy(null);}
   }
   return <Card><CardHeader><CardTitle>Company AI limits</CardTitle></CardHeader><CardContent className="space-y-4">
-    <p className="text-sm">Tolra-provided AI starts at 1,000p (£10) per company per month. Only the platform owner can change it. Maximum: 100,000p (£1,000). Set it to used plus reserved to stop further requests. A limit cannot be lower than this month&apos;s used and reserved AI.</p>
+    <p className="text-sm">Tolra-provided AI starts at 1,000p (£10) per company per month. Only the platform owner can change it. Maximum: 100,000p (£1,000). To stop new requests, set the limit to the total already used plus the amount held for requests still waiting for an answer. The limit cannot be below that total.</p>
     {companies.map(company=><div key={company.organizationId} className="rounded border p-3">
-      <p className="font-medium">{company.name}</p><p className="text-sm">Used: {company.spentPence}p. Reserved: {company.reservedPence}p.</p>
+      <p className="font-medium">{company.name}</p><p className="text-sm">Used: {company.spentPence}p. Held for requests waiting for an answer: {company.reservedPence}p.</p>
       <label className="grid gap-1 text-sm">Monthly AI limit for {company.name} (pence)<Input type="number" min={0} max={MAX_TOLRA_CAP_PENCE} step={1} value={drafts[company.organizationId]??""} disabled={busy!==null} onChange={e=>setDrafts({...drafts,[company.organizationId]:e.target.value})}/></label>
       <Button type="button" disabled={busy!==null} onClick={()=>void save(company)}>Save limit for {company.name}</Button>
     </div>)}

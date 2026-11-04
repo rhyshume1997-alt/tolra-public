@@ -48,7 +48,7 @@ function AccountingCloudCard({ provider }: { provider: AccountingId }) {
   return <Card>
     <CardHeader><CardTitle>{ACCOUNTING_LABELS[provider]}</CardTitle></CardHeader>
     <CardContent className="space-y-3">
-      <p>{!status ? "Loading connection…" : !status.configured ? "Not set up yet. Connect stays off until the app registration and database update are ready." : connected ? `All connected${status.tenantName ? `: ${status.tenantName}` : ""}` : "Not connected"}</p>
+      <p>{!status ? "Loading connection…" : !status.configured ? "This connection is not ready yet. Ask Tolra support to finish setting it up." : connected ? `All connected${status.tenantName ? `: ${status.tenantName}` : ""}` : "Not connected"}</p>
       <p className="text-sm text-slate-500">Read-only payment checks for review. No Tolra invoice is automatically marked paid. No invoices are sent to this service.</p>
       {!connected ? <Button disabled={!status?.configured || busy} onClick={() => void action("connect")}>Connect to {ACCOUNTING_LABELS[provider]}</Button>
         : <>
@@ -56,7 +56,7 @@ function AccountingCloudCard({ provider }: { provider: AccountingId }) {
           <label className="grid gap-1 text-sm">Invoice to check<select className="rounded border p-2" value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)}><option value="">Choose an invoice</option>{invoices.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoice_ref}</option>)}</select></label>
           <Button disabled={busy || !invoiceId.trim() || !status?.configured} onClick={() => void action("check")}>Check payments</Button>
         </>}
-      {evidence ? <p>Invoice {evidence.invoiceNumber}: total £{(evidence.totalPence / 100).toFixed(2)}, outstanding £{(evidence.outstandingPence / 100).toFixed(2)}. Balance evidence only; a credit can also reduce a balance.</p> : null}
+      {evidence ? <p>Invoice {evidence.invoiceNumber}: total £{(evidence.totalPence / 100).toFixed(2)}, outstanding £{(evidence.outstandingPence / 100).toFixed(2)}. This balance does not prove a payment was received. A credit can reduce it too. Check the payment records before marking the invoice paid.</p> : null}
       {message ? <p role="status">{message}</p> : null}
     </CardContent>
   </Card>;
