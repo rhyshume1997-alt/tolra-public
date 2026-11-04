@@ -11,7 +11,7 @@ Ask Code to sit with you and show you:
 1. The test address. Ask: “Are you sure this is the copy, not our live shop?”
 2. The JNR records copied from SliQ and the matching reports. Pick one customer, quote, job and unpaid invoice you know. Write their numbers below. Check the names, amounts and balances against SliQ before doing anything else.
 3. Separate test logins for an admin, office worker, workshop worker and someone who can only look. Also a separate practice company. Nobody needs to lend you their password.
-4. A test inbox that catches messages without sending them to customers. Automatic emails and real accounting connections must be off. Code checks this before you click anything.
+4. A test inbox that catches messages without sending them to customers. Automatic emails and real accounting connections must be off. Block external AI requests too; AI practice uses a controlled fake provider and trial inputs. Do not send this real-data copy or pasted customer details to Anthropic without the separate written AI-APPROVE decision. Code checks these boundaries before you click anything. Never point the synthetic automated suites at a copy containing real JNR records; they require their own fake-only backend.
 5. The exact version being checked. Copy Code's version label below; you do not need to work out what it means.
 
 If any of these is missing, stop and write **NOT RUN**. Do not tick Pass because Code says a test file exists.
@@ -80,8 +80,8 @@ Trial job / week / private evidence name: ____  John / date: ____
 
 1. As the admin test user, open **Admin → Integrations**. With Code, check the assistant and accounting connections are off. Reload the page.
 2. Try opening the assistant from the normal menu. Try the accounting action Code points out on a trial invoice.
-3. Ask Code to prepare a safe practice accounting account. With Code beside you, try the trial export before the account choices are filled in. It should refuse.
-4. Let Code show you the account choices and the approval step. Stop before sending anything unless the named tester has approved that exact practice action.
+3. For Xero only, ask Code to prepare a safe demo accounting account. With Code beside you, try the trial Xero export before the account choices are filled in. It should refuse. Sage and QuickBooks in this release provide balance checks, not invoice exports.
+4. For Xero, let Code show you the account choices and the approval step. Stop before sending anything unless the named tester has approved that exact demo action. For Sage/QuickBooks, test that missing connection/setup blocks a balance check; do not look for an export action that is not provided.
 
 **You should see:** off stays off. Missing setup or missing account choices stops the action. Nothing is emailed or exported just because you opened a screen or connected an account.
 
@@ -146,7 +146,7 @@ Trial invoice / message count / private evidence name: ____  John / date: ____
 2. Try each assistant choice: the company's own account, then Tolra's account, then back. Ask a harmless trial question each time. Ask Code to show which practice account answered. A failed choice must not secretly use the other one. The other practice company must stay unchanged.
 3. Rhys opens the allowance controls and completes his extra sign-in check. He checks the £10 starting allowance and £1,000 upper limit, then sets a small trial allowance for JNR only. An ordinary company admin, a help-access account and Rhys without the extra sign-in check must be refused. The other company must keep its allowance.
 4. Ask Code for the saved test where two requests try to spend the last allowance at the same time. Together they must not go over the limit. Switching account choices must not reset what was used. A screen picture alone is not this proof.
-5. In turn, open **Xero**, **Sage** and **QuickBooks**. With Code, check missing setup refuses; then connect each safe practice account. Check the right shop/account name. No saved secret should be shown. Before account choices are complete, export must refuse. Any later practice export needs a named person's approval first.
+5. In turn, open **Xero**, **Sage** and **QuickBooks**. With Code, check missing setup refuses; then connect each safe practice account. Check the right shop/account name. No saved secret should be shown. For Xero only, export must refuse before account choices are complete; any later demo export needs a named person's approval. For Sage and QuickBooks, check a trial invoice balance instead: these connections do not export invoices or mark them paid. A zero balance may reflect a credit, so check payment records before recording any payment.
 6. Check the other practice company cannot see or use JNR's connections. As ordinary staff, try the restricted actions. They should refuse. With Code, disconnect Sage only: the other two must stay as they were. Then disconnect the other practice accounts separately. Compare the trial invoice's paid amount and balance again. Turn the assistant off at the end.
 
 **You should see:** accounts, shops and results never get mixed. Only Rhys after the extra sign-in check changes Tolra's allowance. The limit holds. A connection, answer or accounting result never marks an invoice paid. Missing practice registration or a missing two-request report means Not run.
