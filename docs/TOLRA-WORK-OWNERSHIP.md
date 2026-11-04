@@ -86,6 +86,6 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | AR | Codex | codex/ar-manual-final | DONE IN PR | #263 |
 | AS | Codex | codex/chase-join | DONE IN PR | #186 |
 | AT | Codex | codex/costing-join; codex/money-edge-tests | DONE IN PR | #184; #185 |
-| AU | Codex | codex/au-wording | CLAIMED | — |
-| AV | Codex | codex/av-rollback-tests | CLAIMED | — |
+| AU | Codex | codex/au-wording | BLOCKED | Execution budget reached; exhaustive review unfinished |
+| AV | Codex | codex/av-rollback-tests | BLOCKED | Tests pushed; SQL execution prohibited |
 | AW | Codex | codex/aw-data-load | DONE IN PR | #264 |
