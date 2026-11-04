@@ -107,7 +107,7 @@ Rhys explicitly assigned the new CA to CI integration/evidence queue to this Cod
 
 | Job code | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
-| CA | Codex, explicit new queue handoff; claims/CA | codex/ca-sliq-releases | CLAIMED | pending |
+| CA | Codex, explicit new queue handoff; claims/CA | codex/ca-sliq-releases | DONE IN PR, RUNTIME BLOCKED | #272; ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b; 5457 unit pass, 0 failed/skipped; 19 focused pass; tsc/lint/checksums pass; real DB BLOCKED by managed image-store ENOSPC |
 | CB | Codex, explicitly assigned; not claimed yet | codex/cb-release-gate | QUEUED | pending |
 | CC | Codex, explicitly assigned; not claimed yet | codex/cc-jnr-reconciliation | QUEUED | pending |
 | CD | Codex, explicitly assigned; not claimed yet | codex/cd-sliq-dry-run | QUEUED | pending |
