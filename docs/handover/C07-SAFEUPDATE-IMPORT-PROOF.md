@@ -53,3 +53,7 @@ Atomic `claims/L11`. Runner, real tests and workflow are committed as a draft; o
 ### Second CI setup result and correction
 
 Run [41869503806](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41869503806), source 55bcb05, failed before activation/import tests: bootstrap psql used socket password authentication and answered `fe_sendauth: no password supplied`. The scoped preload SQL was not applied. Follow-up passes only the freshly generated local stack password through stdin to that container's bootstrap connection, never argv/logs; importer roles remain unchanged. This corrects setup rather than disabling any test or enforcement. Runtime proof remains open until the corrected run completes.
+
+### Third CI setup result and correction
+
+Run [41870299593](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41870299593), source 55b97b3, authenticated bootstrap and applied the role setting, but the fresh connection failed with `could not access file "supautils,safeupdate": No such file or directory`. ALTER ROLE had encoded the comma-joined value as one quoted library item. Follow-up sets two separately quoted configuration-list entries, preserving supautils and adding safeupdate. No enforcement or assertion was removed; import proof remains unrun until activation succeeds.
