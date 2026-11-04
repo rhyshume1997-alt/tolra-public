@@ -197,3 +197,22 @@ Rhys explicitly assigned six document/review jobs; atomic claims B4, D5, G9, C6,
 - DB #333: Six dated rows: Fri6 backup/restore, Sat7 conditional wipe, Mon9 meeting, Tue10/Wed11 codes, Thu12 cutover; each has STOP.
 
 No main merge/production SQL/Ready/deployment/newfeature/message send or signature. Source/inventory checks pass; documentation CI statuses above are not runtime/operator proof. Exact exports/pack/private handover, actual UAT and backup/restore/wipe/import/MFA/provider/SQL/browser evidence and John/Rhys/reviewer decisions remain open. DA requires authoritative41c685c4-vs9c3f5c6 base choice and conditional preservation before closures; no closure performed. Protected costing half-even/60golden unchanged. Historical52/61 audit stays stopped. Friday6 deadline / Thursday12 target retained.
+
+
+## Builder 3 explicit M1–M4 queue, 4 November 2026
+
+Rhys assigned four new documentation/review jobs; claims/M1–M4 created atomically with no existing claim overwritten. Original builder6/builder5/Claude importer/delivery ownership retained. One independent main-based draft per job. Full done/in-progress/not-started record: tests/HANDOVER-BUILDER-3.md on #271.
+
+| Job / draft | Exact head | Branch → target | CI snapshot |
+| --- | --- | --- | --- |
+| M1 / [#362](https://github.com/rhyshume1997-alt/tolra-public/pull/362) | `7f3a8d48e7bc498628c175e62ed50419b4841856` | `codex/m1-second-review-c03-c16` → `main` | [41887095613](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41887095613) completed, success |
+| M2 / [#364](https://github.com/rhyshume1997-alt/tolra-public/pull/364) | `83a2826b29ca6fdb139f4a0e7812d103865426be` | `codex/m2-sliq-load-runbook` → `main` | [41887740603](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41887740603) completed, success |
+| M3 / [#365](https://github.com/rhyshume1997-alt/tolra-public/pull/365) | `1970388d390df9f8c8af9dcd7d94d1d5f71aa174` | `codex/m3-delivery-note-uat` → `main` | [41888283373](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41888283373) completed, success |
+| M4 / [#367](https://github.com/rhyshume1997-alt/tolra-public/pull/367) | `a23e3041e75ec5a90dc2bb66f68247614ea77c7f` | `codex/m4-john-iso-pack-gaps` → `main` | [41888854407](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41888854407) completed, success |
+
+- M1 #362: Independent second source review of all five #350–#354 files,21 findings/corrections,452 unfilled source-table rows;189 existing C03 IDs and125 canonical fields retained.
+- M2 #364: docs/handover/SLIQ-LOAD-RUNBOOK.md: reported .xls/row6/footer conversion controls,2035+2=2037 October baseline, final/delta controls and complete unpaid/aged-debtors three-way tie-out.
+- M3 #365: docs/handover/DELIVERY-NOTES-UAT-JOHN.md:18 required goods-out checks plus exactly six John questions; create/number/print/PDF/email/job/customer/receipt controls and actual blocker visibility.
+- M4 #367: docs/iso9001/JOHN-PACK-GAPS.md:30 owner/evidence/timing actions; all14 I7 feature gaps and18 source files covered; actual company adoption remains open.
+
+All four docs CI runs successful; no runtime/operator/company audit/financial/print/acceptance proof inferred. Verbatim private reviewer conditions/Operations Pack remain unavailable; actual originals/money totals/converter/operational-loader proof, required delivery-note numbering/job-route/UAT, private ISO company evidence and separate signatories remain open. No main merge, production SQL, live send/load, Ready label, deployment or new feature; no source-owner branch overwritten. Historical52/61 audit remains stopped. Required six-release order, retained146history/key_source and no reapply after rollback preserved.
