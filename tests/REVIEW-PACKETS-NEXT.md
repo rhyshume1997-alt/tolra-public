@@ -1,6 +1,6 @@
 # Next review packets
 
-Snapshot: 4 November 2026. Scope: open PRs changed by this Codex worker, including the coordination PR. Read-only inspections of other builders' PRs are not modifications. #185 is omitted because GitHub confirms it is merged. New queue PRs need their own packets when published. These are review requests, not verdicts or authority to merge, send mail or apply SQL. Recheck the head before using any packet; a changed head invalidates its evidence.
+Snapshot: 4 November 2026. Scope: open PRs changed by this Codex worker, including the coordination PR. Read-only inspections of other builders' PRs are not modifications. #185 is omitted because GitHub confirms it is merged. The queue follow-ups below are now included. This packet document's own review packet is in its PR description, so it can name the final document commit without a self-referencing hash. These are review requests, not verdicts or authority to merge, send mail or apply SQL. Recheck the head before using any packet; a changed head invalidates its evidence.
 
 Evidence source for historical counts: docs/TOLRA-CODEX-BUILD-HANDOVER.md on codex/work-ownership (AT logs retained in the working environment). Counts below were executed, not inferred from test files. Missing hosted logs are a review limitation; request a fresh run where required.
 
@@ -112,4 +112,52 @@ NOT proved: All four rollback runtime proofs NOT TESTED. 138/145 intentionally r
 Question: Is this exact change SAFE, SAFE WITH CONDITIONS or NOT SAFE? Name every remaining condition and the evidence needed. Assess code review separately from permission to release.
 ```
 
+
+## PR #267
+
+```text
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/267
+Full head SHA: 9795ee1a8f5985dcaffb7823f9d55ded8698892d
+Base: codex/x-final-main-candidate
+What changed: Numbered backup/dump/restore/preflight/apply/verify/rollback commands with a stop rule at every step.
+Tests and counts: 12 steps, 14 shell blocks checked with bash -n, referenced files and diff pass. CI 41802000147 success (document-only).
+NOT proved: No SQL or backup/restore executed; separately approved rehearsal/live target and prerequisites required.
+Question: Is this exact change SAFE, SAFE WITH CONDITIONS or NOT SAFE? Name every remaining condition and the evidence needed. Assess code review separately from permission to release.
+```
+
+## PR #268
+
+```text
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/268
+Full head SHA: 94449be9b8a711b2f8eae96f5b30403b22296c7b
+Base: codex/x-final-main-candidate
+What changed: Three named N1/N5/N6 browser tests with real persistence checks, fresh synthetic companies and other-company comparisons.
+Tests and counts: 3 browser tests collected; 39 supporting units passed, zero failures/skips; TypeScript and changed-file ESLint passed. CI 41802454373 web passed; integration skipped and ci-gate failed.
+NOT proved: No browser/SQL acceptance run. Missing reviewed 145 fails. Full local suite result must be read from the current tracker.
+Question: Is this exact change SAFE, SAFE WITH CONDITIONS or NOT SAFE? Name every remaining condition and the evidence needed. Assess code review separately from permission to release.
+```
+
+## PR #269
+
+```text
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/269
+Full head SHA: 89849ae3331bb6703a7d076d540843c4f63b6bc9
+Base: codex/x-final-main-candidate
+What changed: Go/no-go ledger covering 41 day checkboxes, 36 manual steps, 8 reviewer conditions and release gates.
+Tests and counts: All source rows matched; diff passed. CI 41802704485 success (document-only).
+NOT proved: Exact Go Live Operations Pack not found; external/private completeness blocked. Runtime gates remain NOT TESTED.
+Question: Is this exact change SAFE, SAFE WITH CONDITIONS or NOT SAFE? Name every remaining condition and the evidence needed. Assess code review separately from permission to release.
+```
+
+## PR #270
+
+```text
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/270
+Full head SHA: 4f210972adbffa2d5cd5c4148b1065a8df7548ef
+Base: claude/sliq-import
+What changed: Two-company fake transfer generator, each with 300 customers/jobs/POs/invoices and 200 payments, expected integer-penny reconciliation and no overwrite/write mode.
+Tests and counts: 94 tests passed, zero failures/skips; TypeScript and targeted lint passed. Actual CLI dry runs reconcile 300 jobs/invoices per company and outstanding 1935150/2025150 pennies.
+NOT proved: No actual database creation/loading, real write retry or RLS proof. Full suite/CI results must be read from the current tracker; generated inputs are not a populated database.
+Question: Is this exact change SAFE, SAFE WITH CONDITIONS or NOT SAFE? Name every remaining condition and the evidence needed. Assess code review separately from permission to release.
+```
 
