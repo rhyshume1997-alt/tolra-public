@@ -3,7 +3,7 @@
 **Your job: pick the right job, record your time, tell the office about problems.**
 
 1. Sign in with your own login. Check it says **JNR**. Wrong company? Stop and tell the office.
-2. Open **Hours** (`/time`). At the start of your shift, press **Clock in** once. Check it shows **Clocked in since** with the right time.
+2. Open **Weekly hours** (`/time`). At the start of your shift, press **Clock in** once. Check it shows **Clocked in since** with the right time.
 3. Open **Job Board**. Check the job number and instructions against the job sheet. If they differ, ask the supervisor before starting.
 4. Use **Start** when you begin that job. Use **Pause** when you stop working on it. In Hours, the job-time buttons are **Start** and **Stop**. Clocking in records your shift; starting a job records what you worked on. You need both.
 5. In Hours, press **Start break** when you leave for a break and **End break** when you return. Record the real times; the company rule works out paid time.
