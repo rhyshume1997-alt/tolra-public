@@ -95,6 +95,8 @@ import { PAYMENT_METHODS, type InvoicePayment, netPaid, paymentAmountProblem, pa
 import { documentTotals, fromPence, gbp, isTextLine, toPence } from "@/lib/money";
 import { companyVat, fromVatChoice, type VatChoice } from "@/lib/vat";
 import { VatRateSelect, VatToggle } from "@/components/vat-controls";
+import { CustomerSaysPaid } from "@/components/chase/customer-says-paid";
+import { resolveClaim } from "@/lib/chase/ui-store";
 import { ChasePauseControl, ChasePausedBadge, useChasePauses } from "@/components/chase/chase-pause";
 import { VatTotals } from "@/components/vat-totals";
 import { useColumnVisibility } from "@/lib/org-settings";
@@ -158,6 +160,7 @@ type InvoiceBase = {
   sentAt?: string;
   /** Imported without payment details: to be confirmed before it counts as owed (migration 027). */
   paymentUnverified?: boolean;
+  paymentClaimedAt?: string | null;
   /** The single description/qty/price stored on the invoice header, used when there are no line items. */
   headerLine?: InvoiceLine;
   /** Real line items, when known (demo data). Saved invoices load theirs from invoice_line_items. */
@@ -350,7 +353,7 @@ export default function InvoicesPage() {
   /** Bulk "pay in full" waiting for confirmation (audit D18): exactly these invoices are written, each for its balance. */
   const [bulkToPay, setBulkToPay] = useState<InvoiceRow[] | null>(null);
   // Reversing a payment and confirming imported payments stay with admins (the database refuses anyone else too).
-  const { hasRole } = useUser();
+  const { hasRole, hasAnyRole, session } = useUser();
   /** Edit Draft needs replace_draft_invoice (067): hidden until the database has it, so the app can go out before the SQL. */
   const draftEditAvailable = useDatabaseHas067() === true;
   /** Void, £0 text lines, the note, the delivery address and the customer's mobile need 073: hidden until the database has it. */
@@ -467,6 +470,7 @@ export default function InvoicesPage() {
         unnumbered: !invoice.invoice_ref,
         sentAt: invoice.sent_date ? String(invoice.sent_date) : undefined,
         paymentUnverified: invoice.payment_unverified === true,
+        paymentClaimedAt: invoice.payment_claimed_at === undefined ? undefined : invoice.payment_claimed_at ? String(invoice.payment_claimed_at) : null,
         customer: String(invoice.customer || ""),
         amount: Number(invoice.total || 0),
         subtotal: invoice.subtotal === null || invoice.subtotal === undefined ? undefined : Number(invoice.subtotal),
@@ -819,8 +823,8 @@ export default function InvoicesPage() {
 
   /** The dialog's "Record payment" button. */
   async function recordPayment() {
-    const invoice = paymentFor;
-    if (!invoice) return;
+    if (!paymentFor) return;
+    const invoice = { ...paymentFor };
     if (saving) return;
     const amount = Number(payAmount);
     // Exact pennies: what is typed must be pounds and at most two decimals; nothing is rounded-none for the person.
@@ -882,6 +886,11 @@ export default function InvoicesPage() {
         recovered = outcome.recovered;
         setRows((current) => current.map((item) => item.id === invoice.id ? { ...item, amountPaid: result.amountPaid, rawStatus: result.status, paidAt: result.status === "paid" ? `${payDate}T12:00:00Z` : undefined } : item));
         if (recovered) void loadInvoices();
+      }
+      if (invoice.paymentClaimedAt && supabase && invoice.id) {
+        try { await resolveClaim(supabase, invoice.id, "confirmed"); invoice.paymentClaimedAt = null; }
+        catch { toast.warning("The payment was saved, but the payment claim still needs checking. Do not record the payment again."); }
+        void loadInvoices();
       }
       setPayUncertain(false);
       setAttemptsVersion((n) => n + 1);
@@ -1551,6 +1560,24 @@ export default function InvoicesPage() {
                   : viewingInvoice.amountPaid > 0 ? <div><span className="field-label block">Paid</span><p className="font-medium text-slate-950">{currency(viewingInvoice.amountPaid)} received{viewingInvoice.status === "paid" && viewingInvoice.paidAt ? `, settled ${fmtDate(viewingInvoice.paidAt)}` : ""}{viewingInvoice.paymentUnverified ? "; payment to confirm" : viewingInvoice.partPaid ? `; balance due ${currency(viewingInvoice.balance)}` : ""}</p></div> : null}
               </div>
 
+              {viewingInvoice.id && viewingInvoice.paymentClaimedAt !== undefined && invoiceLifecycle(viewingInvoice.rawStatus) === "collectible" && hasAnyRole(["admin", "office"]) && !session?.support && !session?.read_only ? <CustomerSaysPaid key={`${viewingInvoice.id}-${viewingInvoice.paymentClaimedAt ?? "none"}`} invoiceId={viewingInvoice.id} invoiceNumber={shownInvoiceRef(viewingInvoice)} paymentToConfirm={!!viewingInvoice.paymentClaimedAt} disabled={saving}
+                confirmationOpensForm
+                confirmationMessage="Record the payment in the form. Chasing stays paused until the payment is saved."
+                onCustomerSaysPaid={async (id) => {
+                  if (!supabase) throw new Error("Changes are not available.");
+                  const { error } = await supabase.rpc("mark_payment_claimed", { p_invoice: id, p_source: "manual", p_evidence: "Customer says paid", p_message_id: null });
+                  if (error) throw error;
+                  const claimed = new Date().toISOString();
+                  setRows((rows) => rows.map((row) => row.id === id ? { ...row, paymentClaimedAt: claimed } : row));
+                  setViewingInvoice((row) => row?.id === id ? { ...row, paymentClaimedAt: claimed } : row);
+                }}
+                onConfirmPaymentReceived={() => { openPayment(viewingInvoice); }}
+                onNotReceivedResumeChasing={async (id) => {
+                  if (!supabase) throw new Error("Changes are not available.");
+                  await resolveClaim(supabase, id, "not_received");
+                  setRows((rows) => rows.map((row) => row.id === id ? { ...row, paymentClaimedAt: null } : row));
+                  setViewingInvoice((row) => row?.id === id ? { ...row, paymentClaimedAt: null } : row);
+                }} /> : null}
               {viewingInvoice.id && viewingInvoice.rawStatus !== "draft" ? <ChasePauseControl target={{ kind: "invoice", id: viewingInvoice.id, name: shownInvoiceRef(viewingInvoice) }} onChange={() => void chasePauses.reload()} /> : null}
 
               {viewError ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{viewError}</div> : null}
