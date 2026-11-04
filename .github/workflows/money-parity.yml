@@ -1,11 +1,14 @@
 name: Money rounding parity (one-off)
-# Manual only: never runs on a push or a pull request. A disposable runner-owned local Supabase stack (every migration of the
+# One-off. Runs on manual dispatch and on a push to THIS branch only (needed once so GitHub registers the workflow: a
+# dispatch-only workflow that exists on no default branch cannot be dispatched by id). Never on a pull request or any other branch. A disposable runner-owned local Supabase stack (every migration of the
 # candidate, 000-144, as ci.yml's integration job) and the money parity tests under it (scripts/money-parity/run.sh): draft
 # PR #284's tests/db/money-rounding-parity.test.ts, byte-identical to its head, and the 38 tie cases. Candidate under test:
 # 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8, app tree unchanged (scripts/money-parity/shas.sh fails otherwise). Synthetic data
 # only; read-only SELECTs. No hosted database, no secret beyond the job's own read-only token for the image pulls.
 on:
   workflow_dispatch:
+  push:
+    branches: [claude/money-parity-oneoff]
 permissions:
   contents: read
   packages: read
