@@ -1,0 +1,11 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/overnight/g25
+
+ ✓ tests/unit/b5-g25-evidence-only.test.ts (9 tests) 35ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  21:57:41
+   Duration  1.61s (transform 590ms, setup 0ms, collect 819ms, tests 35ms, environment 0ms, prepare 229ms)
+
