@@ -1,0 +1,387 @@
+# Outstanding database and browser evidence
+
+**Software status: NOT VALIDATED.** Reviewer verdict for #258 is SAFE WITH CONDITIONS. That verdict, the 347 mapped unit passes, the 5,461 full unit passes and the existence of this pack do not validate the software or approve release, SQL, wiping or go-live. Rhys's VSR signature and protocol results remain blank.
+
+Frozen CA to CD review integration based on #247 is `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`. Full CI [41722093670](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41722093670) was checked as in progress with no conclusion. It is not recorded as passed. Every checkbox below remains unticked until its exact final-head result, tester, date and evidence are reviewed. An unchecked file means final-head evidence is not accepted/recorded here; it does not erase an older or separately scoped run. A skip is not a pass. Record its cause and keep the condition open.
+
+## Scoped extras evidence does not clear the whole file inventory
+
+Reviewer/Code reported extras [41722081841](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41722081841) proves 145/146 install/verify, the observational admin/office/workshop/viewer role step, second-install refusals, outstanding-reservation rollback refusal and rollback after settling retaining history. The overall run failed at seed D2 only because #243's mark-disposable.sql is absent from #247. Seed D1 hosted-address/missing-marker refusals passed. These scoped results do not establish support/outsider/anon coverage, execute every independent DB test, complete a browser rehearsal or make the software validated.
+
+## Unresolved conditions and independently targeted DB proofs
+
+- [ ] Full final-head `npm run test:db` and CI run 41722093670 complete with reviewed results, exact failures/skips and causes. Evidence: ____
+- [ ] Baseline catalogue plus upgrade rehearsal through 144, ordered 145 then 146 and combined release verification on final code. Scoped extras success is supporting evidence only. Evidence: ____
+- [ ] Real two-independent-session near-cap race in `tests/db/tolra-ai-cap-concurrency.test.ts`, plus over-cap refusal; no unit fake substitutes. Evidence: ____
+- [ ] Provided mode without a global key refuses round-up/RFQ/assistant while a working company key remains configured; no request/usage/key fallback changes. `tests/db/tolra-provided-ai.test.ts`. Evidence: ____
+- [ ] Setup permissions including support, elevated support, outsider and anon: final-head company-setup-isolation plus independent #251 setup-reviewer-permissions and #252 reviewer-setup-conditions. Evidence: ____
+- [ ] #254 and #256 `reviewer-cap-conditions.test.ts`: actual PostgreSQL owner-only cap ACLs and two-company refusal. Evidence: ____
+- [ ] #256 `reviewer-accounting-permissions.test.ts`: actual provider/company isolation, private tokens and OAuth role/support refusal. Evidence: ____
+- [ ] #255 exact approved recipient/subject/body and unknown delivery never resends, with actual DB claims and mock transport only. Evidence: ____
+- [ ] #255 named DB edit-invalidates-reviewed-text case, followed by fresh review of the changed text. Evidence: ____
+- [ ] #255 named DB paid-claim case: original financial fields and payment rows unchanged, chasing blocked. Evidence: ____
+- [ ] #255 named DB concurrent duplicate approval and subsequent retry send once. Evidence: ____
+- [ ] #255 named DB cross-company create/approve/payment-claim refusal. Evidence: ____
+- [ ] #253 into #241 `reviewer-inbound-conditions.test.ts`: delegated paid/remittance/payment-sent messages and duplicates leave two-company invoices/payments unchanged. Local attempt stopped before SQL: 1 failed preflight, 0 skips, TEST_SUPABASE_URL unset. Evidence: ____
+- [ ] #207 reviewer/runtime acceptance remains explicitly BLOCKED; no new completion evidence supplied. Evidence: ____
+- [ ] Seed D2 marker-dependent refusal/positive completion using #243's reviewed mark-disposable.sql in the correct disposable checkout; missing file is a packaging prerequisite, not evidence of a seed-guard defect. Evidence: ____
+- [ ] #250 real combined wipe kit rehearsal: NOT SAFE until Code proves the real driver/inputs, before/after protected state, archive, permissions, refusals, FK order and rollback. Temporary source twins do not clear this block. Evidence: ____
+- [ ] 146 rollback/reset stop rule observed: key_source/history/usage remain by design; reinstall after rollback requires a separately authorised disposable reset. No column/history deletion or weakened guard. Evidence: ____
+
+## Every candidate database file still awaiting accepted final-head evidence
+
+This inventory includes every `tests/db/**/*.test.ts` on this candidate. It supplements the mapped subset, without excluding baseline tests. Full CI is pending, so no file is ticked from an assumed suite pass. Independently targeted files listed above are not silently folded into this branch.
+
+- [ ] DB-001 `tests/db/accountant-invite-129.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-002 `tests/db/activity-labels.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-003 `tests/db/activity-one-row-094.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-004 `tests/db/activity-redaction.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-005 `tests/db/admin-mfa-onboarding.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-006 `tests/db/admin-mfa.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-007 `tests/db/ai-assistant-134.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-008 `tests/db/ai-finance-check-audit-095.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-009 `tests/db/ai-helper-101.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-010 `tests/db/ai-helper-pre-enable-133.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-011 `tests/db/ai-helper-service-role-103.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-012 `tests/db/approval-count.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-013 `tests/db/archive.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-014 `tests/db/attendance-expected-company-090.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-015 `tests/db/audit-chain-077.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-016 `tests/db/audit-events.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-017 `tests/db/audit-integrity.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-018 `tests/db/auto-book.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-019 `tests/db/bench-pause.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-020 `tests/db/board-reads-isolation.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-021 `tests/db/booking-day-plan.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-022 `tests/db/booking-run-identity.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-023 `tests/db/booking-writes.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-024 `tests/db/catalogue.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-025 `tests/db/chase-steps-138.test.ts` (URS-013). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-026 `tests/db/clock-in-network-lock-114.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-027 `tests/db/company-access.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-028 `tests/db/company-setup-isolation.test.ts` (URS-011). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-029 `tests/db/converted-sales-order-088.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-030 `tests/db/credit-note-crd.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-031 `tests/db/credit-notes.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-032 `tests/db/credit-pdf-setting.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-033 `tests/db/cross-org-links.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-034 `tests/db/customer-archive-100.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-035 `tests/db/customer-credit.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-036 `tests/db/customer-signoff.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-037 `tests/db/dashboard-tiles-132.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-038 `tests/db/data-import-pr2.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-039 `tests/db/data-import-safeupdate.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-040 `tests/db/data-import-workbook.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-041 `tests/db/data-import.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-042 `tests/db/definer-functions.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-043 `tests/db/delivery-note-auto-invoice.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-044 `tests/db/delivery-note-email.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-045 `tests/db/despatch-freeze.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-046 `tests/db/despatch-invoicing.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-047 `tests/db/document-attachments.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-048 `tests/db/document-economics.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-049 `tests/db/draft-correction.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-050 `tests/db/draft-issue.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-051 `tests/db/draft-issuer-settings.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-052 `tests/db/email-templates-106.test.ts` (URS-012). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-053 `tests/db/inbound-mail.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-054 `tests/db/inspection-controls.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-055 `tests/db/integrations-084.test.ts` (URS-009). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-056 `tests/db/integrations-connect-107.test.ts` (URS-009). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-057 `tests/db/internal-jobs.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-058 `tests/db/invoice-issue-091.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-059 `tests/db/invoice-payments.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-060 `tests/db/invoice-receipt-089.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-061 `tests/db/invoice-screen.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-062 `tests/db/invoice-write-off-105.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-063 `tests/db/iso-083.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-064 `tests/db/isolation.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-065 `tests/db/issue-vat-registration.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-066 `tests/db/issued-documents.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-067 `tests/db/job-email-quota.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-068 `tests/db/job-files.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-069 `tests/db/job-flow.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-070 `tests/db/job-inspection.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-071 `tests/db/job-part-logs-118.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-072 `tests/db/job-photos.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-073 `tests/db/job-problems-117.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-074 `tests/db/job-signoff.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-075 `tests/db/job-spec-customer-po-135.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-076 `tests/db/legacy-import.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-077 `tests/db/machine-runs-risk.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-078 `tests/db/machine-runs.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-079 `tests/db/mail-poll.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-080 `tests/db/mail-send-ledger.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-081 `tests/db/office-documents.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-082 `tests/db/order-conversion.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-083 `tests/db/overview-owed-snapshots-116.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-084 `tests/db/part-despatch-invoice-099.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-085 `tests/db/password-change-ticket-137.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-086 `tests/db/password-gate.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-087 `tests/db/paused-machine-ack.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-088 `tests/db/platform-create-organization.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-089 `tests/db/prelaunch.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-090 `tests/db/privileged-aal.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-091 `tests/db/profile-names.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-092 `tests/db/protect-platform-owner-login-093.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-093 `tests/db/purchase-order-link-124.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-094 `tests/db/quote-customer-po-123.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-095 `tests/db/quote-lifecycle.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-096 `tests/db/quote-to-job.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-097 `tests/db/quote-versions.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-098 `tests/db/recent-second-step-136.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-099 `tests/db/release-ends-session-092.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-100 `tests/db/reopen-113.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-101 `tests/db/request-hook-guard.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-102 `tests/db/rework.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-103 `tests/db/rfq-clarification.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-104 `tests/db/rls-select-wrap-131-legacy.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-105 `tests/db/sales-order-machines.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-106 `tests/db/security-guards-102.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-107 `tests/db/session-revocation.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-108 `tests/db/site-network-ip-purge-service.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-109 `tests/db/site-network-ip-retention.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-110 `tests/db/site-network.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-111 `tests/db/sliq-import.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-112 `tests/db/storage.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-113 `tests/db/tenancy.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-114 `tests/db/time-attendance.test.ts` (URS-006). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-115 `tests/db/time-day-flags.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-116 `tests/db/time-labour.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-117 `tests/db/time-sync-rejections.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-118 `tests/db/time-week-race.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-119 `tests/db/time-week-review.test.ts` (URS-006). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-120 `tests/db/tolra-ai-cap-concurrency.test.ts` (URS-010). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-121 `tests/db/tolra-provided-ai.test.ts` (URS-010). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-122 `tests/db/traceability-suppliers.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-123 `tests/db/two-level-access.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-124 `tests/db/updated-at.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-125 `tests/db/user-date-format.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-126 `tests/db/volume.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-127 `tests/db/who-did-what.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-128 `tests/db/workflow-aal.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-129 `tests/db/workflow-verify.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-130 `tests/db/worksheet.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-131 `tests/db/workshop-money.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+- [ ] DB-132 `tests/db/workshop-network-128.test.ts` (full database suite). Result / skips and cause: ____ Evidence: ____
+
+## Every candidate browser file still awaiting accepted final-head evidence
+
+Use the identified disposable app, fake companies and controlled providers/recipients. Collection, a conditional skip, a visible success banner or unit rendering is not completion. Keep failed/not-run cases visible.
+
+- [ ] BR-001 `tests/e2e/access-recheck.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-002 `tests/e2e/admin-mfa.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-003 `tests/e2e/ai-helper.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-004 `tests/e2e/approvals-display.spec.ts` (URS-004). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-005 `tests/e2e/archive.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-006 `tests/e2e/attention.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-007 `tests/e2e/auth-page-errors.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-008 `tests/e2e/auto-book.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-009 `tests/e2e/auto-invoice.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-010 `tests/e2e/bench-pause.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-011 `tests/e2e/board-dialog.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-012 `tests/e2e/brand-flash.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-013 `tests/e2e/bulk-pay-uncertain.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-014 `tests/e2e/chase-steps.spec.ts` (URS-013). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-015 `tests/e2e/chasing-controls.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-016 `tests/e2e/clock-in-network-lock.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-017 `tests/e2e/columns-any-subset.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-018 `tests/e2e/company-switch-two-tabs.spec.ts` (URS-001). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-019 `tests/e2e/conversion.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-020 `tests/e2e/credit-notes.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-021 `tests/e2e/customer-archive.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-022 `tests/e2e/customer-journey.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-023 `tests/e2e/customer-save-conflict.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-024 `tests/e2e/dashboard-display.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-025 `tests/e2e/dashboard-figures.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-026 `tests/e2e/data-import.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-027 `tests/e2e/date-format.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-028 `tests/e2e/day-split.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-029 `tests/e2e/delivery-email.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-030 `tests/e2e/despatch.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-031 `tests/e2e/draft-issue.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-032 `tests/e2e/drawings.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-033 `tests/e2e/email-one-click.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-034 `tests/e2e/email-schedules.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-035 `tests/e2e/email-templates.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-036 `tests/e2e/email.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-037 `tests/e2e/export.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-038 `tests/e2e/forms.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-039 `tests/e2e/global-search.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-040 `tests/e2e/golive-essentials.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-041 `tests/e2e/hours-display.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-042 `tests/e2e/hours-tabs.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-043 `tests/e2e/identity.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-044 `tests/e2e/inspection.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-045 `tests/e2e/inspectors.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-046 `tests/e2e/integrations-connect.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-047 `tests/e2e/integrations-send-log.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-048 `tests/e2e/invoice-link.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-049 `tests/e2e/invoice-paid-detail.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-050 `tests/e2e/invoice-payments-lock.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-051 `tests/e2e/invoice-payments.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-052 `tests/e2e/invoice-void-refresh.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-053 `tests/e2e/issue-and-send.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-054 `tests/e2e/job-board-columns-count.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-055 `tests/e2e/job-board-confirm.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-056 `tests/e2e/job-board-delivery-note.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-057 `tests/e2e/job-board-headings.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-058 `tests/e2e/job-board-layout.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-059 `tests/e2e/job-board-offline-pdf.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-060 `tests/e2e/job-board-play.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-061 `tests/e2e/job-board-redesign.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-062 `tests/e2e/job-flow.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-063 `tests/e2e/job-parts.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-064 `tests/e2e/job-photos.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-065 `tests/e2e/job-pickers.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-066 `tests/e2e/job-spec-customer-po.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-067 `tests/e2e/layout.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-068 `tests/e2e/machine-runs.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-069 `tests/e2e/mobile-polish.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-070 `tests/e2e/money.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-071 `tests/e2e/my-jobs-problems.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-072 `tests/e2e/new-job.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-073 `tests/e2e/numbers.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-074 `tests/e2e/offline.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-075 `tests/e2e/overview-figures.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-076 `tests/e2e/overview-jump.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-077 `tests/e2e/part-despatch-invoice.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-078 `tests/e2e/password-recovery.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-079 `tests/e2e/password.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-080 `tests/e2e/phone-width.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-081 `tests/e2e/platform-new-company.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-082 `tests/e2e/platform.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-083 `tests/e2e/po-receipt.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-084 `tests/e2e/print-layout-settings.spec.ts` (URS-007). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-085 `tests/e2e/public-homepage.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-086 `tests/e2e/quote-correction.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-087 `tests/e2e/quote-customer-po.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-088 `tests/e2e/quote-send-decided.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-089 `tests/e2e/quote-to-job.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-090 `tests/e2e/quote-versions.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-091 `tests/e2e/quotes-layout.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-092 `tests/e2e/receivables.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-093 `tests/e2e/rework.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-094 `tests/e2e/rfq-clarification.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-095 `tests/e2e/rfq-display.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-096 `tests/e2e/rfq-flow.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-097 `tests/e2e/roles.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-098 `tests/e2e/sales-orders-off.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-099 `tests/e2e/schedule-display.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-100 `tests/e2e/schedule-finish.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-101 `tests/e2e/schedule-live.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-102 `tests/e2e/schedule.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-103 `tests/e2e/security-hash-layout.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-104 `tests/e2e/send-confirmation.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-105 `tests/e2e/session-ended.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-106 `tests/e2e/session-timeout.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-107 `tests/e2e/settings-a11y.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-108 `tests/e2e/settings-display.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-109 `tests/e2e/signin-limits.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-110 `tests/e2e/signoff.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-111 `tests/e2e/so-machines.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-112 `tests/e2e/supplier-status.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-113 `tests/e2e/sweep-minor.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-114 `tests/e2e/sweep-rfq.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-115 `tests/e2e/tablet-outage.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-116 `tests/e2e/two-level-access.spec.ts` (URS-002). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-117 `tests/e2e/ui-pr1.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-118 `tests/e2e/ui-pr2.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-119 `tests/e2e/users-inspectors-layout.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-120 `tests/e2e/views.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-121 `tests/e2e/volume.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-122 `tests/e2e/walkthrough.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-123 `tests/e2e/who-did-what.spec.ts` (URS-008). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-124 `tests/e2e/whole-floor.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-125 `tests/e2e/worksheet.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-126 `tests/e2e/workshop-my-jobs.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-127 `tests/e2e/xero-batch.spec.ts` (URS-009). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-128 `tests/e2e/year-end.spec.ts` (full browser suite). Result / skips and cause: ____ Evidence: ____
+- [ ] BR-129 `tests/e2e/zero-rows.spec.ts` (URS-003). Result / skips and cause: ____ Evidence: ____
+
+## Separate reviewer browser branch and provider checks
+
+These #245 files are separate from #247 unless subsequently integrated. They remain unticked; do not claim the candidate inventory alone includes them.
+
+- [ ] #245 `tests/e2e/reviewer/chase.spec.ts`: exact approved text, stale review, double send, uncertain delivery and payment claims. Evidence: ____
+- [ ] #245 `tests/e2e/reviewer/ai-support.spec.ts`: both key modes, no key disclosure/fallback, per-company caps, owner MFA and staff/support refusal. Evidence: ____
+- [ ] #245 `tests/e2e/reviewer/accounting.spec.ts`: encrypted-token flow, role/company/provider isolation, connect/disconnect and safe refusal. Evidence: ____
+- [ ] #245 `tests/e2e/reviewer/setup-email-hours.spec.ts`: blank setup, access boundaries, paid/unpaid hours and both email editors/legacy text. Evidence: ____
+- [ ] Xero sandbox connect/mappings/export/refusal/disconnect for A, with B unchanged. G06/G07. Evidence: ____
+- [ ] Sage sandbox connect/mappings/export/refusal/disconnect, with Xero/QuickBooks and B unchanged. G09. Evidence: ____
+- [ ] QuickBooks sandbox connect/mappings/export/refusal/disconnect, with Xero/Sage and B unchanged. G09. Evidence: ____
+- [ ] Real controlled-catcher message matches approved recipient/subject/body exactly once; uncertain delivery needs checking and never automatically resends. G02/G11. Evidence: ____
+
+## Every numbered manual installation/browser check still unticked
+
+The source is [the go-live checklist](../MANUAL-CHECKS-GO-LIVE.md). Every row there remains NOT RUN in this blank pack. Fill its actual result and evidence only after performing it. These rows include IQ preparation and Rhys's manual acceptance, not just automated browser files.
+
+- [ ] G00.1: Ask Code for the candidate commit and any uncommitted differences. Write down the app address and exact revision. Evidence / tester / date: ____
+- [ ] G00.2: Ask Code to record Node and npm versions and compare them with CI. Evidence / tester / date: ____
+- [ ] G00.3: Ask Code for the successful locked dependency install log (`npm ci`). Evidence / tester / date: ____
+- [ ] G00.4: Ask Code to confirm the database is disposable, the backup can be restored and the reviewed release inventory is present, baseline through 144 followed by 145 setup then 146 AI/cap. Evidence / tester / date: ____
+- [ ] G00.5: Check that A, B and separate admin, office, workshop, viewer and support logins are ready. Evidence / tester / date: ____
+- [ ] G00.6: Ask Code for `npm run validate:pack`, typecheck and lint logs for this exact revision. Evidence / tester / date: ____
+- [ ] G01.1: Sign in to Company A. Open Customers and add `ZZ Rehearsal Customer`, using only the controlled test inbox. Evidence / tester / date: ____
+- [ ] G01.2: Open Invoicing, choose New invoice and select that customer. Add a line named `ZZ rehearsal only`, quantity 1, with a made-up price of £1.23. Set the due date to yesterday. Check the VAT shown rather than guessing the total. Evidence / tester / date: ____
+- [ ] G01.3: Save, reopen and issue the invoice using the normal Issue action. Write down its allocated number, total, due date and unpaid balance. Evidence / tester / date: ____
+- [ ] G01.4: In Company B, search Customers and Invoicing for the exact customer and allocated invoice number. Evidence / tester / date: ____
+- [ ] G02.1: In A's email schedule settings, review the chase steps. Save them, then reload. Evidence / tester / date: ____
+- [ ] G02.2: Open Invoicing and use the action to create chase drafts for overdue invoices. Open Approvals and find the ZZ invoice. Evidence / tester / date: ____
+- [ ] G02.3: Choose Edit on the ZZ draft. In the email editor change the subject and add a final line `ZZ exact text check`. Save the edit. Copy the full displayed recipient, subject and body into a local evidence text file. Evidence / tester / date: ____
+- [ ] G02.4: Use Approve and send and read any confirmation. Complete the confirmation, clicking Send twice quickly where possible. Evidence / tester / date: ____
+- [ ] G02.5: Reload Approvals and the invoice. Check the sent history. Evidence / tester / date: ____
+- [ ] G02.6: Ask Code to use a separate ZZ draft and the local catcher's uncertain-delivery simulation. Approve once, then try the available retry action and reload. Evidence / tester / date: ____
+- [ ] G03.1: Reopen the unpaid ZZ invoice. Note its status, amount paid and balance. Click Customer says paid. Evidence / tester / date: ____
+- [ ] G03.2: Reload, then try making another chase draft for it. Evidence / tester / date: ____
+- [ ] G03.3: Read Confirm payment received, but do not complete a payment merely because the customer says so. Choose Not received, resume chasing for this fake claim. Evidence / tester / date: ____
+- [ ] G03.4: Ask Code to feed fake inbound replies saying `paid`, `remittance` and `payment sent` through the test mailbox. Reopen the affected fake invoices. Evidence / tester / date: ____
+- [ ] G04.1: In A, open Settings and the hours settings. Turn Breaks are paid on; save. In B turn it off; save. Set both working weeks to Monday–Friday 08:00–16:00. Evidence / tester / date: ____
+- [ ] G04.2: In each company, open the working-hours summary, the Hours/day screen and that test week's timesheet. Evidence / tester / date: ____
+- [ ] G04.3: Check the words describing breaks, then sign out and back in to both companies. Evidence / tester / date: ____
+- [ ] G05.1: As A's admin, open Admin → Integrations and find AI. Turn AI off and reload. Open the assistant through the normal navigation. Evidence / tester / date: ____
+- [ ] G05.2: Leave B off. In A choose the prepared test AI mode and turn AI on. Ask a harmless fake question such as `Summarise the ZZ test work`. Evidence / tester / date: ____
+- [ ] G05.3: As Rhys, open the platform AI allowance controls and set a small test cap for A only. Reopen A and B as their admins. Evidence / tester / date: ____
+- [ ] G05.4: As ordinary staff, try opening the integration settings. Ask Code for the two-company isolation and near-limit simultaneous-request test evidence. Evidence / tester / date: ____
+- [ ] G05.5: Turn A's AI off again and reload. Evidence / tester / date: ____
+- [ ] G06.1: As A's admin, open Admin → Integrations and find Xero. Evidence / tester / date: ____
+- [ ] G06.2: With the prepared demo registration, click Connect to Xero, sign in to the demo organization and approve. Evidence / tester / date: ____
+- [ ] G06.3: Before mapping account codes, check the ZZ invoice and the demo Xero organization. Do not press Send now. Evidence / tester / date: ____
+- [ ] G06.4: Open B's Integrations. Then return to A and disconnect the demo connection. Evidence / tester / date: ____
+- [ ] G07.1: As A's admin, open Admin → Integrations and find the accountant invite card. Enter a second controlled test inbox and create the invitation. Evidence / tester / date: ____
+- [ ] G07.2: Open the link in a separate private browser and sign in as that invited test person. Evidence / tester / date: ____
+- [ ] G07.3: Back in A, cancel any remaining unused accountant invitation. Under Xero, find `The accountant does the Xero sign-in?` and create its link if registration is ready. Evidence / tester / date: ____
+- [ ] G07.4: Cancel the unused Xero connect link and try it in a private browser. Sign in as ordinary staff and revisit the invitation screen. Evidence / tester / date: ____
+- [ ] G08.1: As Rhys's platform account, open Platform → New company. Enter `ZZ Blank Rehearsal`, a unique slug and the same controlled first-admin email twice. Click Create company. Evidence / tester / date: ____
+- [ ] G08.2: Sign in as that company's admin. Open Customers, Jobs, Quotes, Invoicing and Activity. Search for the exact ZZ invoice from A. Evidence / tester / date: ____
+- [ ] G08.3: Follow the setup guide: company details; logo/colours; working hours; paid/unpaid breaks; people/roles; accounting connections; AI; email; finally import. Leave optional connections off and do not import anything. Evidence / tester / date: ____
+- [ ] G08.4: Save fake company details and a test logo. Choose unpaid breaks and tick only the steps actually checked. Reload. Evidence / tester / date: ____
+- [ ] G08.5: Open A and B again, then open the blank company as ordinary staff and as read-only and elevated support sessions prepared by Code. Evidence / tester / date: ____
+- [ ] G09.1: In A's Integrations, check Sage and QuickBooks before Code provides a sandbox registration. Try Connect where available. Evidence / tester / date: ____
+- [ ] G09.2: With Code's approved sandboxes, connect Sage and QuickBooks to A, one at a time. Reload. Evidence / tester / date: ____
+- [ ] G09.3: Prepare different fake invoice references for each provider. Before mapping, try the permitted test export; then map and explicitly approve one catcher-only export per provider. Reload each provider's results. Evidence / tester / date: ____
+- [ ] G09.4: Open B's Integrations and try the accounting pages as ordinary A staff. Return as A's admin and disconnect Sage only, then QuickBooks. Evidence / tester / date: ____
+- [ ] G10.1: As A's admin, open the chase template. Find Subject line, Greeting, Main message and Sign-off. Use the detail buttons or pick list to add a customer, invoice number, amount, due date and job where offered. Evidence / tester / date: ____
+- [ ] G10.2: Repeat on the timesheet template with its offered details. Save and reload both templates, then make a catcher-only draft and compare it with the saved template. Evidence / tester / date: ____
+- [ ] G10.3: Have Code supply an old-format fake template with unusual line breaks and existing markers. Open it, save without editing and reload. Evidence / tester / date: ____
+- [ ] G10.4: Open both editors as read-only staff and as B's admin. Try saving a change. Evidence / tester / date: ____
+- [ ] G11.1: Have Code prepare two fake customers with exactly the same name but different controlled catcher addresses. Create an overdue invoice using the ambiguous legacy name-only match, then request chase drafts. Evidence / tester / date: ____
+- [ ] G11.2: Open a separate normal ZZ draft in two browser tabs. Review the text in the first. In the second, change and save the body. Attempt the old approval from the first tab. Evidence / tester / date: ____
+- [ ] G12.1: Ask Code to confirm the platform-provided mode is disabled before its provider setup, then open A's AI choices. Evidence / tester / date: ____
+- [ ] G12.2: With both test key modes configured for A, choose own key and make a harmless test request. Switch to Tolra-provided and repeat, then switch back. Ask Code for captured provider identity evidence without secrets. Evidence / tester / date: ____
+- [ ] G12.3: As Rhys with MFA, inspect the default £10 monthly cap and visible maximum £1,000. Set a different small test cap for A. Attempt the same change as A's admin and as an owner session without MFA. Evidence / tester / date: ____
+- [ ] G12.4: Ask Code for over-cap refusal and the real two-independent-session near-cap race log. Compare reserved/settled usage with A's saved cap. Turn AI off after checking. Evidence / tester / date: ____
+- [ ] G13.1: Make a fake quote with fractional quantity and odd-penny VAT; follow it through job and draft invoice. Compare saved/printed pence with an independent calculation. Try the draft-payment action without issuing it. Evidence / tester / date: ____
+- [ ] G13.2: Finish a fake job, cancel reopening, then reopen with a reason using the approval/notification path. Evidence / tester / date: ____
+- [ ] G13.3: Preview the two supported print layouts using fake company records. Check the selected job, drawing, number and totals. Evidence / tester / date: ____
+- [ ] G13.4: As ordinary staff change a fake record. As admin inspect who changed what and when; try erasing the history as staff. Evidence / tester / date: ____
+- [ ] G14.1: Review every URS row, risk, IQ/OQ/PQ result, dated log, coverage gap, deviation and staff feedback. Fill the VSR only after the checks have actually run. Evidence / tester / date: ____
+
+## Decision remains open
+
+- [ ] Resolve every failed/unrun item and record reviewed deviations against URS/risk/IQ/OQ/PQ. Evidence: ____
+- [ ] Rhys reviews actual results and signs the blank VSR as validation lead only after his decision. Signature remains blank in the template.
+
+## CE current integration overrides historical status above
+
+Required JNR releases 140 and 141 and their DB isolation proof are now packaged in #272; no runtime result exists locally. Every item above is still unticked for `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`. The 347/5461 counts and old workflow links above are historical only, not final-head evidence. Local frozen integration unit count is 5567 with zero failures/skips. Real DB start was blocked by Docker image-store ENOSPC, not a test skip. Every IQ/OQ/PQ manual, browser/provider, full DB, independent reviewer condition, restore/wipe/import/reconciliation and release decision remains NOT TESTED on the integration until independently run. New mandatory DB file: tests/db/sliq-import-company-isolation.test.ts. Read CURRENT-RESULTS.md and RHYS-ACTIONS.md.

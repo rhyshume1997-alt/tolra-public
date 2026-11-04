@@ -1,0 +1,18 @@
+{
+  "recordedUtc": "2026-11-03T21:38:49.233877+00:00",
+  "codeCommit": "2cd2549880f6b8cef4675fab9332af9cbbdac699",
+  "candidateBase": "fe7514fbea7eaac2fead0237db0fa7d2abcc6db8",
+  "fullUnit": {
+    "numTotalTests": 5461,
+    "numPassedTests": 5461,
+    "numFailedTests": 0,
+    "numPendingTests": 0
+  },
+  "files": 411,
+  "command": "npm test -- --config vitest.config.ts --maxWorkers=4 --minWorkers=1 --reporter=json --outputFile=/tmp/ak-refresh-full-unit.json",
+  "typecheck": "PASS",
+  "changedFileLint": "PASS",
+  "SQLExecuted": false,
+  "databaseBrowserManualValidation": "NOT RUN",
+  "RhysVSRSignoff": "BLANK"
+}

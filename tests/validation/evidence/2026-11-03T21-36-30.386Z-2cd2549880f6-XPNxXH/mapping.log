@@ -1,0 +1,5 @@
+Command: node tests/validation/check-pack.mjs
+Exit: 0
+Pack structure passed: 14 requirements; IQ 6, OQ 14, PQ 8. No wholly unmapped URS rows. Read COVERAGE-GAPS.md for subcondition gaps. Execution and sign-off remain blank.
+
+

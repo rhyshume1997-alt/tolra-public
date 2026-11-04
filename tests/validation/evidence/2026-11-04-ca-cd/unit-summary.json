@@ -1,0 +1,25 @@
+{
+  "scope": "Local full unit suite only, not IQ/OQ/PQ or release approval",
+  "commit": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+  "recordedUtc": "2026-11-04T10:04:41.113923+00:00",
+  "command": "npx vitest run --config vitest.config.ts --maxWorkers=4 --minWorkers=1 --reporter=json --outputFile=/tmp/cd-full-unit.json",
+  "exit": 0,
+  "counts": {
+    "total": 5567,
+    "passed": 5567,
+    "failed": 0,
+    "skipped": 0
+  },
+  "reportSha256": "4cdc33b6373f0de810be2035f77436f23cec7934c1029be67a4647f8332e7f0b",
+  "consoleLogSha256": "26de20835f6fc5f3c7a289862cb94a7e8de9c5843362db9be69e5a2c335224ea",
+  "notProved": [
+    "database",
+    "browser",
+    "restore integrity",
+    "real combined wipe",
+    "real import",
+    "provider sandbox",
+    "manual IQ/OQ/PQ",
+    "Rhys validation approval"
+  ]
+}

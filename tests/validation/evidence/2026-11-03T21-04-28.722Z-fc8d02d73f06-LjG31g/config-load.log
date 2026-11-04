@@ -1,0 +1,13 @@
+
+> quoteflow-jnr@0.1.0 test:db
+> vitest run -c vitest.db.config.ts __config_load_only__ --passWithNoTests
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public
+
+filter:  __config_load_only__
+include: tests/db/**/*.test.ts
+exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+No test files found, exiting with code 0
+

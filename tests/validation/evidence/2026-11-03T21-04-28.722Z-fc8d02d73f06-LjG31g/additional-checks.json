@@ -1,0 +1,34 @@
+{
+  "recordedUtc": "2026-11-03T21:06:54.592472+00:00",
+  "codeCommit": "fc8d02d73f06bf029bcb05ac59120d40669db2de",
+  "fullUnit": {
+    "command": "npm test -- --config vitest.config.ts --maxWorkers=4 --minWorkers=1 --reporter=json --outputFile=/tmp/ak-final-full-unit.json",
+    "files": 411,
+    "total": 5461,
+    "passed": 5461,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "exit": 0
+  },
+  "lint": {
+    "command": "npx eslint tests/unit/validation-pack.test.ts tests/validation/check-pack.mjs tests/validation/run-evidence.mjs",
+    "exit": 0
+  },
+  "configLoad": {
+    "command": "npm run test:db -- __config_load_only__ --passWithNoTests",
+    "exit": 0,
+    "databaseTestsExecuted": 0,
+    "SQLExecuted": false
+  },
+  "logs": {
+    "full-unit.log": "498d7d8f18e8a11fa81a26f7ff35f04aaf5da97f0403bb7b5b9532202d4dac93",
+    "typecheck.log": "dcf6c5a4780bf3f387f42a09904db2af5d23365d4a3f5d632e5688de57f1b3fc",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "config-load.log": "b3ca45a345063480268213fc5cbd6ba1bab54ac75a344d79f621a6e15502f02b"
+  },
+  "validationLeadApproval": "NOT RUN; blank VSR for Rhys"
+}
