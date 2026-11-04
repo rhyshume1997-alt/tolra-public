@@ -14,8 +14,13 @@ try {
   const current = (await db.query("show session_preload_libraries")).rows[0].session_preload_libraries;
   const libraries = [...new Set([...current.split(',').map((x) => x.trim()).filter(Boolean), 'safeupdate'])].join(',');
   assert(/^[A-Za-z0-9_$,./-]+$/.test(libraries), 'Unexpected library configuration');
-  execFileSync('docker', ['exec', 'supabase_db_tolra-local-test', 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1',
-    '-c', `ALTER ROLE postgres IN DATABASE postgres SET session_preload_libraries = '${libraries}'`], { stdio: 'inherit' });
+  // The fresh CLI stack uses its generated local database password for bootstrap too.
+  // Pass it on stdin, never in argv, stdout or an error message; retain the existing test-only identity guard.
+  assert(url.password && !/[\r\n]/.test(decodeURIComponent(url.password)), 'Missing/invalid local test password');
+  execFileSync('docker', ['exec', '-i', 'supabase_db_tolra-local-test', 'sh', '-c',
+    'IFS= read -r PGPASSWORD; export PGPASSWORD; exec psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -c "$1"',
+    'c07-bootstrap', `ALTER ROLE postgres IN DATABASE postgres SET session_preload_libraries = '${libraries}'`],
+    { input: `${decodeURIComponent(url.password)}\n`, stdio: ['pipe', 'inherit', 'inherit'] });
 } finally { await db.end(); }
 const fresh = new pg.Client({ connectionString: url.href });
 await fresh.connect();

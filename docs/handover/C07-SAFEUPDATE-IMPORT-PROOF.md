@@ -49,3 +49,7 @@ The JSON gate requires all three named files to execute, at least one assertion 
 ## Handover / remaining proof
 
 Atomic `claims/L11`. Runner, real tests and workflow are committed as a draft; original candidate/source branches and migration bodies are untouched. CI/runtime outcome must be recorded on this exact PR head after running. Missing or failing DB proof stays P0 OPEN; source/lint/types are not a runtime pass. Code/reviewer must confirm the exact intended cutover route, complete passing no-skip proof and any discovered bug fixes before approval. No main merge, production SQL, deployment, Ready label or live import.
+
+### Second CI setup result and correction
+
+Run [41869503806](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41869503806), source 55bcb05, failed before activation/import tests: bootstrap psql used socket password authentication and answered `fe_sendauth: no password supplied`. The scoped preload SQL was not applied. Follow-up passes only the freshly generated local stack password through stdin to that container's bootstrap connection, never argv/logs; importer roles remain unchanged. This corrects setup rather than disabling any test or enforcement. Runtime proof remains open until the corrected run completes.
