@@ -34,8 +34,8 @@ it("sorts real sequencer input without dropping files, keeping 145, 146, the cap
  const sequencer = new ReleaseSequencer(ctx);
  const baseline = ["catalogue", "definer-functions", "time-labour", "workshop-network-128"].map(name => ({moduleId:`/repo/tests/db/${name}.test.ts`}));
  const proofs = post144ProofFiles.map(name => ({moduleId:`/repo/tests/db/${name}`}));
- expect(post144ProofFiles.at(-1)).toBe("job-delivery-note-147.test.ts");
- const input = [proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
+ expect(post144ProofFiles.slice(-2)).toEqual(["job-delivery-note-147.test.ts", "dln-day-of-counter.test.ts"]);
+ const input = [proofs[4], proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
  const original = [...input];
  const sorted = await sequencer.sort(input);
  expect(sorted).toEqual([...baseline, ...proofs]);
