@@ -203,6 +203,73 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mark_payment_claimed(uuid,text,text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1ee5cb529645fd03263bd9e481864b1d')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.resolve_payment_claim(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'd3cbee1ab48f8e29d20fe23f8d8603fd')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.invoice_issue_lock()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'aa8c9f3ae3035d0ed566723a28edd827')),
+    ('140 import source ref', CASE WHEN to_regprocedure('public.source_ref_import_only()') IS NOT NULL THEN (SELECT bool_and(ok IS TRUE) FROM (
+-- Migration 140 (the SliQ number an imported invoice, quote, purchase order, job or sales order had in SliQ).
+-- Read only: every row should be TRUE (6).
+SELECT 'five_columns_text_nullable' AS check_name,
+  (SELECT string_agg(table_name || ':' || data_type || ':' || is_nullable, ',' ORDER BY table_name) FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name IN ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') AND column_name = 'source_ref')
+    = 'invoices:text:YES,jobs:text:YES,purchase_orders:text:YES,quotes:text:YES,sales_orders:text:YES' AS ok
+UNION ALL SELECT 'five_checks_validated',
+  (SELECT count(*) FROM pg_constraint WHERE conname IN ('invoices_source_ref_check', 'quotes_source_ref_check', 'purchase_orders_source_ref_check',
+     'jobs_source_ref_check', 'sales_orders_source_ref_check') AND convalidated AND contype = 'c') = 5
+UNION ALL SELECT 'five_triggers_enabled',
+  (SELECT count(*) FROM pg_trigger t WHERE t.tgname = 'source_ref_import_only' AND NOT t.tgisinternal AND t.tgenabled = 'O'
+     AND t.tgfoid = to_regprocedure('public.source_ref_import_only()')
+     AND t.tgrelid IN (to_regclass('public.invoices'), to_regclass('public.quotes'), to_regclass('public.purchase_orders'),
+                       to_regclass('public.jobs'), to_regclass('public.sales_orders'))) = 5
+UNION ALL SELECT 'function_is_140s',
+  coalesce((SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923' AND NOT prosecdef
+            AND proconfig = ARRAY['search_path=pg_catalog, public']
+            FROM pg_proc WHERE oid = to_regprocedure('public.source_ref_import_only()')), FALSE)
+UNION ALL SELECT 'function_not_callable_from_the_api',
+  coalesce((SELECT NOT has_function_privilege('anon', oid, 'EXECUTE') AND NOT has_function_privilege('authenticated', oid, 'EXECUTE')
+            FROM pg_proc WHERE oid = to_regprocedure('public.source_ref_import_only()')), FALSE)
+UNION ALL SELECT 'source_ref_well_formed',
+  NOT EXISTS (SELECT 1 FROM public.invoices WHERE source_ref IS NOT NULL AND (source_ref <> btrim(source_ref) OR length(source_ref) NOT BETWEEN 1 AND 100))
+  AND NOT EXISTS (SELECT 1 FROM public.quotes WHERE source_ref IS NOT NULL AND (source_ref <> btrim(source_ref) OR length(source_ref) NOT BETWEEN 1 AND 100))
+  AND NOT EXISTS (SELECT 1 FROM public.purchase_orders WHERE source_ref IS NOT NULL AND (source_ref <> btrim(source_ref) OR length(source_ref) NOT BETWEEN 1 AND 100))
+  AND NOT EXISTS (SELECT 1 FROM public.jobs WHERE source_ref IS NOT NULL AND (source_ref <> btrim(source_ref) OR length(source_ref) NOT BETWEEN 1 AND 100))
+  AND NOT EXISTS (SELECT 1 FROM public.sales_orders WHERE source_ref IS NOT NULL AND (source_ref <> btrim(source_ref) OR length(source_ref) NOT BETWEEN 1 AND 100))
+) ca_verify) ELSE false END),
+    ('141 opening wip', CASE WHEN to_regclass('public.opening_wip') IS NOT NULL THEN (SELECT bool_and(ok IS TRUE) FROM (
+-- Migration 141 (opening WIP from SliQ, kept on its own: public.opening_wip). Read only: every row should be TRUE (9).
+SELECT 'table_present_rls_on' AS check_name,
+  coalesce((SELECT c.relrowsecurity FROM pg_class c WHERE c.oid = to_regclass('public.opening_wip')), FALSE) AS ok
+UNION ALL SELECT 'columns',
+  (SELECT string_agg(column_name || ':' || data_type || ':' || is_nullable, ',' ORDER BY column_name) FROM information_schema.columns
+   WHERE table_schema = 'public' AND table_name = 'opening_wip')
+    = 'as_of:date:YES,description:text:YES,id:uuid:NO,imported_at:timestamp with time zone:NO,job_id:uuid:YES,organization_id:uuid:NO,'
+      'quantity:numeric:YES,source:text:NO,source_job_ref:text:YES,source_key:text:NO,source_reference:text:YES,value:numeric:YES'
+-- One read policy: admin and office of the session's company, each helper inside a sub-select (asked once per statement, as 131
+-- requires of every policy). No other policy. The md5 is 141's exact policy text (the same read rule as 131's "invoices rbac select").
+UNION ALL SELECT 'one_select_policy_admin_office',
+  (SELECT string_agg(policyname || ' ' || permissive || ' ' || cmd, ',' ORDER BY policyname) FROM pg_policies
+   WHERE schemaname = 'public' AND tablename = 'opening_wip') = 'opening_wip rbac select PERMISSIVE SELECT'
+  AND (SELECT md5(coalesce(qual, '') || '|' || coalesce(with_check, '')) FROM pg_policies WHERE schemaname = 'public' AND tablename = 'opening_wip')
+      = '6a18e9fed9ee8dd956c314df2b296562'
+-- Signed-in people read (the policy filters), write nothing; anon nothing.
+UNION ALL SELECT 'grants_read_only',
+  has_table_privilege('authenticated', 'public.opening_wip', 'SELECT')
+  AND NOT has_table_privilege('authenticated', 'public.opening_wip', 'INSERT, UPDATE, DELETE, TRUNCATE')
+  AND NOT has_table_privilege('anon', 'public.opening_wip', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE')
+UNION ALL SELECT 'repeat_key_unique',
+  EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.opening_wip') AND conname = 'opening_wip_source_key_unique' AND contype = 'u')
+UNION ALL SELECT 'job_link_set_null_same_org',
+  EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.opening_wip') AND contype = 'f' AND confrelid = to_regclass('public.jobs') AND confdeltype = 'n')
+  AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.opening_wip') AND tgname = 'zz_same_org_job_id' AND NOT tgisinternal)
+UNION ALL SELECT 'audit_support_mfa_triggers',
+  (SELECT count(*) FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid WHERE t.tgrelid = to_regclass('public.opening_wip') AND NOT t.tgisinternal
+     AND ((t.tgname = 'audit_opening_wip_changes' AND p.proname = 'log_row_change')
+       OR (t.tgname = 'support_read_only' AND p.proname = 'support_readonly_guard')
+       OR (t.tgname = 'admin_mfa' AND p.proname = 'require_admin_mfa_guard'))) = 3
+UNION ALL SELECT 'source_is_sliq_only',
+  EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.opening_wip') AND contype = 'c' AND pg_get_constraintdef(oid) LIKE '%source = ''sliq''%')
+-- Nothing else reads it: no view, function or trigger outside the table's own refers to opening_wip.
+UNION ALL SELECT 'nothing_reads_it',
+  NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname IN ('public', 'security_audit') AND p.prosrc LIKE '%opening_wip%')
+  AND NOT EXISTS (SELECT 1 FROM pg_views WHERE schemaname = 'public' AND definition LIKE '%opening_wip%')
+) ca_verify) ELSE false END),
     ('144 accounting connections', to_regprocedure('public.accounting_cloud_connections_ready()') IS NOT NULL)
 ),
 proposal_files(file, disposition) AS (

@@ -1,0 +1,37 @@
+{
+  "candidateBase": "41c685c416305637d86b580324fff9e6cda037ff",
+  "sourceBranch": "claude/sliq-import",
+  "sourceCommit": "3593615eb34c2dd66b152ca3eaca227bd8475f5f",
+  "requiredCutoverOrder": [
+    138,
+    140,
+    141,
+    144,
+    145,
+    146
+  ],
+  "excluded": [
+    142,
+    143
+  ],
+  "realDataSqlAuthorised": false,
+  "frozenBaselineNote": "Numbered baseline replay remains unchanged. Disposable DB proof prepares 140/141 only after frozen baseline files, before 145/146 proofs. The independently rehearsed real cutover order is the requiredCutoverOrder, not the test fixture chronology.",
+  "imports": [
+    {
+      "number": 140,
+      "source": "supabase/release/sources/140_import_source_ref.sql",
+      "release": "supabase/release/140_import_source_ref.release.sql",
+      "verify": "supabase/verify/import_source_ref_140.sql",
+      "rollback": "supabase/release/140_import_source_ref.rollback.sql",
+      "marker": "140 import source ref"
+    },
+    {
+      "number": 141,
+      "source": "supabase/release/sources/141_opening_wip.sql",
+      "release": "supabase/release/141_opening_wip.release.sql",
+      "verify": "supabase/verify/opening_wip_141.sql",
+      "rollback": "supabase/release/141_opening_wip.rollback.sql",
+      "marker": "141 opening wip"
+    }
+  ]
+}

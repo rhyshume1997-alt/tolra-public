@@ -29,7 +29,7 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     const sorted = await sequencer.sort(paths.toReversed());
     expect(sorted).toHaveLength(paths.length);
     expect(new Set(sorted.map(file=>file.moduleId))).toEqual(new Set(paths.map(file=>file.moduleId)));
-    expect(sorted.slice(-3).map(file=>file.moduleId)).toEqual(post144ProofFiles.map(file=>`/repo/tests/db/${file}`));
+    expect(sorted.slice(-post144ProofFiles.length).map(file=>file.moduleId)).toEqual(post144ProofFiles.map(file=>`/repo/tests/db/${file}`));
     const fixture = read("tests/support/post-144-release-fixture.ts");
     expect(fixture.indexOf('verifyFile: "supabase/verify/company_setup_145.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"'));
     expect(fixture).toContain("verify: verifyBackendIdentity");

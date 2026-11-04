@@ -1,0 +1,15 @@
+{
+  "sourceCommit": "3593615eb34c2dd66b152ca3eaca227bd8475f5f",
+  "sha256": {
+    "supabase/cutover-import-plan.json": "0de5004b60ccc4555f080163726104d4683d2330234f1f682e65618d1749aa1a",
+    "supabase/verify/release_preflight.sql": "b9f4521e31f0a1146a1fedca93bbbee968b5d881d0125e2f260dc4fa4ee37bb1",
+    "supabase/release/sources/140_import_source_ref.sql": "c8d09662e92cae30c9d1301ac833735206698a50157c50a44f211aee5a2a7413",
+    "supabase/release/140_import_source_ref.release.sql": "a27757558b4bfc6336648384a77e0936dff5360cd1aecaf1075f5a92443c3469",
+    "supabase/verify/import_source_ref_140.sql": "fbe2570ebfcde3cd3856652b61e0449179b840f2a631efd7cfd832881a78d439",
+    "supabase/release/140_import_source_ref.rollback.sql": "ea2d27777ad3256b15e4c31ee1bbc01974d6bd0a6a9b44738848ab376c6a07f6",
+    "supabase/release/sources/141_opening_wip.sql": "9aa48d79700ef581ff82ad38a083a71e99c38616d1ebd7d5d884327d474078b5",
+    "supabase/release/141_opening_wip.release.sql": "8675b457fb2b99b253da5efd7b53a6c3eef34b36d2a89d0972c5ec5177988c11",
+    "supabase/verify/opening_wip_141.sql": "7125c1714ffc3c909dc2542281c66d25d1d526f41e88194c2615c29ae7eff949",
+    "supabase/release/141_opening_wip.rollback.sql": "b0741e584747c645be140b97e9641f4fd2b25ef0932c83109892377eb246edb6"
+  }
+}

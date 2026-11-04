@@ -1,11 +1,12 @@
 import { expect, it } from "vitest";
 import { preparePost144Fixture } from "../support/post-144-release-fixture";
 import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
+const isStandaloneVerification=(sql:string)=>sql.includes("AS check_name")&&!sql.includes("proposal_files(file, disposition)");
 function fixture(initial=false) {
   const calls:string[]=[];const states=[initial,initial];
   return { calls, states, verify:async()=>{calls.push("identity");},query:async(sql:string)=>{
     calls.push(sql);
-    if (sql.includes("AS check_name")) return {rows:[{ok:true,passed:true}]};
+    if (isStandaloneVerification(sql)) return {rows:[{ok:true,passed:true}]};
     if(sql.includes("-- Post-144 release step 145")) states[0]=true;
     if(sql.includes("-- Post-144 release step 146")) {expect(states[0]).toBe(true);states[1]=true;}
     return {rows:states.map((v,i)=>({check:i===0?"post-144 marker 145 company_setup":"post-144 marker 146 tolra_provided_ai",value:v?"applied":"not applied"}))};
@@ -32,7 +33,7 @@ it("sorts real sequencer input without dropping files, keeping 145, 146 and the 
  const sequencer = new ReleaseSequencer(ctx);
  const baseline = ["catalogue", "definer-functions", "time-labour", "workshop-network-128"].map(name => ({moduleId:`/repo/tests/db/${name}.test.ts`}));
  const proofs = post144ProofFiles.map(name => ({moduleId:`/repo/tests/db/${name}`}));
- const input = [proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
+ const input = [proofs[3], baseline[3], proofs[2], baseline[0], proofs[1], baseline[2], proofs[0], baseline[1]];
  const original = [...input];
  const sorted = await sequencer.sort(input);
  expect(sorted).toEqual([...baseline, ...proofs]);
@@ -44,14 +45,14 @@ it("sorts real sequencer input without dropping files, keeping 145, 146 and the 
 
 it("still runs both verification files when releases are already installed", async () => {
  const f=fixture(true);await preparePost144Fixture(f);
- expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(2);
+ expect(f.calls.filter(sql=>isStandaloneVerification(sql))).toHaveLength(2);
  expect(f.calls.some(sql=>sql.includes("private membership helper stays private"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("original reserve is not a public bypass"))).toBe(true);
 });
 it.each(["empty", "false"])("refuses %s verification rows and always unlocks", async failure => {
  const f=fixture(true),original=f.query;
  f.query=async(sql:string)=>{
-  if(sql.includes("AS check_name")){f.calls.push(sql);return {rows:failure==="empty"?[]:[{ok:false,passed:false}]};}
+  if(isStandaloneVerification(sql)){f.calls.push(sql);return {rows:failure==="empty"?[]:[{ok:false,passed:false}]};}
   return original(sql);
  };
  await expect(preparePost144Fixture(f)).rejects.toThrow("Release verification failed");
