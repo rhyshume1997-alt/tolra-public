@@ -173,6 +173,29 @@ EXISTS (
 
 Its refusal branch says disconnect JNR's Xero/Sage/QuickBooks first. Do not delete tokens to force it to pass. Keep Microsoft rows but stop mailbox polling/writers for rehearsal. Keep original project/company verification, locks, unknown-table/KEEP→WIPE guards, trigger restoration, earlier-audit hashes and all-other-company fingerprints. Marpet rows are never in either archive or delete scope.
 
+## 4b. Two kit checks that a disposable rehearsal showed are too weak (replace three existing lines)
+
+Both live in the existing driver `28-wipe-jnr.sql`, not in the new archive block, so they are expressed here as replacement lines. The rehearsal that found them applied this document to copies of the kit on a throwaway database. Neither change loosens a check; each makes one stricter or correct.
+
+**(i) Audit baseline time.** The driver captures its earlier-audit-history baseline as `SELECT now(), md5(...) INTO v_t0, v_aud FROM security_audit.audit_log;`. `now()` is the transaction START time, but the archive block above writes `CHASE_EVIDENCE_ARCHIVED` audit rows inside the same transaction with a later clock, and those rows are already inside `v_aud`. The final check "every earlier audit row there and unchanged" (`created_at <= v_t0`) then excludes them from one side only and is FALSE, so the kit as first proposed refused its own dry run. Replace that one line, changing only `now()` to `clock_timestamp()` (the baseline is taken after the archive block, so every row the block wrote is included and no row the wipe could later change is):
+
+```sql
+  SELECT clock_timestamp(), md5(coalesce(string_agg(id::TEXT || hash, ',' ORDER BY id), '')) INTO v_t0, v_aud FROM security_audit.audit_log;
+```
+
+**(ii) Login check compared ids only.** The driver's `v_users` and its check `903` hash only `auth.users.id`, so a changed login email, password hash, phone, role or ban on a kept login (Marpet's or JNR's) would not stop the kit. Replace the `v_users` capture and check `903` so both hash the CONTENT of every login: the whole `auth.users` row as JSON, minus only the two columns that a sign-in legitimately rewrites (`last_sign_in_at`, `updated_at`). Every other column, including `email`, `encrypted_password`, `phone`, `role`, `aud`, `banned_until`, `raw_app_meta_data`, `raw_user_meta_data`, `email_confirmed_at` and any column added later, is compared. The hash is only held inside the transaction as an md5; no password hash is printed or stored. A concurrent password reset or profile change during the wipe now stops the kit, which is the intended safe direction; run the wipe with the site quiet. Replace the `SELECT md5(coalesce(string_agg(id::TEXT, ',' ORDER BY id), '')) INTO v_users FROM auth.users;` line with:
+
+```sql
+  SELECT md5(coalesce(string_agg(u.id::TEXT || ':' || md5((to_jsonb(u) - ARRAY['last_sign_in_at', 'updated_at'])::TEXT), ',' ORDER BY u.id), '')) INTO v_users FROM auth.users u;
+```
+
+and replace the two lines of check `903` (the `INSERT INTO b11_report ... 'CHECK every login kept (auth.users)' ...` statement) with:
+
+```sql
+  INSERT INTO b11_report (ord, tbl, action, ok) SELECT 903, 'CHECK every login kept, content unchanged (auth.users)', 'KEEP',
+    md5(coalesce(string_agg(u.id::TEXT || ':' || md5((to_jsonb(u) - ARRAY['last_sign_in_at', 'updated_at'])::TEXT), ',' ORDER BY u.id), '')) = v_users FROM auth.users u;
+```
+
 ## 5. Review and proof still required
 
 The public `tests/fixtures/wipe-kit/reviewed-table-list.json` contains sanitized ord/action/table names from Y, not private data. The unit parser applies these proposed list rows to that reviewed list and rejects duplicate ordinals, changed kept-table classifications, wrong new-table actions, unscoped WIPE rows and bad send-before-parent ordering. It also checks the archive-preserve/verify design. These are static proofs, not database execution.

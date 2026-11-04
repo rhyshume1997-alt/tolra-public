@@ -37,3 +37,19 @@ it("refuses unsafe archive grants and checks every source invoice and approval a
  expect(source).toContain("REFUSED: approval archive incomplete");
  expect(source).toContain("SELECT count(*) FROM public.chase_sends WHERE organization_id=c_jnr");
 });
+it("replaces the audit baseline time with clock_timestamp() so audit rows the archive block writes in the same transaction are in the baseline",()=>{
+ const section=source.split('## 4b.')[1].split('## 5.')[0];
+ expect(section).toContain("SELECT clock_timestamp(), md5(coalesce(string_agg(id::TEXT || hash, ',' ORDER BY id), '')) INTO v_t0, v_aud FROM security_audit.audit_log;");
+ expect(section).not.toMatch(/```sql\n\s*SELECT now\(\)/);
+});
+it("hashes the content of every kept login, not just its id, excluding only last_sign_in_at and updated_at",()=>{
+ const section=source.split('## 4b.')[1].split('## 5.')[0];
+ const expr="md5((to_jsonb(u) - ARRAY['last_sign_in_at', 'updated_at'])::TEXT)";
+ expect(section.split(expr).length-1).toBe(2);
+ expect(section).toContain("INTO v_users FROM auth.users u;");
+ expect(section).toContain("'CHECK every login kept, content unchanged (auth.users)'");
+ expect(section).toContain("= v_users FROM auth.users u;");
+ const sqlBlocks=[...section.matchAll(/```sql\n([\s\S]*?)```/g)].map(m=>m[1]).join('\n');
+ expect(sqlBlocks).not.toMatch(/INTO v_users FROM auth\.users;/);
+ expect(sqlBlocks).not.toMatch(/string_agg\(id::TEXT, ','/);
+});
