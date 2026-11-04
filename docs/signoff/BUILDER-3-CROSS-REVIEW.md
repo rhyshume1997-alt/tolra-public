@@ -43,3 +43,11 @@ BA #269 is at `89849ae3331bb6703a7d076d540843c4f63b6bc9`. Read all 144 lines and
 `tests/reviews/BA-269-SOURCE-CORRECTIONS.md` contains the corrected wording and integration rule. The complete newer `tests/GO-NO-GO-EVIDENCE.md` remains intact; do not replace its expanded gates with BA's older ledger. Original BA source is preserved, and no absent execution evidence was turned into PASS.
 
 Checks for this continuation: exact-head/file comparison, source/diff review, no new runtime test for documentation corrections. CV measured checks remain NOT TESTED by this worker; actual backend/provider/browser/restore evidence and reviewer sign-off remain open.
+
+### CV #315 subsequently published
+
+After the earlier branch-only check, CV opened as #315 at `727ff228b6bc8575bc4440f409fdd3c41fe4ce5e`. Read its complete `tests/CV-CURRENT-STACK-RESULTS.md`, successful/failed summaries, committed logs and per-file inventories. The report correctly separates tested candidate `e7581c43b5f92836ceaedcf2716d495392a9d9e6` from the later evidence commit and the held CM head. It reports 5,622 passing tests / 415 files and 5,357 / 373 for those respective source trees, not a pass on a future integration.
+
+Checked inventories exactly cover each source tree's tracked unit .test.ts files once, assertion totals sum correctly, all entries record passed/zero failed, successful log hashes and candidate lockfile hash agree. The report preserves the restricted-environment failures, missing-font failure, failed default-cache install and successful locked candidate install; CM's supplied dependencies are explicitly not a locked-install proof. Its note retaining #314's later guide corrections is correct. No new source mistake found in these CV changes.
+
+Limits: these are independently checked **reported local results**, not a fresh execution by builder 4. Original full JSON reporter files/omitted earlier failed logs were not downloaded; their hashes alone do not prove content independently. No actual SQL/provider/browser/PQ/backup/import result or approval is inferred. The report states these limits. `review-evidence/CV-315-SOURCE-CHECK.txt` records the inventory/hash checks. The earlier no-PR/no-report note above is historical and superseded by this paragraph.

@@ -1,0 +1,4 @@
+candidate-unit-files.json: 415 unique files match all tracked .test.ts sources; 5622 assertions, all recorded passed.
+cm-unit-files.json: 373 unique files match all tracked .test.ts sources; 5357 assertions, all recorded passed.
+Successful candidate lint/typecheck/unit and CM lint/typecheck/permitted-unit log hashes match their committed summaries; candidate lock hash matches ca89ac67b8ef4395469460f11153f33132a3f064705e5cc5f5bf047272684248.
+Source/evidence validation only. Original full JSON reporters and earlier omitted failure logs were not independently downloaded; no suite rerun or runtime approval.

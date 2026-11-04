@@ -46,3 +46,5 @@ All drafts remain unsigned, unexecuted operational forms. Actual portal/manual/p
 ## Usage-reset continuation
 
 Rechecked all thirteen published draft trees against the local committed trees: matching; they had already been published before the usage stop. The new CR–CV/BA review is appended to BUILDER-3-CROSS-REVIEW.md. CR–CU heads unchanged. CV's e7581c43b5f92836ceaedcf2716d495392a9d9e6 branch exists without a PR or measured-results report; only the exact sibling-guide additions were reviewed. BA #269 source-summary/release-scope corrections are in tests/reviews/BA-269-SOURCE-CORRECTIONS.md; the current complete go/no-go register is preserved. No new runtime evidence claimed. CW and CX have separate explicit claims/drafts; their later handover carries the final packet inventory.
+
+CV subsequently opened as #315 at 727ff228b6bc8575bc4440f409fdd3c41fe4ce5e. The continuation review now checks its reported 5,622/415 candidate and 5,357/373 CM unit results against complete committed file inventories and successful log hashes; no fresh runtime/approval claim. Earlier branch-only wording is historical. See the review report and CV-315-SOURCE-CHECK.txt.
