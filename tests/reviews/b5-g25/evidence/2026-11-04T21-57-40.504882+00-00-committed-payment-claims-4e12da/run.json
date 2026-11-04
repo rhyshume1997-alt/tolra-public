@@ -1,0 +1,28 @@
+{
+  "source_commit": "1fb3eddda38c8716cf7029b48977ea795dd1b9b8",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "start_utc": "2026-11-04T21:57:40.504882+00:00",
+  "command": [
+    "node",
+    "/workspace/tolra-public/node_modules/vitest/vitest.mjs",
+    "run",
+    "tests/unit/b5-g25-evidence-only.test.ts"
+  ],
+  "sql_manifest_sha256": "ef36b393fb05d68ef819a0731ad2925976aa6dfc5d76a9bb037ca71ddaa6bf4b",
+  "sql_files": 404,
+  "database_identity": "NOT_CONNECTED unless identity evidence is explicitly supplied by the test",
+  "profile": "synthetic-only",
+  "working_directory": "/workspace/tolra-public/work/overnight/g25",
+  "working_tree_status": [],
+  "command_file_hashes": {
+    "/workspace/tolra-public/node_modules/vitest/vitest.mjs": "39db22f579acf5639bbb17a261408debbde03f4692c0c439e77e7f13aeba74d6"
+  },
+  "exit_code": 0,
+  "end_utc": "2026-11-04T21:57:42.993238+00:00",
+  "duration_seconds": 2.349,
+  "log_sha256": "103a8953344e21f7e12775f657c3ef2b0e574b3b7beba5f3cdf9e8bf167056e0"
+}

@@ -13,3 +13,9 @@ Both `confirmed` and `not_received` resolution paths call only `resolve_payment_
 Existing `chase-inbound-never-paid` tests also inspect the delegated intake SQL for forbidden financial mutation and exercise mocked polling. The original upstream files were not changed. The combined new adversarial log contains two G27 failures; it must not be called an all-pass run even though this file’s nine checks passed. Original log, source SHA, UTC time, SQL manifest, environment and exit status are retained.
 
 Next: on an externally attested disposable restore, compare invoice total/status/paid/credited/refunded/balance/payment rows before and after manual/email claim, duplicate replay, spoofed/ambiguous references and both resolution outcomes; require only claim/evidence/audit changes. Test a wrong-company claim and role refusals. Keep email send disabled and no production connection. There is no authority to mark an invoice paid from a claim or to run a production import.
+
+## Exact committed-code rerun
+
+Executed checkout `1fb3eddda38c8716cf7029b48977ea795dd1b9b8`; UTC 2026-11-04T21:57:40.504882+00:00; exit 0; duration 2.349 seconds. Full environment, SQL manifest/log hashes and command file hashes are in `evidence/2026-11-04T21-57-40.504882+00-00-committed-payment-claims-4e12da/run.json`; original log bytes retained. This supersedes contextual checkout ambiguity for earlier uncommitted test overlays. Later commits only attach review/evidence.
+
+Nine scoped tests passed with zero skips; this does not establish live or full-database behaviour.
