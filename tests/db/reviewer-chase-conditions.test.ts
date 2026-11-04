@@ -14,9 +14,9 @@ it('real SQL claims send exact approved text once and close uncertain attempts a
    const result=await service.rpc('chase_create_draft',{p_org:org,p_invoice:invoice.data!.id,p_step:step.data!.id,p_to:'chase@example.test',p_to_name:'Customer',p_subject:subject,p_body:body,p_user:actor.id});expect(result.error).toBeNull();expect(result.data.created).toBe(true);return result.data.history_id as string;
   };
   const id=await draft();
-  const send=vi.fn(async(input:{subject:string;text:string})=>{
+  const send=vi.fn(async(input:{subject:string;text:string;recordType?:string;recordId?:string})=>{
    expect(input.subject).toBe(subject);expect(input.text).toBe(body);
-   const result=await service.from('email_history').insert({organization_id:org,to_email:'chase@example.test',subject:input.subject,body:input.text,status:'sent_via_system',related_to_type:'general'}).select('id').single();expect(result.error).toBeNull();
+   const result=await service.from('email_history').insert({organization_id:org,to_email:'chase@example.test',subject:input.subject,body:input.text,status:'sent_via_system',related_to_type:input.recordType,related_to_id:input.recordId}).select('id').single();expect(result.error).toBeNull();
    return {ok:true as const,mode:'sent' as const,provider:'mock' as const,historyId:result.data!.id};
   });
   const input={organizationId:org,userId:actor.id,draftId:id,expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
@@ -42,8 +42,8 @@ async function buildReviewer(world:SyntheticWorld){
  const invoice=await service.from('invoices').insert({organization_id:org,invoice_ref:`INV-${crypto.randomUUID()}`,customer:'Named proof customer',status:'sent',total:120,amount_paid:0,due_date:'2000-01-01'}).select('id').single();expect(invoice.error).toBeNull();
  const subject='Reviewed subject',body='Hello,\n\nExact approved text.\n';
  const created=await service.rpc('chase_create_draft',{p_org:org,p_invoice:invoice.data!.id,p_step:step.data!.id,p_to:'named@example.test',p_to_name:'Named proof customer',p_subject:subject,p_body:body,p_user:actor.id});expect(created.error).toBeNull();expect(created.data.created).toBe(true);
- const send=vi.fn(async(message:{subject:string;text:string})=>{
-  const sent=await service.from('email_history').insert({organization_id:org,to_email:'named@example.test',subject:message.subject,body:message.text,status:'sent_via_system',related_to_type:'general'}).select('id').single();expect(sent.error).toBeNull();
+ const send=vi.fn(async(message:{subject:string;text:string;recordType?:string;recordId?:string})=>{
+  const sent=await service.from('email_history').insert({organization_id:org,to_email:'named@example.test',subject:message.subject,body:message.text,status:'sent_via_system',related_to_type:message.recordType,related_to_id:message.recordId}).select('id').single();expect(sent.error).toBeNull();
   return {ok:true as const,mode:'sent' as const,provider:'mock' as const,historyId:sent.data!.id};
  });
  const input={organizationId:org,userId:actor.id,draftId:created.data.history_id as string,expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
