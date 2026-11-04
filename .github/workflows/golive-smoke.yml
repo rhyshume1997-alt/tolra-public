@@ -1,0 +1,170 @@
+name: Go-live smoke and dry run (one-off)
+# ONE-OFF, diagnostic, never a gate on any other branch. Runs on manual dispatch and on a push to THIS branch only: the push trigger is
+# needed once so GitHub registers the workflow (a dispatch-only workflow that exists on no default branch cannot be dispatched by id;
+# the money-parity one-off needed the same). Never on a pull request or any other branch.
+#
+# Candidate under test: 31f965e7f0cbb2d9caf336b0a2067411bec8fb45 (claude/delivery-notes-golive, draft PR #359). This branch only ADDS
+# files; scripts/golive-smoke/shas.sh fails the job if lib/ app/ components/ supabase/ (or the package files, tests/support, the e2e
+# helpers and config) differ from the candidate.
+#
+# A disposable runner-owned local Supabase stack (scripts/test-backend.sh, as ci.yml's integration job): numbered migrations 000-144;
+# the smoke company made BEFORE the post-144 releases (as JNR exists before them); releases 145, 146, 147 in order by the mechanism of
+# ci.yml's install step (preflight marker, release file, marker, verify file all true); the 147 hold; the unit tests of this smoke;
+# the SliQ part on synthetic exports through the real importer; then one ordered browser walk as admin, office, workshop, viewer and an
+# outsider, with the cutover-day DLN counter step (supabase/cutover, last pad number 4521) run inside it between "refused before" and
+# "allowed after". Every step writes "SMOKE <n> <name>: PASS|FAIL"; scripts/golive-smoke/gate.mjs fails the job on any FAIL, skip or
+# missing step. Synthetic data only; loopback databases only; no hosted project; no secret beyond the job's own read-only token for the
+# image pulls. The restored-copy release order, rollback and wipe rehearsal are the PRIVATE mock-prod-run's job (see
+# docs/handover/GOLIVE-SMOKE-RUNBOOK.md), not this one.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/golive-smoke]
+permissions:
+  contents: read
+  packages: read
+jobs:
+  golive-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GOLIVE_SMOKE_DIR: ${{ github.workspace }}/work/golive-smoke
+    steps:
+      # As ci.yml's integration job: keep the Supabase ports out of the outgoing-connection range, then check they are free.
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import sys
+          s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+          reserved = set()
+          for part in filter(None, s.split(",")):
+              lo, _, hi = part.partition("-")
+              reserved.update(range(int(lo), int(hi or lo) + 1))
+          missing = [p for p in range(54320, 54330) if p not in reserved]
+          print("reserved ports now:", s)
+          sys.exit(f"not reserved: {missing}" if missing else 0)
+          PY
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Record and check the SHAs (candidate, branch head, app tree identical to the candidate)
+        shell: bash
+        run: |
+          mkdir -p "$GOLIVE_SMOKE_DIR"
+          date -u +"run starts %Y-%m-%dT%H:%M:%SZ  run $GITHUB_RUN_ID  head $GITHUB_SHA"
+          bash scripts/golive-smoke/shas.sh | tee "$GOLIVE_SMOKE_DIR/shas.txt"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Supabase ports are free
+        run: |
+          python3 - <<'PY'
+          import socket, sys
+          busy = []
+          for port in (54321, 54322, 54324):
+              s = socket.socket()
+              try:
+                  s.bind(("0.0.0.0", port))
+              except OSError as e:
+                  busy.append(f"{port}: {e}")
+              finally:
+                  s.close()
+          print("busy:", busy or "none")
+          sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+          PY
+      - name: "SMOKE 1: disposable stack, numbered migrations 000-144"
+        shell: bash
+        run: |
+          . scripts/golive-smoke/lib.sh
+          if ! bash scripts/test-backend.sh start > "$GOLIVE_SMOKE_DIR/stack-start.log" 2>&1; then
+            tail -40 "$GOLIVE_SMOKE_DIR/stack-start.log"; smoke_line 1 stack-migrations FAIL "the disposable stack did not start"; exit 1
+          fi
+          load_test_env
+          files="$(ls supabase/migrations/[0-9][0-9][0-9]_*.sql | wc -l)"
+          last_file="$(basename "$(ls supabase/migrations/[0-9][0-9][0-9]_*.sql | tail -1)")"
+          applied="$(psql_q -c 'select count(*) from supabase_migrations.schema_migrations')"
+          range="$(psql_q -c "select min(version) || '-' || max(version) from supabase_migrations.schema_migrations")"
+          if [ "$applied" = "$files" ] && [ "${range##*-}" = "${last_file%%_*}" ]; then
+            smoke_line 1 stack-migrations PASS "local Supabase on 127.0.0.1: $applied numbered migrations applied ($range), the candidate's $files files up to $last_file; $(psql_q -c "select current_setting('server_version')")"
+          else
+            smoke_line 1 stack-migrations FAIL "applied $applied ($range), files $files up to $last_file"; exit 1
+          fi
+      - name: "SMOKE 2: the smoke company, made before the releases (as JNR)"
+        shell: bash
+        run: |
+          . scripts/golive-smoke/lib.sh
+          if out="$(node scripts/golive-smoke/seed-company.mjs "$GOLIVE_SMOKE_DIR/tenant.json" 2>&1)"; then
+            smoke_line 2 seed-company PASS "$out (create_organization, add_member, Sales Orders on; synthetic, slug t-, @example.test)"
+          else
+            smoke_line 2 seed-company FAIL "$out"; exit 1
+          fi
+      - name: "SMOKE 3-6: releases 145, 146, 147 in order (as ci.yml's install step), then the 147 hold"
+        shell: bash
+        run: bash scripts/golive-smoke/install-releases.sh "$(node -p 'require(process.argv[1]).slug' "$GOLIVE_SMOKE_DIR/tenant.json")"
+      - name: "SMOKE 7: unit tests of the generator, the pre-processor and the gate (node --test)"
+        shell: bash
+        run: |
+          . scripts/golive-smoke/lib.sh
+          rc=0
+          node --test --test-reporter=tap scripts/golive-smoke/sliq/sliq.test.mjs scripts/golive-smoke/gate.test.mjs > "$GOLIVE_SMOKE_DIR/unit.tap" 2>&1 || rc=$?
+          grep -E '^(not )?ok ' "$GOLIVE_SMOKE_DIR/unit.tap" || true
+          count() { awk -v k="# $1" '$0 ~ "^"k" " {print $3}' "$GOLIVE_SMOKE_DIR/unit.tap" | tail -1; }
+          pass="$(count pass)"; fail="$(count fail)"; skipped="$(count skipped)"; todo="$(count todo)"; cancelled="$(count cancelled)"
+          if [ "$rc" = 0 ] && [ "${pass:-0}" -gt 0 ] && [ "${fail:-1}" = 0 ] && [ "${skipped:-1}" = 0 ] && [ "${todo:-1}" = 0 ] && [ "${cancelled:-1}" = 0 ]; then
+            smoke_line 7 unit-tests PASS "node --test: $pass passed, 0 failed, 0 skipped, 0 todo (generator, pre-processor, gate incl. seeded FAIL / skip / missing)"
+          else
+            smoke_line 7 unit-tests FAIL "node --test exit $rc: pass ${pass:-?}, fail ${fail:-?}, skipped ${skipped:-?}, todo ${todo:-?}, cancelled ${cancelled:-?}"; exit 1
+          fi
+      - name: "SMOKE 8-16: SliQ synthetic exports through the pre-processor and the real importer"
+        env:
+          GOLIVE_SMOKE_VITEST_JSON: ${{ github.workspace }}/work/golive-smoke/sliq-vitest.json
+        run: npx vitest run -c vitest.golive-smoke.config.ts
+      - name: Build against the disposable backend
+        run: |
+          set -a; . ./.env.test.local; set +a
+          NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: "SMOKE 17-39: the ordered browser walk (with the DLN counter step inside it)"
+        env:
+          E2E_SKIP_BUILD: "1"
+        run: npx playwright test -c playwright.golive-smoke.config.ts
+      - name: "Gate: every SMOKE step PASS, none missing, skipped or failed; KNOWN GAP and FINDING lines; SHAs"
+        if: always()
+        shell: bash
+        run: |
+          node scripts/golive-smoke/gate.mjs --results "$GOLIVE_SMOKE_DIR/results.txt" --shas "$GOLIVE_SMOKE_DIR/shas.txt" \
+            --playwright "$GOLIVE_SMOKE_DIR/playwright.json" --vitest "$GOLIVE_SMOKE_DIR/sliq-vitest.json" 2>&1 | tee "$GOLIVE_SMOKE_DIR/gate.txt"
+          rc=${PIPESTATUS[0]}
+          { echo '### Go-live smoke'; echo '```'; cat "$GOLIVE_SMOKE_DIR/gate.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
+      # The synthetic users' passwords (tenant.json, and the browser suite's world.json under test-results/e2e-state) are for this
+      # runner's throwaway stack only; they are not kept.
+      - name: Drop the synthetic passwords before keeping the evidence
+        if: always()
+        shell: bash
+        run: rm -f "$GOLIVE_SMOKE_DIR/tenant.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golive-smoke-evidence
+          path: |
+            work/golive-smoke/
+            test-results/
+            !test-results/e2e-state/
+          if-no-files-found: warn
+      - name: Stop disposable Supabase
+        if: always()
+        run: npm run test:backend:stop
