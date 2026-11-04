@@ -1,20 +1,21 @@
 import {createHash} from 'node:crypto';
 import {expect,it} from 'vitest';
 import {releaseGate,policy,policySha256} from '../../scripts/release-gate/check.mjs';
+const mandatoryIds:string[]=policy.required;
 const HEAD='a'.repeat(40),OLD='b'.repeat(40),HASH='c'.repeat(64);
 function fixture(){
  const artifacts=new Map<string,string>();
- const results=policy.required.map((id:string)=>({id,commit:HEAD,status:'PASS',artifact:{path:id+'.json',sha256:''}}));
+ const results=mandatoryIds.map((id:string)=>({id,commit:HEAD,status:'PASS',artifact:{path:id+'.json',sha256:''}}));
  const manifest={finalCommit:HEAD,policySha256,results};
  const payload=(id:string)=>({id,commit:HEAD,status:'PASS',recordedUtc:'2026-11-04T09:00:00Z',counts:{total:2,passed:2,failed:0,skipped:0},backupSha256:HASH,beforeFingerprint:HASH,restoredFingerprint:HASH,restoredOnDisposable:true,integrityMatch:true,appliedReleases:[...policy.requiredReleases],markers:Object.fromEntries(policy.requiredReleases.map((n:number)=>[String(n),'applied'])),exactPence:true,marpetUnchanged:true,matched:true,fakeDataOnly:true,realDataTouched:false,allStopRulesPassed:true,skippedTests:[] as string[],acceptedSkips:[] as {testId:string;commit:string;acceptedBy:string;reason:string;acceptedUtc:string;reviewEvidence:string}[]});
  const set=(id:string,changes:Record<string,unknown>)=>{const text=JSON.stringify({...payload(id),...changes});artifacts.set(id+'.json',text);results.find(r=>r.id===id)!.artifact.sha256=createHash('sha256').update(text).digest('hex');};
- for(const id of policy.required)set(id,{});
+ for(const id of mandatoryIds)set(id,{});
  const check=()=>releaseGate(manifest,HEAD,(p:string)=>{if(!artifacts.has(p))throw Error('Missing');return artifacts.get(p)!;});
  return {manifest,artifacts,set,payload,check};
 }
 it('a complete fake evidence set is only ready for independent review, never approved',()=>{expect(fixture().check()).toMatchObject({eligibleForReview:true,approvalGranted:false});});
-it.each(policy.required)('refuses missing mandatory %s',id=>{const f=fixture();f.manifest.results=f.manifest.results.filter(r=>r.id!==id);expect(f.check().eligibleForReview).toBe(false);});
-it.each(policy.required)('refuses failed %s',id=>{const f=fixture();f.manifest.results.find(r=>r.id===id)!.status='FAIL';expect(f.check().eligibleForReview).toBe(false);});
+it.each(mandatoryIds)('refuses missing mandatory %s',id=>{const f=fixture();f.manifest.results=f.manifest.results.filter(r=>r.id!==id);expect(f.check().eligibleForReview).toBe(false);});
+it.each(mandatoryIds)('refuses failed %s',id=>{const f=fixture();f.manifest.results.find(r=>r.id===id)!.status='FAIL';expect(f.check().eligibleForReview).toBe(false);});
 it.each(['final commit','policy','duplicate','old result','artifact missing','artifact modified','old artifact','bad date','empty suite','failed case','unaccepted skip','bad migration order','145 missing','146 failed','restore mismatch','no restore','bad reconciliation','real data touched'])("refuses %s",problem=>{
  const f=fixture();
  if(problem==='final commit')f.manifest.finalCommit=OLD;
