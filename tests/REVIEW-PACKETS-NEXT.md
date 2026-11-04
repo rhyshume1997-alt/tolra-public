@@ -896,3 +896,36 @@ Check: Check exact-head evidence and linked paths, explicit missing/failed/skipp
 
 
 CQ note: twelve reviewer-check paragraphs were corrected where the earlier keyword grouping overstated or missed a PR scope (for example, CI/packet/runbook PRs incorrectly received wipe-only instructions). Other packet metadata remains the original dated snapshot. New CM–CP PRs are handed over separately; no second broad inventory or audit was started.
+
+
+## CX: builder 4 — one-line reviewer packets
+
+Snapshot collected 2026-11-04T13:42:42+00:00 before the packet commit. These are the 23 open PRs from this builder’s `codex/b4-*` branches, not every PR created by the shared GitHub account. The earlier 148-PR inventory above is preserved as historical; these lines supersede older packets only for the listed builder-4 PRs. Refresh a moved head before review. A packet is not a SAFE verdict, test pass or permission to merge/run SQL.
+
+CX itself was already open when this snapshot was collected. Its row records that pre-packet head honestly; the final publishing head is in the CX PR description and must be checked before reviewing CX. A commit cannot contain its own eventual hash. Other row heads are the actual open-PR heads returned by GitHub at collection.
+
+| PR | Full captured head SHA | What to check |
+| --- | --- | --- |
+| [#290](https://github.com/rhyshume1997-alt/tolra-public/pull/290) | `d9bcbc398b283e621ea4d73bcf90ef18f7ccc1b9` | Check real contacts stay blank/private until verified; triage, staff updates and uncertain saves/sends lead to a safe stop. |
+| [#291](https://github.com/rhyshume1997-alt/tolra-public/pull/291) | `01067cab327ddc7107a99a015522530d736519c8` | Check workshop/office labels and roles; only an admin corrects another person’s hours; print/training is not marked passed. |
+| [#292](https://github.com/rhyshume1997-alt/tolra-public/pull/292) | `55ee54c3b64d812745731a7090c42b483571f7c0` | Check saved, queued and missing paper work are reconciled once; admin enters other staff hours and a separate person checks. |
+| [#293](https://github.com/rhyshume1997-alt/tolra-public/pull/293) | `0cfe4495a805d0c41acbdbe7a5f8b892006df68a` | Check stop decisions, reserved-request refusal, kept history and backup-only recovery after 146 rollback; app/DNS rollback alone restores no data. |
+| [#294](https://github.com/rhyshume1997-alt/tolra-public/pull/294) | `ac49a303512288e76c95f74522ec3abdaf251f34` | Check expected DNS/Vercel/Supabase/Auth/callback results; retain CR’s corrected lib/accounting/cloud-adapters.ts source path; live rows remain NOT RUN. |
+| [#295](https://github.com/rhyshume1997-alt/tolra-public/pull/295) | `865058f4a3e9dfa1afdefb51d3d6b72d401cda29` | Check provider selection, actual receipt proof and ordinary-draft manual fallback; unknown delivery and chase approval cannot be bypassed. |
+| [#296](https://github.com/rhyshume1997-alt/tolra-public/pull/296) | `b35e5caf003fba6c6f25082bcfae311ae35e5fd4` | Check literal wording only and preserved guards/calculations; keep CR’s cap correction: a spending cap is not an off switch. |
+| [#297](https://github.com/rhyshume1997-alt/tolra-public/pull/297) | `b9406d136f224395a4e6f2d15f82093f1ba2f545` | Check reverse tenant bindings and retained role/CSRF/header proofs; 207 offline checks are not DB/browser proof; missing backend failures stay visible. |
+| [#301](https://github.com/rhyshume1997-alt/tolra-public/pull/301) | `475e186b5b9d4fd526c9c95028c49eeb96aa63c5` | Check John/Rhys fill the actual decision cut-off from measured recovery time; all choices, deputy and backup-state/146 limits remain explicit. |
+| [#302](https://github.com/rhyshume1997-alt/tolra-public/pull/302) | `e76f1c03ee5cd60f3048d5c5a115714e4b3c54bd` | Check process acceptance does not waive failed/unrun validation or the separate transfer check; John signs only his own decision. |
+| [#303](https://github.com/rhyshume1997-alt/tolra-public/pull/303) | `ca1c504cf515d82533242bf373c38d2f069642fc` | Check all pasted enquiry/question text can leave JNR; both account choices go to Anthropic; NO/blank stays off and actual terms remain unapproved. |
+| [#304](https://github.com/rhyshume1997-alt/tolra-public/pull/304) | `97422fe71066c8e4d225d0d38f2da837f88b4ed5` | Check past Monday/Tuesday are not invented results; offline tablet, Marpet, opening balances and safe separate practice targets are covered. |
+| [#306](https://github.com/rhyshume1997-alt/tolra-public/pull/306) | `99a1a9f6e9e10b5ce7b92183a87c778b8e9fe953` | Check the exact JNR account, primary/second/owner/support powers, working admin cover and old sessions; preserve other shops and history. |
+| [#307](https://github.com/rhyshume1997-alt/tolra-public/pull/307) | `8877aed34d009c7dc1c348d81932ffe103190805` | Check enrolment plus both company-database and live-deployment rules, direct refusals, recent codes and cover; no live setting is claimed changed. |
+| [#308](https://github.com/rhyshume1997-alt/tolra-public/pull/308) | `289eeb67ff8535a647e9c01ddb5eadef71e411fe` | Check named decision/support people, phones, tested cover and response hours remain to be filled privately; no guessed contacts. |
+| [#309](https://github.com/rhyshume1997-alt/tolra-public/pull/309) | `2562523258932a489b40862bf0f9a5e2657b8305` | Check accountant agrees the six-year start, longer holds and readable archive; no automatic purge or blanket retention of unrelated secrets. |
+| [#310](https://github.com/rhyshume1997-alt/tolra-public/pull/310) | `597a195c99b2d7cb20d494f489632889dfeb45da` | Check continue versus restart-request choices preserve numbers/links; restarting holds affected work and authorises no database reset. |
+| [#311](https://github.com/rhyshume1997-alt/tolra-public/pull/311) | `54e28c086dd20cd6553b53e3645b6a51c8d13ec2` | Check domain first, two exact callbacks, stored credential priority and copy fields; free development is not free live access. |
+| [#312](https://github.com/rhyshume1997-alt/tolra-public/pull/312) | `bf5396b66e163cadaf5a212b268a3519f6f4b5cb` | Check domain first, Sage/QBO exact settings and real consent, sandbox/production separation and balance-only behaviour; no invoice export promised. |
+| [#313](https://github.com/rhyshume1997-alt/tolra-public/pull/313) | `7ffeb44be92ce10fcace40ddce12a509d3d675c7` | Check paid-time meaning, exact-time calculation, final-total rounding and decimal hours; policy changes need a separate decision and no wages change here. |
+| [#314](https://github.com/rhyshume1997-alt/tolra-public/pull/314) | `ce1118393cc0d65bfde426d31222903a802984ff` | Check CN/CU and BA source corrections, CR–CV/BA full review heads, CV reported-result limits and all unchanged NOT TESTED gates; original branches stay intact. |
+| [#316](https://github.com/rhyshume1997-alt/tolra-public/pull/316) | `359249878c17b7e4586e39bbee4b7e3961c2a2e2` | Compare all twelve CW forms with their pinned originals; simpler words must preserve choices, blanks, stop rules and exact technical copy values. |
+| [#318](https://github.com/rhyshume1997-alt/tolra-public/pull/318) | `1cfe764b31631899c5fa8ca368400162becc9dee` | Check one packet for every open builder-4 PR, full captured SHA and specific review action; preserve the historical file and use the final CX head in its PR description. |
