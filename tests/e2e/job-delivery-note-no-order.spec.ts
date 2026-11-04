@@ -96,3 +96,23 @@ test("workshop and viewer get no button on a no-order job, and a viewer calling 
   expect(refused.error?.code).toBe("42501");
   expect((await adminClient().from("delivery_notes").select("id").eq("job_id", id)).data).toEqual([]);
 });
+
+test("a hand-made delivery note that names an invoice takes the next DLN number, not the invoice's (no DLN-0456 bypass)", async ({ page }) => {
+  const org = w.tenants.alpha.id;
+  const name = `Hand Made ${w.runId.slice(0, 6)}${randomUUID().slice(0, 4)} Ltd`;
+  expect((await adminClient().from("customers").insert({ organization_id: org, name })).error).toBeNull();
+  await signIn(page, w.tenants.alpha.users.office);
+  await page.goto("/delivery-notes");
+  await page.getByRole("button", { name: "New delivery note" }).click();
+  const dialog = page.getByRole("dialog", { name: "New Delivery Note" });
+  await dialog.getByRole("button", { name: "Without an order" }).click();
+  await dialog.locator("select[name=customer]").selectOption({ label: name });
+  await dialog.locator("input[name=invoice_ref]").fill("INV-0456");
+  await dialog.getByPlaceholder(/Items, one per line/).fill("Spacer x 1");
+  await dialog.getByRole("button", { name: "Save Delivery Note" }).click();
+  await expect(page.getByText(/Delivery note DLN-\d+ created/)).toBeVisible();
+  const made = (await adminClient().from("delivery_notes").select("dn_number, invoice_ref").eq("organization_id", org).eq("customer", name).single()).data!;
+  expect(made.invoice_ref).toBe("INV-0456");
+  expect(made.dn_number).toMatch(/^DLN-\d{4,}$/);
+  expect(made.dn_number).not.toBe("DLN-0456");
+});

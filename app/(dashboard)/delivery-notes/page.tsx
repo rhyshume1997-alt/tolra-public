@@ -49,7 +49,7 @@ import { type SendEmailRequest, SendEmailDialog } from "@/components/email/send-
 import { friendlyError } from "@/lib/friendly-error";
 import { draftedInvoiceId, invoiceHref } from "@/lib/invoice-link";
 import { esc } from "@/lib/html";
-import { deliveryNoteNumberForInvoice } from "@/lib/numbering";
+import { handMadeDeliveryNoteHeader } from "@/lib/hand-made-delivery-note";
 import { openPrintPack } from "@/lib/print-pack";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { confirmPageCompany } from "@/lib/page-company";
@@ -502,7 +502,7 @@ export default function DeliveryNotesPage() {
     );
   }
 
-  /** A note made by hand: with an invoice number it takes that number (INV-0456 -> DLN-0456), without one the next DLN number. */
+  /** A note made by hand: the next DLN number from the company's counter (an invoice number is a reference only, not the note's number). */
   async function createNote(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formEl = event.currentTarget;
@@ -519,41 +519,22 @@ export default function DeliveryNotesPage() {
           notes: String(form.get("notes") || ""),
           items: String(form.get("items") || "").split("\n").map((line) => line.trim()).filter(Boolean).map(parseItemLine),
         });
-        // next_doc_number and create_with_lines file it in the session's company: refused if another tab switched it since this page
-        // opened (S5).
+        // create_with_lines files it in the session's company: refused if another tab switched it since this page opened (S5).
         await confirmPageCompany(supabase);
-        let ref: string;
-        if (input.invoiceRef) {
-          try {
-            ref = deliveryNoteNumberForInvoice(input.invoiceRef);
-          } catch {
-            throw new ValidationError("Enter an invoice number like INV-0456, or leave it empty.");
-          }
-        } else {
-          // No invoice yet: the next number in the delivery note series (DLN-0001, ...).
-          const { data: next, error: numberError } = await supabase.rpc("next_doc_number", { p_prefix: "DLN" });
-          if (numberError) throw numberError;
-          ref = String(next);
-        }
-        if (notes.some((note) => note.ref === ref)) throw new ValidationError(`${ref} already exists.`);
-        const { error } = await supabase.rpc("create_with_lines", {
+        if (input.invoiceRef && !/^INV-\d+$/.test(input.invoiceRef)) throw new ValidationError("Enter an invoice number like INV-0456, or leave it empty.");
+        // The number is the next in the delivery note series, given by the database in the same save (release 147); an invoice number
+        // named here is kept as a reference only.
+        const { data: madeId, error } = await supabase.rpc("create_with_lines", {
           p_parent: "delivery_notes",
-          p_header: {
-            dn_number: ref,
-            customer: input.customer,
-            invoice_ref: input.invoiceRef || null,
-            job_ref: input.job || null,
-            delivery_date: input.shipDate,
-            ship_date: input.shipDate,
-            tax_date: input.taxDate,
-            status: "awaiting",
-            notes: input.notes || null,
-          },
+          p_header: handMadeDeliveryNoteHeader(input),
           p_child: "delivery_note_items",
           p_fk: "delivery_note_id",
           p_lines: input.items.map((item, position) => ({ position, description: item.description, quantity: item.quantity })),
         });
         if (error) throw error;
+        const { data: made, error: readError } = await supabase.from("delivery_notes").select("dn_number").eq("id", String(madeId)).single();
+        if (readError) throw readError;
+        const ref = String(made.dn_number);
         void auditEvent({ action: "CREATE", entityTable: "delivery_notes", entityId: ref });
         toast.success(`Delivery note ${ref} created`);
         // Reset and close only after a successful save.

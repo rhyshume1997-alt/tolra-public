@@ -22,7 +22,7 @@ type Vars = Record<string, string>;
 /** psql's :'name' as a quoted literal (what psql -v name=... does), and its backslash meta-commands dropped (ON_ERROR_STOP is psql's). */
 function withPsqlVars(sql: string, vars: Vars): string {
   return sql.split("\n").filter((line) => !line.startsWith("\\")).join("\n")
-    .replace(/:'([a-z_]+)'/g, (_, name: string) => {
+    .replace(/:'([a-z0-9_]+)'/g, (_, name: string) => {
       if (!(name in vars)) throw new Error(`psql variable ${name} not given`);
       return `'${vars[name].replaceAll("'", "''")}'`;
     });
@@ -30,6 +30,7 @@ function withPsqlVars(sql: string, vars: Vars): string {
 const SET = "supabase/cutover/set_dln_next_number.sql";
 const VERIFY = "supabase/cutover/verify_dln_next_number.sql";
 const UNDO = "supabase/cutover/undo_dln_next_number.sql";
+const KEEP = "supabase/cutover/keep_dln_numbering.sql";
 
 beforeAll(async () => {
   await verifyBackendIdentity();
@@ -61,7 +62,9 @@ async function asOffice<T>(db: Client, who: Actor, sql: string, params: unknown[
 const nextNumber = async (db: Client, who: Actor) => (await asOffice<{ n: string }>(db, who, "SELECT public.next_doc_number('DLN') AS n"))[0].n;
 const counter = async (db: Client, org: string) => (await db.query("SELECT last FROM public.doc_counters WHERE organization_id=$1 AND prefix='DLN'", [org])).rows[0]?.last ?? null;
 const markers = async (db: Client, org: string) => Number((await db.query("SELECT count(*) AS n FROM security_audit.audit_log WHERE organization_id=$1 AND entity_table='doc_counters' AND action IN ('DLN_COUNTER_SET','DLN_COUNTER_UNDONE')", [org])).rows[0].n);
-const runSet = (db: Client, slug: string, last: string) => db.query(withPsqlVars(read(SET), { company_slug: slug, last_pad_number: last }));
+const runSet = (db: Client, slug: string, last: string, confirm = "") => db.query(withPsqlVars(read(SET), { company_slug: slug, last_pad_number: last, confirm_start_at_dln_0001: confirm }));
+const hold = (db: Client, org: string) => db.query("INSERT INTO public.dln_numbering_pending(organization_id) VALUES($1)", [org]);
+const held = async (db: Client, org: string) => (await db.query("SELECT 1 FROM public.dln_numbering_pending WHERE organization_id=$1", [org])).rowCount;
 const verify = async (db: Client, slug: string, last: string) => {
   const res = await db.query(withPsqlVars(read(VERIFY), { company_slug: slug, last_pad_number: last }));
   const rows = (Array.isArray(res) ? res.at(-1)! : res).rows as Array<{ check: string; value: string; result: string }>;
@@ -102,7 +105,8 @@ describe("day-of DLN counter step", () => {
   it("refuses bad input, an unknown company, a lower or equal number and an existing higher DLN, changing nothing", async () => {
     await withDb(async db => {
       const c = await company(db, "refuse");
-      for (const bad of ["0", "-5", "4521.5", "45 21", "abc", "", "1e3", "04521", "1000000000"]) await refused(db, c.id, c.slug, bad, /not a positive whole number/);
+      await refused(db, c.id, c.slug, "0", /START AT DLN-0001/);
+      for (const bad of ["-5", "4521.5", "45 21", "abc", "", "1e3", "04521", "1000000000"]) await refused(db, c.id, c.slug, bad, /not a positive whole number/);
       await expect(runSet(db, "t-dln-no-such-company", "4521")).rejects.toThrow(/no company/);
       await db.query("ROLLBACK");
       // The counter is at 3 (three numbers taken): 2 is backwards, 3 is level.
@@ -158,6 +162,95 @@ describe("day-of DLN counter step", () => {
     await withDb(async db => {
       expect(await counter(db, c.id)).toBe(4521);
       expect(await markers(db, c.id)).toBe(1);
+    });
+  });
+
+  it("a company held at the 147 install can make no note by either route until the step; then both number on from it", async () => {
+    const setup = await withDb(async db => {
+      const c = await company(db, "held");
+      await hold(db, c.id);
+      const customer = (await db.query("INSERT INTO public.customers(organization_id,name) VALUES($1,'Held Ltd') RETURNING id", [c.id])).rows[0].id;
+      const order = (await db.query("INSERT INTO public.sales_orders(organization_id,so_number,customer,customer_id,status,total_value) VALUES($1,'SO-DLN-H','Held Ltd',$2,'open',50) RETURNING id", [c.id, customer])).rows[0].id;
+      const line = (await db.query("INSERT INTO public.sales_order_lines(organization_id,sales_order_id,position,description,quantity,unit_price) VALUES($1,$2,0,'Flange',10,5) RETURNING id", [c.id, order])).rows[0].id;
+      const job = (await db.query("INSERT INTO public.jobs(organization_id,job_no,customer,stage,started_at,finished_at,inspected_at) VALUES($1,'J-DLN-H','Held Ltd','complete',now(),now(),now()) RETURNING id", [c.id])).rows[0].id;
+      return { ...c, customer, order, line, job };
+    });
+    const fromOrder = (db: Client) => asOffice<{ r: { dn_number: string } }>(db, setup.office, "SELECT public.create_delivery_note($1,NULL,DATE '2026-11-12',DATE '2026-11-12',NULL,NULL,$2) AS r", [setup.order, JSON.stringify([{ line_id: setup.line, quantity: 1 }])]);
+    const noOrder = (db: Client) => asOffice<{ r: { dn_number: string } }>(db, setup.office, "SELECT public.create_job_delivery_note($1,$2,$3,DATE '2026-11-12',DATE '2026-11-12',NULL,NULL,$4) AS r", [setup.job, setup.customer, randomUUID(), JSON.stringify([{ description: "Bracket", quantity: 1 }])]);
+    const byHand = (db: Client) => asOffice(db, setup.office, "SELECT public.create_with_lines('delivery_notes',$1::jsonb,'delivery_note_items','delivery_note_id','[]'::jsonb) AS id", [JSON.stringify({ customer: "Held Ltd", status: "awaiting" })]);
+    await withDb(async db => {
+      for (const route of [fromOrder, noOrder, byHand]) await expect(route(db)).rejects.toMatchObject({ code: "55000", hint: "dln_numbering_not_set" });
+      expect(await counter(db, setup.id)).toBeNull();
+      await runSet(db, setup.slug, "4521");
+      expect(await held(db, setup.id)).toBe(0);
+      expect((await verify(db, setup.slug, "4521")).filter(r => r.result === "FAIL")).toEqual([]);
+      expect((await fromOrder(db))[0].r.dn_number).toBe("DLN-4522");
+      expect((await noOrder(db))[0].r.dn_number).toBe("DLN-4523");
+      await byHand(db);
+      expect(await counter(db, setup.id)).toBe(4524);
+    });
+  });
+
+  it("declining continuity: 0 starts at DLN-0001 only with the explicit confirmation, and only with no DLN yet", async () => {
+    await withDb(async db => {
+      const c = await company(db, "decline");
+      await hold(db, c.id);
+      await refused(db, c.id, c.slug, "0", /START AT DLN-0001/);
+      await refused(db, c.id, c.slug, "0", /START AT DLN-0001/);
+      await expect(runSet(db, c.slug, "0", "yes")).rejects.toThrow(/START AT DLN-0001/);
+      await db.query("ROLLBACK");
+      expect(await held(db, c.id)).toBe(1);
+      await runSet(db, c.slug, "0", "START AT DLN-0001");
+      expect(await held(db, c.id)).toBe(0);
+      expect((await verify(db, c.slug, "0")).filter(r => r.result === "FAIL")).toEqual([]);
+      expect(await nextNumber(db, c.office)).toBe("DLN-0001");
+      await refused(db, c.id, c.slug, "4521", /already been run/);
+      // A company that already has a DLN note can't "start at DLN-0001".
+      const d = await company(db, "decline2");
+      await db.query("INSERT INTO public.delivery_notes(organization_id,dn_number,customer,status) VALUES($1,'DLN-0001','Synthetic','awaiting')", [d.id]);
+      await refused(db, d.id, d.slug, "0", /START AT DLN-0001/);
+      await expect(runSet(db, d.slug, "0", "START AT DLN-0001")).rejects.toThrow(/already has DLN-0001/);
+      await db.query("ROLLBACK");
+      // A positive number never needs (and ignores) the confirmation.
+      await runSet(db, d.slug, "4521", "START AT DLN-0001");
+      expect(await counter(db, d.id)).toBe(4521);
+    });
+  });
+
+  it("keep: another company already numbering in Tolra has its hold lifted with its counter unchanged; refusals change nothing", async () => {
+    await withDb(async db => {
+      const c = await company(db, "keep");
+      expect(await nextNumber(db, c.office)).toBe("DLN-0001");
+      expect(await nextNumber(db, c.office)).toBe("DLN-0002");
+      await hold(db, c.id);
+      const keep = (slug: string, confirm: string) => db.query(withPsqlVars(read(KEEP), { company_slug: slug, confirm_keep: confirm }));
+      await expect(keep(c.slug, "yes")).rejects.toThrow(/KEEP CURRENT DLN NUMBERING/);
+      await db.query("ROLLBACK");
+      await expect(keep("t-dln-no-such-company", "KEEP CURRENT DLN NUMBERING")).rejects.toThrow(/no company/);
+      await db.query("ROLLBACK");
+      expect(await held(db, c.id)).toBe(1);
+      await keep(c.slug, "KEEP CURRENT DLN NUMBERING");
+      expect(await held(db, c.id)).toBe(0);
+      expect(await counter(db, c.id)).toBe(2);
+      expect(await nextNumber(db, c.office)).toBe("DLN-0003");
+      await expect(keep(c.slug, "KEEP CURRENT DLN NUMBERING")).rejects.toThrow(/is not held/);
+      await db.query("ROLLBACK");
+      // After keep, the pad step is refused as already run for that company.
+      await refused(db, c.id, c.slug, "4521", /already been run/);
+    });
+  });
+
+  it("undo puts the hold back (before any number is taken)", async () => {
+    await withDb(async db => {
+      const c = await company(db, "reheld");
+      await hold(db, c.id);
+      await runSet(db, c.slug, "4521");
+      expect(await held(db, c.id)).toBe(0);
+      await db.query(withPsqlVars(read(UNDO), { company_slug: c.slug }));
+      expect(await held(db, c.id)).toBe(1);
+      expect(await counter(db, c.id)).toBe(0);
+      await expect(asOffice(db, c.office, "SELECT public.create_with_lines('delivery_notes',$1::jsonb,'delivery_note_items','delivery_note_id','[]'::jsonb)", [JSON.stringify({ customer: "Synthetic", status: "awaiting" })]))
+        .rejects.toMatchObject({ code: "55000", hint: "dln_numbering_not_set" });
     });
   });
 

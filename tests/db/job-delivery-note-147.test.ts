@@ -79,7 +79,7 @@ const lines = (...l: Array<[string, number]>) => JSON.stringify(l.map(([descript
 const make = (db: Db, who: Actor | "anon" | { outsider: string }, jobId: string, customerId: string, request = randomUUID(), items = lines(["Bracket 40mm", 4])) =>
   as<{ r: { id: string; dn_number: string; replayed: boolean } }>(db, who, CREATE, [jobId, customerId, request, items]);
 const notesFor = async (db: Db, jobId: string) => Number((await db.query("SELECT count(*) AS n FROM public.delivery_notes WHERE job_id=$1", [jobId])).rows[0].n);
-const legacySnapshot = async (db: Db, id: string) => (await db.query("SELECT to_jsonb(d) - 'request_id' AS j FROM public.delivery_notes d WHERE id=$1", [id])).rows[0]?.j;
+const legacySnapshot = async (db: Db, id: string) => (await db.query("SELECT to_jsonb(d) - 'request_id' - 'request_hash' AS j FROM public.delivery_notes d WHERE id=$1", [id])).rows[0]?.j;
 
 it("147 is installed: preflight marker applied and every verify row true", async () => {
   await withDb(async db => {
@@ -120,12 +120,20 @@ it("two companies and the role matrix: a no-order job gets a key-linked, numbere
       const audit = (await db.query("SELECT action, actor_user_id FROM security_audit.audit_log WHERE entity_table='delivery_notes' AND entity_id=$1", [r1.id])).rows;
       expect(audit).toContainEqual({ action: "INSERT", actor_user_id: office.id });
 
-      // Double submit: same request id, same note back, nothing new, no number burnt.
-      const again = await make(db, office, jA.id, acme, request);
+      // Double submit: same request id and details, same note back, nothing new, no number burnt.
+      const again = await make(db, office, jA.id, acme, request, lines(["Bracket 40mm", 4], ["Spacer", 2.5]));
       expect(again.rows![0].r).toEqual({ id: r1.id, dn_number: r1.dn_number, replayed: true });
       expect(await notesFor(db, jA.id)).toBe(1);
-      const reused = await make(db, office, jA2.id, acme, request);
-      expect(reused.error).toMatchObject({ code: "22023", message: "That request was already used for another delivery note." });
+      // A retry with the same request id but different details is refused, never answered with the first note.
+      const mismatch = { code: "22023", hint: "request_mismatch" };
+      expect((await make(db, office, jA2.id, acme, request)).error).toMatchObject(mismatch);
+      expect((await make(db, office, jA.id, other, request)).error).toMatchObject(mismatch);
+      expect((await make(db, office, jA.id, acme, request, lines(["Bracket 40mm", 5], ["Spacer", 2.5]))).error).toMatchObject(mismatch);
+      expect((await make(db, office, jA.id, acme, request, lines(["Bracket 40mm", 4]))).error).toMatchObject(mismatch);
+      expect((await as(db, office, "SELECT public.create_job_delivery_note($1,$2,$3,DATE '2026-11-05',DATE '2026-11-04','Own van',NULL,$4) AS r", [jA.id, acme, request, lines(["Bracket 40mm", 4], ["Spacer", 2.5])])).error).toMatchObject(mismatch);
+      // The identical retry still returns the first note.
+      expect((await make(db, office, jA.id, acme, request, lines(["Bracket 40mm", 4], ["Spacer", 2.5]))).rows![0].r).toEqual({ id: r1.id, dn_number: r1.dn_number, replayed: true });
+      expect(await notesFor(db, jA.id)).toBe(1);
 
       // Number allocation: workshop and admin (second step) are allowed; the next numbers follow on, no gap.
       const n = Number(r1.dn_number.slice(4));
@@ -176,6 +184,42 @@ it("two companies and the role matrix: a no-order job gets a key-linked, numbere
       expect((await as(db, office, "INSERT INTO public.delivery_notes(organization_id,dn_number,customer,status,job_id) VALUES($1,'DLN-HAND-C17','Acme C17 Ltd','awaiting',$2)", [alpha, jA.id])).error).toMatchObject({ code: "42501" });
       expect((await as(db, office, "UPDATE public.delivery_notes SET request_id=$2 WHERE id=$1", [r1.id, randomUUID()])).error).toMatchObject({ code: "42501" });
 
+      // Customer matching: jobs carry the customer as text only, so two customer records with the job's name are ambiguous: refused.
+      await customer(db, alpha, "Twin C17 Ltd");
+      const twin2 = await customer(db, alpha, " twin c17 LTD ");
+      const jTwin = await job(db, alpha, "Twin C17 Ltd");
+      expect((await make(db, office, jTwin.id, twin2)).error).toMatchObject({ code: "22023", hint: "customer_ambiguous" });
+      expect(await notesFor(db, jTwin.id)).toBe(0);
+
+      // Numbers come from the DLN counter only. A hand-made note (create_with_lines, as the Delivery Notes page) gets the next
+      // number even when it names an invoice; a typed number (the old INV-0456 -> DLN-0456 bypass) is refused; a number can't be changed.
+      const handMade = (header: Record<string, unknown>) => as<{ id: string }>(db, office,
+        "SELECT public.create_with_lines('delivery_notes',$1::jsonb,'delivery_note_items','delivery_note_id',$2::jsonb) AS id",
+        [JSON.stringify({ customer: "Acme C17 Ltd", status: "awaiting", ...header }), JSON.stringify([{ position: 0, description: "Spacer", quantity: 1 }])]);
+      const counterNow = async () => (await db.query("SELECT last FROM public.doc_counters WHERE organization_id=$1 AND prefix='DLN'", [alpha])).rows[0].last as number;
+      const c0 = await counterNow();
+      const hm = await handMade({ invoice_ref: "INV-0456" });
+      expect(hm.error).toBeUndefined();
+      const hmRow = (await db.query("SELECT dn_number, invoice_ref FROM public.delivery_notes WHERE id=$1", [hm.rows![0].id])).rows[0];
+      expect(hmRow).toEqual({ dn_number: `DLN-${String(c0 + 1).padStart(4, "0")}`, invoice_ref: "INV-0456" });
+      expect((await handMade({ dn_number: "DLN-0456", invoice_ref: "INV-0456" })).error).toMatchObject({ code: "42501", hint: "dn_number_from_counter" });
+      expect((await as(db, office, "INSERT INTO public.delivery_notes(organization_id,dn_number,customer,status) VALUES($1,'DLN-0457','Acme C17 Ltd','awaiting')", [alpha])).error).toMatchObject({ code: "42501", hint: "dn_number_from_counter" });
+      expect((await as(db, office, "UPDATE public.delivery_notes SET dn_number='DLN-0458' WHERE id=$1", [hm.rows![0].id])).error).toMatchObject({ code: "42501", hint: "dn_number_from_counter" });
+      expect(await counterNow()).toBe(c0 + 1);
+
+      // A company that existed when 147 was installed is held until the cutover counter step: no note by any route.
+      await db.query("INSERT INTO public.dln_numbering_pending(organization_id) VALUES($1)", [alpha]);
+      const held = { code: "55000", hint: "dln_numbering_not_set" };
+      expect((await make(db, office, jA.id, acme)).error).toMatchObject(held);
+      expect((await handMade({})).error).toMatchObject(held);
+      expect((await as(db, office, "SELECT public.create_delivery_note($1,NULL,DATE '2026-11-12',DATE '2026-11-12',NULL,NULL,'[{\"line_id\":\"00000000-0000-4000-8000-000000000000\",\"quantity\":1}]'::jsonb)", [so])).error).toMatchObject(held);
+      expect(await counterNow()).toBe(c0 + 1);
+      // Browser roles cannot see or lift the marker.
+      expect((await as(db, admin, "SELECT * FROM public.dln_numbering_pending")).error).toMatchObject({ code: "42501" });
+      expect((await as(db, admin, "DELETE FROM public.dln_numbering_pending WHERE organization_id=$1", [alpha])).error).toMatchObject({ code: "42501" });
+      // Beta (not held) is unaffected.
+      expect((await make(db, betaAdmin, jB.id, betaCo)).error).toBeUndefined();
+
       // Legacy note untouched by all of it.
       expect(await legacySnapshot(db, legacy)).toEqual(legacyBefore);
     } finally {
@@ -216,7 +260,7 @@ it("a double submit from two connections makes one note; rollback keeps every no
     await c1.end(); await c2.end();
   }
   await withDb(async db => {
-    const rows = async () => (await db.query("SELECT id, to_jsonb(d) - 'request_id' AS j FROM public.delivery_notes d WHERE organization_id=$1 ORDER BY id", [setup.alpha])).rows;
+    const rows = async () => (await db.query("SELECT id, to_jsonb(d) - 'request_id' - 'request_hash' AS j FROM public.delivery_notes d WHERE organization_id=$1 ORDER BY id", [setup.alpha])).rows;
     const before = await rows();
     expect(before).toHaveLength(2);
     // Rollback: the function, guard, index and key column go; every note (147's and the legacy one) stays as it was.
@@ -232,6 +276,12 @@ it("a double submit from two connections makes one note; rollback keeps every no
     const checks = (await db.query(read("supabase/verify/job_delivery_note_147.sql"))).rows;
     expect(checks.filter(r => r.ok !== true)).toEqual([]);
     expect(await rows()).toEqual(before);
+    // Installing 147 holds every company that exists at that moment until its counter step; a company made later is not held.
+    const pending = async (org: string) => (await db.query("SELECT 1 FROM public.dln_numbering_pending WHERE organization_id=$1", [org])).rowCount;
+    expect(await pending(setup.alpha)).toBe(1);
+    const later = await org(db, "later");
+    expect(await pending(later)).toBe(0);
+    await db.query("DELETE FROM public.dln_numbering_pending WHERE organization_id=$1", [setup.alpha]);
     // A second apply of the one-time release refuses and changes nothing.
     await expect(db.query(read("supabase/release/147_job_delivery_note.release.sql"))).rejects.toThrow();
     await db.query("ROLLBACK").catch(() => undefined);

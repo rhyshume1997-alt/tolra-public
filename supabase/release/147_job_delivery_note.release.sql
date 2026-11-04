@@ -16,6 +16,7 @@ END $post_release_guard$;
 
 -- 1. Double-submit key. Set only by create_job_delivery_note; never by a browser write. A legacy note keeps NULL.
 ALTER TABLE public.delivery_notes ADD COLUMN request_id uuid;
+ALTER TABLE public.delivery_notes ADD COLUMN request_hash text;
 CREATE UNIQUE INDEX delivery_notes_org_request_uniq ON public.delivery_notes (organization_id, request_id) WHERE request_id IS NOT NULL;
 
 CREATE FUNCTION public.delivery_notes_request_guard()
@@ -27,21 +28,73 @@ BEGIN
   IF coalesce(nullif(current_setting('role', TRUE), 'none'), session_user::TEXT) NOT IN ('anon', 'authenticated') THEN
     RETURN NEW;
   END IF;
-  IF TG_OP = 'INSERT' AND NEW.request_id IS NOT NULL
-     AND current_setting('quoteflow.job_delivery_note_request', TRUE) IS DISTINCT FROM NEW.request_id::TEXT THEN
+  IF TG_OP = 'INSERT' AND (NEW.request_id IS NOT NULL OR NEW.request_hash IS NOT NULL)
+     AND (NEW.request_id IS NULL OR current_setting('quoteflow.job_delivery_note_request', TRUE) IS DISTINCT FROM NEW.request_id::TEXT) THEN
     RAISE EXCEPTION 'A delivery note''s request key is set by the function that makes it.' USING ERRCODE = '42501';
   END IF;
-  IF TG_OP = 'UPDATE' AND NEW.request_id IS DISTINCT FROM OLD.request_id THEN
+  IF TG_OP = 'UPDATE' AND (NEW.request_id IS DISTINCT FROM OLD.request_id OR NEW.request_hash IS DISTINCT FROM OLD.request_hash) THEN
     RAISE EXCEPTION 'A delivery note''s request key can''t be changed.' USING ERRCODE = '42501';
   END IF;
   RETURN NEW;
 END
 $$;
 REVOKE ALL ON FUNCTION public.delivery_notes_request_guard() FROM PUBLIC, anon, authenticated;
-CREATE TRIGGER delivery_notes_request_guard BEFORE INSERT OR UPDATE OF request_id ON public.delivery_notes
+CREATE TRIGGER delivery_notes_request_guard BEFORE INSERT OR UPDATE OF request_id, request_hash ON public.delivery_notes
   FOR EACH ROW EXECUTE FUNCTION public.delivery_notes_request_guard();
 
--- 2. A delivery note for a job that was not made from a sales order, linked to the job (job_id) and to the job's customer record
+-- 2. Hold until the cutover counter step. One row per company that existed when this was installed; no browser access at all. The
+-- cutover scripts (run by the database owner) delete a company's row once its DLN numbering is set; a company made later has no row.
+CREATE TABLE public.dln_numbering_pending (
+  organization_id uuid PRIMARY KEY REFERENCES public.organizations(id) ON DELETE CASCADE,
+  marked_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.dln_numbering_pending ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.dln_numbering_pending FROM PUBLIC, anon, authenticated;
+INSERT INTO public.dln_numbering_pending (organization_id) SELECT id FROM public.organizations;
+
+-- 3. Numbering guard for browser roles (the service role, the owner and the import are exempt, as the other note guards):
+--    a held company makes no note by any route; a note's number comes from next_doc_number('DLN') (the functions take it themselves; a
+--    note made by hand gets it here, in the same transaction, so a failed save burns none); a typed number (the old invoice-number
+--    mirror INV-0456 -> DLN-0456) is refused, and a number is never changed afterwards.
+CREATE FUNCTION public.delivery_notes_numbering_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF coalesce(nullif(current_setting('role', TRUE), 'none'), session_user::TEXT) NOT IN ('anon', 'authenticated') THEN
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.dn_number IS DISTINCT FROM OLD.dn_number THEN
+      RAISE EXCEPTION 'A delivery note''s number can''t be changed.' USING ERRCODE = '42501', HINT = 'dn_number_from_counter';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF current_setting('quoteflow.data_import', TRUE) = NEW.organization_id::TEXT THEN
+    RETURN NEW;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.dln_numbering_pending p WHERE p.organization_id = NEW.organization_id) THEN
+    RAISE EXCEPTION 'Delivery note numbering for this company hasn''t been set yet, so no delivery note can be made. It is set once, on the cutover day.'
+      USING ERRCODE = '55000', HINT = 'dln_numbering_not_set';
+  END IF;
+  IF current_setting('quoteflow.delivery_note_new', TRUE) = 'on' THEN
+    RETURN NEW;
+  END IF;
+  IF nullif(btrim(coalesce(NEW.dn_number, '')), '') IS NOT NULL THEN
+    RAISE EXCEPTION 'A delivery note''s number comes from the delivery note series: leave it empty and Tolra gives the next one.'
+      USING ERRCODE = '42501', HINT = 'dn_number_from_counter';
+  END IF;
+  NEW.dn_number := public.next_doc_number('DLN');
+  RETURN NEW;
+END
+$$;
+REVOKE ALL ON FUNCTION public.delivery_notes_numbering_guard() FROM PUBLIC, anon, authenticated;
+CREATE TRIGGER delivery_notes_numbering_guard BEFORE INSERT OR UPDATE OF dn_number ON public.delivery_notes
+  FOR EACH ROW EXECUTE FUNCTION public.delivery_notes_numbering_guard();
+
+-- 4. A delivery note for a job that was not made from a sales order, linked to the job (job_id) and to the job's customer record
 -- (customer_id) by key, numbered DLN by next_doc_number in the same transaction (a failed save burns no number). Roles as
 -- create_delivery_note: admin, office, workshop (admin with the second step). The job row is locked FOR UPDATE first, so a second
 -- submit with the same request id waits and then gets the first note back. The release gate (081) still fires on the insert.
@@ -66,6 +119,8 @@ DECLARE
   v_dn       uuid;
   v_number   text;
   v_pos      int := 0;
+  v_hash     text;
+  v_same     int;
 BEGIN
   PERFORM public.assert_privileged_aal();
   IF v_org IS NULL OR v_user IS NULL OR NOT public.has_org_role(ARRAY['admin', 'office', 'workshop']) THEN
@@ -93,11 +148,21 @@ BEGIN
     RAISE EXCEPTION 'Job not found' USING ERRCODE = 'P0002';
   END IF;
 
-  -- Double submit: the same request again (after the first committed, under the job lock) gets the first note back, unchanged.
+  IF EXISTS (SELECT 1 FROM public.dln_numbering_pending p WHERE p.organization_id = v_org) THEN
+    RAISE EXCEPTION 'Delivery note numbering for this company hasn''t been set yet, so no delivery note can be made. It is set once, on the cutover day.'
+      USING ERRCODE = '55000', HINT = 'dln_numbering_not_set';
+  END IF;
+
+  -- Double submit: the same request again (after the first committed, under the job lock) gets the first note back, unchanged. The same
+  -- request id with anything different (job, customer, dates, ship via, notes or lines) is refused: it is not the same request.
+  v_hash := md5(jsonb_build_object('job', p_job, 'customer', p_customer, 'ship_date', p_ship_date, 'tax_date', p_tax_date,
+                                   'ship_via', nullif(btrim(coalesce(p_ship_via, '')), ''), 'notes', nullif(btrim(coalesce(p_notes, '')), ''),
+                                   'lines', p_lines)::TEXT);
   SELECT * INTO v_prior FROM public.delivery_notes WHERE organization_id = v_org AND request_id = p_request;
   IF FOUND THEN
-    IF v_prior.job_id IS DISTINCT FROM p_job THEN
-      RAISE EXCEPTION 'That request was already used for another delivery note.' USING ERRCODE = '22023';
+    IF v_prior.request_hash IS DISTINCT FROM v_hash THEN
+      RAISE EXCEPTION 'That request was already used for delivery note % with different details, so nothing was saved. Start a new delivery note.', v_prior.dn_number
+        USING ERRCODE = '22023', HINT = 'request_mismatch';
     END IF;
     RETURN jsonb_build_object('id', v_prior.id, 'dn_number', v_prior.dn_number, 'replayed', TRUE);
   END IF;
@@ -121,6 +186,12 @@ BEGIN
   IF lower(btrim(coalesce(v_customer.name, ''))) IS DISTINCT FROM lower(btrim(coalesce(v_job.customer, ''))) THEN
     RAISE EXCEPTION 'That customer isn''t the one on job % (%).', v_job.job_no, v_job.customer USING ERRCODE = '22023', HINT = 'customer_mismatch';
   END IF;
+  -- A job names its customer as text only (jobs carry no customer key), so two records with that name can't be told apart: refused.
+  SELECT count(*) INTO v_same FROM public.customers c WHERE c.organization_id = v_org AND lower(btrim(coalesce(c.name, ''))) = lower(btrim(coalesce(v_job.customer, '')));
+  IF v_same > 1 THEN
+    RAISE EXCEPTION 'There are % customer records named "%", so job % can''t be linked to one. Merge or rename them on the Customers page first.', v_same, btrim(v_job.customer), v_job.job_no
+      USING ERRCODE = '22023', HINT = 'customer_ambiguous';
+  END IF;
 
   -- Inspection must pass unless an admin released the job early with a reason (081). Checked here with the job locked, and again
   -- by the delivery_notes_release_gate trigger on the insert, and by the link guard when the note goes out.
@@ -136,9 +207,9 @@ BEGIN
   PERFORM set_config('quoteflow.delivery_note_new', 'on', TRUE);
   PERFORM set_config('quoteflow.job_delivery_note_request', p_request::TEXT, TRUE);
   INSERT INTO public.delivery_notes (organization_id, dn_number, customer, customer_id, customer_email, job_id, job_ref, delivery_date, ship_date,
-                                     tax_date, ship_via, status, notes, request_id, created_by, updated_by)
+                                     tax_date, ship_via, status, notes, request_id, request_hash, created_by, updated_by)
   VALUES (v_org, v_number, v_customer.name, v_customer.id, nullif(btrim(coalesce(v_customer.email, '')), ''), v_job.id, v_job.job_no, p_ship_date,
-          p_ship_date, p_tax_date, nullif(btrim(p_ship_via), ''), 'awaiting', nullif(btrim(p_notes), ''), p_request, v_user, v_user)
+          p_ship_date, p_tax_date, nullif(btrim(p_ship_via), ''), 'awaiting', nullif(btrim(p_notes), ''), p_request, v_hash, v_user, v_user)
   RETURNING id INTO v_dn;
   PERFORM set_config('quoteflow.delivery_note_new', '', TRUE);
   PERFORM set_config('quoteflow.job_delivery_note_request', '', TRUE);

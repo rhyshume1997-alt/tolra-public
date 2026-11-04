@@ -13,10 +13,31 @@ UNION ALL SELECT 'it checks the role, the second step and the release before num
 UNION ALL SELECT 'request key column and per-company unique index',
   EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'delivery_notes' AND column_name = 'request_id' AND data_type = 'uuid')
   AND EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'delivery_notes_org_request_uniq' AND indexdef LIKE 'CREATE UNIQUE INDEX%(organization_id, request_id) WHERE (request_id IS NOT NULL)')
-UNION ALL SELECT 'request key guard trigger enabled and not callable by browser roles',
+UNION ALL SELECT 'request key guard trigger enabled on request_id and request_hash, not callable by browser roles',
   EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_request_guard' AND tgenabled = 'O'
-          AND tgfoid = to_regprocedure('public.delivery_notes_request_guard()'))
+          AND tgfoid = to_regprocedure('public.delivery_notes_request_guard()') AND pg_get_triggerdef(oid) LIKE '%UPDATE OF request_id, request_hash%')
   AND NOT has_function_privilege('authenticated', 'public.delivery_notes_request_guard()', 'EXECUTE')
+UNION ALL SELECT 'request hash column (a changed retry is refused, an identical one replays)',
+  EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'delivery_notes' AND column_name = 'request_hash' AND data_type = 'text')
+  AND coalesce((SELECT prosrc LIKE '%request_mismatch%' AND prosrc LIKE '%v_prior.request_hash IS DISTINCT FROM v_hash%' FROM pg_proc
+                WHERE oid = to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)')), false)
+UNION ALL SELECT 'ambiguous customer names refused (jobs carry no customer key)',
+  coalesce((SELECT prosrc LIKE '%customer_ambiguous%' FROM pg_proc WHERE oid = to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)')), false)
+UNION ALL SELECT 'numbering guard enabled: insert and number change, security definer, pinned search path, not callable by browser roles',
+  EXISTS (SELECT 1 FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid WHERE t.tgrelid = 'public.delivery_notes'::regclass AND t.tgname = 'delivery_notes_numbering_guard'
+          AND t.tgenabled = 'O' AND p.oid = to_regprocedure('public.delivery_notes_numbering_guard()') AND p.prosecdef
+          AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND pg_get_triggerdef(t.oid) LIKE '%BEFORE INSERT OR UPDATE OF dn_number%'
+          AND p.prosrc LIKE '%dln_numbering_not_set%' AND p.prosrc LIKE '%dn_number_from_counter%' AND p.prosrc LIKE '%next_doc_number(''DLN'')%')
+  AND NOT has_function_privilege('authenticated', 'public.delivery_notes_numbering_guard()', 'EXECUTE')
+UNION ALL SELECT 'hold table: row security on, no browser access, one row per company at most',
+  coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.dln_numbering_pending')), false)
+  AND NOT has_table_privilege('anon', 'public.dln_numbering_pending', 'SELECT,INSERT,UPDATE,DELETE')
+  AND NOT has_table_privilege('authenticated', 'public.dln_numbering_pending', 'SELECT,INSERT,UPDATE,DELETE')
+  AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.dln_numbering_pending'::regclass AND contype = 'p')
+  AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'public.dln_numbering_pending'::regclass AND contype = 'f' AND confrelid = 'public.organizations'::regclass)
+UNION ALL SELECT 'the no-order function checks the hold before numbering',
+  coalesce((SELECT position('dln_numbering_pending' IN prosrc) > 0 AND position('dln_numbering_pending' IN prosrc) < position('next_doc_number(''DLN'')' IN prosrc)
+            FROM pg_proc WHERE oid = to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)')), false)
 UNION ALL SELECT 'release gate still on delivery notes (inspection must pass unless an admin releases early)',
   EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O'
           AND tgfoid = to_regprocedure('public.delivery_notes_release_gate()'))
