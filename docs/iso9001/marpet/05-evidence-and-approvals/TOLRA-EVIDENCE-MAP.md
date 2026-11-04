@@ -1,0 +1,55 @@
+# Marpet Fabrications - Tolra evidence map
+
+**DRAFT - NEEDS CONFIRMATION**
+
+Company: Marpet Fabrications | Reference: MAR QMS evidence map | Version 0.1 draft, 4 November 2026
+Owner: NEEDS CONFIRMATION | Approved by / date: NEEDS CONFIRMATION | Effective date: NEEDS CONFIRMATION | Review date: NEEDS CONFIRMATION
+
+Tolra supports Marpet Fabrications' quality work. Software and documents cannot make a company certified. Marpet is the company that gets audited. Nothing here is certification.
+
+## What this map can and cannot say
+
+- **Marpet's use of Tolra is NOT verified.** The public repository shows that Marpet exists as a company record and that some features were written with Marpet's use in mind (see the last section). It does not show that Marpet runs any job, quote, inspection, delivery or sign-off on Tolra. Marpet's data is protected and was not inspected.
+- **Base for source references:** Tolra public repository `main` at commit `68f89ca7b801a10587ff9b51d6c820462847b65a`. Paths below are relative to that commit.
+- **Status words are used strictly:**
+  - **Built**: the code exists in that source. It is not a claim that it works in production.
+  - **Tested**: a test was run and passed, with the run recorded. Nothing has been run for this pack. Test files are listed only as existing.
+  - **Used**: Marpet has used the feature for real work and the records show it. NOT VERIFIED for every row.
+  - **Records retained**: Marpet keeps the evidence under its own controls. NEEDS CONFIRMATION.
+  - **Approved**: Marpet management has approved the procedure and the use of the record. NEEDS CONFIRMATION.
+- "Not found" means not found in the reviewed source. It does not mean Marpet has no such process.
+- Blank forms and software history cannot replace completed Marpet evidence.
+
+## Evidence map
+
+| Procedure (MAR QMS) | Tolra record / source | Available in source | Real evidence Marpet still needs | Status |
+| --- | --- | --- | --- | --- |
+| 008 Document and record control | `lib/quote-versions.ts`; `lib/job-worksheet.ts` (drawing and worksheet fields) | Partly: quote versions and worksheet/drawing fields. No general controlled-document approval or distribution workflow found. | Controlled document list; approval records; site copy control; retention link (026). | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 009 Contract review | `app/(dashboard)/quotes/page.tsx`; `app/(dashboard)/sales-orders/page.tsx`; `app/(dashboard)/jobs/page.tsx`; `lib/quote-versions.ts`; `supabase/migrations/018_atomic_order_conversion.sql` | Partly: quote, order and job links and numbering. Sales orders must be enabled. Does not replace a customer requirement review. | Marpet's contract review record; difference log; customer agreement. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 011 / 012 Supplier approval and purchasing | `app/(dashboard)/suppliers/page.tsx`; `app/(dashboard)/purchase-orders/page.tsx`; `lib/supplier-status.ts` | Partly: supplier records, purchase orders and Approved / Conditional / Blocked status. Gap: evaluation evidence. A default Approved status is not an assessment. | Supplier evaluation and approval evidence; certificates; receipt checks; performance review. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 014 Identification and traceability | `lib/job-worksheet.ts` (material certificate and heat fields); `components/cert-pack.tsx` | Partly: saved fields and certificate pack. Does not prove physical marking, splits or transfers. | Marking method; batch or heat matching to parts; split and transfer records. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 015 / 017 Inspection and nonconformity | `lib/inspection.ts` (inspection and disposition); `lib/job-problems.ts` (job problem notes) | Partly: inspection failures, rework, scrap, concession and problem notes. Per Tolra draft review PR #361, a Problem flag does not block Start or Finish. No full cause, action and effectiveness log found. | Numbered nonconformity log; hold records; customer concession approvals; criteria for Marpet's work (welding, site, installation). | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 018 Corrective action | No dedicated workflow found in reviewed source (see Tolra draft PR #342 gap note). | Gap. | Corrective action log with cause, action, owner, due date and effectiveness check. | Built: not found. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 019 Complaints | No complaint workflow found: searched `app/`, `lib/` and `components/` (PR #361 review). | Gap. | Complaint log linked to jobs and actions; response records. | Built: not found. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 016 Calibration and verification | No gauge or calibration module found in reviewed source (PR #342 gap note). | Gap. | Equipment register; certificates; due dates; impact review of failed items. | Built: not found. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 020 Training and competence | `lib/inspectors.ts` (inspector authority and history); `lib/company-access.ts` (company roles) | Partly: authorised inspector scope and history. Not a skills matrix or practical assessment record. | Competence matrix; qualifications (including any welding qualifications Marpet needs); assessment records. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 020 Access and permissions | `app/(dashboard)/admin/users/page.tsx`; `lib/company-access.ts` | Present: company roles. A role is not evidence of skill. | Access list approved by Marpet; review of who can see and change records. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 021 / 022 Audit and management review | `app/(dashboard)/admin/activity/page.tsx`; `app/(dashboard)/admin/compliance/page.tsx`; `components/activity-panel.tsx`; `tests/db/audit-integrity.test.ts` | Partly: filtered activity and per-record history; compliance shows the latest 25 entries. Not a complete audit export and not an ISO internal audit. The integrity test file exists; it has not been run for this pack. | Internal audit plan and report; management review minutes; any export Marpet relies on. | Built: source only. Tested: test file exists, not run for this pack. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 024 Delivery and handover | `app/(dashboard)/delivery-notes/page.tsx`; `lib/delivery-note-print.ts` | Present: job, customer and line details, status, recorded signature details, print or PDF. Partly: a note or signature alone is not proof of physical delivery or correct inspection. | Marpet's delivery and handover method; handover pack; site and aftercare records. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 024 Customer sign-off on site | `supabase/migrations/072_customer_signoff.sql`; `lib/customer-signoff-print.ts`; `tests/unit/customer-signoff.test.ts`; `app/(dashboard)/delivery-notes/page.tsx` | Built in source: the migration header describes a site sign-off use case that names Marpet. A test file exists. | Whether Marpet uses it; who signs; sign-off wording Marpet accepts; retained copies; proof the signature is genuine. | Built: source only. Tested: test file exists, not run for this pack. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 008 / 028 Exported copies | `lib/export-records.ts`; `lib/year-end-export.tsx` | Present: filtered list exports and issued-document pack. Summaries may not include every attachment or history. | Export scope check; originals kept by Marpet. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 026 / 027 Retention, backup and continuity | `scripts/backup-run.sh`; `lib/audit-contract.ts` | Tolra's own backup script exists. It is Tolra's operation, not a Marpet plan. No Marpet restore test found. | Marpet retention periods; Marpet backup and restore evidence (if Marpet relies on Tolra); continuity plan. | Built: source only. Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 007 Risks and opportunities | No Marpet risk register found in reviewed source. | Gap. | Marpet risk register, owners, ratings and reviews. | Built: not found. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 013 / 023 Production control and maintenance | `lib/job-worksheet.ts` (worksheet and drawing fields); no plant maintenance module found | Partly: worksheet and drawing version fields. No maintenance register or controlled welding or CNC program lifecycle found. | Marpet production and job-control method; maintenance and examination records; welding control evidence where applicable. | Built: source only (worksheet). Tested: not run here. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| 010 Design applicability | No design verification workflow found (PR #342 gap note). | Gap. | Written decision on whether design applies; if it does, a design procedure. | Built: not found. Used: NOT VERIFIED. Records retained: NEEDS CONFIRMATION. Approved: NEEDS CONFIRMATION. |
+| Health and safety | No Tolra workflow in scope for this pack. | Not in scope. | Marpet's own health and safety arrangements (outside this pack). | Not assessed. |
+
+## Marpet references found in the public repository
+
+The public repository mentions Marpet in a company record used by tests and migrations, and in a customer sign-off migration (`supabase/migrations/072_customer_signoff.sql`) whose header describes Marpet's on-site use case. Those references show the company exists on the platform in source and test data. They do NOT show that Marpet's real jobs, quotes, inspections, deliveries or sign-offs are recorded in Tolra, and this pack does not use any Marpet data. Personal names in those files are not repeated here.
+
+## Who confirms this map
+
+- Marpet management: whether Marpet uses Tolra for any listed record, and in what form (NEEDS CONFIRMATION).
+- Tolra side (Rhys): technical facts about the features above, and whether any listed test has been run for a Marpet context (NEEDS CONFIRMATION).
+- No row in this map is approved by Marpet, and no row may be marked approved until Marpet approves it.
