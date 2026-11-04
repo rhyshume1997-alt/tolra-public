@@ -37,3 +37,9 @@ Full Supabase startup failed because `public.ecr.aws` was denied by environment 
 Read private historical kit at `ee875c6f7e18221cbfdea32828fd69f634dd8f3d`, `docs/handover/golive-runbooks/28-wipe-jnr.sql` blob `6016c3e191f513f30e9266c6fd97f261b790f315` and associated check/runbook, without executing or copying private source publicly. Its identity/KEEP/WIPE/trigger and other-company fingerprint assertions are source claims, not current results. The marker alone cannot establish an independently created restore. Public #250 already carries NOT SAFE for the unproved combined kit.
 
 Still required: approved exact combined wipe/archival kit and its SQL hashes; an independently identified isolated restore of the approved source; before/after JNR archive/KEEP/WIPE and **all** other-tenant row/file/auth/counter/trigger/audit comparisons; dry and commit/second-run refusal/rollback tests. No restore archive or final combined-kit evidence was supplied here. Do not reuse this tiny counter fixture as JNR wipe approval.
+
+## Exact committed-code rerun
+
+Executed checkout `14c56ebbe68d13b65cdda9f861ee877d3db1806e`; UTC 2026-11-04T21:57:39.140516+00:00; exit 1; duration 14.836 seconds. Full environment, SQL manifest/log hashes and command file hashes are in `evidence/2026-11-04T21-57-39.140516+00-00-committed-counter-review-52a663/run.json`; original log bytes retained. This supersedes contextual checkout ambiguity for earlier uncommitted test overlays. Later commits only attach review/evidence.
+
+Latest narrow fixture restore: 1.6836 seconds, five fixture tables plus definitions/indexes/constraints/sequences compared. Ten checks passed, two guard-bypass checks failed; exit 1 is intentional evidence, not acceptance.
