@@ -194,7 +194,13 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.issue_password_change_ticket(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a2936196b138dd7dee76db6be3b8ed82')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.revoke_password_change_ticket(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '42f77209ec079fa354f54ef78784a4b4')
                                           AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
-                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19))
+                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19)),
+    ('138 chase steps',                  to_regclass('public.chase_steps') IS NOT NULL AND to_regclass('public.chase_pauses') IS NOT NULL AND to_regclass('public.chase_sends') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.chase_create_draft(uuid,uuid,uuid,text,text,text,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5452f25d1f364e3915e01db2cfed2fee')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.chase_record_sent(uuid,uuid,uuid,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '213c534d5aeb25f0d14f9070396faf76')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mark_payment_claimed(uuid,text,text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1ee5cb529645fd03263bd9e481864b1d')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.resolve_payment_claim(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'd3cbee1ab48f8e29d20fe23f8d8603fd')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.invoice_issue_lock()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'aa8c9f3ae3035d0ed566723a28edd827'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

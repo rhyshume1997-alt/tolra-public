@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import { type EmailScheduleRow } from "@/lib/email/schedules/store";
-import { type ReminderInvoiceRow, reminderCandidates, runInvoiceReminders } from "@/lib/email/schedules/reminders";
+import { type ReminderDeps, type ReminderInvoiceRow, reminderCandidates, runInvoiceReminders } from "@/lib/email/schedules/reminders";
 import { dueOccurrence } from "@/lib/email/schedules/due";
-import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
+import type { ChaseDeps } from "@/lib/email/chase/run";
 import { scheduleEmailKey } from "@/lib/email/schedules/keys";
 import { FakeDb } from "../support/fake-db";
 
@@ -78,154 +78,61 @@ describe("idempotency keys fit the mailer", () => {
   });
 });
 
-describe("running a period of reminders", () => {
+// 138: a run of the invoice_reminder schedule only DRAFTS (lib/email/chase/run.ts, tested in tests/unit/chase-run.test.ts). Before 138 it
+// e-mailed each overdue invoice through the company mailer once per period; that path is gone, so these tests prove it never sends.
+describe("running a period of reminders (138: chase drafts, never a send)", () => {
   const schedule: EmailScheduleRow = {
     id: "sch-1", organization_id: ORG, kind: "invoice_reminder", enabled: true, frequency: "daily", weekday: null, time_of_day: "08:00", run_at: null,
     timezone: "Europe/London", recipients: null, last_run_at: null, updated_at: "2026-10-01T00:00:00Z",
   };
   const now = new Date("2026-10-26T09:00:00Z");
   const occurrence = dueOccurrence(schedule, now)!;
-  const send = vi.fn<(input: CompanyEmailInput) => Promise<CompanyEmailResult>>();
+  const createDraft = vi.fn<NonNullable<ChaseDeps["createDraft"]>>();
   let db: FakeDb;
 
   beforeEach(() => {
-    send.mockReset();
-    send.mockResolvedValue({ ok: true, mode: "sent", provider: "mock" });
+    createDraft.mockReset();
+    createDraft.mockImplementation(async (_admin, args) => ({ created: true, history_id: `h-${args.invoiceId}` }));
     db = new FakeDb({
       invoices: [
-        { organization_id: ORG, ...inv("1") },
-        { organization_id: ORG, ...inv("2", { customer: "No Email Ltd" }) },
-        { organization_id: ORG, ...inv("3", { status: "paid", amount_paid: 120 }) },
-        { organization_id: ORG, ...inv("4", { status: "void" }) },
-        { organization_id: "org-b", ...inv("9") },
+        { organization_id: ORG, job_id: null, ...inv("1") },
+        { organization_id: ORG, job_id: null, ...inv("3", { status: "paid", amount_paid: 120 }) },
+        { organization_id: "org-b", job_id: null, ...inv("9") },
       ],
-      customers: [
-        { organization_id: ORG, name: " acme LTD ", email: "pay@acme.test", contact_name: "Pat" },
-        { organization_id: ORG, name: "No Email Ltd", email: null },
-        { organization_id: "org-b", name: "Acme Ltd", email: "other@b.test" },
-      ],
+      customers: [{ id: "c1", organization_id: ORG, name: " acme LTD ", email: "pay@acme.test", contact_name: "Pat" }],
+      chase_steps: [{ id: "s7", organization_id: ORG, offset_days: 7, tone: "friendly" }, { id: "s30", organization_id: ORG, offset_days: 30, tone: "final" }],
+      chase_pauses: [], chase_sends: [],
       organizations: [{ id: ORG, name: "JNR Engineering" }],
       organization_settings: [{ organization_id: ORG, company_profile: { name: "JNR" } }],
     });
   });
 
-  const run = (s = schedule) => runInvoiceReminders(db as never, s, occurrence, now, { send });
-
-  it("sends one reminder to the customer's address for the overdue unpaid invoice only, from this company only", async () => {
-    const out = await run();
-    expect(out).toMatchObject({ sent: 1, drafted: 0, skipped: 1, failed: 0, error: null, retryable: true });
-    expect(send).toHaveBeenCalledTimes(1);
-    const mail = send.mock.calls[0][0];
-    expect(mail).toMatchObject({ organizationId: ORG, kind: "invoice_reminder", to: ["pay@acme.test"], recordType: "invoice", recordId: "1", idempotencyKey: scheduleEmailKey("invoice_reminder", "sch-1", "2026-10-26", "1") });
-    expect(mail.subject).toBe("Overdue invoice INV-1 from JNR");
-    expect(mail.text).toBe("Hi Acme Ltd\n\nA friendly reminder that invoice INV-1 was due on 01/10/2026, with £120.00 still outstanding\n\nIf you've already paid, thank you, please send the payment date and reference so we can match it up\n\nOtherwise, please let us know when we can expect payment\n\nThanks,\nJNR");
-    expect(mail.html).toContain("Hi Acme Ltd<br>");
-  });
-
-  it("every placeholder of the default text is filled: no '{{' reaches a customer, whoever the contact is and whatever has been paid", async () => {
-    db.rows("customers").push({ organization_id: ORG, name: "Plain Ltd", email: "plain@x.test", contact_name: null });
-    db.rows("invoices").push({ organization_id: ORG, ...inv("5", { customer: "Plain Ltd", due_date: "2026-10-25", amount_paid: 20, credited_amount: 10 }) });
-    await run();
-    const mails = send.mock.calls.map((c) => c[0]);
-    expect(mails).toHaveLength(2);
-    for (const m of mails) {
-      expect(m.subject).not.toContain("{{");
-      expect(m.text).not.toContain("{{");
-      expect(m.html ?? "").not.toContain("{{");
-    }
-    const plain = mails.find((m) => m.recordId === "5")!;
-    expect(plain.text.startsWith("Hi Plain Ltd\n")).toBe(true);
-    // Received 20 and credited 10 on a 120 invoice: the balance is 120 - 20 - 10 = 90, and that is what is still outstanding.
-    expect(plain.text).toContain("with £90.00 still outstanding");
-  });
-
-  it("a one-day-late and a many-days-late invoice read right, with the greeting and payment note, in a company's own text", async () => {
-    db.rows("email_templates").push({ organization_id: ORG, key: "invoice_reminder", subject: "Overdue {{document_number}}", body: "{{greeting}}, {{document_number}} is now {{days_overdue}} overdue.{{payment_note}}" });
-    db.rows("customers").push({ organization_id: ORG, name: "Plain Ltd", email: "plain@x.test", contact_name: null });
-    db.rows("invoices").push({ organization_id: ORG, ...inv("5", { customer: "Plain Ltd", due_date: "2026-10-25", amount_paid: 20, credited_amount: 10 }) });
-    const out = await run();
-    expect(out.sent).toBe(2);
-    const plain = send.mock.calls.map((c) => c[0]).find((m) => m.recordId === "5")!;
-    expect(plain.text).toBe("Hello, INV-5 is now 1 day overdue. We have received £20.00, leaving £90.00 to pay."); // no contact: "Hello," not "Hello ,"
-    const late = send.mock.calls.map((c) => c[0]).find((m) => m.recordId === "1")!;
-    expect(late.text).toBe("Hello Pat, INV-1 is now 25 days overdue."); // nothing received: no payment note
-  });
-
-  it("dedupe: the same period never sends the same invoice twice, however often it runs", async () => {
-    await run();
-    await run();
-    await run();
-    expect(send).toHaveBeenCalledTimes(1);
-    expect(db.rows("invoice_reminder_sends")).toHaveLength(1);
-  });
-
-  it("the next period reminds again", async () => {
-    await run();
-    const tomorrow = new Date("2026-10-27T09:00:00Z");
-    await runInvoiceReminders(db as never, schedule, dueOccurrence(schedule, tomorrow)!, tomorrow, { send });
-    expect(send).toHaveBeenCalledTimes(2);
-    expect(send.mock.calls[1][0].idempotencyKey).toBe(scheduleEmailKey("invoice_reminder", "sch-1", "2026-10-27", "1"));
-    expect(send.mock.calls[1][0].idempotencyKey).not.toBe(send.mock.calls[0][0].idempotencyKey);
-  });
-
-  it("an invoice paid since the last period is not reminded", async () => {
-    await run();
-    db.rows("invoices").find((r) => r.id === "1")!.status = "paid";
-    const tomorrow = new Date("2026-10-27T09:00:00Z");
-    await runInvoiceReminders(db as never, schedule, dueOccurrence(schedule, tomorrow)!, tomorrow, { send });
-    expect(send).toHaveBeenCalledTimes(1);
-  });
-
-  it("fixed recipients replace the customer's address, even for a customer with none", async () => {
-    const out = await run({ ...schedule, recipients: ["collections@jnr.test"] });
-    expect(out.sent).toBe(2);
-    expect(send.mock.calls.map((c) => c[0].to)).toEqual([["collections@jnr.test"], ["collections@jnr.test"]]);
-  });
-
-  it("a failed send gives its claim back, is counted, and the next try sends only what is left", async () => {
-    send.mockResolvedValueOnce({ ok: false, error: "x@y.test refused", code: "provider_error" });
-    const first = await run();
-    expect(first).toMatchObject({ sent: 0, failed: 1, retryable: true });
-    expect(first.error).toBe("1 reminder not sent (provider_error)");
-    expect(first.error).not.toContain("y.test"); // never an address
+  it("drafts the step due (25 days late: the 7-day friendly step) for this company's owed invoice only, and sends nothing", async () => {
+    const out = await runInvoiceReminders(db as never, schedule, occurrence, now, { createDraft });
+    expect(out).toMatchObject({ sent: 0, drafted: 1, failed: 0, error: null, retryable: true });
+    expect(createDraft).toHaveBeenCalledTimes(1);
+    const args = createDraft.mock.calls[0][1];
+    expect(args).toMatchObject({ organizationId: ORG, invoiceId: "1", stepId: "s7", to: "pay@acme.test", userId: null });
+    // ChatGPT's renderChase wording (lib/chase/steps.ts) is the default for every tone.
+    expect(args.subject).toBe("Payment reminder: invoice INV-1");
+    expect(args.body).toBe("Hello Acme Ltd,\n\nWe have not yet recorded payment of £120.00 for invoice INV-1, which was due on 01/10/2026. Please let us know when payment is arranged.\n\nIf you have already paid, please let us know so we can check our records.\n\nKind regards,\nJNR");
     expect(db.rows("invoice_reminder_sends")).toHaveLength(0);
-    const second = await run();
-    expect(second).toMatchObject({ sent: 1, failed: 0, error: null });
-    expect(send).toHaveBeenCalledTimes(2);
   });
 
-  it("a sender that throws is counted and does not stop the other invoices", async () => {
-    db.rows("customers").push({ organization_id: ORG, name: "No Email Ltd", email: "x@noemail.test" });
-    db.tables.customers = db.rows("customers").filter((r) => !(r.name === "No Email Ltd" && r.email === null));
-    send.mockRejectedValueOnce(new Error("boom: a@b.test"));
-    const out = await run();
-    expect(out).toMatchObject({ sent: 1, failed: 1 });
-    expect(out.error).toBe("1 reminder not sent (unexpected)");
+  it("the deps take no mailer at all: there is nothing a run could send with", () => {
+    const deps: ReminderDeps = { createDraft };
+    expect(Object.keys(deps)).toEqual(["createDraft"]);
   });
 
-  it("drafted mode (no provider configured) counts as drafted", async () => {
-    send.mockResolvedValue({ ok: true, mode: "drafted", provider: "none" });
-    expect(await run()).toMatchObject({ sent: 1, drafted: 1 });
+  it("fixed recipients replace the customer's address", async () => {
+    await runInvoiceReminders(db as never, { ...schedule, recipients: ["collections@jnr.test"] }, occurrence, now, { createDraft });
+    expect(createDraft.mock.calls[0][1].to).toBe("collections@jnr.test");
   });
 
-  it("stops at the time limit and says so; the rest goes on the next try", async () => {
-    const out = await runInvoiceReminders(db as never, { ...schedule, recipients: ["c@j.test"] }, occurrence, now, { send, deadline: 1000, clock: () => 2000 });
-    expect(out.sent).toBe(0);
+  it("stops at the time limit and says so", async () => {
+    const out = await runInvoiceReminders(db as never, schedule, occurrence, now, { createDraft, deadline: 1000, clock: () => 2000 });
+    expect(out.drafted).toBe(0);
     expect(out.error).toBe("stopped at the time limit; the rest goes on the next try");
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it("uses the company's own wording when it has saved some, and the default otherwise", async () => {
-    db.rows("email_templates").push({ organization_id: ORG, key: "invoice_reminder", subject: "Pay up {{document_number}}", body: "Dear {{customer_name}}, {{total}} please." });
-    await run();
-    expect(send.mock.calls[0][0]).toMatchObject({ subject: "Pay up INV-1", text: "Dear Acme Ltd, £120.00 please." });
-  });
-
-  it("reads the right company only (a customer of the same name in another company is not used)", async () => {
-    db.tables.customers = db.rows("customers").filter((r) => r.organization_id !== ORG || r.name === "No Email Ltd");
-    const out = await run();
-    expect(out.sent).toBe(0);
-    expect(out.skipped).toBe(2);
-    expect(JSON.stringify(send.mock.calls)).not.toContain("other@b.test");
+    expect(createDraft).not.toHaveBeenCalled();
   });
 });
