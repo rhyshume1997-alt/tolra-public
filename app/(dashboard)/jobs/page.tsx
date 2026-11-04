@@ -400,7 +400,7 @@ export default function JobsPage() {
       /* the board works without it; a reload reads the finisher */
     }
   }, []);
-  // Live state: on load, on focus or visibility, every 60 s while visible (plan R2.2, the pattern of /schedule); one read at a time.
+  // Live state: on load, on focus or visibility, every 5 minutes while visible (plan R2.2, the pattern of /schedule); one read at a time.
   // A call made while one runs is folded into one more read straight after (the people lists too, when any call asked for them).
   const liveBusy = useRef(false);
   const liveAgain = useRef<{ withPeople: boolean } | null>(null);
@@ -462,7 +462,7 @@ export default function JobsPage() {
   }, [profile]);
   useEffect(() => {
     const visible = () => typeof document === "undefined" || document.visibilityState !== "hidden";
-    const timer = window.setInterval(() => { if (visible()) void loadLive(false); }, 60_000);
+    const timer = window.setInterval(() => { if (visible()) void loadLive(false); }, 300_000);
     const onFocus = () => { if (visible()) { void loadLive(false); void refreshPending(); } };
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
@@ -545,7 +545,7 @@ export default function JobsPage() {
           return;
         }
         // Every row, page by page (lib/fetch-all): the API returns at most 1,000 per request.
-        const { rows: data, truncated } = await fetchAll((from, to) => supabase!.from("jobs").select("*").order("created_at", { ascending: false }).order("id").range(from, to));
+        const { rows: data, truncated } = await fetchAll((from, to) => supabase!.from("jobs").select("id, job_no, customer, description, stage, due_date, status, started_at, finished_at, inspected_at, inspected_by, finished_by, specification, drawings, customer_po, date_received, date_required, quote_ref, quantity_required, drawing_no, is_internal, related_job_id, assigned_to, converted_from_sales_order_id").order("created_at", { ascending: false }).order("id").range(from, to));
         const error = null;
         if (truncated) toast.warning(truncationNotice(data.length));
         if (error) throw error;

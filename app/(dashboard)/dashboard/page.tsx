@@ -173,51 +173,37 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
   // dashboard and the Quote Generator / RFQ Control always agree (go-live polish item 18): in the database, one call per tile (migration
   // 132, lib/dashboard-tile-figures), or from every row as before while 132 is not applied.
   const ninetyDaysAgo = toDateInput(new Date(Date.now() - 90 * DAY_MS));
-  const [quoteTiles, jobsOpen, dueWeek, drafts, lateJobsCount, datedJobsCount] = await Promise.all([
-    loadQuoteTiles(supabase!, { today, monthStart, ninetyDaysAgo }, databaseHas068),
-    // Open = Not started + Running + Waiting for inspection, the Job Board's Open jobs (lib/job-flow), and those due this week.
-    q(head("jobs").or(OPEN_JOBS_FILTER)),
-    q(head("jobs").or(openJobsDueFilter(today, weekEnd))),
-    q(awaitingApproval(head("email_history"))),
-    q(head("jobs").is("finished_at", null).or(lateFilter)),
-    // On time = unfinished with a required date and not late; a job with no date is neither (lib/job-status onTimeJobCount).
-    q(activeJobs().or(HAS_REQUIRED_DATE_FILTER)),
-  ]);
-
   // The analytics panels: open jobs by status and coming due, jobs finished and inspected over the six months, and machine load this
   // week (bookings against each machine's working hours).
   const monday = new Date();
   monday.setHours(0, 0, 0, 0);
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
   const sunday = new Date(monday.getTime() + 7 * DAY_MS);
-  const [openJobRows, finishedJobRows, inspectionRows, machineRows, bookingRows] = await Promise.all([
-    qAll((from, to) => supabase!.from("jobs").select("id, stage, started_at, finished_at, inspected_at, flow_status, date_required, due_date").or(OPEN_JOBS_FILTER).order("id").range(from, to)),
-    qAll((from, to) => supabase!.from("jobs").select("id, finished_at, date_required, due_date").gte("finished_at", sinceIso).order("id").range(from, to)),
-    qAll((from, to) => supabase!.from("job_inspections").select("job_id, result, inspected_at").gte("inspected_at", sinceIso).order("id").range(from, to)),
-    q(supabase!.from("machines").select("id, name, hours_per_day, working_days").order("name")),
-    qAll((from, to) => supabase!.from("machine_bookings").select("id, machine_id, start_at, estimated_hours").gte("start_at", monday.toISOString()).lt("start_at", sunday.toISOString()).order("id").range(from, to)),
-  ]);
-
-  let moneyOwed: number | null = null;
-  let unpaidInvoices: number | null = null;
-  let revenue: AdminData["revenue"] = null;
-  let thisMonthRevenue: number | null = null;
-  let invoiced: AdminData["invoiced"] = null;
-  let thisMonthInvoiced: number | null = null;
-  let daysToPay: AdminData["daysToPay"] = null;
-  let paidCount: number | null = null;
-  let ageBuckets: AgeBucket[] | null = null;
-  let customers: AdminData["customers"] = null;
-  let cutting: AdminData["cutting"] = null;
-  let perMachineHour: AdminData["perMachineHour"] = null;
-  let vsEstimate: AdminData["vsEstimate"] = null;
-  let owedTrendData: AdminData["owedTrend"] = null;
-  const attention: AttentionItem[] = [];
-  let attentionFailed = false;
-
-  if (!office) {
-    const nowIso = new Date().toISOString();
-    const [moneyTiles, paidRes, paidHead, paymentRes, issuedRes, creditRes, runRes, snapshotRes] = await Promise.all([
+  const nowIso = new Date().toISOString();
+  // Independent tile, analytics and owner-only money reads start together; results are applied as before.
+  const [
+    [quoteTiles, jobsOpen, dueWeek, drafts, lateJobsCount, datedJobsCount],
+    [openJobRows, finishedJobRows, inspectionRows, machineRows, bookingRows],
+    moneyResults,
+  ] = await Promise.all([
+    Promise.all([
+      loadQuoteTiles(supabase!, { today, monthStart, ninetyDaysAgo }, databaseHas068),
+      // Open = Not started + Running + Waiting for inspection, the Job Board's Open jobs (lib/job-flow), and those due this week.
+      q(head("jobs").or(OPEN_JOBS_FILTER)),
+      q(head("jobs").or(openJobsDueFilter(today, weekEnd))),
+      q(awaitingApproval(head("email_history"))),
+      q(head("jobs").is("finished_at", null).or(lateFilter)),
+      // On time = unfinished with a required date and not late; a job with no date is neither (lib/job-status onTimeJobCount).
+      q(activeJobs().or(HAS_REQUIRED_DATE_FILTER)),
+    ]),
+    Promise.all([
+      qAll((from, to) => supabase!.from("jobs").select("id, stage, started_at, finished_at, inspected_at, flow_status, date_required, due_date").or(OPEN_JOBS_FILTER).order("id").range(from, to)),
+      qAll((from, to) => supabase!.from("jobs").select("id, finished_at, date_required, due_date").gte("finished_at", sinceIso).order("id").range(from, to)),
+      qAll((from, to) => supabase!.from("job_inspections").select("job_id, result, inspected_at").gte("inspected_at", sinceIso).order("id").range(from, to)),
+      q(supabase!.from("machines").select("id, name, hours_per_day, working_days").order("name")),
+      qAll((from, to) => supabase!.from("machine_bookings").select("id, machine_id, start_at, estimated_hours").gte("start_at", monday.toISOString()).lt("start_at", sunday.toISOString()).order("id").range(from, to)),
+    ]),
+    office ? Promise.resolve(null) : Promise.all([
       // Money owed, by age, and imported invoices to confirm: one call (migration 132), or every unpaid invoice as before.
       loadMoneyTiles(supabase!, today),
       qAll((from, to) => supabase!.from("invoices").select("id, customer, total, status, paid_at, invoice_date, created_at, payment_unverified").eq("status", "paid").or(`paid_at.gte.${sinceIso},invoice_date.gte.${sinceIso},created_at.gte.${sinceIso}`).order("id").range(from, to)),
@@ -244,7 +230,28 @@ async function loadAdminData(office: boolean): Promise<AdminData> {
           return null;
         }
       })(),
-    ]);
+    ]),
+  ]);
+
+  let moneyOwed: number | null = null;
+  let unpaidInvoices: number | null = null;
+  let revenue: AdminData["revenue"] = null;
+  let thisMonthRevenue: number | null = null;
+  let invoiced: AdminData["invoiced"] = null;
+  let thisMonthInvoiced: number | null = null;
+  let daysToPay: AdminData["daysToPay"] = null;
+  let paidCount: number | null = null;
+  let ageBuckets: AgeBucket[] | null = null;
+  let customers: AdminData["customers"] = null;
+  let cutting: AdminData["cutting"] = null;
+  let perMachineHour: AdminData["perMachineHour"] = null;
+  let vsEstimate: AdminData["vsEstimate"] = null;
+  let owedTrendData: AdminData["owedTrend"] = null;
+  const attention: AttentionItem[] = [];
+  let attentionFailed = false;
+
+  if (moneyResults) {
+    const [moneyTiles, paidRes, paidHead, paymentRes, issuedRes, creditRes, runRes, snapshotRes] = moneyResults;
     owedTrendData = snapshotRes;
     paidCount = paidHead.count;
     if (moneyTiles.failed) attentionFailed = true;

@@ -1,0 +1,824 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`dashboard result parity against the pinned candidate > keeps a failed paid-invoice read blank without losing other figures 1`] = `
+{
+  "attention": [
+    {
+      "detail": "Record the payment or confirm it is still owed. Not counted as money owed until checked.",
+      "href": "/invoices",
+      "icon": "AlertCircle",
+      "key": "inv-payment-to-confirm",
+      "title": "1 imported invoice: payment to confirm",
+    },
+  ],
+  "attentionFailed": false,
+  "customers": null,
+  "cutting": {
+    "machines": [
+      {
+        "hours": 2,
+        "id": "machine-1",
+        "name": "Lathe",
+      },
+    ],
+    "total": 2,
+  },
+  "daysToPay": null,
+  "draftEmails": 4,
+  "dueBy": "2026-11-11",
+  "dueThisWeek": 4,
+  "invoiced": null,
+  "jobsStatus": {
+    "dueSoon": 0,
+    "notStarted": 0,
+    "overdue": 0,
+    "running": 0,
+    "waiting": 0,
+  },
+  "lateJobs": 4,
+  "machines": [
+    {
+      "available": 40,
+      "booked": 2,
+      "id": "machine-1",
+      "name": "Lathe",
+      "percent": 5,
+    },
+  ],
+  "moneyOwed": 543.21,
+  "onTime": [
+    {
+      "finished": 0,
+      "month": "Jun",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Jul",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Aug",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Sept",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Oct",
+      "percent": null,
+    },
+    {
+      "finished": 1,
+      "month": "Nov",
+      "percent": 0,
+    },
+  ],
+  "onTimeJobs": 0,
+  "openJobs": 4,
+  "openQuotes": 2,
+  "owedByAge": [
+    {
+      "key": "not_due",
+      "label": "Not due yet",
+      "light": "green",
+      "value": 100,
+    },
+    {
+      "key": "late_1_30",
+      "label": "1–30 days late",
+      "light": "amber",
+      "value": 443.21,
+    },
+    {
+      "key": "late_31_60",
+      "label": "31–60 days late",
+      "light": "red",
+      "value": 0,
+    },
+    {
+      "key": "late_60_plus",
+      "label": "60+ days late",
+      "light": "red",
+      "value": 0,
+    },
+  ],
+  "owedTrend": {
+    "points": [
+      {
+        "date": "2026-11-03",
+        "late": 443.21,
+        "owed": 543.21,
+      },
+    ],
+    "state": "ok",
+  },
+  "perMachineHour": null,
+  "pipeline": {
+    "accepted": 1,
+    "paid": null,
+    "quoted": 2,
+    "rfqs": 2,
+  },
+  "pipelineValue": 123.45,
+  "quotes90": {
+    "outcomes": [
+      {
+        "count": 1,
+        "key": "accepted",
+        "label": "Accepted",
+      },
+      {
+        "count": 2,
+        "key": "sent",
+        "label": "Awaiting reply",
+      },
+      {
+        "count": 1,
+        "key": "expired",
+        "label": "Expired",
+      },
+      {
+        "count": 1,
+        "key": "rejected",
+        "label": "Rejected",
+      },
+    ],
+    "winRate": 33,
+  },
+  "quotesSentThisMonth": 3,
+  "quotesWon": {
+    "count": 1,
+    "undated": 1,
+  },
+  "revenue": [
+    {
+      "month": "Jun",
+      "revenue": 0,
+    },
+    {
+      "month": "Jul",
+      "revenue": 0,
+    },
+    {
+      "month": "Aug",
+      "revenue": 0,
+    },
+    {
+      "month": "Sept",
+      "revenue": 0,
+    },
+    {
+      "month": "Oct",
+      "revenue": 0,
+    },
+    {
+      "month": "Nov",
+      "revenue": 120,
+    },
+  ],
+  "rfqsToQuote": 2,
+  "rft": {
+    "failedFirst": 0,
+    "jobs": 1,
+    "percent": 100,
+  },
+  "thisMonthInvoiced": null,
+  "thisMonthRevenue": 120,
+  "unpaidInvoices": 2,
+  "vsEstimate": {
+    "value": {
+      "jobs": 1,
+      "over": 0,
+      "percent": 67,
+    },
+  },
+  "workDue": [
+    {
+      "count": 0,
+      "date": "2026-11-04",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-05",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-06",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-07",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-08",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-09",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-10",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-11",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-12",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-13",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-14",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-15",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-16",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-17",
+    },
+  ],
+}
+`;
+
+exports[`dashboard result parity against the pinned candidate > keeps every returned figure for office=false 1`] = `
+{
+  "attention": [
+    {
+      "detail": "Record the payment or confirm it is still owed. Not counted as money owed until checked.",
+      "href": "/invoices",
+      "icon": "AlertCircle",
+      "key": "inv-payment-to-confirm",
+      "title": "1 imported invoice: payment to confirm",
+    },
+  ],
+  "attentionFailed": false,
+  "customers": {
+    "rows": [
+      {
+        "customer": "Practice customer",
+        "value": 90,
+      },
+    ],
+    "share": 100,
+    "topCustomer": "Practice customer",
+  },
+  "cutting": {
+    "machines": [
+      {
+        "hours": 2,
+        "id": "machine-1",
+        "name": "Lathe",
+      },
+    ],
+    "total": 2,
+  },
+  "daysToPay": {
+    "average": 2,
+    "count": 1,
+  },
+  "draftEmails": 4,
+  "dueBy": "2026-11-11",
+  "dueThisWeek": 4,
+  "invoiced": [
+    {
+      "month": "Jun",
+      "revenue": 0,
+    },
+    {
+      "month": "Jul",
+      "revenue": 0,
+    },
+    {
+      "month": "Aug",
+      "revenue": 0,
+    },
+    {
+      "month": "Sept",
+      "revenue": 0,
+    },
+    {
+      "month": "Oct",
+      "revenue": 0,
+    },
+    {
+      "month": "Nov",
+      "revenue": 90,
+    },
+  ],
+  "jobsStatus": {
+    "dueSoon": 0,
+    "notStarted": 0,
+    "overdue": 0,
+    "running": 0,
+    "waiting": 0,
+  },
+  "lateJobs": 4,
+  "machines": [
+    {
+      "available": 40,
+      "booked": 2,
+      "id": "machine-1",
+      "name": "Lathe",
+      "percent": 5,
+    },
+  ],
+  "moneyOwed": 543.21,
+  "onTime": [
+    {
+      "finished": 0,
+      "month": "Jun",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Jul",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Aug",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Sept",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Oct",
+      "percent": null,
+    },
+    {
+      "finished": 1,
+      "month": "Nov",
+      "percent": 0,
+    },
+  ],
+  "onTimeJobs": 0,
+  "openJobs": 4,
+  "openQuotes": 2,
+  "owedByAge": [
+    {
+      "key": "not_due",
+      "label": "Not due yet",
+      "light": "green",
+      "value": 100,
+    },
+    {
+      "key": "late_1_30",
+      "label": "1–30 days late",
+      "light": "amber",
+      "value": 443.21,
+    },
+    {
+      "key": "late_31_60",
+      "label": "31–60 days late",
+      "light": "red",
+      "value": 0,
+    },
+    {
+      "key": "late_60_plus",
+      "label": "60+ days late",
+      "light": "red",
+      "value": 0,
+    },
+  ],
+  "owedTrend": {
+    "points": [
+      {
+        "date": "2026-11-03",
+        "late": 443.21,
+        "owed": 543.21,
+      },
+    ],
+    "state": "ok",
+  },
+  "perMachineHour": {
+    "value": {
+      "hours": 2,
+      "jobs": 1,
+      "perHour": 50,
+      "revenue": 100,
+    },
+  },
+  "pipeline": {
+    "accepted": 1,
+    "paid": 4,
+    "quoted": 2,
+    "rfqs": 2,
+  },
+  "pipelineValue": 123.45,
+  "quotes90": {
+    "outcomes": [
+      {
+        "count": 1,
+        "key": "accepted",
+        "label": "Accepted",
+      },
+      {
+        "count": 2,
+        "key": "sent",
+        "label": "Awaiting reply",
+      },
+      {
+        "count": 1,
+        "key": "expired",
+        "label": "Expired",
+      },
+      {
+        "count": 1,
+        "key": "rejected",
+        "label": "Rejected",
+      },
+    ],
+    "winRate": 33,
+  },
+  "quotesSentThisMonth": 3,
+  "quotesWon": {
+    "count": 1,
+    "undated": 1,
+  },
+  "revenue": [
+    {
+      "month": "Jun",
+      "revenue": 0,
+    },
+    {
+      "month": "Jul",
+      "revenue": 0,
+    },
+    {
+      "month": "Aug",
+      "revenue": 0,
+    },
+    {
+      "month": "Sept",
+      "revenue": 0,
+    },
+    {
+      "month": "Oct",
+      "revenue": 0,
+    },
+    {
+      "month": "Nov",
+      "revenue": 120,
+    },
+  ],
+  "rfqsToQuote": 2,
+  "rft": {
+    "failedFirst": 0,
+    "jobs": 1,
+    "percent": 100,
+  },
+  "thisMonthInvoiced": 90,
+  "thisMonthRevenue": 120,
+  "unpaidInvoices": 2,
+  "vsEstimate": {
+    "value": {
+      "jobs": 1,
+      "over": 0,
+      "percent": 67,
+    },
+  },
+  "workDue": [
+    {
+      "count": 0,
+      "date": "2026-11-04",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-05",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-06",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-07",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-08",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-09",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-10",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-11",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-12",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-13",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-14",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-15",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-16",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-17",
+    },
+  ],
+}
+`;
+
+exports[`dashboard result parity against the pinned candidate > keeps every returned figure for office=true 1`] = `
+{
+  "attention": [],
+  "attentionFailed": false,
+  "customers": null,
+  "cutting": null,
+  "daysToPay": null,
+  "draftEmails": 4,
+  "dueBy": "2026-11-11",
+  "dueThisWeek": 4,
+  "invoiced": null,
+  "jobsStatus": {
+    "dueSoon": 0,
+    "notStarted": 0,
+    "overdue": 0,
+    "running": 0,
+    "waiting": 0,
+  },
+  "lateJobs": 4,
+  "machines": [
+    {
+      "available": 40,
+      "booked": 2,
+      "id": "machine-1",
+      "name": "Lathe",
+      "percent": 5,
+    },
+  ],
+  "moneyOwed": null,
+  "onTime": [
+    {
+      "finished": 0,
+      "month": "Jun",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Jul",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Aug",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Sept",
+      "percent": null,
+    },
+    {
+      "finished": 0,
+      "month": "Oct",
+      "percent": null,
+    },
+    {
+      "finished": 1,
+      "month": "Nov",
+      "percent": 0,
+    },
+  ],
+  "onTimeJobs": 0,
+  "openJobs": 4,
+  "openQuotes": 2,
+  "owedByAge": null,
+  "owedTrend": null,
+  "perMachineHour": null,
+  "pipeline": {
+    "accepted": 1,
+    "paid": null,
+    "quoted": 2,
+    "rfqs": 2,
+  },
+  "pipelineValue": 123.45,
+  "quotes90": {
+    "outcomes": [
+      {
+        "count": 1,
+        "key": "accepted",
+        "label": "Accepted",
+      },
+      {
+        "count": 2,
+        "key": "sent",
+        "label": "Awaiting reply",
+      },
+      {
+        "count": 1,
+        "key": "expired",
+        "label": "Expired",
+      },
+      {
+        "count": 1,
+        "key": "rejected",
+        "label": "Rejected",
+      },
+    ],
+    "winRate": 33,
+  },
+  "quotesSentThisMonth": 3,
+  "quotesWon": {
+    "count": 1,
+    "undated": 1,
+  },
+  "revenue": null,
+  "rfqsToQuote": 2,
+  "rft": {
+    "failedFirst": 0,
+    "jobs": 1,
+    "percent": 100,
+  },
+  "thisMonthInvoiced": null,
+  "thisMonthRevenue": null,
+  "unpaidInvoices": null,
+  "vsEstimate": null,
+  "workDue": [
+    {
+      "count": 0,
+      "date": "2026-11-04",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-05",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-06",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-07",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-08",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-09",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-10",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-11",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-12",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-13",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-14",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-15",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-16",
+    },
+    {
+      "count": 0,
+      "date": "2026-11-17",
+    },
+  ],
+}
+`;
+
+exports[`jobs row parity > preserves the full job and legacy date/default mapping 1`] = `
+[
+  {
+    "assigned_to": "person-1",
+    "customer": "Practice customer",
+    "customer_po": "PO-1",
+    "date_received": "2026-11-01",
+    "date_required": "2026-11-02",
+    "description": "Bracket",
+    "drawing_no": "D-1",
+    "drawings": [
+      "drawing.pdf",
+    ],
+    "due_date": "2026-11-02",
+    "finished_at": "2026-11-03T15:00:00Z",
+    "finished_by": "person-1",
+    "from_sales_order": true,
+    "id": "job-1",
+    "inspected_at": "2026-11-03T15:30:00Z",
+    "inspected_by": "Inspector",
+    "is_internal": false,
+    "job_no": "JOB-17",
+    "quantity_required": 0,
+    "quote_ref": "Q-1",
+    "related_job_id": "job-2",
+    "specification": "Sample",
+    "stage": "finished",
+    "started_at": "2026-11-02T08:00:00Z",
+    "status": "at_risk",
+  },
+  {
+    "assigned_to": undefined,
+    "customer": "Internal",
+    "customer_po": undefined,
+    "date_received": undefined,
+    "date_required": undefined,
+    "description": "",
+    "drawing_no": undefined,
+    "drawings": [],
+    "due_date": "",
+    "finished_at": "",
+    "finished_by": undefined,
+    "from_sales_order": false,
+    "id": "bare",
+    "inspected_at": "",
+    "inspected_by": "",
+    "is_internal": true,
+    "job_no": "JOB-bare",
+    "quantity_required": undefined,
+    "quote_ref": undefined,
+    "related_job_id": undefined,
+    "specification": "No specification recorded.",
+    "stage": "material",
+    "started_at": "",
+    "status": "on_track",
+  },
+  {
+    "assigned_to": "person-1",
+    "customer": "Practice customer",
+    "customer_po": "PO-1",
+    "date_received": "2026-11-01",
+    "date_required": undefined,
+    "description": "Bracket",
+    "drawing_no": "D-1",
+    "drawings": [
+      "drawing.pdf",
+    ],
+    "due_date": "2026-11-03",
+    "finished_at": "",
+    "finished_by": "person-1",
+    "from_sales_order": true,
+    "id": "job-1",
+    "inspected_at": "2026-11-03T15:30:00Z",
+    "inspected_by": "Inspector",
+    "is_internal": false,
+    "job_no": "JOB-17",
+    "quantity_required": 0,
+    "quote_ref": "Q-1",
+    "related_job_id": "job-2",
+    "specification": "Sample",
+    "stage": "finished",
+    "started_at": "2026-11-02T08:00:00Z",
+    "status": "overdue",
+  },
+]
+`;
