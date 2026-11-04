@@ -77,3 +77,5 @@ Run AV's real tests only on the separately authorised disposable rehearsal. Comp
 | BA | Evidence ledger maps 41 first-day boxes 36 manual steps 8 reviewer conditions plus release gates | codex/ba-evidence | #269, 89849ae3331bb6703a7d076d540843c4f63b6bc9 | Exact source-to-row coverage and diff pass; PASS counts attributed to executed heads | Exact Operations Pack not in fetched history; external/private completeness unverified |
 
 | BB | Two-company fake export generator and exact penny reconciliation; offline CLI dry runs exercised | codex/bb-fake-data | #270, 4f210972adbffa2d5cd5c4148b1065a8df7548ef | 94 tests pass; tsc and targeted lint pass; both CLI reports reconcile; full suite running | Actual disposable database load/retry/RLS NOT RUN |
+
+| BC | Checked current Codex and Claude trackers; no AVAILABLE row; main still has no tracker | codex/work-ownership | #130 | Exact status-cell search: 0 AVAILABLE rows in both trackers | Other owners' active jobs left unchanged |

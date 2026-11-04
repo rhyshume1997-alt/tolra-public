@@ -99,4 +99,4 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | AZ | Codex | codex/az-acceptance | DONE IN PR | #268 |
 | BA | Codex | codex/ba-evidence | BLOCKED | #269 |
 | BB | Codex | codex/bb-fake-data | DONE IN PR | #270 |
-| BC | Codex | codex/work-ownership | CLAIMED | Availability review |
+| BC | Codex | codex/work-ownership | DONE IN PR | #130; zero AVAILABLE rows on both trackers |
