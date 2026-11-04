@@ -194,7 +194,8 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.issue_password_change_ticket(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a2936196b138dd7dee76db6be3b8ed82')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.revoke_password_change_ticket(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '42f77209ec079fa354f54ef78784a4b4')
                                           AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
-                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19))
+                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19)),
+    ('148 optional actual job costing', EXISTS (SELECT 1 FROM fn WHERE proname = 'job_profitability_actual_inputs'))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
