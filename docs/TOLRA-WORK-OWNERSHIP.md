@@ -89,3 +89,14 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | AU | Codex | codex/au-wording | BLOCKED | Execution budget reached; exhaustive review unfinished |
 | AV | Codex | codex/av-rollback-tests | BLOCKED | #265; SQL execution prohibited |
 | AW | Codex | codex/aw-data-load | DONE IN PR | #264 |
+
+## AX to BC, 4 November
+
+| Job | Owner | Branch | Status | PR |
+| --- | --- | --- | --- | --- |
+| AX | Codex | codex/ax-review-packets | CLAIMED | Pending |
+| AY | Codex | codex/ay-db-runbook | CLAIMED | Pending |
+| AZ | Codex | codex/az-acceptance | CLAIMED | Pending |
+| BA | Codex | codex/ba-evidence | CLAIMED | Pending |
+| BB | Codex | codex/bb-fake-data | CLAIMED | Pending |
+| BC | Codex | codex/work-ownership | CLAIMED | Availability review |
