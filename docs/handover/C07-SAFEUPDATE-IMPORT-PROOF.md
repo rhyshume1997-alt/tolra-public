@@ -2,6 +2,14 @@
 
 Builder 6 / L11 / 4 November 2026. Based on exact cutover candidate `9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8`. No production SQL or data used. This adds a targeted pull-request/manual CI job and a local runner; it does not merge or label anything Ready.
 
+## Latest result — targeted runtime proof PASSED
+
+[Actions run 41871020772](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41871020772) completed **successfully**. Tested source: `db75ea2ec941f194b7e96f77b0e015267d201cf7`; actual PR test merge: `62af6ae1655e55a09fae81e4da611b4990ba10fa`, into pinned base `9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8`. Fresh-session genuine library preload, unsafe UPDATE/DELETE refusal and qualified control passed. All **25 tests across the three required files passed, zero skipped/pending**; the mandatory new test includes PL/pgSQL refusal and mid-write failure recovery. The JSON gate ran successfully; the disposable stack cleanup completed.
+
+[Artifact 13344811572](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41871020772/artifacts/13344811572): `c07-safeupdate-evidence`, ZIP SHA-256 `294f92b8a4a4a85b69d0141eec6699f71788df70df80044ffc8015aa6e083cc3`. Contains startup, active-library, full test/JSON and cleanup records. The final publication adds this evidence text only; executable code/tests/workflow remain the tested source. Earlier failed attempts below are historical, not alternate passing evidence.
+
+**Safeupdate is available and active in this CI image.** The initial plain LOAD failure was a non-superuser restriction, not inability to install it. The fix configures scoped preload through the fresh local bootstrap administrator without promoting the importer or altering production roles. This targeted pass clears the missing-runtime-proof gap for these paths; it is not a full release/hosted/browser validation or approval of an unconfirmed final SliQ route.
+
 ## Run the proof
 
 Use a fresh dedicated checkout, Docker, the lockfile's Node dependencies and Supabase CLI **2.40.7** (the existing CI version):
@@ -48,7 +56,7 @@ The JSON gate requires all three named files to execute, at least one assertion 
 
 ## Handover / remaining proof
 
-Atomic `claims/L11`. Runner, real tests and workflow are committed as a draft; original candidate/source branches and migration bodies are untouched. CI/runtime outcome must be recorded on this exact PR head after running. Missing or failing DB proof stays P0 OPEN; source/lint/types are not a runtime pass. Code/reviewer must confirm the exact intended cutover route, complete passing no-skip proof and any discovered bug fixes before approval. No main merge, production SQL, deployment, Ready label or live import.
+Atomic `claims/L11`. Runner, real tests and workflow are committed as a draft; original candidate/source branches and migration bodies are untouched. The latest section records actual matching CI runtime evidence; initial failed setup attempts are preserved below. Source/lint/types alone were not treated as a pass. Confirm the exact intended final route and independent review before closing the reviewer P0 as a release decision. Code/reviewer must confirm the exact intended cutover route, complete passing no-skip proof and any discovered bug fixes before approval. No main merge, production SQL, deployment, Ready label or live import.
 
 ### Second CI setup result and correction
 
