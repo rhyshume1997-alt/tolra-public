@@ -1,0 +1,40 @@
+name: C07 genuine safeupdate import proof
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/c07-safeupdate.yml'
+      - 'scripts/c07/**'
+      - 'tests/db/c07-safeupdate.test.ts'
+permissions:
+  contents: read
+  packages: read
+jobs:
+  safeupdate-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Read-only registry access for disposable Supabase images
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      - name: Start fresh local Postgres and require active safeupdate; run real import proofs
+        env:
+          SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+        run: bash scripts/c07/run-safeupdate.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c07-safeupdate-evidence
+          path: work/c07-*/
+          if-no-files-found: error
