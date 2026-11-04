@@ -1,0 +1,22 @@
+✔ complete synthetic manifests verify without running any commands (4.52758ms)
+✔ refuses wrong checkout (0.953862ms)
+✔ refuses wrong executed head (0.535965ms)
+✔ refuses nonzero exit (0.441207ms)
+✔ refuses missing profile (0.480206ms)
+✔ refuses zero tests (0.305541ms)
+✔ refuses skipped tests (0.308426ms)
+✔ refuses missing SQL hash (0.32459ms)
+✔ refuses localhost alone (0.474247ms)
+✔ refuses real-data profile (0.501849ms)
+✔ refuses missing artifact ID (0.455659ms)
+✔ refuses mismatched log bytes (0.591274ms)
+✔ refuses missing log (0.368728ms)
+✔ refuses reversed time (0.381186ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 18.285914
