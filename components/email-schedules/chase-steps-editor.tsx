@@ -90,7 +90,7 @@ export function ChaseStepsEditor({ organizationId, canEdit }: { organizationId: 
   }
 
   if (phase === "loading") return <p className="text-slate-500">Loading chase steps...</p>;
-  if (phase === "unavailable") return <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950" role="status">Chase steps aren&apos;t available until database update 138 is applied.</p>;
+  if (phase === "unavailable") return <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950" role="status">Payment reminder settings are not available yet. Ask your admin to contact Tolra support.</p>;
   if (phase === "error") return <p className="text-red-600" role="alert">Couldn&apos;t load the chase steps. Reload the page to try again.</p>;
 
   return (

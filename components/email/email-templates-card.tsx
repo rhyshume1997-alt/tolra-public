@@ -170,7 +170,7 @@ export function EmailTemplatesCard() {
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="size-5 text-brand-accent" /> Email templates</CardTitle></CardHeader>
       <CardContent className="space-y-4 text-sm">
-        <p className="text-slate-600">Write each part in its own box. Use Add detail to insert names, amounts and dates without typing markers. The preview shows example details as you type. Saved templates keep the same format and still need approval before sending when approval is required.</p>
+        <p className="text-slate-600">Write each part in its own box. Use Add detail to insert names, amounts and dates without typing special codes. The preview shows example details as you type. Saved templates keep the same format and still need approval before sending when approval is required.</p>
         <EmailTemplatesBody state={state} canEdit={canEdit} overrides={overrides} drafts={drafts} busyKey={busyKey}
           onChange={(key, next) => setDrafts((current) => ({ ...current, [key]: next }))} onSave={(key) => void save(key)} onReset={(key) => void reset(key)} />
       </CardContent>

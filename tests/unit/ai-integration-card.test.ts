@@ -23,7 +23,7 @@ describe("AI beside accounting connections", () => {
     expect(render()).toContain("Loading AI connection");
     expect(render()).not.toContain('data-testid="ai-master-switch"');
     state.loaded = true; state.allowed = false;
-    expect(render()).toContain("not switched on for this server");
+    expect(render()).toContain("AI is unavailable. Ask your admin to contact Tolra support.");
     state.allowed = true; state.status = null;
     expect(render()).toContain('role="alert"');
     expect(render()).not.toContain('data-testid="ai-master-switch"');

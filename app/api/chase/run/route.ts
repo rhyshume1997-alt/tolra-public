@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const row = schedule as { timezone?: string; recipients?: string[] | null } | null;
   try {
     const result = await runChase(admin, { organizationId: org, today: localDate(new Date(), row?.timezone || "Europe/London"), recipients: row?.recipients ?? null, userId: auth.user.id }, { deadline: Date.now() + 45_000 });
-    if (result.error === CHASE_NOT_APPLIED) return jsonError("Chase steps aren't available until database update 138 is applied.", 503);
+    if (result.error === CHASE_NOT_APPLIED) return jsonError("Payment reminder settings are not available yet. Ask your admin to contact Tolra support.", 503);
     return NextResponse.json({ drafted: result.drafted, skipped: result.skipped, failed: result.failed, reasons: result.reasons, error: result.error });
   } catch (err) {
     console.error("[chase/run] failed", err instanceof Error ? err.name : "unknown");
