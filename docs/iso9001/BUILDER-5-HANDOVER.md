@@ -11,7 +11,7 @@ Tolra supports JNR Engineering’s quality work. Software and documents cannot m
 - [x] Read root AGENTS.md on main and ownership from #271 at `0d3a481524bdfbcdbfe29382b76b858f9dd203a4`; main has no ownership file. Existing owner rows retained.
 - [x] Published atomic `claims/I1` through `claims/I7`, without overwriting any claim. This handover is builder 5’s own ledger under the requested `docs/iso9001/` path.
 - [x] Prepared I1–I7 on separate branches, with one draft PR per job, all based on main `68f89ca7b801a10587ff9b51d6c820462847b65a`.
-- [x] Reviewed source facts, blank approvals, certification wording and source links; each job passed `git diff --check`. I1–I6 published trees match their local committed trees; I7 is checked after publication.
+- [x] Reviewed source facts, blank approvals, certification wording and source links; each job passed `git diff --check`. All seven published trees match their local committed trees; final handover-only updates are compared again.
 - [ ] John/adviser reviews and adapts the pack, reconciles existing private documents, appoints owners and supplies real company evidence.
 - [ ] Rhys/operator provides actual installed-version, validation, recovery and release evidence through existing approval routes.
 
@@ -27,7 +27,7 @@ All jobs belong to builder 5 under Rhys’s explicit assignment. Builders 3 and 
 | I4 / `claims/I4` | `codex/b5-i4-iso9001` | [#339](https://github.com/rhyshume1997-alt/tolra-public/pull/339) | `f9f43f18e2ad1a5c14031fd4139691a6db54189c` |
 | I5 / `claims/I5` | `codex/b5-i5-iso9001` | [#340](https://github.com/rhyshume1997-alt/tolra-public/pull/340) | `2429eda5831a93f6966a89ec8ba8c6a4dde2e1ae` |
 | I6 / `claims/I6` | `codex/b5-i6-iso9001` | [#341](https://github.com/rhyshume1997-alt/tolra-public/pull/341) | `67f8ebb871c26f4337a4318253a056ac316849f6` |
-| I7 / `claims/I7` | `codex/b5-i7-iso9001` | This draft; exact PR/head recorded in its metadata | This file travels in the I7 commit; use its PR head |
+| I7 / `claims/I7` | `codex/b5-i7-iso9001` | [#342](https://github.com/rhyshume1997-alt/tolra-public/pull/342) | See this PR’s current full head; handover updates change its hash |
 
 ## What each job contains
 
