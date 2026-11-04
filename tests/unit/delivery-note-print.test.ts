@@ -22,7 +22,7 @@ describe("deliveryNoteReceivedLine (printed delivery note)", () => {
 
 describe("goods-out wording (one place, every delivery note output)", () => {
   it("has a clear default constant", () => {
-    expect(DELIVERY_NOTE_GOODS_OUT_WORDING).toBe("Goods out: the items above were despatched in good order.");
+    expect(DELIVERY_NOTE_GOODS_OUT_WORDING).toBe("Goods out: the items listed above were despatched.");
   });
   it("uses the default unless a company wording is given, and a blank one falls back to the default", () => {
     expect(deliveryNoteGoodsOutWording()).toBe(DELIVERY_NOTE_GOODS_OUT_WORDING);

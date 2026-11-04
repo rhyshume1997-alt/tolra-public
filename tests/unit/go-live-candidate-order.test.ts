@@ -36,9 +36,12 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     const sorted = await sequencer.sort(paths.toReversed());
     expect(sorted).toHaveLength(paths.length);
     expect(new Set(sorted.map(file=>file.moduleId))).toEqual(new Set(paths.map(file=>file.moduleId)));
-    expect(sorted.slice(-3).map(file=>file.moduleId)).toEqual(post144ProofFiles.map(file=>`/repo/tests/db/${file}`));
+    expect(sorted.slice(-post144ProofFiles.length).map(file=>file.moduleId)).toEqual(post144ProofFiles.map(file=>`/repo/tests/db/${file}`));
+    expect(post144ProofFiles).toContain("job-delivery-note-147.test.ts");
     const fixture = read("tests/support/post-144-release-fixture.ts");
     expect(fixture.indexOf('verifyFile: "supabase/verify/company_setup_145.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"'));
+    expect(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"'));
+    expect(ci).toContain("147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note");
     expect(fixture).toContain("verify: verifyBackendIdentity");
     expect(fixture).toContain("checks.some(row => (row.ok ?? row.passed) !== true)");
   });
@@ -52,6 +55,6 @@ describe("combined go-live candidate keeps both release lines and proposal proof
       expect(catalogue.some(row => row.object === name)).toBe(true);
     for (const name of ["public.chase_steps", "public.chase_sends", "public.chase_pauses"])
       expect(catalogue.some(row => row.object === name)).toBe(true);
-    expect(catalogue.some(row => /company_setup_progress|ai_helper_tolra_(control|companies)/.test(row.object))).toBe(false);
+    expect(catalogue.some(row => /company_setup_progress|ai_helper_tolra_(control|companies)|create_job_delivery_note|delivery_notes_request_guard/.test(row.object))).toBe(false);
   });
 });

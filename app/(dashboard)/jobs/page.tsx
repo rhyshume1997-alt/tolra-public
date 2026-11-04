@@ -51,6 +51,8 @@ import { auditEvent } from "@/lib/audit";
 import { cleanName, UNKNOWN } from "@/lib/people";
 import { DespatchFromOrder } from "@/components/despatch-from-order";
 import { canOfferJobDeliveryNote } from "@/lib/job-delivery-note";
+import { canOfferJobDeliveryNoteWithoutOrder } from "@/lib/job-delivery-note-no-order";
+import { JobDeliveryNoteForm } from "@/components/job-delivery-note-form";
 import { jobsEmptyHint } from "@/lib/empty-hints";
 import { NAME_NOT_SET } from "@/lib/display-name";
 import { loadOfflineSnapshot, queueOffline, reportOffline, saveOfflineSnapshot } from "@/lib/offline/scope";
@@ -515,6 +517,8 @@ export default function JobsPage() {
   };
   const [worksheetJob, setWorksheetJob] = useState<WorkshopJob | null>(null);
   const [deliveryNoteJob, setDeliveryNoteJob] = useState<WorkshopJob | null>(null);
+  // From a sales order (the order's lines) or, for a job with no order, typed lines linked to the job and its customer (release 147).
+  const offerDeliveryNote = (job: WorkshopJob) => canOfferJobDeliveryNote(activeRole, job) || canOfferJobDeliveryNoteWithoutOrder(activeRole, job);
   /** Unsaved worksheet edits (audit D5): closing asks first. */
   const [worksheetDirty, setWorksheetDirty] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -1279,7 +1283,7 @@ export default function JobsPage() {
                 <Button variant="outline" className={rowTouch} onClick={() => setWorksheetJob(job)}>Worksheet</Button>
                 {isViewer ? null : <Button variant="outline" className={rowTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
                 <Button asChild variant="outline" className={rowTouch}><Link href={`/jobs/${job.id}/print`}>Print</Link></Button>
-                {canOfferJobDeliveryNote(activeRole, job) ? <Button variant="outline" className={rowTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
+                {offerDeliveryNote(job) ? <Button variant="outline" className={rowTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
                 {canSend ? <Button onClick={() => openSend(job)} disabled={saving} className={cn("bg-brand text-brand-ink", rowTouch)}>Send</Button> : null}
                 {archive.canManage && job.inspected_at ? archiveButton(job) : null}
               </div>
@@ -1519,7 +1523,7 @@ export default function JobsPage() {
         <Button size="sm" variant="outline" className={rowTouch} onClick={() => setWorksheetJob(job)}><ClipboardList className="size-4" /> Worksheet</Button>
         {isViewer ? null : <Button size="sm" variant="outline" className={rowTouch} aria-label={`Machines for ${job.job_no}`} onClick={() => setMachineJob(job)}><Cog className="size-4" /> Machines</Button>}
         <Button asChild size="sm" variant="outline" className={rowTouch}><Link href={`/jobs/${job.id}/print`}><Printer className="size-4" /> Print</Link></Button>
-        {canOfferJobDeliveryNote(activeRole, job) ? <Button size="sm" variant="outline" className={rowTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
+        {offerDeliveryNote(job) ? <Button size="sm" variant="outline" className={rowTouch} onClick={() => setDeliveryNoteJob(job)}><Truck className="size-4" /> Delivery note</Button> : null}
         {canSend ? <Button size="sm" className={cn("bg-brand text-brand-ink", rowTouch)} disabled={saving} onClick={() => openSend(job)}><Mail className="size-4" /> Send</Button> : null}
         {archive.canManage && job.inspected_at ? archiveButton(job) : null}
       </div></TableCell>
@@ -1577,7 +1581,7 @@ export default function JobsPage() {
           {rowAction({ label: "Worksheet", title: "Worksheet", icon: <ClipboardList className="size-4" />, onClick: () => setWorksheetJob(job) })}
           {isViewer ? null : rowAction({ label: "Machines", title: "Machines and hours", icon: <Cog className="size-4" />, onClick: () => setMachineJob(job) })}
           <Button asChild size="sm" variant="outline" className={cn("px-3", rowTouch)}><Link href={`/jobs/${job.id}/print`} aria-label="Print"><Printer className="size-4" /><span aria-hidden>Print</span></Link></Button>
-          {canOfferJobDeliveryNote(activeRole, job) ? rowAction({ label: "Delivery note", title: "Make a delivery note from this job", icon: <Truck className="size-4" />, onClick: () => setDeliveryNoteJob(job) }) : null}
+          {offerDeliveryNote(job) ? rowAction({ label: "Delivery note", title: "Make a delivery note from this job", icon: <Truck className="size-4" />, onClick: () => setDeliveryNoteJob(job) }) : null}
           {canSend ? rowAction({ label: "Send", title: "Send to workshop", icon: <Mail className="size-4" />, variant: "default", className: "bg-brand text-brand-ink", disabled: saving, onClick: () => openSend(job) }) : null}
         </div>
       </TableCell>
@@ -1831,8 +1835,9 @@ export default function JobsPage() {
 
       <Dialog open={Boolean(deliveryNoteJob)} onOpenChange={(open) => !open && setDeliveryNoteJob(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delivery note - {deliveryNoteJob?.job_no}</DialogTitle><DialogDescription>Made from this job&apos;s sales order for {deliveryNoteJob?.customer}, with the quantity despatched on each line.</DialogDescription></DialogHeader>
-          {deliveryNoteJob ? <DespatchFromOrder key={deliveryNoteJob.id} source="job" presetId={deliveryNoteJob.id} onCreated={() => setDeliveryNoteJob(null)} /> : null}
+          <DialogHeader><DialogTitle>Delivery note - {deliveryNoteJob?.job_no}</DialogTitle><DialogDescription>{deliveryNoteJob?.from_sales_order ? <>Made from this job&apos;s sales order for {deliveryNoteJob?.customer}, with the quantity despatched on each line.</> : <>This job has no sales order: list what is going out. The note is linked to this job and to {deliveryNoteJob?.customer}&apos;s customer record.</>}</DialogDescription></DialogHeader>
+          {deliveryNoteJob?.from_sales_order ? <DespatchFromOrder key={deliveryNoteJob.id} source="job" presetId={deliveryNoteJob.id} onCreated={() => setDeliveryNoteJob(null)} /> : null}
+          {deliveryNoteJob && !deliveryNoteJob.from_sales_order ? <JobDeliveryNoteForm key={deliveryNoteJob.id} job={deliveryNoteJob} onCreated={() => setDeliveryNoteJob(null)} /> : null}
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(worksheetJob)} onOpenChange={(open) => !open && closeWorksheet()}>

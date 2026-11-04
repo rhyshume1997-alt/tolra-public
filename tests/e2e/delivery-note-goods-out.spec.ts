@@ -16,7 +16,7 @@ test("the printed delivery note says goods out and has a Received by / Signature
   const id = (await adminClient().from("delivery_notes").insert({ organization_id: org, dn_number: ref, customer: "Goods Out Co", status: "despatched" }).select("id").single()).data!.id;
   await signIn(page, w.tenants.alpha.users.office);
   await page.goto(`/delivery-notes/${id}/print`);
-  await expect(page.getByTestId("dn-goods-out")).toHaveText("Goods out: the items above were despatched in good order.");
+  await expect(page.getByTestId("dn-goods-out")).toHaveText("Goods out: the items listed above were despatched.");
   await expect(page.getByTestId("dn-received")).toHaveText(/Received by: _+ Signature: _+ Date: _+/);
   await page.emulateMedia({ media: "print" });
   await expect(page.getByTestId("dn-goods-out")).toBeVisible();

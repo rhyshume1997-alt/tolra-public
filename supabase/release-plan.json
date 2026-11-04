@@ -58,6 +58,15 @@
       "rollback": "supabase/release/146_tolra_provided_ai.rollback.sql",
       "verify": "supabase/verify/tolra_provided_ai_146.sql",
       "marker": "post-144 marker 146 tolra_provided_ai"
+    },
+    {
+      "number": 147,
+      "after": "146",
+      "source": "supabase/proposals/c17_job_delivery_note.sql",
+      "release": "supabase/release/147_job_delivery_note.release.sql",
+      "rollback": "supabase/release/147_job_delivery_note.rollback.sql",
+      "verify": "supabase/verify/job_delivery_note_147.sql",
+      "marker": "post-144 marker 147 job_delivery_note"
     }
   ],
   "other_proposals": [

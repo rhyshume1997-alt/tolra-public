@@ -15,7 +15,7 @@ export function deliveryNoteReceivedLine(note: { status?: string | null; signedB
  * This is the one place to change it. A per-company wording can later be passed as `override` to the functions below without touching
  * the layouts; until a company has one, this default is used.
  */
-export const DELIVERY_NOTE_GOODS_OUT_WORDING = "Goods out: the items above were despatched in good order.";
+export const DELIVERY_NOTE_GOODS_OUT_WORDING = "Goods out: the items listed above were despatched.";
 
 /** The wording to print: the company's own when it has one (not blank), otherwise the default. */
 export function deliveryNoteGoodsOutWording(override?: string | null): string {
