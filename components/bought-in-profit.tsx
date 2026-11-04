@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { JobProfitabilityActuals } from "@/components/job-profitability-actuals";
 import { useEffect, useState } from "react";
 
 import { databaseHas124 } from "@/lib/db-features";
@@ -108,6 +109,7 @@ export function BoughtInProfit({ kind, id, quoteLines }: {
   if (!office || !has124 || !id || id.startsWith("demo")) return null;
   const loss = profit?.state !== "unavailable" && (profit?.profitPence ?? 0) < 0;
   return (
+    <>
     <div data-testid="bought-in-profit" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm">
       {profit ? (
         <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -120,5 +122,7 @@ export function BoughtInProfit({ kind, id, quoteLines }: {
       ) : <span className="text-slate-500">Working out what was bought in…</span>}
       <Link data-testid="raise-supplier-po" href={`/purchase-orders?new=${kind}:${encodeURIComponent(id)}`} className="text-sm font-medium underline">Raise supplier PO</Link>
     </div>
+    {kind === "job" && <JobProfitabilityActuals key={id} jobId={id} />}
+    </>
   );
 }
