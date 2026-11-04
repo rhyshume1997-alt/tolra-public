@@ -1,27 +1,27 @@
-# N3 SliQ preprocessor database rehearsal
+# N3 synthetic preprocessor database rehearsal
 
-Synthetic only. One draft PR; no production SQL, real files, workflow dispatch or message to John. Claim `claims/N3`; builder 5. No application/importer change.
+Builder 5, claim `claims/N3`, draft PR #368. Synthetic only; no production SQL, real data or contact with John.
 
-Private source was readable. The manual workflow checks out only the preprocessor and strict report parser from private `quoteflow-jnr` commit `36b1208a83a1d10a9b4bb6562b4e79eb61234007`; no private code is copied into this public PR. It tests against public candidate `9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8` in a separate checkout. The private fix plan says the provisional CLI is not suitable for these report files, so this rehearsal uses `planSheet` → `buildImport` → `commitSingle` → authenticated `import_company_data`, not a replacement importer.
+Coordinator decision: no private source in a public run. `scripts/n3/preprocess.mjs` is a freshly written **rehearsal copy**, restricted to the small synthetic invoice/payment report shapes in this suite. It is not the private tool and cannot validate or approve that tool. It holds all credits, supports only the fixture payment methods and has no production CLI. No private checkout, private-source token or external module override remains.
 
-Eight named checks: invalid dates; stripped title/group/totals; Quotes refused as invoices; repeated/conflicting invoice numbers; orphan credits held; new-operation-key re-import without duplicates; every payment’s invoice/date/method/pence plus counts/totals/balances and payment replay; one bad database row leaves business records unchanged. Invalid preprocessor cases also compare database state. Both synthetic tenants and counters/import keys are snapshotted; import/audit bookkeeping is not treated as business data. Only allowed clean output filenames can enter a payload. No skip or missing/empty report can pass the eight-test gate.
+The workflow overlays the public rehearsal onto public candidate `9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8`. The runner still refuses any other base commit. The path tested is `planSheet` → `buildImport` → authenticated `import_company_data` (via `commitSingle`, or `p_dry_run=true` for N3-09). No app/importer changes.
 
-## Run later — not dispatched here
+Nine checks: invalid dates; stripped title/group/totals; Quotes refused as invoices; duplicate/conflicting numbers; orphan credits held; fresh-key replay; individual payment links/dates/methods/counts/pence/balances; one-bad-row atomicity; **N3-09 dry run with snapshot equality**. Snapshots cover both synthetic tenants' business records, counters and import keys; they exclude audit/import bookkeeping, which the existing importer may record even for dry runs. No claim of zero metadata writes.
 
-Configure repository secret `N3_PRIVATE_SOURCE_TOKEN` with **read-only contents access to quoteflow-jnr**. The default GITHUB_TOKEN cannot read that other private repo. No database secrets are accepted: the runner creates a fresh local Supabase stack, refuses existing stacks/config/DB overrides, verifies loopback/local keys and synthetic tenants, and removes the stack on exit. Artifacts contain only synthetic run results, not private source or `.env.test.local`. This is not C07’s pg-safeupdate-library proof.
+The stack remains fresh, local and disposable with inherited DB settings/existing stacks refused and synthetic-tenant verification before writes. The custom reporter emits only counts and fixed check IDs/statuses to `results.json`; the gate requires nine passes, zero skips/todos/errors. Only that file is uploaded. Logs, source, environment files, test names, failure messages and stack traces are not artifacts.
+
+## Temporary trigger — remove later
+
+`push` is temporarily enabled **only** for `codex/b5-n3-sliq-rehearsal` to register the workflow. Remove this trigger after the coordinator confirms registration. Publishing this requested update may cause GitHub to start a push run automatically. No workflow dispatch or local execution is requested or performed in this revision.
+
+Exact later manual command:
 
 ```sh
 gh workflow run n3-sliq-rehearsal.yml --repo rhyshume1997-alt/tolra-public --ref codex/b5-n3-sliq-rehearsal
 ```
 
-GitHub must first register this manual workflow on the default branch through the normal review/merge process; the command then selects the draft branch’s workflow version. This PR does not merge it or dispatch it. A missing token, unavailable private source, startup problem or failed test must fail the run, never trigger a fallback database.
+No private-source secret is needed. None was created by builder 5. The ordinary job token is used only for public checkout/image pulls.
 
-Local validation and remaining limits are recorded below before handover. Actual database results remain **UNPROVEN** until a disposable run passes. This is a rehearsal of the pre-step plus app import path; raw report imports and untested large staged imports are not approved by it.
+## Handover
 
-## Builder handover / local checks
-
-- TypeScript, targeted ESLint, shell/Node syntax and YAML/manual-only trigger checks passed. The three app modules and fixture support match the pinned candidate’s blobs.
-- Synthetic preflight checked N3 report shapes, furniture counts, date/duplicate/type refusals and payment input reconciliation; no database used.
-- Database attempt: suite failed at `TEST_SUPABASE_URL is not set`; all eight tests reported skipped by the failed setup, **zero database passes**. Docker socket access was denied. The gate rejected that report as required. Do not call collection a rehearsal pass.
-- An additional upstream preprocessor test attempt in the downloaded source copy had 14 passes and one failure in its CLI output-folder refusal check. That CLI path is not used by this rehearsal; it still needs checking in a proper private checkout. No private source was modified or published.
-- Next: review this draft and token/workflow setup, then the authorised operator may dispatch the exact command above and assess all eight results. Nothing has been dispatched, merged or run on production; John was not contacted.
+This revision was inspected and whitespace-checked only; it was **not run or dispatched**. Earlier results were for the superseded private-source version, not this rehearsal copy. Database proof remains **UNPROVEN** pending an authorised run of all nine checks. This is not C07’s pg-safeupdate-library proof, a large staged-import proof or approval to import raw reports.

@@ -1,18 +1,13 @@
-/** Synthetic only. Real private preprocessor -> public app mapping/build -> real authenticated SQL import. */
+/** Public synthetic rehearsal copy -> app mapping/build -> real authenticated SQL import. */
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
-import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildImport, type ImportPayload } from "@/lib/import-build";
 import { planSheet } from "@/lib/import-detect";
 import { commitSingle, type Rpc } from "@/lib/data-import";
 import { createSyntheticWorld, destroySyntheticWorld, verifyBackendIdentity, withDb, type SyntheticWorld } from "../support/fixtures";
 import { q } from "./time-support";
+import { preprocess, parseCsv } from "../../scripts/n3/preprocess.mjs";
 
-type PreResult = { files: Record<string, string>; flags: { code: string }[]; counts: Record<string, number>; reconciliation: Record<string, { equal: boolean }> };
-type Pre = (text: string, opts: Record<string, unknown>) => PreResult;
-let preprocess: Pre;
-let parseCsv: (text: string) => string[][];
 let world: SyntheticWorld;
 const CUSTOMER = "N3 Synthetic Metal Ltd";
 const headers = ["Type", "Num", "Date", "Customer", "Net Total", "VAT", "Total"];
@@ -57,15 +52,11 @@ async function snapshot() {
 beforeAll(async () => {
   // The fixtures refuse hosted URLs/keys and non-synthetic tenants before creating anything.
   await verifyBackendIdentity();
-  const modulePath = process.env.N3_PREPROCESS_MODULE;
-  if (!modulePath || !existsSync(modulePath)) throw new Error("N3 needs the pinned private preprocessor; no fallback or skipped proof");
-  ({ preprocess } = await import(/* @vite-ignore */ pathToFileURL(modulePath).href));
-  ({ parseCsv } = await import(/* @vite-ignore */ new URL("../sliq-synthetic-reports.mjs", pathToFileURL(modulePath)).href));
   world = await createSyntheticWorld();
 });
 afterAll(async () => { if (world) await destroySyntheticWorld(world.runId); });
 
-describe("N3 private preprocessor and disposable app importer", () => {
+describe("N3 public rehearsal copy and disposable app importer", () => {
   it("N3-01 invalid dates refuse without business writes", async () => {
     const before = await snapshot();
     for (const date of ["31/02/2026", "12/31/2026", "1/2/26", "2026-10-01"]) {
@@ -158,6 +149,13 @@ describe("N3 private preprocessor and disposable app importer", () => {
     p.invoices![1].invoice_date = "2026-02-31";
     const result = await commit(p);
     expect(result.committed).toBe(false); expect(result.error_count).toBeGreaterThan(0);
+    expect(await snapshot()).toEqual(before);
+  });
+  it("N3-09 dry run writes no business records", async () => {
+    const p = await payload(clean(invRows("DRY")).files);
+    const before = await snapshot();
+    const { data } = await rpc("import_company_data", { p_payload: p, p_dry_run: true, p_client_op_id: randomUUID() });
+    expect(data).toMatchObject({ ok: true, dry_run: true, committed: false });
     expect(await snapshot()).toEqual(before);
   });
 });

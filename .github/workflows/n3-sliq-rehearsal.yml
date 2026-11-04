@@ -1,6 +1,9 @@
 name: N3 synthetic SliQ preprocessor database rehearsal
 on:
   workflow_dispatch:
+  # TEMPORARY registration trigger: remove after coordinator confirms registration.
+  push:
+    branches: [codex/b5-n3-sliq-rehearsal]
 permissions:
   contents: read
   packages: read
@@ -12,21 +15,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Require read-only private source access
-        env:
-          SOURCE_TOKEN: ${{ secrets.N3_PRIVATE_SOURCE_TOKEN }}
-        run: test -n "$SOURCE_TOKEN" || { echo 'Configure N3_PRIVATE_SOURCE_TOKEN with read-only access to quoteflow-jnr'; exit 1; }
-      - uses: actions/checkout@v4
-        with:
-          repository: rhyshume1997-alt/quoteflow-jnr
-          ref: 36b1208a83a1d10a9b4bb6562b4e79eb61234007
-          token: ${{ secrets.N3_PRIVATE_SOURCE_TOKEN }}
-          persist-credentials: false
-          path: work/n3-private
-          sparse-checkout-cone-mode: false
-          sparse-checkout: |
-            /scripts/sliq-preprocess/preprocess.mjs
-            /scripts/sliq-synthetic-reports.mjs
       - uses: actions/checkout@v4
         with:
           ref: 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8
@@ -59,18 +47,16 @@ jobs:
           GHCR_USER: ${{ github.actor }}
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
       - name: Overlay rehearsal files only, then run fresh local database proof
-        env:
-          N3_PREPROCESS_MODULE: ${{ github.workspace }}/work/n3-private/scripts/sliq-preprocess/preprocess.mjs
         run: |
           cp tests/db/n3-sliq-preprocess.test.ts work/n3-runtime/tests/db/
           cp vitest.n3.config.ts work/n3-runtime/
           mkdir -p work/n3-runtime/scripts/n3
-          cp scripts/n3/run-rehearsal.sh scripts/n3/gate.mjs work/n3-runtime/scripts/n3/
+          cp scripts/n3/* work/n3-runtime/scripts/n3/
           bash work/n3-runtime/scripts/n3/run-rehearsal.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: n3-synthetic-rehearsal-results
-          path: work/n3-runtime/work/n3/
+          path: work/n3-runtime/work/n3/results.json
           if-no-files-found: error
           retention-days: 7
