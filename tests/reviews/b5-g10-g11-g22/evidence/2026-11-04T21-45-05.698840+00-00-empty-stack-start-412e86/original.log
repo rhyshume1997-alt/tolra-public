@@ -1,0 +1,9 @@
+Using workdir /workspace/tolra-public/work/overnight/backend
+Starting database...
+failed to pull docker image: Error response from daemon: Get "https://public.ecr.aws/v2/": Forbidden
+Retrying after 4s: public.ecr.aws/supabase/postgres:17.6.1.002
+failed to pull docker image: Error response from daemon: Get "https://public.ecr.aws/v2/": Forbidden
+Retrying after 8s: public.ecr.aws/supabase/postgres:17.6.1.002
+Stopping containers...
+failed to pull docker image: Error response from daemon: Get "https://public.ecr.aws/v2/": Forbidden
+Try rerunning the command with --debug to troubleshoot the error.

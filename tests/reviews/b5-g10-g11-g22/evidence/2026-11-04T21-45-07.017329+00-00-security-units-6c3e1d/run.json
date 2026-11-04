@@ -1,0 +1,36 @@
+{
+  "source_commit": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "start_utc": "2026-11-04T21:45:07.017329+00:00",
+  "command": [
+    "node",
+    "/workspace/tolra-public/node_modules/vitest/vitest.mjs",
+    "run",
+    "tests/unit/isolation.test.ts",
+    "tests/unit/admin-users-ban-scope.test.ts",
+    "tests/unit/admin-recent-mfa.test.ts",
+    "tests/unit/audit-contract.test.ts",
+    "tests/unit/accounting-routes.test.ts",
+    "tests/unit/accounting-cloud-adapters.test.ts",
+    "tests/unit/accounting-token-isolation.test.ts",
+    "tests/unit/ai-master-switch.test.ts",
+    "tests/unit/ai-helper-routes.test.ts",
+    "tests/unit/ai-helper.test.ts",
+    "tests/unit/tolra-ai-caps.test.ts",
+    "tests/unit/chase-inbound-never-paid.test.ts",
+    "tests/unit/chase-customer-review.test.ts",
+    "tests/unit/chase-approve.test.ts"
+  ],
+  "sql_manifest_sha256": "ef36b393fb05d68ef819a0731ad2925976aa6dfc5d76a9bb037ca71ddaa6bf4b",
+  "sql_files": 404,
+  "database_identity": "NOT_CONNECTED unless identity evidence is explicitly supplied by the test",
+  "profile": "synthetic-only",
+  "exit_code": 0,
+  "end_utc": "2026-11-04T21:45:12.696066+00:00",
+  "duration_seconds": 5.643,
+  "log_sha256": "0155ea923037f9da2ab75e506d02ef6dd279d88fa58578b63a0177d4639218ea"
+}
