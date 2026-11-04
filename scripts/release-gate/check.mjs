@@ -26,9 +26,11 @@ export function releaseGate(manifest,actualHead,readArtifact,checkoutClean=true)
    evidence=JSON.parse(text);
    if(evidence.id!==id||evidence.commit!==actualHead||evidence.status!=='PASS')throw Error('artifact identity/status mismatch');
   }catch{errors.push(`Missing, altered or stale artifact: ${id}`);continue;}
+  if(evidence.exitCode!==0)errors.push(`Command did not exit successfully: ${id}`);
   if(!Number.isFinite(Date.parse(evidence.recordedUtc??'')))errors.push(`Missing result date: ${id}`);
   const isSuite=id.startsWith('db-')||['post-release-browser','unit'].includes(id);
   if(isSuite){
+   if(evidence.unhandledErrors!==0||evidence.collectionErrors!==0)errors.push(`Unhandled/collection errors missing or nonzero: ${id}`);
    const c=evidence.counts;
    if(!c||![c.total,c.passed,c.failed,c.skipped].every(n=>Number.isSafeInteger(n)&&n>=0)||c.total===0||c.failed!==0||c.passed+c.skipped!==c.total)errors.push(`Incomplete/failed test counts: ${id}`);
    else if(c.skipped){

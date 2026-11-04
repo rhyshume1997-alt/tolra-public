@@ -7,7 +7,7 @@ function fixture(){
  const artifacts=new Map<string,string>();
  const results=mandatoryIds.map((id:string)=>({id,commit:HEAD,status:'PASS',artifact:{path:id+'.json',sha256:''}}));
  const manifest={finalCommit:HEAD,policySha256,results};
- const payload=(id:string)=>({id,commit:HEAD,status:'PASS',recordedUtc:'2026-11-04T09:00:00Z',counts:{total:2,passed:2,failed:0,skipped:0},backupSha256:HASH,beforeFingerprint:HASH,restoredFingerprint:HASH,restoredOnDisposable:true,integrityMatch:true,appliedReleases:[...policy.requiredReleases],markers:Object.fromEntries(policy.requiredReleases.map((n:number)=>[String(n),'applied'])),exactPence:true,marpetUnchanged:true,matched:true,fakeDataOnly:true,realDataTouched:false,allStopRulesPassed:true,skippedTests:[] as string[],acceptedSkips:[] as {testId:string;commit:string;acceptedBy:string;reason:string;acceptedUtc:string;reviewEvidence:string}[]});
+ const payload=(id:string)=>({id,commit:HEAD,status:'PASS',exitCode:0,unhandledErrors:0,collectionErrors:0,recordedUtc:'2026-11-04T09:00:00Z',counts:{total:2,passed:2,failed:0,skipped:0},backupSha256:HASH,beforeFingerprint:HASH,restoredFingerprint:HASH,restoredOnDisposable:true,integrityMatch:true,appliedReleases:[...policy.requiredReleases],markers:Object.fromEntries(policy.requiredReleases.map((n:number)=>[String(n),'applied'])),exactPence:true,marpetUnchanged:true,matched:true,fakeDataOnly:true,realDataTouched:false,allStopRulesPassed:true,skippedTests:[] as string[],acceptedSkips:[] as {testId:string;commit:string;acceptedBy:string;reason:string;acceptedUtc:string;reviewEvidence:string}[]});
  const set=(id:string,changes:Record<string,unknown>)=>{const text=JSON.stringify({...payload(id),...changes});artifacts.set(id+'.json',text);results.find(r=>r.id===id)!.artifact.sha256=createHash('sha256').update(text).digest('hex');};
  for(const id of mandatoryIds)set(id,{});
  const check=()=>releaseGate(manifest,HEAD,(p:string)=>{if(!artifacts.has(p))throw Error('Missing');return artifacts.get(p)!;});
@@ -50,3 +50,7 @@ it('keeps every mandatory release and proof in the policy',()=>{
  expect(policy.requiredReleases).toEqual([138,140,141,144,145,146]);
  expect(policy.required).toEqual(['backup-restore','preflight','db-full','db-two-company','db-import-140-141','db-chase-atomic','db-chase-exact-once','db-chase-edit','db-paid-claims','db-inbound-never-paid','db-cross-company','db-ai-cap-race','db-ai-key-isolation','db-ai-owner-mfa','db-accounting-isolation','db-rollback','post-release-browser','reconciliation','mock-production','unit','typecheck','lint']);
 });
+
+it.each([{exitCode:1},{exitCode:null},{unhandledErrors:1},{collectionErrors:1}])('refuses a failed command or collection despite all assertions passing: %o',problem=>{const f=fixture();f.set('unit',problem);expect(f.check().eligibleForReview).toBe(false);});
+it('refuses a missing command exit result',()=>{const f=fixture();f.set('backup-restore',{exitCode:undefined});expect(f.check().eligibleForReview).toBe(false);});
+it.each([{unhandledErrors:undefined},{collectionErrors:undefined}])('refuses missing suite error accounting: %o',problem=>{const f=fixture();f.set('db-full',problem);expect(f.check().eligibleForReview).toBe(false);});

@@ -26,7 +26,7 @@ Change: Refuses incomplete, failed, stale or unaccepted skipped release evidence
 
 Tests and evidence: 66 focused units, 0 failed/skipped; typecheck/changed lint pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
 
-NOT PROVED: Synthetic artifacts prove logic only; artifact authenticity and actual mandatory runtime results need independent review.
+NOT PROVED: Synthetic artifacts prove logic only; artifact authenticity and actual mandatory runtime results need independent review. CI audit subsequently found that an all-passed JSON report can accompany a failed command/collection. The CI follow-up requires actual zero command exits and zero unhandled/collection errors, with seven failing-first regression cases. Include that correction before treating the gate as complete; the old #273 head alone does not contain it.
 
 Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
 
