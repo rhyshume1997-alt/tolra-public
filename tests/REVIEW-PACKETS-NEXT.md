@@ -1,121 +1,63 @@
-# Paste-ready review packets
+# Next review packets, budget priority refresh
 
-Prepared 4 November 2026 UTC. Drafts only. No merge, Ready label, deployment or real-data SQL. These packets ask for independent review, not announce approval. SAFE for an artifact is not permission to release software. Review actual final heads; if a head changes, refresh evidence and packet. Full branch reruns and counts belong in the CI job's report and PR comments, not invented below.
+The broad audit was STOPPED by Rhys, not completed. These are exact scoped results, not release/SQL approval. No full suites are repeated for this documentation update. All PRs remain drafts. No Ready label, merge, main push, deployment or real-data SQL.
 
-The current stack is #247 -> #272 -> #273 -> #274 -> #275 -> #276 -> #277 -> #278 -> this packet PR. Existing owner branches and private repository remain unchanged. #247/#250/#258 and the actual mock production run still require their independent verdicts and real evidence. Source #258 itself was not modified; CE is the explicitly scoped refresh.
+Each paragraph below is a paste-ready packet. Check the PR head has not moved before using it. A passing older-head unit log never proves a newer head, a database condition or runtime acceptance. Software is NOT VALIDATED; NO GO remains.
 
-## CA: PR #272
+## PR #272
 
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/272 at full head `ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b` on `codex/ca-sliq-releases`.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/272, full head `ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b`. Checks: 5457 full units,0failed/skipped;19focused;types/explicitlint pass. NOT PROVED / limits: 140/141 packaging; ordered real upgrade/company isolation NOT TESTED. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Change: Packages required SliQ 140/141 without changing held implementation branches.
+## PR #273
 
-Tests and evidence: 5457 full units, 0 failed/skipped; 19 focused; typecheck/lint/checksums pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/273, full head `ff13614fcd8bd37d989faec74d387371ef7ac378`. Checks: 5523 full units,0failed/skipped;66focused;types/lint pass. NOT PROVED / limits: Original gate requires #280 corrections: command exits, Operations Pack and five wipe DB groups. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-NOT PROVED: No ordered real restore upgrade, SQL permissions, live JNR import or browser proof; Docker ENOSPC blocked the backend.
+## PR #274
 
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/274, full head `d88f06333556e5c2a80e183a5067c5f7117562fa`. Checks: 5558 full units,0failed/skipped;35focused;types/lint pass. NOT PROVED / limits: Offline normalized snapshots only; completeness/next numbers/real data NOT TESTED; optional half-even helper listed in CL. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
+## PR #275
 
-## CB: PR #273
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/275, full head `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`. Checks: 5567 full units,0failed/skipped;9focused;types/lint pass. NOT PROVED / limits: Fake dry run only;2held;1UNVERIFIED WIP valuation; actual wipe/import NOT TESTED. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/273 at full head `ff13614fcd8bd37d989faec74d387371ef7ac378` on `codex/cb-release-gate`.
+## PR #276
 
-Change: Refuses incomplete, failed, stale or unaccepted skipped release evidence.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/276, full head `e71a80072148077a4c0f05184fe40d79688c01ee`. Checks: 5567 full units,0failed/skipped;463mapped on18aa60d;explicit633filelint0errors3warnings. NOT PROVED / limits: NOT VALIDATED; full IQ/OQ/PQ and VSR unsigned; #280 corrects table layout/current baseline. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Tests and evidence: 66 focused units, 0 failed/skipped; typecheck/changed lint pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
+## PR #277
 
-NOT PROVED: Synthetic artifacts prove logic only; artifact authenticity and actual mandatory runtime results need independent review. CI audit subsequently found that an all-passed JSON report can accompany a failed command/collection. The CI follow-up requires actual zero command exits and zero unhandled/collection errors, with seven failing-first regression cases. Include that correction before treating the gate as complete; the old #273 head alone does not contain it.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/277, full head `87c4bbf52b895c1e618d32205e5023adb4d60cbc`. Checks: 5567 full units,0failed/skipped;types/lint pass;18file references checked. NOT PROVED / limits: Instructions only, no SQL executed; 146 rollback STOP and separate operator approval. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
+## PR #278
 
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/278, full head `8d667ffc7d779d4487fcf19eb052b123ec98baa8`. Checks: 5567 full units,0failed/skipped;types/lint pass;157known evidence rows checked. NOT PROVED / limits: Historical register; latest named N2/N3 mapping is #282; authoritative Operations Pack missing. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-## CC: PR #274
+## PR #279
 
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/274 at full head `d88f06333556e5c2a80e183a5067c5f7117562fa` on `codex/cc-jnr-reconcile`.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/279, full head `4bb59c0ecfda0a545ec7221ef569dcc1184418db`. Checks: 5567 full units,0failed/skipped;types/lint pass;packet links/SHAs checked. NOT PROVED / limits: Earlier packets superseded by this refresh; no runtime/approval proof. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Change: Offline stable-reference, exact-pence comparison and protected snapshots.
+## PR #280
 
-Tests and evidence: 35 focused units, 0 failed/skipped; typecheck/changed lint pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/280, full head `f4eacee2236e65e52fdccbdf5cf8f8045fd95d80`. Checks: 100focused gate tests;types/changedlint/pack checks pass;NO final full suite;52/61 historical heads completed. NOT PROVED / limits: Audit STOPPED by Rhys.1collection failure,1tsc failure,472+412+412skips; all61 explicit lint runs0errors3warnings. See CODEX-AUDIT-PARTIAL.md. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-NOT PROVED: Cannot establish snapshot completeness/origin, SQL permissions, live preservation, accountant WIP or next-number safety.
+## PR #281
 
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/281, full head `8c5161c20745fb8be2e4239ecf9076f7507d437f`. Checks: 3named specs collect;types/lint pass;missingDB runtime refuses without skips. NOT PROVED / limits: N1/N5/N6 runtime NOT TESTED; fake database with reviewed releases and app build required. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
+## PR #282
 
-## CD: PR #275
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/282, full head `5aca2efd2755e9bf9dd53e72ad5807c31648a434`. Checks: 22source paths/titles checked;diff check pass;docs only. NOT PROVED / limits: N2/N3 real DB/MFA/cap race/provider/browser NOT TESTED; Sage/QBO tests #230, not #229. Give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope, with each remaining condition. This is not approval to release or run SQL.
 
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/275 at full head `d73bb240a23b38a7080c0933e4f5b62ddd529f5f` on `codex/cd-sliq-no-write`.
+## This CH refresh, CL and ownership reporting companions
 
-Change: Fake-only in-memory import analysis and reconciliation; no file/database writes.
+This file cannot embed its own containing commit SHA. The CH PR description is its full-head companion after push, recording packet path/SHA checks and runtime limits. The CL PR description similarly gives its actual full head and checks for ROUNDING-RULE.md, leaving costing code/golden tests unchanged. Ask the same SAFE / SAFE WITH CONDITIONS / NOT SAFE question against each actual head.
 
-Tests and evidence: 5567 full units and 9 focused, 0 failed/skipped; typecheck/changed lint pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
+PR #271 is docs-only ownership/handover. Its final description records the exact final ledger head after all priority jobs. No held owner row is reassigned. No code-safety result is claimed from a tracker edit.
 
-NOT PROVED: Real mapping/import/wipe not run; 2 held records, INCOMPLETE fake reconciliation from 1 UNVERIFIED WIP valuation.
+## Claude Code next steps
 
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
-
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
-
-## CE: PR #276
-
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/276 at full head `e71a80072148077a4c0f05184fe40d79688c01ee` on `codex/ce-validation-final`.
-
-Change: Refreshes #258 source pack for the frozen CA to CD integration; old evidence retains its identity.
-
-Tests and evidence: 463 mapped units, 0 failed/skipped/todo on clean 18aa60d51e1eec511517dede02c461c688bbad8a; 15 URS/6 IQ/15 OQ/9 PQ mapping passes; typecheck preparation passes; the old no-argument npm lint is not accepted evidence, use the CI explicit-path lint result. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
-
-NOT PROVED: Software NOT VALIDATED. No actual DB/browser/provider/complete OQ/PQ or Rhys acceptance/VSR signature; final-head full rerun belongs to CI job.
-
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
-
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
-
-## CF: PR #277
-
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/277 at full head `87c4bbf52b895c1e618d32205e5023adb4d60cbc` on `codex/cf-db-day-runbook`.
-
-Change: Explains backup/restore and verified 138, required 140/141, verified 144, 145, 146 with individual stop gates.
-
-Tests and evidence: 18 referenced files and explicit order/146 stop rule checked; diff check pass; documentation only. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
-
-NOT PROVED: No runbook commands executed, no SQL/release/real-data permission granted.
-
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
-
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
-
-## CG: PR #278
-
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/278 at full head `8d667ffc7d779d4487fcf19eb052b123ec98baa8` on `codex/cg-go-no-go-evidence`.
-
-Change: Separates scoped actual PASS observations, setup FAIL and unrun final-head conditions.
-
-Tests and evidence: 157 evidence rows; every mandatory ID, all 18 CW and available manual/protocol rows accounted; diff check pass. Counts are scoped to the stated command/head. The CI job will publish separate complete-suite exact-head results.
-
-NOT PROVED: Authoritative Operations Pack missing, completeness BLOCKED; no same-final-head DB/browser/restore/wipe/import proof. NO GO remains.
-
-Assumption: this is a review-only staged integration based on #247 41c685c416305637d86b580324fff9e6cda037ff, not an approved final production SHA. Required JNR 140/141 cannot be omitted; no costing 143. Actual backup restore and release/wipe/import/browser evidence stays mandatory.
-
-Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for this exact artifact and scope. List every remaining condition and required test. Do not treat unit mocks, old-head evidence or this question as release/SQL approval.
-
-## Coordination: PR #271
-
-Please review https://github.com/rhyshume1997-alt/tolra-public/pull/271, documentation-only ownership/handover on codex/ca-ci-ownership. Packet snapshot head `c5fb8a6c827b632b4fa074926dd3d8e340345ba9`; ledger changes after each job intentionally advance this PR. Use the latest exact SHA and result in its final review comment before deciding. No held owner row is reassigned. Checks: diff check and review of our CA to CI rows; no runtime proof claimed. Code PRs contain no docs/ files.
-
-NOT PROVED: code release safety, actual runtime evidence and reviewer approval. This ledger is not an authorisation. Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for the current full head in the final PR comment and its documentation scope.
-
-## CH: this reporting PR
-
-Assumption: a file cannot embed the SHA of the commit that first contains that same SHA. The immutable external companion packet in this PR's description/final review comment records this PR's actual full 40-character head, exact checks and missing proofs after push. Use that full-head companion, not this file's parent SHA. The packet checker below verifies all seven artifact packets and SHA lengths. Final full suite/typecheck/lint are the CI job; do not presume their results yet.
-
-NOT PROVED: any database, backup/restore, wipe/import, browser or release acceptance. This is a documentation report, not approval. Please give **SAFE, SAFE WITH CONDITIONS or NOT SAFE** for the actual full head in the companion packet and this scope.
-
-## CI: final check report to follow
-
-The CI job will pin each remote codex/* head, run complete unit/typecheck/lint in isolated detached worktrees, retain exact failures/skips and causes, and publish the table on its own draft PR. It will not alter other owners' branches or run database tests against real data. No report here pre-empts results. Its final full head and exact counts will be in its PR description/final comment, avoiding a self-referential SHA claim.
-
-NEXT UP: run CI job, publish final-head companion packets, then obtain real same-final-head backup/restore, mandatory database, combined #250 wipe/JNR import/reconciliation and post-release browser evidence. Supply and reconcile the authoritative Operations Pack. Rhys completes validation/sign-off only after independent review. Nothing here promises plain SAFE in advance.
+1. CJ: run REVIEWER_REQUIRE_DATABASE=1 npx playwright test tests/e2e/acceptance against a verified disposable backend with reviewed 138/140/141/144/145/146 installed and the app built for it. Missing backend or marker must fail, never skip. Tests use run-owned fake companies only.
+2. CG/CK: obtain the authoritative Operations Pack; execute the named N2/N3 real SQL/MFA/race/provider/browser proofs and retain exact-head logs. Integrate missing reviewer follow-ups, not just mocks.
+3. CI: audit intentionally remains52/61; the remaining heads and final CI full suite are NOT TESTED. Do not resume unless Rhys reprioritises. Missing jsdom, ProcessEnv type failure and costing skips remain held-owner findings.
+4. CL: review the penny half-up rule, the protected costing exception and the optional offline half-even helper before using that helper for financial cutover work. No rounding logic changed by the note.
+5. Required blockers stay open: actual backup/restore compare, ordered releases, #207, exact private combined #250 wipe/archive/permissions/refusals/preservation/provider disconnect, John's import/WIP/numbering/reconciliation, browser suite, reviewer verdicts and Rhys validation/signature. A 146 rollback requires STOP before any reinstall; retained history/key_source is not a fresh database.
