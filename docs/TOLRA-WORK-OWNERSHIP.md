@@ -88,4 +88,4 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | AT | Codex | codex/costing-join; codex/money-edge-tests | DONE IN PR | #184; #185 |
 | AU | Codex | codex/au-wording | CLAIMED | — |
 | AV | Codex | codex/av-rollback-tests | CLAIMED | — |
-| AW | Codex | codex/aw-data-load | CLAIMED | — |
+| AW | Codex | codex/aw-data-load | DONE IN PR | #264 |
