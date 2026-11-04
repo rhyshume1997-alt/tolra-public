@@ -83,7 +83,7 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
 | AQ | Codex | codex/aq-morning-checklist | DONE IN PR | #262 |
-| AR | Codex | codex/ar-manual-final | CLAIMED | — |
+| AR | Codex | codex/ar-manual-final | DONE IN PR | #263 |
 | AS | Codex | codex/chase-join | CLAIMED | #186 |
 | AT | Codex | codex/costing-join; codex/money-edge-tests | CLAIMED | #184; #185 |
 | AU | Codex | codex/au-wording | CLAIMED | — |

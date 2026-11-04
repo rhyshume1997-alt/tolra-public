@@ -57,3 +57,4 @@ Jobs 1–5 remain blocked by the existing IN PROGRESS ownership rows. No other o
 | Job | Work done | Branch | PR | Tests | Blocker |
 | --- | --- | --- | --- | --- | --- |
 | AQ | Pinned morning approval/STOP sentences to #247; explicitly holds 140-143; explains destructive rollback limits and proof order | codex/aq-morning-checklist | #262, 6be692d3e3fde62baed099c71dc518bfbf2930a5 | 14 numbered rows, missing-release warning, no em dashes and diff check PASS | Actual release proofs still required; no approval granted by document |
+| AR | Updated #248 for pinned #247; corrected direct send, included setup fix, missing releases and recovery rules | codex/ar-manual-final | #263, 8cecd36e5fc852ae52e564db422f6201c8960a56 | 36 unique expected-result/NOT RUN rows and diff check PASS | Manual runtime checks not run |
