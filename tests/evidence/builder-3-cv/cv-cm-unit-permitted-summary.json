@@ -1,0 +1,39 @@
+{
+  "scope": "cm",
+  "head": "a4c89af3723703ba5e284bb6500553d42975f925",
+  "initialStatus": "",
+  "started": "2026-11-04T13:17:59.979854+00:00",
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "--maxWorkers=4",
+    "--minWorkers=1",
+    "--reporter=json",
+    "--outputFile=/workspace/work/queue-cr/cv-cm-unit-permitted.json"
+  ],
+  "permission": "supported additional network permission for child processes and loopback fixture servers; proxy/guards preserved; no test change",
+  "exit": 0,
+  "finished": "2026-11-04T13:21:16.171608+00:00",
+  "log": "cv-cm-unit-permitted.log",
+  "sha256": "788a356bfa52012dc31f6f6622898e2cacc123372309634009be05939c951ea2",
+  "finalStatus": "",
+  "unit": {
+    "numTotalTestSuites": 1523,
+    "numPassedTestSuites": 1523,
+    "numFailedTestSuites": 0,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 5357,
+    "numPassedTests": 5357,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "success": true
+  },
+  "fileCounts": {
+    "passed": 373,
+    "failed": 0,
+    "pending": 0
+  },
+  "failures": []
+}

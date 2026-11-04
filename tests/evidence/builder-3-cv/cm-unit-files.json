@@ -1,0 +1,2255 @@
+{
+  "sourceReporterSha256": "069bdbd194f278b334832d322265c76ecae90de4d93de26f838ed24d35688834",
+  "counts": {
+    "numTotalTestSuites": 1523,
+    "numPassedTestSuites": 1523,
+    "numFailedTestSuites": 0,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 5357,
+    "numPassedTests": 5357,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "success": true
+  },
+  "files": [
+    {
+      "path": "/workspace/work/cm/tests/unit/accept-quote.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/access-ended-signal.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/access-forbidden-not-ended.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/access-recheck-runner.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/access-recheck-session-vanished.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/access-recheck.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/accountant-invite-129.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/activity-table-labels.test.ts",
+      "status": "passed",
+      "assertions": 52,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/activity.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/add-machine-reason.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-mfa-onboarding.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-password-auth-failure.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-reset-link.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-user-save.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-add-existing.test.ts",
+      "status": "passed",
+      "assertions": 36,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-ban-scope.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-companies.test.ts",
+      "status": "passed",
+      "assertions": 25,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-load.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-owner-takeover.test.ts",
+      "status": "passed",
+      "assertions": 23,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-patch.test.ts",
+      "status": "passed",
+      "assertions": 25,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/admin-users-sign-in.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-assistant.test.ts",
+      "status": "passed",
+      "assertions": 27,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-finance-check-route.test.ts",
+      "status": "passed",
+      "assertions": 35,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-finance-check.test.ts",
+      "status": "passed",
+      "assertions": 34,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-helper-101-header.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-helper-routes.test.ts",
+      "status": "passed",
+      "assertions": 46,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-helper.test.ts",
+      "status": "passed",
+      "assertions": 31,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ai-master-switch.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/alert-test-message.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/alert-test-route.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/api-route-guards.test.ts",
+      "status": "passed",
+      "assertions": 23,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/approvals-display.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/attention-items.test.ts",
+      "status": "passed",
+      "assertions": 46,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/attention-load-archived-drafts.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/attention-load-null-status.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/attention.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/audit-contract.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/audit-fixes-2.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/auth-errors.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/auth-lock-timeout.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/auto-booking.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/b23-access-ended-kept-notice.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/bank-details.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/bench-pause.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/booking-time-zero-quote-126.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/brand-flash.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/brand-pending.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/brand-remember.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/branding.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/breached-password.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/capacity-check.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/change-password-route.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/check-migrations.test.ts",
+      "status": "passed",
+      "assertions": 29,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/check-preview-env.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/chunk-reload.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ci-workflow-inputs.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/client-ip.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/clock-in-lock.test.ts",
+      "status": "passed",
+      "assertions": 18,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/clock-refusal-queue-128.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/columns-parity.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/columns-render.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/compact-invoice-list.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-access.test.ts",
+      "status": "passed",
+      "assertions": 33,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-email.test.ts",
+      "status": "passed",
+      "assertions": 28,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-form-hydrate.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-load-retry.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-prime.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-switch-mid-form.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-sync-tabs.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/company-working-hours.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/confirmed-user.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-atomic-review.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-engine-parity.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-extra-edge.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-followup.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-golden.test.ts",
+      "status": "passed",
+      "assertions": 474,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-port-golden.test.ts",
+      "status": "passed",
+      "assertions": 62,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-proposal-setup.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-proxy.test.ts",
+      "status": "passed",
+      "assertions": 86,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-rates-store.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-ui.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/costing-wiring.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/credit-notes.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-ai-helper-purge.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-daily.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-email-schedules.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-ip-purge.test.ts",
+      "status": "passed",
+      "assertions": 19,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-nightly.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-overview-snapshot.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/cron-xero-sweep.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/csv-and-dates.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/customer-archive.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/customer-po-123.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/customer-save-conflict.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/customer-signoff-pdf.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/customer-signoff.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/dashboard-analytics.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/dashboard-display.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/dashboard-tile-figures.test.ts",
+      "status": "passed",
+      "assertions": 29,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/data-import-path.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/data-import-run.test.ts",
+      "status": "passed",
+      "assertions": 19,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/date-format.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/day-plan-clock-change.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/db-probe-get-068.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/db-probe-get.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/delivery-note-invoice-link.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/delivery-note-print.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/delivery-note-source.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/destinations.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/dialog-sticky-close.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/display-name.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/display-own-view.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/display-settings.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/document-attachments.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/document-integrity.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/document-snapshot.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/draft-invoice-edit.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/draft-invoice-links-race.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/drawing-revision.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/due-window.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-schedules-due.test.ts",
+      "status": "passed",
+      "assertions": 35,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-schedules-form.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-schedules-live.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-schedules-reminders.test.ts",
+      "status": "passed",
+      "assertions": 36,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-schedules-run.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-schedules-timesheet.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-send-route.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/email-templates.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/empty-hints.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/empty-list.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/error-alert.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/export-pdf-layout.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/exports-ignore-hidden-columns.test.ts",
+      "status": "passed",
+      "assertions": 31,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/fetch-all.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/finished-booking-status.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/floor-attendance.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/footer-contact.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/friendly-error.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/global-search-component.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/global-search-route.test.ts",
+      "status": "passed",
+      "assertions": 26,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/global-search-scope.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/hours-display.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-build.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-columns.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-detect.test.ts",
+      "status": "passed",
+      "assertions": 29,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-file.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-mappings.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-sliq-parties.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/import-small-workbook.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/inbox-auto-check.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/inspect-action.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/inspectors.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/integrations-connect-107-routes.test.ts",
+      "status": "passed",
+      "assertions": 32,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/integrations-connect-107.test.ts",
+      "status": "passed",
+      "assertions": 28,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/integrations-connect-safety.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/integrations-crypto-oauth.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/integrations-engine.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-credits-pdf.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-delivery-notes-pdf.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-delivery-notes.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-detail-status-label.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-display-totals.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-draft-payment.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-link.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-message.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-null-status.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-pdf-after-reversal.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-pdf-print-after-reversal.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-phase-filters.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-ref-cell.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-ref.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-tax-point.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-void-state.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/invoice-write-off-105.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/isolation.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-actions.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-board-files.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-board-no-bulk-start.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-board-play.test.ts",
+      "status": "passed",
+      "assertions": 18,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-delivery-note.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-flow.test.ts",
+      "status": "passed",
+      "assertions": 26,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-link.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-machine-plan.test.ts",
+      "status": "passed",
+      "assertions": 22,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-on-time.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-parts.test.ts",
+      "status": "passed",
+      "assertions": 22,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-photo-thumb.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-picker.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-problems.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-signoff.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-status.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/job-table-columns.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/known-customers.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/late-count-agreement.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/limiter-fail-safe.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/list-card-counts.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/list-filter.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/list-skeleton.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/list-toolbar.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/lock-retry.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/m365-graph.test.ts",
+      "status": "passed",
+      "assertions": 30,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/m365-live-guards.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/m365-routes.test.ts",
+      "status": "passed",
+      "assertions": 48,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/machine-picker-empty.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/machine-runs.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/machine-schedule.test.ts",
+      "status": "passed",
+      "assertions": 46,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/mailbox-delegated.test.ts",
+      "status": "passed",
+      "assertions": 42,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/marketing-home.test.ts",
+      "status": "passed",
+      "assertions": 18,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/marketing-privacy.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/mfa-guard.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/middleware-early-returns.test.ts",
+      "status": "passed",
+      "assertions": 35,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/middleware-route-roles.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/migration-102-independent.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/money-decimal.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/money.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/ms-consent-app-test.test.ts",
+      "status": "passed",
+      "assertions": 52,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/my-company-logos.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/my-jobs-render.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/my-jobs.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/new-company.test.ts",
+      "status": "passed",
+      "assertions": 35,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/new-job-bookings.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/next-clear-start.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/no-network.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/numbering.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/numbers-overview-reconcile.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/numbers.test.ts",
+      "status": "passed",
+      "assertions": 24,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-block-cookie-secure.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-clock-idle-shell.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-clock.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-concurrency.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-downgrade.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-identity-age.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-legacy-replay.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-photo-discard.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-photos.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-replay-after-revocation.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-revocation.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-signoff.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-signout-scope.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-support-session.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-switch-other-tab.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline-sync-authority.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/offline.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/open-drafts.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/open-drawing.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/order-from-quote.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/org-settings-nav.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/org-settings-store.test.ts",
+      "status": "passed",
+      "assertions": 24,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/organization-switch-lock.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/overview-metrics.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/overview-people-render.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/overview.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/page-titles.test.ts",
+      "status": "passed",
+      "assertions": 48,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/parts-activity.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/parts-render.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pay-worked-example.test.ts",
+      "status": "passed",
+      "assertions": 22,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/payment-attempts.test.ts",
+      "status": "passed",
+      "assertions": 22,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/payment-figures-agree.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/payments.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pdf-entry-points.test.ts",
+      "status": "passed",
+      "assertions": 36,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pdf-lazy-load.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pdf-offline-message.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pdf-warm.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/people-names.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/people.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/phone-lag-recheck-renders.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/phone-lag-sync-idle.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/photo-image.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/picker-summary.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/po-capture-poll.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/po-capture.test.ts",
+      "status": "passed",
+      "assertions": 64,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pre-067-fallbacks.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pre-068-fallbacks.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/pre-073-fallbacks.test.ts",
+      "status": "passed",
+      "assertions": 18,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/print-layout-jnr.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/print-layout.test.ts",
+      "status": "passed",
+      "assertions": 23,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/purchase-order-link.test.ts",
+      "status": "passed",
+      "assertions": 25,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/purchase-order-total.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/quote-expiry.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/quote-status.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/quote-versions.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/range-label.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/receivables.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rehearsal-inject-point.test.ts",
+      "status": "passed",
+      "assertions": 31,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/release-sql.test.ts",
+      "status": "passed",
+      "assertions": 184,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/reopen-sign-off.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/report-error-budget.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/reset-link-origin.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/resilient-fetch.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/return-ask-server-enforcement.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rework-pending-cost.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rfq-clarification.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rfq-display.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rfq-quote.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rfq-stage.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rls-helper-speed-121.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/rls-select-wrap-131.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/run-bookings.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/run-plan.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/run-timer.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sales-order-convert.test.ts",
+      "status": "passed",
+      "assertions": 18,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sales-orders-switch.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/schedule-colours.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/schedule-display.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/schedule-live.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/security-headers.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/send-job.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/session-ended.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/session-policy.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/session-refresh-paths.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/session-revocation-contract.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/set-password-link.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/shell-status.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sign-in-access.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sign-in-list.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sign-off.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/signature-pad.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/signin-last-active-mfa.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/signin-last-active.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/signin-lookup.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/site-network-retention.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/site-network.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-archive.test.ts",
+      "status": "passed",
+      "assertions": 48,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-import-audit.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-import-formats.test.ts",
+      "status": "passed",
+      "assertions": 24,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-import.test.ts",
+      "status": "passed",
+      "assertions": 39,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile-isolation.test.ts",
+      "status": "passed",
+      "assertions": 13,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile-money.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile-offline.test.ts",
+      "status": "passed",
+      "assertions": 35,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile-output.test.ts",
+      "status": "passed",
+      "assertions": 19,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile-protect.test.ts",
+      "status": "passed",
+      "assertions": 16,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile-safety.test.ts",
+      "status": "passed",
+      "assertions": 14,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sliq-reconcile.test.ts",
+      "status": "passed",
+      "assertions": 49,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/snapshot-hash.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/so-machines.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/split-clear-shift.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/spreadsheet.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/start-after-booking.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/status-badge.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/status-colours.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/support-session.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/sync-status.test.ts",
+      "status": "passed",
+      "assertions": 23,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/team-week.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-day-flags.test.ts",
+      "status": "passed",
+      "assertions": 19,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-features.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-labour-offline.test.ts",
+      "status": "passed",
+      "assertions": 7,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-payroll-export.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-send-notice.test.ts",
+      "status": "passed",
+      "assertions": 9,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-sheet-signed.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-sheet.test.ts",
+      "status": "passed",
+      "assertions": 26,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-sync-rejections.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/time-week-export.test.ts",
+      "status": "passed",
+      "assertions": 4,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/traceability-082.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/uninvoiced.test.ts",
+      "status": "passed",
+      "assertions": 5,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/unrecognised-network-banner.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/use-now.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/users.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/vat-registration-rule.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/who-when-load.test.ts",
+      "status": "passed",
+      "assertions": 8,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/whole-floor.test.ts",
+      "status": "passed",
+      "assertions": 15,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/working-hours.test.ts",
+      "status": "passed",
+      "assertions": 10,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-batch-chunk.test.ts",
+      "status": "passed",
+      "assertions": 20,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-batch-deps.test.ts",
+      "status": "passed",
+      "assertions": 1,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-batch-routes.test.ts",
+      "status": "passed",
+      "assertions": 17,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-batch-select.test.ts",
+      "status": "passed",
+      "assertions": 19,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-mapper.test.ts",
+      "status": "passed",
+      "assertions": 12,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-mappings-send-log.test.ts",
+      "status": "passed",
+      "assertions": 21,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/xero-pr2-access.test.ts",
+      "status": "passed",
+      "assertions": 19,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/year-end-export.test.ts",
+      "status": "passed",
+      "assertions": 6,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/year-end-payment-reconciliation.test.ts",
+      "status": "passed",
+      "assertions": 3,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/year-end-po-totals.test.ts",
+      "status": "passed",
+      "assertions": 11,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/year-end-unknown-payments.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/year-end-unresolved-po.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    },
+    {
+      "path": "/workspace/work/cm/tests/unit/year-end-unresolved-quote.test.ts",
+      "status": "passed",
+      "assertions": 2,
+      "failed": 0
+    }
+  ]
+}

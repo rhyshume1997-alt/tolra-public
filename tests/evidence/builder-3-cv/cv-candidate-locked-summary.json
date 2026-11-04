@@ -1,0 +1,73 @@
+{
+  "scope": "candidate",
+  "head": "e7581c43b5f92836ceaedcf2716d495392a9d9e6",
+  "tree": "a1c21e014ef0e7c201dc48d5f61b09bebd1f9ffc",
+  "initialStatus": "",
+  "node": "v24.22.1",
+  "npm": "11.9.0",
+  "dependencyInstall": "npm ci --no-audit --no-fund --cache /workspace/work/npm-cache; see workspace-cache npm-ci summary",
+  "started": "2026-11-04T13:25:35.087332+00:00",
+  "commands": [
+    {
+      "command": [
+        "npx",
+        "eslint",
+        "app",
+        "components",
+        "lib",
+        "tests/e2e/acceptance",
+        "tests/unit/money-rounding-rule.test.ts",
+        "tests/db/money-rounding-parity.test.ts",
+        "tests/fixtures/money-rounding-cases.ts"
+      ],
+      "exit": 0,
+      "seconds": 11.93,
+      "log": "cv-candidate-locked-1.log",
+      "sha256": "345fa23c4114e69d64aaa419d315e4558816ea720cbaa251eb3d69d995f9db44"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck",
+        "--",
+        "--pretty",
+        "false"
+      ],
+      "exit": 0,
+      "seconds": 55.53,
+      "log": "cv-candidate-locked-2.log",
+      "sha256": "201389b46c54df4598fb3d55f10929a90ee688c9208e558b842122f10183dc44"
+    },
+    {
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--maxWorkers=4",
+        "--minWorkers=1",
+        "--reporter=json",
+        "--outputFile=/workspace/work/queue-cr/cv-candidate-locked-unit.json"
+      ],
+      "exit": 0,
+      "seconds": 109.87,
+      "log": "cv-candidate-locked-3.log",
+      "sha256": "9f6389d892ca3799c9523b9cef4cbf1326eb8627ee38b94c011bd9452a68312b"
+    }
+  ],
+  "unit": {
+    "numTotalTestSuites": 1636,
+    "numPassedTestSuites": 1636,
+    "numFailedTestSuites": 0,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 5622,
+    "numPassedTests": 5622,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "success": true
+  },
+  "failures": [],
+  "finished": "2026-11-04T13:28:32.441297+00:00",
+  "finalStatus": ""
+}

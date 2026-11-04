@@ -1,0 +1,52 @@
+{
+  "scope": "candidate",
+  "head": "e7581c43b5f92836ceaedcf2716d495392a9d9e6",
+  "initialStatus": "",
+  "started": "2026-11-04T13:18:19.413416+00:00",
+  "command": [
+    "npm",
+    "test",
+    "--",
+    "--maxWorkers=4",
+    "--minWorkers=1",
+    "--reporter=json",
+    "--outputFile=/workspace/work/queue-cr/cv-candidate-unit-permitted.json"
+  ],
+  "permission": "supported additional network permission for child processes and loopback fixture servers; proxy/guards preserved; no test change",
+  "exit": 1,
+  "finished": "2026-11-04T13:21:51.122676+00:00",
+  "log": "cv-candidate-unit-permitted.log",
+  "sha256": "ffb7c5d3c5b050a86da509ed9de13aabeb73be1f7b0661c7f472138b6665ca76",
+  "finalStatus": "",
+  "unit": {
+    "numTotalTestSuites": 1636,
+    "numPassedTestSuites": 1634,
+    "numFailedTestSuites": 2,
+    "numPendingTestSuites": 0,
+    "numTotalTests": 5622,
+    "numPassedTests": 5621,
+    "numFailedTests": 1,
+    "numPendingTests": 0,
+    "numTodoTests": 0,
+    "success": false
+  },
+  "fileCounts": {
+    "passed": 414,
+    "failed": 1,
+    "pending": 0
+  },
+  "failures": [
+    {
+      "file": "/workspace/work/cv/tests/unit/marketing-local-fonts.test.ts",
+      "message": "",
+      "assertions": [
+        {
+          "name": "marketing fonts build without a Google download ships actual WOFF2 data for the same five family/weight combinations",
+          "failures": [
+            "Error: ENOENT: no such file or directory, open '/workspace/work/cv/node_modules/@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2'\n    at Object.openSync (node:fs:621:18)\n    at Proxy.readFileSync (node:fs:487:35)\n    at /workspace/work/cv/tests/unit/marketing-local-fonts.test.ts:21:22\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)"
+          ]
+        }
+      ]
+    }
+  ]
+}

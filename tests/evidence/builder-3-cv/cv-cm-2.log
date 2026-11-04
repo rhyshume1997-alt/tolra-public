@@ -1,0 +1,4 @@
+
+> quoteflow-jnr@0.1.0 typecheck
+> tsc --noEmit --pretty false
+

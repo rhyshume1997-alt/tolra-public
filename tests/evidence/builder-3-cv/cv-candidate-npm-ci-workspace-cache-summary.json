@@ -1,0 +1,17 @@
+{
+  "command": [
+    "npm",
+    "ci",
+    "--no-audit",
+    "--no-fund",
+    "--cache",
+    "/workspace/work/npm-cache"
+  ],
+  "head": "e7581c43b5f92836ceaedcf2716d495392a9d9e6",
+  "started": "2026-11-04T13:24:52.913112+00:00",
+  "lockSha256": "ca89ac67b8ef4395469460f11153f33132a3f064705e5cc5f5bf047272684248",
+  "exit": 0,
+  "finished": "2026-11-04T13:25:12.721091+00:00",
+  "logSha256": "91957b94afd15ab1c876a9e901c5b01539a447282b48732951756f6dd38ed88e",
+  "status": ""
+}

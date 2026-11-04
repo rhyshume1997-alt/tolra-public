@@ -1,0 +1,15 @@
+{
+  "command": [
+    "npm",
+    "ci",
+    "--no-audit",
+    "--no-fund"
+  ],
+  "head": "e7581c43b5f92836ceaedcf2716d495392a9d9e6",
+  "started": "2026-11-04T13:23:29.174608+00:00",
+  "lockSha256": "ca89ac67b8ef4395469460f11153f33132a3f064705e5cc5f5bf047272684248",
+  "exit": 226,
+  "finished": "2026-11-04T13:23:43.183593+00:00",
+  "logSha256": "a53d78a5523bfa48e8b103038723c91abb8b3d732af8461ec59346edbf688ff7",
+  "status": ""
+}
