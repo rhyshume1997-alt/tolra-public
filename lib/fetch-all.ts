@@ -2,8 +2,9 @@
  * Loads every row of a list, page by page (audit D10). The API returns at most a fixed number of rows per request
  * (1,000 on hosted Supabase); without paging, older records silently vanish from lists, totals and exports.
  *
- * - Pages are requested with a stable order (the caller's order plus id as tie-breaker) and continue until an empty
- *   page, so a server cap smaller than our page size can't end the loop early.
+ * - Pages use a stable order (the caller's order plus id as tie-breaker). The first response establishes the
+ *   effective page size, preserving server caps smaller than our request. A later shorter page ends the loop;
+ *   an initial short page or an exact multiple still needs an empty confirmation.
  * - Rows are de-duplicated by id: a record inserted while paging can shift a row onto the next page.
  * - A hard upper bound keeps the browser responsive; reaching it is reported (truncated = true), never silent.
  */
@@ -21,6 +22,7 @@ export async function fetchAll<T extends Record<string, unknown>>(
   const rows: T[] = [];
   const seen = new Set<unknown>();
   let offset = 0;
+  let observedPageSize: number | undefined;
   for (;;) {
     const { data, error } = await page(offset, offset + pageSize - 1);
     if (error) throw error;
@@ -32,6 +34,8 @@ export async function fetchAll<T extends Record<string, unknown>>(
       rows.push(row);
       if (rows.length >= maxRows) return { rows, truncated: true };
     }
+    if (observedPageSize !== undefined && data.length < observedPageSize) return { rows, truncated: false };
+    observedPageSize = data.length;
     offset += data.length;
   }
 }
