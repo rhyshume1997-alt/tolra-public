@@ -17,7 +17,7 @@ const database: Setup = {
 };
 
 /** CI supplies a disposable stack, not an operator acknowledgement. Both paths must prove isolation before any DDL. */
-export async function prepareCostingProposal(env: Environment = process.env, setup: Setup = database): Promise<() => Promise<void>> {
+export async function prepareCostingProposal(env: Environment = { CI: process.env.CI, COSTING_ATOMIC_THROWAWAY: process.env.COSTING_ATOMIC_THROWAWAY }, setup: Setup = database): Promise<() => Promise<void>> {
   const ci = env.CI === "true";
   if (!ci && env.COSTING_ATOMIC_THROWAWAY !== "yes") {
     throw new Error("Operator must explicitly set COSTING_ATOMIC_THROWAWAY=yes on the disposable local stack");
