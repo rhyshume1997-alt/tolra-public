@@ -1,5 +1,7 @@
 # Rhys: how to fill in and sign the final report
 
+**CZ update:** the later f76a5b84 refresh now defines R1–R8 restriction proposals; use tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md and docs/handover/R1-R8-CODE-CHECK.md for their corrected meanings. The older audit-label search below is historical and does not mean the refreshed key is undefined. Protocol counts here remain the older 6/15/9; do not transfer them into the refreshed 6/14/8 form without a recorded scope decision. No acceptance is inferred.
+
 Open `tests/validation/VSR-TEMPLATE.md`. This is the form you are filling in. It is blank and says **NOT VALIDATED**. A green test run or this guide does not fill it in for you.
 
 Keep a dated working copy with the evidence for the version you tested. Keep real JNR details and signed reports in the private evidence folder. Do not replace the shared blank template with customer details. Code can help find files and count results. **You make the decision. The reviewer signs their own line.**

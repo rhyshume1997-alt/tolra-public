@@ -1,0 +1,164 @@
+[
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/COVERAGE-GAPS.md",
+    "line": 11,
+    "text": "| URS-009 | Expanded Sage/QuickBooks SQL permissions (reviewer-accounting-permissions, #256) are not integrated in the final candidate. Successful provider rehearsals remain NOT RUN until sandbox registrations exist (R2). |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/COVERAGE-GAPS.md",
+    "line": 13,
+    "text": "| URS-013 | The #255 DB-backed approved-text, edit-invalidation, paid-claim, duplicate-approval and cross-company proofs are now in the final candidate as tests/db/reviewer-chase-conditions.test.ts, with browser cases V-CHASE-EDIT, V-CHASE-DOUBLE and V-CHASE-UNKNOWN. CI run 41816512073 reported them passing; that is recorded evidence for Rhys to review, not a completed OQ-013. Real mail-provider delivery is not proved (R5). |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/COVERAGE-GAPS.md",
+    "line": 20,
+    "text": "Mapped database proofs that exist in the candidate include the real setup admin/staff/read-only/elevated-support/anon matrix, second-install refusal for 145/146, outstanding-reservation rollback refusal, the missing-global-provider-key proof in `tolra-provided-ai.test.ts`, the 140 `source_ref` and 141 `opening_wip` company isolation proof, and the 140/141 preflight marker proof. These are mapped, not locally executed here. The 146 rollback/reset stop rule is a documented restriction (R3): reinstalling 146 after its rollback is refused by design."
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/OUTSTANDING-CHECKS.md",
+    "line": 33,
+    "text": "- [ ] 146 rollback/reset stop rule observed: key_source/history/usage remain by design; reinstall after rollback requires a separately authorised disposable reset. No column/history deletion or weakened guard. Recorded in run 41816512073 (informational step): reinstall of 146 after rollback refused, column `key_source` already exists. See R3. Evidence: ____"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 3,
+    "text": "**Software status: NOT VALIDATED.** Nothing in this file is accepted yet. R1 to R8 are proposed wordings for the VSR \"accepted restriction\" section. Rhys accepts, edits or rejects each one and initials it himself; every acceptance line below is blank. Code does not accept restrictions on his behalf."
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 11,
+    "text": "| R1 | Xero, Sage and QuickBooks behaviour was validated against local synthetic providers and, where Rhys registered them, vendor sandboxes. Behaviour against JNR's live accounting organisations (rate limits, token expiry in the field, provider-side changes) is not proved before go-live. First live use is supervised by Rhys, one invoice at a time, with every export reviewed. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 12,
+    "text": "| R2 | Successful provider connection and export rehearsals were not completed for [Xero / Sage / QuickBooks] because no sandbox registration existed. Only the safe-refusal and encrypted-storage paths were proved. The provider is switched off for JNR until its first supervised connect. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 13,
+    "text": "| R3 | Release 146 cannot be re-applied after its rollback: usage history and the `key_source` column are kept by design, and rollback is refused while a Tolra reservation is outstanding. Recovery after a rolled-back 146 requires a separately authorised reset (restore from backup). Accepted. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 14,
+    "text": "| R4 | The combined wipe kit was rehearsed only on a throwaway database and is not part of this validated release. It will not be run on production until its own rehearsal and review pass. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 15,
+    "text": "| R5 | Chase sends were proved against a controlled catcher and a mock provider, including uncertain delivery. Real mail-provider timing and deliverability are not proved before go-live. The first live chases are approved one at a time by a named person. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 16,
+    "text": "| R6 | Tolra-provided AI caps and key isolation were proved with a synthetic provider key and mock provider. Real provider billing and latency are not proved before go-live. Caps start at the default and only Rhys (MFA) changes them. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 17,
+    "text": "| R7 | Validation ran on a local disposable Supabase stack. Hosted Supabase and Vercel differences, JNR data volumes and a full real working period are not proved before go-live. The release follows backup, preflight, 138, 140, 141, 144, 145, 146 with verify files, and a first-day smoke check by Rhys. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md",
+    "line": 18,
+    "text": "| R8 | Bank check, costing and timesheet-email schedules (releases 142 and 143) are not in this go-live set; their manual steps in `tests/MANUAL-CHECKS.md` are not applicable and stay NOT RUN. | ____ |"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/VSR-TEMPLATE.md",
+    "line": 28,
+    "text": "Any failed high-risk step blocks release until fixed and retested. A not-run step is not a pass. Record any accepted restriction (R1 to R8 in [restrictions and assumptions](RESTRICTIONS-AND-ASSUMPTIONS.md) are proposals until Rhys accepts each) with its owner and reason; do not silently remove a requirement or weaken a test."
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/check-pack.mjs",
+    "line": 33,
+    "text": "for (const id of ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']) if (assumptions.split('\\n').filter(line => line.startsWith(`| ${id} |`)).length !== 1) fail(`Missing or duplicate restriction ${id}.`);"
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/manifest.json",
+    "line": 258,
+    "text": "      \"gap\": \"Expanded Sage/QuickBooks SQL permissions (reviewer-accounting-permissions, #256) are not integrated in the final candidate. Successful provider rehearsals remain NOT RUN until sandbox registrations exist (R2).\""
+  },
+  {
+    "snapshot": "f76a5b84da1f01626cc81d17150e08e6069ef794",
+    "path": "tests/validation/manifest.json",
+    "line": 409,
+    "text": "      \"gap\": \"The #255 DB-backed approved-text, edit-invalidation, paid-claim, duplicate-approval and cross-company proofs are now in the final candidate as tests/db/reviewer-chase-conditions.test.ts, with browser cases V-CHASE-EDIT, V-CHASE-DOUBLE and V-CHASE-UNKNOWN. CI run 41816512073 reported them passing; that is recorded evidence for Rhys to review, not a completed OQ-013. Real mail-provider delivery is not proved (R5).\""
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 55,
+    "text": "## R1\u2013R8: the refreshed pack now defines these proposals"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 57,
+    "text": "The older CO guide discussed unrelated historical audit labels. For this refreshed VSR, use these exact restriction rows instead; none is accepted. In particular, the word \u201cAccepted.\u201d inside R3\u2019s proposed wording is not Rhys\u2019s acceptance. Require actual reports for every past-tense \u201cproved/validated/rehearsed\u201d claim before accepting a restriction."
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 61,
+    "text": "| R1 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:11](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L11) | Live accounting behaviour remains unproved; actual synthetic/sandbox reports and a supervised-use decision are needed. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 62,
+    "text": "| R2 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:12](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L12) | Name each provider without a completed sandbox rehearsal; keep it off under the recorded limit until separately approved. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 63,
+    "text": "| R3 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:13](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L13) | No 146 reapply after rollback; actual outstanding-request refusal/retention/restore proof and separate recovery decision are needed. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 64,
+    "text": "| R4 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:14](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L14) | Private combined wipe remains outside this validated release; its exact rehearsal/review and any future operation need their own proof. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 65,
+    "text": "| R5 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:15](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L15) | Controlled chase transport is not real deliverability; supply exact approved-text/duplicate/unknown results and supervised-first-send decision. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 66,
+    "text": "| R6 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:16](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L16) | Synthetic AI proofs do not prove real billing/latency; supply key/cap/MFA/race reports and Rhys acceptance. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 67,
+    "text": "| R7 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:17](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L17) | Local disposable results do not prove hosted operation or a full JNR working period; supply actual environment/runtime and first-day checks. |"
+  },
+  {
+    "snapshot": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "path": "tests/validation/EVIDENCE-INDEX.md",
+    "line": 68,
+    "text": "| R8 | [tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md:18](https://github.com/rhyshume1997-alt/tolra-public/blob/f76a5b84da1f01626cc81d17150e08e6069ef794/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md#L18) | Bank check, costing and timesheet-email releases 142/143 are deferred; record excluded scope, not a pass for the omitted steps. |"
+  }
+]
