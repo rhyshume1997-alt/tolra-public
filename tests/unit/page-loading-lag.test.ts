@@ -13,6 +13,7 @@ import * as jobStatus from "@/lib/job-status";
 import { awaitingApproval } from "@/lib/approval-queue";
 import { missingDbObject } from "@/lib/db-features";
 import { toPence } from "@/lib/money";
+import { JOB_COLUMNS } from "@/lib/import-columns";
 
 const dashboardPath = "app/(dashboard)/dashboard/page.tsx";
 const jobsPath = "app/(dashboard)/jobs/page.tsx";
@@ -196,5 +197,19 @@ describe("jobs projection and refresh", () => {
     expect(loadLive).toHaveBeenCalledTimes(3);
     expect(listeners.size).toBe(0);
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+// Builder 6: exercise the real spreadsheet getters after the narrower database projection.
+describe("independent export projection review", () => {
+  it("keeps every CSV/Excel cell, including zero quantity and legacy required dates", () => {
+    const source = readFileSync(jobsPath, "utf8");
+    const projection = source.match(/from\("jobs"\)\.select\("([^"]+)"\)\.order\("created_at"/)![1].split(",").map((s) => s.trim());
+    const { rowToJob } = pageFunctions(jobsPath, ["rowToJob"], { ...jobStatus, ...dates });
+    for (const row of [job, { ...job, date_required: null, finished_at: null }, { ...job, is_internal: true, customer: null }]) {
+      const full = rowToJob(row);
+      const projected = rowToJob(Object.fromEntries(Object.entries(row).filter(([key]) => projection.includes(key))));
+      expect(JOB_COLUMNS.map((column) => column.value(projected))).toEqual(JOB_COLUMNS.map((column) => column.value(full)));
+    }
   });
 });
