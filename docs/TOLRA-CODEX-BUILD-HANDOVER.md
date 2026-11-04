@@ -67,3 +67,5 @@ Jobs 1–5 remain blocked by the existing IN PROGRESS ownership rows. No other o
 ## NEXT UP: AQ to AW
 
 Run AV's real tests only on the separately authorised disposable rehearsal. Complete AU's exhaustive screen-string review over the recorded last-30 window (#232-261), excluding this queue's own PRs; do not claim a partial keyword scan is an exhaustive pass. AQ/AR are pinned to #247 head 41c685c416305637d86b580324fff9e6cda037ff and need rechecking if that changes. 140-143 packaging remains absent. Real database/browser/manual/import proofs remain distinct from unit, TypeScript and lint passes. No SQL applied, Ready labels, merges, deployments, main commits or secrets in this queue.
+
+| AX | Nine pinned open-PR review packets; merged185 excluded | codex/ax-review-packets | #266, f728551a23720d229237f00e7c7a6d996315388a | 9 packet structures and diff pass; 0 runtime | Historical logs local; runtime limitations explicit |

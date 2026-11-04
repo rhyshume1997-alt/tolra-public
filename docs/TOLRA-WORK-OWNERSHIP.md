@@ -94,7 +94,7 @@ Main 0f22f94 has neither tracker file. Read PR #159 merge order before this queu
 
 | Job | Owner | Branch | Status | PR |
 | --- | --- | --- | --- | --- |
-| AX | Codex | codex/ax-review-packets | CLAIMED | Pending |
+| AX | Codex | codex/ax-review-packets | DONE IN PR | #266 |
 | AY | Codex | codex/ay-db-runbook | CLAIMED | Pending |
 | AZ | Codex | codex/az-acceptance | CLAIMED | Pending |
 | BA | Codex | codex/ba-evidence | CLAIMED | Pending |
