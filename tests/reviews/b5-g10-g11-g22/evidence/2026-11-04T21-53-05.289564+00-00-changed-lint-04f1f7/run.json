@@ -1,0 +1,24 @@
+{
+  "source_commit": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "start_utc": "2026-11-04T21:53:05.289564+00:00",
+  "command": [
+    "node",
+    "/workspace/tolra-public/node_modules/eslint/bin/eslint.js",
+    "tests/unit/b5-g20-g27-adversarial.test.ts",
+    "tests/unit/b5-g25-evidence-only.test.ts",
+    "tests/unit/b5-g10-access-boundaries.test.ts"
+  ],
+  "sql_manifest_sha256": "ef36b393fb05d68ef819a0731ad2925976aa6dfc5d76a9bb037ca71ddaa6bf4b",
+  "sql_files": 404,
+  "database_identity": "NOT_CONNECTED unless identity evidence is explicitly supplied by the test",
+  "profile": "synthetic-only",
+  "exit_code": 0,
+  "end_utc": "2026-11-04T21:53:06.857616+00:00",
+  "duration_seconds": 1.531,
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}
