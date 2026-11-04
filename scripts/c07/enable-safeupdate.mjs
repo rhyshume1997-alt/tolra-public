@@ -108,9 +108,11 @@ if (current === undefined) {
 }
 current = current.replaceAll('"', "");
 log("postgres session_preload_libraries before", current);
-const libraries = uniq([...current.split(",").map((x) => x.trim()).filter(Boolean), "safeupdate"]).join(",");
-assert.match(libraries, /^[A-Za-z0-9_$,./-]+$/, "C07: unexpected library list");
-admin(`alter role postgres in database postgres set session_preload_libraries = '${libraries}'`);
+const libraries = uniq([...current.split(",").map((x) => x.trim()).filter(Boolean), "safeupdate"]);
+for (const l of libraries) assert.match(l, /^[A-Za-z0-9_$./-]+$/, "C07: unexpected library name");
+// One quoted literal per library: session_preload_libraries is a GUC_LIST_QUOTE list, so a single 'a,b' literal is stored as the
+// one file name "a,b" and every new session of the role fails with FATAL: could not access file "a,b".
+admin(`alter role postgres in database postgres set session_preload_libraries = ${libraries.map((l) => `'${l}'`).join(", ")}`);
 log("dynamic_library_path after", admin("show dynamic_library_path"));
 log("postgres role settings", admin("select coalesce(string_agg(array_to_string(s.setconfig, ';'), ' | '), '') from pg_db_role_setting s join pg_roles r on r.oid = s.setrole where r.rolname = 'postgres'"));
 log("authenticator role settings", admin("select coalesce(string_agg(array_to_string(s.setconfig, ';'), ' | '), '') from pg_db_role_setting s join pg_roles r on r.oid = s.setrole where r.rolname = 'authenticator'"));
