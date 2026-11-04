@@ -47,7 +47,9 @@ test("V-CHASE-UNKNOWN: uncertain delivery stays needs-checking and retries never
   expect((await approve(page, data)).status()).toBe(502);
   const row = await adminClient().from("email_history").select("status,subject,body").eq("id", data.historyId).single(); expect(row.error).toBeNull();
   expect(row.data).toEqual({ status: "unknown", subject: data.subject, body: data.body });
-  await page.goto("/approval"); await expect(page.locator("body")).toContainText(/needs checking/i);
+  // The "Needs checking" state is shown in the email log (/email), not the approval queue (which lists drafted emails only).
+  await page.goto("/email"); await expect(page.locator("body")).toContainText(/needs checking/i);
+  await expect(page.getByRole("row").filter({ hasText: data.subject }).filter({ hasText: /needs checking/i }).first()).toBeVisible();
   for (let click = 0; click < 3; click++) expect((await approve(page, data)).status()).toBe(409);
   const mail = await mailFor(data.address); expect(mail).toHaveLength(1);
   expect(mail[0].body).toMatchObject({ subject: data.subject, text: data.body });
