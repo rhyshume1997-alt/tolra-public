@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/tolra-public/work/overnight/g06/tests/scripts/b5-counter-rehearsal.py", line 58, in <module>
+    assert initial.returncode==0 and initial.stdout.strip()=='postgres|postgres|0'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

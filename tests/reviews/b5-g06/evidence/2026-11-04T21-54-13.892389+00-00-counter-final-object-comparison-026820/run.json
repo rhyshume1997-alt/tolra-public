@@ -1,0 +1,22 @@
+{
+  "source_commit": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "environment": {
+    "os": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "v24.22.1"
+  },
+  "start_utc": "2026-11-04T21:54:13.892389+00:00",
+  "command": [
+    "python",
+    "/workspace/tolra-public/work/overnight/g06/tests/scripts/b5-counter-rehearsal.py",
+    "/workspace/tolra-public/work/overnight/evidence/counter-final"
+  ],
+  "sql_manifest_sha256": "ef36b393fb05d68ef819a0731ad2925976aa6dfc5d76a9bb037ca71ddaa6bf4b",
+  "sql_files": 404,
+  "database_identity": "NOT_CONNECTED unless identity evidence is explicitly supplied by the test",
+  "profile": "synthetic-only",
+  "exit_code": 1,
+  "end_utc": "2026-11-04T21:54:27.573198+00:00",
+  "duration_seconds": 13.642,
+  "log_sha256": "641823a06d4e2f663afc010aabc891d39078c1ef21e06313f3a6e69d95424ce8"
+}

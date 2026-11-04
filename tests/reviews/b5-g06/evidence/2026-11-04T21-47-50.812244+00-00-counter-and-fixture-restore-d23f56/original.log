@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/workspace/tolra-public/work/overnight/g06/tests/scripts/b5-counter-rehearsal.py", line 112, in <module>
+    t=time.monotonic();restore=cmd(DOCKER+['exec','-i',NAME,'psql','-U','postgres','-d','b5_restored','-X','-v','ON_ERROR_STOP=1'],dump.stdout);assert restore.returncode==0,restore.stderr
+                                                                                                                                                       ^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ERROR:  schema "public" already exists
+

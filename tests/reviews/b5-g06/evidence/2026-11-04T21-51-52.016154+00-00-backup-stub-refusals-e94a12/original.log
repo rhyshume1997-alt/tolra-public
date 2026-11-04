@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/workspace/tolra-public/work/overnight/source-359/tests/scripts/fixtures/version-stub.py", line 31, in <module>
+    srv = http.server.HTTPServer(("127.0.0.1", 0), H)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/socketserver.py", line 453, in __init__
+    self.socket = socket.socket(self.address_family,
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/socket.py", line 233, in __init__
+    _socket.socket.__init__(self, family, type, proto, fileno)
+PermissionError: [Errno 1] Operation not permitted
+cat: /tmp/tmp.hMxjb6gtqy/port: No such file or directory

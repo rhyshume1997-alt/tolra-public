@@ -1,0 +1,72 @@
+{
+  "source_commit": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "checks": [
+    {
+      "id": "invalid-number-atomic",
+      "result": "passed"
+    },
+    {
+      "id": "set-releases-hold",
+      "result": "passed"
+    },
+    {
+      "id": "repeat-refuses-atomic",
+      "result": "passed"
+    },
+    {
+      "id": "undo-restores-counter-and-hold",
+      "result": "passed"
+    },
+    {
+      "id": "concurrent-setters-one-wins",
+      "result": "passed"
+    },
+    {
+      "id": "manual-typed-number-refused",
+      "result": "passed"
+    },
+    {
+      "id": "concurrent-manual-numbering-unique",
+      "result": "passed"
+    },
+    {
+      "id": "undo-after-use-refused-atomic",
+      "result": "passed"
+    },
+    {
+      "id": "synthetic-marpet-counter-unchanged",
+      "result": "passed"
+    },
+    {
+      "id": "forged-quoteflow.delivery_note_new",
+      "result": "failed",
+      "expected": "refused with no state change",
+      "changed": true
+    },
+    {
+      "id": "forged-quoteflow.data_import",
+      "result": "failed",
+      "expected": "refused with no state change",
+      "changed": true
+    },
+    {
+      "id": "fixture-object-restore",
+      "result": "passed",
+      "dump_sha256": "3e7f479555f8e4294bc315c31387571b2feef96f34365e2bf9463bc508bded80",
+      "recovery_seconds": 1.6622,
+      "compared": [
+        "public.organizations",
+        "public.doc_counters",
+        "public.dln_numbering_pending",
+        "public.delivery_notes",
+        "security_audit.audit_log",
+        "functions",
+        "indexes",
+        "constraints",
+        "sequences"
+      ],
+      "scope": "all five fixture tables plus functions/indexes/constraints/sequences; not full app/storage/roles"
+    }
+  ],
+  "duration_seconds": 13.297
+}
