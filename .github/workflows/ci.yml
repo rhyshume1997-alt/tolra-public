@@ -226,6 +226,8 @@ jobs:
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/company-setup-isolation.test.ts || rc=1
           echo "== Tolra-provided AI (release 146): key isolation, no fallback, owner controls, two-connection race, rollback refusal, second install =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts || rc=1
+          echo "== SliQ releases 140 and 141: isolation and preflight proofs =="
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/opening-wip-141-isolation.test.ts tests/db/sliq-import-preflight-140-141.test.ts || rc=1
           echo "== #253 and #255 proofs =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/reviewer-inbound-conditions.test.ts tests/db/reviewer-chase-conditions.test.ts || rc=1
           exit $rc
