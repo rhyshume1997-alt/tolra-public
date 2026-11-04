@@ -82,6 +82,8 @@ test("the print sheet of that note says goods out and has the signature line", a
 test("workshop and viewer get no button on a no-order job, and a viewer calling the function is refused", async ({ page }) => {
   const { no, id, customerId } = await inspectedJobWithoutOrder();
   for (const role of ["workshop", "viewer"] as const) {
+    // One page, two people: drop the first sign-in, or /login sends the browser straight to the dashboard and the form never shows.
+    await page.context().clearCookies();
     await signIn(page, w.tenants.alpha.users[role]);
     await page.goto("/jobs");
     await page.getByRole("button", { name: /^Complete \(/ }).click();
