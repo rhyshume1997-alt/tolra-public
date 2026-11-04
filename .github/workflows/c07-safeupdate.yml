@@ -1,0 +1,82 @@
+name: C07 genuine safeupdate import proof
+# Manual only: never runs on a push or a pull request. A disposable runner-owned local Supabase stack, the pinned pg-safeupdate
+# 1.7 build, and the data-import and SliQ importer suites under it (scripts/c07/run-safeupdate.sh). No hosted database, no secret
+# beyond the job's own read-only token for the image pulls.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  safeupdate-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # As ci.yml's integration job: keep the Supabase ports out of the outgoing-connection range, then check they are free.
+      - name: Keep the Supabase ports out of the outgoing-connection range
+        run: |
+          current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+          python3 - <<'PY'
+          import sys
+          s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+          reserved = set()
+          for part in filter(None, s.split(",")):
+              lo, _, hi = part.partition("-")
+              reserved.update(range(int(lo), int(hi or lo) + 1))
+          missing = [p for p in range(54320, 54330) if p not in reserved]
+          print("reserved ports now:", s)
+          sys.exit(f"not reserved: {missing}" if missing else 0)
+          PY
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.40.7
+      - name: Sign in to ghcr.io for the Supabase image pulls
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The stack's Postgres is major 17 (supabase/config.toml); build against PostgreSQL 17 server headers from the PGDG archive.
+      - name: PostgreSQL 17 server headers (PGDG)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-server-dev-17
+          /usr/lib/postgresql/17/bin/pg_config --version
+      - name: Build pg-safeupdate 1.7 at the pinned commit 37dbc9c4acf5e2504adf2b218e9c6b41751022f3
+        env:
+          PG_CONFIG: /usr/lib/postgresql/17/bin/pg_config
+        run: bash scripts/c07/build-safeupdate.sh "$RUNNER_TEMP/safeupdate"
+      - name: Supabase ports are free
+        run: |
+          python3 - <<'PY'
+          import socket, sys
+          busy = []
+          for port in (54321, 54322, 54324):
+              s = socket.socket()
+              try:
+                  s.bind(("0.0.0.0", port))
+              except OSError as e:
+                  busy.append(f"{port}: {e}")
+              finally:
+                  s.close()
+          print("busy:", busy or "none")
+          sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+          PY
+      - name: Disposable stack, pinned safeupdate installed and proved, import suites, named gate
+        env:
+          SAFEUPDATE_BUILD: ${{ runner.temp }}/safeupdate
+        run: bash scripts/c07/run-safeupdate.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c07-safeupdate-evidence
+          path: work/c07-*/
+          if-no-files-found: error

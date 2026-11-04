@@ -50,3 +50,7 @@ next-env.d.ts
 # Local disposable Supabase (scripts/test-backend.sh)
 /supabase/.temp/
 /supabase/.branches/
+
+# C07 (scripts/c07): run evidence, and a local folder for real import files that must never be committed
+/work/c07-*/
+/import-data/
