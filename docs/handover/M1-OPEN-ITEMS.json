@@ -1,0 +1,3790 @@
+{
+  "findings": [
+    {
+      "id": "M1-01",
+      "condition": "C03",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "Fake-only technical/attack tests and manual restored-real-data PQ/UAT had a combined target sentence.",
+      "correction": "Split the target/data classes and prohibit automated synthetic suites on the real-record practice copy.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-02",
+      "condition": "C03",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "G04 expected7:15/36:15 without specifying the45-minute unpaid-break fixture.",
+      "correction": "Specify30-minute lunch +15-minute break and saved five-day trial clock records.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-03",
+      "condition": "C03",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "G05.1 inferred all AI/fallback refusal from the visible off switch.",
+      "correction": "Limit the screen observation and require separate all-feature/API/no-fallback proof.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-04",
+      "condition": "C03",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "H09 called admin enforcement an email code; code guard requires authenticator AAL2.",
+      "correction": "Distinguish authenticator MFA from any separately named email/recent-code control.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-05",
+      "condition": "C03",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "DAY imperative rows could be followed as live test writes despite a general prohibition.",
+      "correction": "Add local opening-only authorisation/history-observation rule for those rows.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-06",
+      "condition": "C03",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "Per-role/device scope and separate signatory responsibilities were not explicit at closure.",
+      "correction": "Add cross-device evidence/exclusion rule and five separate signature lines; do not equate coverage-row count to independent tests.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-07",
+      "condition": "C03/C16",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "finding": "All sixteen reports could imply a non-existent delivery export must exist; handwritten delivery notes are now required.",
+      "correction": "Require explicit source status/reviewed route and a separate M3 delivery-note acceptance attachment.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-08",
+      "condition": "C04",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "finding": "Count reconciliation was described without an explicit equation; older transfer risk had no individual carry-forward row.",
+      "correction": "Add exact count equation/exclusion rule and RISK-015 scope carry-forward.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-09",
+      "condition": "C04",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "finding": "Rhys/reviewer/John signature lines exist; Code and accountant had roles/evidence cells but no specific signed attestations.",
+      "correction": "Add separate technical completeness and financial/WIP/aged-debtors sign-offs; retain existing human decisions.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-10",
+      "condition": "C04/C16",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "finding": "Controlled opening checks and final routine-use GO could be conflated; required delivery-note acceptance not explicit.",
+      "correction": "Distinguish limited smoke authority from final GO and add delivery-note UAT attachment.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-11",
+      "condition": "C05",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "finding": "Only14 refreshed requirement risks were carried individually; older RISK-015 transfer risk could vanish despite prose about transfer scope.",
+      "correction": "Add scope-qualified RISK-015 with its actual controls; do not redefine refreshed IDs.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-12",
+      "condition": "C05",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "finding": "All34 original risk decisions are blank; Rhys signature cells exist but actual mitigation-owner acknowledgments and relevant business/accountant/reviewer sign-offs were not explicit.",
+      "correction": "Add owner signature fields and responsibility-specific closure rule; keep all actual assessments/acceptance blank.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-13",
+      "condition": "C05",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "finding": "Required delivery-note migration from handwriting lacked its own risk/control entry.",
+      "correction": "Add P6-N13 tied to separate M3 UAT and John goods-out acceptance, not a new software build.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-14",
+      "condition": "C16",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "finding": "C16-19 recorded operational GO before C16-20 smoke; C16-20 opened features/writers before checks, while21 resumed them again.",
+      "correction": "Make19 limited check access only,20 checks with routine writers fenced,21 final GO then named writer resumption.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-15",
+      "condition": "C16",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "finding": "C16-16 did not distinguish the rehearsal-only SliQ writer from a proven operational load route.",
+      "correction": "Require an identified reviewed production-capable route; forbid marker/URL/guard bypass and hold if unavailable.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-21",
+      "condition": "C03/C04/C16",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "finding": "C16-01 required all controls including future transfer/opening proof before starting; H18/H19 could be read in circular order.",
+      "correction": "Use stage prerequisites, never pre-tick future checks; final VSR/residual/process signatures and GO follow controlled smoke results.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-16",
+      "condition": "C16",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "finding": "Accountant/reviewer/technical initials were not explicit responsibility-specific final sign-offs; no required delivery-note acceptance.",
+      "correction": "Add named signatures/reports and required goods-out UAT; keep results blank.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-17",
+      "condition": "C03/C16 support",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "finding": "Form permits arbitrary header row/workbook choice without saying loader only handles CSV/XLSX and first nonblank row; no report footer normalization route.",
+      "correction": "Add .xls/row6/totals-row conversion boundary and original-to-normalized provenance requirement.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-18",
+      "condition": "C03/C04/C05/C16 support",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "finding": "Reported baseline counts/date/VAT/Crd/aged-debtors/quote-item shape were not incorporated; delivery question assumed a SliQ export.",
+      "correction": "Record attributed reported facts, do not claim inspection, require credit de-duplication/VAT/aged tie-out and handwritten delivery source.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-19",
+      "condition": "C16 support",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "finding": "Generic importer gates could imply final live CLI write; PO header-only and supported quote-line route not explicit.",
+      "correction": "Name rehearsal-only guard, actual quote-line support and missing PO-line route; require separate reviewed operational loader.",
+      "remaining": "Actual evidence/acceptance remains open"
+    },
+    {
+      "id": "M1-20",
+      "condition": "C03/C04 support",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "finding": "Next-number fields omit credit/delivery notes; final-set gate does not explicitly cover the October\u2192November gap or independent financial acceptance.",
+      "correction": "Add number fields, delta/full-final controls and separate financial/technical/reviewer/Rhys signatures.",
+      "remaining": "Actual evidence/acceptance remains open"
+    }
+  ],
+  "allUnfilledSourceTableRows": [
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 9,
+      "key": "source-line-9",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 10,
+      "key": "source-line-10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 11,
+      "key": "source-line-11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 12,
+      "key": "source-line-12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 13,
+      "key": "source-line-13",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 14,
+      "key": "source-line-14",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 15,
+      "key": "source-line-15",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 16,
+      "key": "source-line-16",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 17,
+      "key": "source-line-17",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 18,
+      "key": "source-line-18",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 28,
+      "key": "source-line-28",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 29,
+      "key": "source-line-29",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 30,
+      "key": "source-line-30",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 31,
+      "key": "source-line-31",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 32,
+      "key": "source-line-32",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 38,
+      "key": "source-line-38",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 39,
+      "key": "source-line-39",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 40,
+      "key": "source-line-40",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 41,
+      "key": "source-line-41",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 42,
+      "key": "source-line-42",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 43,
+      "key": "source-line-43",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 44,
+      "key": "source-line-44",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 45,
+      "key": "source-line-45",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 46,
+      "key": "source-line-46",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 47,
+      "key": "source-line-47",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 55,
+      "key": "source-line-55",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 56,
+      "key": "source-line-56",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 66,
+      "key": "source-line-66",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 67,
+      "key": "source-line-67",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 68,
+      "key": "source-line-68",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 69,
+      "key": "source-line-69",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 70,
+      "key": "source-line-70",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 71,
+      "key": "source-line-71",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 72,
+      "key": "source-line-72",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 73,
+      "key": "source-line-73",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 351,
+      "head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+      "path": "docs/handover/C04-VSR-DRAFT.md",
+      "line": 74,
+      "key": "source-line-74",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 13,
+      "key": "R1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 14,
+      "key": "R2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 15,
+      "key": "R3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 16,
+      "key": "R4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 17,
+      "key": "R5",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 18,
+      "key": "R6",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 19,
+      "key": "R7",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 20,
+      "key": "R8",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 26,
+      "key": "RISK-001 / URS-001",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 27,
+      "key": "RISK-002 / URS-002",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 28,
+      "key": "RISK-003 / URS-003",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 29,
+      "key": "RISK-004 / URS-004",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 30,
+      "key": "RISK-005 / URS-005",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 31,
+      "key": "RISK-006 / URS-006",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 32,
+      "key": "RISK-007 / URS-007",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 33,
+      "key": "RISK-008 / URS-008",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 34,
+      "key": "RISK-009 / URS-009",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 35,
+      "key": "RISK-010 / URS-010",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 36,
+      "key": "RISK-011 / URS-011",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 37,
+      "key": "RISK-012 / URS-012",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 38,
+      "key": "RISK-013 / URS-013",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 39,
+      "key": "RISK-014 / URS-014",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 47,
+      "key": "P6-N01",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 48,
+      "key": "P6-N02",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 49,
+      "key": "P6-N03",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 50,
+      "key": "P6-N04",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 51,
+      "key": "P6-N05",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 52,
+      "key": "P6-N06",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 53,
+      "key": "P6-N07",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 54,
+      "key": "P6-N08",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 55,
+      "key": "P6-N09",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 56,
+      "key": "P6-N10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 57,
+      "key": "P6-N11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 352,
+      "head": "c52e145e32e9026318154751d03be199019d30a2",
+      "path": "docs/handover/C05-P6-OPEN-RISKS.md",
+      "line": 58,
+      "key": "P6-N12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 21,
+      "key": "G00.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 22,
+      "key": "G00.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 23,
+      "key": "G00.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 24,
+      "key": "G00.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 25,
+      "key": "G00.5",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 26,
+      "key": "G00.6",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 27,
+      "key": "G01.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 28,
+      "key": "G01.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 29,
+      "key": "G01.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 30,
+      "key": "G01.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 31,
+      "key": "G02.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 32,
+      "key": "G02.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 33,
+      "key": "G02.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 34,
+      "key": "G02.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 35,
+      "key": "G02.5",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 36,
+      "key": "G02.6",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 37,
+      "key": "G03.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 38,
+      "key": "G03.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 39,
+      "key": "G03.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 40,
+      "key": "G03.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 41,
+      "key": "G04.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 42,
+      "key": "G04.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 43,
+      "key": "G04.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 44,
+      "key": "G05.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 45,
+      "key": "G05.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 46,
+      "key": "G05.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 47,
+      "key": "G05.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 48,
+      "key": "G05.5",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 49,
+      "key": "G06.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 50,
+      "key": "G06.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 51,
+      "key": "G06.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 52,
+      "key": "G06.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 53,
+      "key": "G07.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 54,
+      "key": "G07.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 55,
+      "key": "G07.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 56,
+      "key": "G07.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 57,
+      "key": "G08.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 58,
+      "key": "G08.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 59,
+      "key": "G08.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 60,
+      "key": "G08.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 61,
+      "key": "G08.5",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 62,
+      "key": "G09.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 63,
+      "key": "G09.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 64,
+      "key": "G09.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 65,
+      "key": "G09.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 66,
+      "key": "G10.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 67,
+      "key": "G10.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 68,
+      "key": "G10.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 69,
+      "key": "G10.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 70,
+      "key": "G11.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 71,
+      "key": "G11.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 72,
+      "key": "G12.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 73,
+      "key": "G12.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 74,
+      "key": "G12.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 75,
+      "key": "G12.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 76,
+      "key": "G13.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 77,
+      "key": "G13.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 78,
+      "key": "G13.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 79,
+      "key": "G13.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 80,
+      "key": "G14.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 81,
+      "key": "G15.1",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 82,
+      "key": "G15.2",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 83,
+      "key": "G15.3",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 84,
+      "key": "G15.4",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 90,
+      "key": "IQ-001",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 91,
+      "key": "IQ-002",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 92,
+      "key": "IQ-003",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 93,
+      "key": "IQ-004",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 94,
+      "key": "IQ-005",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 95,
+      "key": "IQ-006",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 101,
+      "key": "OQ-001",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 102,
+      "key": "OQ-002",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 103,
+      "key": "OQ-003",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 104,
+      "key": "OQ-004",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 105,
+      "key": "OQ-005",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 106,
+      "key": "OQ-006",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 107,
+      "key": "OQ-007",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 108,
+      "key": "OQ-008",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 109,
+      "key": "OQ-009",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 110,
+      "key": "OQ-010",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 111,
+      "key": "OQ-011",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 112,
+      "key": "OQ-012",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 113,
+      "key": "OQ-013",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 114,
+      "key": "OQ-014",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 120,
+      "key": "PQ-001",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 121,
+      "key": "PQ-002",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 122,
+      "key": "PQ-003",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 123,
+      "key": "PQ-004",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 124,
+      "key": "PQ-005",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 125,
+      "key": "PQ-006",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 126,
+      "key": "PQ-007",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 127,
+      "key": "PQ-008",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 133,
+      "key": "DAY-01",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 134,
+      "key": "DAY-02",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 135,
+      "key": "DAY-03",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 136,
+      "key": "DAY-04",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 137,
+      "key": "DAY-05",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 138,
+      "key": "DAY-06",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 139,
+      "key": "DAY-07",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 140,
+      "key": "DAY-08",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 141,
+      "key": "DAY-09",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 142,
+      "key": "DAY-10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 143,
+      "key": "DAY-11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 144,
+      "key": "DAY-12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 145,
+      "key": "DAY-13",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 146,
+      "key": "DAY-14",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 147,
+      "key": "DAY-15",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 148,
+      "key": "DAY-16",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 149,
+      "key": "DAY-17",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 150,
+      "key": "DAY-18",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 151,
+      "key": "DAY-19",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 152,
+      "key": "DAY-20",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 153,
+      "key": "DAY-21",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 154,
+      "key": "DAY-22",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 155,
+      "key": "DAY-23",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 156,
+      "key": "DAY-24",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 157,
+      "key": "DAY-25",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 158,
+      "key": "DAY-26",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 159,
+      "key": "DAY-27",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 160,
+      "key": "DAY-28",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 161,
+      "key": "DAY-29",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 162,
+      "key": "DAY-30",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 163,
+      "key": "DAY-31",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 164,
+      "key": "DAY-32",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 165,
+      "key": "DAY-33",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 166,
+      "key": "DAY-34",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 167,
+      "key": "DAY-35",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 168,
+      "key": "DAY-36",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 169,
+      "key": "DAY-37",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 170,
+      "key": "DAY-38",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 171,
+      "key": "DAY-39",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 172,
+      "key": "DAY-40",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 173,
+      "key": "DAY-41",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 179,
+      "key": "UAT-01",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 180,
+      "key": "UAT-02",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 181,
+      "key": "UAT-03",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 182,
+      "key": "UAT-04",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 183,
+      "key": "UAT-05",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 184,
+      "key": "UAT-06",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 185,
+      "key": "UAT-07",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 186,
+      "key": "UAT-08",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 187,
+      "key": "UAT-09",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 188,
+      "key": "UAT-10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 189,
+      "key": "UAT-11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 190,
+      "key": "UAT-12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 191,
+      "key": "UAT-13",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 192,
+      "key": "UAT-14",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 193,
+      "key": "UAT-15",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 194,
+      "key": "UAT-16",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 195,
+      "key": "UAT-17",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 196,
+      "key": "UAT-18",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 202,
+      "key": "CW-01",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 203,
+      "key": "CW-02",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 204,
+      "key": "CW-03",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 205,
+      "key": "CW-04",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 206,
+      "key": "CW-05",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 207,
+      "key": "CW-06",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 208,
+      "key": "CW-07",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 209,
+      "key": "CW-08",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 210,
+      "key": "CW-09",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 211,
+      "key": "CW-10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 212,
+      "key": "CW-11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 213,
+      "key": "CW-12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 214,
+      "key": "CW-13",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 215,
+      "key": "CW-14",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 216,
+      "key": "CW-15",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 217,
+      "key": "CW-16",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 218,
+      "key": "CW-17",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 219,
+      "key": "CW-18",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 227,
+      "key": "H01",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 228,
+      "key": "H02",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 229,
+      "key": "H03",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 230,
+      "key": "H04",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 231,
+      "key": "H05",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 232,
+      "key": "H06",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 233,
+      "key": "H07",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 234,
+      "key": "H08",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 235,
+      "key": "H09",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 236,
+      "key": "H10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 237,
+      "key": "H11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 238,
+      "key": "H12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 239,
+      "key": "H13",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 240,
+      "key": "H14",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 241,
+      "key": "H15",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 242,
+      "key": "H16",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 243,
+      "key": "H17",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 244,
+      "key": "H18",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 245,
+      "key": "H19",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 350,
+      "head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "path": "docs/handover/C03-MANUAL-CHECKS.md",
+      "line": 246,
+      "key": "H20",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 7,
+      "key": "source-line-7",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 8,
+      "key": "source-line-8",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 9,
+      "key": "source-line-9",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 10,
+      "key": "source-line-10",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 11,
+      "key": "source-line-11",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 12,
+      "key": "source-line-12",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 13,
+      "key": "source-line-13",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 14,
+      "key": "source-line-14",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 24,
+      "key": "source-line-24",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 25,
+      "key": "source-line-25",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 26,
+      "key": "source-line-26",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 27,
+      "key": "source-line-27",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 28,
+      "key": "source-line-28",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 36,
+      "key": "C16-06 / 138",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 37,
+      "key": "C16-07 / 140",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 38,
+      "key": "C16-08 / 141",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 39,
+      "key": "C16-09 / 144",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 40,
+      "key": "C16-10 / 145",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 41,
+      "key": "C16-11 / 146",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 45,
+      "key": "source-line-45",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 51,
+      "key": "source-line-51",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 52,
+      "key": "source-line-52",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 53,
+      "key": "source-line-53",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 54,
+      "key": "source-line-54",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 55,
+      "key": "source-line-55",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 61,
+      "key": "source-line-61",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 62,
+      "key": "source-line-62",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 63,
+      "key": "source-line-63",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 353,
+      "head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+      "path": "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+      "line": 64,
+      "key": "source-line-64",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 16,
+      "key": "source-line-16",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 17,
+      "key": "source-line-17",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 18,
+      "key": "source-line-18",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 19,
+      "key": "source-line-19",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 20,
+      "key": "source-line-20",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 21,
+      "key": "source-line-21",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 22,
+      "key": "source-line-22",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 23,
+      "key": "source-line-23",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 24,
+      "key": "source-line-24",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 38,
+      "key": "customers.key",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 39,
+      "key": "customers.name",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 40,
+      "key": "customers.contact",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 41,
+      "key": "customers.address",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 42,
+      "key": "customers.postcode",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 43,
+      "key": "customers.email",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 44,
+      "key": "customers.phone",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 45,
+      "key": "customers.vatNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 46,
+      "key": "customers.notes",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 56,
+      "key": "suppliers.key",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 57,
+      "key": "suppliers.name",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 58,
+      "key": "suppliers.contact",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 59,
+      "key": "suppliers.address",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 60,
+      "key": "suppliers.postcode",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 61,
+      "key": "suppliers.email",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 62,
+      "key": "suppliers.phone",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 63,
+      "key": "suppliers.vatNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 64,
+      "key": "suppliers.notes",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 74,
+      "key": "products.code",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 75,
+      "key": "products.description",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 76,
+      "key": "products.unitPrice",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 77,
+      "key": "products.stock",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 78,
+      "key": "products.vatRate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 121,
+      "key": "source-line-121",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 122,
+      "key": "source-line-122",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 123,
+      "key": "source-line-123",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 124,
+      "key": "source-line-124",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 125,
+      "key": "source-line-125",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 126,
+      "key": "source-line-126",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 127,
+      "key": "source-line-127",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 128,
+      "key": "source-line-128",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 129,
+      "key": "source-line-129",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 130,
+      "key": "source-line-130",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 131,
+      "key": "source-line-131",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 132,
+      "key": "source-line-132",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 151,
+      "key": "invoices.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 152,
+      "key": "invoices.docType",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 153,
+      "key": "invoices.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 154,
+      "key": "invoices.dueDate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 155,
+      "key": "invoices.customer",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 156,
+      "key": "invoices.net",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 157,
+      "key": "invoices.vat",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 158,
+      "key": "invoices.gross",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 159,
+      "key": "invoices.status",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 160,
+      "key": "invoices.amountPaid",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 161,
+      "key": "invoices.relatedInvoice",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 162,
+      "key": "invoices.notes",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 163,
+      "key": "invoices.vatCode",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 164,
+      "key": "invoices.discount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 174,
+      "key": "quotes.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 175,
+      "key": "quotes.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 176,
+      "key": "quotes.customer",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 177,
+      "key": "quotes.net",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 178,
+      "key": "quotes.vat",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 179,
+      "key": "quotes.gross",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 180,
+      "key": "quotes.status",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 181,
+      "key": "quotes.validUntil",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 182,
+      "key": "quotes.notes",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 183,
+      "key": "quotes.discount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 193,
+      "key": "invoiceLines.documentNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 194,
+      "key": "invoiceLines.description",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 195,
+      "key": "invoiceLines.quantity",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 196,
+      "key": "invoiceLines.unitPrice",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 197,
+      "key": "invoiceLines.net",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 198,
+      "key": "invoiceLines.vatRate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 199,
+      "key": "invoiceLines.vatAmount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 200,
+      "key": "invoiceLines.vatCode",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 201,
+      "key": "invoiceLines.discount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 211,
+      "key": "payments.invoiceNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 212,
+      "key": "payments.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 213,
+      "key": "payments.amount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 214,
+      "key": "payments.method",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 215,
+      "key": "payments.reference",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 225,
+      "key": "creditNotes.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 226,
+      "key": "creditNotes.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 227,
+      "key": "creditNotes.customer",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 228,
+      "key": "creditNotes.net",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 229,
+      "key": "creditNotes.vat",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 230,
+      "key": "creditNotes.gross",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 231,
+      "key": "creditNotes.relatedInvoice",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 232,
+      "key": "creditNotes.reason",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 233,
+      "key": "creditNotes.notes",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 243,
+      "key": "allocations.creditNoteNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 244,
+      "key": "allocations.invoiceNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 245,
+      "key": "allocations.amount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 246,
+      "key": "allocations.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 256,
+      "key": "purchaseOrders.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 257,
+      "key": "purchaseOrders.supplier",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 258,
+      "key": "purchaseOrders.orderDate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 259,
+      "key": "purchaseOrders.deliveryDate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 260,
+      "key": "purchaseOrders.total",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 261,
+      "key": "purchaseOrders.status",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 271,
+      "key": "openingBalances.party",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 272,
+      "key": "openingBalances.partyType",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 273,
+      "key": "openingBalances.document",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 274,
+      "key": "openingBalances.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 275,
+      "key": "openingBalances.amount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 285,
+      "key": "supplierBills.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 286,
+      "key": "supplierBills.supplier",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 287,
+      "key": "supplierBills.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 288,
+      "key": "supplierBills.net",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 289,
+      "key": "supplierBills.vat",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 290,
+      "key": "supplierBills.gross",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 291,
+      "key": "supplierBills.outstanding",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 301,
+      "key": "refunds.invoiceNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 302,
+      "key": "refunds.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 303,
+      "key": "refunds.amount",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 304,
+      "key": "refunds.method",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 305,
+      "key": "refunds.reference",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 315,
+      "key": "salesOrders.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 316,
+      "key": "salesOrders.customer",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 317,
+      "key": "salesOrders.orderDate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 318,
+      "key": "salesOrders.deliveryDate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 319,
+      "key": "salesOrders.total",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 320,
+      "key": "salesOrders.status",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 321,
+      "key": "salesOrders.quoteNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 322,
+      "key": "salesOrders.customerPo",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 332,
+      "key": "jobs.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 333,
+      "key": "jobs.customer",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 334,
+      "key": "jobs.salesOrder",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 335,
+      "key": "jobs.stage",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 336,
+      "key": "jobs.status",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 337,
+      "key": "jobs.qtyOrdered",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 338,
+      "key": "jobs.qtyMade",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 339,
+      "key": "jobs.qtyAccepted",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 340,
+      "key": "jobs.qtyRejected",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 341,
+      "key": "jobs.qtyReworked",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 342,
+      "key": "jobs.qtyDespatched",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 343,
+      "key": "jobs.qtyRemaining",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 344,
+      "key": "jobs.value",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 345,
+      "key": "jobs.dueDate",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 355,
+      "key": "deliveries.number",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 356,
+      "key": "deliveries.date",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 357,
+      "key": "deliveries.jobNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 358,
+      "key": "deliveries.salesOrderNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 359,
+      "key": "deliveries.invoiceNumber",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 360,
+      "key": "deliveries.quantity",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 368,
+      "key": "source-line-368",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 369,
+      "key": "source-line-369",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 370,
+      "key": "source-line-370",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 371,
+      "key": "source-line-371",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 372,
+      "key": "source-line-372",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 373,
+      "key": "source-line-373",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 374,
+      "key": "source-line-374",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 375,
+      "key": "source-line-375",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 376,
+      "key": "source-line-376",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 377,
+      "key": "source-line-377",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 378,
+      "key": "source-line-378",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 379,
+      "key": "source-line-379",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 389,
+      "key": "source-line-389",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 390,
+      "key": "source-line-390",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 391,
+      "key": "source-line-391",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 392,
+      "key": "source-line-392",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 393,
+      "key": "source-line-393",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    },
+    {
+      "pr": 354,
+      "head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+      "path": "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md",
+      "line": 394,
+      "key": "source-line-394",
+      "status": "OPEN: result/evidence/meaning/signature not completed in source draft"
+    }
+  ]
+}
