@@ -19,7 +19,7 @@ test("N5: blank company, visible setup across four screens, progress survives re
   const guide = page.getByRole("region",{name:"Company setup",exact:true});
   await expect(guide).toBeVisible();await expect(guide).toContainText("0 of 9 reviewed");
   await expect(guide.getByRole("checkbox").first()).toBeEnabled();
-  await guide.getByRole("checkbox").first().check();
+  await guide.getByRole("checkbox").first().click();
   await expect(guide).toContainText("1 of 9 reviewed");
   for (const route of ["/admin/users","/admin/integrations","/admin/data","/settings"]) {
     await page.goto(route);await expect(guide).toBeVisible();

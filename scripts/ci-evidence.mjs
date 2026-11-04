@@ -64,6 +64,9 @@ if (cmd === "vitest-summary") { // <json> <label>  (totals computed from the vit
   const base0 = bases[0], added = (paths) => git("diff", "-U0", "--no-color", base0, head, "--", ...paths).split("\n");
   const scan = (lines, re, kind, want = "+") => { let file = ""; lines.forEach(l => { if (l.startsWith("+++ b/")) file = l.slice(6); else if (l.startsWith("--- a/") && want === "-") file = l.slice(6); else if (l[0] === want && !l.startsWith(want.repeat(3)) && re.test(l)) f(`${kind}: ${file}: ${l.slice(1, 90).trim()}`); }); };
   scan(added(["tests"]), /(\.skip\b|\.only\b|\bxit\(|\bxdescribe\(|\bfixme\b|skipIf\()/, "skip/only/fixme added");
+  const rc = git("diff", "--name-only", base0, head, "--", "lib/money.ts", "lib/costing.ts", "lib/server/costing-engine.ts", "lib/costing", "tests/fixtures/costing-golden.json", "tests/unit/costing-golden.test.ts").trim();
+  if (rc) for (const l of rc.split("\n")) f(`rounding/costing file changed vs ${base0}: ${l}`);
+  for (const w of ["+", "-"]) scan(git("diff", "-U0", "--no-color", base0, head, "--", "supabase", "lib", "app", "components").split("\n"), /(\bround\s*\(|ROUND_HALF|half[-_ ]?even|banker)/i, `rounding code line ${w === "+" ? "added" : "removed"} (round( / half-even)`, w);
   const snap = git("diff", "--stat", base0, head, "--", "tests/db/catalogue.snapshot.json").trim(); if (snap) f(`catalogue.snapshot.json changed vs ${base0}: ${snap.split("\n").pop()}`);
   const sql = ["supabase/release", "supabase/migrations", "supabase/verify"];
   scan(added(sql), /\bGRANT\b/i, "SQL GRANT added");
