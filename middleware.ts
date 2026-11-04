@@ -136,11 +136,17 @@ export async function middleware(request: NextRequest) {
 
   const rule = ROUTE_ROLES.find(([prefix]) => path === prefix || path.startsWith(prefix + "/"));
   type ProfileRow = { role: string | null; secondary_role: string | null; active: boolean | null; organization_id: string | null; must_change_password?: boolean | null };
-  let { data: profile, error: profileError } = await supabase
-    .from("user_profiles")
-    .select("role, secondary_role, active, organization_id, must_change_password")
-    .eq("id", data.user.id)
-    .maybeSingle<ProfileRow>();
+  // The profile read and my_session do not depend on each other, so they go out together (one round trip of waiting, not two).
+  // my_session is read-only; its answer is only used under the same condition as before (a readable profile), below.
+  const [profileResult, sessionResult] = await Promise.all([
+    supabase
+      .from("user_profiles")
+      .select("role, secondary_role, active, organization_id, must_change_password")
+      .eq("id", data.user.id)
+      .maybeSingle<ProfileRow>(),
+    supabase.rpc("my_session"),
+  ]);
+  let { data: profile, error: profileError } = profileResult;
   if (profileError?.code === "42703") {
     // Migration 012 not run yet (no must_change_password column): carry on without it.
     ({ data: profile, error: profileError } = await supabase
@@ -170,7 +176,7 @@ export async function middleware(request: NextRequest) {
   // business data without a chosen company whatever this redirect does.
   let session = null as ReturnType<typeof parseSessionInfo>;
   if (profile && !profileError) {
-    const { data: sessionData, error: sessionError } = await supabase.rpc("my_session");
+    const { data: sessionData, error: sessionError } = sessionResult;
     // If the answer can't be read the page checks fall back to the profile's copy; the database still decides what data is returned.
     session = sessionError ? null : parseSessionInfo(sessionData);
   }
