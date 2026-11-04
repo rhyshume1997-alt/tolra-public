@@ -21,3 +21,35 @@ it("preserves exact evidence before protected capture and keeps immutable histor
  expect(source).toContain("provider IN ('xero', 'sage', 'quickbooks')");expect(source).toContain('WHERE organization_id = c_jnr');
  expect(source).not.toMatch(/ALTER TABLE[^\n]*DISABLE|DELETE FROM public\./);
 });
+
+it("refuses duplicate table aliases and foreign-company archive scope",()=>{
+ expect(validateWipeRows(existing,[...proposed,{...proposed[0],ord:88}])).toContain('Duplicate table public.chase_sends');
+ expect(validateWipeRows(existing,proposed.map(r=>r.table==='security_audit.chase_approval_evidence'?{...r,predicate:'TRUE'}:r))).toContain('Wrong company scope: security_audit.chase_approval_evidence');
+});
+it("uses a numeric-safe stored JSONB digest, never the numbers-forbidden signoff canonicalizer",()=>{
+ expect(source).toContain("convert_to(evidence::text, 'UTF8')");expect(source).toContain("convert_to(r.evidence::text, 'UTF8')");
+ expect(source).not.toContain('public.canonical_jsonb(');
+});
+it("refuses unsafe archive grants and checks every source invoice and approval after copying",()=>{
+ expect(source).toContain("archive permissions or append-only guard differ");
+ expect(source).toContain("SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER");
+ expect(source).toContain("i.id IS NULL OR a.chase_send_id IS NULL OR a.evidence IS DISTINCT FROM");
+ expect(source).toContain("REFUSED: approval archive incomplete");
+ expect(source).toContain("SELECT count(*) FROM public.chase_sends WHERE organization_id=c_jnr");
+});
+it("replaces the audit baseline time with clock_timestamp() so audit rows the archive block writes in the same transaction are in the baseline",()=>{
+ const section=source.split('## 4b.')[1].split('## 5.')[0];
+ expect(section).toContain("SELECT clock_timestamp(), md5(coalesce(string_agg(id::TEXT || hash, ',' ORDER BY id), '')) INTO v_t0, v_aud FROM security_audit.audit_log;");
+ expect(section).not.toMatch(/```sql\n\s*SELECT now\(\)/);
+});
+it("hashes the content of every kept login, not just its id, excluding only last_sign_in_at and updated_at",()=>{
+ const section=source.split('## 4b.')[1].split('## 5.')[0];
+ const expr="md5((to_jsonb(u) - ARRAY['last_sign_in_at', 'updated_at'])::TEXT)";
+ expect(section.split(expr).length-1).toBe(2);
+ expect(section).toContain("INTO v_users FROM auth.users u;");
+ expect(section).toContain("'CHECK every login kept, content unchanged (auth.users)'");
+ expect(section).toContain("= v_users FROM auth.users u;");
+ const sqlBlocks=[...section.matchAll(/```sql\n([\s\S]*?)```/g)].map(m=>m[1]).join('\n');
+ expect(sqlBlocks).not.toMatch(/INTO v_users FROM auth\.users;/);
+ expect(sqlBlocks).not.toMatch(/string_agg\(id::TEXT, ','/);
+});
