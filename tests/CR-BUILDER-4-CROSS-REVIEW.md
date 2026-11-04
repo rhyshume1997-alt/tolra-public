@@ -1,0 +1,54 @@
+# CR: builder 4 cross-review, 4 November 2026
+
+Reviewed PRs #290–#297 against their actual 34 changed files and immediate source dependencies. This is a source/document review, not release approval or a new broad audit. Builder 4's branches and docs/signoff/ remain untouched. Corrections are proposed only in this builder-3 draft based on #289.
+
+| PR | Exact reviewed head | Source finding / limit |
+| --- | --- | --- |
+| #290 | `d9bcbc398b283e621ea4d73bcf90ef18f7ccc1b9` | Contact blanks, incident stop rules, uncertain-send handling and paper reconciliation are explicit. No additional source mistake found; private contacts/rehearsal remain NOT RUN. |
+| #291 | `01067cab327ddc7107a99a015522530d736519c8` | Current guide reflects admin-only corrections for another person and actual Start/End break button labels. No additional source mistake found; printing/training remain NOT RUN. |
+| #292 | `55ee54c3b64d812745731a7090c42b483571f7c0` | Current paper recovery gives other-person time correction to an admin, holds unclear matches and avoids replaying queued work. No additional source mistake found; actual recovery rehearsal remains NOT RUN. |
+| #293 | `0cfe4495a805d0c41acbdbe7a5f8b892006df68a` | 146 rollback/refusal/history and backup state distinctions agree with the release SQL. No reapply workaround added; actual restore/recovery proof remains NOT RUN. |
+| #294 | `ac49a303512288e76c95f74522ec3abdaf251f34` | Fixed nonexistent lib/integrations/accounting reference to actual lib/accounting/cloud-adapters.ts. That file enforces /api/accounting/<provider>/callback; no DNS/provider setting changed. |
+| #295 | `865058f4a3e9dfa1afdefb51d3d6b72d401cda29` | Microsoft then configured Resend then draft selection agrees with send-company-email.ts; uncertain delivery is held before manual fallback. No additional source mistake found; real mailbox receipt remains NOT RUN. |
+| #296 | `b35e5caf003fba6c6f25082bcfae311ae35e5fd4` | Corrected the cap paragraph: used plus reserved is not a reliable off switch, since settlement/refund can release reserved headroom. Directs to the existing company AI off switch. Other reviewed changes are literal user-visible strings; no permissions/maths/send behaviour changed. |
+| #297 | `b9406d136f224395a4e6f2d15f82093f1ba2f545` | Read reverse SQL binding swap and actual-helper tests against original proof/helper sources. Historic alpha/beta captions are acknowledged; real bindings swap. Logs show 164 + 43 offline passes and two missing-backend failures, not DB/CSRF/build proof. No additional source mistake found. |
+
+## Exact changes in this PR
+
+1. `tests/C10-TOLRA-DOMAIN-SWITCH-CHECKLIST.md`: carries the reviewed builder-4 checklist with its single bad provider source path corrected. Preserve/ integrate this corrected version instead of overwriting it with the earlier #294 text.
+2. `components/platform/tolra-ai-caps.tsx`: carries builder 4's plain wording for held money, corrects its stop instruction and preserves all existing code/limits. A request may settle for less than reserved, releasing capacity; lowering a cap to current used+reserved can therefore permit later requests. The existing AI off control is the stop mechanism. No new feature or calculation.
+3. This report records all eight source heads, findings and limits. No builder-4 handover or sign-off paper was rewritten.
+
+Checks: `npx eslint components/platform/tolra-ai-caps.tsx` exits 0. `npx vitest run tests/unit/tolra-ai-caps-ui.test.ts tests/unit/tolra-ai-caps.test.ts`: 11 passed, zero failures/skips. Literal-copy/document corrections use existing relevant tests; no redundant new test was added. Full lint/typecheck/unit integration is job CV, not claimed here.
+
+The working source used shared preinstalled dependencies and a reconstructed #289 candidate. This is not a clean-install or exact-head CI/runtime result. No SQL, DNS/provider action, live email, main merge, deployment or Ready label. Source findings apply to the exact heads above; refresh review if they move. Operator/training/restore/domain/mail/security runtime evidence remains open.
+
+## CR extension requested after usage reset: #314 and twelve sign-off sheets
+
+Read #314 at `bbf21d67ca87c5d161022d149f2ef0ea5ec62ad7`, including its source-review report, handover and CN/CU changes. Its three corrections are valid: block external AI from the real-data practice copy without the separate written sharing decision; limit mapping/export acceptance to Xero and use balance checks for Sage/QuickBooks; require the actual required admin-code challenge and narrow the AI-off smoke result to visible switches/assistant refusal. Retain #314's corrected tests/JOHN-PQ-RUN-SHEET.md and tests/FIRST-DAY-SMOKE-CHECK.md when combining drafts. Do not overwrite them with the older sibling versions. No duplicate correction or new provider/permission rule was invented here.
+
+The twelve sheets below were read at the exact heads in #314's handover, then checked against current PR metadata (none moved). They stay on builder 4's branches. No docs/signoff/ paper or signature was copied or filled by this extension.
+
+| Sheet / PR | Exact head | Source-backed review / still open |
+| --- | --- | --- |
+| G14 / #301 — `docs/signoff/G14-GO-LIVE-DAY-AGREEMENT.md` | `475e186b5b9d4fd526c9c95028c49eeb96aa63c5` | Measured recovery/cut-off, named decision maker/deputy, hold-on-paper and no 146 reinstall are explicit. Blank times/signatures and actual recovery proof remain open. |
+| F6 / #302 — `docs/signoff/F6-JOHN-ACCEPTANCE.md` | `e76f1c03ee5cd60f3048d5c5a115714e4b3c54bd` | Business acceptance does not waive technical validation; failed/unrun checks and the separate transfer proof remain open. PQ-009 terminology belongs to the older builder scope, not the refreshed 8-PQ form. |
+| AI-APPROVE / #303 — `docs/signoff/AI-APPROVE-JOHN-DATA-SHARING.md` | `ca1c504cf515d82533242bf373c38d2f069642fc` | Matches roundup/RFQ/assistant payload builders: both account modes use Anthropic; raw question/pasted text are not fully redacted; finance check uses server rules. Terms/authority/choices/signatures remain unverified. |
+| B13 / #304 — `docs/signoff/B13-JOHN-REHEARSAL-WEEK.md` | `97422fe71066c8e4d225d0d38f2da837f88b4ed5` | 2–6 November dates are correct; missed Monday/Tuesday are not treated as completed. Real-data manual and fake-only automated targets remain distinct, with external services blocked. Actual appointments/rehearsal remain open. |
+| B15 / #306 — `docs/signoff/B15-REMOVE-RHUMECOACHING-ADMIN.md` | `99a1a9f6e9e10b5ce7b92183a87c778b8e9fe953` | Preserves other-company access/history, tests replacement admin and both primary/secondary roles plus alternate privileged routes. No account changed; actual identity/access proof remains open. |
+| B17 / #307 — `docs/signoff/B17-ADMIN-SIGN-IN-CODES.md` | `8877aed34d009c7dc1c348d81932ffe103190805` | Both deployment and company MFA rules, enrolment, actual fresh challenge, recent-code checks and cover admin are required. No security setting changed; runtime proof remains open. |
+| C8 / #308 — `docs/signoff/C8-DECISION-MAKERS-AND-SUPPORT.md` | `289eeb67ff8535a647e9c01ddb5eadef71e411fe` | Real contacts, tested cover and explicit deputy authority remain blank; job titles do not count as verified phone numbers. |
+| D7 / #309 — `docs/signoff/D7-SIX-YEAR-FINANCIAL-RETENTION.md` | `2562523258932a489b40862bf0f9a5e2657b8305` | Proposed retention is qualified by entity/year-end/accountant advice and legal holds; no automatic purge, hard-coded disposal date or legal approval is inferred. |
+| NUM-RESET / #310 — `docs/signoff/NUM-RESET-JOHN-NUMBERING-CHOICE.md` | `597a195c99b2d7cb20d494f489632889dfeb45da` | Keep/continue is the existing plan; restart is a held request requiring separate review. Prefix/derived-link checks and protected records are retained, no counter reset authorised. |
+| XERO-APP / #311 — `docs/signoff/XERO-APP-RHYS-REGISTRATION.md` | `54e28c086dd20cd6553b53e3645b6a51c8d13ec2` | Scopes/callbacks/stored-secret precedence match Xero OAuth and app-credentials source. Portal labels, free eligibility, terms and actual demo callbacks were not checked live; those stay open. |
+| SAGE-QBO-APP / #312 — `docs/signoff/SAGE-QBO-APP-RHYS-REGISTRATION.md` | `bf5396b66e163cadaf5a212b268a3519f6f4b5cb` | Callbacks/env names and scope strings match cloud-adapters.ts; broad consent is disclosed and no invoice-export feature is promised. Real registration/terms/consent and sandbox results stay open. |
+| PAID-ROUND / #313 — `docs/signoff/PAID-ROUND-JOHN-PAID-TIME-CHOICE.md` | `7ffeb44be92ce10fcace40ddce12a509d3d675c7` | Matches time-sheet roundMinutes/hm and time-payroll-export roundedHours: exact totals, whole-minute rounding then two-decimal payroll hours. Weekly raw-time export has a separate decimal conversion; this sheet claims payroll only. No pay policy or source changed. |
+
+Additional source context: lib/ai-helper/{roundup,rfq,assistant}.ts; lib/accounting/cloud-adapters.ts; lib/integrations/{app-credentials,xero/oauth}.ts; middleware/admin MFA controls; lib/time-sheet.ts and lib/time-payroll-export.ts. The PAID-ROUND distinction from lib/time-week-export.ts was checked rather than assuming all exports round identically. No additional source error was found in these twelve sheets for their stated scope. This is not approval of their unfilled decisions, future portal settings or runtime behaviour.
+
+Integration conditions: retain #314's valid CN/CU corrections and original CR cap/path fixes; reconcile older 6/15/9 versus refreshed 6/14/8 protocols using CS/CT; keep the independent cutover gate even where a refreshed form has no PQ-009. All twelve masters remain unsigned. Actual rehearsal, consent, contacts, payroll/retention advice, restore/domain/mail/provider/security results remain NOT RUN. CV's test snapshot was frozen before this documentation-only review extension; its results are pinned to that actual SHA, not silently reassigned here.
+
+
+### Corrections retained on the existing builder 3 drafts
+
+After this source review, the exact corrected CN and CU file contents from #314 were copied into their existing draft PRs (no new job PR and no sign-off sheet copied): CN #286 head `bfaa31b84ebb04cec74c386787806320c3dee44e`, CU #305 head `78dc5b7033592f20640b15e61b198c7fcf17930e`. Blob identities match #314: CN `226dcb6e7b8edadc7df2ddd85465eba42f49dd95`, CU `08864545afae55f78665a16c90b9557a9910cb99`. Preserve these corrected versions when combining the earlier CV snapshot. This is a document correction, not a repeat runtime pass. CR CI run 41837435184 at the preceding report head had web success, integration skipped and overall ci-gate failure; no Ready label was added to bypass that condition.
