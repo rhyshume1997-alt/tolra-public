@@ -81,6 +81,8 @@ import { type RunBooking, loadRunBookings } from "@/lib/run-bookings";
 import { type RunPlan, loadRunPlan, planBooking, runPlanKey } from "@/lib/run-plan";
 import { runClock, runTimerText } from "@/lib/machine-schedule";
 import { useUser } from "@/lib/use-user";
+import { DeliveryNotesFor } from "@/components/delivery-notes-for";
+import { canListDeliveryNotes } from "@/lib/delivery-notes-for";
 import { canOpenDestination } from "@/lib/destinations";
 import { useOrgSettings } from "@/lib/org-settings";
 import type { JobRecord } from "@/types";
@@ -1266,6 +1268,7 @@ export default function JobsPage() {
                 {reworkNote(job) ? <div className="col-span-2 min-w-0"><dt className="label-mono field-caption">Rework</dt><dd className="break-words text-xs">{reworkNote(job)}</dd></div> : null}
               </dl>
               {relatedLinks(job)}
+              {canListDeliveryNotes(activeRole) ? <DeliveryNotesFor query={{ jobId: job.id, jobNo: job.job_no }} /> : null}
               <div className="flex flex-wrap gap-2">
                 {playButton(job, "default")}
                 {finish.shown ? <Button variant="finish" className={cn(primaryTouch, saving || !finish.enabled ? "opacity-50" : "")} aria-disabled={saving || !finish.enabled || undefined} title={finish.reason || "Finish"} onClick={() => (!finish.enabled ? toast.info(`${job.job_no}: ${finish.reason}`) : askFinish(job.id))}>{job.finished_at ? "Finished" : "Finish"}</Button> : null}

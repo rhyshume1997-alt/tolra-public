@@ -352,6 +352,7 @@ export async function buildYearEndZip(from: string, to: string, company: Company
       files[path] = await render(<DeliveryNotePDF data={{
         number: ref, taxDate: fmtDate(day(r.tax_date) || shipDate), shipDate: fmtDate(shipDate), shipVia: r.ship_via || undefined,
         billTo: await resolveCustomerAddress(row.party), items, company,
+        signedByName: String(r.status || "").toLowerCase() === "signed" ? (r.signed_by_name as string | null) : null, signedDate: r.signed_at ? fmtDate(day(r.signed_at)) : null,
       }} />);
       row.pdf = path;
     } catch (err) {

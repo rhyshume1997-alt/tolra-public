@@ -56,6 +56,8 @@ export type PdfDocumentData = {
   carriageVat?: boolean;
   /** Standard rate (lines without their own rate, and carriage). Defaults to the company's default VAT rate. */
   standardVatRate?: number;
+  /** A closing block under the customer message, one line each (a delivery note's goods-out wording and its Received by / Signature / Date line). Taken from the table's height like the sign-off, so page one still fits. */
+  closingLines?: string[];
   /** Ex-VAT carriage. */
   carriage?: number;
   /** When set (invoices) the totals end with Invoice total, Paid and Balance due. */
@@ -170,6 +172,10 @@ export function printedTitle(title: string) {
   return text.length > max ? `${text.slice(0, max - 3).trimEnd()}...` : text;
 }
 
+/** Height of the closing block: its top margin plus each line. */
+const CLOSING_BLOCK_MARGIN = 8;
+const CLOSING_LINE_HEIGHT = 15;
+
 export const styles = StyleSheet.create({
   page: { paddingTop: 30, paddingBottom: 158, paddingHorizontal: 24, fontFamily: "Helvetica", fontSize: 8.8, color: INK },
 
@@ -217,6 +223,8 @@ export const styles = StyleSheet.create({
   signOffSignature: { height: 30, marginTop: 2, justifyContent: "center" },
   signOffTyped: { fontFamily: "Helvetica-Oblique", fontSize: 14 },
   signOffWhen: { fontSize: 8, marginTop: 1 },
+  closingBlock: { marginTop: CLOSING_BLOCK_MARGIN, width: 499 },
+  closingLine: { fontSize: 8.8, height: CLOSING_LINE_HEIGHT },
   totalsBlock: { width: 167, marginRight: 5, marginTop: 2.5 },
   totalRow: { flexDirection: "row", justifyContent: "space-between", height: 17.3 },
   totalLabel: { fontFamily: "Helvetica-Bold", fontSize: 10 },
@@ -319,7 +327,9 @@ export function BaseDocumentPDF({ data }: { data: PdfDocumentData }) {
   const paymentExtra = paymentRows ? 19 + paymentRows * 13 : 0;
   // The customer sign-off block (072) is taken from the table the same way, so a document with one still fits page one.
   const signOffExtra = data.customerSignOff ? CUSTOMER_SIGNOFF_HEIGHT : 0;
-  const tableMinHeight = Math.max(110, 292 - Math.max(0, totalsRows - 5) * 17.3 - paymentExtra - signOffExtra);
+  const closingLines = data.closingLines ?? [];
+  const closingExtra = closingLines.length ? CLOSING_BLOCK_MARGIN + closingLines.length * CLOSING_LINE_HEIGHT : 0;
+  const tableMinHeight = Math.max(110, 292 - Math.max(0, totalsRows - 5) * 17.3 - paymentExtra - signOffExtra - closingExtra);
   const message = data.customerMessage ?? company.defaultCustomerMessage;
   const kv = data.keyValues;
   // Only the organisation's own uploaded logo (resolved in lib/company); otherwise its name is printed instead.
@@ -393,6 +403,11 @@ export function BaseDocumentPDF({ data }: { data: PdfDocumentData }) {
               </View>
             ) : null}
             {data.customerSignOff ? <CustomerSignOffBlock signOff={data.customerSignOff} /> : null}
+            {closingLines.length ? (
+              <View wrap={false} style={styles.closingBlock}>
+                {closingLines.map((line, index) => <Text key={`${line}-${index}`} style={styles.closingLine}>{line}</Text>)}
+              </View>
+            ) : null}
           </View>
           {priced ? (
             <View style={styles.totalsBlock}>

@@ -10,7 +10,7 @@ import { resolveCustomerAddress } from "@/lib/customers";
 import { DEMO_MODE } from "@/lib/demo";
 import { fmtDate } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { deliveryNoteReceivedLine } from "@/lib/delivery-note-print";
+import { deliveryNoteSignOffLines } from "@/lib/delivery-note-print";
 import { deliveryNoteInspectionLine } from "@/lib/inspection";
 import { supabase } from "@/lib/supabase";
 import { PrintLogo } from "@/components/print-logo";
@@ -100,6 +100,7 @@ export default function PrintDeliveryNotePage() {
   if (error) return <div className="mx-auto max-w-3xl p-8 text-sm text-red-700" role="alert">{error}</div>;
   if (!note) return <div className="mx-auto max-w-3xl p-8 text-sm text-slate-600">Delivery note not found.</div>;
 
+  const [goodsOut, received] = deliveryNoteSignOffLines(note, fmtDate);
   return (
     <div className="mx-auto max-w-3xl bg-white p-8 text-slate-950 print:p-0">
       <style>{`@media print { aside, header, .no-print { display:none!important; } body { background:white!important; } @page { size:A4; margin:18mm; } }`}</style>
@@ -111,7 +112,8 @@ export default function PrintDeliveryNotePage() {
         <div className="space-y-1"><p><strong>Delivery Date:</strong> {fmtDate(note.date)}</p>{note.taxDate ? <p><strong>Tax Date:</strong> {fmtDate(note.taxDate)}</p> : null}<p><strong>Job Ref:</strong> {note.job || "No linked job"}</p>{note.inspected ? <p data-testid="dn-inspected">{note.inspected}</p> : null}{note.shipVia ? <p><strong>Ship Via:</strong> {note.shipVia}</p> : null}<p><strong>Status:</strong> <span className="capitalize">{note.status}</span></p></div>
       </div>
       <table className="mt-8 w-full border-collapse text-sm"><thead><tr><th className="border p-2 text-left">Item</th><th className="border p-2">Qty</th></tr></thead><tbody>{note.items.length ? note.items.map((item, index) => <tr key={`${item.description}-${index}`}><td className="border p-2 whitespace-pre-line">{item.description}</td><td className="border p-2 text-center">{item.quantity}</td></tr>) : <tr><td className="border p-2 text-slate-500" colSpan={2}>No items recorded.</td></tr>}</tbody></table>
-      <p className="mt-10" data-testid="dn-received">{deliveryNoteReceivedLine(note, fmtDate)}</p>
+      <p className="mt-10" data-testid="dn-goods-out">{goodsOut}</p>
+      <p className="mt-6" data-testid="dn-received">{received}</p>
     </div>
   );
 }

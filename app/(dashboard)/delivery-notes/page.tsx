@@ -37,6 +37,7 @@ import { type TemplateVars, renderTemplate } from "@/lib/email/templates/default
 import { loadTemplateOverride } from "@/lib/email/templates/store";
 import { requireCompanyProfile, useCompanyProfile } from "@/lib/company";
 import { resolveCustomer, resolveCustomerAddress } from "@/lib/customers";
+import { deliveryNoteSignOffLines } from "@/lib/delivery-note-print";
 import { deliveryNoteCustomerSignOff } from "@/lib/customer-signoff-print";
 import { DEMO_MODE } from "@/lib/demo";
 import { ListFilterNotice, useListFilter } from "@/components/list-filter-notice";
@@ -315,7 +316,7 @@ export default function DeliveryNotesPage() {
       return;
     }
     const selected = notes.filter((note) => selectedIds.includes(note.id));
-    const opened = openPrintPack(`${company.name} Delivery Note Pack`, selected.map((note) => `<section><h2>${esc(note.ref)}</h2><table><tr><th>Customer</th><td>${esc(note.customer)}</td></tr><tr><th>Job</th><td>${esc(note.job || "No linked job")}</td></tr><tr><th>Delivery Date</th><td>${esc(fmtDate(note.date))}</td></tr><tr><th>Status</th><td>${esc(note.status)}</td></tr></table><p>Signed by: __________________ Date: __________</p></section>`), "delivery_notes");
+    const opened = openPrintPack(`${company.name} Delivery Note Pack`, selected.map((note) => `<section><h2>${esc(note.ref)}</h2><table><tr><th>Customer</th><td>${esc(note.customer)}</td></tr><tr><th>Job</th><td>${esc(note.job || "No linked job")}</td></tr><tr><th>Delivery Date</th><td>${esc(fmtDate(note.date))}</td></tr><tr><th>Status</th><td>${esc(note.status)}</td></tr></table>${deliveryNoteSignOffLines({ status: note.status, signedByName: note.signed_by_name, signedAt: note.signed_at }, fmtDate).map((line) => `<p>${esc(line)}</p>`).join("")}</section>`), "delivery_notes");
     if (!opened) {
       toast.error("Allow pop-ups to print.");
       return;
@@ -492,6 +493,9 @@ export default function DeliveryNotesPage() {
           items,
           customerPo,
           customerSignOff,
+          // Goods-out wording and the Received by / Signature / Date line are printed on the PDF too; a note recorded as signed names who signed.
+          signedByName: note.status.toLowerCase() === "signed" ? note.signed_by_name : null,
+          signedDate: note.signed_at ? fmtDate(note.signed_at) : null,
           company: profile,
         }}
       />

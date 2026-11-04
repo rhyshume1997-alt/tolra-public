@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Pencil, Plus } from "lucide-react";
 
 import { ChasePauseControl, ChasePausedBadge, useChasePauses } from "@/components/chase/chase-pause";
+import { DeliveryNotesFor } from "@/components/delivery-notes-for";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { ListToolbar } from "@/components/list-toolbar";
@@ -210,6 +211,7 @@ export default function CustomersPage() {
                 <Button type="submit" disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save Customer"}</Button>
               </form>
             ) : null}
+            {editing?.id ? <DeliveryNotesFor query={{ customerId: editing.id, customerName: editing.name }} /> : null}
             {editing?.id ? <ChasePauseControl target={{ kind: "customer", id: editing.id, name: editing.name }} onChange={() => void chasePauses.reload()} /> : null}
           </DialogContent>
         </Dialog>
