@@ -205,10 +205,30 @@ jobs:
         # then all release proofs prepare/verify 145 and 146 on this disposable backend.
         # The baseline and upgrade rehearsal still test only numbered migrations first.
         # Post-144 release plan: 145 N5 then 146 N2/cap; proofs remain mandatory.
+        env:
+          CI_EVIDENCE_DB_JSON: evidence/db.json
         run: npm run test:db
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
+        env:
+          REHEARSAL_VITEST_ARGS: --reporter=verbose --reporter=json --outputFile.json=evidence/rehearsal.json
         run: scripts/upgrade-rehearsal.sh 013
+      - name: "Evidence: database suite, skips, named cases, release refusals, rehearsal (labels computed from the real reports)"
+        if: ${{ always() && hashFiles('evidence/db.json') != '' }}
+        shell: bash
+        run: |
+          rc=0
+          echo "== test:db, no exclusions =="
+          node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE || rc=1
+          node scripts/ci-evidence.mjs db-skips evidence/db.json || rc=1
+          echo "== company setup isolation (release 145) =="
+          node scripts/ci-evidence.mjs source-tokens tests/db/company-setup-isolation.test.ts admin beta office workshop viewer "support" elevated outsider anon "toEqual(before" || true
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/company-setup-isolation.test.ts || rc=1
+          echo "== Tolra-provided AI (release 146): key isolation, no fallback, owner controls, two-connection race, rollback refusal, second install =="
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts || rc=1
+          echo "== #253 and #255 proofs =="
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/reviewer-inbound-conditions.test.ts tests/db/reviewer-chase-conditions.test.ts || rc=1
+          exit $rc
       # Releases 145/146, their verification queries and extra refusal proofs are
       # owned by the ordered test:db fixture. Never apply these one-time files twice.
       - name: Build against the disposable backend
@@ -246,8 +266,16 @@ jobs:
           done
           psql_q -c "NOTIFY pgrst, 'reload schema'"
           sleep 3
+      - name: "Evidence: upgrade rehearsal 013 (catalogue compare, frozen security checks), real lines"
+        if: ${{ always() && hashFiles('evidence/rehearsal.json') != '' }}
+        shell: bash
+        run: |
+          node scripts/ci-evidence.mjs list-all evidence/rehearsal.json REHEARSAL
+          node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: "SCHEMA MARKER before the browser tests (no reset since the 145/146 install step)"
+        run: scripts/ci-schema-markers.sh
       - name: Browser suite
         # A manual run may name spec files (`specs`): only those run, in the same disposable stack. Empty = the whole suite.
         # The list comes in through SPECS, never pasted into the script (audit S4): split into words on spaces, with no globbing or
@@ -265,9 +293,14 @@ jobs:
         env:
           E2E_SKIP_BUILD: "1"
           SPECS: ${{ inputs.specs }}
+      - name: "SCHEMA MARKER immediately before the reviewer specs"
+        if: ${{ !cancelled() }}
+        run: scripts/ci-schema-markers.sh
       - name: Reviewer browser conditions (all ten, database required)
         if: ${{ !cancelled() }}
-        run: REVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: evidence/reviewer.json
+        run: REVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts --reporter=list,json
       - name: Keep run evidence (backend identity, failures)
         if: always()
         uses: actions/upload-artifact@v4
@@ -275,8 +308,37 @@ jobs:
           name: integration-evidence
           path: |
             test-results/
+            evidence/
             !test-results/e2e-state/world.json
           if-no-files-found: ignore
+      - name: "Evidence: reviewer specs (requires exactly 10 passed, 0 failed, 0 skipped)"
+        if: ${{ always() && hashFiles('evidence/reviewer.json') != '' }}
+        run: node scripts/ci-evidence.mjs playwright evidence/reviewer.json 10
+      - name: "Evidence: reinstall after a 146 rollback (runs last, informational, then resets the disposable database)"
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -a; . ./.env.test.local; set +a
+          case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not the local disposable database" >&2; exit 1 ;; esac
+          reinstall=supabase/release/146_tolra_provided_ai.release.sql
+          if psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -q -f supabase/release/146_tolra_provided_ai.rollback.sql > evidence/rollback146.log 2>&1; then
+            echo "146 rollback accepted (no outstanding reservation)"
+            if psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -q -f "$reinstall" > evidence/reinstall146.log 2>&1; then
+              echo "FAIL reinstall of 146 after rollback was ACCEPTED without a reset"
+            else
+              echo "PASS reinstall of 146 after rollback was refused: $(grep -m1 -E 'ERROR' evidence/reinstall146.log)"
+            fi
+          else
+            echo "INCONCLUSIVE 146 rollback refused: $(grep -m1 -E 'ERROR' evidence/rollback146.log)"
+          fi
+          scripts/test-backend.sh reset
+      - name: "Diff audit against the approved baselines (findings printed, each explained in the evidence file)"
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          git fetch --no-tags origin 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
+          node scripts/ci-evidence.mjs diff-audit HEAD 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
       - name: Stop disposable Supabase
         if: always()
         run: npm run test:backend:stop

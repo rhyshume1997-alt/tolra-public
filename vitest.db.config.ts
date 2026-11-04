@@ -12,5 +12,7 @@ export default defineConfig({
     sequence: { sequencer: ReleaseSequencer },
     testTimeout: 60_000,
     hookTimeout: 120_000,
+    // CI evidence only: the verbose lines stay in the step log and the JSON report is parsed by scripts/ci-evidence.mjs.
+    ...(process.env.CI_EVIDENCE_DB_JSON ? { reporters: ["verbose", "json"], outputFile: { json: process.env.CI_EVIDENCE_DB_JSON } } : {}),
   },
 });
