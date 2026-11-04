@@ -18,9 +18,15 @@ test("CJ-N1: paid and unpaid companies show separate planned hours matching thei
   const context = await browser.newContext({ baseURL });
   try {
     const other = await context.newPage(); await signIn(page, a.admin); await signIn(other, b.admin);
-    for (const [tab, tenant, paid, total] of [[page, a, true, "40:00"], [other, b, false, "36:15"]] as const) {
+    for (const [tab, tenant, paid, daily, total] of [[page, a, true, "8:00", "40:00"], [other, b, false, "7:15", "36:15"]] as const) {
       await tab.goto("/settings"); await expect(tab.getByRole("checkbox", { name: /^Breaks are paid/ })).toBeChecked({ checked: paid });
       await expect(tab.getByTestId("working-hours-week-paid")).toHaveText(total);
+      await expect(tab.getByTestId("working-hours-day-paid").filter({ hasText: new RegExp(`^Paid ${daily}$`) })).toHaveCount(5);
+      await tab.goto(`/time?date=${week}&user=${tenant.admin.id}`);
+      const dayPaid = tab.getByTestId("day-totals").getByText("Paid", { exact: true }).locator("..").locator("[data-kpi-value]");
+      await expect(dayPaid).toHaveText(daily);
+      await expect(tab.getByText(paid ? /^Breaks are paid\./ : /^Breaks are unpaid\./)).toBeVisible();
+      await tab.reload(); await expect(dayPaid).toHaveText(daily);
       await tab.goto(`/time/week?week=${week}`); await expect(tab.getByTestId(`week-row-${tenant.admin.id}`).getByTestId("week-paid")).toHaveText(total);
       await tab.reload(); await expect(tab.getByTestId(`week-row-${tenant.admin.id}`).getByTestId("week-paid")).toHaveText(total);
     }

@@ -4,29 +4,29 @@ Snapshot: 4 November 2026, 148 open PRs from both GitHub API pages. This extends
 
 CI fields below are actual pull-request-triggered runs returned for the full snapshot head. No run means no matching PR-triggered run was returned, not proof that no manual/push run exists. Queued/in-progress has no passing conclusion. Recheck run state and head before review; inherited/local counts are not promoted to CI. Build/test deadline Friday 6 November; go-live target Thursday 12 November 2026.
 
-This file necessarily records its own pre-update head and CL’s pre-parity-test head. Their resulting heads and CI IDs belong in tests/HANDOVER-BUILDER-3.md on the coordination PR after commits. Refresh any moved packet from that companion before use. Draft status and evidence are not a SAFE verdict, merge authority or production SQL approval.
+CQ refreshes #281–#284 to the exact reviewed source heads and CI conclusions below. The original 148-PR inventory is historical; this is not a new all-PR audit. CQ’s own resulting head and checks belong in tests/CQ-REVIEW-281-284.md and the coordination handover after commit. Refresh any moved packet from that companion before use. Draft status and evidence are not a SAFE verdict, merge authority or production SQL approval.
 
 ## PR #284: CL: penny half-up rule and unchanged costing rounding exceptions
 
-Review https://github.com/rhyshume1997-alt/tolra-public/pull/284 at head `5b89fe469e10cfea74b60ce535e3bf03cf390f84` (base `codex/ch-review-packets-next`). CI run ID: [41823000164](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41823000164) CI: completed, conclusion success.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/284 at head `d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d` (base `codex/ch-review-packets-next`). CI run ID: [41826433316](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41826433316) CI: completed, conclusion failure.
 
-Check: Check 0.135 becomes 0.14 in app and PostgreSQL numeric; run the new parity test once available. Keep costing engine and all 60 golden answers half-to-even and unchanged. DB execution remains separately required. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check tests/ROUNDING-RULE.md and the existing app/real-PostgreSQL parity tests: 0.135 becomes 0.14, ties stay half-up for normal money and VAT rounds per line. Preserve costing half-to-even and all 60 golden answers. Real DB execution remains NOT TESTED. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #283: CH: priority review packets with exact heads and remaining work
 
-Review https://github.com/rhyshume1997-alt/tolra-public/pull/283 at head `22adae9ae28aaeee7988e50cecded708335c9caa` (base `codex/cg-ck-evidence`). CI run ID: [41822478021](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41822478021) CI: completed, conclusion success.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/283 at head `e40f9edb24a79769efd03b8f900c6c31d8a6729b` (base `codex/cg-ck-evidence`). CI run ID: [41826384400](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41826384400) CI: completed, conclusion success.
 
 Check: Compare all open PRs, exact snapshot heads and CI run IDs; refresh moved heads. Packets convey no review verdict. Use the final builder-3 handover for this reporting PR’s resulting head. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #282: CG CK: named AI and accounting evidence with untested conditions
 
-Review https://github.com/rhyshume1997-alt/tolra-public/pull/282 at head `96fe3ff63b4733453ef87c8a00f7d14bbe0b5039` (base `codex/cj-acceptance-specs`). CI run ID: [41825363421](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41825363421) CI: completed, conclusion success.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/282 at head `b80b274b0f2b8b12444915152383564cc1b9bf52` (base `codex/cj-acceptance-specs`). CI run ID: [41826333766](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41826333766) CI: completed, conclusion success.
 
 Check: Check every available gate/manual/CW/validation row names a proving file; inspect N2 key/cap/MFA and N3 provider isolation gaps. Missing Operations Pack and unrun final-head results must keep NO GO. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #281: CJ: named fail-closed N1 N5 N6 browser acceptance specs
 
-Review https://github.com/rhyshume1997-alt/tolra-public/pull/281 at head `ff29ca191879ec954e305ec0eb200501789a5bcf` (base `codex/ci-branch-checks`). CI run ID: [41825174221](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41825174221) CI: in_progress, conclusion NONE.
+Review https://github.com/rhyshume1997-alt/tolra-public/pull/281 at head `ff29ca191879ec954e305ec0eb200501789a5bcf` (base `codex/ci-branch-checks`). CI run ID: [41825174221](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41825174221) CI: completed, conclusion failure.
 
 Check: Run the three N1/N5/N6 specs on the verified disposable backend; compare planned and actual paid hours, blank-company isolation and both template editors. Read tests/CJ-BUILDER-3-RESULTS.md: setup failure is not runtime proof. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
@@ -34,25 +34,25 @@ Check: Run the three N1/N5/N6 specs on the verified disposable backend; compare 
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/280 at head `f4eacee2236e65e52fdccbdf5cf8f8045fd95d80` (base `codex/ch-review-packets`). CI run ID: [41821065069](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41821065069) CI: completed, conclusion failure.
 
-Check: Require the exact combined-driver disposable rehearsal, archive immutability/ACL and refusal proofs, complete Marpet/login/settings/numbering/audit preservation and JNR-only provider disconnect checks. Public snippets alone cannot clear the private-kit condition. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the stopped audit remains 52/61; inspect the command-exit/collection-error refusal fix and all mandatory Operations Pack/wipe gate groups in scripts/release-gate/. Do not restart the broad audit or treat synthetic gate tests as runtime evidence. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #279: CH: exact-head review packets and explicit missing proofs
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/279 at head `4bb59c0ecfda0a545ec7221ef569dcc1184418db` (base `codex/cg-go-no-go-evidence`). CI run ID: [41813309228](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41813309228) CI: completed, conclusion success.
 
-Check: Require the exact combined-driver disposable rehearsal, archive immutability/ACL and refusal proofs, complete Marpet/login/settings/numbering/audit preservation and JNR-only provider disconnect checks. Public snippets alone cannot clear the private-kit condition. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the historical exact-head packet links, scoped counts and missing proofs; this earlier packet set is superseded by the later #283 snapshot. Documentation is not a runtime pass or review verdict. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #278: CG: explicit go/no-go evidence with every unproved gate visible
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/278 at head `8d667ffc7d779d4487fcf19eb052b123ec98baa8` (base `codex/cf-db-day-runbook`). CI run ID: [41812946899](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41812946899) CI: completed, conclusion success.
 
-Check: Require the exact combined-driver disposable rehearsal, archive immutability/ACL and refusal proofs, complete Marpet/login/settings/numbering/audit preservation and JNR-only provider disconnect checks. Public snippets alone cannot clear the private-kit condition. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the historical go/no-go register accounts for the available gate/manual/validation/CW items and states the missing Operations Pack. Use #282 for later file-path/N2/N3 mappings; retain all unproved runtime gates. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #277: CF: plain-English database-day runbook with mandatory stop gates
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/277 at head `87c4bbf52b895c1e618d32205e5023adb4d60cbc` (base `codex/ce-validation-final`). CI run ID: [41812612560](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41812612560) CI: completed, conclusion success.
 
-Check: Require the exact combined-driver disposable rehearsal, archive immutability/ACL and refusal proofs, complete Marpet/login/settings/numbering/audit preservation and JNR-only provider disconnect checks. Public snippets alone cannot clear the private-kit condition. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check tests/GO-LIVE-DB-RUNBOOK.md release order, each stop gate, actual backup/restore/wipe/import evidence requirements and the stop after 146 rollback. The runbook performs no SQL and grants no operational approval. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #276: CE: refresh validation pack with scoped evidence and untested rows
 
@@ -148,7 +148,7 @@ Check: Check exact-head evidence and linked paths, explicit missing/failed/skipp
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/261 at head `14e7291070a99ee10658da2781699859310124c7` (base `codex/x-final-main-candidate`). CI run ID: [41734598204](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41734598204) CI: completed, conclusion success.
 
-Check: Require the exact combined-driver disposable rehearsal, archive immutability/ACL and refusal proofs, complete Marpet/login/settings/numbering/audit preservation and JNR-only provider disconnect checks. Public snippets alone cannot clear the private-kit condition. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the morning checklist preserves reviewer/Rhys decisions, correct dependency order and mandatory runtime evidence. A date, green subset or checklist does not authorise merge or production SQL. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #260: AP: Report held PR scope inclusion and risks for Rhys
 
@@ -178,7 +178,7 @@ Check: Check exact-head evidence and linked paths, explicit missing/failed/skipp
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/256 at head `d41d122fbf9f3aa9818b886e65e33b765397693a` (base `codex2/k-ai-combined-main`). CI run ID: [41715287501](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41715287501) CI: completed, conclusion failure.
 
-Check: Check selected-key-only use with no fallback/leak, encrypted storage, company isolation, owner MFA and cap ACLs. Require the real two-session near-cap race and provider/browser evidence; mocks cannot clear SQL conditions. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the reviewer cap and accounting-permission proofs described in tests/validation/OUTSTANDING-CHECKS.md: real PostgreSQL owner/cap/company ACLs and provider/token/OAuth isolation. Require actual execution after correct release sequencing, not unit mocks. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #254: AI: Add database reviewer proofs for #232
 
@@ -190,13 +190,13 @@ Check: Check selected-key-only use with no fallback/leak, encrypted storage, com
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/252 at head `5a923801befe5ffd1514ba19938ff9090685a436` (base `codex/q-setup-access-tests`). CI run ID: [41715218532](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41715218532) CI: completed, conclusion failure.
 
-Check: Inspect the added disposable database/browser reviewer proofs for paid breaks, blank setup and ordinary/support/company access; run against the prepared reviewed schema. Collection and mocked role checks do not prove PostgreSQL RLS. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the independent setup reviewer conditions on #239, including support and elevated support access; require actual disposable PostgreSQL evidence for the complete role matrix. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #251: AI: Add database reviewer proofs for #236
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/251 at head `b8e9b3daeb9f6b07d144c57d4a453c39bf731176` (base `codex/n-company-setup-email-combined`). CI run ID: [41715198202](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41715198202) CI: completed, conclusion failure.
 
-Check: Inspect the added disposable database/browser reviewer proofs for paid breaks, blank setup and ordinary/support/company access; run against the prepared reviewed schema. Collection and mocked role checks do not prove PostgreSQL RLS. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the added setup reviewer permission cases on the #236 source: ordinary/read-only/support/outsider/company boundaries must run against the prepared disposable PostgreSQL schema. Do not claim paid-break/browser execution from a setup-only proof. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #250: AH: Harden reviewed wipe evidence preservation and scope checks
 
@@ -220,13 +220,13 @@ Check: Check exact-head evidence and linked paths, explicit missing/failed/skipp
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/247 at head `41c685c416305637d86b580324fff9e6cda037ff` (base `main`). CI run ID: [41736552876](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41736552876) CI: completed, conclusion failure.
 
-Check: Check exact approved text, edit invalidation, company/role gates, duplicate-send refusal and uncertain-delivery no automatic resend. Require guarded disposable SQL/browser evidence and preserve existing assertions. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the complete combined candidate: chase exact-text/recovery, N1/N5/N6, accounting, AI/caps and local fonts, plus required release packaging and the current included/excluded inventory. Require actual final-head runtime/rehearsal proofs and independent review. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #246: test: hand over Codex PRs and remaining validation
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/246 at head `d5ab1c7edbb72e33cd032f9a65860a95e4229160` (base `main`). CI run ID: [41707827461](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41707827461) CI: completed, conclusion success.
 
-Check: Require the exact combined-driver disposable rehearsal, archive immutability/ACL and refusal proofs, complete Marpet/login/settings/numbering/audit preservation and JNR-only provider disconnect checks. Public snippets alone cannot clear the private-kit condition. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the handover inventory, exact source heads, completed versus blocked work and next commands; retain historical evidence scopes. No code-safety or runtime result follows from a handover edit. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #245: V: Add reviewer Playwright cases and matching click checks
 
@@ -280,7 +280,7 @@ Check: Check Xero/Sage/QuickBooks credentials/results stay separate, tokens rema
 
 Review https://github.com/rhyshume1997-alt/tolra-public/pull/236 at head `d54d90b0408fbd490f03ada687b27af03bba9800` (base `main`). CI run ID: [41693048362](https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41693048362) CI: completed, conclusion failure.
 
-Check: Check paid/unpaid company settings agree across planned hours, actual timesheets and payroll; verify boundaries and invalid seconds. For schedules require saved-day behaviour and no duplicate or unapproved email. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
+Check: Check the combined paid-break, blank-company setup and both email-editor changes retain their source assertions and company/role boundaries. Require actual N1/N5/N6 database/browser results; a unit suite alone does not complete them. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
 ## PR #234: K: Combine AI modes, reviewer regressions and custom caps on main
 
@@ -894,3 +894,5 @@ Review https://github.com/rhyshume1997-alt/tolra-public/pull/11 at head `f92d4d8
 
 Check: Check exact-head evidence and linked paths, explicit missing/failed/skipped results, stop gates and independent reviewer/Rhys decisions. Documentation or synthetic gate tests never grant SQL/release approval; do not restart the stopped audit. Give SAFE / SAFE WITH CONDITIONS / NOT SAFE for this exact scope, listing each remaining condition.
 
+
+CQ note: twelve reviewer-check paragraphs were corrected where the earlier keyword grouping overstated or missed a PR scope (for example, CI/packet/runbook PRs incorrectly received wipe-only instructions). Other packet metadata remains the original dated snapshot. New CM–CP PRs are handed over separately; no second broad inventory or audit was started.
