@@ -1,0 +1,5 @@
+Command: node tests/validation/check-pack.mjs
+Exit: 0
+Pack structure passed: 15 requirements; IQ 6, OQ 15, PQ 9. No wholly unmapped URS rows. Read COVERAGE-GAPS.md for subcondition gaps. Runtime protocols remain NOT TESTED unless scoped actual evidence is recorded; VSR sign-off stays blank.
+
+

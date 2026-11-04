@@ -19,3 +19,5 @@ Frozen CA to CD code: `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`, based on #247 
 | Rhys's URS/risk/process acceptance and VSR | NOT TESTED | All acceptance and signatures remain blank. |
 
 IQ-001 records local checkout identification only. IQ-002 to IQ-006 remain NOT TESTED as complete installation protocols. Every OQ and PQ row remains NOT TESTED until its full expected result has actual exact-head evidence. Passing supporting unit files never completes screen, SQL, provider, backup, restore, WIP or company process checks.
+
+CE mapped-unit run: 463 passed across 36 mapped files, 0 failed, 0 skipped, 0 todo, clean tested head `18aa60d51e1eec511517dede02c461c688bbad8a`. Evidence: `evidence/2026-11-04T10-06-53.220Z-18aa60d51e1e-Ho0yMy/summary.json`, with input hashes and command logs. This separately scoped mapped run is not the final-head full suite or completion of OQ. Typecheck and full repository `npm run lint` also exited 0 while preparing CE; the CI job will rerun on the final committed head. All DB/browser/manual results stay NOT TESTED.
