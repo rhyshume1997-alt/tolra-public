@@ -14,8 +14,7 @@ import { createHash } from "node:crypto";
 import { decideContact } from "@/lib/integrations/contacts";
 import type { AccountingProvider, IntegrationDocument, Mappings, ProviderDocument, ProviderId } from "@/lib/integrations/types";
 import { ProviderError, TransfersHeldError } from "@/lib/integrations/types";
-import { expectedTotals, missingMappings, totalsDifference, UnmappedError } from "@/lib/integrations/xero/mapper";
-import { VOID_IN_XERO, voidRefusedMessage } from "@/lib/integrations/xero/policy";
+import { expectedTotals, missingMappings, totalsDifference, UnmappedError } from "@/lib/integrations/mapping-rules";
 
 export const MAX_ATTEMPTS = 6;
 const CLAIM_SECONDS = 120;
@@ -236,8 +235,9 @@ async function processCreate(org: string, providerId: ProviderId, send: ClaimedS
 }
 
 async function processVoid(send: ClaimedSend, doc: IntegrationDocument, provider: AccountingProvider, now: () => number): Promise<Result> {
-  // Q11 (lib/integrations/xero/policy.ts): voids are sent as voids unless the accountant decides otherwise.
-  if (!VOID_IN_XERO) return { status: "skipped", error: "Voids are not sent to Xero: void or credit it in Xero by hand." };
+  // The adapter owns the provider-specific void policy.
+  if (provider.voidPolicy?.enabled === false) return { status: "skipped", error: "Voids are not sent to Xero: void or credit it in Xero by hand." };
+  const voidRefusedMessage = provider.voidPolicy?.refusedMessage ?? ((why: string) => `The accounting service did not void it (${why.slice(0,200)}). Check it there.`);
   if (!send.external_id) return { status: "failed", error: "Its invoice has no Xero id." };
   if (send.attempts > 1) {
     const back = await readBack(provider, doc);
