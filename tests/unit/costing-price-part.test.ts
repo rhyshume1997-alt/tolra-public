@@ -166,3 +166,13 @@ describe("no built-in rates in the costing code", () => {
     }
   });
 });
+
+describe("after the rates change (the browser spec's second step)", () => {
+  it("machine GBP 80/h and margin 35%: cost 57.35, price 77.42; the first calculation is still 60.72", () => {
+    const changed: CostingRates = { ...CONFIGURED, machines: [{ ...CONFIGURED.machines[0], hourlyRate: 80 }], defaults: { ...CONFIGURED.defaults, marginPct: 35 } };
+    const r = priceThisPart(changed, ENTRY);
+    expect(r.status === "ok" && [r.figures.unitCost, r.figures.unitPrice]).toEqual([57.35, 77.42]);
+    const first = priceThisPart(CONFIGURED, ENTRY);
+    expect(first.status === "ok" && first.figures.unitPrice).toBe(60.72);
+  });
+});

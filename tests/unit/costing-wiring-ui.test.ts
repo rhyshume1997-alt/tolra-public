@@ -226,7 +226,7 @@ async function drawQuote(props: Partial<Parameters<typeof QuotePricePanelView>[0
 }
 async function describePart() {
   await type(byLabel("Part description"), "Bush 40mm");
-  await type(byLabel("Quantity"), "10");
+  await type(byLabel("Part quantity"), "10");
   await type(byLabel("Material weight kg per part"), "0.5");
   await type(byLabel("Setup hours for batch"), "1");
   await type(byLabel("Cycle hours per part"), "0.2");
@@ -293,7 +293,7 @@ describe("Quote builder: Price this part", () => {
   });
   it("the buttons stay off until the part has a description", async () => {
     await drawQuote();
-    await type(byLabel("Quantity"), "10");
+    await type(byLabel("Part quantity"), "10");
     await type(byLabel("Material weight kg per part"), "0.5");
     await type(byLabel("Cycle hours per part"), "0.2");
     expect(button("Add as quote line")!.disabled).toBe(true);
@@ -304,7 +304,7 @@ describe("Quote builder: Price this part", () => {
     const two: CostingRates = { ...CONFIGURED, machines: [...CONFIGURED.machines, { id: "44444444-4444-4444-8444-444444444444", name: "Lathe", hourlyRate: 45, labourPerHour: null }] };
     await drawQuote({ load: okLoad(two, SNAP) });
     await describePart();
-    await type(byLabel("Machine"), "44444444-4444-4444-8444-444444444444");
+    await type(byLabel("Part machine"), "44444444-4444-4444-8444-444444444444");
     expect(q('[aria-label="Cost breakdown"]')!.textContent).toContain("Machine: £13.50");
   });
   it("a material priced each asks for pieces per part", async () => {
@@ -317,7 +317,7 @@ describe("Quote builder: Price this part", () => {
     await act(async () => root.render(createElement("form", { onSubmit: submitted as never }, createElement(QuotePricePanelView, { role: "admin", load: okLoad(CONFIGURED, SNAP), onAdd: vi.fn() }))));
     await flush();
     const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
-    byLabel("Quantity").dispatchEvent(event);
+    byLabel("Part quantity").dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
   });
   it("a load error says so and shows no figures", async () => {

@@ -42,8 +42,9 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
       {pricing.blank ? null : <p className="text-sm">Still to enter: {pricing.missing.join(', ')}.</p>}
     </section>;
   }
-  const field = (name: string, value: string, update: (v: string) => void, step = '0.01') =>
-    <label className="block text-sm">{name}<input aria-label={name} type="number" min="0" step={step} className="block w-full rounded border p-2" value={value} onChange={e => update(e.target.value)} /></label>;
+  // aria-label of the Quantity box differs from the quote line's own "Quantity" so the two never share an accessible name.
+  const field = (name: string, value: string, update: (v: string) => void, step = '0.01', label = name) =>
+    <label className="block text-sm">{name}<input aria-label={label} type="number" min="0" step={step} className="block w-full rounded border p-2" value={value} onChange={e => update(e.target.value)} /></label>;
   const figures = pricing.status === 'ok' ? pricing.figures : null;
   const ready = Boolean(figures && description.trim());
   // Inside the quote form: Enter in a box here must not save the quote.
@@ -51,10 +52,10 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
   return <section aria-label="Price this part" className="space-y-3 rounded border p-4" onKeyDown={noSubmit}>
     <h2 className="text-lg font-semibold">Price this part</h2>
     <label className="block text-sm">Description<input aria-label="Part description" className="block w-full rounded border p-2" value={description} onChange={e => setDescription(e.target.value)} /></label>
-    <label className="block text-sm">Material<select aria-label="Material" className="block w-full rounded border p-2" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-    <label className="block text-sm">Machine<select aria-label="Machine" className="block w-full rounded border p-2" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="block text-sm">Material<select aria-label="Part material" className="block w-full rounded border p-2" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="block text-sm">Machine<select aria-label="Part machine" className="block w-full rounded border p-2" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
     <div className="grid gap-3 sm:grid-cols-2">
-      {field('Quantity', quantity, setQuantity, '1')}
+      {field('Quantity', quantity, setQuantity, '1', 'Part quantity')}
       {field(material?.unit === 'each' ? 'Pieces per part' : 'Material weight kg per part', amount, setAmount)}
       {field('Setup hours for batch', setupHours, setSetupHours)}
       {field('Cycle hours per part', cycleHours, setCycleHours)}
