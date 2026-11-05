@@ -9,7 +9,7 @@
   },
   "subjectsReadBackUnchanged": true,
   "checks": "Typecheck (6144MiB heap), lint and diff checks passed for changes; full/focused counts listed per item. No mocked pass substitutes for hosted/database/browser proof.",
-  "constraints": "No other agents/chats, main/cand/#415 edits, merges, production SQL, provider calls or real data.151remainsproposalonly.",
+  "constraints": "No other agents/chats, main/cand/#415 edits, merges, production SQL, provider calls or real data. 151 remains proposal only.",
   "items": [
     {
       "item": 1,
@@ -102,7 +102,7 @@
       "remaining": [
         "Newer integrated candidate and hosted Auth/provider proof not checked"
       ],
-      "note": "Database fixture overlays exact public146/150 SQL in isolated synthetic schema; not full migration-chain proof. Includes shared-key confirmation rejection, persistent OFF across audit purge, configure then explicit re-enable, and16readback regressions."
+      "note": "Database fixture overlays exact public146/150 SQL in isolated synthetic schema; not full migration-chain proof. Includes shared-key confirmation rejection, persistent OFF across audit purge, configure then explicit re-enable, and16 readback regressions."
     },
     {
       "item": 3,
@@ -128,10 +128,10 @@
         }
       },
       "remaining": [
-        "priceThisPart extended preview differs from copied rounded quote-unit times quantity7,99,1000000",
+        "priceThisPart extended preview differs from copied rounded quote-unit times quantities 7, 99, 1000000",
         "148 explicitly rounds half-even: actual half-penny machine cost disappears under Rhys half-up business-money rule"
       ],
-      "proposedFix": "Opus: fix preview wrapper without changing engine or60goldens; resolve148 policy discrepancy without silently broadening quotation-engine exception. Exact repro/failures on425."
+      "proposedFix": "Opus: fix preview wrapper without changing engine or its 60 golden tests; resolve 148 policy discrepancy without silently broadening quotation-engine exception. Exact repro/failures on425."
     },
     {
       "item": 4,
@@ -187,10 +187,10 @@
         }
       },
       "remaining": [
-        "Verifier accepts security-definer function search_path=pg_temp,public because onlyproconfignonnull checked",
-        "Existing check-migrations and release-plan-preflight demand151registration: conflicts with PM proposal-only rule"
+        "Verifier accepts security-definer function search_path=pg_temp,public because only checks that proconfig is non-null checked",
+        "Existing check-migrations and release-plan-preflight demand 151 registration: conflicts with PM proposal-only rule"
       ],
-      "proposedFix": "Opus: verify exact approvedsearch_path perfunction; reconcile toolingwithoutregistering151. Productionfunctionitselfcorrectlypinned. Actual11verifyrows/apply/guardedrollback/reapplypass; refusal-logrowsintentionallydropped byrollback,companyauditpreserved."
+      "proposedFix": "Opus: verify exact approved search_path per function; reconcile tooling without registering 151. Production function itself correctly pinned. Actual 11 verification rows, apply, guarded rollback and reapply pass; refusal-log rows intentionally dropped by rollback, company audit preserved."
     },
     {
       "item": 6,
@@ -217,11 +217,11 @@
       },
       "remaining": [
         "Real JNR exports/counts/money not checked",
-        "CSV/XLSX loader does not establish original report-style.xls shape handling",
-        "No dedicated aged-debtors mapping at publicpin",
-        "GO-LIVE-DATA-LOAD.md absent frompin"
+        "CSV/XLSX loader does not establish original report-style .xls shape handling",
+        "No dedicated aged-debtors mapping at public pin",
+        "GO-LIVE-DATA-LOAD.md absent from pin"
       ],
-      "requiredFromCode": "Approved export mapping/conversion, independent aged-debtors control totals, matching read-only post-load snapshot; no realdataused orimportperformed."
+      "requiredFromCode": "Approved export mapping/conversion, independent aged-debtors control totals, matching read-only post-load snapshot; no real data used or import performed."
     }
   ]
 }
