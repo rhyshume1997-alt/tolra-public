@@ -1,5 +1,5 @@
-/** Additional cost accounting only. Never payroll. All costs are integer pence; time is integer milliseconds. */
-import { boughtIn, invoicedSellPence, quoteSellPence, type LinkedPo, type SellInvoice, type SellCredit, type SellLine } from "@/lib/purchase-order-link";
+/** Additional cost accounting only. Never payroll. All costs are integer pence; internal time is integer microseconds (display fields remain milliseconds). */
+import { boughtIn, invoicedSellPence, invoiceCounts, quoteSellPence, type LinkedPo, type SellInvoice, type SellCredit, type SellLine } from "@/lib/purchase-order-link";
 
 export type CostConfig = { enabled: boolean; revision: number; approved_at: string | null; labour_rate_pence: number | null;
   overhead_basis: "none" | "labour" | "machine"; overhead_rate_pence: number | null };
@@ -44,10 +44,41 @@ function minusTime(spans: Span[], covered: Span[]): number {
   const cover = unionTime(covered);
   return unionTime(spans).reduce((total, [a, b]) => total + b - a - cover.reduce((n, [x, y]) => n + Math.max(0, Math.min(b, y) - Math.max(a, x)), 0), 0);
 }
+/** PostgreSQL timestamps carry up to six fractional digits; Date.parse alone drops the last three. */
+function timestampMicroseconds(value: string): number | null {
+  const match = value.match(/(?:\.(\d+))?(?:Z|[+-]\d{2}:?\d{2})$/i);
+  if (!match || (match[1]?.length ?? 0) > 6) return null;
+  const ms = Date.parse(value);
+  const remainder = Number((match[1] ?? "").padEnd(6, "0").slice(3));
+  const us = ms * 1000 + remainder;
+  return Number.isSafeInteger(us) ? us : null;
+}
 function spanOf(t: CostTimer): Span | null {
   if (!t.ended_at) return null;
-  const a = Date.parse(t.started_at), b = Date.parse(t.ended_at);
-  return Number.isSafeInteger(a) && Number.isSafeInteger(b) && b > a ? [a, b] : null;
+  const a = timestampMicroseconds(t.started_at), b = timestampMicroseconds(t.ended_at);
+  return a !== null && b !== null && b > a ? [a, b] : null;
+}
+function costForMicroseconds(us: number, rate: number): number {
+  if (!Number.isSafeInteger(us) || us < 0 || !validRate(rate)) throw new Error("Invalid recorded time or rate");
+  return roundedRatio(BigInt(us) * BigInt(rate), BigInt(HOUR) * BigInt(1000));
+}
+/** Keep the legacy calculator untouched; refuse unsafe intermediate sums in this optional view. */
+function safeRevenue(invoices: SellInvoice[], credits: SellCredit[]): boolean {
+  const issued = invoices.filter(inv => invoiceCounts(inv.status));
+  const ids = new Set(issued.map(inv => inv.id));
+  const parts = issued.map(inv => invoicedSellPence([inv], []));
+  for (const credit of credits) {
+    if (credit.invoice_id && ids.has(credit.invoice_id) && String(credit.status ?? "").trim().toLowerCase() === "issued") {
+      parts.push(invoicedSellPence([{ id: credit.invoice_id, status: "issued", subtotal: 0 }], [credit]));
+    }
+  }
+  let exposure = BigInt(0);
+  for (const part of parts) {
+    if (!part.issued || part.pence === null || !Number.isSafeInteger(part.pence)) return false;
+    exposure += BigInt(Math.abs(part.pence));
+    if (exposure > BigInt(Number.MAX_SAFE_INTEGER)) return false;
+  }
+  return true;
 }
 const overlap = (a: Span, b: Span) => a[0] < b[1] && b[0] < a[1];
 export type ActualCostFigure = { state: "off" | "incomplete" | "complete"; reasons: string[]; warnings: string[];
@@ -67,6 +98,7 @@ export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
   if (!input.estimate) fail("Confirm whether labour and machines are required for this job");
   out.quotedPence = input.quoteLines ? quoteSellPence(input.quoteLines) : null;
   if (!input.invoices || !input.credits) fail("Invoice or credit note records could not be read");
+  else if (!safeRevenue(input.invoices, input.credits)) fail("Revenue exceeds supported pence range");
   else { const sell = invoicedSellPence(input.invoices, input.credits); if (sell.issued && sell.pence !== null) out.invoicedPence = sell.pence; else fail("No complete issued net revenue yet"); }
   const purchases = input.pos ? boughtIn(input.pos) : null;
   if (!purchases) fail("Supplier allocations are missing or unreadable"); else out.supplierPence = purchases.pence;
@@ -98,8 +130,8 @@ export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
   if (!machines.size && !input.estimate?.machines_not_required) fail("No completed machine hours recorded");
   if (labour.size && input.estimate?.labour_not_required) fail("Recorded labour conflicts with the no-labour declaration");
   if (machines.size && input.estimate?.machines_not_required) fail("Recorded machines conflict with the no-machine declaration");
-  out.labourMilliseconds = [...labour.values()].reduce((n, spans) => n + duration(spans), 0);
-  out.machineMilliseconds = [...machines.values()].reduce((n, spans) => n + duration(spans), 0);
+  out.labourMilliseconds = [...labour.values()].reduce((n, spans) => n + duration(spans) / 1000, 0);
+  out.machineMilliseconds = [...machines.values()].reduce((n, spans) => n + duration(spans) / 1000, 0);
   let chargedLabour = 0, overheadTime = 0;
   for (const [user, spans] of labour) {
     chargedLabour += minusTime(spans, runs.filter(r => r.rate.includes_labour && r.timer.operator_id === user).map(r => r.span));
@@ -112,17 +144,17 @@ export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
       fail("Overlapping machine records disagree about the operator");
     }
   }
-  out.chargedLabourMilliseconds = chargedLabour;
+  out.chargedLabourMilliseconds = chargedLabour / 1000;
   try {
-    out.labourPence = validRate(input.config.labour_rate_pence) ? costForMilliseconds(chargedLabour, input.config.labour_rate_pence) : null;
+    out.labourPence = validRate(input.config.labour_rate_pence) ? costForMicroseconds(chargedLabour, input.config.labour_rate_pence) : null;
     let machineCost = 0;
     for (const [machine, spans] of machines) {
       const rate = input.rates.find(r => r.machine_id === machine);
-      if (rate && validRate(rate.rate_pence)) machineCost += costForMilliseconds(duration(spans), rate.rate_pence);
+      if (rate && validRate(rate.rate_pence)) machineCost += costForMicroseconds(duration(spans), rate.rate_pence);
       if (input.config.overhead_basis === "machine" && rate && !rate.includes_overhead) overheadTime += duration(spans);
     }
     out.machinePence = machineCost;
-    out.overheadPence = input.config.overhead_basis === "none" ? 0 : validRate(input.config.overhead_rate_pence) ? costForMilliseconds(overheadTime, input.config.overhead_rate_pence) : null;
+    out.overheadPence = input.config.overhead_basis === "none" ? 0 : validRate(input.config.overhead_rate_pence) ? costForMicroseconds(overheadTime, input.config.overhead_rate_pence) : null;
     if (!out.reasons.length && out.invoicedPence !== null && out.supplierPence !== null && out.labourPence !== null && out.overheadPence !== null) {
       const costs = out.supplierPence + out.labourPence + machineCost + out.overheadPence;
       out.actualProfitPence = out.invoicedPence - costs;
@@ -147,7 +179,7 @@ export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
         if (!Number.isSafeInteger(out.estimatedProfitPence)) throw new Error("Estimate exceeds supported range");
         out.differencePence = out.actualProfitPence === null ? null : out.actualProfitPence - out.estimatedProfitPence;
         const estimatedLabourMs = plannedCost(estimate.labour_hours, HOUR)!;
-        if (chargedLabour > estimatedLabourMs) out.warnings.push("Additional labour hours exceed the estimate");
+        if (chargedLabour > estimatedLabourMs * 1000) out.warnings.push("Additional labour hours exceed the estimate");
         if (out.machineMilliseconds! > estimatedMs) out.warnings.push("Machine hours exceed the estimate");
         if (out.supplierPence !== null && out.supplierPence > estimate.supplier_pence) out.warnings.push("Supplier costs exceed the estimate");
         if (out.actualProfitPence !== null && out.invoicedPence! - out.actualProfitPence > estimate.supplier_pence + lab! + machineEstimate + oh!) out.warnings.push("Actual costs exceed estimated costs");
