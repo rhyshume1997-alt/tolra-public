@@ -1,3 +1,7 @@
+import { mkdtempSync, readFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { loadSafeupdate, safeupdateStatus } from "../support/safeupdate-session";
@@ -5,7 +9,8 @@ import { loadSafeupdate, safeupdateStatus } from "../support/safeupdate-session"
 const refuse = () => Object.assign(new Error('access to library "safeupdate" is not allowed'), { code: "42501" });
 
 describe("loadSafeupdate", () => {
-  beforeEach(() => { safeupdateStatus.loaded = 0; safeupdateStatus.unavailable = 0; vi.spyOn(console, "log").mockImplementation(() => undefined); });
+  const evidenceFile = path.join(mkdtempSync(path.join(os.tmpdir(), "safeupdate-")), "sessions.log");
+  beforeEach(() => { process.env.SAFEUPDATE_EVIDENCE_FILE = evidenceFile; safeupdateStatus.loaded = 0; safeupdateStatus.unavailable = 0; vi.spyOn(console, "log").mockImplementation(() => undefined); });
 
   it("loads the plain name where the user may", async () => {
     const query = vi.fn(async () => undefined);
@@ -26,6 +31,7 @@ describe("loadSafeupdate", () => {
     const query = vi.fn(async () => { throw refuse(); });
     expect(await loadSafeupdate({ query })).toBe(false);
     expect(safeupdateStatus.unavailable).toBe(1);
+    expect(readFileSync(evidenceFile, "utf8")).toBe("refused\n"); // one line per affected session, summed by CI
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("SAFEUPDATE-NOT-LOADABLE"));
   });
 

@@ -261,6 +261,15 @@ jobs:
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
         run: npm run test:db
+      - name: "Evidence: stand-in sessions that could not LOAD pg-safeupdate (those sessions did NOT verify safeupdate enforcement)"
+        if: ${{ always() }}
+        run: |
+          f=evidence/safeupdate-sessions.log
+          n=0; [ -f "$f" ] && n=$(wc -l < "$f")
+          echo "SAFEUPDATE-NOT-LOADABLE affected stand-in sessions: $n"
+          if [ "$n" -gt 0 ]; then
+            echo "NOTE: in those e2/wa sessions the bare UPDATE/DELETE refusal was not exercised. Enforcement is proven only through the real API path by tests/db/safeupdate-api-path.test.ts (and the safeupdate-gated import suites where loadable)."
+          fi
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         env:

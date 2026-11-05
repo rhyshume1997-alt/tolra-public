@@ -6,6 +6,9 @@
  * plugins path. Only 42501 is tolerated, and never silently: the session is counted and logged as running WITHOUT the guard (the same
  * situation the safeupdate-gated suites in tests/db/safeupdate-support.ts report as skipped). Any other error is thrown as before.
  */
+import { appendFileSync, mkdirSync } from "node:fs";
+import path from "node:path";
+
 type Queryable = { query: (text: string) => Promise<unknown> };
 
 export const safeupdateStatus = { loaded: 0, unavailable: 0 };
@@ -24,6 +27,8 @@ export async function loadSafeupdate(db: Queryable): Promise<boolean> {
     }
   }
   safeupdateStatus.unavailable += 1;
+  // One line per affected session, so the CI evidence can state how many sessions ran without the guard (the count is summed by ci.yml).
+  try { const file = process.env.SAFEUPDATE_EVIDENCE_FILE ?? "evidence/safeupdate-sessions.log"; mkdirSync(path.dirname(file), { recursive: true }); appendFileSync(file, "refused\n"); } catch { /* evidence is best effort; the counter and the log line below remain */ }
   if (!announced) {
     announced = true;
     console.log(`SAFEUPDATE-NOT-LOADABLE this database user may not LOAD pg-safeupdate (${(refused as { code?: string }).code}); the bare UPDATE/DELETE refusal is NOT exercised in the e2/wa stand-in sessions here`);
