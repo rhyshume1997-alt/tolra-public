@@ -1,3 +1,5 @@
+import {toPence} from "@/lib/money";
+
 /** Escape text for safe interpolation into HTML strings. */
 export function esc(value: unknown) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -27,6 +29,6 @@ export function csvCell(value: unknown) {
  * altered, text is neutralised as above, and quoted only when it needs it. null / undefined is an empty field.
  */
 export function csvField(value: string | number | null | undefined) {
-  const text = typeof value === "number" ? value.toFixed(2) : neutraliseCsvText(value ?? "");
+  const text = typeof value === "number" ? (toPence(value) / 100).toFixed(2) : neutraliseCsvText(value ?? "");
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }

@@ -1,0 +1,14 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/costing-proxy.test.ts (86 tests) 9185ms
+   ✓ no client bundle reads COSTING_ENGINE_TOKEN / COSTING_ENGINE_URL > the only files that mention COSTING_ENGINE_* are the proxy, the status route and the server caller 5205ms
+   ✓ no client bundle reads COSTING_ENGINE_TOKEN / COSTING_ENGINE_URL > every file reachable from a 'use client' file by value imports is free of COSTING_ENGINE_* and does not import a server-only module 3290ms
+ ✓ tests/unit/costing-rates-store.test.ts (21 tests) 75ms
+ ✓ tests/unit/accounting-token-isolation.test.ts (4 tests) 173ms
+ ✓ tests/unit/costing-price-part.test.ts (36 tests) 70ms
+ ✓ tests/unit/year-end-payment-reconciliation.test.ts (3 tests) 51ms
+ ✓ tests/unit/year-end-po-totals.test.ts (11 tests) 702ms
+   ✓ year-end export: purchase order totals > £100 net, one 20% line, VAT on: Net 100.00, VAT 20.00, Gross 120.00, same as the printed PO 686ms
+ ✓ tests/unit/accounting-cloud-adapters.test.ts (11 tests) 21ms

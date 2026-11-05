@@ -33,9 +33,9 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
   const material = rates.materials.find(m => m.id === (materialId || rates.materials[0]?.id));
   const machine = rates.machines.find(m => m.id === (machineId || rates.machines[0]?.id));
   const pricing = useMemo(() => priceThisPart(rates, {
-    materialId: material?.id ?? '', machineId: machine?.id ?? '', quantity: Number(quantity), amountPerPart: entered(amount),
+    materialId: materialId || rates.materials[0]?.id || '', machineId: machineId || rates.machines[0]?.id || '', quantity: Number(quantity), amountPerPart: entered(amount),
     setupHours: entered(setupHours), cycleHours: entered(cycleHours), programmingHours: entered(programmingHours),
-  }), [rates, material, machine, quantity, amount, setupHours, cycleHours, programmingHours]);
+  }), [rates, materialId, machineId, quantity, amount, setupHours, cycleHours, programmingHours]);
 
   if (pricing.status === 'not_set_up') {
     return <section aria-label="Price this part" className="space-y-2 rounded border p-4">
@@ -54,8 +54,8 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
   return <section aria-label="Price this part" className="space-y-3 rounded border p-4" onKeyDown={noSubmit}>
     <h2 className="text-lg font-semibold">Price this part</h2>
     <label className="grid gap-1 text-sm text-slate-600">Description<Input aria-label="Part description" maxLength={500} value={description} onChange={e => setDescription(e.target.value)} /></label>
-    <label className="grid gap-1 text-sm text-slate-600">Material<select aria-label="Part material" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-    <label className="grid gap-1 text-sm text-slate-600">Machine<select aria-label="Part machine" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm text-slate-600">Material<select aria-label="Part material" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={material?.id ?? ''} onChange={e => setMaterialId(e.target.value)}>{!material ? <option value="">Choose a current material</option> : null}{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm text-slate-600">Machine<select aria-label="Part machine" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={machine?.id ?? ''} onChange={e => setMachineId(e.target.value)}>{!machine ? <option value="">Choose a current machine</option> : null}{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
     <div className="grid gap-3 sm:grid-cols-2">
       {field('Quantity', quantity, setQuantity, '1', 'Part quantity')}
       {field(material?.unit === 'each' ? 'Pieces per part' : 'Material weight kg per part', amount, setAmount)}

@@ -196,6 +196,11 @@ jobs:
           print("busy:", busy or "none")
           sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
           PY
+      - name: Financial143 CLI, rate snapshots and company isolation (own disposable database)
+        run: |
+          git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
+          docker pull postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+          B5_SUPABASE_CLI="$(command -v supabase)" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
