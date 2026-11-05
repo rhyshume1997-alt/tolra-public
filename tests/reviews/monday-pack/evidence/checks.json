@@ -1,0 +1,11 @@
+{
+  "code_snapshot_commit": "46795e9a1e25f5a360310f94a8a201c250f682c0",
+  "recorded_utc": "2026-11-05T08:38:02.036153+00:00",
+  "counts": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "scope": "offline documentary checks only; not live release evidence",
+  "log_sha256": "88d8474f4bbf0b8da6d1de0ce510eecc92e614ae947a68bcddf025ae50a3d2a2"
+}
