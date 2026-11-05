@@ -13,12 +13,13 @@ vi.mock("@/lib/server/auth", () => ({
   requireProfile: async (roles: string[]) => {
     fixture.roles.push(roles);
     if (fixture.forbidden) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    return { profile: { organization_id: "company-a" }, user: { id: "admin-a" }, session: { support: fixture.support, read_only: false }, supabase: { from: () => chain() } };
+    return { profile: { organization_id: "company-a" }, user: { id: "admin-a" }, session: { support: fixture.support, read_only: false }, supabase: { auth: freshMfaAuth(), from: () => chain() } };
   },
 }));
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({ from: () => chain() }) }));
 vi.mock("@/lib/accounting/connections", () => ({ disconnectAccounting, accountingConnection: async () => fixture.configured ? { checkInvoice, begin: async () => "https://provider.example.test/authorize", finish: async () => true, disconnect: async () => undefined } : null }));
 import { GET, POST } from "@/app/api/accounting/[provider]/[action]/route";
+import { freshMfaAuth } from "../support/fresh-mfa";
 const context = (action: string, provider = "sage") => ({ params: Promise.resolve({ action, provider }) });
 const request = (body: object = {}) => new Request("https://tolra.example.test/api/accounting/sage/check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 beforeEach(() => { fixture.support = false; fixture.sameOrigin = true; fixture.forbidden = false; fixture.invoice = "INV-FAKE"; fixture.configured = true; fixture.filters = []; fixture.roles = []; checkInvoice.mockClear(); disconnectAccounting.mockClear(); });

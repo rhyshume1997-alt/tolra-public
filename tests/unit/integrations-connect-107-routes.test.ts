@@ -8,6 +8,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { freshMfaAuth } from "../support/fresh-mfa";
 
 vi.mock("server-only", () => ({}));
 
@@ -19,7 +20,7 @@ type RpcFn = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unk
 const userRpc = vi.fn<RpcFn>(async () => ({ data: { expires_at: "2026-10-31T15:00:00Z" }, error: null }));
 const requireProfile = vi.fn<(roles: string[]) => Promise<unknown>>(async () => (refuse
   ? NextResponse.json({ error: "Forbidden" }, { status: refuse })
-  : { supabase: { rpc: userRpc }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session }));
+  : { supabase: { rpc: userRpc, auth: freshMfaAuth() }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session }));
 vi.mock("@/lib/server/auth", () => ({
   sameOrigin: () => origin,
   clientIp: () => "203.0.113.7",

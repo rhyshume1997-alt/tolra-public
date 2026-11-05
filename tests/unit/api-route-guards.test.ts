@@ -21,6 +21,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { freshMfaAuth } from "../support/fresh-mfa";
 
 /** Each guard and the module it must be imported from. */
 const GUARD_IMPORTS: Record<string, string> = {
@@ -424,7 +425,7 @@ vi.mock("@/lib/server/auth", () => ({
   isErrorResponse: (v: unknown) => v instanceof NextResponse,
   jsonError: (m: string, s: number) => NextResponse.json({ error: m }, { status: s }),
   readJson: async (r: Request) => ({ ok: true, data: await r.json() }),
-  requireProfile: vi.fn(async () => ({ supabase: {}, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session })),
+  requireProfile: vi.fn(async () => ({ supabase: { auth: freshMfaAuth() }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session })),
 }));
 
 describe("Xero service-role routes refuse every support session", () => {
