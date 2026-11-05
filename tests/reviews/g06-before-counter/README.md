@@ -9,3 +9,5 @@ The private hold table and numbering guard are exact unchanged slices of public 
 This proves only that guard path. It does not install full 147 or prove final browser/RLS/audit/import behaviour. Reuse #373 for the real counter/undo scripts and the two unresolved conditional SQL-role bypass findings. No failure is relabelled as a pass. Final candidate acceptance: **NOT EXECUTED**.
 
 Requirement G06; expected no pre-counter number and unchanged state; final actual ____ NOT EXECUTED; evidence reference ____; tester ____; date ____; approval ____.
+
+Executed code `412fd82`, 5 November 2026 UTC, Codex: 3 passed, zero failed/skipped. Scoped lint passed. Identity receipts, SQL records and original Vitest output are retained in the evidence archive with its SHA-256. Later commit adds evidence only. Final release acceptance stays NOT EXECUTED; #373's two conditional findings remain open.
