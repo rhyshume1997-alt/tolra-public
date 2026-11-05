@@ -48,7 +48,7 @@ describe("MicrosoftSetupCard: every connection state", () => {
   it("loading while the status is unknown", async () => {
     const h = await mount(createElement(MicrosoftSetupCard, { status: null }));
     expect(text(h, "connection-microsoft")).toContain("Checking");
-    expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe("Sending: Unknown");
+    expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe("Sending: checking");
   });
   it("database update missing", async () => {
     const h = await mount(createElement(MicrosoftSetupCard, { status: { ...okStatus, db107: false } }));
@@ -61,14 +61,15 @@ describe("MicrosoftSetupCard: every connection state", () => {
     expect(button("Connect Microsoft 365")?.disabled).toBe(true);
     expect(h.querySelector('[data-testid="microsoft-admin-approval"]')).toBeNull();
   });
-  it("not connected: step 1 is next, Connect works, Sending is Off", async () => {
+  it("not connected: step 1 is next, Connect works, Sending: not set up", async () => {
     overview({});
     const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
     expect(text(h, "connection-microsoft")).toContain("Not connected");
     expect(h.querySelector('li[data-state="next"]')?.textContent).toContain("Connect with your Microsoft work account");
     expect(button("Connect Microsoft 365")?.disabled).toBe(false);
     expect(button("Test")).toBeUndefined();
-    expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe("Sending: Off");
+    expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe("Sending: not set up");
+    expect(h.querySelector('[role="switch"]')).toBeNull();
   });
   it("connected: signed in as the mailbox; Test runs and moves on; nothing says sending is automatic", async () => {
     overview({ status: "connected", tenant_name: "office@a.test", connected_at: "2026-11-01T10:00:00Z" });
@@ -78,7 +79,7 @@ describe("MicrosoftSetupCard: every connection state", () => {
     await click(button("Test"));
     expect(text(h, "microsoft-test-result")).toBe("Working: office@a.test");
     expect(calls.map((c) => c.url)).toEqual(["/api/integrations/microsoft/test"]);
-    expect(h.textContent).toContain("every customer e-mail still needs approval");
+    expect(h.textContent).toContain("Each message needs approval before it is sent");
   });
   it("needs reconnect", async () => {
     overview({ status: "needs_reconnect", tenant_name: "office@a.test", status_reason: "Microsoft 365 needs to be connected again." });
@@ -99,16 +100,24 @@ describe("MicrosoftSetupCard: every connection state", () => {
 });
 
 describe("MicrosoftSetupCard: the rules it states", () => {
-  it("Sending is never a working switch, says why, and states one mailbox per company and no Resend fallback", async () => {
+  it("there is NO switch; the status line says ready with per-message approval, and the card states one mailbox per company and no Resend fallback", async () => {
     overview({ status: "connected", tenant_name: "office@a.test" });
     const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
-    const sw = h.querySelector('[role="switch"]') as HTMLButtonElement;
-    expect(sw.disabled).toBe(true);
-    expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe("Sending: On");
-    expect(text(h, "activation-why-microsoft")).toContain("There is no separate switch");
-    expect(h.textContent).toContain("Uses this mailbox once connected; every customer e-mail still needs approval.");
+    expect(h.querySelector('[role="switch"]')).toBeNull();
+    const ready = "Sending: ready. Each message needs approval before it is sent.";
+    expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe(ready);
+    expect(text(h, "activation-status-microsoft")).toBe(ready);
     expect(text(h, "microsoft-one-mailbox")).toBe("One mailbox per company: this company's mailbox is never shared with another company.");
     expect(h.textContent).toContain("does not switch to Resend by itself");
+  });
+  it("needs reconnect: Sending: paused until you reconnect; not connected: Sending: not set up", async () => {
+    overview({ status: "needs_reconnect", tenant_name: "office@a.test" });
+    let h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
+    expect(text(h, "activation-status-microsoft")).toBe("Sending: paused until you reconnect");
+    document.body.innerHTML = "";
+    overview({ status: "disconnected" });
+    h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
+    expect(text(h, "activation-status-microsoft")).toBe("Sending: not set up");
   });
   it("the admin-approval explanation has no link until asked; then shows the one-time link", async () => {
     overview({});
@@ -139,7 +148,8 @@ describe("ResendSetupCard: every state", () => {
     expect(button("Send a test e-mail to me")?.disabled).toBe(true);
     expect(h.textContent).toContain("not per company");
     expect(h.textContent).toContain("not a mailbox");
-    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: Off");
+    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: not set up");
+    expect(h.querySelector('[role="switch"]')).toBeNull();
   });
   it("configured: domain not checked yet; Check domain posts the read-only test and moves to connected", async () => {
     route = (url, init) => url === "/api/integrations/resend" ? { status: 200, body: init?.method === "POST" ? rs("connected") : rs("configured") } : { status: 404, body: {} };
@@ -149,7 +159,7 @@ describe("ResendSetupCard: every state", () => {
     expect(text(h, "connection-resend")).toContain("sender domain verified");
     expect(calls.filter((c) => c.method === "POST").map((c) => c.url)).toEqual(["/api/integrations/resend"]);
   });
-  it("error shows the server's message; connected shows the sender and Sending On; the switch is always disabled with the approval wording", async () => {
+  it("error shows the server's message; connected shows the sender and Sending: ready; there is no switch", async () => {
     route = statusRoute(rs("error"));
     let h = await mount(createElement(ResendSetupCard, {}));
     expect(text(h, "connection-resend")).toContain("msg-error");
@@ -157,15 +167,14 @@ describe("ResendSetupCard: every state", () => {
     route = statusRoute(rs("connected"));
     h = await mount(createElement(ResendSetupCard, {}));
     expect(text(h, "connection-resend")).toContain("orders@mail.test");
-    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: On");
-    expect((h.querySelector('[role="switch"]') as HTMLButtonElement).disabled).toBe(true);
-    expect(h.textContent).toContain("Customer e-mails still need approval; there is no separate switch.");
+    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: ready (Tolra's verified sender). Each message needs approval.");
+    expect(h.querySelector('[role="switch"]')).toBeNull();
     expect(h.textContent).toContain("never used automatically after a Microsoft 365 failure");
   });
   it("on Microsoft 365 the company does not use Resend: Off and a note", async () => {
     route = statusRoute(rs("connected"));
     const h = await mount(createElement(ResendSetupCard, { microsoftConnected: true }));
-    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: Off");
+    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: not used while Microsoft 365 is connected");
     expect(text(h, "resend-ms-note")).toContain("not used for it");
   });
   it("status call fails: an error state, never 'connected'", async () => {

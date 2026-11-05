@@ -79,6 +79,10 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
   else if (reconnect) connection = { tone: "attention", label: `Needs reconnecting${overview.tenant_name ? ` (${overview.tenant_name})` : ""}` };
   else connection = { tone: "off", label: "Not connected" };
 
+  const sending = status === null || (available && !view.notSetUp && !overview) ? "Sending: checking"
+    : !available || view.notSetUp ? "Sending: not set up"
+    : connected ? "Sending: ready. Each message needs approval before it is sent."
+    : reconnect ? "Sending: paused until you reconnect" : "Sending: not set up";
   const tested = test?.ok === true;
   const steps: SetupStep[] = [
     { label: "Connect with your Microsoft work account", state: connected ? "done" : "next", hint: "Someone who owns the company mailbox signs in at Microsoft and approves. Admins only, with a confirmed authenticator code." },
@@ -95,12 +99,7 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
         summary="Send Tolra's e-mails from this company's own Microsoft 365 mailbox, and read its inbox into RFQs (read only)."
         connection={connection}
         steps={steps}
-        activation={{
-          label: "Sending",
-          on: !overview ? null : connected,
-          help: "Uses this mailbox once connected; every customer e-mail still needs approval.",
-          disabledReason: "There is no separate switch: sending uses this mailbox as soon as it is connected, and a person still sends or approves each customer e-mail. Disconnect to stop.",
-        }}
+        activation={{ label: "Sending", on: null, hideSwitch: true, statusText: sending, help: "One mailbox per company. Nothing is sent without a person sending or approving each message." }}
         footnote="If Microsoft 365 fails, Tolra does not switch to Resend by itself: the message stays unsent until someone resolves it."
       >
         <p className="text-xs text-slate-600" data-testid="microsoft-one-mailbox">One mailbox per company: this company&apos;s mailbox is never shared with another company.</p>
