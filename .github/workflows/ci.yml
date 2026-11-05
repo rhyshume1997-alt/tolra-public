@@ -203,6 +203,18 @@ jobs:
           B5_SUPABASE_CLI="$(command -v supabase)" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
+      - name: Export this job's disposable test environment
+        run: |
+          python3 - <<'PY_ENV'
+          import os
+          from pathlib import Path
+          allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+          rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+          if {line.partition("=")[0] for line in rows} != allowed:
+              raise SystemExit("Disposable backend environment is incomplete; stop.")
+          with open(os.environ["GITHUB_ENV"], "a") as target:
+              target.write("\n".join(rows) + "\n")
+          PY_ENV
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
@@ -212,10 +224,7 @@ jobs:
         # Post-144 release plan: 145 N5 then 146 N2/cap; proofs remain mandatory.
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
-        run: |
-          # The verified disposable backend writes this file; newer direct-pg helpers read process.env.
-          set -a; . ./.env.test.local; set +a
-          npm run test:db
+        run: npm run test:db
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         env:
