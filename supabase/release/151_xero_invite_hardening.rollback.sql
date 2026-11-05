@@ -11,6 +11,9 @@ DO $rollback_guard$ BEGIN
   RAISE EXCEPTION '151 rollback: open connect invites exist; cancel them first, or SET tolra.x151_accept_deleting_open_invites = ''yes'' to delete them';
  END IF;
 END $rollback_guard$;
+DROP FUNCTION public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer);
+ALTER TABLE public.integration_oauth_states DROP COLUMN invite_completed_at;
+DROP FUNCTION public.integration_xero_picker_claim(text,text,integer,integer);
 DELETE FROM public.integration_connect_invites WHERE token_hash IS NULL;
 DROP FUNCTION IF EXISTS public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID);
 DROP FUNCTION IF EXISTS security_audit.integration_invite_refuse(TEXT, TEXT, TEXT, UUID, UUID);
