@@ -1,0 +1,3 @@
+Read [cloudflare/skills README](https://github.com/cloudflare/skills/blob/main/README.md), public blob `4a5c4a8b2af4268630c6e050908dccad270dd57e` (5 Nov 2026): `web-perf` is relevant to browser performance; `turnstile-spin` only if bot verification is separately requested.
+Recommendation: **NO installation for this queue**; Workers, nextjs-on-cloudflare, agents-sdk and Cloudflare storage/deployment skills do not finish Tolra's existing Vercel/Supabase integrations.
+Nothing installed or moved; retain Vercel and Supabase. Source-read only, 0 tests run / 0 skipped; no performance, bot-control or Cloudflare operation was verified.
