@@ -22,8 +22,8 @@ esac
 `, { mode: 0o755 });
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
-function run(extra: Record<string, string> = {}) {
-  const env = { ...process.env, SUPABASE_BIN: path.join(root, "fake-supabase"), BACKEND_REGISTRY_PROOF: path.join(root, "registry.txt"), ...extra };
+function run(extra: Record<string, string | undefined> = {}) {
+  const env: NodeJS.ProcessEnv = { ...process.env, SUPABASE_BIN: path.join(root, "fake-supabase"), BACKEND_REGISTRY_PROOF: path.join(root, "registry.txt"), ...extra };
   delete env.SUPABASE_INTERNAL_IMAGE_REGISTRY;
   Object.assign(env, extra);
   return spawnSync("bash", [path.join(root, "scripts/test-backend.sh"), "start"], { env, encoding: "utf8" });
