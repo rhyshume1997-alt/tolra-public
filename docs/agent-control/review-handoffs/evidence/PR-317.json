@@ -1,0 +1,31 @@
+{
+  "number": 317,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/317",
+  "title": "BA: evidence ledger for all 41 public first-day boxes",
+  "branch": "codex/ba-first-day-41-evidence",
+  "observed_head": "9515eda33b50878a057a431b06498a5b1f15b204",
+  "base_sha": "727ff228b6bc8575bc4440f409fdd3c41fe4ce5e",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "tests/BA-FIRST-DAY-EVIDENCE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "tests/BA-FIRST-DAY-EVIDENCE.md maps every one of the 41 unticked public first-day boxes to its immutable source checkbox line, available code/test/paper context and the exact proof Code must supply. Source is docs/JNR-GO-LIVE-DAY-CHECKLIST.md at b9d3af361e9d88ccbd2e5ab840f078c862ff3f37; historical #269 led to it, but its old results are not reused.\n\nThe authoritative Operations Pack is not visible in the checked sources. All 41 pack matches are explicitly MISSING and actual execution NOT TESTED; the ledger does not claim these actions failed or that the derivative sheet covers the pack. Code must supply the versioned private pack and exact item/page mapping, dated final-version results and acceptance. Costing scope and chase/manual-send restrictions remain explicit. No duplicate builder-4 sign-off forms.\n\nSource inventory check: 41 unique boxes in original order with matching checkbox lines and 41 explicit missing-pack rows. Documentation only; no additional runtime test claimed. Exact head: 9515eda33b50878a057a431b06498a5b1f15b204. Stacked on CV #315. No main merge, production SQL, Ready label or release approval.",
+  "historical_test_claims": [
+    "tests/BA-FIRST-DAY-EVIDENCE.md maps every one of the 41 unticked public first-day boxes to its immutable source checkbox line, available code/test/paper context and the exact proof Code must supply. Source is docs/JNR-GO-LIVE-DAY-CHECKLIST.md at b9d3af361e9d88ccbd2e5ab840f078c862ff3f37; historical #269 led to it, but its old results are not reused.",
+    "The authoritative Operations Pack is not visible in the checked sources. All 41 pack matches are explicitly MISSING and actual execution NOT TESTED; the ledger does not claim these actions failed or that the derivative sheet covers the pack. Code must supply the versioned private pack and exact item/page mapping, dated final-version results and acceptance. Costing scope and chase/manual-send restrictions remain explicit. No duplicate builder-4 sign-off forms.",
+    "Source inventory check: 41 unique boxes in original order with matching checkbox lines and 41 explicit missing-pack rows. Documentation only; no additional runtime test claimed. Exact head: 9515eda33b50878a057a431b06498a5b1f15b204. Stacked on CV #315. No main merge, production SQL, Ready label or release approval."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41839231198,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839231198",
+      "head_sha": "9515eda33b50878a057a431b06498a5b1f15b204",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

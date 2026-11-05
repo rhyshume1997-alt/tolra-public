@@ -1,0 +1,33 @@
+{
+  "number": 206,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/206",
+  "title": "Remove inherited docs from the plain English feature base",
+  "branch": "codex/plain-english-privacy",
+  "observed_head": "23ca102d25b49bc3e37337ba251a01daa2096300",
+  "base_sha": "398636987136f3362757558c185b7c3b57fa3dd2",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:18Z",
+  "files": [
+    "docs/BUILDER2-PR-REVIEW.md",
+    "docs/CHATGPT-BUILD-HANDOVER-2.md",
+    "docs/PLAIN-ENGLISH-PASS.md",
+    "docs/TOLRA-WORK-OWNERSHIP.md",
+    "docs/staff-walkthrough.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Remove exactly five inherited docs files from chatgpt2/plain-english-pass, the base of #167: BUILDER2-PR-REVIEW.md, CHATGPT-BUILD-HANDOVER-2.md, PLAIN-ENGLISH-PASS.md, TOLRA-WORK-OWNERSHIP.md and staff-walkthrough.md.\n\nNo code, tests, wording or other files change. Verified the diff contains exactly those five deletions and passes whitespace checks. Runtime tests are not applicable to this removal-only cleanup.\n",
+  "historical_test_claims": [
+    "No code, tests, wording or other files change. Verified the diff contains exactly those five deletions and passes whitespace checks. Runtime tests are not applicable to this removal-only cleanup."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41644960385,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41644960385",
+      "head_sha": "23ca102d25b49bc3e37337ba251a01daa2096300",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

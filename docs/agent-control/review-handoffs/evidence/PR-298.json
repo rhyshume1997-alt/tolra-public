@@ -1,0 +1,33 @@
+{
+  "number": 298,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/298",
+  "title": "CR: builder 4 cross-review and two source-backed corrections",
+  "branch": "codex/cr-builder4-review",
+  "observed_head": "8d161eca667cf3a64b4a9aaffb2df6ddba9d673d",
+  "base_sha": "bcf29b1589dfe9a15a593c583984e6c457690b1d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:10Z",
+  "files": [
+    "components/platform/tolra-ai-caps.tsx",
+    "tests/C10-TOLRA-DOMAIN-SWITCH-CHECKLIST.md",
+    "tests/CR-BUILDER-4-CROSS-REVIEW.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Reviews all 34 changed files in #290\u2013#297 at the full heads recorded in tests/CR-BUILDER-4-CROSS-REVIEW.md, plus #314 at bbf21d67ca87c5d161022d149f2ef0ea5ec62ad7 and all twelve sign-off sheets #301\u2013#313 (excluding CU #305). Each sheet head and source check is recorded; no signature or operator result inferred.\n\nTwo corrections on this independent branch: C10 cites lib/accounting/cloud-adapters.ts; AI cap wording no longer treats used+reserved as a reliable off switch because settlement can release capacity. Existing company AI off control is named instead. No maths, permissions or send behaviour changed.\n\n#314's CN/CU corrections are valid: block external AI on restored real data until separate approval; Sage/QuickBooks current adapters support balance checks, not invoice exports; require actual MFA challenge/refusal; distinguish visible AI-off smoke from exhaustive API proof. Retain those corrected CN/CU versions in final integration. No additional source mistake found in the twelve unsigned sheets. Their completion remains an operator task.\n\nExisting affected cap suites: 11 passed, zero failures/skips. Changed component lint passes. CV records separate exact tested snapshots; later report extension here is documentation only. Original builder-4 branches, handovers and docs/signoff/ untouched. No production SQL, main merge, Ready label or broad audit.\n\nExact head: 8d161eca667cf3a64b4a9aaffb2df6ddba9d673d. Scoped source review, not independent release approval.\n\n- [x] Original eight PRs, #314 and twelve sign-off sheets reviewed; changes listed\n- [ ] Independent review and actual runtime/operator proofs\n\nFollow-through committed: the exact reviewed #314 CN and CU content now also lives in our existing drafts #286 (bfaa31b84ebb04cec74c386787806320c3dee44e) and #305 (78dc5b7033592f20640b15e61b198c7fcf17930e). These are the additional document corrections listed in the report; retain them when combining CV's earlier frozen snapshot. Preceding CR CI 41837435184: web success, integration skipped, ci-gate failure. Current run 41839489160 pending at this snapshot; no full integration pass claimed.",
+  "historical_test_claims": [
+    "Reviews all 34 changed files in #290\u2013#297 at the full heads recorded in tests/CR-BUILDER-4-CROSS-REVIEW.md, plus #314 at bbf21d67ca87c5d161022d149f2ef0ea5ec62ad7 and all twelve sign-off sheets #301\u2013#313 (excluding CU #305). Each sheet head and source check is recorded; no signature or operator result inferred.",
+    "Existing affected cap suites: 11 passed, zero failures/skips. Changed component lint passes. CV records separate exact tested snapshots; later report extension here is documentation only. Original builder-4 branches, handovers and docs/signoff/ untouched. No production SQL, main merge, Ready label or broad audit.",
+    "Follow-through committed: the exact reviewed #314 CN and CU content now also lives in our existing drafts #286 (bfaa31b84ebb04cec74c386787806320c3dee44e) and #305 (78dc5b7033592f20640b15e61b198c7fcf17930e). These are the additional document corrections listed in the report; retain them when combining CV's earlier frozen snapshot. Preceding CR CI 41837435184: web success, integration skipped, ci-gate failure. Current run 41839489160 pending at this snapshot; no full integration pass claimed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41839489160,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839489160",
+      "head_sha": "8d161eca667cf3a64b4a9aaffb2df6ddba9d673d",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

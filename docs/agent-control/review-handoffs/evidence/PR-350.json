@@ -1,0 +1,29 @@
+{
+  "number": 350,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/350",
+  "title": "L6 / C03: complete human manual-check and evidence table",
+  "branch": "codex/b6-l6-c03-manual-checks",
+  "observed_head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/C03-MANUAL-CHECKS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C03-MANUAL-CHECKS.md: 169 source rows (64 G, 6 IQ, 14 OQ, 8 PQ, 41 DAY, 18 UAT, 18 CW) plus 20 existing readiness/decision rows, each with who, where, expected result, blank Pass/Fail/Not run and actual/evidence/tester/date fields.\n\nPreserves source IDs and explicit private Operations Pack/scope reconciliation; incorporates supported Sage/QBO balance scope and platform-owner/cap qualifications rather than reviving unsafe old wording. Test/restore attack checks stay separate from approved opening observations.\n\nChecks: source IDs/coverage/counts, role/target boundaries, blank outcomes, immutable links and whitespace pass. Handover embedded. Documentation only; actual human/runtime proof remains open. One independent draft, no main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Preserves source IDs and explicit private Operations Pack/scope reconciliation; incorporates supported Sage/QBO balance scope and platform-owner/cap qualifications rather than reviving unsafe old wording. Test/restore attack checks stay separate from approved opening observations."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41863508785,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41863508785",
+      "head_sha": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

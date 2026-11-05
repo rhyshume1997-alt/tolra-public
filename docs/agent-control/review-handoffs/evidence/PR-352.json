@@ -1,0 +1,29 @@
+{
+  "number": 352,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/352",
+  "title": "L8 / C05: P6 open-risk and residual acceptance register",
+  "branch": "codex/b6-l8-c05-p6-risks",
+  "observed_head": "c52e145e32e9026318154751d03be199019d30a2",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:04Z",
+  "files": [
+    "docs/handover/C05-P6-OPEN-RISKS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/C05-P6-OPEN-RISKS.md: eight corrected R1\u2013R8 limit proposals, fourteen original requirement risks and twelve distinct known open evidence/coordination risks. Each has proposed owner, due-before control, mitigation/proof and blank Accept/Not accept, residual assessment/evidence/signature fields.\n\nKeeps risk identities distinct and exposes missing Operations Pack, candidate conflicts, real headers/unsupported routes, WIP, recovery, writers, access, privacy, device and readiness gaps. Acceptance cannot waive failed high-risk/pre-use controls.\n\nChecks: 8+14+12 unique IDs and complete blank decision/owner/mitigation fields; whitespace pass. Handover embedded. No actual risk closure or runtime proof claimed; one independent draft, no main merge, production SQL, deployment or Ready label.",
+  "historical_test_claims": [
+    "Keeps risk identities distinct and exposes missing Operations Pack, candidate conflicts, real headers/unsupported routes, WIP, recovery, writers, access, privacy, device and readiness gaps. Acceptance cannot waive failed high-risk/pre-use controls."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41863531287,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41863531287",
+      "head_sha": "c52e145e32e9026318154751d03be199019d30a2",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

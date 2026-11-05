@@ -1,0 +1,56 @@
+{
+  "number": 208,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/208",
+  "title": "Resolve the combined chase settings layout conflict with main",
+  "branch": "codex/chase-layout-main",
+  "observed_head": "29c9a18165a860e665c7fb27c1c3e9b7a62bea9f",
+  "base_sha": "8a7daaedebc03c5640bc214c49c2089702998a46",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:18Z",
+  "files": [
+    "app/page.tsx",
+    "app/privacy/page.tsx",
+    "components/marketing/bracket-t.tsx",
+    "components/marketing/cta.tsx",
+    "components/marketing/feature-figure.tsx",
+    "components/marketing/fonts.ts",
+    "components/marketing/glass-mark.tsx",
+    "components/marketing/job-flow.tsx",
+    "components/marketing/marketing.css",
+    "components/marketing/sheet.tsx",
+    "components/marketing/site-footer.tsx",
+    "components/marketing/site-header.tsx",
+    "components/ui/ink-orbit-features.tsx",
+    "components/ui/liquid-glass-logo-reveal.tsx",
+    "lib/marketing.ts",
+    "lib/receivables.ts",
+    "tests/MANUAL-CHECKS.md",
+    "tests/stubs/next-font-google.ts",
+    "tests/unit/chase-settings-ui.test.ts",
+    "tests/unit/marketing-home.test.ts",
+    "tests/unit/money-calendar-edges.test.ts",
+    "tests/unit/money-receivables-edge.test.ts",
+    "tests/unit/money-receivables-more.test.ts",
+    "tests/unit/receivables-money-extra.test.ts",
+    "tests/unit/sliq-import-edge-cases.test.ts",
+    "tests/unit/sliq-risk-guards.test.ts",
+    "vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Resolve the combined chase line's add/add conflict with current main in components/chase/settings-card.tsx. Merge main locally and retain both its layout and the existing chase-step test hook. No behavior or test assertions are changed to settle the conflict.\n\nBase: codex/chase-combined (#207), so this follows the reviewed chase integration. A read-only merge-tree check confirms this head now merges cleanly with main 787ba18. No docs diff and no SQL applied.\n\nValidation: all 5,311 unit tests across 385 files passed, typecheck passed, and ESLint passed with three existing warnings and zero errors. Live browser/database checks and production build were not run.\n",
+  "historical_test_claims": [
+    "Resolve the combined chase line's add/add conflict with current main in components/chase/settings-card.tsx. Merge main locally and retain both its layout and the existing chase-step test hook. No behavior or test assertions are changed to settle the conflict.",
+    "Validation: all 5,311 unit tests across 385 files passed, typecheck passed, and ESLint passed with three existing warnings and zero errors. Live browser/database checks and production build were not run."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41646066769,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41646066769",
+      "head_sha": "29c9a18165a860e665c7fb27c1c3e9b7a62bea9f",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

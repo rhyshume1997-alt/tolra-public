@@ -1,0 +1,42 @@
+{
+  "number": 316,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/316",
+  "title": "CW: make every sign-off sheet clear to John in one reading",
+  "branch": "codex/b4-cw-signoff-plain",
+  "observed_head": "359249878c17b7e4586e39bbee4b7e3961c2a2e2",
+  "base_sha": "c9ef232e90672846c1d0d10b2a06b73175a6716d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "docs/signoff/AI-APPROVE-JOHN-DATA-SHARING.md",
+    "docs/signoff/B13-JOHN-REHEARSAL-WEEK.md",
+    "docs/signoff/B15-REMOVE-RHUMECOACHING-ADMIN.md",
+    "docs/signoff/B17-ADMIN-SIGN-IN-CODES.md",
+    "docs/signoff/C8-DECISION-MAKERS-AND-SUPPORT.md",
+    "docs/signoff/CW-PLAIN-WORDS-REVIEW.md",
+    "docs/signoff/D7-SIX-YEAR-FINANCIAL-RETENTION.md",
+    "docs/signoff/F6-JOHN-ACCEPTANCE.md",
+    "docs/signoff/G14-GO-LIVE-DAY-AGREEMENT.md",
+    "docs/signoff/HANDOVER-BUILDER-4-CW.md",
+    "docs/signoff/NUM-RESET-JOHN-NUMBERING-CHOICE.md",
+    "docs/signoff/PAID-ROUND-JOHN-PAID-TIME-CHOICE.md",
+    "docs/signoff/SAGE-QBO-APP-RHYS-REGISTRATION.md",
+    "docs/signoff/XERO-APP-RHYS-REGISTRATION.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CW: reads and rewrites all twelve sign-off masters for a non-technical shop director. Explains decisions and terms, identifies who does the technical work, and keeps exact IDs/settings/URLs in explained copy lists. Preserves choices, blank signatures/results, company separation, financial/backup/MFA/provider controls and the 146 recovery stop.\n\nThe source forms live on twelve separate draft PRs. This one CW draft gathers them as a replacement set; original branches are unchanged. `docs/signoff/CW-PLAIN-WORDS-REVIEW.md` pins each source head and change; `docs/signoff/HANDOVER-BUILDER-4-CW.md` records validation/remaining work. Base is the updated #314 review draft, so its valid corrections remain.\n\nValidation: source/editorial/date/example/identifier comparison and git diff --check. Documentation only; no artificial unit tests. John training/printing/signatures, live portal/account actions, database/provider/browser/restore proofs remain NOT RUN. No scope/policy/implementation change, Ready label, main merge, production SQL or deployment.\n\nFinal CW publication head: 359249878c17b7e4586e39bbee4b7e3961c2a2e2. Review base snapshot: c9ef232e90672846c1d0d10b2a06b73175a6716d; keep later #314/BA corrections when combining drafts.\n",
+  "historical_test_claims": [
+    "Validation: source/editorial/date/example/identifier comparison and git diff --check. Documentation only; no artificial unit tests. John training/printing/signatures, live portal/account actions, database/provider/browser/restore proofs remain NOT RUN. No scope/policy/implementation change, Ready label, main merge, production SQL or deployment."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41839712852,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839712852",
+      "head_sha": "359249878c17b7e4586e39bbee4b7e3961c2a2e2",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,29 @@
+{
+  "number": 288,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/288",
+  "title": "CP: 12 November cutover checklist with owners and go/stop gates",
+  "branch": "codex/cp-cutover-day-checklist",
+  "observed_head": "ce2e6cc1268e5965a490f839083ab0fcd17eeae7",
+  "base_sha": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:11Z",
+  "files": [
+    "tests/CUTOVER-DAY-CHECKLIST.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/CUTOVER-DAY-CHECKLIST.md for Thursday 12 November 2026. Twenty-five ordered rows each name Rhys, John or Code, the action, evidence, GO condition and STOP condition. Release order is 138, 140, 141, 144, 145, 146 with exact release/verify paths. Existing verified releases are not blindly reinstalled.\n\nCarries the actual GO-LIVE-DATA-LOAD.md process: frozen real exports and complete backup/restore, exact combined private-kit/archive preservation, real importer dry run, separate actual-load authority, exact-pence reconciliation, accountant WIP, numbering and protected Marpet/login/settings/audit comparisons. The fake no-write wrapper is explicitly not an importer. All steps rehearse on disposable copies first; synthetic suites never target live data.\n\nAfter any 146 rollback: STOP, do not reapply it on that database; retain history/usage/key_source and existing refusal guards. No invented import/SQL command, extra migration or scope added. Final gate is independent review only; Rhys and reviewer still make their own decisions.\n\nChecks: all 25 ordered owner/result rows, six release file paths/order, calendar date, data-load and rollback stop rules verified against source d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d. Documentation only, no SQL/data load/wipe/main merge/Ready label executed. Sibling CN/CO guides must be included in the reviewed pack before following those references.\n\n- [x] Ordered owner checklist, apply order, SliQ load and stop gates\n- [ ] Independent review, actual rehearsal and separate operational decisions",
+  "historical_test_claims": [
+    "Adds tests/CUTOVER-DAY-CHECKLIST.md for Thursday 12 November 2026. Twenty-five ordered rows each name Rhys, John or Code, the action, evidence, GO condition and STOP condition. Release order is 138, 140, 141, 144, 145, 146 with exact release/verify paths. Existing verified releases are not blindly reinstalled."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41829266489,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41829266489",
+      "head_sha": "ce2e6cc1268e5965a490f839083ab0fcd17eeae7",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

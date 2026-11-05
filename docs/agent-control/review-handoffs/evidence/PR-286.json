@@ -1,0 +1,30 @@
+{
+  "number": 286,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/286",
+  "title": "CN: John's eight plain-language working-day checks",
+  "branch": "codex/cn-john-pq-run-sheet",
+  "observed_head": "bfaa31b84ebb04cec74c386787806320c3dee44e",
+  "base_sha": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:12Z",
+  "files": [
+    "tests/JOHN-PQ-RUN-SHEET.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/JOHN-PQ-RUN-SHEET.md with the requested first eight PQ checks: clicks, expected results, Pass/Fail/Not run boxes, private evidence notes and John's signature. Uses a private restored copy of real JNR records, compared with SliQ, plus clearly separated trial actions and blocked external delivery. John does not sign for Rhys.\n\nSource discrepancy kept visible: the current PQ.md/VSR has nine planned checks. This sheet covers PQ-001\u2013008 and explicitly retains PQ-009 as the separate cutover condition; no official count or result is changed. Some adversarial/provider checks require Code's actual report before John may tick Pass.\n\nChecks: eight source headings and eight result boxes verified, PQ-009 boundary and real-data copy scope checked against current PQ/manual source. Documentation only; no runtime execution, data access, SQL, main merge or Ready label. Source head d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d. Sibling CO/CP guides are clearly marked as available when included in the reviewed pack.\n\n- [x] Plain click/check sheet, eight result boxes and source review\n- [ ] John runs it with Code; Rhys reviews the genuine results\n\nCR follow-through: exact reviewed #314 wording is now retained here (CN blocks external AI on restored real data and limits export checks to Xero; CU requires actual admin MFA challenge and scopes AI-off evidence). Current head bfaa31b84ebb04cec74c386787806320c3dee44e. These documentation corrections were made after CV's frozen test snapshot; no new runtime pass is claimed.",
+  "historical_test_claims": [
+    "Adds tests/JOHN-PQ-RUN-SHEET.md with the requested first eight PQ checks: clicks, expected results, Pass/Fail/Not run boxes, private evidence notes and John's signature. Uses a private restored copy of real JNR records, compared with SliQ, plus clearly separated trial actions and blocked external delivery. John does not sign for Rhys.",
+    "CR follow-through: exact reviewed #314 wording is now retained here (CN blocks external AI on restored real data and limits export checks to Xero; CU requires actual admin MFA challenge and scopes AI-off evidence). Current head bfaa31b84ebb04cec74c386787806320c3dee44e. These documentation corrections were made after CV's frozen test snapshot; no new runtime pass is claimed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41839416587,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839416587",
+      "head_sha": "bfaa31b84ebb04cec74c386787806320c3dee44e",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

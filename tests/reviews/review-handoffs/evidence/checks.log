@@ -1,0 +1,9 @@
+test_all_paths_and_migrations_are_recorded_without_execution_claim (packets_test.Packets.test_all_paths_and_migrations_are_recorded_without_execution_claim) ... ok
+test_ci_is_bound_to_observed_head (packets_test.Packets.test_ci_is_bound_to_observed_head) ... ok
+test_inventory_and_requested_recent_prs (packets_test.Packets.test_inventory_and_requested_recent_prs) ... ok
+test_required_fields_and_hashes (packets_test.Packets.test_required_fields_and_hashes) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.018s
+
+OK

@@ -1,0 +1,38 @@
+{
+  "number": 241,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/241",
+  "title": "S: Prove inbound payment wording stays evidence only",
+  "branch": "codex/s-inbound-payment-evidence",
+  "observed_head": "f96087a58bf7dd9030e447e71a10b52ba54671d9",
+  "base_sha": "ce16b9b8227481b99914b94e6400375691f36f07",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:15Z",
+  "files": [
+    "tests/db/reviewer-inbound-conditions.test.ts",
+    "tests/unit/chase-inbound-never-paid.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Feed three fake customer replies (\u201cpaid\u201d, \u201cremittance\u201d and \u201cpayment sent\u201d) through #233's actual delegated inbox ingestion and company-bound recording helpers. Require success, the exact stored email evidence and GET-only mailbox access. Assert every frozen invoice field, unpaid status/amount and empty payment list remain unchanged; any table-write or unexpected RPC fails the test.\n\nAlso inspect the actual recording SQL contract so the mock cannot hide a financial write inside mailbox_record_inbound: it stores inbound email and the existing intake RFQ only, never invoices/payments/payment claims.\n\nAssumption: #233 has no dedicated inbound chase/payment-claim classifier. This regression exercises its existing inbox path; it does not invent or claim a classifier. Existing RFQ intake remains unchanged. \u201cOnly evidence\u201d here means no financial/payment mutation, not removal of existing mailbox cursor/RFQ bookkeeping. No production code or SQL changed/applied.\n\nValidation: 84 unit tests passed across the new four cases, mailbox-delegated and chase-approve; typecheck and targeted lint passed. DB/runtime proof of the recording procedure and browser/provider checks not run. Draft into #233's codex2/j-chasing-combined-main; no main feature pull, deployment, merge or Ready label.\n",
+  "historical_test_claims": [
+    "Feed three fake customer replies (\u201cpaid\u201d, \u201cremittance\u201d and \u201cpayment sent\u201d) through #233's actual delegated inbox ingestion and company-bound recording helpers. Require success, the exact stored email evidence and GET-only mailbox access. Assert every frozen invoice field, unpaid status/amount and empty payment list remain unchanged; any table-write or unexpected RPC fails the test.",
+    "Validation: 84 unit tests passed across the new four cases, mailbox-delegated and chase-approve; typecheck and targeted lint passed. DB/runtime proof of the recording procedure and browser/provider checks not run. Draft into #233's codex2/j-chasing-combined-main; no main feature pull, deployment, merge or Ready label."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41801483240,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41801483240",
+      "head_sha": "f96087a58bf7dd9030e447e71a10b52ba54671d9",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 41801461611,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41801461611",
+      "head_sha": "f96087a58bf7dd9030e447e71a10b52ba54671d9",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,30 @@
+{
+  "number": 293,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/293",
+  "title": "D6: Cutover rollback stops and backup-only 146 recovery",
+  "branch": "codex/b4-d6",
+  "observed_head": "0cfe4495a805d0c41acbdbe7a5f8b892006df68a",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:11Z",
+  "files": [
+    "tests/D6-CUTOVER-ROLLBACK-RUNBOOK.md",
+    "tests/HANDOVER-BUILDER-4-D6.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "D6: Cutover rollback stops and backup-only 146 recovery. Adds a plain-language procedure under docs/ or tests/ and a job handover. Prepared for build/test by 6 November and conditional go-live on 12 November 2026.\n\nValidation: checked repository controls/release source and `git diff --check`. Documentation only. Operator rehearsal, private contact/setting verification and live evidence are explicitly NOT RUN. No database SQL, production changes, merge or deployment.\n\nIndependent review and the named operator checks remain required. Builder 3 CM/CN/CO/CP/CQ untouched. Draft only; no Ready label.\n",
+  "historical_test_claims": [
+    "D6: Cutover rollback stops and backup-only 146 recovery. Adds a plain-language procedure under docs/ or tests/ and a job handover. Prepared for build/test by 6 November and conditional go-live on 12 November 2026."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41830552424,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41830552424",
+      "head_sha": "0cfe4495a805d0c41acbdbe7a5f8b892006df68a",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,32 @@
+{
+  "number": 270,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/270",
+  "title": "BB: fake two-company transfer generator with exact reconciliation",
+  "branch": "codex/bb-fake-data",
+  "observed_head": "4f210972adbffa2d5cd5c4148b1065a8df7548ef",
+  "base_sha": "3593615eb34c2dd66b152ca3eaca227bd8475f5f",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "scripts/mock-production/generate.d.mts",
+    "scripts/mock-production/generate.mjs",
+    "tests/MOCK-PRODUCTION-DATA.md",
+    "tests/unit/mock-production-generator.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Generates deterministic synthetic SliQ exports for two companies, each with 300 customers, suppliers, open jobs, linked POs and invoices plus 200 payments. Includes independent expected penny totals and guarded new-folder-only output. No database, network, input or write mode; rejects overwrite and invalid sizes/flags. Reuses the existing importer, adding no alternative financial write path.\n\nValidation: 94 tests passed (11 generator plus 83 importer/jobs/decisions), zero failed/skipped. TypeScript and changed-file lint passed. Actual offline CLI generation and both dry runs passed: 300 jobs/invoices per company, owed 1935150 and 2025150 pennies. Tests refuse database/network attempts and prove stable repeat plans and different scoped IDs. Full unit/lint runs in progress and will be recorded on tracker.\n\nAssumption: this is fake input generation for an authorised disposable database rehearsal, not authority to populate any database. Real load/retry/RLS is NOT proved; missing 140/141 release prerequisites remain. No SQL, credentials, real exports, docs files, merge, Ready label or deploy.",
+  "historical_test_claims": [
+    "Validation: 94 tests passed (11 generator plus 83 importer/jobs/decisions), zero failed/skipped. TypeScript and changed-file lint passed. Actual offline CLI generation and both dry runs passed: 300 jobs/invoices per company, owed 1935150 and 2025150 pennies. Tests refuse database/network attempts and prove stable repeat plans and different scoped IDs. Full unit/lint runs in progress and will be recorded on tracker."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41803304410,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41803304410",
+      "head_sha": "4f210972adbffa2d5cd5c4148b1065a8df7548ef",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

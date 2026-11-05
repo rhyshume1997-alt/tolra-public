@@ -1,0 +1,1752 @@
+[
+  {
+    "number": 130,
+    "branch": "codex/work-ownership",
+    "observed_head": "b6db532209e1cea1bfcf1533a09b4c668124401d",
+    "state": "open (not merged)",
+    "packet": "PR-130.md",
+    "evidence": "evidence/PR-130.json",
+    "evidence_sha256": "8bc4cae99a56170568ce80fff73362489a4e0930e7d4ad2155f83ed60332d702",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 131,
+    "branch": "codex/bank-csv-quotes",
+    "observed_head": "0a6b970ababe6b5c8e0f449084e1e81159fa68dd",
+    "state": "open (not merged)",
+    "packet": "PR-131.md",
+    "evidence": "evidence/PR-131.json",
+    "evidence_sha256": "2e79832935ea470337f23e9ae29e161a46d6afa3dd157568b2dfae0801767b16",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 183,
+    "branch": "codex/manual-checks",
+    "observed_head": "6200405e7c6d34f653a6460069738c7db71aa05c",
+    "state": "open (not merged)",
+    "packet": "PR-183.md",
+    "evidence": "evidence/PR-183.json",
+    "evidence_sha256": "4333dae58315820ff92d0607e2203c03654c6aad0b5ce69568d243742f655531",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 184,
+    "branch": "codex/costing-join",
+    "observed_head": "a4bd28f9d2b287001cdb6ee7ab11ac6728e7c0e2",
+    "state": "open (not merged)",
+    "packet": "PR-184.md",
+    "evidence": "evidence/PR-184.json",
+    "evidence_sha256": "e21279f1e1da0f5726420ec162769e4084d60e075567e8021f293c04c9e5bed0",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 185,
+    "branch": "codex/money-edge-tests",
+    "observed_head": "c857559f517c77ccaed4bac1446757c260bb52e3",
+    "state": "merged",
+    "packet": "PR-185.md",
+    "evidence": "evidence/PR-185.json",
+    "evidence_sha256": "084fb747ab6bbd3f2a4ba62eba1dfb27748d435538437a20f933dc2c33233352",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 186,
+    "branch": "codex/chase-join",
+    "observed_head": "474a90f63c4625cd29a8253343cd0899aa28f1cc",
+    "state": "open (not merged)",
+    "packet": "PR-186.md",
+    "evidence": "evidence/PR-186.json",
+    "evidence_sha256": "96db0f689c03a59da378ca565aae770fb09d1007ab345b6bfe569820b517e70f",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 197,
+    "branch": "codex/neutral-login",
+    "observed_head": "817b6da88d6b6404f22ffa28dcf0bed2e8fda626",
+    "state": "open (not merged)",
+    "packet": "PR-197.md",
+    "evidence": "evidence/PR-197.json",
+    "evidence_sha256": "70bc0d3714d3c90602c1bcb9ce0d8e0283f67fa2a2f7557dab5acf5aa50bfe03",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 198,
+    "branch": "codex/161-approval-test-fix",
+    "observed_head": "9af247b690a86824e61a45b77b08f945ccad59fb",
+    "state": "closed (not merged)",
+    "packet": "PR-198.md",
+    "evidence": "evidence/PR-198.json",
+    "evidence_sha256": "76c0c90304f62002c6f9dd6b389270e373c9709ec0d9c814579bcc42f6a36c64",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 199,
+    "branch": "codex/chase-send-recovery",
+    "observed_head": "b900aa36f5e0980a132c97f39d403b01d329b381",
+    "state": "open (not merged)",
+    "packet": "PR-199.md",
+    "evidence": "evidence/PR-199.json",
+    "evidence_sha256": "159b434e7389aa6ee4969bc6ddd386129bd799a5fce7c03b2ceebdb1c0042f9a",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 200,
+    "branch": "codex/chase-progression-fix",
+    "observed_head": "eea9aecc9d94facf44b84bc6d16f4a15c14201ab",
+    "state": "open (not merged)",
+    "packet": "PR-200.md",
+    "evidence": "evidence/PR-200.json",
+    "evidence_sha256": "98b21eb6a6c715a69ca1a1dafd9c1078de94acf1f8f868188fc0bb3b1ee4a796",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 201,
+    "branch": "codex/chase-draft-pages",
+    "observed_head": "ccad65bcd30ec6bae8acfc4fd1b01731b1eadb26",
+    "state": "merged",
+    "packet": "PR-201.md",
+    "evidence": "evidence/PR-201.json",
+    "evidence_sha256": "a63a55db8e31fd50b0364fb96fea4cb7a71209a40f932a792b948d58c3f52637",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 202,
+    "branch": "codex/costing-sql-test-plan",
+    "observed_head": "6431e60284a4591ab6c9552de5bc0dd0468973f3",
+    "state": "open (not merged)",
+    "packet": "PR-202.md",
+    "evidence": "evidence/PR-202.json",
+    "evidence_sha256": "f977b019b3db13ebb6f71a0c8b8fb401d034edf5f8bd3242da4297b7ef68ba08",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 203,
+    "branch": "codex/161-approval-test-only",
+    "observed_head": "96dd1bd11f4df024fa95764c3df51e8f423cdf7c",
+    "state": "merged",
+    "packet": "PR-203.md",
+    "evidence": "evidence/PR-203.json",
+    "evidence_sha256": "13361a8689d2a18e676a06e36a4b6d3d2c0ff26aea2727e79763abcab9d2f3c5",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 204,
+    "branch": "codex/161-reviewed-text",
+    "observed_head": "7f30174b6e6e763c90eaef5681c36f50dc7ee783",
+    "state": "merged",
+    "packet": "PR-204.md",
+    "evidence": "evidence/PR-204.json",
+    "evidence_sha256": "1d6993d82968d6f1f762fabe4f7fc6e8b24bd6286601c82451a92e6f7baf68c6",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 205,
+    "branch": "codex/161-jsdom-build",
+    "observed_head": "92efcfab20406f4e1ec45d3b962084c6cca06c52",
+    "state": "merged",
+    "packet": "PR-205.md",
+    "evidence": "evidence/PR-205.json",
+    "evidence_sha256": "7e8ea9a76dc9e555dd16d038c5abb9e583b9cf1ff20e50c7e3be48a9ebead772",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 206,
+    "branch": "codex/plain-english-privacy",
+    "observed_head": "23ca102d25b49bc3e37337ba251a01daa2096300",
+    "state": "open (not merged)",
+    "packet": "PR-206.md",
+    "evidence": "evidence/PR-206.json",
+    "evidence_sha256": "930842fb7ab2e715f49cbed3182a8f35cd267d924e08d04366304eeb19e374d7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 207,
+    "branch": "codex/chase-combined",
+    "observed_head": "8a7daaedebc03c5640bc214c49c2089702998a46",
+    "state": "open (not merged)",
+    "packet": "PR-207.md",
+    "evidence": "evidence/PR-207.json",
+    "evidence_sha256": "85f016f42b09a252e15b5fd6030b82c54a0717b6767347e6b6eae4043d5cb9ad",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 208,
+    "branch": "codex/chase-layout-main",
+    "observed_head": "29c9a18165a860e665c7fb27c1c3e9b7a62bea9f",
+    "state": "open (not merged)",
+    "packet": "PR-208.md",
+    "evidence": "evidence/PR-208.json",
+    "evidence_sha256": "eff31c52c158cd1752f3abe4b017a57bf4ad62e1261df7452b723983d9b25c49",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 209,
+    "branch": "codex/costing-preflight-main",
+    "observed_head": "c3d7cbd7f856122e9c12a6ce22a3acfd91ca43a2",
+    "state": "open (not merged)",
+    "packet": "PR-209.md",
+    "evidence": "evidence/PR-209.json",
+    "evidence_sha256": "21d408d6aa48b7f81393c51d79d75e2b3018d4e3aefec545f259786f8d2b22c5",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 210,
+    "branch": "codex/sliq-preflight-main",
+    "observed_head": "476a1af11c94cf37d657dbb06c9bea08ba5a1474",
+    "state": "open (not merged)",
+    "packet": "PR-210.md",
+    "evidence": "evidence/PR-210.json",
+    "evidence_sha256": "ca0086c5fdc7524e30d61bce4422ef6953f540210e19deb8b57c66a3dede57ff",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 211,
+    "branch": "codex/manual-checks-main",
+    "observed_head": "321a2a7ef560296f56e52164fe11d9ae71a4d889",
+    "state": "open (not merged)",
+    "packet": "PR-211.md",
+    "evidence": "evidence/PR-211.json",
+    "evidence_sha256": "aa291c55d43ea5db667550dcaa78ec98b269be89956d8032999e3b85c190f93c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 212,
+    "branch": "codex/test-wording-followup",
+    "observed_head": "6361a12f2ba21ae5931fe2ef22ac982605127d0b",
+    "state": "open (not merged)",
+    "packet": "PR-212.md",
+    "evidence": "evidence/PR-212.json",
+    "evidence_sha256": "ba4be5007ca71a7525ccf5e4453f07fadea1bd8a9c352fe61013382c179ddc71",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 213,
+    "branch": "codex/plain-english-main",
+    "observed_head": "09dc47b23b65cb6b13028c958231a129820bf697",
+    "state": "open (not merged)",
+    "packet": "PR-213.md",
+    "evidence": "evidence/PR-213.json",
+    "evidence_sha256": "3373a8675de0fc11ad71426a3bd783ce0d0ebd48403ab3c9670f7056ca2291f0",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 214,
+    "branch": "codex/sliq-fake-export",
+    "observed_head": "8b805d5098cc4fb577fc00eeb116516b0d43c67e",
+    "state": "open (not merged)",
+    "packet": "PR-214.md",
+    "evidence": "evidence/PR-214.json",
+    "evidence_sha256": "08ecd6964c0692aef3fa2b15ee58a7be866c73f21490360dd1961042739b04a8",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 215,
+    "branch": "codex/e13-offline-schedule",
+    "observed_head": "1671a07d096f66821b1538eaf8778d1950b4fb49",
+    "state": "open (not merged)",
+    "packet": "PR-215.md",
+    "evidence": "evidence/PR-215.json",
+    "evidence_sha256": "a3f88bfac33e5d5325547112f46b796d309b08146020fdc487fb1ddf54921572",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 216,
+    "branch": "codex/chase-evidence-integration",
+    "observed_head": "8eb7f3370b7024ba36b04d299088cd475906a224",
+    "state": "open (not merged)",
+    "packet": "PR-216.md",
+    "evidence": "evidence/PR-216.json",
+    "evidence_sha256": "5c59f4d13bc87093f52977ed0b4c881b002667e8d3946511964ef922e848f95d",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 218,
+    "branch": "codex/company-paid-breaks",
+    "observed_head": "cc2d3f2a89b4c32276d014fa6f2bb0cbc40d0678",
+    "state": "open (not merged)",
+    "packet": "PR-218.md",
+    "evidence": "evidence/PR-218.json",
+    "evidence_sha256": "35bc45d91a4a3b6cd9b0149de2882b041da7700046d1a123ec0040f152ae441c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 219,
+    "branch": "codex/ai-integration-switch",
+    "observed_head": "02c983894e867d43c0f7eb0edf45850d72ffc3fa",
+    "state": "open (not merged)",
+    "packet": "PR-219.md",
+    "evidence": "evidence/PR-219.json",
+    "evidence_sha256": "716ca4783f36469640311fbdf632e0c320f7a0fa4f40e5f36c609c5d020ad595",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 220,
+    "branch": "codex/validation-pack",
+    "observed_head": "fb8a262060a1a33c87cbe1b548b181b78d4d6ef7",
+    "state": "open (not merged)",
+    "packet": "PR-220.md",
+    "evidence": "evidence/PR-220.json",
+    "evidence_sha256": "47ae21cdfe5af761b0b7d4c2df9fbe2a4a71bc956dd61d3b07ec35d9e5f75e60",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 221,
+    "branch": "codex/accounting-connections",
+    "observed_head": "53030fd4224c6b2451f2af386fdb9d692b0ee8fc",
+    "state": "open (not merged)",
+    "packet": "PR-221.md",
+    "evidence": "evidence/PR-221.json",
+    "evidence_sha256": "66fca040df370b6491d5e1114eb049a0e52bab8f8a80a61eaa5daddd66d08bf3",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 236,
+    "branch": "codex/n-company-setup-email-combined",
+    "observed_head": "d54d90b0408fbd490f03ada687b27af03bba9800",
+    "state": "open (not merged)",
+    "packet": "PR-236.md",
+    "evidence": "evidence/PR-236.json",
+    "evidence_sha256": "fda22b303256183d306d7fa0741fe8ce289de4e14a819d199119862f99fe63b5",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 237,
+    "branch": "codex/o-accounting-combined",
+    "observed_head": "86eda4bd48b1237b42140dbd72ace7cb73442f4b",
+    "state": "open (not merged)",
+    "packet": "PR-237.md",
+    "evidence": "evidence/PR-237.json",
+    "evidence_sha256": "7a344775617b498e57a7a0f88acb18366e7582bc7fa34b5672fdabe9f7bcf58a",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 238,
+    "branch": "codex/p-reviewer-manual-checks",
+    "observed_head": "ad17969b9453163e8c46a57e32114f2b84395522",
+    "state": "merged",
+    "packet": "PR-238.md",
+    "evidence": "evidence/PR-238.json",
+    "evidence_sha256": "accb4fc3bc87f7c438a233fb7bfd1f5078603e5b903c3501b62d596c9124dc07",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 239,
+    "branch": "codex/q-setup-access-tests",
+    "observed_head": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+    "state": "open (not merged)",
+    "packet": "PR-239.md",
+    "evidence": "evidence/PR-239.json",
+    "evidence_sha256": "4a350084994ddbc10341fd90c4b3e3c7f9f9be0318bf286fc6c3c85061983bd6",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 240,
+    "branch": "codex/q-accounting-company-read-tests",
+    "observed_head": "3692debaa9a724762f230412eff17aa911a85ba2",
+    "state": "open (not merged)",
+    "packet": "PR-240.md",
+    "evidence": "evidence/PR-240.json",
+    "evidence_sha256": "818117d70d9e08d4044b85e8a5a97973005659a633b6886b2a8ec6eff0606512",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 241,
+    "branch": "codex/s-inbound-payment-evidence",
+    "observed_head": "f96087a58bf7dd9030e447e71a10b52ba54671d9",
+    "state": "open (not merged)",
+    "packet": "PR-241.md",
+    "evidence": "evidence/PR-241.json",
+    "evidence_sha256": "2a7ed90b369144d5ab644803cb3a6444454ad135501a799ea554eccf39e6cfaf",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 242,
+    "branch": "codex/t-offline-marketing-fonts",
+    "observed_head": "25b792572c7a5df0e141fdbc91cdd54afa46daa8",
+    "state": "open (not merged)",
+    "packet": "PR-242.md",
+    "evidence": "evidence/PR-242.json",
+    "evidence_sha256": "dbc77ffac719d5aac81fb375cf613a199a506f7d7574877bc57b84554a040859",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 244,
+    "branch": "codex/u-tolra-demo-seed",
+    "observed_head": "537b3ea4ede00702bb853aadb492e013af38a797",
+    "state": "open (not merged)",
+    "packet": "PR-244.md",
+    "evidence": "evidence/PR-244.json",
+    "evidence_sha256": "56b5b35449e617dcb35c14cd1266f70253f677148584e4eeb321546dbb389b8d",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 245,
+    "branch": "codex/v-reviewer-browser-conditions",
+    "observed_head": "2b4bd18390efc468a01b449dae70c844ee204a05",
+    "state": "open (not merged)",
+    "packet": "PR-245.md",
+    "evidence": "evidence/PR-245.json",
+    "evidence_sha256": "9f8338c4f82840a282ba78dd776e42607b4bbd1962e6fba7d30e577933bd785d",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 246,
+    "branch": "codex/w-codex-1-handover",
+    "observed_head": "d5ab1c7edbb72e33cd032f9a65860a95e4229160",
+    "state": "open (not merged)",
+    "packet": "PR-246.md",
+    "evidence": "evidence/PR-246.json",
+    "evidence_sha256": "3b2e484c46f565e2d0f877e4c82b41293f3ac67624cd9e55806bf06e30f6e8e1",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 247,
+    "branch": "codex/x-final-main-candidate",
+    "observed_head": "41c685c416305637d86b580324fff9e6cda037ff",
+    "state": "open (not merged)",
+    "packet": "PR-247.md",
+    "evidence": "evidence/PR-247.json",
+    "evidence_sha256": "02858b2993c816ef4a4f398159ad5e13274a353b2568353151ae7bd8c6d2bb03",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 248,
+    "branch": "codex/z-go-live-manual-checks",
+    "observed_head": "a38ffd683c370788fa1c3d98a324081c08d37950",
+    "state": "open (not merged)",
+    "packet": "PR-248.md",
+    "evidence": "evidence/PR-248.json",
+    "evidence_sha256": "a57272dbb0d041f598a82122d0e5f8bdb82687d40bbe2e7e24df5ea9ab6f4648",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 249,
+    "branch": "codex/ac-wipe-kit-proposed-lines",
+    "observed_head": "f2ca4650e4032800c11d5ab65fb85e39ae0f22fd",
+    "state": "open (not merged)",
+    "packet": "PR-249.md",
+    "evidence": "evidence/PR-249.json",
+    "evidence_sha256": "1f2e949b561bc4695352d143141aaf3a8730055f7ccbf789a1d2290b59dc82fa",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 262,
+    "branch": "codex/aq-morning-checklist",
+    "observed_head": "6be692d3e3fde62baed099c71dc518bfbf2930a5",
+    "state": "open (not merged)",
+    "packet": "PR-262.md",
+    "evidence": "evidence/PR-262.json",
+    "evidence_sha256": "83ba442ee9f621dfd73f3b0d04da71739a0a787a0fc0a4b3bafec6a67fa43ade",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 263,
+    "branch": "codex/ar-manual-final",
+    "observed_head": "8cecd36e5fc852ae52e564db422f6201c8960a56",
+    "state": "open (not merged)",
+    "packet": "PR-263.md",
+    "evidence": "evidence/PR-263.json",
+    "evidence_sha256": "8be6be927918056a911f35cac332abe835a071034ebbb685c27b7f0d81015b64",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 264,
+    "branch": "codex/aw-data-load",
+    "observed_head": "e26fd743e5145f5d9ee56878cc3733d88d147bdf",
+    "state": "open (not merged)",
+    "packet": "PR-264.md",
+    "evidence": "evidence/PR-264.json",
+    "evidence_sha256": "57a59286dff81a89c01cfc2ee457327bb3129fc12d037543fbb4c107c974380e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 265,
+    "branch": "codex/av-rollback-tests",
+    "observed_head": "fcb4e9bac74447aef90f9c2d1d1333536024c6f4",
+    "state": "open (not merged)",
+    "packet": "PR-265.md",
+    "evidence": "evidence/PR-265.json",
+    "evidence_sha256": "e83f2ba2f5adb8a2164d8e03db107d604307cb5989a6a31713b9c36f26009d62",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 266,
+    "branch": "codex/ax-review-packets",
+    "observed_head": "4fae060450fdfaa180acb073950153a27d6a2cf0",
+    "state": "open (not merged)",
+    "packet": "PR-266.md",
+    "evidence": "evidence/PR-266.json",
+    "evidence_sha256": "6df8cd997078afb336df9d6b3fe189d7a165ae99aa18b614ab04ddc33286a701",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 267,
+    "branch": "codex/ay-db-runbook",
+    "observed_head": "9795ee1a8f5985dcaffb7823f9d55ded8698892d",
+    "state": "open (not merged)",
+    "packet": "PR-267.md",
+    "evidence": "evidence/PR-267.json",
+    "evidence_sha256": "ca7df31a3a097771d84e2789abcf5de8fa18bbc0553acf330dece31dcacdae5b",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 268,
+    "branch": "codex/az-acceptance",
+    "observed_head": "94449be9b8a711b2f8eae96f5b30403b22296c7b",
+    "state": "open (not merged)",
+    "packet": "PR-268.md",
+    "evidence": "evidence/PR-268.json",
+    "evidence_sha256": "0d8e0adbaba421fa06ab53d8669321401718a42a01a9bd37ddbe9dee2b744eef",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 269,
+    "branch": "codex/ba-evidence",
+    "observed_head": "89849ae3331bb6703a7d076d540843c4f63b6bc9",
+    "state": "open (not merged)",
+    "packet": "PR-269.md",
+    "evidence": "evidence/PR-269.json",
+    "evidence_sha256": "29e46f637e78c4cdd689387109153b2a0b2208cc5a8d650b196753bf370118a3",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 270,
+    "branch": "codex/bb-fake-data",
+    "observed_head": "4f210972adbffa2d5cd5c4148b1065a8df7548ef",
+    "state": "open (not merged)",
+    "packet": "PR-270.md",
+    "evidence": "evidence/PR-270.json",
+    "evidence_sha256": "20924418c96f7a2ad9ffdf48a5ba4814205b49591daf80629d3362e7c61f1313",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 271,
+    "branch": "codex/ca-ci-ownership",
+    "observed_head": "9caf9ed59b388de5168b476522ca0230067f9845",
+    "state": "open (not merged)",
+    "packet": "PR-271.md",
+    "evidence": "evidence/PR-271.json",
+    "evidence_sha256": "086169620a5ee59624bc0cfdfaf0c3c3f34c1299ced436468e6d5edf1bc6ac7e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 272,
+    "branch": "codex/ca-sliq-releases",
+    "observed_head": "ef3e76e3e6c0fdbc012a4f59bd55dddd2f26920b",
+    "state": "closed (not merged)",
+    "packet": "PR-272.md",
+    "evidence": "evidence/PR-272.json",
+    "evidence_sha256": "238264693252b338d6bc702074c06226cdaf136e8bff4f41af3e856b6682ff2c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 273,
+    "branch": "codex/cb-release-gate",
+    "observed_head": "ff13614fcd8bd37d989faec74d387371ef7ac378",
+    "state": "closed (not merged)",
+    "packet": "PR-273.md",
+    "evidence": "evidence/PR-273.json",
+    "evidence_sha256": "48a94b7a79824af048fc1e4a163a99ecf8839a261cdce052d46e0c4329a0a64e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 274,
+    "branch": "codex/cc-jnr-reconcile",
+    "observed_head": "d88f06333556e5c2a80e183a5067c5f7117562fa",
+    "state": "closed (not merged)",
+    "packet": "PR-274.md",
+    "evidence": "evidence/PR-274.json",
+    "evidence_sha256": "f4ebc6a1d146106488af6e1adb9a4fce7b3c2fca5412c460ccaf56c3430af2c5",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 275,
+    "branch": "codex/cd-sliq-no-write",
+    "observed_head": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+    "state": "open (not merged)",
+    "packet": "PR-275.md",
+    "evidence": "evidence/PR-275.json",
+    "evidence_sha256": "245703edc12d1fc86d2e5b692d205f83dccc29e6db6368dcb49eef941a8e855a",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 276,
+    "branch": "codex/ce-validation-final",
+    "observed_head": "e71a80072148077a4c0f05184fe40d79688c01ee",
+    "state": "closed (not merged)",
+    "packet": "PR-276.md",
+    "evidence": "evidence/PR-276.json",
+    "evidence_sha256": "8b8e9ebfadb1457067d18310bcedb01a181c1df4755c3f81546937d1e7407048",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 277,
+    "branch": "codex/cf-db-day-runbook",
+    "observed_head": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+    "state": "open (not merged)",
+    "packet": "PR-277.md",
+    "evidence": "evidence/PR-277.json",
+    "evidence_sha256": "c92d64f625297e1721017c250214639c41e6ae6e63f68e80941789907bb0d6f6",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 278,
+    "branch": "codex/cg-go-no-go-evidence",
+    "observed_head": "8d667ffc7d779d4487fcf19eb052b123ec98baa8",
+    "state": "closed (not merged)",
+    "packet": "PR-278.md",
+    "evidence": "evidence/PR-278.json",
+    "evidence_sha256": "3808598c851e596ce2df1140603de3ce235a5dce69762f5898a4340fb55ceddd",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 279,
+    "branch": "codex/ch-review-packets",
+    "observed_head": "4bb59c0ecfda0a545ec7221ef569dcc1184418db",
+    "state": "closed (not merged)",
+    "packet": "PR-279.md",
+    "evidence": "evidence/PR-279.json",
+    "evidence_sha256": "5abdc92eb72b38c99a9cd57e05117d12a6a5edb0b1472da536d2d0911df9ceaf",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 280,
+    "branch": "codex/ci-branch-checks",
+    "observed_head": "f4eacee2236e65e52fdccbdf5cf8f8045fd95d80",
+    "state": "open (not merged)",
+    "packet": "PR-280.md",
+    "evidence": "evidence/PR-280.json",
+    "evidence_sha256": "e4b4e5e99925d0effe318986c633544f9ed48ef79eff5e3d2de173272de4ffd8",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 281,
+    "branch": "codex/cj-acceptance-specs",
+    "observed_head": "ff29ca191879ec954e305ec0eb200501789a5bcf",
+    "state": "open (not merged)",
+    "packet": "PR-281.md",
+    "evidence": "evidence/PR-281.json",
+    "evidence_sha256": "a0fb216f3d1c5268fd412f47190bd6f13d40d55b25725594edb4428ec3529e36",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 282,
+    "branch": "codex/cg-ck-evidence",
+    "observed_head": "b80b274b0f2b8b12444915152383564cc1b9bf52",
+    "state": "open (not merged)",
+    "packet": "PR-282.md",
+    "evidence": "evidence/PR-282.json",
+    "evidence_sha256": "16e02919a3404eea0e81cc1a987b8d4064ea3db036da3cbce14e04ebb86e001f",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 283,
+    "branch": "codex/ch-review-packets-next",
+    "observed_head": "e40f9edb24a79769efd03b8f900c6c31d8a6729b",
+    "state": "open (not merged)",
+    "packet": "PR-283.md",
+    "evidence": "evidence/PR-283.json",
+    "evidence_sha256": "16e2c7e34e262265dc992e89967a96e2fadce21dee0eda59ca114b6b0e37deb7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 284,
+    "branch": "codex/cl-rounding-rule",
+    "observed_head": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+    "state": "open (not merged)",
+    "packet": "PR-284.md",
+    "evidence": "evidence/PR-284.json",
+    "evidence_sha256": "1ea01cee55a61f3e4c23764f7e4861ef31b645cebf6b815ac71cead2976b2eff",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 285,
+    "branch": "codex/cm-costing-typecheck",
+    "observed_head": "a4c89af3723703ba5e284bb6500553d42975f925",
+    "state": "open (not merged)",
+    "packet": "PR-285.md",
+    "evidence": "evidence/PR-285.json",
+    "evidence_sha256": "e92454b8a7a5ddf94c411c2b2078d97db7431926dc8c189de7b82211293fc913",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 286,
+    "branch": "codex/cn-john-pq-run-sheet",
+    "observed_head": "bfaa31b84ebb04cec74c386787806320c3dee44e",
+    "state": "open (not merged)",
+    "packet": "PR-286.md",
+    "evidence": "evidence/PR-286.json",
+    "evidence_sha256": "ec7d166ed59f434bc2fdee0706298011587eae64aa2d021baba1f329d3c37d65",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 287,
+    "branch": "codex/co-rhys-sign-off-guide",
+    "observed_head": "4b134cbb3f04f63938ef4537e122a43b8af6235f",
+    "state": "open (not merged)",
+    "packet": "PR-287.md",
+    "evidence": "evidence/PR-287.json",
+    "evidence_sha256": "2ccae481949ba52936c159ad8878d758145ad61c4cddfd1428b549f983510ea2",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 288,
+    "branch": "codex/cp-cutover-day-checklist",
+    "observed_head": "ce2e6cc1268e5965a490f839083ab0fcd17eeae7",
+    "state": "open (not merged)",
+    "packet": "PR-288.md",
+    "evidence": "evidence/PR-288.json",
+    "evidence_sha256": "4f671300f3a7dfd40e2ef2d05feafc740e53f5dc2a1aac76e333b5722c7bb5f7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 289,
+    "branch": "codex/cq-pr-corrections",
+    "observed_head": "bcf29b1589dfe9a15a593c583984e6c457690b1d",
+    "state": "open (not merged)",
+    "packet": "PR-289.md",
+    "evidence": "evidence/PR-289.json",
+    "evidence_sha256": "417b28bc854f435f94b84fa0c9f49a179b1fab32e570d74d5faaa14601fa6cab",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 290,
+    "branch": "codex/b4-d3",
+    "observed_head": "d9bcbc398b283e621ea4d73bcf90ef18f7ccc1b9",
+    "state": "open (not merged)",
+    "packet": "PR-290.md",
+    "evidence": "evidence/PR-290.json",
+    "evidence_sha256": "9dae2cf6b5a8dafc0fe058e0bd0d43d5c0bdfb20e14f37ecb26f07ca0e35ce59",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 291,
+    "branch": "codex/b4-d4",
+    "observed_head": "01067cab327ddc7107a99a015522530d736519c8",
+    "state": "open (not merged)",
+    "packet": "PR-291.md",
+    "evidence": "evidence/PR-291.json",
+    "evidence_sha256": "263773d3b25d45ea706103c08a230b101af028e2d4046a7afc4ef970c79f0648",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 292,
+    "branch": "codex/b4-f5",
+    "observed_head": "55ee54c3b64d812745731a7090c42b483571f7c0",
+    "state": "open (not merged)",
+    "packet": "PR-292.md",
+    "evidence": "evidence/PR-292.json",
+    "evidence_sha256": "8cd5dd799e51175846b1400dc6256bb9b437e723a0838214f9af4e7c9eecaa34",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 293,
+    "branch": "codex/b4-d6",
+    "observed_head": "0cfe4495a805d0c41acbdbe7a5f8b892006df68a",
+    "state": "open (not merged)",
+    "packet": "PR-293.md",
+    "evidence": "evidence/PR-293.json",
+    "evidence_sha256": "0a2b091072e07858e61bec2e3802d07f66218a8b044138a5eb9b13f4db474396",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 294,
+    "branch": "codex/b4-c10",
+    "observed_head": "ac49a303512288e76c95f74522ec3abdaf251f34",
+    "state": "open (not merged)",
+    "packet": "PR-294.md",
+    "evidence": "evidence/PR-294.json",
+    "evidence_sha256": "36bed265ef9bf4c1156e923f3f09677104bf6a99d5621a14e54628a2dd3243eb",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 295,
+    "branch": "codex/b4-b5",
+    "observed_head": "865058f4a3e9dfa1afdefb51d3d6b72d401cda29",
+    "state": "open (not merged)",
+    "packet": "PR-295.md",
+    "evidence": "evidence/PR-295.json",
+    "evidence_sha256": "94cae3cb35a1dfa6c11c214f97545130c65bcdea9ecbad55f99efa3eeafedaed",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 296,
+    "branch": "codex/b4-au-wording",
+    "observed_head": "b35e5caf003fba6c6f25082bcfae311ae35e5fd4",
+    "state": "open (not merged)",
+    "packet": "PR-296.md",
+    "evidence": "evidence/PR-296.json",
+    "evidence_sha256": "c0112ee97c64f1156829b8bbfc620d8acabab4e754f600ba2e40bfccded0ec32",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 297,
+    "branch": "codex/b4-security-proofs",
+    "observed_head": "b9406d136f224395a4e6f2d15f82093f1ba2f545",
+    "state": "open (not merged)",
+    "packet": "PR-297.md",
+    "evidence": "evidence/PR-297.json",
+    "evidence_sha256": "9017f574980febdd928ac9c93bf8f80d31f9b29544c8401a6cb02f27e9b131b2",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 298,
+    "branch": "codex/cr-builder4-review",
+    "observed_head": "8d161eca667cf3a64b4a9aaffb2df6ddba9d673d",
+    "state": "open (not merged)",
+    "packet": "PR-298.md",
+    "evidence": "evidence/PR-298.json",
+    "evidence_sha256": "cf1c980a19d7857c08713ea88dce6c7088f7f8b211b969938f7f2fd2f4fa8882",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 299,
+    "branch": "codex/cs-vsr-evidence-index",
+    "observed_head": "ecbf38f36bd4a57a9a93916bb51849b96e239cd5",
+    "state": "open (not merged)",
+    "packet": "PR-299.md",
+    "evidence": "evidence/PR-299.json",
+    "evidence_sha256": "23b7803e8bba2f6c564909c3cc16d1295c21a7bac0e4f1b7a2587fd2b22ce34e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 300,
+    "branch": "codex/ct-manual-count-map",
+    "observed_head": "49097c56f05e690b811872e24ff9b159b774f334",
+    "state": "open (not merged)",
+    "packet": "PR-300.md",
+    "evidence": "evidence/PR-300.json",
+    "evidence_sha256": "34f83eb9a6c7b9cf5ccc3e6f5d06473832f493ecce00e98056bdb292e8ecc447",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 301,
+    "branch": "codex/b4-signoff-g14",
+    "observed_head": "475e186b5b9d4fd526c9c95028c49eeb96aa63c5",
+    "state": "open (not merged)",
+    "packet": "PR-301.md",
+    "evidence": "evidence/PR-301.json",
+    "evidence_sha256": "957f6d27e7a4f146ca39e9836fd975fe8a231edf2e42067cc7d90f6137db14d6",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 302,
+    "branch": "codex/b4-signoff-f6",
+    "observed_head": "e76f1c03ee5cd60f3048d5c5a115714e4b3c54bd",
+    "state": "open (not merged)",
+    "packet": "PR-302.md",
+    "evidence": "evidence/PR-302.json",
+    "evidence_sha256": "f7f24d5d17d31ac02f17e3a5fc8897d72f038ef087948f81bf79bb86f39770a8",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 303,
+    "branch": "codex/b4-signoff-ai-approve",
+    "observed_head": "ca1c504cf515d82533242bf373c38d2f069642fc",
+    "state": "open (not merged)",
+    "packet": "PR-303.md",
+    "evidence": "evidence/PR-303.json",
+    "evidence_sha256": "2e9907bc8122c18c216b24bc814977e29a08b8e73f31f396f76b429df641a867",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 304,
+    "branch": "codex/b4-signoff-b13",
+    "observed_head": "97422fe71066c8e4d225d0d38f2da837f88b4ed5",
+    "state": "open (not merged)",
+    "packet": "PR-304.md",
+    "evidence": "evidence/PR-304.json",
+    "evidence_sha256": "066e61ccdc1dca29f7f00b380277582bf7f458d1ee4f3d65a8a0518fa10822da",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 305,
+    "branch": "codex/cu-first-day-smoke",
+    "observed_head": "78dc5b7033592f20640b15e61b198c7fcf17930e",
+    "state": "open (not merged)",
+    "packet": "PR-305.md",
+    "evidence": "evidence/PR-305.json",
+    "evidence_sha256": "316c26b39c21d80310adf45e72189feeddf1dfbaad75c718b4200d40bdf432fe",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 306,
+    "branch": "codex/b4-signoff-b15",
+    "observed_head": "99a1a9f6e9e10b5ce7b92183a87c778b8e9fe953",
+    "state": "open (not merged)",
+    "packet": "PR-306.md",
+    "evidence": "evidence/PR-306.json",
+    "evidence_sha256": "7fa5c750d7a44989924c8884b732e78b968439b6ddf1f134ee3f02bbc644ae83",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 307,
+    "branch": "codex/b4-signoff-b17",
+    "observed_head": "8877aed34d009c7dc1c348d81932ffe103190805",
+    "state": "open (not merged)",
+    "packet": "PR-307.md",
+    "evidence": "evidence/PR-307.json",
+    "evidence_sha256": "41ea8f5c748397646650ca8d78611d6536c86d968a71eec45fa00b876f302d07",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 308,
+    "branch": "codex/b4-signoff-c8",
+    "observed_head": "289eeb67ff8535a647e9c01ddb5eadef71e411fe",
+    "state": "open (not merged)",
+    "packet": "PR-308.md",
+    "evidence": "evidence/PR-308.json",
+    "evidence_sha256": "e1b408b36f86fc8ec434d848ab5e8081fa282d3bd9309f727776a39f5854c130",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 309,
+    "branch": "codex/b4-signoff-d7",
+    "observed_head": "2562523258932a489b40862bf0f9a5e2657b8305",
+    "state": "open (not merged)",
+    "packet": "PR-309.md",
+    "evidence": "evidence/PR-309.json",
+    "evidence_sha256": "9c0891940b591016353b9aa37740f966739d04c530b9a030c4691f5cc341968f",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 310,
+    "branch": "codex/b4-signoff-num-reset",
+    "observed_head": "597a195c99b2d7cb20d494f489632889dfeb45da",
+    "state": "open (not merged)",
+    "packet": "PR-310.md",
+    "evidence": "evidence/PR-310.json",
+    "evidence_sha256": "1b1bc0a18121bd173c4382a951b507db02b2ad8014e6a91417cd7713fc8a932a",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 311,
+    "branch": "codex/b4-signoff-xero-app",
+    "observed_head": "54e28c086dd20cd6553b53e3645b6a51c8d13ec2",
+    "state": "open (not merged)",
+    "packet": "PR-311.md",
+    "evidence": "evidence/PR-311.json",
+    "evidence_sha256": "83e2e793f66a218f2fa79036fe42d501a675d9a2f0efc0d3b5103c0a74395743",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 312,
+    "branch": "codex/b4-signoff-sage-qbo-app",
+    "observed_head": "bf5396b66e163cadaf5a212b268a3519f6f4b5cb",
+    "state": "open (not merged)",
+    "packet": "PR-312.md",
+    "evidence": "evidence/PR-312.json",
+    "evidence_sha256": "5ab422d5784943e8a76db8e681858286460d5bbbf8916fc02d5fdd27330821e8",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 313,
+    "branch": "codex/b4-signoff-paid-round",
+    "observed_head": "7ffeb44be92ce10fcace40ddce12a509d3d675c7",
+    "state": "open (not merged)",
+    "packet": "PR-313.md",
+    "evidence": "evidence/PR-313.json",
+    "evidence_sha256": "4bf528234d27fa7d7c8d6e1dcc51ecdf47746e51c701408be0cc87f7764891d5",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 314,
+    "branch": "codex/b4-builder3-review-final",
+    "observed_head": "ce1118393cc0d65bfde426d31222903a802984ff",
+    "state": "open (not merged)",
+    "packet": "PR-314.md",
+    "evidence": "evidence/PR-314.json",
+    "evidence_sha256": "711d5cde1f7b29652615c5e9457d5ac27d9feddd166581a21b01ec7a003a79e9",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 315,
+    "branch": "codex/cv-current-stack-checks",
+    "observed_head": "727ff228b6bc8575bc4440f409fdd3c41fe4ce5e",
+    "state": "open (not merged)",
+    "packet": "PR-315.md",
+    "evidence": "evidence/PR-315.json",
+    "evidence_sha256": "fa447a6f50d51fa0310b0ce968d1f7c4de772eebb58900a181dc11e84c235219",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 316,
+    "branch": "codex/b4-cw-signoff-plain",
+    "observed_head": "359249878c17b7e4586e39bbee4b7e3961c2a2e2",
+    "state": "open (not merged)",
+    "packet": "PR-316.md",
+    "evidence": "evidence/PR-316.json",
+    "evidence_sha256": "04bfbef68d1833d5894e435f5d09426b7290d2313d9cf1b81ef44514956029b4",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 317,
+    "branch": "codex/ba-first-day-41-evidence",
+    "observed_head": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "state": "open (not merged)",
+    "packet": "PR-317.md",
+    "evidence": "evidence/PR-317.json",
+    "evidence_sha256": "8d21af36dc520dc7e5b906644bea2ccab47fae2f8a2f8d29ea25a6d94986b477",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 318,
+    "branch": "codex/b4-cx-review-packets",
+    "observed_head": "a0044d2c87f3e741470ed70a5e16cf359c60f7ae",
+    "state": "open (not merged)",
+    "packet": "PR-318.md",
+    "evidence": "evidence/PR-318.json",
+    "evidence_sha256": "4c5b2aec7113c98b425e7ea853670fb1008d6463fa5ae4dc920b0874104eb735",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 319,
+    "branch": "codex/b4-d5-john-device-uat",
+    "observed_head": "ae5564652c09af54d09f0b67baed3f9211cf5546",
+    "state": "open (not merged)",
+    "packet": "PR-319.md",
+    "evidence": "evidence/PR-319.json",
+    "evidence_sha256": "3f94ed71a524a72ae7c591ba5bb07c4a5d0ac82ffe8111a530472bdebc9acc9c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 320,
+    "branch": "codex/g9-c6-sliq-export-request",
+    "observed_head": "bf664425f819677b6f4256e627444940164f0793",
+    "state": "open (not merged)",
+    "packet": "PR-320.md",
+    "evidence": "evidence/PR-320.json",
+    "evidence_sha256": "b47562f4e7794586f07ed9998480ddb53bfbffd6377a70b1d2c37d02ec4307a8",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 321,
+    "branch": "codex/cy-go-no-go-meeting",
+    "observed_head": "09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d",
+    "state": "open (not merged)",
+    "packet": "PR-321.md",
+    "evidence": "evidence/PR-321.json",
+    "evidence_sha256": "3bb7518e5753802b89505d97dcd6d58ba223e9fce813d2755fb81f6ad98e2a5c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 322,
+    "branch": "codex/cz-restriction-claims",
+    "observed_head": "1b4ed92dcd4337e2c0bde4c67520ac3055aba72e",
+    "state": "open (not merged)",
+    "packet": "PR-322.md",
+    "evidence": "evidence/PR-322.json",
+    "evidence_sha256": "0d37b7eb42223514cb0184afb0373021029819010a33fbb5b8ec8d4be1be83de",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 323,
+    "branch": "codex/b4-q4-supa-pro",
+    "observed_head": "d32a3a7bf3e6bfe8db2e7316df49b9d1346f8180",
+    "state": "open (not merged)",
+    "packet": "PR-323.md",
+    "evidence": "evidence/PR-323.json",
+    "evidence_sha256": "df1053987a0b1cf16a53adca4ddc74ffb6f4c69f507d00793d39c42bd0b5434e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 324,
+    "branch": "codex/da-codex-merge-order",
+    "observed_head": "19b1d6a3f09502d798c1d09618cefa3f17f8cc01",
+    "state": "open (not merged)",
+    "packet": "PR-324.md",
+    "evidence": "evidence/PR-324.json",
+    "evidence_sha256": "62dd9e211a0a0d9413de19c5e206309ea2c4fc8419c412ff7a1f50bc69078ef2",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 325,
+    "branch": "codex/b4-q4-vercel-prev",
+    "observed_head": "02fcd8f077385740122858da8e0a488acb79d0d8",
+    "state": "open (not merged)",
+    "packet": "PR-325.md",
+    "evidence": "evidence/PR-325.json",
+    "evidence_sha256": "c4f2a483ab72edf03ca1c1490e1873b178088e3ed04f53f4d9c2d8bd41903cca",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 326,
+    "branch": "codex/b4-q4-marpet-det",
+    "observed_head": "d214c14a869b50d39276ae429aa65cf11fcef3e4",
+    "state": "open (not merged)",
+    "packet": "PR-326.md",
+    "evidence": "evidence/PR-326.json",
+    "evidence_sha256": "6291b9684d5a74e5c55391f841ad7e5b85661d10aa0f9db9c1ec9c21b25ec2ec",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 327,
+    "branch": "codex/b4-q4-jason-2fa",
+    "observed_head": "b47ecb991f7c97c58ebb7cbc29c05fa53725e067",
+    "state": "open (not merged)",
+    "packet": "PR-327.md",
+    "evidence": "evidence/PR-327.json",
+    "evidence_sha256": "50b62e98977fe3781041443cd282f3a7d71f502c80537631793930bef80fc1d7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 328,
+    "branch": "codex/b4-q4-logins",
+    "observed_head": "e98bc56ccef1dc0a35a1f3b62ce038f926a03af0",
+    "state": "open (not merged)",
+    "packet": "PR-328.md",
+    "evidence": "evidence/PR-328.json",
+    "evidence_sha256": "c187cb64805657baa98444258ad9c7e0ce740bf9daad6fe2566a05d6014e70cc",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 329,
+    "branch": "codex/b4-q4-g16",
+    "observed_head": "92ac6682eaac84295dfd183a8c0b4c5bc15130fe",
+    "state": "open (not merged)",
+    "packet": "PR-329.md",
+    "evidence": "evidence/PR-329.json",
+    "evidence_sha256": "e92969142430984c276ccf4ba9c2eae146bc343d98fe2890c0defb5c9f6b7c31",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 330,
+    "branch": "codex/b4-q4-g18",
+    "observed_head": "7ce4e30d49cf9d8907bd53f23ec943139affef43",
+    "state": "open (not merged)",
+    "packet": "PR-330.md",
+    "evidence": "evidence/PR-330.json",
+    "evidence_sha256": "418a6080792e943a8579b4babf5677ac146a74e40aedfb3b158c64744a0860ad",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 331,
+    "branch": "codex/b4-q4-f3",
+    "observed_head": "85bd651a82443dec5f69cb30d524ccd253172d62",
+    "state": "open (not merged)",
+    "packet": "PR-331.md",
+    "evidence": "evidence/PR-331.json",
+    "evidence_sha256": "3cb7f8b030a943ad787e7752db02d2d9b8574083131155201e7e11f30abfc598",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 332,
+    "branch": "codex/b4-q4-g8",
+    "observed_head": "dea7373c59ee59636c6ef6012a767b79285e24a5",
+    "state": "open (not merged)",
+    "packet": "PR-332.md",
+    "evidence": "evidence/PR-332.json",
+    "evidence_sha256": "357d5fe70f4e4b4400b6fe9212cc07eeddd3e25fdcf1bd51ed36e883c4ac5df0",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 333,
+    "branch": "codex/db-rhys-cutover-week",
+    "observed_head": "8ca0aac7067bade11de78272f46d4a19aa0dab5f",
+    "state": "open (not merged)",
+    "packet": "PR-333.md",
+    "evidence": "evidence/PR-333.json",
+    "evidence_sha256": "80cfd4dc94249c5e68ca8095e7ebcfc07fc7e7b5a07707811e8e81f21897f416",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 334,
+    "branch": "codex/b4-q4-dump",
+    "observed_head": "86b9955070361ae1482d4f224239e513654b1e73",
+    "state": "open (not merged)",
+    "packet": "PR-334.md",
+    "evidence": "evidence/PR-334.json",
+    "evidence_sha256": "4f6a092da4164fd8e22f5ef34d75cdc0285de02984ab2f5f913bf16c9a66e348",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 335,
+    "branch": "codex/b5-i1-iso9001",
+    "observed_head": "b2948a8a64086d2e6b6244633f7e0eb3a3406a46",
+    "state": "open (not merged)",
+    "packet": "PR-335.md",
+    "evidence": "evidence/PR-335.json",
+    "evidence_sha256": "ba40c52b9c35a741e961f65c37ade091e56ffb0522eacb22b795d5d1f2ca83f6",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 336,
+    "branch": "codex/b5-i2-iso9001",
+    "observed_head": "b30d8dea204162c9baded499de7fef516d526b57",
+    "state": "open (not merged)",
+    "packet": "PR-336.md",
+    "evidence": "evidence/PR-336.json",
+    "evidence_sha256": "17ef46ddc391518460b2f5f9aa2d5df69cb269412a38da31b1f12a6ec781b4f7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 337,
+    "branch": "codex/b4-q4-wipe-day",
+    "observed_head": "ad59e3b62a355d1241357eb53e3d24385c4ec6ed",
+    "state": "open (not merged)",
+    "packet": "PR-337.md",
+    "evidence": "evidence/PR-337.json",
+    "evidence_sha256": "c19dda42a8a6496ef75aaf14679f2ad0cb42fb726377aec3e6a4bc5764055627",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 338,
+    "branch": "codex/b5-i3-iso9001",
+    "observed_head": "77c8cc34639dfa72d1d96509c27cded7098b039d",
+    "state": "open (not merged)",
+    "packet": "PR-338.md",
+    "evidence": "evidence/PR-338.json",
+    "evidence_sha256": "28b9e73c62f268cd70fc946f19fefcc0550bd3be28464c1a1ac89ff8c0b79bb0",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 339,
+    "branch": "codex/b5-i4-iso9001",
+    "observed_head": "f9f43f18e2ad1a5c14031fd4139691a6db54189c",
+    "state": "open (not merged)",
+    "packet": "PR-339.md",
+    "evidence": "evidence/PR-339.json",
+    "evidence_sha256": "cb96853ec011aaff4e50226675f56b7f0c21d13bb09e4734a2af750a9d9070eb",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 340,
+    "branch": "codex/b5-i5-iso9001",
+    "observed_head": "2429eda5831a93f6966a89ec8ba8c6a4dde2e1ae",
+    "state": "open (not merged)",
+    "packet": "PR-340.md",
+    "evidence": "evidence/PR-340.json",
+    "evidence_sha256": "80cb863e5eb4aee906d1a0314876e4c5f5b1a0862a50a71de273df904b072d56",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 341,
+    "branch": "codex/b5-i6-iso9001",
+    "observed_head": "67f8ebb871c26f4337a4318253a056ac316849f6",
+    "state": "open (not merged)",
+    "packet": "PR-341.md",
+    "evidence": "evidence/PR-341.json",
+    "evidence_sha256": "28266730d31349d513e8fdb055039957ead9465590133c11b0cb8ab1abe6216b",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 342,
+    "branch": "codex/b5-i7-iso9001",
+    "observed_head": "7a4529edc1844d9d792bf6467de8cf1b92c5990d",
+    "state": "open (not merged)",
+    "packet": "PR-342.md",
+    "evidence": "evidence/PR-342.json",
+    "evidence_sha256": "47634a6f49f7dfc8dd830fccf3da6e98f8bcb1d4f96a67f8a4631b15810d4e8f",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 343,
+    "branch": "codex/b4-lag-more",
+    "observed_head": "a4ebfbfae996b077e5956aec8bf28a35fab20d14",
+    "state": "open (not merged)",
+    "packet": "PR-343.md",
+    "evidence": "evidence/PR-343.json",
+    "evidence_sha256": "eb8d8a5b3dfcd4360c1fbb5162f5f4c1ad3f8a85fff336b9a7a97956b659c9d1",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 344,
+    "branch": "codex/b4-lag-pages",
+    "observed_head": "40ad1d6e6aeb6a47c715d0e0aa8072e3426fdc86",
+    "state": "open (not merged)",
+    "packet": "PR-344.md",
+    "evidence": "evidence/PR-344.json",
+    "evidence_sha256": "da4421ea3219d4d7e21585976590e20afd29ee4d7c6cd2eb29acc38513b85f0d",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 345,
+    "branch": "codex/b6-l1-lag-cross-review",
+    "observed_head": "8e08782d229b69fb6b8be4d04a85515fd99c4586",
+    "state": "open (not merged)",
+    "packet": "PR-345.md",
+    "evidence": "evidence/PR-345.json",
+    "evidence_sha256": "ee32ecda70d0774e8b15302853ca96e2262277f2e2d1796de5bf363d2459da04",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 346,
+    "branch": "codex/b6-l5-pr-conflicts",
+    "observed_head": "c695c0dfed5a20fc3b79a6bab577cbb98305b892",
+    "state": "open (not merged)",
+    "packet": "PR-346.md",
+    "evidence": "evidence/PR-346.json",
+    "evidence_sha256": "e7caabf358855fc4eaf6a9803454ad27ff19c66729a54f11a974181c1bdd8b3f",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 347,
+    "branch": "codex/b6-l4-r1-r8-accept",
+    "observed_head": "380f60c5ce8dfc543f482b5a23086a0b5a85a1f5",
+    "state": "open (not merged)",
+    "packet": "PR-347.md",
+    "evidence": "evidence/PR-347.json",
+    "evidence_sha256": "4c000f6c0fdabada65a5bbf176e21b150e698eec4743f9881d0721697314d176",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 348,
+    "branch": "codex/b6-l2-page-timings",
+    "observed_head": "a8702f6a407ffe996c9bb112db75e104c7b9eb8b",
+    "state": "open (not merged)",
+    "packet": "PR-348.md",
+    "evidence": "evidence/PR-348.json",
+    "evidence_sha256": "71d2bd9dc288cd7a022a35dd8aed4c5c78424b682cbd115f1e4493e0c2ee2a7f",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 349,
+    "branch": "codex/b6-l3-rhys-start",
+    "observed_head": "05a36581b3b6fd03de06ae5a98d3d885a33254ca",
+    "state": "open (not merged)",
+    "packet": "PR-349.md",
+    "evidence": "evidence/PR-349.json",
+    "evidence_sha256": "0df8c8eb5090eb9040d7f0a1e14ecdedcc3b9615f613cc227b9f318b7103bec5",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 350,
+    "branch": "codex/b6-l6-c03-manual-checks",
+    "observed_head": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+    "state": "open (not merged)",
+    "packet": "PR-350.md",
+    "evidence": "evidence/PR-350.json",
+    "evidence_sha256": "be0fb57156f04ef19dd70779fd7d61be3d4fccc6d9adf527264105b69225bc24",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 351,
+    "branch": "codex/b6-l7-c04-vsr",
+    "observed_head": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+    "state": "open (not merged)",
+    "packet": "PR-351.md",
+    "evidence": "evidence/PR-351.json",
+    "evidence_sha256": "6bf96792349f1b089b7f6935af0b08bfbc517d0f9570bdc7aa80e4f8baff4067",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 352,
+    "branch": "codex/b6-l8-c05-p6-risks",
+    "observed_head": "c52e145e32e9026318154751d03be199019d30a2",
+    "state": "open (not merged)",
+    "packet": "PR-352.md",
+    "evidence": "evidence/PR-352.json",
+    "evidence_sha256": "21a0313ff4048584f10d91e41decca575cf1134b3f635999aa4e478f088ea456",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 353,
+    "branch": "codex/b6-l9-c16-cutover-controls",
+    "observed_head": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+    "state": "open (not merged)",
+    "packet": "PR-353.md",
+    "evidence": "evidence/PR-353.json",
+    "evidence_sha256": "3ff54b5b8ec5f3b1929297fcaeaaa83d4b8e6711cc066690bfeb26d3d6440029",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 354,
+    "branch": "codex/b6-l10-sliq-header-map",
+    "observed_head": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+    "state": "open (not merged)",
+    "packet": "PR-354.md",
+    "evidence": "evidence/PR-354.json",
+    "evidence_sha256": "8bb9a7465a394bddab9bff8ddb44f05addecded42339bfc69d7c910aedd0e6e7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 355,
+    "branch": "codex/b6-l11-c07-safeupdate",
+    "observed_head": "008f63a7553f06e235ebdb528a5c40e0e42e1f87",
+    "state": "open (not merged)",
+    "packet": "PR-355.md",
+    "evidence": "evidence/PR-355.json",
+    "evidence_sha256": "16023aee197f07c5b9c75287520ba3fc9afa41fd0c070b08821be617b088933c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 356,
+    "branch": "codex/b6-l12-c10-146-one-time",
+    "observed_head": "74f8cb84258d856ccee2eed16b0c522fa803cf73",
+    "state": "open (not merged)",
+    "packet": "PR-356.md",
+    "evidence": "evidence/PR-356.json",
+    "evidence_sha256": "b922d5a120df967c7340d4651e12515a461e082b930c0bde1b3503dc22e5c981",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 357,
+    "branch": "codex/b6-l13-c11-rounding-evidence",
+    "observed_head": "25c0c9a8a2ff266a8db1d59ea5a8061ad7dc429a",
+    "state": "open (not merged)",
+    "packet": "PR-357.md",
+    "evidence": "evidence/PR-357.json",
+    "evidence_sha256": "80023f999fc76460941bf44971afb099fa37832faefe5a8d0c024e77dda15521",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 358,
+    "branch": "codex/b6-l14-c15-lag-effects",
+    "observed_head": "2eb65485de82ba91b9f009422acdb6e2f0976388",
+    "state": "open (not merged)",
+    "packet": "PR-358.md",
+    "evidence": "evidence/PR-358.json",
+    "evidence_sha256": "8c5fd5a491f28d6d7a389f68f2354ed5b1e5705aa190dd8e4cbe16f0834c7058",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 360,
+    "branch": "codex/b5-i8-iso9001",
+    "observed_head": "46010baba4091927955b592990b9a638f5e1d510",
+    "state": "open (not merged)",
+    "packet": "PR-360.md",
+    "evidence": "evidence/PR-360.json",
+    "evidence_sha256": "0e6def5737137d57b2fc75769bf2dd77c5bc03881d5593acef0f09444cf45357",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 361,
+    "branch": "codex/b5-i9-iso9001",
+    "observed_head": "d6df86bc57e2e77379998c29bcc4a6d972318ffb",
+    "state": "open (not merged)",
+    "packet": "PR-361.md",
+    "evidence": "evidence/PR-361.json",
+    "evidence_sha256": "ecf4572262fd8851f398b7a370ef68fd53084e03f9f113655898273f2b87fee6",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 362,
+    "branch": "codex/m1-second-review-c03-c16",
+    "observed_head": "7f3a8d48e7bc498628c175e62ed50419b4841856",
+    "state": "open (not merged)",
+    "packet": "PR-362.md",
+    "evidence": "evidence/PR-362.json",
+    "evidence_sha256": "2e599bdc3e3b4428d3bb5b76b04f8262f583757588ca6cd4c249ee0aa2446598",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 363,
+    "branch": "codex/b5-i10-iso9001",
+    "observed_head": "f98e747a94471981597a59f9d50665eff77b0fd1",
+    "state": "open (not merged)",
+    "packet": "PR-363.md",
+    "evidence": "evidence/PR-363.json",
+    "evidence_sha256": "d0457f78710fa88e8e54e225c3c6d6dcc678f07ef0c4cee7a404ba25286591b7",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 364,
+    "branch": "codex/m2-sliq-load-runbook",
+    "observed_head": "83a2826b29ca6fdb139f4a0e7812d103865426be",
+    "state": "open (not merged)",
+    "packet": "PR-364.md",
+    "evidence": "evidence/PR-364.json",
+    "evidence_sha256": "15a18b3d4ba84be949de0c47b22554c2ad4f7b45a7300d66283a0dab1d4b2616",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 365,
+    "branch": "codex/m3-delivery-note-uat",
+    "observed_head": "1970388d390df9f8c8af9dcd7d94d1d5f71aa174",
+    "state": "open (not merged)",
+    "packet": "PR-365.md",
+    "evidence": "evidence/PR-365.json",
+    "evidence_sha256": "8ddba2299ff5b95c00e3e1ca92ed51aa1aa6a0ebe1b92e8ee95e61b181778469",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 367,
+    "branch": "codex/m4-john-iso-pack-gaps",
+    "observed_head": "a23e3041e75ec5a90dc2bb66f68247614ea77c7f",
+    "state": "open (not merged)",
+    "packet": "PR-367.md",
+    "evidence": "evidence/PR-367.json",
+    "evidence_sha256": "3b2fa1af41ff017de25cc615ea632984ce1c964202f953e43a659d612f7896c8",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 368,
+    "branch": "codex/b5-n3-sliq-rehearsal",
+    "observed_head": "0b0fee32d6153a24e7b32c4bb79c08c184df26c8",
+    "state": "open (not merged)",
+    "packet": "PR-368.md",
+    "evidence": "evidence/PR-368.json",
+    "evidence_sha256": "06dddc7210fa67761b678308661f1e29b8ad10db0b7ca373750bd2d7ee2d90ad",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 369,
+    "branch": "codex/b5-audit-g10-g22",
+    "observed_head": "7ade27b800f9f922b80df27647ca500a7ee08bec",
+    "state": "open (not merged)",
+    "packet": "PR-369.md",
+    "evidence": "evidence/PR-369.json",
+    "evidence_sha256": "2777d1573273afed0db6c0b5496ce3526b5cf2e4fda41a2c0b68f550892e3f04",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 370,
+    "branch": "codex/b5-audit-batch-2",
+    "observed_head": "cdb3d4592575f9ecff4d6d3cecb58ceaaf173595",
+    "state": "open (not merged)",
+    "packet": "PR-370.md",
+    "evidence": "evidence/PR-370.json",
+    "evidence_sha256": "41f346748d55197cfb196317321a3dcddeb1b713a50120a54294d2732c1609a2",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 373,
+    "branch": "codex/b5-g06-counter-review",
+    "observed_head": "f3f01c94559cb3dc376ee64c7b459093796b42de",
+    "state": "open (not merged)",
+    "packet": "PR-373.md",
+    "evidence": "evidence/PR-373.json",
+    "evidence_sha256": "cf547b05c3f7c786e39b8b64328ae1da3aa60003f38d2f3d568d4a5b5ab4e9aa",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 374,
+    "branch": "codex/b5-g10-g11-g22-access-review",
+    "observed_head": "3b085e7e0e5e79570f38c03930d3a77fb2ec9552",
+    "state": "open (not merged)",
+    "packet": "PR-374.md",
+    "evidence": "evidence/PR-374.json",
+    "evidence_sha256": "71cfa981709ab3db632c31bb048bb856b7ad6a084ac37f932091f27177bf3e1d",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 375,
+    "branch": "codex/b5-g20-g27-security-review",
+    "observed_head": "52aa6dd8c6d3cdb372cdd09abb8de8a5364a0a19",
+    "state": "open (not merged)",
+    "packet": "PR-375.md",
+    "evidence": "evidence/PR-375.json",
+    "evidence_sha256": "982f8aaddf5982cedd5d93837a754f48e6056483127a3af0c3284b1a61c218b9",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 376,
+    "branch": "codex/b5-g25-claims-review",
+    "observed_head": "35d53468ad961cf5f45935f7d21b69cc73a8ce5d",
+    "state": "open (not merged)",
+    "packet": "PR-376.md",
+    "evidence": "evidence/PR-376.json",
+    "evidence_sha256": "412cda76bc452693024f3dc626f62c31db0391c83162ac168ff352be32f8fea3",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 377,
+    "branch": "codex/b5-g18-provenance-review",
+    "observed_head": "b6478066ae6ee00052586af503dad998dd2b461e",
+    "state": "open (not merged)",
+    "packet": "PR-377.md",
+    "evidence": "evidence/PR-377.json",
+    "evidence_sha256": "f60a3137332fbb06f84994b051a5f08e779ccf429b1b114ad1b2b4507b8929bf",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 378,
+    "branch": "codex/job-profitability-actuals",
+    "observed_head": "ccd74ea513307c5584a11f7cd368f38b742ce769",
+    "state": "open (not merged)",
+    "packet": "PR-378.md",
+    "evidence": "evidence/PR-378.json",
+    "evidence_sha256": "d48c9cd3caafdf30056feaeeaefe90eb5fbd51fd33ae3dc72fc70586da54649b",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 379,
+    "branch": "codex/x4-marpet-isolation",
+    "observed_head": "a5feb4a4bf90329976eaa5b3f12ddf4159e715dc",
+    "state": "open (not merged)",
+    "packet": "PR-379.md",
+    "evidence": "evidence/PR-379.json",
+    "evidence_sha256": "691be787b203f1041ff1e09afe92144ece804076787295d4f87ca8424309f3df",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 380,
+    "branch": "codex/g06-before-counter-test",
+    "observed_head": "aec4d2ff38016b68f931a2517d65feafb380ff5d",
+    "state": "open (not merged)",
+    "packet": "PR-380.md",
+    "evidence": "evidence/PR-380.json",
+    "evidence_sha256": "bf45f2932ef807b5a66642f6f9cad8812620bd13ccfd68cd896415f8c5c03acf",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 381,
+    "branch": "codex/g27-concurrency-key-tests",
+    "observed_head": "47a79816e4d879a0c45abffa4a9aa96c0cb50b28",
+    "state": "open (not merged)",
+    "packet": "PR-381.md",
+    "evidence": "evidence/PR-381.json",
+    "evidence_sha256": "6b0eecba5bbcf351954741a94d0b4a9a6b388863616c19036a90f194aa129304",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 382,
+    "branch": "codex/g12-wipe-control-plan",
+    "observed_head": "9bc6904ddb903f584e45dca67d654e5b778fbe55",
+    "state": "open (not merged)",
+    "packet": "PR-382.md",
+    "evidence": "evidence/PR-382.json",
+    "evidence_sha256": "aae4f29a9b39f8d460e58383b33f999532d14f93187b1fff58ff081d4147c981",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 383,
+    "branch": "codex/g18-build-provenance-template",
+    "observed_head": "694ef5c4243072c8a19e5a7e9bb9e85fd09d95e9",
+    "state": "open (not merged)",
+    "packet": "PR-383.md",
+    "evidence": "evidence/PR-383.json",
+    "evidence_sha256": "1767040785a76823e5722831103b9dd457ce1d050907236e6c70b0f5b2882d2e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 384,
+    "branch": "codex/g20-integrations-register",
+    "observed_head": "7484f9135a1399924f9a368b59a07ec8e667c2e5",
+    "state": "open (not merged)",
+    "packet": "PR-384.md",
+    "evidence": "evidence/PR-384.json",
+    "evidence_sha256": "29d08994994ebb2868ed7c9c082d654c5f36a97b7074bb96f65d29f0efc5c52c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 385,
+    "branch": "codex/g33-release147-import-rehearsal",
+    "observed_head": "d849a4221508325401c570f50f96a1d99474ed96",
+    "state": "open (not merged)",
+    "packet": "PR-385.md",
+    "evidence": "evidence/PR-385.json",
+    "evidence_sha256": "4f69c47793cad8d2719aad8bf042e7bea6e15f4d6f381a0e9e142e4ffa3dfbab",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 386,
+    "branch": "codex/g30-ai-request-wipe-reconciliation",
+    "observed_head": "fa74b117973b29580a2c354e095bb8c4177f3c61",
+    "state": "open (not merged)",
+    "packet": "PR-386.md",
+    "evidence": "evidence/PR-386.json",
+    "evidence_sha256": "0ac5da83b345d6e438ccfc8068eff91a71d274e35b6c85c71beae81d8c4282ab",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 387,
+    "branch": "codex/g31-company-ai-cap",
+    "observed_head": "09060dadd660beeb5ff42d39f3ee0a5d94548a64",
+    "state": "open (not merged)",
+    "packet": "PR-387.md",
+    "evidence": "evidence/PR-387.json",
+    "evidence_sha256": "a5fd7d78e7de0344fe75d07056c4c4ef16e07235c24c337f7f94191b0a6af0ff",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 388,
+    "branch": "codex/g32-cutover-order-docs",
+    "observed_head": "3387e581af9730a0df146481b2b4596756c37ac0",
+    "state": "open (not merged)",
+    "packet": "PR-388.md",
+    "evidence": "evidence/PR-388.json",
+    "evidence_sha256": "8233576cf91a1e4a3ff6e06beb5bc29ad6b092055b4993d8fb05c6f951fbf054",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 389,
+    "branch": "codex/release147-numbering-regressions",
+    "observed_head": "b02d4ff222315ff92274cd8c9a7c9629c7cf27b5",
+    "state": "open (not merged)",
+    "packet": "PR-389.md",
+    "evidence": "evidence/PR-389.json",
+    "evidence_sha256": "01b5cebe0b2689f7d65c5de4138f8b02a50e96d88048ef4d22cccce8de2aca9b",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 390,
+    "branch": "codex/dev001-held-staff-alert-tests",
+    "observed_head": "b1c47c06e504c7e26ecdfa31d0d477777ee45de4",
+    "state": "open (not merged)",
+    "packet": "PR-390.md",
+    "evidence": "evidence/PR-390.json",
+    "evidence_sha256": "4e92091f0b07f41289a0a970669f66e7967984a72d9528ba04415dd85b718dce",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 391,
+    "branch": "codex/pr378-profitability-adversarial-review",
+    "observed_head": "a00378c93208143a4569f5861ea44bfe823dc9cd",
+    "state": "open (not merged)",
+    "packet": "PR-391.md",
+    "evidence": "evidence/PR-391.json",
+    "evidence_sha256": "e0054a6b649c1ed8b9e46346940c898b54fac63ca6fd465ba8d3b5831d7531bb",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 392,
+    "branch": "codex/iso-pack-gap-supplements",
+    "observed_head": "7c8b62ee72ed354ac75beae4f2d5b1ea530fd2dd",
+    "state": "open (not merged)",
+    "packet": "PR-392.md",
+    "evidence": "evidence/PR-392.json",
+    "evidence_sha256": "eb8339eb93a899b6e4022346b07429e7aace3bc6272c5c5027e990b5e6614878",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 393,
+    "branch": "codex/agent-control-reconcile",
+    "observed_head": "b8c9fef57cbfd66e2f27b5556cdae6d8ea6669b7",
+    "state": "open (not merged)",
+    "packet": "PR-393.md",
+    "evidence": "evidence/PR-393.json",
+    "evidence_sha256": "c68ae4d692f7ad300b29e4feefc7623c2a640c473b1055eab384d6a5a584876b",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 394,
+    "branch": "codex/feature-state-reconcile",
+    "observed_head": "a825d5e646de2a2a1b3dfd09ae4b4d0f68832442",
+    "state": "open (not merged)",
+    "packet": "PR-394.md",
+    "evidence": "evidence/PR-394.json",
+    "evidence_sha256": "fe9479610add1619f7d8577fcf1680ccca0ac308b0f87912be31cab9f7ca8a1c",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 395,
+    "branch": "codex/ai-existing-provider-verification",
+    "observed_head": "0d6ef488e7ec9c35f60c1cf30a075df7d34dc866",
+    "state": "open (not merged)",
+    "packet": "PR-395.md",
+    "evidence": "evidence/PR-395.json",
+    "evidence_sha256": "abefad5d4e27a23603221f3571c7c7aae70524a55046a8d823d66b529dac7e1e",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 396,
+    "branch": "codex/xero-readback-reconciliation-fix",
+    "observed_head": "638a12c5fcd494597e1e99da95d77bb430256195",
+    "state": "open (not merged)",
+    "packet": "PR-396.md",
+    "evidence": "evidence/PR-396.json",
+    "evidence_sha256": "2acfb3c8e1ea0b3e03191020f06eabd334ad127916fd5f71dc4394cea12be041",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 397,
+    "branch": "codex/cloudflare-skills-assessment",
+    "observed_head": "f4a6ea619586bb1cec78fcc36c69e4cca3036d54",
+    "state": "open (not merged)",
+    "packet": "PR-397.md",
+    "evidence": "evidence/PR-397.json",
+    "evidence_sha256": "9362ecb322837590b8bf0eef9b95cbd402616f9199d36944268ba082a5d73f51",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  }
+]

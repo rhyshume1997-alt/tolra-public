@@ -1,0 +1,36 @@
+{
+  "number": 389,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/389",
+  "title": "Release 147: prove numbering, retry keys and retained holds",
+  "branch": "codex/release147-numbering-regressions",
+  "observed_head": "b02d4ff222315ff92274cd8c9a7c9629c7cf27b5",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:00Z",
+  "files": [
+    "tests/reviews/release147/README.md",
+    "tests/reviews/release147/bootstrap.sql",
+    "tests/reviews/release147/disposable.ts",
+    "tests/reviews/release147/evidence/archive.json",
+    "tests/reviews/release147/evidence/run.tar.gz",
+    "tests/reviews/release147/numbering.test.ts",
+    "tests/reviews/release147/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Seven committed-code tests passed, zero skipped, against the unchanged full public schema/release chain at 9d7725e in a newly created nonce-verified network-isolated PostgreSQL container. Synthetic records only; no DB URL or private files.\n\nCovers all 16 current verification rows; blank/typed pre-counter refusal without burning numbers; actual day-of setter and next_doc_number continuation; request_id replay, changed retry refusal and concurrent double submit; wrong-company refusal; and a synthetic stock wipe/negative KEEP violation showing both hold rows/timestamps and other-company stock preserved.\n\nThe synthetic stock deletion is NOT the actual JNR wipe. Actual private-kit execution/preservation remains unverified here, owned by Code. No complete wipe proof or real installed/browser state is claimed.\n\nThe README explains in one paragraph that the original public verifier at 9e1a82c had 11 assertions. 31f965e added five checks: request hash, ambiguous customers, numbering guard, hold-table protection and hold-before-numbering. Current 9d7725e requires 16 true rows; accepting only 11 would omit checks. Original source counted statically; current verifier executed.\n\nCode 8c67abd; retained original logs and SQL/hash/commit/environment/time/exit/identity archive. Lint and TypeScript passed. Separate branch from main, tests/docs only. No merge, production SQL, private files, #359/go-live edits or message to John.",
+  "historical_test_claims": [
+    "Seven committed-code tests passed, zero skipped, against the unchanged full public schema/release chain at 9d7725e in a newly created nonce-verified network-isolated PostgreSQL container. Synthetic records only; no DB URL or private files.",
+    "Code 8c67abd; retained original logs and SQL/hash/commit/environment/time/exit/identity archive. Lint and TypeScript passed. Separate branch from main, tests/docs only. No merge, production SQL, private files, #359/go-live edits or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41983794630,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41983794630",
+      "head_sha": "b02d4ff222315ff92274cd8c9a7c9629c7cf27b5",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

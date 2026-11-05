@@ -1,0 +1,31 @@
+{
+  "number": 271,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/271",
+  "title": "Coordinate explicit CA-CI handoff and job evidence",
+  "branch": "codex/ca-ci-ownership",
+  "observed_head": "9caf9ed59b388de5168b476522ca0230067f9845",
+  "base_sha": "b6db532209e1cea1bfcf1533a09b4c668124401d",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "docs/TOLRA-WORK-OWNERSHIP.md",
+    "tests/HANDOVER-BUILDER-3.md",
+    "tests/HANDOVER-CODEX-1.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Latest builder3 handover for M1\u2013M4, reporting head 9caf9ed59b388de5168b476522ca0230067f9845. tests/HANDOVER-BUILDER-3.md lists done, in progress/blocked and not started, exact source/draft heads, CI IDs and remaining evidence. docs/TOLRA-WORK-OWNERSHIP.md records claims/M1\u2013M4; original implementation, builder6/5 documents and #359 branches unchanged.\n\nDrafts: M1 #362 independent second review/corrections of #350\u2013#354 (21 findings, all452 unfilled source-table rows,189 check IDs/125 canonical fields retained); M2 #364 SliQ real-report load controls and complete count/money/unpaid/aged-debtors tie-out; M3 #365 required delivery-note18-row UAT and exactly six John questions; M4 #367 thirty ISO pack actions covering all14 I7 gaps and18 source files. One independent main-based PR per job, no new feature.\n\nAll five M1 source heads rechecked once and unchanged. Verbatim private reviewer conditions/Operations Pack were not available: no unseen C03/C04/C05/C16 subcondition is claimed closed. Fixed stage-prerequisite/GO-before-smoke ordering, specific signers, target/MFA/off-proof scope, older transfer risk and real-file/loader boundaries. All actual results/decisions/signatures blank.\n\nSliQ facts are attributed to Rhys, not inspected originals: reported .xls/title/header-row6/totals, DD/MM/YYYY, gross20%VAT,2035 invoices+2 Crd=2037 baseline rows to13Oct2026 and79 customers. Need final full set/reviewed14Oct\u2192cut-off delta and actual totals. Existing CSV/XLSX loader needs proved normalization; current write CLI is rehearsal-only and cannot be bypassed for live. Quote lines are supported after reviewed parent mapping; PO line contents are not preserved by the header writer. Complete aged-debtors/source-balance/Tolra bridge and financial acceptance remain open.\n\nDelivery notes remain required at opening. #359 source4991e088 still reports starting-number/no-sales-order-job route gaps. M3 exposes required failures and text-versus-real job links; no SQL counter/placeholder import/new RPC performed. John must supply pad/numbering/routes/roles/receipt answers and actual print/PDF/controlled-mail/link/permission results.\n\nM4 finishes the gap list, not company certification or private evidence. John assigns/adopts controls and dates, quality checker confirms actual scope/criteria, process owners prove operation, accounts/Code/reviewer/Rhys sign their own responsibilities. Existing private records may resolve gaps; no assertion JNR lacks them.\n\nStatic checks PASS:21 findings,189 ordered IDs and125 ordered canonical fields retained,452 blank source rows,2035+2 arithmetic/baseline boundary,6 questions/18 UAT result rows,30 ISO actions/14 gap mappings/18 source paths, all10 deliverable files whitespace. Docs CI completed success: M1 41887095613; M2 41887740603; M3 41888283373; M4 41888854407. These do not prove runtime/import/financial/UAT/company audit/signature results; no full suites repeated for docs.\n\nAll work committed as drafts. No main merge, production SQL, live import/email, deployment, Ready label, private data publication, new feature or signature. Preserve138/140/141/144/145/146 order and no146 reapply after rollback/history/key_source bypass. Historical52/61 audit stays stopped; actual required operator evidence and independent decisions remain open.",
+  "historical_test_claims": [
+    "Latest builder3 handover for M1\u2013M4, reporting head 9caf9ed59b388de5168b476522ca0230067f9845. tests/HANDOVER-BUILDER-3.md lists done, in progress/blocked and not started, exact source/draft heads, CI IDs and remaining evidence. docs/TOLRA-WORK-OWNERSHIP.md records claims/M1\u2013M4; original implementation, builder6/5 documents and #359 branches unchanged."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41889317121,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41889317121",
+      "head_sha": "9caf9ed59b388de5168b476522ca0230067f9845",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

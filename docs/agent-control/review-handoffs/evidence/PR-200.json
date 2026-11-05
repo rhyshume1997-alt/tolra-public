@@ -1,0 +1,58 @@
+{
+  "number": 200,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/200",
+  "title": "Resolve chase progression conflict without allowing earlier reminders",
+  "branch": "codex/chase-progression-fix",
+  "observed_head": "eea9aecc9d94facf44b84bc6d16f4a15c14201ab",
+  "base_sha": "12dce0957b411131449cd1d22feb3cb111d075f9",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:19Z",
+  "files": [
+    "app/(dashboard)/approval/page.tsx",
+    "app/(dashboard)/invoices/page.tsx",
+    "app/api/chase/approve/route.ts",
+    "components/chase/approval-card.tsx",
+    "components/chase/connected-approval.tsx",
+    "components/chase/connected-settings.tsx",
+    "components/chase/customer-says-paid.tsx",
+    "components/chase/settings-card.tsx",
+    "components/email-schedules/chase-steps-editor.tsx",
+    "components/email-schedules/settings-card.tsx",
+    "lib/chase/steps.ts",
+    "lib/chase/ui-store.ts",
+    "lib/email/chase/approve.ts",
+    "package-lock.json",
+    "package.json",
+    "scripts/test-atomic-proposals.mjs",
+    "supabase/proposals/builder2_atomic_settings.rollback.sql",
+    "supabase/proposals/builder2_chase_settings_atomic.sql",
+    "supabase/proposals/builder2_costing_settings_atomic.sql",
+    "tests/postgres/atomic-settings-fixture.sql",
+    "tests/postgres/atomic-settings.test.mjs",
+    "tests/unit/chase-approval-ui.test.ts",
+    "tests/unit/chase-approve.test.ts",
+    "tests/unit/chase-more.test.ts",
+    "tests/unit/chase-settings-ui.test.ts",
+    "tests/unit/chase-steps.test.ts",
+    "tests/unit/chase-ui-wiring.test.ts",
+    "tests/unit/chase-wording.test.ts",
+    "tests/unit/customer-says-paid-ui.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "The conflicting test asked for a firm reminder after the final reminder had been sent. The implementation already correctly blocks backward progression. Preserve the valid most-advanced-unsent case and explicitly assert that neither 7-day nor 14-day reminders can follow the 30-day reminder.\n\nValidation: full unit suite, 5,078 tests across 376 files, passed. No application behavior or tests were weakened. Prefer #191 with the recovery fix over #186; this patch documents the resolution for #186.\n\n\nTargets `claude/chase-steps`, the same base as #186.\n",
+  "historical_test_claims": [
+    "The conflicting test asked for a firm reminder after the final reminder had been sent. The implementation already correctly blocks backward progression. Preserve the valid most-advanced-unsent case and explicitly assert that neither 7-day nor 14-day reminders can follow the 30-day reminder.",
+    "Validation: full unit suite, 5,078 tests across 376 files, passed. No application behavior or tests were weakened. Prefer #191 with the recovery fix over #186; this patch documents the resolution for #186."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41634290024,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41634290024",
+      "head_sha": "eea9aecc9d94facf44b84bc6d16f4a15c14201ab",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

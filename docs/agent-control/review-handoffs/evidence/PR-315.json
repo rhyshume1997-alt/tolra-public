@@ -1,0 +1,51 @@
+{
+  "number": 315,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/315",
+  "title": "CV: record current candidate and held CM lint, types and unit results",
+  "branch": "codex/cv-current-stack-checks",
+  "observed_head": "727ff228b6bc8575bc4440f409fdd3c41fe4ce5e",
+  "base_sha": "73e35550b41df9f7799bf20c24b4b47b05438780",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "tests/CUTOVER-DAY-CHECKLIST.md",
+    "tests/CV-CURRENT-STACK-RESULTS.md",
+    "tests/JOHN-PQ-RUN-SHEET.md",
+    "tests/RHYS-SIGN-OFF-GUIDE.md",
+    "tests/evidence/builder-3-cv/candidate-unit-files.json",
+    "tests/evidence/builder-3-cv/cm-unit-files.json",
+    "tests/evidence/builder-3-cv/cv-candidate-locked-1.log",
+    "tests/evidence/builder-3-cv/cv-candidate-locked-2.log",
+    "tests/evidence/builder-3-cv/cv-candidate-locked-3.log",
+    "tests/evidence/builder-3-cv/cv-candidate-locked-summary.json",
+    "tests/evidence/builder-3-cv/cv-candidate-npm-ci-summary.json",
+    "tests/evidence/builder-3-cv/cv-candidate-npm-ci-workspace-cache-summary.json",
+    "tests/evidence/builder-3-cv/cv-candidate-npm-ci-workspace-cache.log",
+    "tests/evidence/builder-3-cv/cv-candidate-npm-ci.log",
+    "tests/evidence/builder-3-cv/cv-candidate-summary.json",
+    "tests/evidence/builder-3-cv/cv-candidate-unit-permitted-summary.json",
+    "tests/evidence/builder-3-cv/cv-cm-1.log",
+    "tests/evidence/builder-3-cv/cv-cm-2.log",
+    "tests/evidence/builder-3-cv/cv-cm-summary.json",
+    "tests/evidence/builder-3-cv/cv-cm-unit-permitted-summary.json",
+    "tests/evidence/builder-3-cv/cv-cm-unit-permitted.log"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Latest-main-containing candidate e7581c43b5f92836ceaedcf2716d495392a9d9e6: lint/typecheck exit 0; 5,622 unit assertions passed across 415 files, zero failures/skips/todo. Isolated CM a4c89af3723703ba5e284bb6500553d42975f925: lint/typecheck exit 0; 5,357 passed across 373 files, zero failures/skips/todo. Both lint runs retain 3 existing warnings.\n\nReport: tests/CV-CURRENT-STACK-RESULTS.md; command logs, initial failures, dependency correction and per-file counts: tests/evidence/builder-3-cv/. Candidate uses a fresh locked install; CM uses supplied dependencies. No tests or implementation changed for these runs. Reporting head 727ff228b6bc8575bc4440f409fdd3c41fe4ce5e adds evidence after the frozen tested source.\n\nStacked on CU; includes CN/CO/CP sibling papers. Later #314 CN/CU safety corrections and CR's extended report are outside the frozen test snapshot and must be retained during final integration. Review counts, exact source/tree/commands, failure-to-pass history and scope limits. Not full CI or SQL/browser/provider/manual acceptance. No main merge, production SQL, Ready label or release approval.",
+  "historical_test_claims": [
+    "Latest-main-containing candidate e7581c43b5f92836ceaedcf2716d495392a9d9e6: lint/typecheck exit 0; 5,622 unit assertions passed across 415 files, zero failures/skips/todo. Isolated CM a4c89af3723703ba5e284bb6500553d42975f925: lint/typecheck exit 0; 5,357 passed across 373 files, zero failures/skips/todo. Both lint runs retain 3 existing warnings.",
+    "Report: tests/CV-CURRENT-STACK-RESULTS.md; command logs, initial failures, dependency correction and per-file counts: tests/evidence/builder-3-cv/. Candidate uses a fresh locked install; CM uses supplied dependencies. No tests or implementation changed for these runs. Reporting head 727ff228b6bc8575bc4440f409fdd3c41fe4ce5e adds evidence after the frozen tested source.",
+    "Stacked on CU; includes CN/CO/CP sibling papers. Later #314 CN/CU safety corrections and CR's extended report are outside the frozen test snapshot and must be retained during final integration. Review counts, exact source/tree/commands, failure-to-pass history and scope limits. Not full CI or SQL/browser/provider/manual acceptance. No main merge, production SQL, Ready label or release approval."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41839013622,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41839013622",
+      "head_sha": "727ff228b6bc8575bc4440f409fdd3c41fe4ce5e",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

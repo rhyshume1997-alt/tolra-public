@@ -1,0 +1,33 @@
+{
+  "number": 244,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/244",
+  "title": "U: Add explicit local-only Tolra Demo seed",
+  "branch": "codex/u-tolra-demo-seed",
+  "observed_head": "537b3ea4ede00702bb853aadb492e013af38a797",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:15Z",
+  "files": [
+    "scripts/seed-tolra-demo.ts",
+    "tests/demo/README.md",
+    "tests/unit/tolra-demo-seed.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Superseded by #243 (Claude Code\u2019s demo-data seed, proved on a disposable CI database). No further work on U in this PR.\n\nAdd an explicit, local-only Tolra Demo screenshot seed and plain instructions in tests/demo/README.md. Plans Example Customer A/B/C, three fake jobs/invoices (paid, due, overdue), two machines, three machine-time rows and normal audit activity. All names, example.test emails and integer-pence prices are invented. No production/customer records are copied.\n\nAssumption: safest target is a fresh dedicated native-loopback database named tolra_demo_throwaway with zero companies, not an existing shared test or generic postgres database. URL and actual server database/address/role are independently checked; explicit confirmation is required. The local fake Demo Owner Auth fixture must exist first. No auth passwords/keys are generated or stored in code. The existing company creator grants its membership.\n\nOne transaction, scoped to the newly created company; failure rolls back. Refuse existing companies/repeats rather than erase/overwrite. No migration runner, trigger disabling, external calls or integration connects. Plan mode never loads pg or opens a connection.\n\nValidation: plan-only CLI ran; 5 fake-client unit tests, typecheck, targeted lint and diff check passed. THE WRITER WAS NOT RUN: no database SQL, real schema/runtime, browser or screenshot validation. Operator prerequisites and the exact opt-in command are documented for later review. Draft from main 68f89ca; no deployment, merge or Ready label.\n",
+  "historical_test_claims": [
+    "Add an explicit, local-only Tolra Demo screenshot seed and plain instructions in tests/demo/README.md. Plans Example Customer A/B/C, three fake jobs/invoices (paid, due, overdue), two machines, three machine-time rows and normal audit activity. All names, example.test emails and integer-pence prices are invented. No production/customer records are copied.",
+    "Assumption: safest target is a fresh dedicated native-loopback database named tolra_demo_throwaway with zero companies, not an existing shared test or generic postgres database. URL and actual server database/address/role are independently checked; explicit confirmation is required. The local fake Demo Owner Auth fixture must exist first. No auth passwords/keys are generated or stored in code. The existing company creator grants its membership.",
+    "Validation: plan-only CLI ran; 5 fake-client unit tests, typecheck, targeted lint and diff check passed. THE WRITER WAS NOT RUN: no database SQL, real schema/runtime, browser or screenshot validation. Operator prerequisites and the exact opt-in command are documented for later review. Draft from main 68f89ca; no deployment, merge or Ready label."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41695577907,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41695577907",
+      "head_sha": "537b3ea4ede00702bb853aadb492e013af38a797",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

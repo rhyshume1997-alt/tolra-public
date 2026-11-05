@@ -1,0 +1,33 @@
+{
+  "number": 295,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/295",
+  "title": "B5: Email connection proof and existing manual fallback",
+  "branch": "codex/b4-b5",
+  "observed_head": "865058f4a3e9dfa1afdefb51d3d6b72d401cda29",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:11Z",
+  "files": [
+    "docs/TOLRA-BUILDER-4-OWNERSHIP.md",
+    "tests/B5-EMAIL-CONNECTION-PROOF-AND-FALLBACK.md",
+    "tests/HANDOVER-BUILDER-4-B5.md",
+    "tests/HANDOVER-BUILDER-4.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "B5: Email connection proof and existing manual fallback. Adds a plain-language procedure under docs/ or tests/ and a job handover. Prepared for build/test by 6 November and conditional go-live on 12 November 2026.\n\nValidation: checked repository controls/release source and `git diff --check`. Documentation only. Operator rehearsal, private contact/setting verification and live evidence are explicitly NOT RUN. No database SQL, production changes, merge or deployment.\n\nIndependent review and the named operator checks remain required. Builder 3 CM/CN/CO/CP/CQ untouched. Draft only; no Ready label.\n\nFinal builder 4 handover and all eight PR mappings: `tests/HANDOVER-BUILDER-4.md`. Dedicated assignment/claim ledger: `docs/TOLRA-BUILDER-4-OWNERSHIP.md`. All published trees were compared with local committed trees; each draft remains open and has no Ready label.\n",
+  "historical_test_claims": [
+    "B5: Email connection proof and existing manual fallback. Adds a plain-language procedure under docs/ or tests/ and a job handover. Prepared for build/test by 6 November and conditional go-live on 12 November 2026.",
+    "Final builder 4 handover and all eight PR mappings: `tests/HANDOVER-BUILDER-4.md`. Dedicated assignment/claim ledger: `docs/TOLRA-BUILDER-4-OWNERSHIP.md`. All published trees were compared with local committed trees; each draft remains open and has no Ready label."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41831393561,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41831393561",
+      "head_sha": "865058f4a3e9dfa1afdefb51d3d6b72d401cda29",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

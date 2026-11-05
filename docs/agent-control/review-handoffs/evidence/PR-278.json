@@ -1,0 +1,27 @@
+{
+  "number": 278,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/278",
+  "title": "CG: explicit go/no-go evidence with every unproved gate visible",
+  "branch": "codex/cg-go-no-go-evidence",
+  "observed_head": "8d667ffc7d779d4487fcf19eb052b123ec98baa8",
+  "base_sha": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+  "github_state": "closed (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "tests/GO-NO-GO-EVIDENCE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds 157 explicit evidence rows across the available mandatory gate, release, 18-item exact combined-wipe, manual and validation checklists. Every observed PASS is scoped to its actual full tested SHA and artifact. Real release DB/browser/restore/wipe/import results remain NOT TESTED; Docker backend bootstrap is an observed environment FAIL.\n\nAssumption and blocker: the authoritative Go Live Operations Pack was not supplied or found in the public checkout or supplied workspace files. OPS-000 explicitly blocks any claim that every undisclosed pack line is covered. The actual pack must be reconciled before release. No private repository touched, no SQL or real data used. Decision is NO GO, not an invented SAFE verdict.\n\nChecks: every required gate ID, all 18 CW items, all manual G rows and complete IQ/OQ/PQ inventory accounted for; diff check passes. Documentation only. Full exact-head branch checks are recorded in CI job. Coordination #271.\n\n- [x] CG available-check evidence register with no unsupported PASS\n- [ ] Obtain authoritative Operations Pack and reconcile each line\n- [ ] Same-final-head DB/browser/restore/wipe/import evidence and independent verdicts\n",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41812946899,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41812946899",
+      "head_sha": "8d667ffc7d779d4487fcf19eb052b123ec98baa8",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

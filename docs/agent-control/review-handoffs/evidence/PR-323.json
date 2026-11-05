@@ -1,0 +1,29 @@
+{
+  "number": 323,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/323",
+  "title": "SUPA-PRO: Supabase Pro and first backup checklist",
+  "branch": "codex/b4-q4-supa-pro",
+  "observed_head": "d32a3a7bf3e6bfe8db2e7316df49b9d1346f8180",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:07Z",
+  "files": [
+    "docs/runbooks/SUPA-PRO-FIRST-BACKUP.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds supabase pro and first backup checklist for SUPA-PRO, with expected results, firm stop rules and a handover note. All deliverables are under docs/signoff/ or docs/runbooks/.\n\nValidation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed.\n\nOperational steps, signatures and live evidence remain NOT RUN / unsigned. Related draft sheets must enter the reviewed cutover pack before use. No new functionality, main merge, production SQL, deployment or Ready label.\n",
+  "historical_test_claims": [
+    "Validation: Documentation checks passed (staged whitespace check); source/expected-result/stop-rule review completed. No production operations performed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41844694495,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41844694495",
+      "head_sha": "d32a3a7bf3e6bfe8db2e7316df49b9d1346f8180",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

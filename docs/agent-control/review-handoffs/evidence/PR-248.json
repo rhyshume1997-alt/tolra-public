@@ -1,0 +1,31 @@
+{
+  "number": 248,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/248",
+  "title": "test: add Rhys's go-live rehearsal click checklist",
+  "branch": "codex/z-go-live-manual-checks",
+  "observed_head": "a38ffd683c370788fa1c3d98a324081c08d37950",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/MANUAL-CHECKS-GO-LIVE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/MANUAL-CHECKS-GO-LIVE.md with 35 plain click steps and an expected-result/evidence column for Rhys's rehearsal of candidate #247: ZZ test invoice, exact-text chase approval and double/uncertain sends, paid claims, two-company breaks, AI off/on and owner-only allowance, Xero connect, both accountant invitation types, and blank-company setup/isolation.\n\nAssumptions: test copy only, local mail catcher and controlled inboxes, demo accounting organization/test AI provider, Code prepares and separately reviews the database changes. \u201cZZ\u201d is the customer/line test label; invoice numbering remains untouched. Includes the missing #239 support-UI condition as a visible failure gate, not a claim that candidate #247 already contains it. Every step remains NOT RUN until evidence is recorded.\n\nValidation: source/UI wording and routes reviewed; 35 unique numbered steps checked for expected-result/NOT RUN evidence cells; git diff --check passed. Documentation-only tests/ change, no runtime tests rerun and no manual clicks or database work performed. Nothing under docs/, no SQL applied, no deploy.\n",
+  "historical_test_claims": [
+    "Adds tests/MANUAL-CHECKS-GO-LIVE.md with 35 plain click steps and an expected-result/evidence column for Rhys's rehearsal of candidate #247: ZZ test invoice, exact-text chase approval and double/uncertain sends, paid claims, two-company breaks, AI off/on and owner-only allowance, Xero connect, both accountant invitation types, and blank-company setup/isolation.",
+    "Assumptions: test copy only, local mail catcher and controlled inboxes, demo accounting organization/test AI provider, Code prepares and separately reviews the database changes. \u201cZZ\u201d is the customer/line test label; invoice numbering remains untouched. Includes the missing #239 support-UI condition as a visible failure gate, not a claim that candidate #247 already contains it. Every step remains NOT RUN until evidence is recorded.",
+    "Validation: source/UI wording and routes reviewed; 35 unique numbered steps checked for expected-result/NOT RUN evidence cells; git diff --check passed. Documentation-only tests/ change, no runtime tests rerun and no manual clicks or database work performed. Nothing under docs/, no SQL applied, no deploy."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41703880819,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41703880819",
+      "head_sha": "a38ffd683c370788fa1c3d98a324081c08d37950",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

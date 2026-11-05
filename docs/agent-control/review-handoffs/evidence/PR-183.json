@@ -1,0 +1,29 @@
+{
+  "number": 183,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/183",
+  "title": "Add manual go-live checks with current sender and penny rules",
+  "branch": "codex/manual-checks",
+  "observed_head": "6200405e7c6d34f653a6460069738c7db71aa05c",
+  "base_sha": "0f22f94c6804691f3cea9dd796e050f5b6af6492",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:20Z",
+  "files": [
+    "tests/MANUAL-CHECKS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Reuses the existing builder-2 checklist for chasing, bank checking, costing, timesheet emails and customer payment claims. Updates the expected sender comparison to ignore plus-addressing and adds explicit fractional-penny refusal. Each click has an expected result; missing wiring is marked BLOCKED rather than presented as working.\n\nOnly tests/MANUAL-CHECKS.md is added. No docs/ files, runtime changes, emails, migrations or deployments. Diff check passed; full Vitest, TypeScript and ESLint verification is running and will be recorded on codex/work-ownership.",
+  "historical_test_claims": [
+    "Only tests/MANUAL-CHECKS.md is added. No docs/ files, runtime changes, emails, migrations or deployments. Diff check passed; full Vitest, TypeScript and ESLint verification is running and will be recorded on codex/work-ownership."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41587860353,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41587860353",
+      "head_sha": "6200405e7c6d34f653a6460069738c7db71aa05c",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}
