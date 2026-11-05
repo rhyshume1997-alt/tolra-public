@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { auditEvent } from "@/lib/audit";
 import { toDateInput } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { JOB_DELIVERY_NOTE_RPC, buildJobDeliveryNoteArgs, customerForJob } from "@/lib/job-delivery-note-no-order";
+import { JOB_DELIVERY_NOTE_RPC, buildJobDeliveryNoteArgs, customerForJob } from "./job-delivery-note-no-order";
 import { supabase } from "@/lib/supabase";
 
 type Customer = { id: string; name: string | null };
