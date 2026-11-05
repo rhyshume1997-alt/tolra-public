@@ -70,3 +70,14 @@ Any failed wipe/reconciliation/DLN/smoke check stops the next dependent step. **
 | Reconciliation acceptance and staff smoke/access release | Rhys; named independent checker/tester UNPROVEN | UNPROVEN / UNPROVEN / UNPROVEN / UNPROVEN |
 
 Monday recorder: UNPROVEN. Pack reviewer/date: UNPROVEN. Final approval/signature: UNPROVEN. Software and documents support the companies' controls; they do not certify a company or authorise production changes.
+
+## Final development drafts — not release acceptance
+
+| Draft | Source head | Synthetic focused passed / failed / skipped | Meaning / limit |
+| --- | --- | --- | --- |
+| #408 shared accounting adapter | 06972f8 | 120 / 0 / 0 | CODED / TESTED; existing CSV/XLSX reused; no new provider built |
+| #409 Sage (file export) | fe268078abea14d9bca493b4885b0b6f098310cf | 14 / 0 / 0 | CODED / TESTED; generic accountant files, not native Sage connector |
+| #411 admin provider status | 70709343150cfe1a1011c8b27f7a177d86acd533 | 6 / 0 / 0 | CODED / TESTED; recorded status, no live probe |
+| #412 job progress projection | 795ae4a5e56b4db512a0aa636086bb7329f9f5e3 | 63 / 0 / 0 | CODED / TESTED; stacked on #378, default OFF, unsaved remaining-work inputs |
+
+TypeScript and targeted lint pass for each. AWAITING CHATGPT REVIEW. These heads are separate draft branches, not one integrated candidate. Final combined-SHA validation, rate approval, CONNECTED / MERGED / DEPLOYED / LIVE VERIFIED are UNPROVEN. READY FOR KEYS is not asserted by this table. DONE applies only to the stated code/test work. No production SQL, real data or live provider calls were used. Full source logs and preserved initial failures stay in each PR's tests/reviews evidence folder.
