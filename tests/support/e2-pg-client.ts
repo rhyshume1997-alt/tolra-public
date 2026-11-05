@@ -11,6 +11,7 @@
 import { Pool, type PoolClient, types } from "pg";
 
 import { assertLoopbackUrl } from "./isolation";
+import { loadSafeupdate } from "./safeupdate-session";
 
 export type PgClientOptions = { role: "service_role" | "authenticated" | "anon"; claims?: Record<string, unknown> };
 type Result = { data: unknown; error: { code?: string; message: string } | null };
@@ -46,7 +47,7 @@ const ident = (name: string) => {
 async function inRole<T>(options: PgClientOptions, fn: (db: PoolClient) => Promise<T>): Promise<T> {
   const db = await e2Pool().connect();
   try {
-    await db.query("load 'safeupdate'"); // as the API sessions (Supabase preloads pg-safeupdate): a bare UPDATE or DELETE is refused
+    await loadSafeupdate(db); // as the API sessions (Supabase preloads pg-safeupdate): a bare UPDATE or DELETE is refused, where this user may LOAD it
     await db.query("begin");
     await db.query(`set local role ${options.role}`);
     if (options.claims) {
