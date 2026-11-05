@@ -1,3 +1,4 @@
+import { parseSender } from "@/lib/email/sender";
 import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -113,7 +114,7 @@ export function relatedType(kind: CompanyEmailKind, recordType?: string): string
 export async function selectProvider(organizationId: string, deps: CompanyEmailDeps = {}): Promise<EmailProvider | null | "refused"> {
   const env = deps.env ?? process.env;
   if (env.EMAIL_PROVIDER === "mock") return env.VERCEL_ENV ? "refused" : (deps.providers?.mock ?? mockProvider)();
-  const token = await (deps.getToken ?? getDelegatedAccessToken)(organizationId);
+  const token = await (deps.getToken ?? ((org: string) => getDelegatedAccessToken(org, { forSending: true })))(organizationId);
   if (token) return deps.providers?.microsoft ? deps.providers.microsoft(token) : microsoftProvider(token, deps.fetch ?? fetch);
   return resendFromEnv(env, deps);
 }
@@ -125,8 +126,8 @@ export async function selectProvider(organizationId: string, deps: CompanyEmailD
  */
 export function resendFromEnv(env: Record<string, string | undefined> = process.env, deps: Pick<CompanyEmailDeps, "providers"> = {}): EmailProvider | null {
   const apiKey = env.RESEND_API_KEY?.trim();
-  const from = env.EMAIL_FROM ? stripHeader(env.EMAIL_FROM) : "";
-  return apiKey && from ? (deps.providers?.resend ?? resendProvider)(apiKey, from) : null;
+  const from = env.EMAIL_FROM?.trim() ?? "";
+  return apiKey && parseSender(env.EMAIL_FROM) ? (deps.providers?.resend ?? resendProvider)(apiKey, from) : null;
 }
 
 type Checked = { email: OutgoingEmail } | { error: string; code: "invalid" | "recipient_refused" };

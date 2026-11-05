@@ -56,3 +56,10 @@ describe("Resend live check (mocked answers)", () => {
     expect(c.domains.list).not.toHaveBeenCalled();
   });
 });
+
+describe("sender settings must be one complete, unchanged address", () => {
+  it.each(["Tolra <orders@example.test", "orders@example.test>", "Tolra\r\n<orders@example.test>", "Tolra\u2028<orders@example.test>", "Tolra\0<orders@example.test>"])("refuses malformed or header-control sender %j", value => {
+    expect(parseSender(value)).toBeNull();
+    expect(resendConfigStatus({ ...ENV, EMAIL_FROM: value }).state).toBe("error");
+  });
+});

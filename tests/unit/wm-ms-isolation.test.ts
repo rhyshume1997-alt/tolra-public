@@ -246,11 +246,16 @@ describe("(2) company A without a usable connection never gets B's", () => {
     expect(graphCalls).toHaveLength(0);
   });
 
-  it.each(["needs_reconnect", "disconnected"] as const)("A is %s, B is connected: A gets null (no token, no lease), never B's token", async (status) => {
+  it.each(["needs_reconnect", "disconnected"] as const)("A is %s, B is connected: A never gets B's token", async (status) => {
     const a = company(A, "A", status), b = company(B, "B");
     const svc = world(a, b);
-    expect(await getDelegatedAccessToken(A)).toBeNull();
-    expect(await selectProvider(A)).toBeNull();
+    if (status === "disconnected") {
+      expect(await getDelegatedAccessToken(A)).toBeNull();
+      expect(await selectProvider(A)).toBeNull();
+    } else {
+      expect(await getDelegatedAccessToken(A)).toBeNull();
+      await expect(selectProvider(A)).rejects.toThrow();
+    }
     expect(svc.log.filter((l) => l.kind === "rpc" && l.name === "integration_token_lease")).toHaveLength(0);
     expect(touchesB(svc.log)).toBe(false);
     expect(graphCalls).toHaveLength(0);
@@ -355,7 +360,7 @@ describe("(3) a send for A cannot be redirected to B by a request field", () => 
 });
 
 describe("(4) a token copied from A's row into B's row does not work for B", () => {
-  it("A's access ciphertext in B's row: B gets null, is marked needs_reconnect, nothing is sent, and A's token is never returned for B", async () => {
+  it("A's access ciphertext in B's row: B is refused, is marked needs_reconnect, nothing is sent, and A's token is never returned for B", async () => {
     const a = company(A, "A"), b = company(B, "B");
     const svc = world(a, b);
     svc.secrets[B] = { ...a.secret }; // the attack: B's row now holds A's ciphertext (and A's expiry, so it would be used without a refresh)
@@ -364,8 +369,7 @@ describe("(4) a token copied from A's row into B's row does not work for B", () 
     expect(svc.log.some((l) => l.kind === "rpc" && l.name === "integration_mark_needs_reconnect" && l.args?.p_org === A)).toBe(false);
     expect(svc.connections.find((c) => c.organization_id === B)?.status).toBe("needs_reconnect");
     expect(svc.connections.find((c) => c.organization_id === A)?.status).toBe("connected");
-    const p = await selectProvider(B);
-    expect(p).toBeNull(); // not even a provider: B's send becomes a draft
+    await expect(selectProvider(B)).rejects.toThrow(); // no automatic fallback after the connection fails
     expect(graphCalls).toHaveLength(0);
     // A is untouched and still sends as itself.
     expect(await getDelegatedAccessToken(A)).toBe(a.access);

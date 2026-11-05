@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { recordSendAudit } from "@/lib/email/chase/send-audit";
-import { checkInput, selectProvider, onRecipientAllowlist } from "@/lib/email/send-company-email";
+import { checkInput, selectProvider, onRecipientAllowlist, stripHeader } from "@/lib/email/send-company-email";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
 const sendJobSchema = z.object({
   job_id: z.string().uuid(),
   recipient_email: z.string().trim().toLowerCase().email().max(254),
-  subject: z.string().trim().min(1).max(200),
-  body: z.string().trim().min(1).max(10000),
+  subject: z.string().min(1).max(200).refine(value => value === stripHeader(value), "Review a subject without extra spaces or line breaks."),
+  body: z.string().min(1).max(10000).refine(value => value.trim().length > 0, "Enter the email text."),
   // The same key for retries of one e-mail (double click, network retry); older clients may leave it out.
   idempotency_key: z.string().regex(/^[A-Za-z0-9-]{8,100}$/).optional(),
 });

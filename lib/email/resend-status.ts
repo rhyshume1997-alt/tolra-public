@@ -1,4 +1,5 @@
-import { stripHeader } from "@/lib/email/send-company-email";
+import { parseSender } from "@/lib/email/sender";
+export { parseSender } from "@/lib/email/sender";
 
 /**
  * Admin > Integrations > Resend: what the server's Resend settings let us say. Pure apart from the optional live check, so it is unit tested.
@@ -12,14 +13,6 @@ export type ResendStatus = { state: ResendState; message: string; sender: string
 
 type DomainsAnswer = { data?: { data?: Array<{ name?: string; status?: string }> } | null; error?: { name?: string; statusCode?: number | null } | null };
 export type ResendDomainsClient = { domains: { list: () => Promise<DomainsAnswer> } };
-
-const SENDER = /^(?:[^<>\r\n]*<)?([^\s@<>]+@([^\s@<>]+\.[^\s@<>]+))>?$/;
-
-/** The address and domain in EMAIL_FROM ("Tolra <orders@example.com>" or "orders@example.com"); null when it isn't one. */
-export function parseSender(value: string | undefined): { address: string; domain: string } | null {
-  const match = SENDER.exec(stripHeader(value ?? ""));
-  return match ? { address: match[1].toLowerCase(), domain: match[2].toLowerCase() } : null;
-}
 
 /** The settings alone: no call to Resend. The key's value is never returned. */
 export function resendConfigStatus(env: Record<string, string | undefined> = process.env): ResendStatus {

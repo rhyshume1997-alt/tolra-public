@@ -134,6 +134,10 @@ describe("POST /api/email/send", () => {
       expect(await res.json()).toEqual({ status: "failed", error: `e-${code}`, code });
     }
   });
+  it.each([" Invoice I-1 ", "Invoice\r\nchanged", "Invoice\u2028changed", "Invoice\0changed", "   "])("refuses a subject that would change after approval: %j", async subject => {
+    expect((await post({ ...valid, subject })).status).toBe(400);
+    expect(mailer.calls).toEqual([]);
+  });
 });
 
 

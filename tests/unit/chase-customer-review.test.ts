@@ -18,7 +18,7 @@ for(const email of ['second@example.test',null])it(`does not guess a chase recip
 });
 it('refuses an existing draft where the customer name is ambiguous',async()=>{
  const db=make(),send=vi.fn(),provider=vi.fn();
- const result=await approveChaseDraft({organizationId:company,userId:'office',draftId:'draft',expectedSubject:'Invoice INV-1',expectedBody:'Please pay',today:'2026-11-20'}, {db:db as never,admin:{rpc:vi.fn()} as never,send,provider,allowlisted:()=>false});
+ const result=await approveChaseDraft({organizationId:company,userId:'office',draftId:'draft',expectedTo:"first@example.test",expectedSubject:'Invoice INV-1',expectedBody:'Please pay',today:'2026-11-20'}, {db:db as never,admin:{rpc:vi.fn()} as never,send,provider,allowlisted:()=>false});
  expect(result).toMatchObject({status:'refused',http:409,message:'Two customer records use this name. Check them before sending.'});expect(send).not.toHaveBeenCalled();expect(provider).not.toHaveBeenCalled();
 });
 it('does not confuse a same-name customer in another company',async()=>{
