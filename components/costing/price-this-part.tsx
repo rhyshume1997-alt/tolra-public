@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { loadCompanyRates, PANEL_NOT_SET_UP_MESSAGE, type LoadedRates } from '@/lib/costing/app-rates';
 import { appliedLine, costNote, priceThisPart, type AppliedLine } from '@/lib/costing/price-part';
-import { gbp } from '@/lib/money';
+import { fromPence, gbp, linePence, toPence } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/lib/use-user';
 import type { CostingRates } from './types';
@@ -18,7 +18,7 @@ export type PricePartProps = {
   /** Today's date as text for the cost note (a prop so tests are stable). */
   today?: string;
 };
-const entered = (value: string): number | null => (value.trim() === '' || !Number.isFinite(Number(value)) ? null : Math.max(0, Number(value)));
+const entered = (value: string): number | null => (value.trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value));
 
 /** The panel without its data hooks: rates in, a quote line out. With no rates (or some missing) it says so and shows no figure. */
 export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProps) {
@@ -33,9 +33,9 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
   const material = rates.materials.find(m => m.id === (materialId || rates.materials[0]?.id));
   const machine = rates.machines.find(m => m.id === (machineId || rates.machines[0]?.id));
   const pricing = useMemo(() => priceThisPart(rates, {
-    materialId: material?.id ?? '', machineId: machine?.id ?? '', quantity: Number(quantity), amountPerPart: entered(amount),
+    materialId: materialId || rates.materials[0]?.id || '', machineId: machineId || rates.machines[0]?.id || '', quantity: Number(quantity), amountPerPart: entered(amount),
     setupHours: entered(setupHours), cycleHours: entered(cycleHours), programmingHours: entered(programmingHours),
-  }), [rates, material, machine, quantity, amount, setupHours, cycleHours, programmingHours]);
+  }), [rates, materialId, machineId, quantity, amount, setupHours, cycleHours, programmingHours]);
 
   if (pricing.status === 'not_set_up') {
     return <section aria-label="Price this part" className="space-y-2 rounded border p-4">
@@ -54,8 +54,8 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
   return <section aria-label="Price this part" className="space-y-3 rounded border p-4" onKeyDown={noSubmit}>
     <h2 className="text-lg font-semibold">Price this part</h2>
     <label className="grid gap-1 text-sm text-slate-600">Description<Input aria-label="Part description" maxLength={500} value={description} onChange={e => setDescription(e.target.value)} /></label>
-    <label className="grid gap-1 text-sm text-slate-600">Material<select aria-label="Part material" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-    <label className="grid gap-1 text-sm text-slate-600">Machine<select aria-label="Part machine" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm text-slate-600">Material<select aria-label="Part material" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={material?.id ?? ''} onChange={e => setMaterialId(e.target.value)}>{!material ? <option value="">Choose a current material</option> : null}{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm text-slate-600">Machine<select aria-label="Part machine" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={machine?.id ?? ''} onChange={e => setMachineId(e.target.value)}>{!machine ? <option value="">Choose a current machine</option> : null}{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
     <div className="grid gap-3 sm:grid-cols-2">
       {field('Quantity', quantity, setQuantity, '1', 'Part quantity')}
       {field(material?.unit === 'each' ? 'Pieces per part' : 'Material weight kg per part', amount, setAmount)}
@@ -72,7 +72,8 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
       <div>Overhead: {gbp(figures.overheadCost)}</div>
       <div>Cost per part: {gbp(figures.unitCost)}</div>
       <div>Price per part: {gbp(figures.unitPrice)}</div>
-      <div>Total quote: {gbp(figures.extendedPrice)}</div>
+      <div>Total quote: {gbp(fromPence(linePence(figures.quantity, figures.unitPrice)))}</div>
+      {linePence(figures.quantity, figures.unitPrice) !== toPence(figures.extendedPrice) ? <p className="text-xs text-slate-500">The quote uses the rounded price per part. The costing batch estimate is {gbp(figures.extendedPrice)} before each part is rounded.</p> : null}
     </div> : null}
     <div className="flex flex-wrap gap-2">
       <Button type="button" disabled={!ready} onClick={() => { if (figures && description.trim()) onAdd(appliedLine(description, figures)); }} className="bg-brand text-brand-ink hover:bg-brand-hover">Add as quote line</Button>

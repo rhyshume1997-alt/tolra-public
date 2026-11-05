@@ -1,0 +1,48 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/costing-proxy.test.ts (86 tests) 2720ms
+   ✓ no client bundle reads COSTING_ENGINE_TOKEN / COSTING_ENGINE_URL > the only files that mention COSTING_ENGINE_* are the proxy, the status route and the server caller 1569ms
+   ✓ no client bundle reads COSTING_ENGINE_TOKEN / COSTING_ENGINE_URL > every file reachable from a 'use client' file by value imports is free of COSTING_ENGINE_* and does not import a server-only module 1047ms
+ ✓ tests/unit/costing-rates-store.test.ts (21 tests) 18ms
+ ✓ tests/unit/accounting-token-isolation.test.ts (4 tests) 51ms
+ ✓ tests/unit/costing-price-part.test.ts (36 tests) 13ms
+ ✓ tests/unit/year-end-payment-reconciliation.test.ts (3 tests) 22ms
+ ✓ tests/unit/year-end-po-totals.test.ts (11 tests) 176ms
+ ✓ tests/unit/accounting-cloud-adapters.test.ts (11 tests) 19ms
+ ✓ tests/unit/money.test.ts (17 tests) 9ms
+ ✓ tests/unit/xero-launch-hold.test.ts (15 tests) 11ms
+ ✓ tests/unit/xero-launch-midrun.test.ts (6 tests) 12ms
+ ✓ tests/unit/year-end-unknown-payments.test.ts (2 tests) 19ms
+ ✓ tests/unit/year-end-unresolved-quote.test.ts (2 tests) 261ms
+ ✓ tests/unit/accounting-routes.test.ts (5 tests) 12ms
+ ✓ tests/unit/spreadsheet.test.ts (9 tests) 63ms
+ ✓ tests/unit/year-end-export.test.ts (6 tests) 7ms
+ ✓ tests/unit/xero-launch-route.test.ts (6 tests) 18ms
+ ✓ tests/unit/costing-golden.test.ts (474 tests) 47ms
+ ✓ tests/unit/year-end-unresolved-po.test.ts (2 tests) 274ms
+ ✓ tests/unit/money-receivables-more.test.ts (30 tests) 8ms
+ ✓ tests/unit/costing-ui.test.ts (7 tests) 24ms
+ ✓ tests/unit/costing-extra-edge.test.ts (21 tests) 8ms
+ ✓ tests/unit/money-decimal.test.ts (8 tests) 11ms
+ ✓ tests/unit/accounting-replay-guard.test.ts (3 tests) 5ms
+ ✓ tests/unit/money-receivables-edge.test.ts (36 tests) 9ms
+ ✓ tests/unit/costing-engine-parity.test.ts (9 tests) 6ms
+ ✓ tests/unit/b5-profitability-integration.test.ts (3 tests) 6ms
+ ✓ tests/unit/b5-yearend-missing-amounts.test.ts (5 tests) 14ms
+ ✓ tests/unit/accounting-sql-shape.test.ts (2 tests) 3ms
+ ✓ tests/unit/money-calendar-edges.test.ts (18 tests) 6ms
+ ✓ tests/unit/b5-financial-export.test.ts (5 tests) 47ms
+ ✓ tests/unit/b5-financial-boundaries.test.ts (11 tests) 4ms
+ ✓ tests/unit/b5-yearend-completeness.test.ts (1 test) 4ms
+ ✓ tests/unit/costing-wiring-ui.test.ts (49 tests) 363ms
+ ✓ tests/unit/f2-xero-setup-card.test.ts (25 tests) 203ms
+ ✓ tests/unit/f4-integrations-overview.test.ts (10 tests) 522ms
+ ✓ tests/unit/b5-costing-stale-ui.test.ts (2 tests) 123ms
+
+ Test Files  36 passed (36)
+      Tests  961 passed (961)
+   Start at  15:35:02
+   Duration  20.92s (transform 1.46s, setup 0ms, collect 7.94s, tests 5.12s, environment 2.01s, prepare 1.74s)
+

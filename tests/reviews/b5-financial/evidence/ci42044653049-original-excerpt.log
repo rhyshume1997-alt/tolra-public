@@ -1,0 +1,15 @@
+2026-11-05T14:28:03.7327741Z ERROR: cannot insert multiple commands into a prepared statement (SQLSTATE 42601)
+2026-11-05T14:28:03.7330242Z At statement: 9
+2026-11-05T14:28:03.7331486Z -- -----------------------------------------------------------------------------------------------------
+2026-11-05T14:28:03.7332820Z -- 5. Save the whole rate set in one transaction (all or nothing). SECURITY INVOKER: the caller's own row-level security, the support,
+2026-11-05T14:28:03.7334175Z -- second-step and audit triggers all still apply to every statement below.
+2026-11-05T14:28:03.7335513Z CREATE OR REPLACE FUNCTION public.save_costing_settings_atomic(p_org UUID, p_expected JSONB, p_value JSONB)
+2026-11-05T14:28:03.7336627Z RETURNS VOID
+2026-11-05T14:28:03.7337565Z LANGUAGE plpgsql
+2026-11-05T14:28:03.7338494Z SECURITY INVOKER
+2026-11-05T14:28:03.7339783Z SET search_path = pg_catalog, public
+2026-11-05T14:28:03.7340762Z AS $$
+2026-11-05T14:28:03.7341636Z DECLARE
+2026-11-05T14:28:03.7342524Z   v_org      UUID := public.current_user_organization_id();
+2026-11-05T14:28:03.7343413Z   v_session  JSONB;
+

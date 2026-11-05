@@ -196,8 +196,25 @@ jobs:
           print("busy:", busy or "none")
           sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
           PY
+      - name: Financial143 CLI, rate snapshots and company isolation (own disposable database)
+        run: |
+          git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
+          docker pull postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+          B5_SUPABASE_CLI="$(command -v supabase)" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
+      - name: Export this job's disposable test environment
+        run: |
+          python3 - <<'PY_ENV'
+          import os
+          from pathlib import Path
+          allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+          rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+          if {line.partition("=")[0] for line in rows} != allowed:
+              raise SystemExit("Disposable backend environment is incomplete; stop.")
+          with open(os.environ["GITHUB_ENV"], "a") as target:
+              target.write("\n".join(rows) + "\n")
+          PY_ENV
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}

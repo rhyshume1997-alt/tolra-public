@@ -157,9 +157,10 @@ END
 $$;
 
 -- -----------------------------------------------------------------------------------------------------
+-- Quote the identifier: CLI2.40.7 mistakes an unquoted atomic suffix for BEGIN ATOMIC. Same lower-case function name and body.
 -- 5. Save the whole rate set in one transaction (all or nothing). SECURITY INVOKER: the caller's own row-level security, the support,
 -- second-step and audit triggers all still apply to every statement below.
-CREATE OR REPLACE FUNCTION public.save_costing_settings_atomic(p_org UUID, p_expected JSONB, p_value JSONB)
+CREATE OR REPLACE FUNCTION public."save_costing_settings_atomic"(p_org UUID, p_expected JSONB, p_value JSONB)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -305,8 +306,8 @@ BEGIN
           IS DISTINCT FROM (excluded.labour_rate_pence, excluded.programming_rate_pence, excluded.overhead_pct, excluded.default_margin_pct);
 END
 $$;
-REVOKE ALL ON FUNCTION public.save_costing_settings_atomic(UUID, JSONB, JSONB) FROM PUBLIC, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.save_costing_settings_atomic(UUID, JSONB, JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public."save_costing_settings_atomic"(UUID, JSONB, JSONB) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public."save_costing_settings_atomic"(UUID, JSONB, JSONB) TO authenticated;
 
 -- -----------------------------------------------------------------------------------------------------
 -- 6. Self-check: what this file made is what it says.

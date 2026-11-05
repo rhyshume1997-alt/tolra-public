@@ -1,0 +1,15 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/f2-xero-setup-card.test.ts (25 tests) 294ms
+ ✓ tests/unit/f4-integrations-overview.test.ts (10 tests) 576ms
+ ✓ tests/unit/xero-launch-hold.test.ts (15 tests) 16ms
+ ✓ tests/unit/xero-launch-midrun.test.ts (6 tests) 17ms
+ ✓ tests/unit/xero-launch-route.test.ts (6 tests) 30ms
+
+ Test Files  5 passed (5)
+      Tests  62 passed (62)
+   Start at  15:10:50
+   Duration  5.65s (transform 1.07s, setup 0ms, collect 2.42s, tests 935ms, environment 1.22s, prepare 315ms)
+

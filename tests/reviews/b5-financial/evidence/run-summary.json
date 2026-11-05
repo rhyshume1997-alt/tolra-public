@@ -1,0 +1,98 @@
+{
+  "base": "e42d927383513d1b98ce9cfca444884475622e2f",
+  "tested_product_source": "19bbdae7aa4f33c5453d24c29a0a01163fee7401",
+  "utc": "2026-11-05T15:40:17.149541+00:00",
+  "owner": "Codex Builder5; Claude Code integrates; ChatGPT reviews",
+  "environment": "isolated worktree; unchanged npm lockfile; synthetic/mocked unit tests; self-created pinned-image PostgreSQL with no network/ports",
+  "full_unit": {
+    "passed": 6542,
+    "failed": 0,
+    "skipped": 0
+  },
+  "focused_subset": {
+    "passed": 961,
+    "failed": 0,
+    "skipped": 0
+  },
+  "disposable_database": {
+    "tested_commit": "60a1a279aeea21a0bdc8fe70814475ba634768de",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "unchanged_inputs_at_current_head": {
+      "supabase/migrations/143_costing_rates.sql": true,
+      "supabase/release/143_costing_rates.release.sql": true,
+      "tests/reviews/b5-financial/migration.db.test.ts": true,
+      "tests/reviews/b5-financial/disposable.ts": true,
+      "lib/costing/price-part.ts": true,
+      "lib/costing/app-rates.ts": true,
+      "lib/costing/rates-store.ts": true,
+      "lib/integrations/xero-setup-state.ts": true
+    }
+  },
+  "python_round": {
+    "passed": 412,
+    "failed": 0,
+    "note": "built-in round vs public frozen fixture only, no private engine accessed"
+  },
+  "typecheck": {
+    "exit_code": 0,
+    "heap_mb": 4096
+  },
+  "lint": {
+    "exit_code": 0,
+    "baseline_warnings": 3,
+    "config": "unchanged .eslintrc.json explicit; identical ancestor config excluded to prevent duplicate plugin installation"
+  },
+  "unchanged_original_calculators_and_fixture": {
+    "lib/costing/engine.ts": true,
+    "lib/purchase-order-link.ts": true,
+    "lib/overview-metrics.ts": true,
+    "components/bought-in-profit.tsx": true,
+    "tests/fixtures/costing-golden.json": true
+  },
+  "production_live_acceptance": "UNPROVEN",
+  "logs": {
+    "focused-complete.log": "8d579feca2602f94e7302912356d94a506f89d4316c0ae8004fbd507e2bd206d",
+    "missing-amounts-before.log": "12437948f8908bd04a394ab27eaa9a5b45f9916744aed73ce78fd2082f0f1fce",
+    "lint-current.log": "bcd0a15dc0350b1d6f7acbdacc2df9b44fbe2fa94852aadbbe45c751a8dbb625",
+    "focused.log": "47b98adf36f5278b2a06df9a966c24da55fc39ebb53ac5cc52464246df1a8778",
+    "missing-amounts-reproduced.log": "292703ddadd3dcd5537281e2671a746a1db76aa2c64e0d96bf61bca90f2bfa61",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "database-cli.log": "7da1a273f4e67d6628532d4096d8b1a53c42b18af7eb92113bae7d1e93bd0088",
+    "full-unit.log": "b86b8632cbe3dd8ce8e9968ed52bd00757d8fe75a0856388a0452296ee75d319",
+    "export-fixed-initial.log": "663de017ad96ed8b2c3a4a4a066e632e740ffee2f69e9dd86b61c60ebdca424d",
+    "boundaries-before.log": "4923b5cddf7aeca640e3d2d02de1771d9e73b19a0cd32ee9f1562e9c11ba9776",
+    "typecheck-final.log": "08c1eca6dfcf24ce92d0c86213a32f2ae3e3931ea65c7bbbc134fdbc190eaecb",
+    "export-before.log": "249c32a134a0a53abff885288470d122b1fc87c72fb23d9b52da233468cdeb77",
+    "database-complete.log": "abbeca80a98434572285bc85660c33da591799d59bcbad58a6f52753632f306e",
+    "migration-check-final.log": "3bd67e189b5e9c4880e2821d844f5a13270afb37a23db4aa39aafe8177300d5b",
+    "database-snapshot.log": "f1a1ee341d6e78b6cc75bc71fdf3722d50f33a2fb9e33c4763e04926f5785a84",
+    "database-final.log": "a1fb52f32a532ebf00a157902922ad86abfa3bcc82c0b5264b7b7c47d089e791",
+    "lint-final.log": "01d5da21362a53f9d8931ddc8c207ad65c5801c0256c9c36996b30cf87a518ea",
+    "focused-current.log": "0682356041d92765ff55b055e84a7ca942dc89bc87022f74ad9543316afb8e11",
+    "database-initial.log": "7b2645e27d98bc53a801b0ec02818890545197724095b440c6597ac704c11a3e",
+    "database-pinned.log": "c7e7a1be76ef3c95a6c0c55c67c6a466881e019cbd5b5b0161b11f8d3bd8c47f",
+    "focused-final-all.log": "718b308793062345c5e97cd026d744bf2eb84e814bd0bddd595b7917a1266f2a",
+    "typecheck-4gb.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "npm-ci.log": "97cb3ffbc1c759aff988cf71c11375523b25d48fcf5d7fa46beeb4d52f1f3e4c",
+    "status.log": "a90c5e236808e8983f7f16b12d4098d2235dd140fb55dd4b2c1a8e69c12976d2",
+    "test-lint-isolated.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "database-final-seven.log": "7ece678a0a4ef3cbe82aa7f32bbf6d9647e4a4b8b1f1e75633feaa2a96fd0fe5",
+    "costing-money-initial.log": "56e63ee599140840a551665ad83e2a512fc370c7fc9ce32028303ca9676c46df",
+    "ci42044653049-original-excerpt.log": "5a32c6e9cf21c93437233af78b5ef2e2bfcc8754cd60ec6f11c053f9ed612e99",
+    "typecheck-current.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "focused-all.log": "6d8c5b5e58f7b423d02f060b326649744068682885be7323d5a20e902f9216d6",
+    "full-unit-after-install.log": "98e9291c205233c4c587ecd314a85ad50814a8f46f6976865699c9374a1c778f",
+    "full-unit-final.log": "685a83fcf4224fc4594e331310aa9b1a596dfb7efea05a642485ec3312b1f081",
+    "stale-ui-before.log": "eaba9ddf0abdae4641f2b484aad0d4ab847852e7ebf8a3685d0b510f5da50cd6",
+    "completeness-before.log": "e262f87128fe7f1c0d3ae8a190ed85e0d4d8eecf2367e512b31177ef26a302d6",
+    "migration-check.log": "3bd67e189b5e9c4880e2821d844f5a13270afb37a23db4aa39aafe8177300d5b",
+    "focused-final.log": "98ce099fe590611aef4e75e5044d60a0cef94ba3ea608963058233658147ddd1",
+    "database-tls.log": "f4d40981e9ad57a6951d359fd30119df4a23c4a26541edcc7c4939617f76cdb9",
+    "database-concurrency.log": "fd12f1090090332213e06041d7d2f627ea350c3d13e7cd05828741d9e6ffa7eb",
+    "database-accounting.log": "42027dd5157a6575f0c2449ac530229b3f8b7b95bb06a2c204d825b8f8f4e20f",
+    "lint-isolated.log": "bcd0a15dc0350b1d6f7acbdacc2df9b44fbe2fa94852aadbbe45c751a8dbb625",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
