@@ -206,3 +206,13 @@ it("does not report success when the job-send outcome could not be recorded", as
   const response = await sendJob(post("/api/send-job", request));
   expect(response.status).toBe(502); expect(await response.json()).toMatchObject({ status: "unknown" }); expect(sends).toHaveLength(1);
 });
+
+it.each([" Job sheet ", "Job\r\nchanged", "Job\u2028changed", "Job\0changed", "   "])("refuses a job subject that would change after approval: %j", async subject => {
+  expect((await sendJob(post("/api/send-job", { ...request, subject }))).status).toBe(400);
+  expect(sends).toEqual([]);
+  expect(rpcCalls.filter(c => c.name === "reserve_job_email")).toEqual([]);
+});
+it.each(["\nHello\n", "  Hello  ", "Hello\n\n"])("sends the exact job body approved by the person: %j", async body => {
+  expect((await sendJob(post("/api/send-job", { ...request, body }))).status).toBe(200);
+  expect(sends).toHaveLength(1); expect(sends[0].payload.text).toBe(body);
+});

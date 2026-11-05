@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { type CompanyEmailResult, EMAIL_SEND_ROLES, IDEMPOTENCY_KEY, cleanAddress, onRecipientAllowlist, sendCompanyEmail } from "@/lib/email/send-company-email";
+import { type CompanyEmailResult, EMAIL_SEND_ROLES, IDEMPOTENCY_KEY, cleanAddress, onRecipientAllowlist, sendCompanyEmail, stripHeader } from "@/lib/email/send-company-email";
 import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { MAX_PDF_BYTES, fileNameMatches } from "@/lib/email/attachment-check";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
@@ -30,7 +30,7 @@ const schema = z.object({
   record_id: z.string().uuid(),
   to: z.array(z.string().trim().max(254)).min(1).max(5),
   cc: z.array(z.string().trim().max(254)).max(5).optional(),
-  subject: z.string().trim().min(1).max(200),
+  subject: z.string().min(1).max(200).refine(value => value === stripHeader(value), "Review a subject without extra spaces or line breaks."),
   text: z.string().min(1).max(20_000),
   attachment: z.object({ filename: z.string().trim().min(1).max(120).regex(/\.pdf$/i), content_base64: z.string().min(8).max(7_000_000) }).optional(),
   idempotency_key: z.string().regex(IDEMPOTENCY_KEY).optional(),
