@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { aiHelperConfiguration } from "@/lib/server/ai-helper-configuration";
+
 import { readCompanyFinanceCheck } from "@/lib/ai/finance-check/flag";
 import { readCompanyAssistant } from "@/lib/ai-helper/assistant";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
@@ -20,11 +22,10 @@ const MISSING_FINANCE_SWITCH = new Set(["42883", "42703", "PGRST202", "PGRST204"
 
 /**
  * Admin: the company's AI switches (round-up, RFQ and, when the database has it, the finance check) and its monthly cap (ai_helper_save_settings, as the caller; audited as
- * ai_helper_settings_updated and by the settings row's own audit). Off (404) unless AI_HELPER_ENABLED is exactly "true".
+ * ai_helper_settings_updated and by the settings row's own audit). Admin configuration remains available while the provider routes are switched off.
  */
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
-  if (process.env.AI_HELPER_ENABLED !== "true") return jsonError("Not found", 404);
   const auth = await requireProfile(["admin"]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change the AI helper.", 403);
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
   });
   if (error) {
     console.error("[ai-helper] settings refused", error.code ?? "error");
+    if (error.hint === "cap_below_usage") return jsonError("The monthly limit cannot be below this month's used and reserved AI costs. Use the off switch to stop requests.", 409);
     return jsonError("The AI helper settings could not be saved.", error.code === "42501" ? 403 : 503);
   }
   // The finance check second, so a refused save above never leaves it changed. If only this write fails the other settings ARE saved:
@@ -72,5 +74,6 @@ export async function POST(request: Request) {
   const finance = await readCompanyFinanceCheck(auth.supabase, auth.profile.organization_id);
   const assistant = assistantOn ? await readCompanyAssistant(auth.supabase, auth.profile.organization_id) : { available: false, enabled: false };
   return NextResponse.json({ ...(data as Record<string, unknown>), finance_check_enabled: finance.enabled, finance_check_available: finance.available,
-    assistant_enabled: assistant.enabled, assistant_available: assistant.available, ...(warning ? { warning } : {}) });
+    assistant_enabled: assistant.enabled, assistant_available: assistant.available,
+    ...aiHelperConfiguration((data as { key_set?: boolean } | null)?.key_set === true), ...(warning ? { warning } : {}) });
 }

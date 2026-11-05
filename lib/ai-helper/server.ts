@@ -17,6 +17,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
  */
 export function aiHelperProvider(env: Record<string, string | undefined> = process.env): AiHelperProvider | null {
   if (env.AI_HELPER_PROVIDER === "mock") return env.VERCEL_ENV ? null : mockProvider();
+  if (env.AI_HELPER_PROVIDER && env.AI_HELPER_PROVIDER !== "anthropic") return null;
   return anthropicProvider();
 }
 
@@ -57,6 +58,8 @@ type RunInput<T> = {
 };
 
 const digest = (text: string) => createHash("sha256").update(text, "utf8").digest("hex");
+const validUsage = (usage: AiUsage | undefined): usage is AiUsage => Boolean(usage &&
+  [usage.inputTokens, usage.outputTokens].every((n) => Number.isSafeInteger(n) && n >= 0));
 
 /**
  * One request, in the order the cap and the audit need: reserve (the database checks role, company, switch, key and cap, and writes
@@ -72,7 +75,11 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
   // Every byte sent counts (E9 Q4): the system prompt, the data and the JSON schema the answer must follow.
   const estimate = estimatePence(model, Buffer.byteLength(input.system + input.data + JSON.stringify(input.schema), "utf8"), maxOutputTokens);
   // Without the service role nothing could be settled: refuse before anything is reserved.
-  const service = createSupabaseAdminClient();
+  let service: SupabaseClient | null;
+  try { service = createSupabaseAdminClient(); } catch {
+    console.error("[ai-helper] server configuration unavailable");
+    return { kind: "unavailable" };
+  }
   if (!service) {
     console.error("[ai-helper] service role not configured");
     return { kind: "unavailable" };
@@ -80,9 +87,16 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
   const reserveArgs = { p_estimate_pence: estimate, p_input_digest: digest(input.data), p_input_bytes: Buffer.byteLength(input.data, "utf8") };
   // The assistant (G3) reserves through its own function (migration 134: 133's reserve rules for the one feature), so 133's
   // ai_helper_reserve stays exactly as it is.
-  const { data: reserved, error } = input.feature === "assistant"
-    ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
-    : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
+  let reservation;
+  try {
+    reservation = input.feature === "assistant"
+      ? await input.supabase.rpc("ai_helper_reserve_assistant", reserveArgs)
+      : await input.supabase.rpc("ai_helper_reserve", { p_feature: input.feature, ...reserveArgs });
+  } catch {
+    console.error("[ai-helper] reserve unavailable");
+    return { kind: "unavailable" };
+  }
+  const { data: reserved, error } = reservation;
   if (error) {
     if (error.hint === "ai_helper_off") return { kind: "off" };
     console.error("[ai-helper] reserve refused", error.code ?? "error");
@@ -95,11 +109,17 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
 
   // costPence: the actual cost from the provider's usage, unless given (the full reservation for an attempt that may have been billed).
   const settle = async (status: "suggested" | "failed", failure: AiFailure | null, usage: AiUsage, usedModel: string | null, output: Record<string, unknown> | null, costPence?: number) => {
-    const { error: settleError } = await service.rpc("ai_helper_settle", {
-      p_request: requestId, p_status: status, p_failure: failure, p_cost_pence: costPence ?? actualPence(model, usage), p_model: usedModel, p_output: output,
-    });
-    if (settleError) console.error("[ai-helper] settle refused", settleError.code ?? "error");
-    return !settleError;
+    try {
+      const { error: settleError } = await service.rpc("ai_helper_settle", {
+        p_request: requestId, p_status: status, p_failure: failure, p_cost_pence: costPence ?? actualPence(model, usage), p_model: usedModel, p_output: output,
+      });
+      if (settleError) console.error("[ai-helper] settle refused", settleError.code ?? "error");
+      return !settleError;
+    } catch {
+      // Keep the reservation (133's stale sweep charges it); never show an unaudited suggestion.
+      console.error("[ai-helper] settle unavailable");
+      return false;
+    }
   };
   const none = { inputTokens: 0, outputTokens: 0 };
 
@@ -120,26 +140,41 @@ export async function runAiHelper<T>(input: RunInput<T>): Promise<RunOutcome<T>>
   }
 
   let completion;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
-    completion = await provider.complete({ model, system: input.system, data: input.data, schema: input.schema, maxOutputTokens, effort: AI_HELPER_EFFORT[input.feature], timeoutMs: AI_REQUEST_TIMEOUT_MS, apiKey });
+    // The SDK also aborts its request at this deadline; the helper bounds any adapter that fails to return.
+    completion = await Promise.race([
+      provider.complete({ model, system: input.system, data: input.data, schema: input.schema, maxOutputTokens, effort: AI_HELPER_EFFORT[input.feature], timeoutMs: AI_REQUEST_TIMEOUT_MS, apiKey }),
+      new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new AiProviderError("unavailable")), AI_REQUEST_TIMEOUT_MS); }),
+    ]);
   } catch (err) {
     const failure: AiFailure = err instanceof AiProviderError ? err.kind : "unavailable";
     const usage = err instanceof AiProviderError ? err.usage : none;
     console.error("[ai-helper] model call failed", failure, err instanceof AiProviderError ? err.detail ?? "" : "");
     // E9 Q4: given back only when the provider certainly did no work (it rejected the request, or answered and told us its usage:
     // refused / invalid). Anything else (timeout, 5xx, connection, unknown) may have been billed: settled at the full reservation.
-    const certain = err instanceof AiProviderError && (err.rejectedBeforeWork || err.kind !== "unavailable");
-    await settle("failed", failure, usage, model, null, certain ? undefined : estimate);
+    const certain = err instanceof AiProviderError && (err.rejectedBeforeWork || (err.kind !== "unavailable" && validUsage(usage)
+      && usage.outputTokens <= maxOutputTokens && actualPence(model, usage) <= estimate));
+    await settle("failed", failure, validUsage(usage) ? usage : none, model, null, err instanceof AiProviderError && err.rejectedBeforeWork ? 0 : certain ? undefined : estimate);
     return { kind: "failed", failure, detail: err instanceof AiProviderError ? err.detail : undefined };
+  } finally {
+    clearTimeout(timeout);
   }
 
   let checked;
   try {
+    // A broken adapter must not turn invalid usage into a refund or undercharge.
+    if (!validUsage(completion?.usage) || typeof completion.model !== "string" || !(completion.model === model || completion.model.startsWith(`${model}-`))
+        || completion.usage.outputTokens > maxOutputTokens || actualPence(model, completion.usage) > estimate) {
+      await settle("failed", "invalid", none, model, null, estimate);
+      return { kind: "failed", failure: "invalid" };
+    }
     checked = await input.validate(completion.json);
   } catch {
     await settle("failed", "invalid", completion.usage, model, null);
     return { kind: "failed", failure: "invalid" };
   }
-  if (!(await settle("suggested", null, completion.usage, model, checked.store))) return { kind: "unavailable" };
+  // Token counts accompany the existing request output; no duplicate ledger.
+  if (!(await settle("suggested", null, completion.usage, model, { ...checked.store, usage: completion.usage }))) return { kind: "unavailable" };
   return { kind: "ok", requestId, value: checked.value };
 }

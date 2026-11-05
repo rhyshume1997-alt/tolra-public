@@ -1,0 +1,8 @@
+ ✓ tests/unit/chase-settings-ui.test.ts (8 tests) 159ms
+
+ Test Files  374 passed (374)
+      Tests  5133 passed (5133)
+   Start at  09:41:36
+   Duration  109.18s (transform 10.20s, setup 0ms, collect 68.27s, tests 48.41s, environment 591ms, prepare 29.52s)
+
+Full local stdout/stderr sha256: 915ff4038a1148a2ed8b993a8dcd5834849c0f1bbf72415fb137284da544160a

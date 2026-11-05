@@ -39,6 +39,10 @@ export function AiCustomisedCard({ status, onStatus }: { status: AiHelperStatus;
   }
 
   function saveCap() {
+    if (!/^(0|[1-9]\d*)(\.\d{1,2})?$/.test(cap.trim())) {
+      toast.error("Enter pounds and pence, with at most two decimal places.");
+      return;
+    }
     const pence = Math.round(Number(cap) * 100);
     if (!Number.isFinite(pence) || pence < 0 || pence > 100_000) {
       toast.error("Enter a monthly limit between £0 and £1000.");
@@ -57,11 +61,14 @@ export function AiCustomisedCard({ status, onStatus }: { status: AiHelperStatus;
     <Card data-testid="ai-helper-settings">
       <CardHeader><CardTitle>How it is customised</CardTitle></CardHeader>
       <CardContent className="space-y-4">
+        <p role="status" data-testid="ai-configuration-status" className="rounded-lg border p-3 text-sm">{status.configuration_message}</p>
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[12rem_1fr]">
+          <dt className="text-slate-500">Provider configuration</dt>
+          <dd>{status.provider_state === "mock_only" ? "Mock provider only" : status.key_set ? "Key present (not connection-tested)" : "Provider not configured"}</dd>
           <dt className="text-slate-500">Your Anthropic key</dt>
           <dd data-testid="ai-helper-key-state" className="font-medium text-slate-900">{status.key_set ? `API key set${status.can_manage ? ` (ending ${status.key_last4 ?? "????"})` : ""}` : "No API key set"}</dd>
           <dt className="text-slate-500">Monthly limit</dt>
-          <dd data-testid="ai-helper-usage">£{pounds(status.monthly_cap_pence)} (used this month: £{pounds(status.month_spent_pence)})</dd>
+          <dd data-testid="ai-helper-usage">£{pounds(status.monthly_cap_pence)} (used this month: £{pounds(status.month_spent_pence)}; reserved: £{pounds(status.month_reserved_pence)})</dd>
           <dt className="text-slate-500">Features on</dt>
           <dd>{on.length ? on.join("; ") : "None"}</dd>
           <dt className="text-slate-500">Who can use it</dt>
@@ -75,7 +82,7 @@ export function AiCustomisedCard({ status, onStatus }: { status: AiHelperStatus;
                 <Input aria-label="Monthly AI limit in pounds" inputMode="decimal" value={cap} onChange={(e) => setCap(e.target.value)} className="w-32" disabled={busy} />
               </label>
               <Button type="button" onClick={saveCap} disabled={busy}>Save monthly limit</Button>
-              <p className="text-xs text-slate-500">Nothing runs until a limit above £0 is set. When it is reached, the AI stops for the month.</p>
+              <p className="text-xs text-slate-500">New companies default to £10 after the reviewed database update. Existing saved limits stay unchanged. Requests need enough allowance for used and reserved costs; use the AI off switch to stop all requests.</p>
             </div>
             <div className="space-y-2 rounded-lg border p-3">
               <p className="text-xs text-slate-500">Your company&apos;s own Anthropic API key, from an account your business owns, with a spend limit set in the Anthropic console. It is stored encrypted and is never shown again.</p>

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { aiHelperConfiguration } from "@/lib/server/ai-helper-configuration";
+
 import { IntegrationCryptoError, encryptSecret } from "@/lib/integrations/crypto";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -11,11 +13,10 @@ const keySchema = z.object({ key: z.string().trim().regex(/^sk-ant-[A-Za-z0-9_-]
  * Admin: the company's own Anthropic API key (one account per company, owned by that business). POST stores it encrypted by THIS
  * server (lib/integrations/crypto.ts, INTEGRATIONS_ENCRYPTION_KEY; bound to the company, so it decrypts for no other); DELETE removes
  * it. The key is never logged, never stored in plain text and never sent back: the answer is the status (set, last four characters).
- * Off (404) unless AI_HELPER_ENABLED is exactly "true".
+ * Admin configuration remains available while the provider routes are switched off.
  */
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
-  if (process.env.AI_HELPER_ENABLED !== "true") return jsonError("Not found", 404);
   const auth = await requireProfile(["admin"]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change the AI helper.", 403);
@@ -37,12 +38,11 @@ export async function POST(request: Request) {
     console.error("[ai-helper] key refused", error.code ?? "error");
     return jsonError("The key could not be saved.", error.code === "42501" ? 403 : 503);
   }
-  return NextResponse.json(data);
+  return NextResponse.json({ ...data, ...aiHelperConfiguration(data?.key_set === true) });
 }
 
 export async function DELETE(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
-  if (process.env.AI_HELPER_ENABLED !== "true") return jsonError("Not found", 404);
   const auth = await requireProfile(["admin"]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change the AI helper.", 403);
@@ -51,5 +51,5 @@ export async function DELETE(request: Request) {
     console.error("[ai-helper] key removal refused", error.code ?? "error");
     return jsonError("The key could not be removed.", error.code === "42501" ? 403 : 503);
   }
-  return NextResponse.json(data);
+  return NextResponse.json({ ...data, ...aiHelperConfiguration(data?.key_set === true) });
 }

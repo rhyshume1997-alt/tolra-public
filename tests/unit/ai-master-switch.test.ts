@@ -146,7 +146,7 @@ describe("how it is customised", () => {
   it("everyone sees the summary; only an admin sees the limit and key controls, and the key's last four", () => {
     const admin = customised(status());
     expect(admin).toContain("API key set (ending WXYZ)");
-    expect(admin).toContain("£5.00 (used this month: £1.20)");
+    expect(admin).toContain("£5.00 (used this month: £1.20; reserved: £0.00)");
     expect(admin).toContain("Office and admin");
     expect(admin).toContain("Save monthly limit");
     expect(admin).toContain("Anthropic API key");
