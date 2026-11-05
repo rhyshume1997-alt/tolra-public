@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { friendlyError } from "@/lib/friendly-error";
 import {
   type MappingKind, type MappingRow, type XeroAccount, type XeroTaxRate, mappedCode, mappingCompleteness, matchingTaxRates, vatKeysToShow,
 } from "@/lib/integrations/mappings";
 import { vatKeyLabel } from "@/lib/integrations/overview";
+import { sendWithCode } from "@/lib/mfa-step-up";
 import { supabase } from "@/lib/supabase";
 
 type Lists = { accounts: XeroAccount[]; taxRates: XeroTaxRate[] };
@@ -62,6 +64,8 @@ export function XeroMappings({ connected, unmapped, onChanged }: { connected: bo
   const [lists, setLists] = useState<Lists | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  // Saving a mapping needs a recent authenticator code: the prompt opens on the server's say-so and the same save is sent once more.
+  const { requestCode, codeDialog } = useCodePrompt();
 
   const loadRows = useCallback(async () => {
     if (!supabase) return;
@@ -88,11 +92,14 @@ export function XeroMappings({ connected, unmapped, onChanged }: { connected: bo
     const id = `${kind}:${tolraKey}`;
     setSaving(id);
     try {
-      const res = await fetch("/api/integrations/xero/mappings", {
-        method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, tolraKey, code }),
-      });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) toast.error(body.error ?? "Couldn't save the mapping. Try again.");
+      const outcome = await sendWithCode<{ error?: string; code?: string }>(async () => {
+        const res = await fetch("/api/integrations/xero/mappings", {
+          method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, tolraKey, code }),
+        });
+        return { ok: res.ok, status: res.status, body: (await res.json().catch(() => ({}))) as { error?: string; code?: string } };
+      }, requestCode);
+      if (outcome.result === "cancelled") toast.error("Cancelled. Nothing was changed.");
+      else if (outcome.result === "failed") toast.error(outcome.answer.body?.error ?? "Couldn't save the mapping. Try again.");
       else toast.success(code ? "Saved." : "Removed.");
     } finally {
       setSaving(null);
@@ -109,6 +116,8 @@ export function XeroMappings({ connected, unmapped, onChanged }: { connected: bo
   const credit = mappedCode(rows, "credit_account");
 
   return (
+    <>
+    {codeDialog}
     <Card>
       <CardHeader>
         <CardTitle>Accounts and VAT rates</CardTitle>
@@ -142,5 +151,6 @@ export function XeroMappings({ connected, unmapped, onChanged }: { connected: bo
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }

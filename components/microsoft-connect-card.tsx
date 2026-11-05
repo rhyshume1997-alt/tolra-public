@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtDate, fmtTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
+import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { ADMIN_CONSENT_STATEMENT, NEEDS_107, RECONNECT_FOR_MAIL, cardStatusLabel, connectCardView, mailSyncLine, microsoftOutcomeMessage, type IntegrationOverview, type MailboxSyncStatus } from "@/lib/integrations/overview";
 import { supabase } from "@/lib/supabase";
 
@@ -32,6 +34,8 @@ export async function postIntegration(path: string): Promise<{ ok: true; body: R
  */
 export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null }) {
   const params = useSearchParams();
+  // Connect, Disconnect and the admin-approval link need a recent authenticator code: the server says so, the prompt opens, the request is sent once more.
+  const { requestCode, codeDialog } = useCodePrompt();
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
   const [sync, setSync] = useState<MailboxSyncStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,9 +68,10 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
   async function makeApproveLink() {
     setBusy(true);
     try {
-      const res = await fetch("/api/integrations/microsoft/admin-consent", { method: "POST", credentials: "same-origin" }).catch(() => null);
-      const body = (res ? await res.json().catch(() => ({})) : {}) as { url?: string; mailto?: string; permissions?: Array<{ scope: string; text: string }>; expiresAt?: string; error?: string };
-      if (!res?.ok || !body.url || !body.mailto) return toast.error(body.error ?? "Couldn't make the link. Try again.");
+      const r = await postIntegrationWithCode("/api/integrations/microsoft/admin-consent", requestCode);
+      if (!r.ok) return toast.error(r.error);
+      const body = r.body as { url?: string; mailto?: string; permissions?: Array<{ scope: string; text: string }>; expiresAt?: string };
+      if (!body.url || !body.mailto) return toast.error("Couldn't make the link. Try again.");
       setApprove({ url: body.url, mailto: body.mailto, permissions: body.permissions ?? [], expiresAt: body.expiresAt ?? "" });
     } finally {
       setBusy(false);
@@ -87,7 +92,7 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
     if (view.connectDisabled) return;
     setBusy(true);
     try {
-      const r = await postIntegration("/api/integrations/microsoft/connect");
+      const r = await postIntegrationWithCode("/api/integrations/microsoft/connect", requestCode);
       if (!r.ok) toast.error(r.error);
       else if (typeof r.body.url === "string") window.location.assign(r.body.url);
     } finally {
@@ -99,7 +104,7 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
     setConfirm(false);
     setBusy(true);
     try {
-      const r = await postIntegration("/api/integrations/microsoft/disconnect");
+      const r = await postIntegrationWithCode("/api/integrations/microsoft/disconnect", requestCode);
       if (!r.ok) toast.error(r.error);
       else toast.success("Disconnected from Microsoft 365. Tolra sends no mail as that mailbox.");
       setTest(null);
@@ -123,6 +128,7 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
   const linked = overview?.status === "connected" || overview?.status === "needs_reconnect";
   const mailLine = overview?.status === "connected" ? mailSyncLine(sync, (iso) => fmtTime(iso)) : null;
   return (
+    <>
     <Card data-testid="microsoft-card">
       <CardHeader>
         <CardTitle>Microsoft 365</CardTitle>
@@ -195,5 +201,7 @@ export function MicrosoftConnectCard({ status }: { status: ConnectStatus | null 
         onCancel={() => setConfirm(false)}
       />
     </Card>
+    {codeDialog}
+    </>
   );
 }

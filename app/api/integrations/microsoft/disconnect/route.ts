@@ -4,6 +4,7 @@ import { disconnectMicrosoft } from "@/lib/integrations/microsoft/connect";
 import { DbError } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 
 /**
  * Admin > Integrations > Microsoft 365 > Disconnect (E7). Admin only, two-step, never a support session. The database disconnects as
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change Microsoft 365 settings.", 403);
+  const recent = await requireRecentAal2(auth, "disconnect Microsoft 365", true);
+  if (recent) return recent;
   try {
     await disconnectMicrosoft(auth.supabase);
     return NextResponse.json({ status: "disconnected" });

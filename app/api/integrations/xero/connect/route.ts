@@ -5,6 +5,7 @@ import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { DbError, beginConnect, xeroReady } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 
 /**
  * Admin > Integrations > Connect (G22). Admin only (Xero question 9: lib/integrations/xero/policy.ts), two-step sign-in as for every admin
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) return forbiddenOrigin();
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
+  if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
+  const recent = await requireRecentAal2(auth, "connect Xero", true);
+  if (recent) return recent;
   const ready = await xeroReady();
   if (!ready) {
     // A redirect URI that is set but unusable is logged here for the platform owner, never answered (the 503 names no setting).

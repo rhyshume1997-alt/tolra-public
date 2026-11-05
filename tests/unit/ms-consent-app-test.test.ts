@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { freshMfaAuth } from "../support/fresh-mfa";
 
 vi.mock("server-only", () => ({}));
 
@@ -32,7 +33,7 @@ const service = {
   }),
 };
 
-const profileClient = () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { name: "Alpha Ltd" }, error: null }) }) }) }) });
+const profileClient = () => ({ auth: freshMfaAuth(), from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { name: "Alpha Ltd" }, error: null }) }) }) }) });
 const requireProfile = vi.fn(async () => (isAdmin
   ? { supabase: profileClient(), user: { id: "admin-1" }, profile: { organization_id: "org-1", role: "admin" }, session }
   : NextResponse.json({ error: "Forbidden" }, { status: 403 })));

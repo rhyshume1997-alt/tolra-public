@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { IntegrationCryptoError, encryptSecret } from "@/lib/integrations/crypto";
+import { adminMfaRequired } from "@/lib/mfa-policy";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
 // An Anthropic API key's shape. Checked for form only: the first request tells whether the service accepts it.
@@ -19,6 +21,11 @@ export async function POST(request: Request) {
   const auth = await requireProfile(["admin"]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change the AI helper.", 403);
+  // F1: saving or replacing the key needs an authenticator code under 15 minutes old (G1), as the other sensitive admin actions do.
+  if (adminMfaRequired()) {
+    const refused = await requireRecentAal2(auth, "save the AI key");
+    if (refused) return refused;
+  }
 
   const json = await readJson(request, 1024);
   if (!json.ok) return json.response;

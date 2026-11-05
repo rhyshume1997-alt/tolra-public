@@ -131,9 +131,9 @@ test("1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' an
   expect(status.microsoft).toEqual({ configured: false });
 
   await page.goto("/admin/integrations");
-  const card = page.getByTestId("microsoft-card");
-  await expect(card.getByTestId("microsoft-status")).toContainText("No mailbox connected");
-  await expect(card.getByTestId("microsoft-not-set-up")).toHaveText("Not set up yet: Tolra's Microsoft 365 connection is switched on at go-live. Nothing to do here.");
+  // Guided page: the Microsoft 365 card is the setup card; its connection line carries "no mailbox" and "not set up" (it no longer has the long sentence).
+  const card = page.getByTestId("setup-card-microsoft");
+  await expect(card.getByTestId("connection-microsoft")).toHaveText("Connection: Not set up on this server");
   await expect(card.getByRole("button", { name: "Connect Microsoft 365" })).toBeDisabled();
 
   await expect(page.getByTestId("xero-status")).toBeVisible();
@@ -149,7 +149,7 @@ test("1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' an
     await expect(page.getByTestId("xero-not-set-up")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Connect to Xero" })).toBeEnabled();
   }
-  // The Xero card's own line is still the only "Not connected" on the page (integrations-send-log.spec.ts relies on that).
+  // On the guided page the Xero tools card under More (testid xero-status) carries the "Not connected" line; integrations-send-log.spec.ts reads it by that testid.
   await expect(page.getByText("Not connected")).toHaveCount(1);
   expect(await betaCount("integration_oauth_states")).toBe(0);
 });
@@ -289,9 +289,8 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
 
   expect((await (await page.request.get("/api/integrations/status")).json()).microsoft).toEqual({ configured: true });
   await page.goto("/admin/integrations");
-  const card = page.getByTestId("microsoft-card");
-  await expect(card.getByTestId("microsoft-status")).toContainText("No mailbox connected");
-  await expect(card.getByTestId("microsoft-not-set-up")).toHaveCount(0);
+  const card = page.getByTestId("setup-card-microsoft");
+  await expect(card.getByTestId("connection-microsoft")).toHaveText("Connection: Not connected");
   const connect = card.getByRole("button", { name: "Connect Microsoft 365" });
   await expect(connect).toBeEnabled();
 
@@ -374,8 +373,8 @@ test("6. the Microsoft callback with a bogus state sends the admin back with the
   await page.goto("/api/integrations/microsoft/callback?code=not-a-real-code&state=not-a-real-state");
   await expect(page).toHaveURL(/\/admin\/integrations\?microsoft=expired/);
   await expect(page.getByText("That Connect took too long or was started elsewhere. Click Connect Microsoft 365 again.")).toBeVisible();
-  const card = page.getByTestId("microsoft-card");
-  await expect(card.getByTestId("microsoft-status")).toContainText("No mailbox connected");
+  const card = page.getByTestId("setup-card-microsoft");
+  await expect(card.getByTestId("connection-microsoft")).toHaveText("Connection: Not connected");
   await expect(card.getByRole("button", { name: "Connect Microsoft 365" })).toBeEnabled();
 });
 
@@ -567,7 +566,7 @@ test("8. office cannot make a link or connect (403); workshop is sent away from 
     }
     await workshop.goto("/admin/integrations");
     await expect(workshop).toHaveURL(/\/dashboard/);
-    await expect(workshop.getByTestId("microsoft-card")).toHaveCount(0);
+    await expect(workshop.getByTestId("setup-card-microsoft")).toHaveCount(0);
   } finally {
     await workshop.close();
   }

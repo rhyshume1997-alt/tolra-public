@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AccountingCloudCards } from "@/components/integrations/accounting-cloud-cards";
 import { AccountantInviteCard } from "@/components/accountant-invite-card";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { NEEDS_DATABASE_UPDATE, databaseHas084, missingDbObject } from "@/lib/db
 import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { NEEDS_107, cardStatusLabel, connectCardView, connectOutcomeMessage, overviewSummary, type IntegrationOverview } from "@/lib/integrations/overview";
+import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
@@ -25,9 +27,16 @@ import { useUser } from "@/lib/use-user";
  * Admin > Integrations (G22): one card per accounting system; Xero first. Per company (the one signed in to) and OFF until an admin
  * connects; nothing is sent until both account codes and every VAT rate used are mapped. Shows the connection (never a token), what is
  * not mapped yet and the send log's counts, then the mappings and the send log (PR 2). Hidden until the database has 084.
+ *
+ * `guided` (the Integrations page, W-F4): the four guided setup cards (AI, Xero, Microsoft 365, Resend) sit above and own the connect,
+ * disconnect, mappings and e-mail cards, so this panel is the "More" section: it keeps the Xero send-now / test / accountant-link tools, the
+ * accountant invite, the accounting cloud cards and the send log, and leaves out only what the guided cards now show (the company line, the
+ * Connect and Disconnect buttons, the e-mail guide, the old Microsoft 365 and Resend cards, the mappings). Default false = unchanged.
  */
-export function IntegrationsPanel() {
+export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {}) {
   const params = useSearchParams();
+  // Xero Connect and Disconnect need a recent authenticator code: the prompt opens on the server's say-so and the request is sent once more.
+  const { requestCode, codeDialog } = useCodePrompt();
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
   const [missing084, setMissing084] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -89,11 +98,17 @@ export function IntegrationsPanel() {
     return body;
   }
 
+  async function postGuarded(path: string): Promise<Record<string, unknown> | null> {
+    const r = await postIntegrationWithCode(path, requestCode);
+    if (!r.ok) { toast.error(r.error); return null; }
+    return r.body;
+  }
+
   async function connect() {
     if (xeroView.connectDisabled) return;
     setBusy(true);
     try {
-      const body = await post("/api/accounting/xero/connect");
+      const body = await postGuarded("/api/accounting/xero/connect");
       if (body && typeof body.url === "string") window.location.assign(body.url);
     } finally {
       setBusy(false);
@@ -104,7 +119,7 @@ export function IntegrationsPanel() {
     setConfirmDisconnect(false);
     setBusy(true);
     try {
-      if (await post("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
+      if (await postGuarded("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
       setTest(null);
       await load();
     } finally {
@@ -189,10 +204,11 @@ export function IntegrationsPanel() {
 
   return (
     <div className="space-y-6">
-      {company ? <p className="text-sm text-slate-600" data-testid="integrations-company">For <strong>{company}</strong>. Each company has its own page: switch company to set up the other.</p> : null}
+      {codeDialog}
+      {company && !guided ? <p className="text-sm text-slate-600" data-testid="integrations-company">For <strong>{company}</strong>. Each company has its own page: switch company to set up the other.</p> : null}
       <Card>
         <CardHeader>
-          <CardTitle>Xero</CardTitle>
+          <CardTitle>{guided ? "Xero: send now and the accountant's link" : "Xero"}</CardTitle>
           <CardDescription>
             One way, Tolra to Xero: issued invoices, issued credit notes and their customers, with Tolra&apos;s numbers. Voids are sent as voids.
             Nothing is ever read back into Tolra; payments stay in Xero.
@@ -221,12 +237,12 @@ export function IntegrationsPanel() {
                 <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="xero-not-set-up">{xeroView.message}{status?.xero.problem ? ` ${status.xero.problem}` : ""}</p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                {overview.status !== "connected" ? (
+                {overview.status !== "connected" && !guided ? (
                   <Button onClick={connect} disabled={busy || xeroView.connectDisabled}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect to Xero"}</Button>
                 ) : null}
                 {overview.status === "connected" ? <Button variant="outline" onClick={sendNow} disabled={busy}>Send now</Button> : null}
                 {overview.status === "connected" ? <Button variant="outline" onClick={runTest} disabled={busy}>Test</Button> : null}
-                {overview.status !== "not_connected" && overview.status !== "disconnected" ? (
+                {overview.status !== "not_connected" && overview.status !== "disconnected" && !guided ? (
                   <Button variant="outline" onClick={() => setConfirmDisconnect(true)} disabled={busy}>Disconnect</Button>
                 ) : null}
               </div>
@@ -290,10 +306,10 @@ export function IntegrationsPanel() {
         onXeroLink={() => void loadInvites()}
       />
       <AccountingCloudCards />
-      <EmailChoiceGuide />
-      <MicrosoftConnectCard status={status} />
-      <ResendStatusCard />
-      {overview && linked ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
+      {guided ? null : <EmailChoiceGuide />}
+      {guided ? null : <MicrosoftConnectCard status={status} />}
+      {guided ? null : <ResendStatusCard />}
+      {overview && linked && !guided ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
       {overview && (linked || anySends) ? <XeroSendLog reloadKey={version} onChanged={() => void load()} /> : null}
     </div>
   );
