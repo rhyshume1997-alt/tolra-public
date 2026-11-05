@@ -2,7 +2,7 @@
 // totals it, so the explicit TaxAmount on each line makes Xero's totals Tolra's; the totals are still compared after every push and a
 // difference is never rounded away (it fails the send with the difference). Tolra's numbers are kept as Xero's numbers.
 
-import type { DocumentLine, IntegrationDocument, Mappings, Totals } from "@/lib/integrations/types";
+import type { DocumentLine, IntegrationDocument, Mappings } from "@/lib/integrations/types";
 import { CREDIT_NOTE_XERO_TYPE, TRACKING_CATEGORIES, XERO_EMAILS_CUSTOMERS } from "@/lib/integrations/xero/policy";
 
 export type XeroLineItem = {
@@ -40,27 +40,8 @@ export type XeroCreditNotePayload = {
   LineItems: XeroLineItem[];
 };
 
-const cents = (n: number) => Math.round(Number(n) * 100);
-const money = (n: number) => cents(n) / 100;
-
-/** What is not mapped for this document: "account:sales" / "account:credit" and "vat:<key>" (the database's gate says the same). */
-export function missingMappings(doc: IntegrationDocument, mappings: Mappings): string[] {
-  const missing = new Set<string>();
-  if (doc.doc_type === "invoice" && !mappings.salesAccount) missing.add("account:sales");
-  if (doc.doc_type === "credit_note" && !mappings.creditAccount) missing.add("account:credit");
-  for (const line of doc.lines) {
-    if (line.text_only || line.vat_key === null) continue;
-    if (!mappings.taxRates[line.vat_key]) missing.add(`vat:${line.vat_key}`);
-  }
-  return [...missing].sort();
-}
-
-export class UnmappedError extends Error {
-  constructor(readonly missing: string[]) {
-    super(`Not mapped yet: ${missing.join(", ")}`);
-    this.name = "UnmappedError";
-  }
-}
+import { accountingMoney as money, missingMappings, UnmappedError } from "@/lib/integrations/mapping-rules";
+export { missingMappings, UnmappedError, expectedTotals, totalsDifference } from "@/lib/integrations/mapping-rules";
 
 function lineItem(line: DocumentLine, accountCode: string, mappings: Mappings): XeroLineItem {
   const description = line.description.trim().slice(0, 4000) || "-";
@@ -120,20 +101,3 @@ export function mapCreditNote(doc: IntegrationDocument, mappings: Mappings, cont
   return payload;
 }
 
-/** Tolra's totals as Xero states them: net of every line (carriage included), VAT, total. */
-export function expectedTotals(doc: IntegrationDocument): Totals {
-  const subTotal = money(Number(doc.subtotal) + Number(doc.carriage || 0));
-  return { subTotal, totalTax: money(doc.vat), total: money(doc.total) };
-}
-
-/** null when Xero's totals are Tolra's to the penny; otherwise the difference, said plainly. Never rounded away. */
-export function totalsDifference(expected: Totals, got: Totals): string | null {
-  const parts: string[] = [];
-  const cmp = (label: string, a: number, b: number) => {
-    if (cents(a) !== cents(b)) parts.push(`${label} Tolra ${money(a).toFixed(2)}, Xero ${money(b).toFixed(2)}`);
-  };
-  cmp("net", expected.subTotal, got.subTotal);
-  cmp("VAT", expected.totalTax, got.totalTax);
-  cmp("total", expected.total, got.total);
-  return parts.length ? `Totals differ: ${parts.join("; ")}` : null;
-}

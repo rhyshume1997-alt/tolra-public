@@ -17,6 +17,7 @@ import { createTokenSource } from "@/lib/integrations/tokens";
 import type { AccountingProvider, ContactCandidate, IntegrationDocument, Mappings, ProviderDocument } from "@/lib/integrations/types";
 import { ProviderError } from "@/lib/integrations/types";
 import { createXeroClient, xeroString } from "@/lib/integrations/xero/client";
+import { VOID_IN_XERO, voidRefusedMessage } from "@/lib/integrations/xero/policy";
 import { XeroAuthError } from "@/lib/integrations/xero/oauth";
 
 const ORG = "11111111-1111-1111-1111-111111111111";
@@ -56,6 +57,7 @@ function fakeDb(opts: { claims: Array<{ blocked: string | null; unmapped?: strin
 function fakeProvider(over: Partial<AccountingProvider> = {}) {
   const p = {
     id: "xero" as const,
+    voidPolicy: {enabled: VOID_IN_XERO, refusedMessage: voidRefusedMessage},
     listAccounts: vi.fn(async () => []),
     listTaxRates: vi.fn(async () => []),
     findContacts: vi.fn(async (): Promise<ContactCandidate[]> => []),
@@ -315,4 +317,11 @@ describe("the daily sweep and the Integrations page's words", () => {
     expect(connectOutcomeMessage("tenant_in_use")).toMatch(/another company/);
     expect(connectOutcomeMessage("anything else")).toMatch(/didn't work/);
   });
+});
+
+it('an adapter can hold voids without an engine dependency on its policy module', async () => {
+  const db=fakeDb({claims:[{blocked:null,send:{action:'void',external_id:'synthetic-provider-invoice'}}],document:doc({voided:true})});
+  const provider=fakeProvider({voidPolicy:{enabled:false,refusedMessage:()=> 'synthetic refusal'}});
+  expect(await run(db.db,provider)).toMatchObject({skipped:1,sent:0});
+  expect(provider.voidInvoice).not.toHaveBeenCalled();expect(provider.readBack).not.toHaveBeenCalled();
 });
