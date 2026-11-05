@@ -247,6 +247,8 @@ jobs:
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts || rc=1
           echo "== no-order delivery note (release 147): role matrix, two companies, release gate, double submit race, rollback and re-release =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/job-delivery-note-147.test.ts tests/db/dln-day-of-counter.test.ts || rc=1
+          echo "== Actual job costing (release 148): 143's rates only, record kept when rates change, incomplete never zero, isolation, roles, rollback =="
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/job-profitability-148.test.ts || rc=1
           echo "== Xero transfer switch (release 149): off by default, every send path refuses, reconnect resets, concurrency, isolation, rollback =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/xero-launch-hold-149.test.ts tests/db/xero-launch-paths-149.test.ts || rc=1
           echo "== AI cap 1000p and key change forces AI off (release 150): default, force-off, audit, in-flight, isolation, platform key, rollback and re-release on a populated database =="
@@ -269,7 +271,7 @@ jobs:
       # installed are gone and the browser backend has no company_setup_progress / Tolra AI tables. Re-install them here the way
       # tests/support/post-144-release-fixture.ts does (preflight marker, release file, verify file with every row true, schema reload).
       # Loopback database only; each marker is checked first so a release file is never applied twice.
-      - name: "Install one-time releases 145, 146, 147, 149 and 150 on the disposable database "
+      - name: "Install one-time releases 145, 146, 147, 148, 149 and 150 on the disposable database "
         run: |
           set -euo pipefail
           set -a; . ./.env.test.local; set +a
@@ -278,7 +280,7 @@ jobs:
             *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
           esac
           psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
-          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off"; do
+          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off"; do
             IFS='|' read -r release verify marker <<< "$phase"
             state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
             [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }

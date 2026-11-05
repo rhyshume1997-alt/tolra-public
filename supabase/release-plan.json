@@ -76,8 +76,17 @@
       "marker": "post-144 marker 147 job_delivery_note"
     },
     {
-      "number": 149,
+      "number": 148,
       "after": "147",
+      "source": "supabase/proposals/p148_job_profitability_actuals.sql",
+      "release": "supabase/release/148_job_profitability_actuals.release.sql",
+      "rollback": "supabase/release/148_job_profitability_actuals.rollback.sql",
+      "verify": "supabase/verify/job_profitability_actuals_148.sql",
+      "marker": "post-144 marker 148 job_profitability_actuals"
+    },
+    {
+      "number": 149,
+      "after": "148",
       "source": "supabase/proposals/x149_xero_launch_hold.sql",
       "release": "supabase/release/149_xero_launch_hold.release.sql",
       "rollback": "supabase/release/149_xero_launch_hold.rollback.sql",

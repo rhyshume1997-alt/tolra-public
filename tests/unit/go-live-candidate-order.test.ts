@@ -47,6 +47,10 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(fixture.indexOf('verifyFile: "supabase/verify/company_setup_145.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"'));
     expect(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"'));
     expect(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/xero_launch_hold_149.sql"'));
+    expect(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/job_profitability_actuals_148.sql"'));
+    expect(fixture.indexOf('verifyFile: "supabase/verify/job_profitability_actuals_148.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/xero_launch_hold_149.sql"'));
+    expect(post144ProofFiles).toContain("job-profitability-148.test.ts");
+    expect(ci).toContain("148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals");
     expect(post144ProofFiles).toContain("xero-launch-hold-149.test.ts");
     expect(post144ProofFiles).toContain("xero-launch-paths-149.test.ts");
     expect(ci).toContain("149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold");

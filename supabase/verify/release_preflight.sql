@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 149. Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149. Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -219,6 +219,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/n5_company_setup.sql', 'post-144 release 145; apply only after 144'),
     ('supabase/proposals/n2_tolra_provided_ai.sql', 'post-144 release 146; apply only after 145'),
     ('supabase/proposals/c17_job_delivery_note.sql', 'post-144 release 147; apply only after 146'),
+    ('supabase/proposals/p148_job_profitability_actuals.sql', 'post-144 release 148; apply only after 147 (reads only 143''s rates)'),
     ('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147'),
     ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 149'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
@@ -272,6 +273,16 @@ post_release_markers(label, present) AS (
       AND NOT has_table_privilege('authenticated', to_regclass('public.dln_numbering_pending'), 'SELECT,INSERT,UPDATE,DELETE')
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
       AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 148 job_profitability_actuals', coalesce(((SELECT count(*) = 4 FROM pg_class WHERE relrowsecurity AND oid IN (to_regclass('public.job_costing_settings'),
+             to_regclass('public.job_costing_machine_links'), to_regclass('public.job_cost_declarations'), to_regclass('public.job_cost_snapshots')))
+      AND NOT has_table_privilege('authenticated', to_regclass('public.job_cost_snapshots'), 'INSERT,UPDATE,DELETE')
+      AND to_regclass('public.job_machine_cost_rates') IS NULL AND to_regclass('public.job_costing_rate_history') IS NULL
+      AND (SELECT count(*) = 6 FROM pg_proc p WHERE p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND p.oid IN (to_regprocedure('public.job_cost_figures(uuid,uuid,jsonb)'),
+             to_regprocedure('public.job_cost_rates(uuid)'), to_regprocedure('public.job_cost_take_snapshot(uuid,uuid,text)'), to_regprocedure('public.job_cost_snapshot_on_close()'),
+             to_regprocedure('public.job_profitability_actual_inputs(uuid)'), to_regprocedure('public.set_job_costing_enabled(uuid,integer,boolean)'))
+           AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('c4e45bd28ccd5d5c9a9d691ec552fefc','c98f3e9d11e056a5bd83058f16fa36f4','4b00c032583a02d3c353561f03403ba3','bdeed22a214965caf88909bddbf31a42','8e5d7b65d788791ec9e6f298b084e595','3519a71abd8691238c3815d93e8c51bd'))
+      AND (SELECT count(*) = 2 FROM pg_trigger WHERE tgname = 'zz_job_cost_snapshot' AND tgenabled = 'O' AND tginitdeferred AND tgrelid IN ('public.jobs'::regclass, 'public.invoices'::regclass))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.job_cost_snapshots') AND tgname = 'job_cost_snapshot_frozen' AND tgenabled = 'O')), FALSE)),
     ('post-144 marker 149 xero_launch_hold', coalesce((coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.xero_transfer_hold')), FALSE)
       AND NOT has_table_privilege('authenticated', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
       AND NOT has_table_privilege('service_role', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
@@ -601,7 +612,7 @@ checks(n, check_name, value, expected) AS (
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
-    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )
