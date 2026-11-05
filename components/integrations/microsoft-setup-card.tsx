@@ -84,7 +84,7 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
 
   const sending = status === null || (available && !view.notSetUp && !overview) ? "Sending: checking"
     : !available || view.notSetUp ? "Sending: not set up"
-    : connected ? "Sending: ready. Each message needs approval before it is sent."
+    : connected ? "Sending: ready. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send."
     : reconnect ? "Sending: paused until you reconnect" : "Sending: not set up";
   const tested = test?.ok === true;
   const steps: SetupStep[] = [

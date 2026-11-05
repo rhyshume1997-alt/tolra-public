@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 /** The plain-words choice shown above the two e-mail cards on Admin > Integrations: which one to use. No new provider: Microsoft 365 or Resend. */
 export const EMAIL_CHOICE_OUTLOOK = "Outlook or Microsoft 365 email: use Connect Microsoft 365 below. Quotes, invoices and reminders then go out from your own mailbox.";
 export const EMAIL_CHOICE_OTHER = "Any other email: Tolra sends from its own verified sender address using Resend (the Resend card below).";
-export const EMAIL_CHOICE_APPROVAL = "Either way, nothing is e-mailed to a customer until someone approves it.";
+export const EMAIL_CHOICE_APPROVAL = "Scheduled reminders and chasing are only drafts until a person approves them. A message a person sends by hand goes out when they click Send.";
 
 export function EmailChoiceGuide() {
   return (

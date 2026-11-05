@@ -88,7 +88,7 @@ describe("the guided Integrations page", () => {
     const host = await mount();
     const resend = host.querySelector('[data-testid="activation-status-resend"]')?.textContent ?? "";
     expect(resend).toMatch(/^Sending: ready/);
-    expect(resend).toContain("approval");
+    expect(resend).toContain("Approvals");
     for (const id of ["microsoft", "resend"]) expect(host.querySelector(`[data-testid="setup-card-${id}"] [role="switch"]`), id).toBeNull();
     ANSWERS["/api/integrations/resend"] = { state: "not_configured", message: "Not set up on this server", sender: null };
   });

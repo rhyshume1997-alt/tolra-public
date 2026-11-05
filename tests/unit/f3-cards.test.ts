@@ -79,7 +79,7 @@ describe("MicrosoftSetupCard: every connection state", () => {
     await click(button("Test"));
     expect(text(h, "microsoft-test-result")).toBe("Working: office@a.test");
     expect(calls.map((c) => c.url)).toEqual(["/api/integrations/microsoft/test"]);
-    expect(h.textContent).toContain("Each message needs approval before it is sent");
+    expect(h.textContent).toContain("a message you send yourself goes out when you click Send");
   });
   it("needs reconnect", async () => {
     overview({ status: "needs_reconnect", tenant_name: "office@a.test", status_reason: "Microsoft 365 needs to be connected again." });
@@ -104,7 +104,7 @@ describe("MicrosoftSetupCard: the rules it states", () => {
     overview({ status: "connected", tenant_name: "office@a.test" });
     const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
     expect(h.querySelector('[role="switch"]')).toBeNull();
-    const ready = "Sending: ready. Each message needs approval before it is sent.";
+    const ready = "Sending: ready. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send.";
     expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe(ready);
     expect(text(h, "activation-status-microsoft")).toBe(ready);
     expect(text(h, "microsoft-one-mailbox")).toBe("One mailbox per company: this company's mailbox is never shared with another company.");
@@ -167,7 +167,7 @@ describe("ResendSetupCard: every state", () => {
     route = statusRoute(rs("connected"));
     h = await mount(createElement(ResendSetupCard, {}));
     expect(text(h, "connection-resend")).toContain("orders@mail.test");
-    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: ready (Tolra's verified sender). Each message needs approval.");
+    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: ready (Tolra's verified sender). Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send.");
     expect(h.querySelector('[role="switch"]')).toBeNull();
     expect(h.textContent).toContain("never used automatically after a Microsoft 365 failure");
   });

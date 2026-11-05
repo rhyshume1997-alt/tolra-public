@@ -77,7 +77,7 @@ export function ResendSetupCard({ microsoftConnected = false, adminEmail }: { mi
   const ready = state === "configured" || state === "connected";
   const sending = status === null ? "Sending: checking"
     : microsoftConnected ? "Sending: not used while Microsoft 365 is connected"
-    : ready ? "Sending: ready (Tolra's verified sender). Each message needs approval." : "Sending: not set up";
+    : ready ? "Sending: ready (Tolra's verified sender). Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send." : "Sending: not set up";
   const connection = status ? { tone: CONNECTION[status.state].tone, label: CONNECTION[status.state].label(status) } : { tone: "working" as const, label: "Checking…" };
   const steps: SetupStep[] = [
     { label: "The platform owner puts the Resend key and a verified sender domain on the server", state: ready ? "done" : "next", hint: "Set once for the whole server, not per company. It is a sender address, not a mailbox: nobody signs in and nothing is read." },
