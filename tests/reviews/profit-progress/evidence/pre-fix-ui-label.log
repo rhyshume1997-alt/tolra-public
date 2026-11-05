@@ -1,0 +1,33 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-profit-progress
+
+ ✓ tests/unit/job-profitability-actuals.test.ts (32 tests) 13ms
+ ✓ tests/unit/job-profitability-progress.test.ts (15 tests) 12ms
+stdout | tests/unit/job-profitability-precision.test.ts > keeps penny precision or refuses an unsafe revenue aggregate
+aggregate revenue {"exact":8999999999994410,"actual":null,"state":"incomplete"}
+
+ ✓ tests/unit/job-profitability-precision.test.ts (4 tests) 24ms
+ ❯ tests/unit/job-profitability-ui.test.ts (9 tests | 1 failed) 122ms
+   × shows incomplete without guessed cost zeroes when recorded hours are missing 17ms
+     → Cannot read properties of undefined (reading 'nextElementSibling')
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/job-profitability-ui.test.ts > shows incomplete without guessed cost zeroes when recorded hours are missing
+TypeError: Cannot read properties of undefined (reading 'nextElementSibling')
+ ❯ tests/unit/job-profitability-ui.test.ts:51:15
+     49|   await mount(); expect(host.textContent).toContain('Costing incomplet…
+     50|     const dt = [...host.querySelectorAll('dt')].find(n => n.textConten…
+     51|     expect(dt.nextElementSibling!.textContent).toBe('Not available');
+       |               ^
+     52|   }
+     53| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 59 passed (60)
+   Start at  09:53:27
+   Duration  1.64s (transform 202ms, setup 0ms, collect 325ms, tests 171ms, environment 508ms, prepare 189ms)
+

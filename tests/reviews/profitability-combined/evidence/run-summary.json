@@ -1,0 +1,23 @@
+{
+  "code_snapshot": "34bab1dcbfa714119c53da434fa51da69ba760fb",
+  "source_prs": {
+    "378": "f5de19a",
+    "412": "795ae4a"
+  },
+  "utc": "2026-11-05T10:58:19.726510+00:00",
+  "environment": "local synthetic Vitest and self-created isolated PostgreSQL, no provider calls",
+  "focused": {
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0
+  },
+  "database": "all script assertions and six verification rows passed; receipts archived",
+  "production_acceptance": "UNPROVEN; #412 NOT SAFE to activate",
+  "logs": {
+    "focused.log": "308dddafaa333eb1547a9a77c480b962ec916a27912611d45431682c2bf4b28a",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "database-packaging-failure.log": "d189daa705ae853a532a2cc4e104c67c142050f8982872598947b19ed1e2d15f",
+    "database.log": "f7c1e16f94177b7833edb9401d3de048109f1568091eb063c440cfec25dda71e",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
