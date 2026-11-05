@@ -12,6 +12,9 @@ DO $rollback_guard$ BEGIN
  END IF;
 END $rollback_guard$;
 DELETE FROM public.integration_connect_invites WHERE token_hash IS NULL;
+DROP FUNCTION IF EXISTS public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID);
+DROP FUNCTION IF EXISTS security_audit.integration_invite_refuse(TEXT, TEXT, TEXT, UUID, UUID);
+DROP TABLE IF EXISTS security_audit.integration_invite_refusals;
 DROP FUNCTION IF EXISTS public.integration_invite_code_verify(TEXT, TEXT, TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.integration_invite_code_issue(TEXT, TEXT);
 DROP FUNCTION IF EXISTS public.integration_invite_peek(TEXT);
@@ -26,7 +29,8 @@ ALTER TABLE public.integration_connect_invites
   DROP COLUMN IF EXISTS recipient_email, DROP COLUMN IF EXISTS ref;
 ALTER TABLE public.integration_connect_invites ALTER COLUMN token_hash SET NOT NULL;
 
--- 107's functions, byte for byte from supabase/release/107_integrations_connect.release.sql.
+-- 107's functions, byte for byte from supabase/release/107_integrations_connect.release.sql (the refusal log table is dropped with its data: it is a security log of
+-- refused requests only; export it first if it is needed).
 -- 4b. The accountant's link (signed in: admin, two-step, own company, never support). The server made the random token; this keeps
 -- its SHA-256 for 24 hours. At most three open links per company. Audited (no token, no hash).
 CREATE OR REPLACE FUNCTION public.integration_invite_create(p_provider TEXT, p_token_hash TEXT)
@@ -179,5 +183,27 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.integration_invite_revoke(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.integration_invite_revoke(UUID) TO authenticated;
+
+-- 4d. The callback for a state an invite started (server only): unexpired, unused, started from an invite; used up. Returns the
+-- company, the admin who made the invite and the encrypted verifier. NULL when no such state exists (nothing is used up then).
+CREATE OR REPLACE FUNCTION public.integration_oauth_consume_invite(p_provider TEXT, p_state_hash TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_out JSONB;
+BEGIN
+  UPDATE public.integration_oauth_states s SET consumed_at = now()
+  WHERE s.state_hash = p_state_hash AND s.provider = p_provider AND s.via_invite IS NOT NULL
+    AND s.consumed_at IS NULL AND s.expires_at > now()
+  RETURNING jsonb_build_object('organization_id', s.organization_id, 'user_id', s.user_id, 'verifier_enc', s.verifier_enc) INTO v_out;
+  RETURN v_out;
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_oauth_consume_invite(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_oauth_consume_invite(TEXT, TEXT) TO service_role;
 
 COMMIT;

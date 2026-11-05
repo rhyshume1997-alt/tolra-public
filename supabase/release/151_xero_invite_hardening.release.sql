@@ -30,7 +30,8 @@ END $post_release_guard$;
 -- keyed hash (HMAC made by the app) is stored, 15 minutes, five codes per invite, one every 60 seconds, five wrong guesses in the invite's life lock it
 -- for good. A correct code uses the invite up and starts the 10-minute OAuth state (state + PKCE are the app's, unchanged). A forwarded link
 -- therefore cannot connect: the forwardee cannot read the recipient's mailbox. Every step (created, opened = first code sent, code sent, verified, used,
--- revoked, expired, refused) is an audit row with no ref, no code, no hash and no token in it.
+-- revoked, expired) is a company audit row with no ref, no code, no hash and no token in it; every REFUSAL goes to a separate security log
+-- (security_audit.integration_invite_refusals) with a correlation id and a hash of the reference only, never to the company's audit.
 --
 -- Not changed here: 084's connection store, 149's transfer switch. Connecting through an invite takes the same 084 path as an admin's own Connect, so
 -- 149's connection trigger puts the company's transfers OFF and nothing held is released.
@@ -60,6 +61,50 @@ ALTER TABLE public.integration_connect_invites
   ADD CONSTRAINT integration_connect_invites_code_hash CHECK (code_hash IS NULL OR code_hash ~ '^[0-9a-f]{64}$'),
   ADD CONSTRAINT integration_connect_invites_bound CHECK (token_hash IS NOT NULL OR (ref IS NOT NULL AND recipient_email IS NOT NULL)),
   ADD CONSTRAINT integration_connect_invites_counts CHECK (code_sent_count >= 0 AND code_attempts >= 0);
+
+-- 1b. The SECURITY LOG of refusals: NOT company audit rows (a refused request is not something the company did, and most have no company at all). One row per
+-- refusal: a random correlation id (shown to the person refused and logged by the server, so a support question can be traced), the step, a fixed reason, a
+-- 16-hex-character truncated SHA-256 of the reference (never the reference, a code, a token, a state, an address or an IP), the company only when the refusal
+-- came from a MATCHED invite, and the time. Row security on, no grant to anyone (not the service role): only the definer functions below write it, and it is
+-- read by the database owner / platform operator. RETENTION: keep 180 days; purge with DELETE ... WHERE created_at < now() - interval '180 days' (a scheduled
+-- purge is not part of this proposal; the table grows only by refused requests, which the per-IP limiter and the per-invite limits bound).
+CREATE TABLE security_audit.integration_invite_refusals (
+  id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  correlation_id  UUID NOT NULL DEFAULT gen_random_uuid() CONSTRAINT integration_invite_refusals_corr_key UNIQUE,
+  step            TEXT NOT NULL CONSTRAINT integration_invite_refusals_step CHECK (step IN ('page', 'code', 'verify', 'callback', 'request')),
+  reason          TEXT NOT NULL CONSTRAINT integration_invite_refusals_reason CHECK (reason IN (
+                    'unknown_ref', 'malformed_ref', 'used', 'revoked', 'locked', 'expired', 'creator_not_admin', 'code_expired', 'wrong_code', 'too_many_codes', 'wait',
+                    'rate_limited', 'callback_state', 'callback_error', 'redirect_not_allowed', 'mail_failed', 'bad_origin', 'other')),
+  ref_hash        TEXT CONSTRAINT integration_invite_refusals_ref_hash CHECK (ref_hash IS NULL OR ref_hash ~ '^[0-9a-f]{16}$'),
+  organization_id UUID,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_integration_invite_refusals_time ON security_audit.integration_invite_refusals (created_at);
+CREATE INDEX idx_integration_invite_refusals_ref ON security_audit.integration_invite_refusals (ref_hash) WHERE ref_hash IS NOT NULL;
+ALTER TABLE security_audit.integration_invite_refusals ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON security_audit.integration_invite_refusals FROM PUBLIC, anon, authenticated, service_role;
+COMMENT ON TABLE security_audit.integration_invite_refusals IS 'Refused uses of the Xero connect invite. Reference hash only; company only from a matched invite. Retention 180 days.';
+
+-- The one writer (called by the functions below only; nobody can call it directly).
+CREATE OR REPLACE FUNCTION security_audit.integration_invite_refuse(p_step TEXT, p_reason TEXT, p_ref TEXT, p_org UUID, p_corr UUID DEFAULT gen_random_uuid())
+RETURNS UUID
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+BEGIN
+  INSERT INTO security_audit.integration_invite_refusals (correlation_id, step, reason, ref_hash, organization_id)
+  VALUES (p_corr, CASE WHEN p_step IN ('page', 'code', 'verify', 'callback', 'request') THEN p_step ELSE 'page' END,
+          CASE WHEN p_reason IN ('unknown_ref', 'malformed_ref', 'used', 'revoked', 'locked', 'expired', 'creator_not_admin', 'code_expired', 'wrong_code', 'too_many_codes', 'wait',
+                                 'rate_limited', 'callback_state', 'callback_error', 'redirect_not_allowed', 'mail_failed', 'bad_origin') THEN p_reason ELSE 'other' END,
+          CASE WHEN p_ref IS NULL THEN NULL ELSE left(encode(sha256(convert_to(left(p_ref, 200), 'UTF8')), 'hex'), 16) END,
+          p_org)
+  ON CONFLICT ON CONSTRAINT integration_invite_refusals_corr_key DO NOTHING;
+  RETURN p_corr;
+END
+$$;
+REVOKE ALL ON FUNCTION security_audit.integration_invite_refuse(TEXT, TEXT, TEXT, UUID, UUID) FROM PUBLIC, anon, authenticated, service_role;
 
 -- 2. Cancel every open 107 token link (audited, one row per company's batch). A token link had no recipient; none may be used after this.
 DO $cancel_old$
@@ -167,11 +212,13 @@ $$;
 REVOKE ALL ON FUNCTION public.integration_invite_peek(TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.integration_invite_peek(TEXT) TO service_role;
 
--- 3c. "E-mail me a code" (server only): the invite is locked for the call (two at once, one wins). If it is open, its admin still an admin, fewer than
--- five codes were sent and the last one is over 60 seconds old, the code's keyed hash (made by the app, never the code itself) is kept for 15 minutes
--- and the BOUND recipient address is returned so the app can e-mail the code there. Answers are JSON (never an exception, so the audit row of a refusal
--- is kept): {ok:false, reason: invalid | too_many_codes | wait} or {ok:true, recipient, company_name, organization_id, sent_number}.
--- A reference that matches no invite is answered "invalid" with no audit row (nothing to attribute it to; the app's per-IP limit applies).
+-- 3c. "E-mail me a code" (server only): the invite is locked for the call (two at once, one wins). EVERY use re-checks, here in the database: not used, not
+-- cancelled, not locked, NOT EXPIRED (expires_at, now()), the company active and its admin still an active non-support admin. Then, with fewer than five codes
+-- sent and the last one over 60 seconds old, the code's keyed hash (made by the app, never the code itself) is kept for 15 minutes (never past the invite's own
+-- expiry) and the BOUND recipient address is returned so the app can e-mail the code there. Answers are JSON (never an exception, so a refusal's security-log row
+-- is kept): {ok:false, reason: invalid | too_many_codes | wait, correlation_id} or {ok:true, recipient, company_name, organization_id, sent_number}.
+-- Every refusal is written to security_audit.integration_invite_refusals (a hash of the reference only) and its correlation id returned; a reference that
+-- matches no invite is refused the same way with no company.
 CREATE OR REPLACE FUNCTION public.integration_invite_code_issue(p_ref TEXT, p_code_hash TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -182,12 +229,13 @@ AS $$
 DECLARE
   v RECORD;
   v_first BOOLEAN;
+  v_why TEXT;
 BEGIN
   IF p_code_hash IS NULL OR p_code_hash !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'Invalid request.' USING ERRCODE = '22023';
   END IF;
   IF p_ref IS NULL OR p_ref !~ '^[A-Za-z0-9_-]{22}$' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('code', 'malformed_ref', p_ref, NULL));
   END IF;
   SELECT i.id, i.organization_id, i.provider, i.created_by, i.recipient_email, i.expires_at, i.used_at, i.revoked_at, i.locked_at, i.expired_logged_at,
          i.code_sent_at, i.code_sent_count, o.name AS company_name, o.status AS company_status
@@ -195,38 +243,31 @@ BEGIN
   FROM public.integration_connect_invites i JOIN public.organizations o ON o.id = i.organization_id
   WHERE i.ref = p_ref FOR UPDATE OF i;
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('code', 'unknown_ref', p_ref, NULL));
   END IF;
-  IF v.used_at IS NOT NULL OR v.revoked_at IS NOT NULL OR v.locked_at IS NOT NULL THEN
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'code', 'reason', CASE WHEN v.used_at IS NOT NULL THEN 'used' WHEN v.locked_at IS NOT NULL THEN 'locked' ELSE 'revoked' END));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
-  END IF;
-  IF v.expires_at <= now() THEN
-    IF v.expired_logged_at IS NULL THEN
-      UPDATE public.integration_connect_invites SET expired_logged_at = now() WHERE id = v.id;
+  v_why := CASE WHEN v.used_at IS NOT NULL THEN 'used' WHEN v.locked_at IS NOT NULL THEN 'locked' WHEN v.revoked_at IS NOT NULL THEN 'revoked'
+                WHEN v.expires_at <= now() THEN 'expired' END;
+  IF v_why IS NOT NULL THEN
+    IF v_why = 'expired' AND v.expired_logged_at IS NULL THEN
+      UPDATE public.integration_connect_invites SET expired_logged_at = now(), code_hash = NULL WHERE id = v.id;
       PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_EXPIRED', 'integration_connect_invites', v.id::TEXT, jsonb_build_object('provider', v.provider));
     END IF;
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('code', v_why, p_ref, v.organization_id));
   END IF;
   IF v.company_status <> 'active' OR NOT EXISTS (SELECT 1 FROM public.organization_members m
        WHERE m.organization_id = v.organization_id AND m.user_id = v.created_by AND m.active AND NOT m.support AND 'admin' IN (m.role, coalesce(m.secondary_role, ''))) THEN
-    UPDATE public.integration_connect_invites SET revoked_at = now(), revoke_reason = 'creator_not_admin' WHERE id = v.id;
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'code', 'reason', 'creator_not_admin'));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    UPDATE public.integration_connect_invites SET revoked_at = now(), revoke_reason = 'creator_not_admin', code_hash = NULL WHERE id = v.id;
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('code', 'creator_not_admin', p_ref, v.organization_id));
   END IF;
   IF v.code_sent_count >= 5 THEN
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'code', 'reason', 'too_many_codes'));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'too_many_codes');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'too_many_codes', 'correlation_id', security_audit.integration_invite_refuse('code', 'too_many_codes', p_ref, v.organization_id));
   END IF;
   IF v.code_sent_at IS NOT NULL AND v.code_sent_at > now() - interval '60 seconds' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'wait');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'wait', 'correlation_id', security_audit.integration_invite_refuse('code', 'wait', p_ref, v.organization_id));
   END IF;
   v_first := v.code_sent_count = 0;
   UPDATE public.integration_connect_invites
-  SET code_hash = p_code_hash, code_expires_at = now() + interval '15 minutes', code_sent_at = now(), code_sent_count = code_sent_count + 1
+  SET code_hash = p_code_hash, code_expires_at = least(now() + interval '15 minutes', v.expires_at), code_sent_at = now(), code_sent_count = code_sent_count + 1
   WHERE id = v.id;
   IF v_first THEN
     PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_OPENED', 'integration_connect_invites', v.id::TEXT, jsonb_build_object('provider', v.provider));
@@ -239,10 +280,12 @@ $$;
 REVOKE ALL ON FUNCTION public.integration_invite_code_issue(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.integration_invite_code_issue(TEXT, TEXT) TO service_role;
 
--- 3d. The code is typed (server only): the invite is locked for the call. Open, its admin still an active non-support admin of the active company, a code
--- issued and not over 15 minutes old, and the keyed hash equal. A wrong code counts: the fifth wrong code in the invite's life locks and cancels it.
+-- 3d. The code is typed (server only): the invite is locked for the call. EVERY use re-checks in the database, in this order: not used, not cancelled, not
+-- locked, NOT EXPIRED (a code that is still valid does not keep an expired invite alive), company active, creating admin still an active non-support admin,
+-- a code issued and not over 15 minutes old, then the keyed hash. A wrong code counts: the fifth wrong code in the invite's life locks and cancels it.
 -- Correct: the invite is used up (once) and a 10-minute OAuth state bound to that company, that admin and the invite is kept (as 107's redeem did).
--- Answers are JSON: {ok:false, reason: invalid | code_expired | wrong_code (attempts_left) | locked} or {ok:true, organization_id, provider}.
+-- Answers are JSON: {ok:false, reason: invalid | code_expired | wrong_code (attempts_left) | locked, correlation_id} or {ok:true, organization_id, provider}.
+-- Every refusal is a row in security_audit.integration_invite_refusals (reference hash only) with the correlation id returned.
 CREATE OR REPLACE FUNCTION public.integration_invite_code_verify(p_ref TEXT, p_code_hash TEXT, p_state_hash TEXT, p_verifier_enc TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -253,12 +296,13 @@ AS $$
 DECLARE
   v RECORD;
   v_attempts INTEGER;
+  v_why TEXT;
 BEGIN
   IF p_code_hash IS NULL OR p_code_hash !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'Invalid request.' USING ERRCODE = '22023';
   END IF;
   IF p_ref IS NULL OR p_ref !~ '^[A-Za-z0-9_-]{22}$' THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('verify', 'malformed_ref', p_ref, NULL));
   END IF;
   SELECT i.id, i.organization_id, i.provider, i.created_by, i.expires_at, i.used_at, i.revoked_at, i.locked_at, i.expired_logged_at,
          i.code_hash, i.code_expires_at, i.code_attempts, o.status AS company_status
@@ -266,48 +310,38 @@ BEGIN
   FROM public.integration_connect_invites i JOIN public.organizations o ON o.id = i.organization_id
   WHERE i.ref = p_ref FOR UPDATE OF i;
   IF NOT FOUND THEN
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('verify', 'unknown_ref', p_ref, NULL));
   END IF;
-  IF v.used_at IS NOT NULL OR v.revoked_at IS NOT NULL OR v.locked_at IS NOT NULL THEN
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'verify', 'reason', CASE WHEN v.used_at IS NOT NULL THEN 'used' WHEN v.locked_at IS NOT NULL THEN 'locked' ELSE 'revoked' END));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
-  END IF;
-  IF v.expires_at <= now() THEN
-    IF v.expired_logged_at IS NULL THEN
-      UPDATE public.integration_connect_invites SET expired_logged_at = now() WHERE id = v.id;
+  v_why := CASE WHEN v.used_at IS NOT NULL THEN 'used' WHEN v.locked_at IS NOT NULL THEN 'locked' WHEN v.revoked_at IS NOT NULL THEN 'revoked'
+                WHEN v.expires_at <= now() THEN 'expired' END;
+  IF v_why IS NOT NULL THEN
+    IF v_why = 'expired' AND v.expired_logged_at IS NULL THEN
+      UPDATE public.integration_connect_invites SET expired_logged_at = now(), code_hash = NULL WHERE id = v.id;
       PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_EXPIRED', 'integration_connect_invites', v.id::TEXT, jsonb_build_object('provider', v.provider));
     END IF;
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('verify', v_why, p_ref, v.organization_id));
   END IF;
   IF v.company_status <> 'active' OR NOT EXISTS (SELECT 1 FROM public.organization_members m
        WHERE m.organization_id = v.organization_id AND m.user_id = v.created_by AND m.active AND NOT m.support AND 'admin' IN (m.role, coalesce(m.secondary_role, ''))) THEN
     UPDATE public.integration_connect_invites SET revoked_at = now(), revoke_reason = 'creator_not_admin', code_hash = NULL WHERE id = v.id;
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'verify', 'reason', 'creator_not_admin'));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'invalid', 'correlation_id', security_audit.integration_invite_refuse('verify', 'creator_not_admin', p_ref, v.organization_id));
   END IF;
   IF v.code_hash IS NULL OR v.code_expires_at IS NULL OR v.code_expires_at <= now() THEN
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'verify', 'reason', 'code_expired'));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'code_expired');
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'code_expired', 'correlation_id', security_audit.integration_invite_refuse('verify', 'code_expired', p_ref, v.organization_id));
   END IF;
   IF v.code_hash <> p_code_hash THEN
     v_attempts := v.code_attempts + 1;
     IF v_attempts >= 5 THEN
       UPDATE public.integration_connect_invites SET code_attempts = v_attempts, locked_at = now(), revoked_at = now(), revoke_reason = 'locked', code_hash = NULL WHERE id = v.id;
-      PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-        jsonb_build_object('step', 'verify', 'reason', 'locked', 'attempts', v_attempts));
-      RETURN jsonb_build_object('ok', FALSE, 'reason', 'locked');
+      RETURN jsonb_build_object('ok', FALSE, 'reason', 'locked', 'correlation_id', security_audit.integration_invite_refuse('verify', 'locked', p_ref, v.organization_id));
     END IF;
     UPDATE public.integration_connect_invites SET code_attempts = v_attempts WHERE id = v.id;
-    PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_REFUSED', 'integration_connect_invites', v.id::TEXT,
-      jsonb_build_object('step', 'verify', 'reason', 'wrong_code', 'attempts', v_attempts));
-    RETURN jsonb_build_object('ok', FALSE, 'reason', 'wrong_code', 'attempts_left', 5 - v_attempts);
+    RETURN jsonb_build_object('ok', FALSE, 'reason', 'wrong_code', 'attempts_left', 5 - v_attempts,
+                              'correlation_id', security_audit.integration_invite_refuse('verify', 'wrong_code', p_ref, v.organization_id));
   END IF;
   UPDATE public.integration_connect_invites SET used_at = now(), code_hash = NULL WHERE id = v.id;
   INSERT INTO public.integration_oauth_states (organization_id, provider, user_id, state_hash, verifier_enc, expires_at, via_invite)
-  VALUES (v.organization_id, v.provider, v.created_by, p_state_hash, p_verifier_enc, now() + interval '10 minutes', v.id);
+  VALUES (v.organization_id, v.provider, v.created_by, p_state_hash, p_verifier_enc, least(now() + interval '10 minutes', v.expires_at), v.id);
   PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_VERIFIED', 'integration_connect_invites', v.id::TEXT, jsonb_build_object('provider', v.provider));
   PERFORM security_audit.log_named_event(v.organization_id, 'INTEGRATION_INVITE_USED', 'integration_connect_invites', v.id::TEXT,
     jsonb_build_object('provider', v.provider, 'invited_by', v.created_by));
@@ -370,6 +404,83 @@ $$;
 REVOKE ALL ON FUNCTION public.integration_invite_revoke(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.integration_invite_revoke(UUID) TO authenticated;
 
+
+-- 3g. The callback for a state an invite started (server only). The state is used up (single use, 10 minutes, invite states only) and then the INVITE is
+-- re-checked at this very moment: not expired (a state made a minute before the invite's expiry does not outlive it), not cancelled, the company active, the
+-- creating admin still an active non-support admin. Anything else: no connection is stored (the app stops here), the refusal is a security-log row, and the
+-- answer is {ok:false, reason, correlation_id}. NULL when no such state exists (nothing is used up then; the app logs that one itself).
+CREATE OR REPLACE FUNCTION public.integration_oauth_consume_invite(p_provider TEXT, p_state_hash TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v RECORD;
+  v_why TEXT;
+  v_ref TEXT;
+BEGIN
+  UPDATE public.integration_oauth_states s SET consumed_at = now()
+  WHERE s.state_hash = p_state_hash AND s.provider = p_provider AND s.via_invite IS NOT NULL
+    AND s.consumed_at IS NULL AND s.expires_at > now()
+  RETURNING s.organization_id, s.user_id, s.verifier_enc, s.via_invite INTO v;
+  IF v.via_invite IS NULL THEN
+    RETURN NULL;
+  END IF;
+  SELECT CASE WHEN i.expires_at <= now() THEN 'expired' WHEN i.revoked_at IS NOT NULL THEN 'revoked'
+              WHEN o.status <> 'active' OR NOT EXISTS (SELECT 1 FROM public.organization_members m
+                   WHERE m.organization_id = i.organization_id AND m.user_id = i.created_by AND m.active AND NOT m.support AND 'admin' IN (m.role, coalesce(m.secondary_role, '')))
+                   THEN 'creator_not_admin' END,
+         i.ref
+    INTO v_why, v_ref
+  FROM public.integration_connect_invites i JOIN public.organizations o ON o.id = i.organization_id
+  WHERE i.id = v.via_invite;
+  IF v_why IS NOT NULL OR NOT FOUND THEN
+    RETURN jsonb_build_object('ok', FALSE, 'reason', coalesce(v_why, 'unknown_ref'),
+                              'correlation_id', security_audit.integration_invite_refuse('callback', coalesce(v_why, 'unknown_ref'), v_ref, v.organization_id));
+  END IF;
+  RETURN jsonb_build_object('organization_id', v.organization_id, 'user_id', v.user_id, 'verifier_enc', v.verifier_enc);
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_oauth_consume_invite(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_oauth_consume_invite(TEXT, TEXT) TO service_role;
+
+-- 3h. A refusal the app itself meets (server only): a reference that is malformed or matches no invite, a page for an invite that is not open, a rate limit, a
+-- callback with an unknown state or a failed Xero hand-back. The app made the correlation id (random) and shows it; this keeps it. With a reference, the
+-- row carries only a hash of it, and the company ONLY when the reference matches an invite. reason 'not_open' is turned into the real reason here.
+CREATE OR REPLACE FUNCTION public.integration_invite_refusal_log(p_step TEXT, p_reason TEXT, p_ref TEXT, p_correlation UUID)
+RETURNS UUID
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  v_org UUID;
+  v_reason TEXT := p_reason;
+  i RECORD;
+BEGIN
+  IF p_ref IS NOT NULL AND p_ref ~ '^[A-Za-z0-9_-]{22}$' THEN
+    SELECT x.organization_id, x.used_at, x.locked_at, x.revoked_at, x.expires_at INTO i FROM public.integration_connect_invites x WHERE x.ref = p_ref;
+    IF FOUND THEN
+      v_org := i.organization_id;
+      IF p_reason = 'not_open' THEN
+        v_reason := CASE WHEN i.used_at IS NOT NULL THEN 'used' WHEN i.locked_at IS NOT NULL THEN 'locked' WHEN i.revoked_at IS NOT NULL THEN 'revoked'
+                         WHEN i.expires_at <= now() THEN 'expired' ELSE 'creator_not_admin' END;
+      END IF;
+    ELSIF p_reason = 'not_open' THEN
+      v_reason := 'unknown_ref';
+    END IF;
+  ELSIF p_reason = 'not_open' THEN
+    v_reason := 'malformed_ref';
+  END IF;
+  RETURN security_audit.integration_invite_refuse(coalesce(p_step, 'page'), v_reason, p_ref, v_org, coalesce(p_correlation, gen_random_uuid()));
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID) TO service_role;
+
 -- Self-check: stop (and roll everything back) unless the end state is exactly what this release promises.
 DO $self_check$
 DECLARE
@@ -381,7 +492,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.integration_connect_invites i WHERE i.ref IS NULL AND i.used_at IS NULL AND i.revoked_at IS NULL) THEN
     RAISE EXCEPTION '151 self-check: an open token invite remains';
   END IF;
-  FOREACH v_fn IN ARRAY ARRAY['public.integration_invite_peek(text)', 'public.integration_invite_code_issue(text,text)', 'public.integration_invite_code_verify(text,text,text,text)'] LOOP
+  FOREACH v_fn IN ARRAY ARRAY['public.integration_invite_peek(text)', 'public.integration_invite_code_issue(text,text)', 'public.integration_invite_code_verify(text,text,text,text)',
+                              'public.integration_oauth_consume_invite(text,text)', 'public.integration_invite_refusal_log(text,text,text,uuid)'] LOOP
     IF has_function_privilege('anon', v_fn, 'EXECUTE') OR has_function_privilege('authenticated', v_fn, 'EXECUTE') OR NOT has_function_privilege('service_role', v_fn, 'EXECUTE')
        OR EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE p.oid = to_regprocedure(v_fn) AND a.grantee = 0) THEN
       RAISE EXCEPTION '151 self-check: % must be callable by the service role only', v_fn;
@@ -393,6 +505,14 @@ BEGIN
       RAISE EXCEPTION '151 self-check: % has the wrong grants', v_fn;
     END IF;
   END LOOP;
+  IF to_regclass('security_audit.integration_invite_refusals') IS NULL
+     OR NOT (SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('security_audit.integration_invite_refusals'))
+     OR has_table_privilege('anon', 'security_audit.integration_invite_refusals', 'SELECT,INSERT,UPDATE,DELETE') OR has_table_privilege('authenticated', 'security_audit.integration_invite_refusals', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_table_privilege('service_role', 'security_audit.integration_invite_refusals', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_function_privilege('service_role', 'security_audit.integration_invite_refuse(text,text,text,uuid,uuid)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'security_audit.integration_invite_refuse(text,text,text,uuid,uuid)', 'EXECUTE') THEN
+    RAISE EXCEPTION '151 self-check: the refusal log must be unreadable and unwritable by every API role';
+  END IF;
   IF has_table_privilege('anon', 'public.integration_connect_invites', 'SELECT,INSERT,UPDATE,DELETE') OR has_table_privilege('authenticated', 'public.integration_connect_invites', 'SELECT,INSERT,UPDATE,DELETE') THEN
     RAISE EXCEPTION '151 self-check: the invite table must not be readable through the API';
   END IF;

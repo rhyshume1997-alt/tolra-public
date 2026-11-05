@@ -74,9 +74,9 @@ describe("exact HTTPS redirect-URI allow list", () => {
     const calls: string[] = [];
     const svc = { rpc: async (fn: string) => { calls.push(fn); return { data: null, error: null }; } } as never;
     const other = { XERO_INVITE_REDIRECT_URIS: "https://elsewhere.example.test/api/integrations/invite/callback" };
-    expect(await redeemInvite(svc, newInviteRef(), "12345678", ready, other)).toEqual({ ok: false, reason: "redirect_not_allowed" });
-    expect(await finishInviteConnect(svc, "state", "code", ready, { env: other, fetchImpl: vi.fn() as never })).toEqual({ ok: false, reason: "not_configured" });
-    expect(calls).toEqual([]);
+    expect(await redeemInvite(svc, newInviteRef(), "12345678", ready, other)).toMatchObject({ ok: false, reason: "redirect_not_allowed" });
+    expect(await finishInviteConnect(svc, "state", "code", ready, { env: other, fetchImpl: vi.fn() as never })).toMatchObject({ ok: false, reason: "not_configured" });
+    expect(calls.every((f) => f === "integration_invite_refusal_log")).toBe(true);
   });
 });
 
@@ -121,7 +121,7 @@ describe("state and PKCE at the callback", () => {
   it("an unknown or reused state (including an admin's own Connect state) completes nothing and makes no call to Xero", async () => {
     const fetchImpl = vi.fn();
     const svc = { rpc: async () => ({ data: null, error: null }) } as never;
-    expect(await finishInviteConnect(svc, "forged-state", "code", ready, { env: ALLOW, fetchImpl: fetchImpl as never })).toEqual({ ok: false, reason: "expired" });
+    expect(await finishInviteConnect(svc, "forged-state", "code", ready, { env: ALLOW, fetchImpl: fetchImpl as never })).toMatchObject({ ok: false, reason: "expired" });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -131,6 +131,16 @@ describe("state and PKCE at the callback", () => {
     const stolen = encryptSecret("someone-elses-verifier", inviteVerifierContext(hashState("another-state")), key);
     const svc = { rpc: async (fn: string) => { rpcs.push(fn); return { data: { organization_id: "o", user_id: "u", verifier_enc: stolen }, error: null }; } } as never;
     await expect(finishInviteConnect(svc, "this-state", "code", ready, { env: ALLOW, fetchImpl: fetchImpl as never })).rejects.toThrow();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(rpcs).toEqual(["integration_oauth_consume_invite"]);
+  });
+
+  it("the invite expired after the code was typed (the database's callback check says so): no code exchange with Xero, nothing stored, the database's correlation id comes back", async () => {
+    const fetchImpl = vi.fn();
+    const rpcs: string[] = [];
+    const corr = "5c1f3b0e-8a64-4f43-9d0a-2f6a7a1e9b11";
+    const svc = { rpc: async (fn: string) => { rpcs.push(fn); return { data: { ok: false, reason: "expired", correlation_id: corr }, error: null }; } } as never;
+    expect(await finishInviteConnect(svc, "state", "code", ready, { env: ALLOW, fetchImpl: fetchImpl as never })).toEqual({ ok: false, reason: "expired", correlationId: corr });
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(rpcs).toEqual(["integration_oauth_consume_invite"]);
   });
