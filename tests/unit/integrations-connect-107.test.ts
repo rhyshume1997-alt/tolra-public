@@ -197,8 +197,8 @@ describe("the accountant's connect link (opaque reference + e-mailed code; propo
     expect(await finishInviteConnect(svc.client, state, "code", xeroReady, { fetchImpl: fetchImpl as never, env: ALLOW })).toEqual({ ok: true, tenantName: "Alpha Ltd" });
     expect(new URLSearchParams(bodies[0]).get("redirect_uri")).toBe(`${SITE}/api/integrations/invite/callback`);
     expect(new URLSearchParams(bodies[0]).get("code_verifier")).toBe("the-verifier");
-    const store = svc.calls.find((c) => c.fn === "integration_store_connection")!;
-    expect(store.args).toMatchObject({ p_org: ORG, p_user: ADMIN, p_provider: "xero", p_tenant_id: "t1" });
+    const store = svc.calls.find((c) => c.fn === "integration_invite_store_connection")!;
+    expect(store.args).toMatchObject({ p_state_hash: hashState(state), p_org: ORG, p_user: ADMIN, p_provider: "xero", p_tenant_id: "t1" });
     expect(svc.calls[0]).toEqual({ fn: "integration_oauth_consume_invite", args: { p_provider: "xero", p_state_hash: hashState(state) } });
   });
 

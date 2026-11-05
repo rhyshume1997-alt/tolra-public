@@ -1,26 +1,6 @@
--- Post-144 release step 151 (PROPOSAL, not registered in supabase/release-plan.json or CI). One-time, one transaction; never part of baseline replay.
--- Canonical source: supabase/proposals/p151_xero_invite_hardening.sql (read its header for what it does and why). Apply only after 107 and 149.
--- Verify: supabase/verify/xero_invite_hardening_151.sql (every row t). Rollback: supabase/release/151_xero_invite_hardening.rollback.sql.
+-- Review-only proposal151; not registered for production.
 BEGIN;
-DO $post_release_guard$ BEGIN
- IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites' AND column_name = 'ref')
-    OR to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') IS NOT NULL THEN
-  RAISE EXCEPTION '151: the invite hardening already exists; this one-time release was applied before';
- END IF;
- IF to_regclass('public.integration_connect_invites') IS NULL OR to_regclass('public.integration_oauth_states') IS NULL
-    OR to_regprocedure('public.integration_invite_create(text,text)') IS NULL OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NULL
-    OR to_regprocedure('public.integration_invite_peek(text)') IS NULL OR to_regprocedure('public.integration_oauth_consume_invite(text,text)') IS NULL THEN
-  RAISE EXCEPTION '151: release 107 (the token connect link) is not in place; stop and check release preflight';
- END IF;
- IF to_regclass('public.xero_transfer_hold') IS NULL THEN
-  RAISE EXCEPTION '151: release 149 (the Xero transfer switch) is missing; apply it first so a connection made through an invite starts with transfers OFF';
- END IF;
- IF to_regprocedure('public.assert_privileged_aal()') IS NULL OR to_regprocedure('public._session_membership()') IS NULL OR to_regprocedure('public.has_org_role(text[])') IS NULL
-    OR to_regprocedure('public.current_user_organization_id()') IS NULL OR to_regprocedure('security_audit.log_named_event(uuid,text,text,text,jsonb)') IS NULL THEN
-  RAISE EXCEPTION '151: the helper functions it builds on are not all in place; stop and check release preflight';
- END IF;
-END $post_release_guard$;
-
+ALTER TABLE public.integration_oauth_states ADD COLUMN invite_completed_at timestamptz;
 -- 151. Xero accountant connect link, hardened (PROPOSAL; not in supabase/migrations, not in release-plan.json, not in CI).
 --
 -- What 107 did: an admin makes a link whose URL carries a 43-character token; whoever holds the URL can connect the company's Xero.
@@ -74,7 +54,7 @@ CREATE TABLE security_audit.integration_invite_refusals (
   step            TEXT NOT NULL CONSTRAINT integration_invite_refusals_step CHECK (step IN ('page', 'code', 'verify', 'callback', 'request')),
   reason          TEXT NOT NULL CONSTRAINT integration_invite_refusals_reason CHECK (reason IN (
                     'unknown_ref', 'malformed_ref', 'used', 'revoked', 'locked', 'expired', 'creator_not_admin', 'code_expired', 'wrong_code', 'too_many_codes', 'wait',
-                    'rate_limited', 'callback_state', 'callback_error', 'redirect_not_allowed', 'mail_failed', 'bad_origin', 'other')),
+                    'rate_limited', 'callback_state', 'callback_error', 'redirect_not_allowed', 'mail_failed', 'bad_origin', 'invalid_request', 'other')),
   ref_hash        TEXT CONSTRAINT integration_invite_refusals_ref_hash CHECK (ref_hash IS NULL OR ref_hash ~ '^[0-9a-f]{16}$'),
   organization_id UUID,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -97,7 +77,7 @@ BEGIN
   INSERT INTO security_audit.integration_invite_refusals (correlation_id, step, reason, ref_hash, organization_id)
   VALUES (p_corr, CASE WHEN p_step IN ('page', 'code', 'verify', 'callback', 'request') THEN p_step ELSE 'page' END,
           CASE WHEN p_reason IN ('unknown_ref', 'malformed_ref', 'used', 'revoked', 'locked', 'expired', 'creator_not_admin', 'code_expired', 'wrong_code', 'too_many_codes', 'wait',
-                                 'rate_limited', 'callback_state', 'callback_error', 'redirect_not_allowed', 'mail_failed', 'bad_origin') THEN p_reason ELSE 'other' END,
+                                 'rate_limited', 'callback_state', 'callback_error', 'redirect_not_allowed', 'mail_failed', 'bad_origin', 'invalid_request') THEN p_reason ELSE 'other' END,
           CASE WHEN p_ref IS NULL THEN NULL ELSE left(encode(sha256(convert_to(left(p_ref, 200), 'UTF8')), 'hex'), 16) END,
           p_org)
   ON CONFLICT ON CONSTRAINT integration_invite_refusals_corr_key DO NOTHING;
@@ -368,7 +348,8 @@ BEGIN
   RETURN (SELECT coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'created_at', i.created_at, 'expires_at', i.expires_at, 'recipient', i.recipient_email,
                                                        'created_by_name', coalesce(nullif(btrim(p.full_name), ''), p.email)) ORDER BY i.created_at), '[]'::JSONB)
           FROM public.integration_connect_invites i LEFT JOIN public.user_profiles p ON p.id = i.created_by
-          WHERE i.organization_id = v_org AND i.provider = p_provider AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.locked_at IS NULL AND i.expires_at > now());
+          WHERE i.organization_id = v_org AND i.provider = p_provider AND i.revoked_at IS NULL AND i.locked_at IS NULL AND i.expires_at > now()
+            AND (i.used_at IS NULL OR EXISTS (SELECT 1 FROM public.integration_oauth_states st WHERE st.via_invite=i.id AND st.invite_completed_at IS NULL AND st.expires_at>now())));
 END
 $$;
 REVOKE ALL ON FUNCTION public.integration_invites_open(TEXT) FROM PUBLIC, anon;
@@ -392,7 +373,8 @@ BEGIN
     RAISE EXCEPTION 'Only the company''s own admins can cancel a connect link.' USING ERRCODE = '42501';
   END IF;
   UPDATE public.integration_connect_invites i SET revoked_at = now(), revoked_by = v_uid, revoke_reason = 'cancelled', code_hash = NULL
-  WHERE i.id = p_invite AND i.organization_id = v_org AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now();
+  WHERE i.id = p_invite AND i.organization_id = v_org AND i.revoked_at IS NULL AND i.expires_at > clock_timestamp()
+    AND NOT EXISTS (SELECT 1 FROM public.integration_oauth_states st WHERE st.via_invite=i.id AND st.invite_completed_at IS NOT NULL);
   IF NOT FOUND THEN
     RETURN FALSE;
   END IF;
@@ -481,40 +463,63 @@ $$;
 REVOKE ALL ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID) TO service_role;
 
--- Self-check: stop (and roll everything back) unless the end state is exactly what this release promises.
-DO $self_check$
-DECLARE
-  v_fn TEXT;
+-- Final invite write: serialize completion and cancellation on the same invite row, after provider HTTP has finished.
+CREATE FUNCTION public.integration_invite_store_connection(p_state_hash text, p_org uuid, p_user uuid, p_provider text,
+ p_tenant_id text, p_tenant_name text, p_external_connection_id text, p_refresh_enc text, p_access_enc text,
+ p_access_expires_at timestamptz, p_key_version integer) RETURNS jsonb
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,public,security_audit AS $$
+DECLARE st record; i record; why text; result jsonb;
 BEGIN
-  IF to_regprocedure('public.integration_invite_create(text,text)') IS NOT NULL OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL THEN
-    RAISE EXCEPTION '151 self-check: a 107 token function is still present';
+ SELECT * INTO st FROM public.integration_oauth_states WHERE state_hash=p_state_hash AND provider=p_provider FOR UPDATE;
+ IF NOT FOUND OR st.via_invite IS NULL OR st.organization_id<>p_org OR st.user_id<>p_user OR st.consumed_at IS NULL
+    OR st.invite_completed_at IS NOT NULL THEN
+  RETURN jsonb_build_object('ok',false,'correlation_id',security_audit.integration_invite_refuse('callback','callback_state',null,null));
+ END IF;
+ SELECT inv.*,o.status AS company_status,o.name AS company_name INTO i FROM public.integration_connect_invites inv
+ JOIN public.organizations o ON o.id=inv.organization_id WHERE inv.id=st.via_invite FOR UPDATE OF inv;
+ why:=CASE WHEN NOT FOUND THEN 'unknown_ref' WHEN i.revoked_at IS NOT NULL THEN 'revoked'
+   WHEN i.expires_at<=clock_timestamp() OR st.expires_at<=clock_timestamp() THEN 'expired'
+   WHEN i.organization_id<>p_org OR i.created_by<>p_user OR i.company_status<>'active' THEN 'creator_not_admin' END;
+ IF why IS NOT NULL THEN
+  RETURN jsonb_build_object('ok',false,'correlation_id',security_audit.integration_invite_refuse('callback',why,i.ref,p_org));
+ END IF;
+ -- An emailed link does not offer a signed-in admin's tenant picker. Refuse a different company name rather than silently bind it.
+ IF lower(btrim(p_tenant_name)) IS DISTINCT FROM lower(btrim(i.company_name)) THEN
+  RETURN jsonb_build_object('ok',false,'correlation_id',security_audit.integration_invite_refuse('callback','callback_error',i.ref,p_org));
+ END IF;
+ result:=public.integration_store_connection(p_org,p_user,p_provider,p_tenant_id,p_tenant_name,p_external_connection_id,
+   p_refresh_enc,p_access_enc,p_access_expires_at,p_key_version);
+ UPDATE public.integration_oauth_states SET invite_completed_at=clock_timestamp() WHERE id=st.id;
+ RETURN result;
+END $$;
+REVOKE ALL ON FUNCTION public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer) TO service_role;
+
+-- Dedicated service-only picker claims; no change to historical login throttling.
+CREATE OR REPLACE FUNCTION public.integration_xero_picker_claim(p_bucket TEXT, p_key_hash TEXT, p_window_seconds INTEGER, p_max INTEGER)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  n INTEGER;
+BEGIN
+  IF p_bucket !~ '^[a-z_:]{1,40}$' OR p_key_hash !~ '^[0-9a-f]{64}$' OR p_window_seconds NOT BETWEEN 1 AND 86400 OR p_max NOT BETWEEN 1 AND 10000 THEN
+    RAISE EXCEPTION 'auth_rate_hit: bad arguments' USING ERRCODE = '22023';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.integration_connect_invites i WHERE i.ref IS NULL AND i.used_at IS NULL AND i.revoked_at IS NULL) THEN
-    RAISE EXCEPTION '151 self-check: an open token invite remains';
-  END IF;
-  FOREACH v_fn IN ARRAY ARRAY['public.integration_invite_peek(text)', 'public.integration_invite_code_issue(text,text)', 'public.integration_invite_code_verify(text,text,text,text)',
-                              'public.integration_oauth_consume_invite(text,text)', 'public.integration_invite_refusal_log(text,text,text,uuid)'] LOOP
-    IF has_function_privilege('anon', v_fn, 'EXECUTE') OR has_function_privilege('authenticated', v_fn, 'EXECUTE') OR NOT has_function_privilege('service_role', v_fn, 'EXECUTE')
-       OR EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE p.oid = to_regprocedure(v_fn) AND a.grantee = 0) THEN
-      RAISE EXCEPTION '151 self-check: % must be callable by the service role only', v_fn;
-    END IF;
-  END LOOP;
-  FOREACH v_fn IN ARRAY ARRAY['public.integration_invite_create(text,text,text)', 'public.integration_invites_open(text)', 'public.integration_invite_revoke(uuid)'] LOOP
-    IF has_function_privilege('anon', v_fn, 'EXECUTE') OR NOT has_function_privilege('authenticated', v_fn, 'EXECUTE')
-       OR EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE p.oid = to_regprocedure(v_fn) AND a.grantee = 0) THEN
-      RAISE EXCEPTION '151 self-check: % has the wrong grants', v_fn;
-    END IF;
-  END LOOP;
-  IF to_regclass('security_audit.integration_invite_refusals') IS NULL
-     OR NOT (SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('security_audit.integration_invite_refusals'))
-     OR has_table_privilege('anon', 'security_audit.integration_invite_refusals', 'SELECT,INSERT,UPDATE,DELETE') OR has_table_privilege('authenticated', 'security_audit.integration_invite_refusals', 'SELECT,INSERT,UPDATE,DELETE')
-     OR has_table_privilege('service_role', 'security_audit.integration_invite_refusals', 'SELECT,INSERT,UPDATE,DELETE')
-     OR has_function_privilege('service_role', 'security_audit.integration_invite_refuse(text,text,text,uuid,uuid)', 'EXECUTE')
-     OR has_function_privilege('authenticated', 'security_audit.integration_invite_refuse(text,text,text,uuid,uuid)', 'EXECUTE') THEN
-    RAISE EXCEPTION '151 self-check: the refusal log must be unreadable and unwritable by every API role';
-  END IF;
-  IF has_table_privilege('anon', 'public.integration_connect_invites', 'SELECT,INSERT,UPDATE,DELETE') OR has_table_privilege('authenticated', 'public.integration_connect_invites', 'SELECT,INSERT,UPDATE,DELETE') THEN
-    RAISE EXCEPTION '151 self-check: the invite table must not be readable through the API';
-  END IF;
-END $self_check$;
+  -- Picker claims fail closed while another transaction owns the same nonce; all other limiter buckets retain their behaviour.
+  IF p_bucket='xero_picker_use' AND NOT pg_try_advisory_xact_lock(hashtextextended(p_bucket||':'||p_key_hash,151)) THEN RETURN FALSE; END IF;
+  -- Keep the table small: drop anything older than a day (cheap, indexed by created_at within the key).
+  DELETE FROM public.auth_rate_limits WHERE created_at < now() - INTERVAL '1 day' AND id IN (
+    SELECT id FROM public.auth_rate_limits WHERE created_at < now() - INTERVAL '1 day' LIMIT 500);
+  INSERT INTO public.auth_rate_limits (bucket, key_hash) VALUES (p_bucket, p_key_hash);
+  SELECT count(*) INTO n FROM public.auth_rate_limits
+  WHERE bucket = p_bucket AND key_hash = p_key_hash AND created_at > now() - make_interval(secs => p_window_seconds);
+  RETURN n <= p_max;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER) TO service_role;
+
 COMMIT;

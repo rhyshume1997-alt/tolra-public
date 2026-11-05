@@ -1,0 +1,11 @@
+import {randomUUID} from 'node:crypto';
+import {expect,it,vi} from 'vitest';
+vi.mock('server-only',()=>({}));
+import {openPicker,sealPicker,pickerCsrf,csrfMatches} from '@/lib/integrations/xero/picker';
+const KEY=Buffer.alloc(32,7),ORG=randomUUID(),USER=randomUUID(),NOW=Date.parse('2026-11-05T12:00:00Z');
+const offer={refreshToken:'synthetic-refresh',eventId:randomUUID(),orgs:[{id:randomUUID(),tenantId:randomUUID(),tenantName:'Synthetic A'},{id:randomUUID(),tenantId:randomUUID(),tenantName:'Synthetic B'}]};
+it('sealed offers cannot move between companies or survive ciphertext tampering',()=>{const value=sealPicker(ORG,USER,offer,KEY,NOW).cookie;expect(openPicker(value,KEY,NOW).ok).toBe(true);expect(openPicker(value.replace(ORG,randomUUID()),KEY,NOW).ok).toBe(false);const index=value.lastIndexOf('.')+3;expect(openPicker(value.slice(0,index)+(value[index]==='A'?'B':'A')+value.slice(index+1),KEY,NOW).ok).toBe(false);});
+it('expiry has no grace interval at the exact ten-minute boundary',()=>{const value=sealPicker(ORG,USER,offer,KEY,NOW).cookie;expect(openPicker(value,KEY,NOW+599000).ok).toBe(true);expect(openPicker(value,KEY,NOW+600000)).toMatchObject({ok:false,reason:'expired'});});
+it('CSRF is bound to company, initiating admin and nonce',()=>{const p=sealPicker(ORG,USER,offer,KEY,NOW).payload,csrf=pickerCsrf(p,KEY);expect(csrfMatches(csrf,p,KEY)).toBe(true);for(const modified of [{...p,o:randomUUID()},{...p,u:randomUUID()},{...p,n:'other-nonce'}])expect(csrfMatches(csrf,modified,KEY)).toBe(false);expect(csrfMatches(undefined,p,KEY)).toBe(false);});
+it('eight legitimate maximum-length Unicode organisation names fit the cookie budget and reopen',()=>{const large={...offer,refreshToken:'r'.repeat(128),orgs:Array.from({length:8},()=>({id:randomUUID(),tenantId:randomUUID(),tenantName:'名'.repeat(60)}))};const value=sealPicker(ORG,USER,large,KEY,NOW).cookie;expect(Buffer.byteLength(value),'the callback must not issue an offer its own reader/browser discards').toBeLessThanOrEqual(3800);expect(openPicker(value,KEY,NOW).ok).toBe(true);});
+it('normal cookie material never exposes the refresh token in plaintext',()=>{const value=sealPicker(ORG,USER,offer,KEY,NOW).cookie;expect(value).not.toContain(offer.refreshToken);expect(openPicker(value,Buffer.alloc(32,8),NOW).ok).toBe(false);});

@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ref
   if (!(await inviteRateOk(service, request))) return invitePage("busy", 429, await logInviteRefusal(service, "request", "rate_limited", ref));
   if (!INVITE_REF.test(ref)) return invitePage("invalid", 404, await logInviteRefusal(service, "request", "malformed_ref", ref));
   const ready = await xeroReady(process.env, service);
-  if (!ready || !allowedInviteRedirect(ready.config)) return invitePage("not_configured", 503);
+  if (!ready || !allowedInviteRedirect(ready.config)) return invitePage("not_configured", 503, await logInviteRefusal(service, "verify", "redirect_not_allowed", ref));
   const form = await request.formData().catch(() => null);
   const action = form?.get("action");
   try {
@@ -60,7 +60,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ref
     }
     if (action === "verify") {
       const code = cleanInviteCode(form?.get("code"));
-      if (!code) return again("enter_code", 400);
+      if (!code) return again("enter_code", 400, await logInviteRefusal(service, "verify", "wrong_code", ref));
       const outcome = await redeemInvite(service, ref, code, ready);
       if (outcome.ok) return NextResponse.redirect(outcome.url, 303);
       if (outcome.reason === "wrong_code") return again("wrong_code", 400, outcome.correlationId);
@@ -69,7 +69,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ref
       if (outcome.reason === "redirect_not_allowed") return invitePage("not_configured", 503, outcome.correlationId);
       return invitePage("invalid", 404, outcome.correlationId);
     }
-    return invitePage("invalid", 400);
+    return invitePage("invalid", 400, await logInviteRefusal(service, "request", "invalid_request", ref));
   } catch (err) {
     console.error("[integrations] invite open failed:", (err as { code?: string }).code ?? (err instanceof Error ? err.name : "error"));
     return invitePage("failed", 500);
