@@ -1,0 +1,58 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/job-profitability-actuals
+
+stdout | tests/unit/job-profitability-precision.test.ts > keeps penny precision or refuses an unsafe revenue aggregate
+aggregate revenue {"exact":8999999999994410,"actual":8999999999994409,"state":"complete"}
+
+ ❯ tests/unit/job-profitability-precision.test.ts (2 tests | 2 failed) 15ms
+   × keeps penny precision or refuses an unsafe revenue aggregate 10ms
+     → expected 8999999999994409 to be 8999999999994410 // Object.is equality
+   × retains recorded microseconds when they add up to half a penny 4ms
+     → expected 3600000 to be 3600001 // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/job-profitability-precision.test.ts > keeps penny precision or refuses an unsafe revenue aggregate
+AssertionError: expected 8999999999994409 to be 8999999999994410 // Object.is equality
+
+- Expected
++ Received
+
+- 8999999999994410
++ 8999999999994409
+
+ ❯ tests/unit/job-profitability-precision.test.ts:13:63
+     11|   const out = actualJobProfit(x);
+     12|   console.log('aggregate revenue', JSON.stringify({exact, actual:out.a…
+     13|   if (out.state === 'complete') expect(out.actualProfitPence).toBe(exa…
+       |                                                               ^
+     14|   else expect(out.actualProfitPence).toBeNull();
+     15| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/unit/job-profitability-precision.test.ts > retains recorded microseconds when they add up to half a penny
+AssertionError: expected 3600000 to be 3600001 // Object.is equality
+
+- Expected
++ Received
+
+- 3600001
++ 3600000
+
+ ❯ tests/unit/job-profitability-precision.test.ts:24:42
+     22|   });
+     23|   // 360 * (3,600,000,500 microseconds) * 10,000p / 3,600,000,000 => 3…
+     24|   expect(actualJobProfit(x).labourPence).toBe(3600001);
+       |                                          ^
+     25| });
+     26| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  07:51:40
+   Duration  313ms (transform 94ms, setup 0ms, collect 103ms, tests 15ms, environment 0ms, prepare 58ms)
+
