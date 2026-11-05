@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SetupCard, type ConnectionTone, type SetupStep } from "@/components/integrations/setup-card";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { postIntegration, type ConnectStatus } from "@/components/microsoft-connect-card";
+import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { Button } from "@/components/ui/button";
 import { fmtDate } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
@@ -29,6 +31,7 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
   const [confirm, setConfirm] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
   const [approve, setApprove] = useState<Approve | null>(null);
+  const { requestCode, codeDialog } = useCodePrompt();
   const available = status?.db107 === true;
   const view = connectCardView("microsoft", status ? status.microsoft.configured : null);
 
@@ -43,7 +46,7 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
   async function run(path: string, onOk: (body: Record<string, unknown>) => void) {
     setBusy(true);
     try {
-      const r = await postIntegration(path);
+      const r = await postIntegrationWithCode(path, requestCode);
       if (!r.ok) toast.error(r.error); else onOk(r.body);
     } finally {
       setBusy(false);
@@ -61,9 +64,9 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
   async function makeLink() {
     setBusy(true);
     try {
-      const res = await fetch("/api/integrations/microsoft/admin-consent", { method: "POST", credentials: "same-origin" }).catch(() => null);
-      const body = (res ? await res.json().catch(() => ({})) : {}) as Partial<Approve> & { error?: string };
-      if (!res?.ok || !body.url || !body.mailto) return toast.error(body.error ?? "Couldn't make the link. Try again.");
+      const r = await postIntegrationWithCode("/api/integrations/microsoft/admin-consent", requestCode);
+      const body = (r.ok ? r.body : { error: r.error }) as Partial<Approve> & { error?: string };
+      if (!r.ok || !body.url || !body.mailto) return toast.error(body.error ?? "Couldn't make the link. Try again.");
       setApprove({ url: body.url, mailto: body.mailto, permissions: body.permissions ?? [], expiresAt: body.expiresAt ?? "" });
     } finally { setBusy(false); }
   }
@@ -89,6 +92,7 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
 
   return (
     <>
+      {codeDialog}
       <SetupCard
         id="microsoft"
         title="Microsoft 365"

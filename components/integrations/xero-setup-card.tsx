@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SetupCard } from "@/components/integrations/setup-card";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { type ConnectStatus, postIntegration } from "@/components/microsoft-connect-card";
+import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { Button } from "@/components/ui/button";
 import { XeroMappings } from "@/components/xero-mappings";
 import type { IntegrationOverview } from "@/lib/integrations/overview";
@@ -96,6 +98,7 @@ export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold
   const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [urlOutcome, setUrlOutcome] = useState<string | null>(null);
+  const { requestCode, codeDialog } = useCodePrompt();
 
   useEffect(() => { if (outcome === undefined) setUrlOutcome(new URLSearchParams(window.location.search).get("xero")); }, [outcome]);
 
@@ -123,12 +126,12 @@ export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold
     try { await fn(); } finally { setBusy(false); }
   }
   const connect = () => run(async () => {
-    const r = await postIntegration("/api/integrations/xero/connect");
+    const r = await postIntegrationWithCode("/api/integrations/xero/connect", requestCode);
     if (!r.ok) setActionError(r.error);
     else if (typeof r.body.url === "string") window.location.assign(r.body.url);
   });
   const disconnect = () => { setConfirm(false); return run(async () => {
-    const r = await postIntegration("/api/integrations/xero/disconnect");
+    const r = await postIntegrationWithCode("/api/integrations/xero/disconnect", requestCode);
     if (!r.ok) setActionError(r.error);
     setCheck(null);
     await load();
@@ -142,6 +145,8 @@ export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold
 
   return (
     <>
+      {codeDialog}
+
       <XeroSetupCardView
         configured={status ? status.xero.configured : null}
         overview={overview}
