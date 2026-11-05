@@ -129,10 +129,23 @@ export function switchRequest(provider: AiProvider, status: AiHelperStatus, on: 
 
 type JsonBody = { code?: unknown; error?: unknown };
 
+/** What the card says after the key was saved, replaced or removed. A key change switches AI off (release 150), so a company that had AI on is told so. */
+export type KeyChange = "saved" | "replaced" | "removed";
+export function keyChangeNotice(change: KeyChange, wasOn: boolean): string {
+  const lead = change === "removed" ? "Key removed." : change === "replaced" ? "New key saved. It replaces the old key, which is no longer used." : "Key saved.";
+  if (wasOn) return `${lead} AI was switched off because the key changed. Turn it on again with the switch above when you are ready.`;
+  return change === "removed" ? `${lead} AI stays off until you turn it on with the switch above.` : `${lead} AI is not turned on by saving a key.`;
+}
+
 /** One JSON POST as the signed-in person, answered in the shape sendWithCode needs. Never throws; the body is not kept anywhere. */
 export async function postJson(path: string, body: unknown, fetchFn: typeof fetch = fetch): Promise<SendAnswer<JsonBody & Partial<AiHelperStatus>>> {
+  return requestJson("POST", path, body, fetchFn);
+}
+
+/** The same for POST or DELETE (removing the key sends no body). */
+export async function requestJson(method: "POST" | "DELETE", path: string, body: unknown, fetchFn: typeof fetch = fetch): Promise<SendAnswer<JsonBody & Partial<AiHelperStatus>>> {
   try {
-    const response = await fetchFn(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store" });
+    const response = await fetchFn(path, { method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), cache: "no-store" });
     const parsed = (await response.json().catch(() => null)) as (JsonBody & Partial<AiHelperStatus>) | null;
     return { ok: response.ok, status: response.status, body: parsed };
   } catch {

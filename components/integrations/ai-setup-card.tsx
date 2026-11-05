@@ -9,7 +9,7 @@ import { SetupCard } from "@/components/integrations/setup-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  ANTHROPIC_KEYS_URL, KEY_SHAPE_MESSAGE, type AiProvider, buildAiSetup, effectiveProvider, keyLooksRight, postJson, safeMessage, switchRequest,
+  ANTHROPIC_KEYS_URL, KEY_SHAPE_MESSAGE, type AiProvider, buildAiSetup, effectiveProvider, keyChangeNotice, keyLooksRight, postJson, requestJson, safeMessage, switchRequest,
 } from "@/lib/integrations/ai-setup";
 import { sendWithCode } from "@/lib/mfa-step-up";
 
@@ -19,7 +19,8 @@ import { sendWithCode } from "@/lib/mfa-step-up";
  *   2. get a key (plain link to the Anthropic Console, opens in a new tab);
  *   3. paste the key (password field) and save it: sent once to /api/ai-helper/key, which encrypts it. It is never shown again, the field is
  *      emptied the moment Save is pressed, and only "saved" and the last four characters come back;
- *   4. "Turn on AI": its own switch, OFF by default, never changed by saving or replacing a key. Turning it on needs an admin and a fresh
+ *   4. "Turn on AI": its own switch, OFF by default. Saving, replacing or removing the key switches AI OFF (the database does it, release 150) and the
+ *      card says so: AI has to be turned on again on purpose. Turning it on needs an admin and a fresh
  *      authenticator code (the server asks; the code dialog opens; the same request is sent once more).
  * The server's emergency disables (AI_HELPER_ENABLED, the assistant's flag, Tolra's platform switch) are shown as reasons and cannot be bypassed here.
  */
@@ -68,16 +69,34 @@ export function AiSetupPanel(props: {
       return;
     }
     const replacing = status.key_set;
+    const wasOn = model.on === true;
     setBusy("key");
     setNotice(null);
     const outcome = await sendWithCode(send("/api/ai-helper/key", { key: value }), requestCode);
     if (outcome.result === "done") {
       await reload();
-      setNotice({ tone: "ok", text: replacing ? "New key saved. It replaces the old key, which is no longer used. AI is not turned on by saving a key." : "Key saved. AI is not turned on by saving a key." });
+      setNotice({ tone: "ok", text: keyChangeNotice(replacing ? "replaced" : "saved", wasOn) });
     } else if (outcome.result === "cancelled") {
       setNotice({ tone: "error", text: "Cancelled. Nothing was changed." });
     } else {
       setNotice({ tone: "error", text: safeMessage(outcome.answer.body, "The key could not be saved. Try again.", value) });
+    }
+    setBusy(null);
+  }
+
+  async function removeKey() {
+    if (busy || !status || !status.key_set) return;
+    const wasOn = model.on === true;
+    setBusy("key");
+    setNotice(null);
+    const outcome = await sendWithCode(() => requestJson("DELETE", "/api/ai-helper/key", undefined, fetchFn), requestCode);
+    if (outcome.result === "done") {
+      await reload();
+      setNotice({ tone: "ok", text: keyChangeNotice("removed", wasOn) });
+    } else if (outcome.result === "cancelled") {
+      setNotice({ tone: "error", text: "Cancelled. Nothing was changed." });
+    } else {
+      setNotice({ tone: "error", text: safeMessage(outcome.answer.body, "The key could not be removed. Try again.") });
     }
     setBusy(null);
   }
@@ -145,7 +164,9 @@ export function AiSetupPanel(props: {
               <p className="text-xs text-slate-500">It is stored encrypted and is never shown again. Saving it needs a fresh authenticator code.</p>
               <div>
                 <Button type="submit" disabled={busy !== null || !key.trim()} className="min-h-9">{busy === "key" ? "Saving…" : model.keySaved ? "Replace key" : "Save key"}</Button>
+                {model.keySaved ? <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void removeKey()} className="ml-2 min-h-9">Remove key</Button> : null}
               </div>
+              <p className="text-xs text-slate-500">Replacing or removing the key switches AI off. You turn it on again with the switch above.</p>
             </form>
           ) : null}
         </>

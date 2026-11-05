@@ -229,19 +229,19 @@ describe("provided AI cap: per company, off by default, every entry point", () =
     expect(await capOf(A)).toBe(1100);
   });
 
-  it("the company's own-key helper (not provided AI) keeps its separate 500p default: a pin of today's behaviour, not a decision", async () => {
+  it("the company's own-key helper (not provided AI) now defaults to 1000p as well (release 150; it was 500p): a pin of the default", async () => {
     const { C } = companies;
     expect((await asAdmin(C, "SELECT public.ai_helper_set_key($1,'abcd')", [KEY_ENC])).ok).toBe(true);
     expect((await asAdmin(C, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
     const status = await asAdmin(C, "SELECT public.ai_helper_status() AS s");
-    expect(status.ok && status.value.s).toMatchObject({ monthly_cap_pence: 500, tolra_enabled: false, tolra_cap_pence: 1000 });
+    expect(status.ok && status.value.s).toMatchObject({ monthly_cap_pence: 1000, tolra_enabled: false, tolra_cap_pence: 1000 });
     const r = [];
-    for (let i = 0; i < 8; i++) r.push(await reserve(C, "assistant"));
-    expect(oks(r)).toBe(5);
-    expect(caps(r)).toBe(3);
+    for (let i = 0; i < 12; i++) r.push(await reserve(C, "assistant"));
+    expect(oks(r)).toBe(10);
+    expect(caps(r)).toBe(2);
     // The own-key reserve does not name its source in the answer; the request log does.
     expect((await requests(C)).every((x) => x.key_source === "own")).toBe(true);
-    expect(await used(C)).toBe(500);
+    expect(await used(C)).toBe(1000);
   });
 
   it("concurrent reservations never pass a company's own cap, and two companies racing at once keep separate budgets", async () => {

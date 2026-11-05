@@ -184,6 +184,10 @@ describe("AI card database proof: key, replacement, isolation, default off", () 
     expect((await admin(C, "SELECT public.ai_helper_set_key(NULL,NULL)")).ok).toBe(true);
     expect(await secretRows(C)).toEqual([]);
     expect((await settingsRow(C))?.api_key_last4).toBeNull();
+    // Release 150: removing the key also switched AI off, so the first refusal is the off switch (it was no_key before 150).
+    expect(await reserve(C, "roundup")).toMatchObject({ ok: false, hint: "ai_helper_off" });
+    // Switched on again on purpose, with no key: the original no_key refusal.
+    expect((await admin(C, "SELECT public.ai_helper_save_settings(TRUE,TRUE,500)")).ok).toBe(true);
     expect(answer(await reserve(C, "roundup"))).toMatchObject({ ok: false, reason: "no_key" });
     expect(await used(C)).toBe(0);
   });
@@ -235,28 +239,30 @@ describe("AI card database proof: key, replacement, isolation, default off", () 
     expect((await secretRows(A))[0].api_key_enc).toBe(before);
   });
 
-  it("replacing a key while AI is ON leaves it ON and the new key is the one in use (today's behaviour, flagged for a decision)", async () => {
+  it("replacing a key while AI is ON switches it OFF (release 150), the new key is the one stored, and turning AI on again is explicit", async () => {
     const { D } = companies;
     expect((await saveKey(D, plain("D1"))).out.ok).toBe(true);
     expect((await admin(D, "SELECT public.ai_helper_save_settings(TRUE,TRUE,500)")).ok).toBe(true);
     expect(answer(await reserve(D, "roundup", 100))).toMatchObject({ ok: true });
     const second = await saveKey(D, plain("D2"));
     expect(second.out.ok).toBe(true);
-    expect(await settingsRow(D)).toMatchObject({ roundup_enabled: true, rfq_enabled: true });
+    expect(await settingsRow(D)).toMatchObject({ roundup_enabled: false, rfq_enabled: false });
     expect((await secretRows(D))[0].api_key_enc).toBe(second.enc);
+    expect(await reserve(D, "rfq", 100)).toMatchObject({ ok: false, hint: "ai_helper_off" });
+    expect((await admin(D, "SELECT public.ai_helper_save_settings(TRUE,TRUE,500)")).ok).toBe(true);
     expect(answer(await reserve(D, "rfq", 100))).toMatchObject({ ok: true });
   });
 });
 
-describe("AI card database proof: the own-key cap (500p default, migration 122) across every entry point", () => {
-  it("the 500p default is exactly where today's behaviour puts it: a company with no row reads 500; a key save makes a row that carries 500", async () => {
+describe("AI card database proof: the own-key cap (1000p default since release 150; 500p before) across every entry point", () => {
+  it("the default is 1000p since release 150: a company with no row reads 1000; a key save makes a row that carries 1000", async () => {
     const { E } = companies;
-    expect((await status(E)).monthly_cap_pence).toBe(500);
+    expect((await status(E)).monthly_cap_pence).toBe(1000);
     expect(await settingsRow(E)).toBeUndefined();
     expect((await saveKey(E, plain("E1"))).out.ok).toBe(true);
-    expect(await settingsRow(E)).toMatchObject({ monthly_cap_pence: 500, roundup_enabled: false });
+    expect(await settingsRow(E)).toMatchObject({ monthly_cap_pence: 1000, roundup_enabled: false });
     const col = await owned(async (db) => (await db.query("SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='ai_helper_settings' AND column_name='monthly_cap_pence'")).rows[0].column_default);
-    expect(String(col)).toBe("500");
+    expect(String(col)).toBe("1000");
   });
 
   it("concurrent reservations across roundup, rfq and the assistant never pass the cap: 14 at 100p against 500p gives exactly 5", async () => {
