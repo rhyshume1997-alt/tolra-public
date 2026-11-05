@@ -66,26 +66,30 @@ describe("the guided Integrations page", () => {
     expect(titles).toEqual(["AI", "Xero", "Microsoft 365", "Resend"]);
   });
 
-  it("every activation is Off by default and no switch is on", async () => {
+  it("AI is Off by default with its own switch, Xero keeps its switch not on, and Microsoft 365 and Resend render NO switch at all", async () => {
     const host = await mount();
-    for (const id of ["ai", "xero", "microsoft", "resend"]) {
-      const badge = host.querySelector(`[data-testid="activation-badge-${id}"]`)?.textContent ?? "";
-      expect(badge, id).toMatch(/: Off$/);
+    for (const id of ["ai", "xero"]) {
+      expect(host.querySelector(`[data-testid="activation-badge-${id}"]`)?.textContent ?? "", id).toMatch(/: Off$/);
       const sw = host.querySelector(`[data-testid="activation-${id}"] [role="switch"]`);
       expect(sw, id).not.toBeNull();
       expect(sw?.getAttribute("aria-checked"), id).toBe("false");
     }
+    for (const id of ["microsoft", "resend"]) {
+      const card = host.querySelector(`[data-testid="setup-card-${id}"]`)!;
+      expect(card.querySelector('[role="switch"]'), id).toBeNull();
+      expect(card.querySelector("button[aria-checked]"), id).toBeNull();
+      expect(host.querySelector(`[data-testid="activation-status-${id}"]`)?.textContent, id).toBe("Sending: not set up");
+    }
     expect(host.querySelectorAll('[role="switch"][aria-checked="true"]').length).toBe(0);
   });
 
-  it("Microsoft 365 and Resend have no switch the page could turn on: the control stays disabled even when the server reports them ready", async () => {
+  it("Microsoft 365 and Resend show status wording, never a switch: ready when the server reports them ready, not used while Microsoft is connected", async () => {
     ANSWERS["/api/integrations/resend"] = { state: "connected", message: "Key accepted", sender: "noreply@example.test" };
     const host = await mount();
-    for (const id of ["microsoft", "resend"]) {
-      const sw = host.querySelector(`[data-testid="activation-${id}"] [role="switch"]`) as HTMLButtonElement;
-      expect(sw.disabled, id).toBe(true);
-      expect(host.querySelector(`[data-testid="activation-why-${id}"]`)?.textContent, id).toMatch(/no separate switch/i);
-    }
+    const resend = host.querySelector('[data-testid="activation-status-resend"]')?.textContent ?? "";
+    expect(resend).toMatch(/^Sending: ready/);
+    expect(resend).toContain("approval");
+    for (const id of ["microsoft", "resend"]) expect(host.querySelector(`[data-testid="setup-card-${id}"] [role="switch"]`), id).toBeNull();
     ANSWERS["/api/integrations/resend"] = { state: "not_configured", message: "Not set up on this server", sender: null };
   });
 

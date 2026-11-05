@@ -4,8 +4,8 @@
  * a non-admin never sees it. Read only: nothing here connects, saves a key or flips a switch, so no provider is reached and no data changes.
  *
  * What is asserted about the switches: AI and Xero are Off in the test world (no key saved, nothing connected, no release). Microsoft 365
- * and Resend have no switch of their own on the server (the card says so and disables the control), so for those the spec asserts the control
- * is disabled, not a fixed Off: Resend can legitimately read On when the test server's mock key and sender are set.
+ * and Resend have no switch (the server has none): the spec asserts no switch is rendered and a "Sending: ..." status line is, not a fixed
+ * wording, because Resend can legitimately read "ready" when the test server's mock key and sender are set.
  * Written to the conventions of integrations-send-log.spec.ts; it runs in CI only.
  */
 import { expect, test } from "@playwright/test";
@@ -24,12 +24,15 @@ test("an admin sees the four setup cards in order, each Off or disabled, the e-m
   expect(await ids.evaluateAll((els) => els.map((el) => el.getAttribute("data-testid")))).toEqual(CARDS.map((id) => `setup-card-${id}`));
   await expect(page.locator('[id^="setup-title-"]')).toHaveText(["AI", "Xero", "Microsoft 365", "Resend"]);
 
-  // AI and Xero: Off, and the switch is not on. Microsoft 365 and Resend: the control is disabled (the server has no switch to turn on).
+  // AI and Xero: Off, and the switch is not on. Microsoft 365 and Resend: no switch at all, only a "Sending: ..." status line.
   for (const id of ["ai", "xero"] as const) {
     await expect(page.getByTestId(`activation-badge-${id}`)).toContainText("Off");
     await expect(page.getByTestId(`activation-${id}`).getByRole("switch")).toHaveAttribute("aria-checked", "false");
   }
-  for (const id of ["microsoft", "resend"] as const) await expect(page.getByTestId(`activation-${id}`).getByRole("switch")).toBeDisabled();
+  for (const id of ["microsoft", "resend"] as const) {
+    await expect(page.getByTestId(`setup-card-${id}`).getByRole("switch")).toHaveCount(0);
+    await expect(page.getByTestId(`activation-status-${id}`)).toContainText("Sending:");
+  }
 
   // The e-mail guide is above both e-mail cards and below Xero.
   const y = async (testId: string) => (await page.getByTestId(testId).boundingBox())!.y;
