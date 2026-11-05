@@ -1,0 +1,31 @@
+{
+  "base": "7b0499c28834eef91cdbb1786a48e5e05e3f5708",
+  "prerequisite": "Own423final-store/nonce SQL; production151 still unregistered",
+  "commands": [
+    "npx vitest run --config tests/reviews/night-151-package/vitest.unit.config.ts",
+    "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts"
+  ],
+  "results": {
+    "unit": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    "db": {
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    }
+  },
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit0",
+  "lint": "npm run lint: exit0",
+  "diff": "git diff --check: passed",
+  "mutants": "All11security-definers temp-schema-first, missingfinalstorehelper, grantauthenticatedpickerexecute; originalfailingregression nowpasses withoutchangingassertion",
+  "unchecked": [
+    "Hosted release rehearsal",
+    "No151 registration/production application",
+    "Newer integrated candidate"
+  ]
+}

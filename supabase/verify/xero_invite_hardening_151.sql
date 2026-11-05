@@ -15,7 +15,7 @@ UNION ALL SELECT 'the 107 token functions are gone (create(text,text), redeem, a
 UNION ALL SELECT 'no 107 token invite is still open',
   NOT EXISTS (SELECT 1 FROM public.integration_connect_invites i WHERE i.ref IS NULL AND i.used_at IS NULL AND i.revoked_at IS NULL)
 UNION ALL SELECT 'peek, code_issue, code_verify, the callback consume and the refusal log: security definer, pinned search path, service role only (nobody else, not PUBLIC)',
-  (SELECT bool_and(coalesce(p.prosecdef, false) AND p.proconfig IS NOT NULL
+  (SELECT bool_and(coalesce(p.prosecdef, false) AND p.proconfig = CASE WHEN p.oid=to_regprocedure('public.integration_invite_peek(text)') THEN ARRAY['search_path=pg_catalog, public'] ELSE ARRAY['search_path=pg_catalog, public, security_audit'] END
                    AND has_function_privilege('service_role', p.oid, 'EXECUTE') AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
                    AND NOT EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE a.grantee = 0))
    FROM pg_proc p WHERE p.oid IN (to_regprocedure('public.integration_invite_peek(text)'), to_regprocedure('public.integration_invite_code_issue(text,text)'),
@@ -56,4 +56,26 @@ UNION ALL SELECT 'refusal log holds only a correlation id, a fixed step and reas
 UNION ALL SELECT 'the company audit no longer carries refusals: no INTEGRATION_INVITE_REFUSED row is written by 151',
   to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid IN (to_regprocedure('public.integration_invite_code_verify(text,text,text,text)'), to_regprocedure('public.integration_invite_code_issue(text,text)'),
-                                                          to_regprocedure('public.integration_oauth_consume_invite(text,text)')) AND p.prosrc LIKE '%INTEGRATION_INVITE_REFUSED%');
+                                                          to_regprocedure('public.integration_oauth_consume_invite(text,text)')) AND p.prosrc LIKE '%INTEGRATION_INVITE_REFUSED%')
+UNION ALL SELECT 'every151definer has its exact approved search path',
+ (SELECT count(p.oid)=11 AND bool_and(p.prosecdef AND p.proconfig=ARRAY['search_path='||v.path]) FROM (VALUES
+ ('security_audit.integration_invite_refuse(text,text,text,uuid,uuid)','pg_catalog, public, security_audit'),
+ ('public.integration_invite_create(text,text,text)','pg_catalog, public, security_audit'),
+ ('public.integration_invite_peek(text)','pg_catalog, public'),
+ ('public.integration_invite_code_issue(text,text)','pg_catalog, public, security_audit'),
+ ('public.integration_invite_code_verify(text,text,text,text)','pg_catalog, public, security_audit'),
+ ('public.integration_invites_open(text)','pg_catalog, public'),
+ ('public.integration_invite_revoke(uuid)','pg_catalog, public, security_audit'),
+ ('public.integration_oauth_consume_invite(text,text)','pg_catalog, public, security_audit'),
+ ('public.integration_invite_refusal_log(text,text,text,uuid)','pg_catalog, public, security_audit'),
+ ('public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)','pg_catalog, public, security_audit'),
+ ('public.integration_xero_picker_claim(text,text,integer,integer)','pg_catalog, public')
+ ) v(sig,path) LEFT JOIN pg_proc p ON p.oid=to_regprocedure(v.sig))
+UNION ALL SELECT 'final invite write and atomic picker claim are service-only',
+ (SELECT count(p.oid)=2 AND bool_and(has_function_privilege('service_role',p.oid,'EXECUTE')
+   AND NOT has_function_privilege('anon',p.oid,'EXECUTE') AND NOT has_function_privilege('authenticated',p.oid,'EXECUTE')
+   AND NOT EXISTS (SELECT 1 FROM aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0))
+  FROM pg_proc p WHERE p.oid IN (to_regprocedure('public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)'),
+   to_regprocedure('public.integration_xero_picker_claim(text,text,integer,integer)')))
+UNION ALL SELECT 'invite completion is recorded on its OAuth state',
+ EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='integration_oauth_states' AND column_name='invite_completed_at');
