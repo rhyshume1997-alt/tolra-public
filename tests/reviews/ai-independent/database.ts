@@ -69,6 +69,8 @@ export const cipher=(n=0)=>`v1.aaaaaaaa.bbbbbbbb.cccccccc${n}`;
 export async function enable(w:World,pence=1000){
  if(mode==="tolra"){
   await db.query("reset role");await db.query("set role service_role");await db.query("select ai_helper_tolra_configure(true,$1,$2)",[cipher(),w.owner]);
+  // 150 forces replacement OFF even when the first call requested ON. Explicit enable is a separate human action.
+  await db.query("select ai_helper_tolra_configure(true,null,$1)",[w.owner]);
   await actor(db,w.admin);await db.query("select ai_helper_set_tolra_mode(true)");
  }else{await actor(db,w.admin);await db.query("select ai_helper_set_key($1,'0000')",[cipher()]);}
  await cap(w,pence);await actor(db,w.admin);await db.query("select ai_helper_set_assistant(true)");await db.query("select ai_helper_set_finance_check(true)");
@@ -82,12 +84,19 @@ export async function replace(w:World,c:Client=db){
  if(mode==="own"){await actor(c,w.admin);await c.query("select ai_helper_set_key($1,'0001')",[cipher(1)]);}
  else{await c.query("reset role");await c.query("set role service_role");await c.query("select ai_helper_tolra_configure(true,$1,$2)",[cipher(1),w.owner]);}
 }
+/** Map the real Opus-owned removal RPC and phrase; absence is a failed contract, never an invented implementation. */
+export async function clearPlatformKey(c:Client,ownerId:string,confirmation=process.env.AI_CONTRACT_TOLRA_CLEAR_CONFIRMATION){
+ const fn=process.env.AI_CONTRACT_TOLRA_CLEAR_FUNCTION;
+ if(!fn||!/^public\.[a-z_][a-z0-9_]*$/.test(fn))throw Error("No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION");
+ if(!confirmation)throw Error("Supply the actual approved impact phrase via AI_CONTRACT_TOLRA_CLEAR_CONFIRMATION");
+ const name=fn.slice('public.'.length);
+ const functions=(await c.query("select oidvectortypes(p.proargtypes) as types from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname=$1",[name])).rows as Array<{types:string}>;
+ const signatures=functions.filter(f=>['uuid, text','text, uuid'].includes(f.types));
+ if(signatures.length!==1)throw Error("Published removal RPC must have one unambiguous owner-UUID and confirmation-text signature; map the actual interface before claiming a pass");
+ const types=signatures[0].types.split(', '),args=types.map(t=>t==='uuid'?ownerId:confirmation);
+ return c.query(`select ${fn}(${types.map((t,i)=>`$${i+1}::${t}`).join(',')})`,args);
+}
 export async function remove(w:World){
  if(mode==="own"){await actor(db,w.admin);await db.query("select ai_helper_set_key(null,null)");}
- else{
-  // No removal interface exists in the reviewed 146 contract. Code supplies 150's REAL function name, not a fake implementation.
-  const fn=process.env.AI_CONTRACT_TOLRA_CLEAR_FUNCTION;
-  if(!fn||!/^public\.[a-z_][a-z0-9_]*$/.test(fn))throw Error("No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION");
-  await db.query("reset role");await db.query("set role service_role");await db.query(`select ${fn}($1::uuid)`,[w.owner]);
- }
+ else{await db.query("reset role");await db.query("set role service_role");await clearPlatformKey(db,w.owner);}
 }
