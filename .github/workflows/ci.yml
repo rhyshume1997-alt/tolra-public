@@ -212,7 +212,10 @@ jobs:
         # Post-144 release plan: 145 N5 then 146 N2/cap; proofs remain mandatory.
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
-        run: npm run test:db
+        run: |
+          # The verified disposable backend writes this file; newer direct-pg helpers read process.env.
+          set -a; . ./.env.test.local; set +a
+          npm run test:db
       - name: "Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)"
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         env:
