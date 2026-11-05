@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import Link from "next/link";
 
+import { AccountingStatusCard } from "@/components/integrations/accounting-status-card";
 import { IntegrationsOverview } from "@/components/integrations/integrations-overview";
 import { XeroBatchCard } from "@/components/integrations/xero-batch-card";
 import { RoleGate } from "@/components/role-gate";
@@ -31,7 +32,7 @@ export default function AdminIntegrationsPage() {
           <p className="mt-2 text-sm text-slate-500">Connect AI, Xero and e-mail one step at a time. Everything here is off until an admin connects it and turns it on.</p>
         </div>
         <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
-          <IntegrationsOverview moreCards={<><AiMoreNote /><XeroBatchCard /></>} />
+          <IntegrationsOverview moreCards={<><AiMoreNote /><AccountingStatusCard /><XeroBatchCard /></>} />
         </Suspense>
       </div>
     </RoleGate>
