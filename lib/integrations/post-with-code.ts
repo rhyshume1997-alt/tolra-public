@@ -7,9 +7,9 @@ import { type SendAnswer, sendWithCode } from "@/lib/mfa-step-up";
  */
 export type PostResult = { ok: true; body: Record<string, unknown> } | { ok: false; error: string };
 
-export async function postIntegrationWithCode(path: string, requestCode: () => Promise<boolean>): Promise<PostResult> {
+export async function postIntegrationWithCode(path: string, requestCode: () => Promise<boolean>, json?: unknown): Promise<PostResult> {
   const outcome = await sendWithCode<Record<string, unknown>>(async (): Promise<SendAnswer<Record<string, unknown>>> => {
-    const res = await fetch(path, { method: "POST", credentials: "same-origin" }).catch(() => null);
+    const res = await fetch(path, json === undefined ? { method: "POST", credentials: "same-origin" } : { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(json) }).catch(() => null);
     const body = res ? ((await res.json().catch(() => ({}))) as Record<string, unknown>) : {};
     return { ok: Boolean(res?.ok), status: res?.status ?? 0, body };
   }, requestCode);
