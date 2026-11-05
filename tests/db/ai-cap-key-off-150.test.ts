@@ -37,7 +37,7 @@ type Name = (typeof NAMES)[number];
 const runId = newRunId();
 const companies = {} as Record<Name, Co>;
 const owner = { id: randomUUID(), email: `a150-owner.${runId}@example.test` };
-let control: { enabled: boolean; api_key_enc: string | null; updated_by: string | null; updated_at: string } | undefined;
+let control: { enabled: boolean; api_key_enc: string | null; updated_by: string | null; updated_at: string; key_removed: boolean } | undefined;
 /** A synthetic ciphertext in the stored form (never a real key). */
 const enc = (tag: string) => `v1.${tag}${randomBytes(6).toString("hex")}.${randomBytes(11).toString("hex")}.${randomBytes(6).toString("hex")}`;
 
@@ -94,7 +94,8 @@ const settle = (requestId: string, status: "suggested" | "failed", cost: number)
 const digests = () => owned(async (db) => {
   const out: Record<string, string> = {};
   for (const t of ["ai_helper_settings", "ai_helper_secrets", "ai_helper_usage", "ai_helper_requests", "ai_helper_tolra_companies", "ai_helper_tolra_control"]) {
-    out[t] = (await db.query(`SELECT coalesce(md5(string_agg(to_jsonb(t)::text, ',' ORDER BY to_jsonb(t)::text)),'none') AS d FROM public.${t} t`)).rows[0].d;
+    // key_removed is the one column 150 adds (to the control row); it is compared without it and checked on its own after the apply.
+    out[t] = (await db.query(`SELECT coalesce(md5(string_agg((to_jsonb(t) - 'key_removed')::text, ',' ORDER BY (to_jsonb(t) - 'key_removed')::text)),'none') AS d FROM public.${t} t`)).rows[0].d;
   }
   return out;
 });
@@ -110,7 +111,7 @@ beforeAll(async () => {
   // broken (the fixture's own verify refuses such a copy, which is what it is for). The copy is still checked by verifyBackendIdentity above.
   if (process.env.A150_SKIP_FIXTURE !== "1") await withDb((db) => preparePost144Fixture({ verify: verifyBackendIdentity, query: (sql) => db.query(sql) }));
   await withDb(async (db) => {
-    control = (await db.query("SELECT enabled, api_key_enc, updated_by, updated_at FROM public.ai_helper_tolra_control WHERE singleton")).rows[0];
+    control = (await db.query("SELECT enabled, api_key_enc, updated_by, updated_at, key_removed FROM public.ai_helper_tolra_control WHERE singleton")).rows[0];
     await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)", [owner.id, owner.email]);
     await db.query("INSERT INTO security_audit.platform_admins(user_id) VALUES($1)", [owner.id]);
     for (const key of NAMES) {
@@ -131,7 +132,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await withDb(async (db) => {
-    if (control) await db.query("UPDATE public.ai_helper_tolra_control SET enabled=$1, api_key_enc=$2, updated_by=$3, updated_at=$4 WHERE singleton", [control.enabled, control.api_key_enc, control.updated_by, control.updated_at]);
+    if (control) await db.query("UPDATE public.ai_helper_tolra_control SET enabled=$1, api_key_enc=$2, updated_by=$3, updated_at=$4, key_removed=$5 WHERE singleton", [control.enabled, control.api_key_enc, control.updated_by, control.updated_at, control.key_removed]);
     await db.query("DELETE FROM security_audit.platform_admins WHERE user_id=$1", [owner.id]);
   });
   await destroySyntheticWorld(runId);
@@ -556,11 +557,11 @@ describe("release 150: the own-key cap cannot be set below this month's spent + 
   });
 });
 
-describe("release 150: removing the shared Tolra key (platform owner, typed confirmation)", () => {
+describe("release 150: removing the shared Tolra key (platform owner, typed confirmation, persistent removal mark)", () => {
   const CONFIRM = "REMOVE SHARED TOLRA KEY";
   const removeKey = (confirm: string | null, who: string = owner.id) => service("SELECT public.ai_helper_tolra_remove_key($1,$2) AS s", [who, confirm]);
-  const controlRow = () => owned(async (db) => (await db.query("SELECT enabled, api_key_enc IS NOT NULL AS key_set FROM public.ai_helper_tolra_control WHERE singleton")).rows[0] as { enabled: boolean; key_set: boolean });
-  const keyEvents = () => owned(async (db) => (await db.query("SELECT id, action, actor_user_id, organization_id, entity_table, entity_id, metadata FROM security_audit.audit_log WHERE organization_id IS NULL AND action IN ('ai_tolra_key_removed','ai_tolra_key_readded') ORDER BY created_at, id")).rows as Array<{ id: string; action: string; actor_user_id: string; organization_id: string | null; entity_table: string; entity_id: string; metadata: Record<string, unknown> }>);
+  const controlRow = () => owned(async (db) => (await db.query("SELECT enabled, api_key_enc IS NOT NULL AS key_set, key_removed FROM public.ai_helper_tolra_control WHERE singleton")).rows[0] as { enabled: boolean; key_set: boolean; key_removed: boolean });
+  const keyEvents = () => owned(async (db) => (await db.query("SELECT id, action, actor_user_id, organization_id, entity_table, entity_id, metadata FROM security_audit.audit_log WHERE organization_id IS NULL AND action = 'ai_tolra_key_removed' ORDER BY created_at, id")).rows as Array<{ id: string; action: string; actor_user_id: string; organization_id: string | null; entity_table: string; entity_id: string; metadata: Record<string, unknown> }>);
   const companyHistory = (co: Co) => owned(async (db) => {
     const one = async (sql: string) => (await db.query(sql, [co.id])).rows.map((r) => JSON.stringify(r));
     return {
@@ -602,12 +603,14 @@ describe("release 150: removing the shared Tolra key (platform owner, typed conf
     expect(await office(Y, "SELECT public.ai_helper_tolra_remove_key($1,$2)", [owner.id, CONFIRM])).toMatchObject({ ok: false, code: "42501" });
     expect(await as("anon", null, "SELECT public.ai_helper_tolra_remove_key($1,$2)", [owner.id, CONFIRM])).toMatchObject({ ok: false, code: "42501" });
     expect(await removeKey(CONFIRM, Y.user)).toMatchObject({ ok: false, code: "42501" });
-    expect(await controlRow()).toEqual({ enabled: true, key_set: true });
+    // Without the confirmation argument there is no such function at all.
+    expect(await service("SELECT public.ai_helper_tolra_remove_key($1::uuid)", [owner.id])).toMatchObject({ ok: false, code: "42883" });
+    expect(await controlRow()).toEqual({ enabled: true, key_set: true, key_removed: false });
     expect(await newEvents()).toHaveLength(0);
 
     const before = { y: await companyHistory(Y), z: await companyHistory(Z) };
     expect(value(await removeKey(CONFIRM)).s).toEqual({ enabled: false, key_set: false, companies_affected: n });
-    expect(await controlRow()).toEqual({ enabled: false, key_set: false });
+    expect(await controlRow()).toEqual({ enabled: false, key_set: false, key_removed: true });
     const events = await newEvents();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ action: "ai_tolra_key_removed", actor_user_id: owner.id, organization_id: null, entity_table: "ai_helper_tolra_control", entity_id: "singleton",
@@ -629,23 +632,41 @@ describe("release 150: removing the shared Tolra key (platform owner, typed conf
     expect(await newEvents()).toHaveLength(1);
   });
 
-  it("a key added after the removal stays OFF (a second, explicit call switches provided AI on); later replacements keep the replace rule; the first-key rule is unchanged once the removal is answered", async () => {
+  it("the removal mark lives on the control row: with every removal audit row purged, a new key is still stored OFF, a switch-off or another key does not clear it, the CHECK refuses a direct switch-on, and only the explicit switch-on turns provided AI on", async () => {
     const { Y } = companies;
     expect(removalId).not.toBe("");
-    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("ra"), owner.id])).s).toEqual({ enabled: false, key_set: true });
-    expect(await controlRow()).toEqual({ enabled: false, key_set: true });
-    const events = await newEvents();
-    expect(events.map((e) => e.action)).toEqual(["ai_tolra_key_removed", "ai_tolra_key_readded"]);
-    expect(events[1]).toMatchObject({ actor_user_id: owner.id, organization_id: null, metadata: { removal_ids: [removalId], enabled: false, source: "platform_owner" } });
+    expect(await controlRow()).toEqual({ enabled: false, key_set: false, key_removed: true });
+    // Retention purge stand-in: delete the removal audit rows as the database owner (audit triggers bypassed, disposable database only).
+    await owned(async (db) => {
+      await db.query("BEGIN");
+      await db.query("SET LOCAL session_replication_role = replica");
+      await db.query("DELETE FROM security_audit.audit_log WHERE organization_id IS NULL AND action = 'ai_tolra_key_removed'");
+      await db.query("COMMIT");
+    });
+    expect(await keyEvents()).toHaveLength(0);
+    baseEvents = 0;
     for (const feature of FEATURES) expect(await reserve(Y, feature)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
-    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,NULL,$1) AS s", [owner.id])).s).toEqual({ enabled: true, key_set: true });
-    expect(answer(await reserve(Y, "roundup"))).toMatchObject({ ok: true, key_source: "tolra" });
-    // A replacement now is an ordinary replacement (off, one forced-off row); no second re-add row.
+    // A new key asking to be on is stored OFF; the mark stays.
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("ra"), owner.id])).s).toEqual({ enabled: false, key_set: true });
+    expect(await controlRow()).toEqual({ enabled: false, key_set: true, key_removed: true });
+    for (const feature of FEATURES) expect(await reserve(Y, feature)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    // An explicit switch-off, or yet another key, does not clear it either.
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(FALSE,NULL,$1) AS s", [owner.id])).s).toEqual({ enabled: false, key_set: true });
     expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("rb"), owner.id])).s).toEqual({ enabled: false, key_set: true });
-    expect((await newEvents()).map((e) => e.action)).toEqual(["ai_tolra_key_removed", "ai_tolra_key_readded"]);
-    // With the removal answered, an empty control taking its first key keeps the asked switch, as before.
+    expect(await controlRow()).toEqual({ enabled: false, key_set: true, key_removed: true });
+    // Even the table owner cannot switch the platform on while the mark is set.
+    await expect(owned((db) => db.query("UPDATE public.ai_helper_tolra_control SET enabled=TRUE WHERE singleton"))).rejects.toMatchObject({ code: "23514" });
+    expect(await newEvents()).toHaveLength(0);
+    // Only the explicit switch-on (no key in the call) turns it on and clears the mark.
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,NULL,$1) AS s", [owner.id])).s).toEqual({ enabled: true, key_set: true });
+    expect(await controlRow()).toEqual({ enabled: true, key_set: true, key_removed: false });
+    expect(answer(await reserve(Y, "roundup"))).toMatchObject({ ok: true, key_source: "tolra" });
+    // After that a replacement is an ordinary replacement (off until switched on again); an empty control taking its first key keeps the asked switch.
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("rc"), owner.id])).s).toEqual({ enabled: false, key_set: true });
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,NULL,$1) AS s", [owner.id])).s).toEqual({ enabled: true, key_set: true });
     await owned((db) => db.query("UPDATE public.ai_helper_tolra_control SET enabled=FALSE, api_key_enc=NULL WHERE singleton"));
-    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("rc"), owner.id])).s).toEqual({ enabled: true, key_set: true });
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("rd"), owner.id])).s).toEqual({ enabled: true, key_set: true });
+    expect(await controlRow()).toEqual({ enabled: true, key_set: true, key_removed: false });
   });
 });
 
@@ -679,6 +700,7 @@ describe("release 150 on a database that already holds companies, caps, keys and
     // 3. Apply the shipped release file. It checks its own before and after image of every settings row inside the transaction.
     await owned((db) => db.query(RELEASE));
     expect(await digests()).toEqual(beforeDigest);
+    expect((await owned((db) => db.query("SELECT key_removed FROM public.ai_helper_tolra_control WHERE singleton"))).rows).toEqual([{ key_removed: false }]);
     expect(await Promise.all([A, B, C].map((c) => settingsRow(c)))).toEqual(beforeRows);
     const verify = await owned((db) => db.query(read("supabase/verify/ai_cap_key_off_150.sql")));
     expect(verify.rows.length).toBeGreaterThan(8);

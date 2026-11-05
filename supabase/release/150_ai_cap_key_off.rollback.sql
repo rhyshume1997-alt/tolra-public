@@ -1,7 +1,8 @@
 -- Post-144 rollback of release 150. Review first: puts the own-key default cap back to 500, the status fallback back to 500, ai_helper_set_key back to 101's
 -- body (a key save, replacement or removal no longer switches AI off), ai_helper_tolra_configure, ai_helper_reserve and ai_helper_reserve_assistant
 -- back to 146's bodies (each mode checks only its own cap again), ai_helper_save_settings back to 101's, and removes the internal force-off
--- function and the platform key removal function (its audit rows are kept). Every ai_helper_settings row, usage row, request and audit row is kept as it is, including 'ai_forced_off_key_changed' audit rows and the
+-- function, the platform key removal function (its audit rows are kept) and the control row's key_removed column (a removed shared key
+-- stays removed and the platform switch stays off; after rollback a new key follows 146's rules again). Every ai_helper_settings row, usage row, request and audit row is kept as it is, including 'ai_forced_off_key_changed' audit rows and the
 -- switches 150 turned off (they stay off). Rows made while 150 was installed keep the 1000 they were made with. Nothing here switches anything on.
 BEGIN;
 DO $$ BEGIN
@@ -134,6 +135,8 @@ REVOKE ALL ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER)
 GRANT EXECUTE ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 DROP FUNCTION public._ai_helper_force_off(UUID, TEXT);
 DROP FUNCTION public.ai_helper_tolra_remove_key(UUID, TEXT);
+ALTER TABLE public.ai_helper_tolra_control DROP CONSTRAINT ai_helper_tolra_control_removed_off;
+ALTER TABLE public.ai_helper_tolra_control DROP COLUMN key_removed;
 DO $$ BEGIN
  IF (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()')) IS DISTINCT FROM '3ef44c838451b46ea14030164d9b1384'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_set_key(text,text)')) IS DISTINCT FROM 'a6680aba0f169e5331110ba388f05e49'
@@ -141,6 +144,7 @@ DO $$ BEGIN
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')) IS DISTINCT FROM '9c5edca01d9bed8602b6186dfffa278b'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)')) IS DISTINCT FROM '9d2ef791742a5b67a02277ea04bb08e3'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_save_settings(boolean,boolean,integer)')) IS DISTINCT FROM '70658b5b1ebd4547872d8d152c29fb56'
+    OR EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_tolra_control' AND column_name = 'key_removed')
     OR (SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence') IS DISTINCT FROM '500' THEN
   RAISE EXCEPTION '150 rollback: the restored functions or default are not exactly 101, 122 and 146';
  END IF;
