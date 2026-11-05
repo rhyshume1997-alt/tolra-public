@@ -100,4 +100,3 @@ export function mapCreditNote(doc: IntegrationDocument, mappings: Mappings, cont
   if (doc.reference) payload.Reference = doc.reference.slice(0, 255);
   return payload;
 }
-
