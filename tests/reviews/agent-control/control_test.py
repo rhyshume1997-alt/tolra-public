@@ -22,7 +22,7 @@ class Control(unittest.TestCase):
   board=(ROOT/'docs/agent-control/task-board.md').read_text()
   for r in rows:
    self.assertIn(f"REC-{r['pr']}",board)
-   self.assertEqual(r['review_status'],'AWAITING CHATGPT REVIEW')
+   self.assertEqual(r['review_status'], 'AWAITING CHATGPT REVIEW' if r['pr']<387 else 'NOT SAFE — fix and integration required' if r['pr'] in [390,391] else 'NOT SAFE TO MERGE YET' if r['pr']==396 else 'REVIEW REPORTED — exact individual verdict/conditions UNPROVEN')
    self.assertEqual(r['github_reviews'],[])
   gates=(ROOT/'docs/agent-control/release-gates.md').read_text()
   self.assertIn('integration=skipped',gates)

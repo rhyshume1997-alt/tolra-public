@@ -54,7 +54,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41982418841,
@@ -63,7 +63,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 388,
@@ -76,7 +77,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41983098166,
@@ -85,7 +86,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 389,
@@ -98,7 +100,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41983794630,
@@ -107,7 +109,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 390,
@@ -120,7 +123,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "NOT SAFE \u2014 fix and integration required",
     "runs": [
       {
         "id": 41984349921,
@@ -129,7 +132,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 391,
@@ -142,7 +146,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "NOT SAFE \u2014 fix and integration required",
     "runs": [
       {
         "id": 41984901354,
@@ -151,7 +155,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 392,
@@ -164,7 +169,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41985244211,
@@ -173,7 +178,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 393,
@@ -186,7 +192,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41987148209,
@@ -195,7 +201,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 394,
@@ -208,7 +215,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41985974167,
@@ -217,7 +224,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 395,
@@ -230,7 +238,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41986146809,
@@ -239,7 +247,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 396,
@@ -252,7 +261,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "NOT SAFE TO MERGE YET",
     "runs": [
       {
         "id": 41986450659,
@@ -261,7 +270,8 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 397,
@@ -274,7 +284,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41986567696,
@@ -283,7 +293,8 @@
         "status": "completed",
         "conclusion": "success"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   },
   {
     "pr": 398,
@@ -296,7 +307,7 @@
     "comment_authors": [
       "vercel[bot]"
     ],
-    "review_status": "AWAITING CHATGPT REVIEW",
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
     "runs": [
       {
         "id": 41987366453,
@@ -305,6 +316,7 @@
         "status": "completed",
         "conclusion": "failure"
       }
-    ]
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
   }
 ]

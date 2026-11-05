@@ -16,7 +16,7 @@ Can safely wait **while disabled/outside launch scope and explicitly accepted by
 
 ## Exact evidence and review dependencies
 
-Every PR #385–#398 is mapped in task-board.md and review-status-385-398.json. At the public observation, all 14 were open drafts, with no submitted GitHub review and only Vercel notices in comments. Status for each: **AWAITING CHATGPT REVIEW**. Do not infer ChatGPT approval from a successful build, a packet or an ignored preview. Recheck a changed SHA; this update itself changes #393 and needs review.
+Every PR #385–#398 is mapped in task-board.md and review-status-385-398.json. At the public observation, all 14 were open drafts, with no submitted GitHub review and only Vercel notices in comments. That snapshot is historical. Rhys now reports #387–#398 mostly SAFE WITH CONDITIONS; exact individual conditions UNPROVEN here except #390/#391 NOT SAFE until fixed/integrated and #396 not safe to merge yet. Preserve the new reviewer states in review-status-385-398.json. Do not infer ChatGPT approval from a successful build, a packet or an ignored preview. Recheck a changed SHA; this update itself changes #393 and needs review.
 
 | Gate area | Supporting PRs | Still required |
 | --- | --- | --- |
@@ -31,6 +31,10 @@ Every PR #385–#398 is mapped in task-board.md and review-status-385-398.json. 
 | Optional skill adoption | #397 | No installation recommended; successful source-only CI is not release validation |
 | Review handoff | #398 | Packets await ChatGPT review; historical CI/test claims are not newly executed acceptance |
 
-**#396 exact CI failure is now established from its original log**, not guessed: run 41986450659 says `ready=false`, `web=success`, `integration=skipped`, then `WAITING: code changed but the full integration suite hasn't run. Add the ready label to run it; this check passes once it does.` It is not an Xero assertion failure or an environment/resource limit. No ready label/dispatch/bypass was applied. The required integration gate is still uncleared. Other PR failures in the snapshot are not all attributed to this same cause without their own logs. #397 alone has a successful observed run; that does not clear the release.
+**#396 exact CI failure is now established from its original log**, not guessed: run 41986450659 says `ready=false`, `web=success`, `integration=skipped`, then `WAITING: code changed but the full integration suite hasn't run. Add the ready label to run it; this check passes once it does.` It is not an Xero assertion failure or an environment/resource limit. The earlier diagnosis applied no label. Under the current CI-fix request, ready was added after local checks passed; full run41993566379 is in progress. The required gate remains uncleared until the run succeeds; no bypass was applied. Other PR failures in the snapshot are not all attributed to this same cause without their own logs. #397 alone has a successful observed run; that does not clear the release.
 
 Customer account statements and full ledger/statutory reports are real gaps from #402, not hidden existing features. Rhys/accountant must decide launch scope or an accepted external-accounting workflow. They cannot be silently marked optional or production-ready. None of this reopens DONE work without new evidence or changes Code's occupied ownership.
+
+## Current controlling records
+
+Use only #388 docs/runbooks/CONTROLLED-CUTOVER-2026-11-12.md for execution order and STOP rules; the 32 patch proposals are withdrawn/SUPERSEDED. Use only #405 docs/agent-control/MONDAY-EVIDENCE-PACK-2026-11-09.md as the Monday decision/evidence template. Candidate SHA, live reconciliation, deviations, backup/recovery/RPO/RTO and signed decisions remain UNPROVEN. New Xero149 requires an explicitly approved manifest/order before any release execution; do not silently extend the approved seven-release chain. #403 is coded, not installed, and #396+#403 combined verification is unproven. Own-key/default policy awaits Rhys's choice from neutral #404; no change is authorised by the note.
