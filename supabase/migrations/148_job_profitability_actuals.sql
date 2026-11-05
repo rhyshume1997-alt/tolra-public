@@ -1,6 +1,5 @@
 -- 148: optional actual job costing. Main ends at 137; leave 138–147 reserved for pending work.
 -- New tables and RPCs only. Disabled by default. Never changes payroll or legacy profit calculations.
-BEGIN;
 CREATE TABLE public.job_costing_settings (
   organization_id uuid PRIMARY KEY REFERENCES public.organizations(id),
   enabled boolean NOT NULL DEFAULT false,
@@ -168,4 +167,3 @@ END $$;
 REVOKE ALL ON FUNCTION public.job_profitability_actual_inputs(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.job_profitability_actual_inputs(uuid) TO authenticated;
 NOTIFY pgrst, 'reload schema';
-COMMIT;
