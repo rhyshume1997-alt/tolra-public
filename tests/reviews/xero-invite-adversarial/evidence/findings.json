@@ -135,7 +135,9 @@
         "supabase/release-plan.json",
         "supabase/verify/release_preflight.sql"
       ],
-      "recommended_fix": "Opus must register the approved 151 release/verify/rollback and preflight marker after 150, or explicitly account for a deferred proposal under the release policy. Do not alter previous numbers or silently apply an unregistered proposal in production."
+      "recommended_fix": "Do not register or apply 151 as part of this review. The independent test now asserts it stays outside the production plan and numbered migrations. Existing repository packaging failures are reported as known proposal-state failures.",
+      "status": "withdrawn_after_explicit_PM_clarification",
+      "reason": "151 is deliberately a proposal only, unregistered and unapplied. Registration is not required or authorised by this job."
     }
   ],
   "handover": {
