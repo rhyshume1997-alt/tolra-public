@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 
+import { AccountingStatusCard } from "@/components/integrations/accounting-status-card";
 import { XeroBatchCard } from "@/components/integrations/xero-batch-card";
 import { IntegrationsPanel } from "@/components/integrations-panel";
 import { RoleGate } from "@/components/role-gate";
@@ -16,6 +17,7 @@ export default function AdminIntegrationsPage() {
           <p className="mt-2 text-sm text-slate-500">Send this company&apos;s issued invoices and credit notes to its accounting system. Off until an admin connects it.</p>
         </div>
         <Suspense fallback={<p className="text-sm text-slate-500">Loading…</p>}>
+          <AccountingStatusCard />
           <IntegrationsPanel />
           <XeroBatchCard />
         </Suspense>
