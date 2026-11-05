@@ -1,0 +1,16 @@
+{
+  "artifact": "committed-run.tar.gz",
+  "sha256": "9955c64343c15032ffe001f1e62caf7adfbd1e3be2ebc3483caff04e4935e996",
+  "tested_commit": "84c3920",
+  "candidate": "9d7725e7e1b59e68a314c4148513b9b7d7aa4e92",
+  "passed": 8,
+  "failed": 0,
+  "skipped": 0,
+  "ungated_safeupdate_equivalents": 5,
+  "final_release_approval": "NOT EXECUTED",
+  "dependencies": {
+    "safeupdate.c": "1351fc18b9a1e2dcc72185d349c178244458b5d9eb30007609c3d599b38aeb38",
+    "pg-dev.deb": "59cb25f0a1def045aa334a9c025befc4a72dfc72d4a370f97d7d3f7342803d7e",
+    "safeupdate.so": "19344b7d61bd78d9b93fb0743538278cddcfadfcac74979bd638d62abcb5004b"
+  }
+}
