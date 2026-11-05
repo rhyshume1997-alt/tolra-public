@@ -1,0 +1,8 @@
+{
+  "subject": "656a79390650fe87a6e7513679246e82df3f3a40",
+  "command": "npx vitest run --config tests/reviews/night-151-package/vitest.unit.config.ts",
+  "passed": 5,
+  "failed": 0,
+  "skipped": 0,
+  "failures": []
+}
