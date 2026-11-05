@@ -113,6 +113,18 @@ describe("the guided Integrations page", () => {
     expect(host.querySelector('[data-testid="integrations-company"]')?.textContent).toContain("Example Co");
   });
 
+  it("has ONE AI on/off: the AI card's switch; More has no AI master switch, feature boxes or Tolra button, only a pointer to /ai-helper", async () => {
+    const host = await mount();
+    expect([...host.querySelectorAll('[role="switch"]')].filter((el) => el.getAttribute("aria-labelledby") === "activation-label-ai").length).toBe(1);
+    expect(host.querySelector('[data-testid="ai-master-switch"]')).toBeNull();
+    expect(host.textContent).not.toContain("Turn Tolra AI");
+    expect(host.textContent).not.toContain("AI on for this company");
+    expect(host.textContent).not.toMatch(/Round-up|RFQ email to draft quote|finance check/i);
+    const note = host.querySelector('[data-testid="ai-more-note"]');
+    expect(note?.closest('[data-testid="integrations-more"]')).not.toBeNull();
+    expect(note?.querySelector("a")?.getAttribute("href")).toBe("/ai-helper");
+  });
+
   it("renders no secret-shaped text", async () => {
     const host = await mount();
     expect(host.innerHTML).not.toMatch(/sk-ant-|client_secret|refresh_token|access_token|re_[A-Za-z0-9]{10,}/);

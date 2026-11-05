@@ -35,7 +35,7 @@ test("an admin sees the send log's states and Retry on a failed send; office is 
     await expect(row("S").getByRole("button", { name: "Retry" })).toHaveCount(0);
     await expect(row("P")).toContainText("Waiting to send");
     await expect(row("K")).toContainText("Not sent");
-    await expect(page.getByText("Not connected")).toBeVisible();
+    await expect(page.getByTestId("xero-status")).toContainText("Not connected");
 
     const officePage = await browser.newPage();
     await signIn(officePage, beta.users.office);
