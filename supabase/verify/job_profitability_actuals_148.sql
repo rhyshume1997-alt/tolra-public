@@ -41,4 +41,5 @@ UNION ALL SELECT 'snapshot_no_figure_without_complete', EXISTS (SELECT 1 FROM pg
 UNION ALL SELECT 'four_support_read_only_triggers', (SELECT count(*) = 4 FROM pg_trigger WHERE tgname = 'support_read_only' AND tgrelid IN (SELECT oid FROM tables))
 UNION ALL SELECT 'three_company_parent_guards', (SELECT count(*) = 3 FROM pg_trigger WHERE tgname IN ('zz_same_org_machine', 'zz_same_org_job') AND tgrelid IN (SELECT oid FROM tables))
 UNION ALL SELECT 'company_delete_cascades', (SELECT count(*) = 4 FROM pg_constraint WHERE contype = 'f' AND confrelid = 'public.organizations'::regclass
-  AND confdeltype = 'c' AND conrelid IN (SELECT oid FROM tables));
+  AND confdeltype = 'c' AND conrelid IN (SELECT oid FROM tables))
+UNION ALL SELECT 'money_half_pennies_round_up',public.job_cost_round(1,2)=1 AND public.job_cost_round(5,2)=3 AND public.job_cost_round(1001,2)=501;

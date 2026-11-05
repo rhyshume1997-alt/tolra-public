@@ -126,7 +126,8 @@ it("148 is installed: preflight marker applied, every 148 verify row true and 14
     const preflight = (await db.query(read("supabase/verify/release_preflight.sql"))).rows;
     expect(preflight.find(r => r.check === MARKER)?.value).toBe("applied");
     const checks = (await db.query(read("supabase/verify/job_profitability_actuals_148.sql"))).rows;
-    expect(checks).toHaveLength(12);
+    expect(checks).toHaveLength(13);
+    expect(checks.find(r=>r.check_name === "money_half_pennies_round_up")).toMatchObject({ok:true});
     expect(checks.filter(r => r.ok !== true)).toEqual([]);
     const c143 = (await db.query(read("supabase/verify/costing_rates_143.sql"))).rows;
     expect(c143.filter(r => r.ok !== true)).toEqual([]);
@@ -146,13 +147,13 @@ it("reuses 143's rates only: labour (machine override), machine hourly, overhead
       // Change the rates through 143's one editor: today's rates move the open job.
       ok(await save143(db, c.admin, { labour: 3000, overhead: 100, machines: [{ id: c.haas, name: "Haas VF2", hourly: 6000, labour: null }] }));
       expect((await inputs(db, c.office, j)).live).toMatchObject({ state: "complete", labour_pence: 4500, machine_pence: 3000, overhead_pence: 0 });
-      // One rounding rule, half to even on the exact value: 20 minutes at 1001p/h is 333.666.. -> 334; 30 min at 1001 is 500.5 -> 500 (even).
+      // Business money rounds halves up on the exact value: 20 minutes at 1001p/h is 333.666.. -> 334; 30 min at 1001 is 500.5 -> 501.
       ok(await save143(db, c.admin, { labour: 1001, overhead: 100, machines: [{ id: c.haas, name: "Haas VF2", hourly: 1001, labour: null }] }));
       const k = await job(db, c.id);
       await labour(db, c.id, c.workshop.id, k, D("10:00"), D("10:30"));
       await run(db, c.id, k, c.mill, null, D("11:00"), D("11:20"));
       ok(await declare(db, c.office, k));
-      expect((await inputs(db, c.office, k)).live).toMatchObject({ state: "complete", labour_pence: 500, machine_pence: 334, overhead_pence: 0 });
+      expect((await inputs(db, c.office, k)).live).toMatchObject({ state: "complete", labour_pence: 501, machine_pence: 334, overhead_pence: 0 });
       // No second rate store or editor exists to bypass 143.
       for (const fn of ["save_job_costing_rates", "save_job_cost_estimate"]) expect((await db.query("SELECT count(*)::int AS n FROM pg_proc WHERE proname=$1", [fn])).rows[0].n).toBe(0);
       expect((await as(db, c.admin, "INSERT INTO public.job_costing_machine_links(organization_id,machine_id,costing_machine_id) VALUES($1,$2,$3)", [c.id, c.mill, c.haas])).error?.code).toBe("42501");
