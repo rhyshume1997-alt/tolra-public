@@ -65,7 +65,9 @@ async function inRole<T>(options: PgClientOptions, fn: (db: PoolClient) => Promi
 
 const toError = (e: unknown) => {
   const out = { code: (e as { code?: string }).code, message: e instanceof Error ? e.message : String(e) };
-  console.log(`E2-PG-ERROR code=${out.code ?? "none"} message=${out.message.slice(0, 200)}`); // test log only: the SQLSTATE behind a StoreError
+  // Test log only: the SQLSTATE behind a StoreError. The message is cut, connection strings and quoted values are removed (no credentials, no row data).
+  const safe = out.message.replace(/postgres(?:ql)?:\/\/\S+/gi, "[connection string removed]").replace(/\([^)]*\)=\([^)]*\)/g, "(…)=(…)").replace(/"[^"]*"/g, '"…"').replace(/'[^']*'/g, "'…'").slice(0, 160);
+  console.log(`E2-PG-ERROR code=${out.code ?? "none"} message=${safe}`);
   return out;
 };
 
