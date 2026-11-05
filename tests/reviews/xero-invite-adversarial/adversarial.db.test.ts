@@ -13,15 +13,18 @@ import {newAuthorisation} from '@/lib/integrations/xero/oauth';
 import {runXeroSweepPass} from '@/lib/integrations/xero-pass';
 const SITE='https://tolra.example.test',KEY=Buffer.alloc(32,7);
 const calls:Array<{url:string;method:string}>=[];
-let a:Actor,b:Actor,chosenTenant:string;
+let a:Actor,b:Actor,chosenTenant:string,expectedChallenge:string|undefined;
+let tenantCount=1,chosenName='Synthetic A';
+let onToken:(()=>Promise<void>)|undefined;
 type Invite={id:string;ref:string;email:string};
 beforeAll(start);afterAll(async()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();await stop();});
 beforeEach(async()=>{
- a=await company('A');b=await company('B');ctx.actor=a;ctx.mail.length=0;ctx.limit=true;calls.length=0;chosenTenant=randomUUID();
+ a=await company('A');b=await company('B');ctx.actor=a;ctx.mail.length=0;ctx.limit=true;calls.length=0;chosenTenant=randomUUID();tenantCount=1;chosenName='Synthetic A';expectedChallenge=undefined;onToken=undefined;
  vi.stubGlobal('fetch',async(input:RequestInfo|URL,init?:RequestInit)=>{
   const url=String(input),method=init?.method??'GET';calls.push({url,method});
-  if(url==='https://identity.xero.com/connect/token')return Response.json({access_token:`e30.${Buffer.from(JSON.stringify({authentication_event_id:'synthetic-event'})).toString('base64url')}.synthetic`,refresh_token:'synthetic-refresh',expires_in:1800});
-  if(url==='https://api.xero.com/connections')return Response.json([{id:randomUUID(),tenantId:chosenTenant,tenantName:'Synthetic Xero company',tenantType:'ORGANISATION',authEventId:'synthetic-event',createdDateUtc:new Date().toISOString()}]);
+  if(url==='https://identity.xero.com/connect/token'){
+   const form=new URLSearchParams(init?.body as URLSearchParams);expect(form.get('redirect_uri')).toBe(SITE+'/api/integrations/invite/callback');expect(createHash('sha256').update(form.get('code_verifier')!).digest('base64url')).toBe(expectedChallenge);if(onToken)await onToken();return Response.json({access_token:`e30.${Buffer.from(JSON.stringify({authentication_event_id:'synthetic-event'})).toString('base64url')}.synthetic`,refresh_token:'synthetic-refresh',expires_in:1800});}
+  if(url==='https://api.xero.com/connections')return Response.json(Array.from({length:tenantCount},(_,n)=>({id:randomUUID(),tenantId:n===0?chosenTenant:randomUUID(),tenantName:chosenName,tenantType:'ORGANISATION',authEventId:'synthetic-event',createdDateUtc:new Date().toISOString()})));
   if(url.startsWith('https://api.xero.com/connections/')&&method==='DELETE')return new Response(null,{status:204});
   throw Error('BLOCKED unexpected HTTP transport '+new URL(url).hostname);
  });
@@ -35,7 +38,7 @@ async function invite(email='accountant@example.test'):Promise<Invite>{
  const body=await response.json(),mail=ctx.mail.find(m=>m.inviteId===body.id)!;expect(mail?.to).toBe(email);expect(body.url).toBeUndefined();return {id:body.id,ref:new URL(mail.url!).pathname.split('/').at(-1)!,email};
 }
 async function send(i:Invite,extra:Record<string,string>={}){const response=await submit(request(i.ref,'send','',extra),params(i.ref));expect(response.status).toBe(200);const mail=ctx.mail.filter(m=>m.code&&m.to===i.email).at(-1)!;expect(mail).toBeDefined();return mail.code!;}
-const verify=(i:Invite,code:string,extra:Record<string,string>={})=>submit(request(i.ref,'verify',code,extra),params(i.ref));
+const verify=async(i:Invite,code:string,extra:Record<string,string>={})=>{const response=await submit(request(i.ref,'verify',code,extra),params(i.ref));if(oauth(response))expectedChallenge=new URL(response.headers.get('location')!).searchParams.get('code_challenge')!;return response;};
 async function begin(i:Invite){const code=await send(i),response=await verify(i,code);expect(oauth(response)).toBe(true);return {code,response,state:new URL(response.headers.get('location')!).searchParams.get('state')!};}
 const finish=(state:string,extra:Record<string,string>={})=>callback(new Request(SITE+'/api/integrations/invite/callback?'+new URLSearchParams({state,code:'synthetic-code',...extra})));
 const connections=async(org=a.org)=>(await db.query("select organization_id,tenant_id,status from integration_connections where organization_id=$1 and provider='xero'",[org])).rows;
@@ -64,6 +67,7 @@ describe('2 replay, actual concurrent redemption, expiry and revocation',()=>{
  it('expired invite is refused at page, code request and verification',async()=>{const i=await invite(),code=await send(i);await expired(i);expect((await page(new Request(SITE+'/api/integrations/invite/'+i.ref),params(i.ref))).status).toBe(404);expect((await submit(request(i.ref,'send'),params(i.ref))).status).toBe(404);expect(oauth(await verify(i,code))).toBe(false);});
  it('a code expiring after delivery is refused at verification',async()=>{const i=await invite(),code=await send(i);await db.query("update integration_connect_invites set code_expires_at=now()-interval '1 second' where id=$1",[i.id]);expect(oauth(await verify(i,code))).toBe(false);});
  it('parent invite expiry is enforced again after OAuth begins',async()=>{const i=await invite(),{state}=await begin(i);await expired(i);await finish(state);expect(calls).toEqual([]);expect(await connections()).toEqual([]);});
+ it('invite expiry during the provider token exchange is enforced again before connection storage',async()=>{const i=await invite(),{state}=await begin(i);onToken=async()=>{await expired(i);};await finish(state);expect(await connections(),'the callback consumed state before expiry, but the invite expired before storage').toEqual([]);});
  it('OAuth state expiry is enforced at callback',async()=>{const i=await invite(),{state}=await begin(i);await db.query("update integration_oauth_states set created_at=now()-interval '15 minutes',expires_at=now()-interval '1 second' where state_hash=$1",[createHash('sha256').update(state).digest('hex')]);await finish(state);expect(calls).toEqual([]);expect(await connections()).toEqual([]);});
  it('revoking a delivered code before redemption prevents OAuth',async()=>{const i=await invite(),code=await send(i);ctx.actor=a;expect((await revoke(new Request(SITE+'/api/integrations/invite?id='+i.id,{method:'DELETE'}))).status).toBe(200);expect(oauth(await verify(i,code))).toBe(false);});
  it('revocation remains possible during OAuth and prevents the final connection',async()=>{const i=await invite(),{state}=await begin(i);ctx.actor=a;const response=await revoke(new Request(SITE+'/api/integrations/invite?id='+i.id,{method:'DELETE'}));await finish(state);expect.soft(response.status,'a pending OAuth consent must remain revocable').toBe(200);expect.soft(await connections(),'a refused revoke must not leave a usable callback').toEqual([]);});
@@ -74,8 +78,10 @@ describe('3 company, creating-admin and selected-Xero-organisation bindings',()=
  it('company B cannot revoke company A\'s invitation',async()=>{const i=await invite();ctx.actor=b;expect((await revoke(new Request(SITE+'/api/integrations/invite?id='+i.id,{method:'DELETE'}))).status).toBe(404);expect(oauth(await verify(i,await send(i)))).toBe(true);});
  it('changing a hidden company/admin form value cannot change the binding',async()=>{const i=await invite(),code=await send(i),response=await verify(i,code,{organization_id:b.org,user_id:b.id});expect(oauth(response)).toBe(true);const state=new URL(response.headers.get('location')!).searchParams.get('state')!;await finish(state);expect(await connections()).toHaveLength(1);expect(await connections(b.org)).toEqual([]);});
  it('a demoted creating admin cannot complete a previously-started OAuth flow',async()=>{const i=await invite(),{state}=await begin(i);await db.query("update organization_members set role='office' where organization_id=$1 and user_id=$2",[a.org,a.id]);await finish(state);expect(calls).toEqual([]);expect(await connections()).toEqual([]);});
+ it('demoting the creator during token exchange is enforced at final connection storage',async()=>{const i=await invite(),{state}=await begin(i);onToken=async()=>{await db.query("update organization_members set role='office' where organization_id=$1 and user_id=$2",[a.org,a.id]);};await finish(state);expect(await connections()).toEqual([]);});
  it('a Xero organisation already bound to company B cannot be stored for company A',async()=>{const foreign=randomUUID();await db.query("insert into integration_connections(organization_id,provider,status,tenant_id,tenant_name,connected_by,connected_at) values($1,'xero','connected',$2,'Synthetic B',$3,now())",[b.org,foreign,b.id]);const i=await invite(),{state}=await begin(i);chosenTenant=foreign;await finish(state);expect(await connections()).toEqual([]);expect((await connections(b.org))[0].tenant_id).toBe(foreign);});
- it('consent for one unbound but incorrect Xero organisation requires an explicit company identity decision before storing',async()=>{const i=await invite(),{state}=await begin(i);chosenTenant='wrong-company-'+randomUUID();await finish(state);expect(await connections(),'single result is not proof it belongs to the invited company').toEqual([]);});
+ it.each([0,2])('selecting %s Xero organisations is refused without storing a connection',async count=>{const i=await invite(),{state}=await begin(i);tenantCount=count;await finish(state);expect(await connections()).toEqual([]);});
+ it('consent for one unbound but incorrect Xero organisation requires an explicit company identity decision before storing',async()=>{const i=await invite(),{state}=await begin(i);chosenTenant=randomUUID();chosenName='Unrelated Company Ltd';await finish(state);expect(await connections(),'single result is not proof it belongs to the invited company').toEqual([]);});
 });
 
 describe('4 OAuth state, PKCE, exact redirects and refusal security log',()=>{

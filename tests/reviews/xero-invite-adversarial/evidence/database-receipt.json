@@ -1,6 +1,6 @@
 {
   "subject": "656a79390650fe87a6e7513679246e82df3f3a40",
-  "database": "invite_adv_0a02a0ae009642bcaf2a71d8c2ae85c6",
+  "database": "invite_adv_c424faf3848f44d4acc086503dd1b245",
   "files": [
     {
       "file": "tests/reviews/xero-invite-adversarial/bootstrap.sql",
