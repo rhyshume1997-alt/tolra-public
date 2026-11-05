@@ -1,4 +1,4 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {afterAll,beforeAll,expect,it} from 'vitest';
 import {Disposable} from './disposable';
@@ -16,7 +16,11 @@ beforeAll(async()=>{
  INSERT INTO organization_members(user_id,organization_id,role,active) VALUES('${U}','${A}','admin',true),('${V}','${B}','admin',true);
  INSERT INTO integration_connections(organization_id,provider,status,tenant_id,tenant_name) VALUES('${A}','xero','connected','synthetic-tenant-A','Synthetic A'),('${B}','xero','connected','synthetic-tenant-B','Synthetic B');
  INSERT INTO integration_sends(id,organization_id,provider,doc_type,doc_id,action,status) VALUES('${S}','${A}','xero','invoice',gen_random_uuid(),'create','failed');`);
+ const catalogue=readFileSync('supabase/verify/catalogue.sql','utf8');
+ const before=JSON.parse(db.ok(`SELECT coalesce(json_agg(c),'[]'::json) FROM (${catalogue.trim().replace(/;$/, '')}) c`));
  db.ok(readFileSync('supabase/release/149_xero_launch_hold.release.sql','utf8'));
+ const after=JSON.parse(db.ok(`SELECT coalesce(json_agg(c),'[]'::json) FROM (${catalogue.trim().replace(/;$/, '')}) c`));
+ writeFileSync(`${db.evidence}/catalogue-delta.json`,JSON.stringify({before,after},null,2));
 });
 afterAll(()=>db.stop());
 it('existing connected companies default OFF; six verification checks pass',()=>{
