@@ -202,7 +202,13 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
           docker pull postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
-          B5_SUPABASE_CLI="$(command -v supabase)" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
+          # This proof needs the OLD parser (CLI 2.40.7); the job's own `supabase` is 2.108.0. The test itself refuses any binary whose
+          # sha256 is not 568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c (2.40.7, linux amd64).
+          cli_dir="$RUNNER_TEMP/supabase-cli-2.40.7"
+          mkdir -p "$cli_dir"
+          curl -fsSL -o "$cli_dir/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          tar -xzf "$cli_dir/cli.tar.gz" -C "$cli_dir" supabase
+          B5_SUPABASE_CLI="$cli_dir/supabase" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
       - name: Export this job's disposable test environment
