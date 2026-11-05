@@ -67,6 +67,15 @@
       "rollback": "supabase/release/147_job_delivery_note.rollback.sql",
       "verify": "supabase/verify/job_delivery_note_147.sql",
       "marker": "post-144 marker 147 job_delivery_note"
+    },
+    {
+      "number": 150,
+      "after": "147",
+      "source": "supabase/proposals/a150_ai_cap_key_off.sql",
+      "release": "supabase/release/150_ai_cap_key_off.release.sql",
+      "rollback": "supabase/release/150_ai_cap_key_off.rollback.sql",
+      "verify": "supabase/verify/ai_cap_key_off_150.sql",
+      "marker": "post-144 marker 150 ai_cap_key_off"
     }
   ],
   "other_proposals": [

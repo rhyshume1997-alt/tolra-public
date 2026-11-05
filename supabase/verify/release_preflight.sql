@@ -156,7 +156,7 @@ markers(migration, present) AS (
     ('120 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass)),
     ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2')),
-    ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_status_own_key()'), to_regprocedure('public.ai_helper_status()')) AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3ef44c838451b46ea14030164d9b1384')),
+    ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_status_own_key()'), to_regprocedure('public.ai_helper_status()')) AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('3ef44c838451b46ea14030164d9b1384', 'a144add4b49efdc0b08fb9a3ad4657d9'))),
     ('123 quote customer po',             EXISTS (SELECT 1 FROM col WHERE table_name = 'quotes' AND column_name = 'customer_po')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_quote_customer_po(uuid, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '00f8488bd689f3e473209d520218d402')),
     ('124 purchase order link',           to_regclass('public.purchase_orders') IS NOT NULL
@@ -215,6 +215,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/n5_company_setup.sql', 'post-144 release 145; apply only after 144'),
     ('supabase/proposals/n2_tolra_provided_ai.sql', 'post-144 release 146; apply only after 145'),
     ('supabase/proposals/c17_job_delivery_note.sql', 'post-144 release 147; apply only after 146'),
+    ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 146 (147 and 149 may come first)'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'deferred: requires costing 143, absent from this candidate'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -248,10 +249,10 @@ post_release_markers(label, present) AS (
         ('public.ai_helper_tolra_set_cap(uuid,integer,uuid)','d3aa64310bd74d79e6bf85317f663710',true)
       ) expected(signature, body, definer)
         LEFT JOIN pg_proc p ON p.oid = to_regprocedure(expected.signature)
-        WHERE p.oid IS NULL OR md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> expected.body OR p.prosecdef <> expected.definer OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public'])
+        WHERE p.oid IS NULL OR (md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> expected.body AND NOT (expected.signature = 'public.ai_helper_tolra_configure(boolean,text,uuid)' AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bbb5d3b56c51fe63f21917836857427')) OR p.prosecdef <> expected.definer OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public'])
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = '972540e833a42bbb35ac5b670c56daa8')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_assistant_own_key(integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
-      AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(prosrc,'\s','','g')) = '3ef44c838451b46ea14030164d9b1384')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(prosrc,'\s','','g')) IN ('3ef44c838451b46ea14030164d9b1384', 'a144add4b49efdc0b08fb9a3ad4657d9'))
       AND NOT has_function_privilege('authenticated', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')
       AND has_function_privilege('service_role', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')), FALSE)),
     ('post-144 marker 147 job_delivery_note', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'delivery_notes' AND column_name = 'request_id')
@@ -265,7 +266,13 @@ post_release_markers(label, present) AS (
       AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.dln_numbering_pending')), FALSE)
       AND NOT has_table_privilege('authenticated', to_regclass('public.dln_numbering_pending'), 'SELECT,INSERT,UPDATE,DELETE')
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
-      AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE))
+      AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 150 ai_cap_key_off', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence' AND column_default = '1000')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a144add4b49efdc0b08fb9a3ad4657d9')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_set_key(text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '423fd435ce49775980461ee998cff63f' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_force_off(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '81fb7034c4cddc39c8cba5d4f6822fbf' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bbb5d3b56c51fe63f21917836857427' AND p.prosecdef)
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public._ai_helper_force_off(uuid,text)'), 'EXECUTE')), FALSE))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'

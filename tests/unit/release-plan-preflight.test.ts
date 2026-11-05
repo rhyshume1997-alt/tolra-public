@@ -16,10 +16,10 @@ describe("no proposal silently disappears from release preflight", () => {
   it("covers every proposal, both ordered post-144 packages and every preflight marker", () => {
     expect(checkReleasePlan(root)).toEqual([]);
   });
-  it("orders the post-144 phases 145, 146, 147 and leaves the numbered cutover and its catalogue alone", () => {
+  it("orders the post-144 phases 145, 146, 147, 150 and leaves the numbered cutover and its catalogue alone", () => {
     const plan = JSON.parse(readFileSync(path.join(root, "supabase/release-plan.json"), "utf8"));
     expect(plan.numbered_through).toBe(144);
-    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"]]);
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [150, "147"]]);
     const c17 = plan.phases[2];
     expect(c17).toMatchObject({ source: "supabase/proposals/c17_job_delivery_note.sql", release: "supabase/release/147_job_delivery_note.release.sql", rollback: "supabase/release/147_job_delivery_note.rollback.sql", verify: "supabase/verify/job_delivery_note_147.sql", marker: "post-144 marker 147 job_delivery_note" });
     const preflight = readFileSync(path.join(root, "supabase/verify/release_preflight.sql"), "utf8");

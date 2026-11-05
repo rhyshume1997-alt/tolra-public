@@ -38,10 +38,13 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(new Set(sorted.map(file=>file.moduleId))).toEqual(new Set(paths.map(file=>file.moduleId)));
     expect(sorted.slice(-post144ProofFiles.length).map(file=>file.moduleId)).toEqual(post144ProofFiles.map(file=>`/repo/tests/db/${file}`));
     expect(post144ProofFiles).toContain("job-delivery-note-147.test.ts");
+    expect(post144ProofFiles).toContain("ai-cap-key-off-150.test.ts");
     const fixture = read("tests/support/post-144-release-fixture.ts");
     expect(fixture.indexOf('verifyFile: "supabase/verify/company_setup_145.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"'));
     expect(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"'));
     expect(ci).toContain("147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note");
+    expect(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/ai_cap_key_off_150.sql"'));
+    expect(ci).toContain("150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off");
     expect(fixture).toContain("verify: verifyBackendIdentity");
     expect(fixture).toContain("checks.some(row => (row.ok ?? row.passed) !== true)");
   });
