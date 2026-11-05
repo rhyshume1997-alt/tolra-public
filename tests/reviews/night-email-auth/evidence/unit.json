@@ -1,0 +1,16 @@
+{
+  "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "command": "npx vitest run --config tests/reviews/night-email-auth/vitest.unit.config.ts",
+  "passed": 550,
+  "failed": 0,
+  "skipped": 0,
+  "transport": "mock only; no provider HTTP; real route auth/MFA decisions in b4-sensitive-route-boundaries with projected Auth responses",
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit 0",
+  "lint": "npm run lint: exit 0",
+  "unchecked": [
+    "Hosted Auth TOTP ceremony",
+    "Browser",
+    "Real provider acceptance/delivery",
+    "newer candidate"
+  ]
+}
