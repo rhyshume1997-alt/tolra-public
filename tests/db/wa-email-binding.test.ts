@@ -116,9 +116,9 @@ const ledger = async (w: World) => (await sql<{ status: string }>("select status
 const auditOf = async (w: World) => sql<{ action: string; new_data: Record<string, unknown> | null; metadata: Record<string, unknown> | null; actor_user_id: string | null }>("select action, new_data, metadata, actor_user_id from security_audit.audit_log where organization_id = $1 and action = 'UPDATE' and metadata->>'channel' is not null order by created_at", [w.org]);
 const approve = async (w: World, id: string, extra: Record<string, unknown> = {}, who: "office" | "admin" = "office", stale?: { subject?: string; body?: string }) => {
   actAs(w, who);
-  const row = (await sql<{ subject: string; body: string }>("select subject, body from public.email_history where id = $1", [id]))[0] ?? { subject: "gone", body: "gone" };
+  const row = (await sql<{ subject: string; body: string; to_email: string }>("select subject, body, to_email from public.email_history where id = $1", [id]))[0] ?? { subject: "gone", body: "gone", to_email: "gone@example.test" };
   const { POST } = await import("@/app/api/chase/approve/route");
-  const res = await POST(new Request("http://localhost/api/chase/approve", { method: "POST", body: JSON.stringify({ history_id: id, expected_subject: stale?.subject ?? row.subject, expected_body: stale?.body ?? row.body, ...extra }) }));
+  const res = await POST(new Request("http://localhost/api/chase/approve", { method: "POST", body: JSON.stringify({ history_id: id, expected_to: row.to_email, expected_subject: stale?.subject ?? row.subject, expected_body: stale?.body ?? row.body, ...extra }) }));
   return { status: res.status, json: (await res.json()) as Record<string, unknown> };
 };
 const resolve = async (w: World, id: string, outcome: "sent" | "not_sent", who: "office" | "admin" = "admin") => {

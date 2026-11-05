@@ -219,7 +219,7 @@ describe("(1)+(4) each company connects its own mailbox, stores its own token, a
     await owner(`update public.integration_secrets b set refresh_token_enc=a.refresh_token_enc, access_token_enc=a.access_token_enc, access_expires_at=a.access_expires_at
                  from public.integration_secrets a where a.organization_id=$1 and a.provider='microsoft' and b.organization_id=$2 and b.provider='microsoft'`, [alpha().id, beta().id]);
     expect(await getDelegatedAccessToken(beta().id)).toBeNull();
-    expect(await sendAs(beta().id)).toBeNull();
+    await expect(sendAs(beta().id)).rejects.toThrow("Microsoft 365 needs to be connected again"); // fails closed: no send, no fallback
     expect(sentWith).toHaveLength(0);
     expect((await conn(beta().id))[0].status).toBe("needs_reconnect");
     expect((await conn(alpha().id))[0].status).toBe("connected");
@@ -236,7 +236,7 @@ describe("(1)+(4) each company connects its own mailbox, stores its own token, a
     sentWith.length = 0;
     await service().rpc("integration_mark_needs_reconnect", { p_org: alpha().id, p_provider: "microsoft", p_reason: "wm test" });
     expect(await getDelegatedAccessToken(alpha().id)).toBeNull();
-    expect(await sendAs(alpha().id)).toBeNull();
+    await expect(sendAs(alpha().id)).rejects.toThrow("Microsoft 365 needs to be connected again"); // fails closed: no send, no fallback
     expect(sentWith).toHaveLength(0);
     expect(await sendAs(beta().id)).toBe("microsoft");
     expect(sentWith[0]).toMatch(bearer("marpet"));

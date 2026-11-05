@@ -37,8 +37,8 @@ it("sorts real sequencer input without dropping files, keeping 145, 146, the cap
  const sequencer = new ReleaseSequencer(ctx);
  const baseline = ["catalogue", "definer-functions", "time-labour", "workshop-network-128"].map(name => ({moduleId:`/repo/tests/db/${name}.test.ts`}));
  const proofs = post144ProofFiles.map(name => ({moduleId:`/repo/tests/db/${name}`}));
- expect(post144ProofFiles.slice(-6)).toEqual(["job-delivery-note-147.test.ts", "dln-day-of-counter.test.ts", "job-profitability-148.test.ts", "xero-launch-hold-149.test.ts", "xero-launch-paths-149.test.ts", "ai-cap-key-off-150.test.ts"]);
- const input = [proofs[10], proofs[9], proofs[8], proofs[7], proofs[6], proofs[5], proofs[4], proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
+ expect(post144ProofFiles.slice(-6)).toEqual(["dln-day-of-counter.test.ts", "job-profitability-148.test.ts", "xero-launch-hold-149.test.ts", "xero-launch-paths-149.test.ts", "xero-held-backlog-approval.test.ts", "ai-cap-key-off-150.test.ts"]);
+ const input = [proofs[11], proofs[10], proofs[9], proofs[8], proofs[7], proofs[6], proofs[5], proofs[4], proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
  const original = [...input];
  const sorted = await sequencer.sort(input);
  expect(sorted).toEqual([...baseline, ...proofs]);

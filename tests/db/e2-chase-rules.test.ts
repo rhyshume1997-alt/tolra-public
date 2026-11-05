@@ -155,9 +155,9 @@ const routeRun = async (w: World) => {
 };
 const routeApprove = async (w: World, draftId: string, edit?: { subject: string; body: string }) => {
   actAs(w);
-  const row = (await sql<{ subject: string; body: string }>("select subject, body from public.email_history where id = $1", [draftId]))[0];
+  const row = (await sql<{ subject: string; body: string; to_email: string }>("select subject, body, to_email from public.email_history where id = $1", [draftId]))[0];
   const { POST } = await import("@/app/api/chase/approve/route");
-  const res = await POST(new Request("http://localhost/api/chase/approve", { method: "POST", body: JSON.stringify({ history_id: draftId, expected_subject: edit?.subject ?? row.subject, expected_body: edit?.body ?? row.body }) }));
+  const res = await POST(new Request("http://localhost/api/chase/approve", { method: "POST", body: JSON.stringify({ history_id: draftId, expected_to: row.to_email, expected_subject: edit?.subject ?? row.subject, expected_body: edit?.body ?? row.body }) }));
   return { status: res.status, json: (await res.json()) as Record<string, unknown> };
 };
 /** The scheduled pass's body for one company (what the cron runs per schedule), through the real runInvoiceReminders. */
