@@ -18,7 +18,7 @@ export type PricePartProps = {
   /** Today's date as text for the cost note (a prop so tests are stable). */
   today?: string;
 };
-const entered = (value: string): number | null => (value.trim() === '' || !Number.isFinite(Number(value)) ? null : Math.max(0, Number(value)));
+const entered = (value: string): number | null => (value.trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value));
 
 /** The panel without its data hooks: rates in, a quote line out. With no rates (or some missing) it says so and shows no figure. */
 export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProps) {

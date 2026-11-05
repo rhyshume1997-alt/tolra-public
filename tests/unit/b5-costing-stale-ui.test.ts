@@ -39,3 +39,14 @@ it('quote preview agrees with the rounded unit price actually copied, preserving
   expect(host.textContent).toContain('costing batch estimate is £0.01');
  }finally{await act(async()=>root.unmount());host.remove();}
 });
+it('refuses negative optional hours instead of silently pricing them as zero',async()=>{
+ const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onAdd=vi.fn();
+ const input=async(label:string,value:string)=>{const element=host.querySelector(`[aria-label="${label}"]`)!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));});};
+ try{
+  await act(async()=>root.render(createElement(PriceThisPart,{rates:CONFIGURED,onAdd})));
+  await input('Part description','Synthetic');await input('Material weight kg per part','0.5');await input('Cycle hours per part','0.2');
+  const add=[...host.querySelectorAll('button')].find(b=>b.textContent==='Add as quote line')!;expect(add.disabled).toBe(false);
+  await input('Setup hours for batch','-1');expect(add.disabled).toBe(true);expect(host.textContent).toContain('setup time of zero or more');
+  await input('Setup hours for batch','');await input('Programming hours for batch','-1');expect(add.disabled).toBe(true);expect(host.textContent).toContain('programming time of zero or more');expect(onAdd).not.toHaveBeenCalled();
+ }finally{await act(async()=>root.unmount());host.remove();}
+});
