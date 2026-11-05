@@ -1,0 +1,34 @@
+{
+  "code_snapshot_commit": "b041054ae8467bfb88f17121cc6615e50ea72a7f",
+  "environment": "local Node/Vitest; mocked Xero and database dependencies; no SQL",
+  "sql_hash": null,
+  "recorded_utc": "2026-11-05T07:19:16.178002+00:00",
+  "runs": [
+    {
+      "log": "before.log",
+      "exit_code": 1,
+      "passed": 2,
+      "failed": 11,
+      "skipped": 0,
+      "sha256": "555255895c4af373f6a28d06985458e422d910eb26371fbaed9f34fdbb0dc399"
+    },
+    {
+      "log": "after.log",
+      "exit_code": 0,
+      "passed": 233,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "b6d2e8d675b3c61821219c018d9a1c3b4aef7757a149648649d817152f1232cd"
+    },
+    {
+      "log": "typecheck.log",
+      "exit_code": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "log": "lint.log",
+      "exit_code": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

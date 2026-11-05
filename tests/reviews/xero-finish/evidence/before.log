@@ -1,0 +1,154 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-xero-finish
+
+ ❯ tests/unit/xero-readback-safety.test.ts (13 tests | 11 failed) 23ms
+   × invoice read-back safety > refuses ambiguous numbers instead of choosing the first match 11ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × invoice read-back safety > refuses a missing SubTotal instead of inventing zero 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × invoice read-back safety > refuses a missing TotalTax instead of inventing zero 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × invoice read-back safety > refuses a missing Total instead of inventing zero 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × invoice read-back safety > refuses non-finite/invalid totals 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × credit_note read-back safety > refuses ambiguous numbers instead of choosing the first match 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × credit_note read-back safety > refuses a missing SubTotal instead of inventing zero 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × credit_note read-back safety > refuses a missing TotalTax instead of inventing zero 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × credit_note read-back safety > refuses a missing Total instead of inventing zero 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × credit_note read-back safety > refuses non-finite/invalid totals 1ms
+     → promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+   × never treats a purchase credit as a matching sales credit 1ms
+     → expected { Object (externalId, externalNumber, ...) } to be null
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/xero-readback-safety.test.ts > invoice read-back safety > refuses ambiguous numbers instead of choosing the first match
+ FAIL  tests/unit/xero-readback-safety.test.ts > credit_note read-back safety > refuses ambiguous numbers instead of choosing the first match
+AssertionError: promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- [Error: rejected promise]
++ Object {
++   "externalId": "synthetic-xero-1",
++   "externalNumber": "SYN-001",
++   "status": "AUTHORISED",
++   "totals": Object {
++     "subTotal": 100,
++     "total": 120,
++     "totalTax": 20,
++   },
++ }
+
+ ❯ tests/unit/xero-readback-safety.test.ts:13:100
+     11| describe.each(['invoice', 'credit_note'] as const)('%s read-back safet…
+     12|   it('refuses ambiguous numbers instead of choosing the first match', …
+     13|     await expect(client(kind, [row(kind), row(kind, 'synthetic-xero-2'…
+       |                                                                                                    ^
+     14|   });
+     15|   it.each(['SubTotal','TotalTax','Total'] as const)('refuses a missing…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  tests/unit/xero-readback-safety.test.ts > invoice read-back safety > refuses a missing SubTotal instead of inventing zero
+ FAIL  tests/unit/xero-readback-safety.test.ts > invoice read-back safety > refuses a missing TotalTax instead of inventing zero
+ FAIL  tests/unit/xero-readback-safety.test.ts > invoice read-back safety > refuses a missing Total instead of inventing zero
+ FAIL  tests/unit/xero-readback-safety.test.ts > credit_note read-back safety > refuses a missing SubTotal instead of inventing zero
+ FAIL  tests/unit/xero-readback-safety.test.ts > credit_note read-back safety > refuses a missing TotalTax instead of inventing zero
+ FAIL  tests/unit/xero-readback-safety.test.ts > credit_note read-back safety > refuses a missing Total instead of inventing zero
+AssertionError: promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- [Error: rejected promise]
++ Object {
++   "externalId": "synthetic-xero-1",
++   "externalNumber": "SYN-001",
++   "status": "AUTHORISED",
++   "totals": Object {
++     "subTotal": 0,
++     "total": 120,
++     "totalTax": 20,
++   },
++ }
+
+ ❯ tests/unit/xero-readback-safety.test.ts:17:70
+     15|   it.each(['SubTotal','TotalTax','Total'] as const)('refuses a missing…
+     16|     const incomplete: Record<string, unknown> = row(kind); delete inco…
+     17|     await expect(client(kind, [incomplete]).readBack(kind, 'SYN-001'))…
+       |                                                                      ^
+     18|   });
+     19|   it('refuses non-finite/invalid totals', async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  tests/unit/xero-readback-safety.test.ts > invoice read-back safety > refuses non-finite/invalid totals
+ FAIL  tests/unit/xero-readback-safety.test.ts > credit_note read-back safety > refuses non-finite/invalid totals
+AssertionError: promise resolved "{ externalId: 'synthetic-xero-1', …(3) }" instead of rejecting
+
+- Expected
++ Received
+
+- [Error: rejected promise]
++ Object {
++   "externalId": "synthetic-xero-1",
++   "externalNumber": "SYN-001",
++   "status": "AUTHORISED",
++   "totals": Object {
++     "subTotal": 100,
++     "total": NaN,
++     "totalTax": 20,
++   },
++ }
+
+ ❯ tests/unit/xero-readback-safety.test.ts:20:94
+     18|   });
+     19|   it('refuses non-finite/invalid totals', async () => {
+     20|     await expect(client(kind, [{...row(kind), Total: 'not-money'}]).re…
+       |                                                                                              ^
+     21|   });
+     22|   it('still accepts a single full exact match', async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  tests/unit/xero-readback-safety.test.ts > never treats a purchase credit as a matching sales credit
+AssertionError: expected { Object (externalId, externalNumber, ...) } to be null
+
+- Expected: 
+null
+
++ Received: 
+Object {
+  "externalId": "synthetic-xero-1",
+  "externalNumber": "SYN-001",
+  "status": "AUTHORISED",
+  "totals": Object {
+    "subTotal": 100,
+    "total": 120,
+    "totalTax": 20,
+  },
+}
+
+ ❯ tests/unit/xero-readback-safety.test.ts:27:121
+     25| });
+     26| it('never treats a purchase credit as a matching sales credit', async …
+     27|   expect(await client('credit_note', [{...row('credit_note'), Type:'AC…
+       |                                                                                                                         ^
+     28| });
+     29| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 2 passed (13)
+   Start at  07:17:35
+   Duration  400ms (transform 144ms, setup 0ms, collect 76ms, tests 23ms, environment 0ms, prepare 143ms)
+

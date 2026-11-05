@@ -1,0 +1,29 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-xero-finish
+
+ ✓ tests/unit/integrations-connect-107.test.ts (28 tests) 33ms
+ ✓ tests/unit/integrations-engine.test.ts (21 tests) 27ms
+stderr | tests/unit/integrations-connect-107-routes.test.ts > opening a link (public) > rate limited (20 in 15 minutes per IP), and fails closed when the limiter is down: nothing peeked or used up
+[login] rate limiter unavailable 57014
+[login] rate limiter unavailable 57014
+[login] rate limiter unavailable 57014
+
+ ✓ tests/unit/integrations-connect-107-routes.test.ts (32 tests) 135ms
+ ✓ tests/unit/xero-batch-chunk.test.ts (20 tests) 10ms
+ ✓ tests/unit/integrations-connect-safety.test.ts (10 tests) 92ms
+ ✓ tests/unit/xero-pr2-access.test.ts (19 tests) 59ms
+ ✓ tests/unit/xero-mappings-send-log.test.ts (21 tests) 28ms
+ ✓ tests/unit/xero-batch-select.test.ts (19 tests) 18ms
+ ✓ tests/unit/xero-batch-routes.test.ts (17 tests) 116ms
+ ✓ tests/unit/xero-mapper.test.ts (12 tests) 8ms
+ ✓ tests/unit/integrations-crypto-oauth.test.ts (8 tests) 16ms
+ ✓ tests/unit/cron-xero-sweep.test.ts (9 tests) 66ms
+ ✓ tests/unit/xero-readback-safety.test.ts (16 tests) 12ms
+ ✓ tests/unit/xero-batch-deps.test.ts (1 test) 3ms
+
+ Test Files  14 passed (14)
+      Tests  233 passed (233)
+   Start at  07:18:05
+   Duration  4.46s (transform 701ms, setup 0ms, collect 1.57s, tests 622ms, environment 3ms, prepare 693ms)
+
