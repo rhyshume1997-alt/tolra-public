@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { loadCompanyRates, PANEL_NOT_SET_UP_MESSAGE, type LoadedRates } from '@/lib/costing/app-rates';
 import { appliedLine, costNote, priceThisPart, type AppliedLine } from '@/lib/costing/price-part';
-import { gbp } from '@/lib/money';
+import { fromPence, gbp, linePence, toPence } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/lib/use-user';
 import type { CostingRates } from './types';
@@ -72,7 +72,8 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
       <div>Overhead: {gbp(figures.overheadCost)}</div>
       <div>Cost per part: {gbp(figures.unitCost)}</div>
       <div>Price per part: {gbp(figures.unitPrice)}</div>
-      <div>Total quote: {gbp(figures.extendedPrice)}</div>
+      <div>Total quote: {gbp(fromPence(linePence(figures.quantity, figures.unitPrice)))}</div>
+      {linePence(figures.quantity, figures.unitPrice) !== toPence(figures.extendedPrice) ? <p className="text-xs text-slate-500">The quote uses the rounded price per part. The costing batch estimate is {gbp(figures.extendedPrice)} before each part is rounded.</p> : null}
     </div> : null}
     <div className="flex flex-wrap gap-2">
       <Button type="button" disabled={!ready} onClick={() => { if (figures && description.trim()) onAdd(appliedLine(description, figures)); }} className="bg-brand text-brand-ink hover:bg-brand-hover">Add as quote line</Button>

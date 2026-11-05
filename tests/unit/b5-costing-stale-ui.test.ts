@@ -25,3 +25,17 @@ it.each(['material','machine'] as const)('changing rates must not silently repla
   await input(kind==='material'?'Part material':'Part machine',nextId,true);expect(add().disabled).toBe(false);
  }finally{await act(async()=>root.unmount());host.remove();}
 });
+it('quote preview agrees with the rounded unit price actually copied, preserving the separate engine estimate',async()=>{
+ const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),onAdd=vi.fn();
+ const rates=structuredClone(CONFIGURED);rates.materials[0].price=0.01;rates.materials[0].scrapPct=0;rates.machines[0].hourlyRate=0;
+ rates.defaults={labourPerHour:0,programmingPerHour:0,overheadPct:100,marginPct:0};
+ const input=async(label:string,value:string)=>{const element=host.querySelector(`[aria-label="${label}"]`)!;await act(async()=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(element,value);element.dispatchEvent(new Event('input',{bubbles:true}));});};
+ try{
+  await act(async()=>root.render(createElement(PriceThisPart,{rates,onAdd})));
+  await input('Part description','Synthetic fractional material');await input('Part quantity','3');await input('Material weight kg per part','0.5');await input('Cycle hours per part','1');
+  const add=[...host.querySelectorAll('button')].find(b=>b.textContent==='Add as quote line')!;
+  await act(async()=>add.click());expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({qty:3,unit:0.01}));
+  expect(host.textContent).toContain('Total quote: £0.03');
+  expect(host.textContent).toContain('costing batch estimate is £0.01');
+ }finally{await act(async()=>root.unmount());host.remove();}
+});
