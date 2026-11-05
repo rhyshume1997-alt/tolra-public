@@ -1,0 +1,178 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/year-end-payment-reconciliation.test.ts (3 tests) 32ms
+ ✓ tests/unit/year-end-po-totals.test.ts (11 tests) 178ms
+ ✓ tests/unit/year-end-unknown-payments.test.ts (2 tests) 21ms
+ ✓ tests/unit/year-end-unresolved-quote.test.ts (2 tests) 282ms
+ ✓ tests/unit/spreadsheet.test.ts (9 tests) 53ms
+ ✓ tests/unit/year-end-export.test.ts (6 tests) 7ms
+ ✓ tests/unit/year-end-unresolved-po.test.ts (2 tests) 393ms
+ ✓ tests/unit/b5-profitability-integration.test.ts (3 tests) 17ms
+ ❯ tests/unit/b5-financial-export.test.ts (5 tests | 5 failed) 70ms
+   × file export 1.005 rounds exact decimal pennies halves away from zero 34ms
+     → expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ 1.01 ] ]
+   × file export -1.005 rounds exact decimal pennies halves away from zero 10ms
+     → expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ -1.01 ] ]
+   × file export 2.675 rounds exact decimal pennies halves away from zero 8ms
+     → expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ 2.68 ] ]
+   × file export -2.675 rounds exact decimal pennies halves away from zero 9ms
+     → expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ -2.68 ] ]
+   × blank money stays blank in both file formats, no invented zero 7ms
+     → expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ] ]
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-financial-export.test.ts > file export 1.005 rounds exact decimal pennies halves away from zero
+AssertionError: expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ 1.01 ] ]
+
+- Expected
++ Received
+
+  Array [
++   Object {
++     "data": Array [
+        Array [
+          "Money",
+        ],
+        Array [
+          1.01,
+        ],
++     ],
++     "sheet": "Synthetic",
++   },
+  ]
+
+ ❯ tests/unit/b5-financial-export.test.ts:9:88
+      7| it.each([[1.005,'1.01'],[-1.005,'-1.01'],[2.675,'2.68'],[-2.675,'-2.68…
+      8|  expect(toCsv(columns,[{value}])).toBe(`\uFEFFMoney\r\n${want}\r\n`);
+      9|  expect(await readExcelFile(Buffer.from(await toXlsx('Synthetic',colum…
+       |                                                                                        ^
+     10|  const row:SummaryRow={type:'Invoice',number:'SYN-1',date:'2026-11-05'…
+     11|  expect(summaryCsv([row])).toContain(`Synthetic,${want},0.00,${want},`…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/unit/b5-financial-export.test.ts > file export -1.005 rounds exact decimal pennies halves away from zero
+AssertionError: expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ -1.01 ] ]
+
+- Expected
++ Received
+
+  Array [
++   Object {
++     "data": Array [
+        Array [
+          "Money",
+        ],
+        Array [
+          -1.01,
+        ],
++     ],
++     "sheet": "Synthetic",
++   },
+  ]
+
+ ❯ tests/unit/b5-financial-export.test.ts:9:88
+      7| it.each([[1.005,'1.01'],[-1.005,'-1.01'],[2.675,'2.68'],[-2.675,'-2.68…
+      8|  expect(toCsv(columns,[{value}])).toBe(`\uFEFFMoney\r\n${want}\r\n`);
+      9|  expect(await readExcelFile(Buffer.from(await toXlsx('Synthetic',colum…
+       |                                                                                        ^
+     10|  const row:SummaryRow={type:'Invoice',number:'SYN-1',date:'2026-11-05'…
+     11|  expect(summaryCsv([row])).toContain(`Synthetic,${want},0.00,${want},`…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/unit/b5-financial-export.test.ts > file export 2.675 rounds exact decimal pennies halves away from zero
+AssertionError: expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ 2.68 ] ]
+
+- Expected
++ Received
+
+  Array [
++   Object {
++     "data": Array [
+        Array [
+          "Money",
+        ],
+        Array [
+          2.68,
+        ],
++     ],
++     "sheet": "Synthetic",
++   },
+  ]
+
+ ❯ tests/unit/b5-financial-export.test.ts:9:88
+      7| it.each([[1.005,'1.01'],[-1.005,'-1.01'],[2.675,'2.68'],[-2.675,'-2.68…
+      8|  expect(toCsv(columns,[{value}])).toBe(`\uFEFFMoney\r\n${want}\r\n`);
+      9|  expect(await readExcelFile(Buffer.from(await toXlsx('Synthetic',colum…
+       |                                                                                        ^
+     10|  const row:SummaryRow={type:'Invoice',number:'SYN-1',date:'2026-11-05'…
+     11|  expect(summaryCsv([row])).toContain(`Synthetic,${want},0.00,${want},`…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/unit/b5-financial-export.test.ts > file export -2.675 rounds exact decimal pennies halves away from zero
+AssertionError: expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ], [ -2.68 ] ]
+
+- Expected
++ Received
+
+  Array [
++   Object {
++     "data": Array [
+        Array [
+          "Money",
+        ],
+        Array [
+          -2.68,
+        ],
++     ],
++     "sheet": "Synthetic",
++   },
+  ]
+
+ ❯ tests/unit/b5-financial-export.test.ts:9:88
+      7| it.each([[1.005,'1.01'],[-1.005,'-1.01'],[2.675,'2.68'],[-2.675,'-2.68…
+      8|  expect(toCsv(columns,[{value}])).toBe(`\uFEFFMoney\r\n${want}\r\n`);
+      9|  expect(await readExcelFile(Buffer.from(await toXlsx('Synthetic',colum…
+       |                                                                                        ^
+     10|  const row:SummaryRow={type:'Invoice',number:'SYN-1',date:'2026-11-05'…
+     11|  expect(summaryCsv([row])).toContain(`Synthetic,${want},0.00,${want},`…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/unit/b5-financial-export.test.ts > blank money stays blank in both file formats, no invented zero
+AssertionError: expected [ { sheet: 'Synthetic', …(1) } ] to deeply equal [ [ 'Money' ] ]
+
+- Expected
++ Received
+
+  Array [
++   Object {
++     "data": Array [
+        Array [
+          "Money",
+        ],
++     ],
++     "sheet": "Synthetic",
++   },
+  ]
+
+ ❯ tests/unit/b5-financial-export.test.ts:15:93
+     13| it('blank money stays blank in both file formats, no invented zero',as…
+     14|  expect(toCsv(columns,[{value:null}])).toBe('\uFEFFMoney\r\n\r\n');
+     15|  expect(await readExcelFile(Buffer.from(await toXlsx('Synthetic',colum…
+       |                                                                                             ^
+     16| });
+     17| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  5 failed | 38 passed (43)
+   Start at  15:06:21
+   Duration  7.05s (transform 494ms, setup 0ms, collect 4.23s, tests 1.05s, environment 1ms, prepare 506ms)
+
