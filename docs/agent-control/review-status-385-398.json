@@ -1,0 +1,322 @@
+[
+  {
+    "pr": 385,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/385",
+    "observed_head": "d849a4221508325401c570f50f96a1d99474ed96",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:41.229322+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "AWAITING CHATGPT REVIEW",
+    "runs": [
+      {
+        "id": 41967764866,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41967764866",
+        "head_sha": "d849a4221508325401c570f50f96a1d99474ed96",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ]
+  },
+  {
+    "pr": 386,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/386",
+    "observed_head": "fa74b117973b29580a2c354e095bb8c4177f3c61",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:41.226372+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "AWAITING CHATGPT REVIEW",
+    "runs": [
+      {
+        "id": 41968499944,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41968499944",
+        "head_sha": "fa74b117973b29580a2c354e095bb8c4177f3c61",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ]
+  },
+  {
+    "pr": 387,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/387",
+    "observed_head": "09060dadd660beeb5ff42d39f3ee0a5d94548a64",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:41.069682+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41982418841,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41982418841",
+        "head_sha": "09060dadd660beeb5ff42d39f3ee0a5d94548a64",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 388,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/388",
+    "observed_head": "3387e581af9730a0df146481b2b4596756c37ac0",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:41.208786+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41983098166,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41983098166",
+        "head_sha": "3387e581af9730a0df146481b2b4596756c37ac0",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 389,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/389",
+    "observed_head": "b02d4ff222315ff92274cd8c9a7c9629c7cf27b5",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:41.117000+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41983794630,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41983794630",
+        "head_sha": "b02d4ff222315ff92274cd8c9a7c9629c7cf27b5",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 390,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/390",
+    "observed_head": "b1c47c06e504c7e26ecdfa31d0d477777ee45de4",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:43.061583+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "NOT SAFE \u2014 fix and integration required",
+    "runs": [
+      {
+        "id": 41984349921,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41984349921",
+        "head_sha": "b1c47c06e504c7e26ecdfa31d0d477777ee45de4",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 391,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/391",
+    "observed_head": "a00378c93208143a4569f5861ea44bfe823dc9cd",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:42.881212+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "NOT SAFE \u2014 fix and integration required",
+    "runs": [
+      {
+        "id": 41984901354,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41984901354",
+        "head_sha": "a00378c93208143a4569f5861ea44bfe823dc9cd",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 392,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/392",
+    "observed_head": "7c8b62ee72ed354ac75beae4f2d5b1ea530fd2dd",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:42.934881+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41985244211,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41985244211",
+        "head_sha": "7c8b62ee72ed354ac75beae4f2d5b1ea530fd2dd",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 393,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/393",
+    "observed_head": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:43.132118+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41987148209,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41987148209",
+        "head_sha": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 394,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/394",
+    "observed_head": "a825d5e646de2a2a1b3dfd09ae4b4d0f68832442",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:43.278809+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41985974167,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41985974167",
+        "head_sha": "a825d5e646de2a2a1b3dfd09ae4b4d0f68832442",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 395,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/395",
+    "observed_head": "0d6ef488e7ec9c35f60c1cf30a075df7d34dc866",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:44.543377+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41986146809,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986146809",
+        "head_sha": "0d6ef488e7ec9c35f60c1cf30a075df7d34dc866",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 396,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/396",
+    "observed_head": "638a12c5fcd494597e1e99da95d77bb430256195",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:44.872347+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "NOT SAFE TO MERGE YET",
+    "runs": [
+      {
+        "id": 41986450659,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986450659",
+        "head_sha": "638a12c5fcd494597e1e99da95d77bb430256195",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 397,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/397",
+    "observed_head": "f4a6ea619586bb1cec78fcc36c69e4cca3036d54",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:44.823393+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41986567696,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986567696",
+        "head_sha": "f4a6ea619586bb1cec78fcc36c69e4cca3036d54",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  },
+  {
+    "pr": 398,
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/398",
+    "observed_head": "aad0ff58d3adf8e6feb315b6c7c3ff4acdb4c7c4",
+    "state": "open",
+    "draft": true,
+    "observed_utc": "2026-11-05T08:01:44.810018+00:00",
+    "github_reviews": [],
+    "comment_authors": [
+      "vercel[bot]"
+    ],
+    "review_status": "REVIEW REPORTED \u2014 exact individual verdict/conditions UNPROVEN",
+    "runs": [
+      {
+        "id": 41987366453,
+        "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41987366453",
+        "head_sha": "aad0ff58d3adf8e6feb315b6c7c3ff4acdb4c7c4",
+        "status": "completed",
+        "conclusion": "failure"
+      }
+    ],
+    "reviewer_report_source": "Rhys user report, 5 November 2026; detailed artifact/conditions UNPROVEN here"
+  }
+]

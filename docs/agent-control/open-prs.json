@@ -1,0 +1,2252 @@
+[
+  {
+    "number": 392,
+    "title": "Compare JNR and Marpet ISO drafts; add blank record supplements",
+    "branch": "codex/iso-pack-gap-supplements",
+    "head_sha": "7c8b62ee72ed354ac75beae4f2d5b1ea530fd2dd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/392",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 391,
+    "title": "Review #378: two adversarial penny-precision failures",
+    "branch": "codex/pr378-profitability-adversarial-review",
+    "head_sha": "a00378c93208143a4569f5861ea44bfe823dc9cd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/391",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 390,
+    "title": "DEV-001: failing staff hold-alert tests for Code pickup",
+    "branch": "codex/dev001-held-staff-alert-tests",
+    "head_sha": "b1c47c06e504c7e26ecdfa31d0d477777ee45de4",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/390",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 389,
+    "title": "Release 147: prove numbering, retry keys and retained holds",
+    "branch": "codex/release147-numbering-regressions",
+    "head_sha": "b02d4ff222315ff92274cd8c9a7c9629c7cf27b5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/389",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 388,
+    "title": "G32: audit public cutover ordering and draft exact-version corrections",
+    "branch": "codex/g32-cutover-order-docs",
+    "head_sha": "3387e581af9730a0df146481b2b4596756c37ac0",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/388",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 387,
+    "title": "G31: specify and prove settable 1000p per-company AI caps",
+    "branch": "codex/g31-company-ai-cap",
+    "head_sha": "09060dadd660beeb5ff42d39f3ee0a5d94548a64",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/387",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 386,
+    "title": "G30: add synthetic-only AI request count and identity checker",
+    "branch": "codex/g30-ai-request-wipe-reconciliation",
+    "head_sha": "fa74b117973b29580a2c354e095bb8c4177f3c61",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/386",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 385,
+    "title": "G33: rehearse guarded SliQ-shaped imports through release 147",
+    "branch": "codex/g33-release147-import-rehearsal",
+    "head_sha": "d849a4221508325401c570f50f96a1d99474ed96",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/385",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 384,
+    "title": "G20: add the external integrations launch register",
+    "branch": "codex/g20-integrations-register",
+    "head_sha": "7484f9135a1399924f9a368b59a07ec8e667c2e5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/384",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 383,
+    "title": "G18: add a one-page build artifact provenance record",
+    "branch": "codex/g18-build-provenance-template",
+    "head_sha": "694ef5c4243072c8a19e5a7e9bb9e85fd09d95e9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/383",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 382,
+    "title": "G12: require a complete KEEP list before any wipe rehearsal",
+    "branch": "codex/g12-wipe-control-plan",
+    "head_sha": "9bc6904ddb903f584e45dca67d654e5b778fbe55",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/382",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 381,
+    "title": "G27: retain runtime \u00a35-cap failure and concurrent key-security tests",
+    "branch": "codex/g27-concurrency-key-tests",
+    "head_sha": "47a79816e4d879a0c45abffa4a9aa96c0cb50b28",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/381",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 380,
+    "title": "G06: close the missing pre-counter issuance test case",
+    "branch": "codex/g06-before-counter-test",
+    "head_sha": "aec4d2ff38016b68f931a2517d65feafb380ff5d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/380",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 379,
+    "title": "X4: synthetic Marpet isolation tests and explicit wipe-proof gap",
+    "branch": "codex/x4-marpet-isolation",
+    "head_sha": "a5feb4a4bf90329976eaa5b3f12ddf4159e715dc",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/379",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 378,
+    "title": "Add optional actual labour and machine job costing, disabled by default",
+    "branch": "codex/job-profitability-actuals",
+    "head_sha": "ccd74ea513307c5584a11f7cd368f38b742ce769",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/378",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 377,
+    "title": "G18: offline provenance integrity gate with adversarial rejection tests",
+    "branch": "codex/b5-g18-provenance-review",
+    "head_sha": "b6478066ae6ee00052586af503dad998dd2b461e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/377",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 376,
+    "title": "G25: adversarial claim-evidence tests without financial write methods",
+    "branch": "codex/b5-g25-claims-review",
+    "head_sha": "35d53468ad961cf5f45935f7d21b69cc73a8ce5d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/376",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 375,
+    "title": "G20/G27: retain failing \u00a35-cap contracts and disabled-launch review",
+    "branch": "codex/b5-g20-g27-security-review",
+    "head_sha": "52aa6dd8c6d3cdb372cdd09abb8de8a5364a0a19",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/375",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 374,
+    "title": "G10/G11/G22: independent access negatives and audit/retrieval limitations",
+    "branch": "codex/b5-g10-g11-g22-access-review",
+    "head_sha": "3b085e7e0e5e79570f38c03930d3a77fb2ec9552",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/374",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 373,
+    "title": "G02/G06/G12: counter trust-boundary findings and scoped recovery evidence",
+    "branch": "codex/b5-g06-counter-review",
+    "head_sha": "f3f01c94559cb3dc376ee64c7b459093796b42de",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/373",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 372,
+    "title": "ISO 9001 DRAFT pack for JNR Engineering (docs/iso9001/jnr)",
+    "branch": "claude/iso-jnr-pack",
+    "head_sha": "31233db64f2a01a6b2e68468c8b123b825db2e47",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/372",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 371,
+    "title": "Add Marpet Fabrications ISO 9001 DRAFT pack",
+    "branch": "claude/iso-marpet-pack",
+    "head_sha": "307f90a40f5f70ff3b2f704bf99f98aabf6dac86",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/371",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 370,
+    "title": "Audit batch 2: six blank rounding, provenance and release acceptance documents",
+    "branch": "codex/b5-audit-batch-2",
+    "head_sha": "cdb3d4592575f9ecff4d6d3cecb58ceaaf173595",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/370",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 369,
+    "title": "Audit pack: six blank JNR access, records, recovery and office templates",
+    "branch": "codex/b5-audit-g10-g22",
+    "head_sha": "7ade27b800f9f922b80df27647ca500a7ee08bec",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/369",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 368,
+    "title": "N3: Public synthetic SliQ rehearsal, nine checks and counts-only artifacts",
+    "branch": "codex/b5-n3-sliq-rehearsal",
+    "head_sha": "0b0fee32d6153a24e7b32c4bb79c08c184df26c8",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/368",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 367,
+    "title": "M4: finish John's ISO 9001 pack gap actions and sign-off evidence list",
+    "branch": "codex/m4-john-iso-pack-gaps",
+    "head_sha": "a23e3041e75ec5a90dc2bb66f68247614ea77c7f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/367",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 366,
+    "title": "ISO 9001 Word pack (formatting only)",
+    "branch": "claude/iso-word-pack",
+    "head_sha": "ce66e6a81bbb2862b402c58590d1af656491efb3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/366",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 365,
+    "title": "M3: required delivery-note UAT and six questions for John",
+    "branch": "codex/m3-delivery-note-uat",
+    "head_sha": "1970388d390df9f8c8af9dcd7d94d1d5f71aa174",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/365",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 364,
+    "title": "M2: SliQ real-report load runbook and aged-debtors reconciliation",
+    "branch": "codex/m2-sliq-load-runbook",
+    "head_sha": "83a2826b29ca6fdb139f4a0e7812d103865426be",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/364",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 363,
+    "title": "I10: Quality records: what to show or export for an auditor",
+    "branch": "codex/b5-i10-iso9001",
+    "head_sha": "f98e747a94471981597a59f9d50665eff77b0fd1",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/363",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 362,
+    "title": "M1: independent second review and corrections for #350\u2013#354",
+    "branch": "codex/m1-second-review-c03-c16",
+    "head_sha": "7f3a8d48e7bc498628c175e62ed50419b4841856",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/362",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 361,
+    "title": "I9: Tolra evidence map for quality records",
+    "branch": "codex/b5-i9-iso9001",
+    "head_sha": "d6df86bc57e2e77379998c29bcc4a6d972318ffb",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/361",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 360,
+    "title": "I8: What John must decide",
+    "branch": "codex/b5-i8-iso9001",
+    "head_sha": "46010baba4091927955b592990b9a638f5e1d510",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/360",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 359,
+    "title": "Delivery notes for go-live: goods-out wording, received-by block, job and customer lists",
+    "branch": "claude/delivery-notes-golive",
+    "head_sha": "9d7725e7e1b59e68a314c4148513b9b7d7aa4e92",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/359",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 358,
+    "title": "L14 / C15: indirect auth, cache and polling effects of lag fixes",
+    "branch": "codex/b6-l14-c15-lag-effects",
+    "head_sha": "2eb65485de82ba91b9f009422acdb6e2f0976388",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/358",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 357,
+    "title": "L13 / C11: migration 143 rounding code evidence and limits",
+    "branch": "codex/b6-l13-c11-rounding-evidence",
+    "head_sha": "25c0c9a8a2ff266a8db1d59ea5a8061ad7dc429a",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/357",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 356,
+    "title": "L12 / C10: one-time migration 146 runbook and transaction failures",
+    "branch": "codex/b6-l12-c10-146-one-time",
+    "head_sha": "74f8cb84258d856ccee2eed16b0c522fa803cf73",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/356",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 355,
+    "title": "L11 / C07: genuine safeupdate disposable import proof",
+    "branch": "codex/b6-l11-c07-safeupdate",
+    "head_sha": "008f63a7553f06e235ebdb528a5c40e0e42e1f87",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/355",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 354,
+    "title": "L10 / G9-C6: John's real SliQ header-mapping template",
+    "branch": "codex/b6-l10-sliq-header-map",
+    "head_sha": "e22c975c6eb1bcfba667a331d8aa1d5536c3be46",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/354",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 353,
+    "title": "L9 / C16: Thursday 12 November ordered cutover controls",
+    "branch": "codex/b6-l9-c16-cutover-controls",
+    "head_sha": "034ef62ebba6d882c92c351802dd9c3ba5ffc02c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/353",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 352,
+    "title": "L8 / C05: P6 open-risk and residual acceptance register",
+    "branch": "codex/b6-l8-c05-p6-risks",
+    "head_sha": "c52e145e32e9026318154751d03be199019d30a2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/352",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 351,
+    "title": "L7 / C04: plain-English VSR draft for Rhys",
+    "branch": "codex/b6-l7-c04-vsr",
+    "head_sha": "de2642cb59fa3910d1fb2b0f112fe656da9737c9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/351",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 350,
+    "title": "L6 / C03: complete human manual-check and evidence table",
+    "branch": "codex/b6-l6-c03-manual-checks",
+    "head_sha": "ad4f506606689292edbd68d5390b864d0b3d7e83",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/350",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 349,
+    "title": "L3: Rhys start page and complete dated Codex guide index",
+    "branch": "codex/b6-l3-rhys-start",
+    "head_sha": "05a36581b3b6fd03de06ae5a98d3d885a33254ca",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/349",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 348,
+    "title": "L2: small Playwright page timing script for test servers",
+    "branch": "codex/b6-l2-page-timings",
+    "head_sha": "a8702f6a407ffe996c9bb112db75e104c7b9eb8b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/348",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 347,
+    "title": "L4: one-page R1\u2013R8 acceptance sheet for Rhys",
+    "branch": "codex/b6-l4-r1-r8-accept",
+    "head_sha": "380f60c5ce8dfc543f482b5a23086a0b5a85a1f5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/347",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 346,
+    "title": "L5: conflicts and duplication review of PRs #298\u2013#337",
+    "branch": "codex/b6-l5-pr-conflicts",
+    "head_sha": "c695c0dfed5a20fc3b79a6bab577cbb98305b892",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/346",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 345,
+    "title": "L1: independent cross-review of lag drafts #343 and #344",
+    "branch": "codex/b6-l1-lag-cross-review",
+    "head_sha": "8e08782d229b69fb6b8be4d04a85515fd99c4586",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/345",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 344,
+    "title": "LAG-PAGES: overlap dashboard reads and reduce jobs traffic",
+    "branch": "codex/b4-lag-pages",
+    "head_sha": "40ad1d6e6aeb6a47c715d0e0aa8072e3426fdc86",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/344",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 343,
+    "title": "LAG-MORE: list timesheet and customer fetch waits",
+    "branch": "codex/b4-lag-more",
+    "head_sha": "a4ebfbfae996b077e5956aec8bf28a35fab20d14",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/343",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 342,
+    "title": "I7: Record ISO feature gaps, go-live workarounds and builder 5 handover",
+    "branch": "codex/b5-i7-iso9001",
+    "head_sha": "7a4529edc1844d9d792bf6467de8cf1b92c5990d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/342",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 341,
+    "title": "I6: Add first internal audit checklist and management review agenda",
+    "branch": "codex/b5-i6-iso9001",
+    "head_sha": "67f8ebb871c26f4337a4318253a056ac316849f6",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/341",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 340,
+    "title": "I5: Add source-linked risks and opportunities register",
+    "branch": "codex/b5-i5-iso9001",
+    "head_sha": "2429eda5831a93f6966a89ec8ba8c6a4dde2e1ae",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/340",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 339,
+    "title": "I4: Add eight short JNR quality procedures for review",
+    "branch": "codex/b5-i4-iso9001",
+    "head_sha": "f9f43f18e2ad1a5c14031fd4139691a6db54189c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/339",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 338,
+    "title": "I3: Add blank JNR quality policy and objectives templates",
+    "branch": "codex/b5-i3-iso9001",
+    "head_sha": "77c8cc34639dfa72d1d96509c27cded7098b039d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/338",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 337,
+    "title": "WIPE-DAY: gated Saturday 7 November JNR wipe runbook",
+    "branch": "codex/b4-q4-wipe-day",
+    "head_sha": "ad59e3b62a355d1241357eb53e3d24385c4ec6ed",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/337",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 336,
+    "title": "I2: Add controlled document register and revision approval procedure",
+    "branch": "codex/b5-i2-iso9001",
+    "head_sha": "b30d8dea204162c9baded499de7fef516d526b57",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/336",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 335,
+    "title": "I1: Map ISO 9001 clauses to Tolra support and JNR duties",
+    "branch": "codex/b5-i1-iso9001",
+    "head_sha": "b2948a8a64086d2e6b6244633f7e0eb3a3406a46",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/335",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 334,
+    "title": "DUMP: Rhys database dump and restore proof",
+    "branch": "codex/b4-q4-dump",
+    "head_sha": "86b9955070361ae1482d4f224239e513654b1e73",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/334",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 333,
+    "title": "DB: Rhys's Friday-to-cutover plan with a stop rule each day",
+    "branch": "codex/db-rhys-cutover-week",
+    "head_sha": "8ca0aac7067bade11de78272f46d4a19aa0dab5f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/333",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 332,
+    "title": "G8: John controlled live full-flow sign-off",
+    "branch": "codex/b4-q4-g8",
+    "head_sha": "dea7373c59ee59636c6ef6012a767b79285e24a5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/332",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 331,
+    "title": "F3: staff core workflows without help",
+    "branch": "codex/b4-q4-f3",
+    "head_sha": "85bd651a82443dec5f69cb30d524ccd253172d62",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/331",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 330,
+    "title": "G18: John yard-to-yard sign-off",
+    "branch": "codex/b4-q4-g18",
+    "head_sha": "7ce4e30d49cf9d8907bd53f23ec943139affef43",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/330",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 329,
+    "title": "G16: John paid-hours worked example",
+    "branch": "codex/b4-q4-g16",
+    "head_sha": "92ac6682eaac84295dfd183a8c0b4c5bc15130fe",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/329",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 328,
+    "title": "LOGINS: John workshop and Marpet device setup",
+    "branch": "codex/b4-q4-logins",
+    "head_sha": "e98bc56ccef1dc0a35a1f3b62ce038f926a03af0",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/328",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 327,
+    "title": "JASON-2FA: Jason authenticator setup",
+    "branch": "codex/b4-q4-jason-2fa",
+    "head_sha": "b47ecb991f7c97c58ebb7cbc29c05fa53725e067",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/327",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 326,
+    "title": "MARPET-DET: Marpet Settings details checklist",
+    "branch": "codex/b4-q4-marpet-det",
+    "head_sha": "d214c14a869b50d39276ae429aa65cf11fcef3e4",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/326",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 325,
+    "title": "VERCEL-PREV: preview build capacity and stop controls",
+    "branch": "codex/b4-q4-vercel-prev",
+    "head_sha": "02fcd8f077385740122858da8e0a488acb79d0d8",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/325",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 324,
+    "title": "DA: merge-order and conditional closure sheet for PRs #271\u2013#317",
+    "branch": "codex/da-codex-merge-order",
+    "head_sha": "19b1d6a3f09502d798c1d09618cefa3f17f8cc01",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/324",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 323,
+    "title": "SUPA-PRO: Supabase Pro and first backup checklist",
+    "branch": "codex/b4-q4-supa-pro",
+    "head_sha": "d32a3a7bf3e6bfe8db2e7316df49b9d1346f8180",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/323",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 322,
+    "title": "CZ: correct every visible R1\u2013R8 restriction claim against pinned source",
+    "branch": "codex/cz-restriction-claims",
+    "head_sha": "1b4ed92dcd4337e2c0bde4c67520ac3055aba72e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/322",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 321,
+    "title": "CY: 9 November go/no-go meeting agenda with decision owners and evidence",
+    "branch": "codex/cy-go-no-go-meeting",
+    "head_sha": "09ca7ea87fa8c8dc7839c33f5e1813b313adfc6d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/321",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 320,
+    "title": "G9/C6: John's SliQ export request, exact code examples and Rhys message",
+    "branch": "codex/g9-c6-sliq-export-request",
+    "head_sha": "bf664425f819677b6f4256e627444940164f0793",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/320",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 319,
+    "title": "B4/D5: John's desktop and workshop UAT tick list",
+    "branch": "codex/b4-d5-john-device-uat",
+    "head_sha": "ae5564652c09af54d09f0b67baed3f9211cf5546",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/319",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 318,
+    "title": "CX: one-line reviewer packets for all open builder 4 PRs",
+    "branch": "codex/b4-cx-review-packets",
+    "head_sha": "a0044d2c87f3e741470ed70a5e16cf359c60f7ae",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/318",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 317,
+    "title": "BA: evidence ledger for all 41 public first-day boxes",
+    "branch": "codex/ba-first-day-41-evidence",
+    "head_sha": "9515eda33b50878a057a431b06498a5b1f15b204",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/317",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 316,
+    "title": "CW: make every sign-off sheet clear to John in one reading",
+    "branch": "codex/b4-cw-signoff-plain",
+    "head_sha": "359249878c17b7e4586e39bbee4b7e3961c2a2e2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/316",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 315,
+    "title": "CV: record current candidate and held CM lint, types and unit results",
+    "branch": "codex/cv-current-stack-checks",
+    "head_sha": "727ff228b6bc8575bc4440f409fdd3c41fe4ce5e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/315",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 314,
+    "title": "Cross-review builder 3 CR\u2013CV and BA with source-backed corrections",
+    "branch": "codex/b4-builder3-review-final",
+    "head_sha": "ce1118393cc0d65bfde426d31222903a802984ff",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/314",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 313,
+    "title": "PAID-ROUND: John paid working-time rounding sign-off",
+    "branch": "codex/b4-signoff-paid-round",
+    "head_sha": "7ffeb44be92ce10fcace40ddce12a509d3d675c7",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/313",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 312,
+    "title": "SAGE-QBO-APP: Rhys Sage and QuickBooks developer-app registration steps",
+    "branch": "codex/b4-signoff-sage-qbo-app",
+    "head_sha": "bf5396b66e163cadaf5a212b268a3519f6f4b5cb",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/312",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 311,
+    "title": "XERO-APP: Rhys Xero developer-app registration steps",
+    "branch": "codex/b4-signoff-xero-app",
+    "head_sha": "54e28c086dd20cd6553b53e3645b6a51c8d13ec2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/311",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 310,
+    "title": "NUM-RESET: John choice on document numbering",
+    "branch": "codex/b4-signoff-num-reset",
+    "head_sha": "597a195c99b2d7cb20d494f489632889dfeb45da",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/310",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 309,
+    "title": "D7: Financial records: six-year agreement with accountant",
+    "branch": "codex/b4-signoff-d7",
+    "head_sha": "2562523258932a489b40862bf0f9a5e2657b8305",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/309",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 308,
+    "title": "C8: Decision makers and named support contacts",
+    "branch": "codex/b4-signoff-c8",
+    "head_sha": "289eeb67ff8535a647e9c01ddb5eadef71e411fe",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/308",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 307,
+    "title": "B17: Turn admin sign-in codes fully on and prove them",
+    "branch": "codex/b4-signoff-b17",
+    "head_sha": "8877aed34d009c7dc1c348d81932ffe103190805",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/307",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 306,
+    "title": "B15: Remove rhumecoaching admin access safely",
+    "branch": "codex/b4-signoff-b15",
+    "head_sha": "99a1a9f6e9e10b5ce7b92183a87c778b8e9fe953",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/306",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 305,
+    "title": "CU: Rhys's six first-day smoke checks after verified 146",
+    "branch": "codex/cu-first-day-smoke",
+    "head_sha": "78dc5b7033592f20640b15e61b198c7fcf17930e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/305",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 304,
+    "title": "B13: John rehearsal week Monday to Friday",
+    "branch": "codex/b4-signoff-b13",
+    "head_sha": "97422fe71066c8e4d225d0d38f2da837f88b4ed5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/304",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 303,
+    "title": "AI-APPROVE: John approval or refusal of AI data sharing",
+    "branch": "codex/b4-signoff-ai-approve",
+    "head_sha": "ca1c504cf515d82533242bf373c38d2f069642fc",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/303",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 302,
+    "title": "F6: John process, cutover ownership and rollback acceptance",
+    "branch": "codex/b4-signoff-f6",
+    "head_sha": "e76f1c03ee5cd60f3048d5c5a115714e4b3c54bd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/302",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 301,
+    "title": "G14: Go-live day and rollback cut-off",
+    "branch": "codex/b4-signoff-g14",
+    "head_sha": "475e186b5b9d4fd526c9c95028c49eeb96aa63c5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/301",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 300,
+    "title": "CT: explain and map the 35, 60 and 64 manual-check revisions",
+    "branch": "codex/ct-manual-count-map",
+    "head_sha": "49097c56f05e690b811872e24ff9b159b774f334",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/300",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 299,
+    "title": "CS: exact-line VSR evidence index for Code's f76a5b84 refresh",
+    "branch": "codex/cs-vsr-evidence-index",
+    "head_sha": "ecbf38f36bd4a57a9a93916bb51849b96e239cd5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/299",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 298,
+    "title": "CR: builder 4 cross-review and two source-backed corrections",
+    "branch": "codex/cr-builder4-review",
+    "head_sha": "8d161eca667cf3a64b4a9aaffb2df6ddba9d673d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/298",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 297,
+    "title": "S1\u2013S4: cutover proof plan, reverse tenant RLS and security input cases",
+    "branch": "codex/b4-security-proofs",
+    "head_sha": "b9406d136f224395a4e6f2d15f82093f1ba2f545",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/297",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 296,
+    "title": "AU: simplify confusing shop-screen words in PRs #232\u2013#261",
+    "branch": "codex/b4-au-wording",
+    "head_sha": "b35e5caf003fba6c6f25082bcfae311ae35e5fd4",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/296",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 295,
+    "title": "B5: Email connection proof and existing manual fallback",
+    "branch": "codex/b4-b5",
+    "head_sha": "865058f4a3e9dfa1afdefb51d3d6b72d401cda29",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/295",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 294,
+    "title": "C10: tolra.co.uk domain switch checks and expected results",
+    "branch": "codex/b4-c10",
+    "head_sha": "ac49a303512288e76c95f74522ec3abdaf251f34",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/294",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 293,
+    "title": "D6: Cutover rollback stops and backup-only 146 recovery",
+    "branch": "codex/b4-d6",
+    "head_sha": "0cfe4495a805d0c41acbdbe7a5f8b892006df68a",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/293",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 292,
+    "title": "F5: Workshop paper fallback and checked recovery",
+    "branch": "codex/b4-f5",
+    "head_sha": "55ee54c3b64d812745731a7090c42b483571f7c0",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/292",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 291,
+    "title": "D4: One-page workshop and office quick guides",
+    "branch": "codex/b4-d4",
+    "head_sha": "01067cab327ddc7107a99a015522530d736519c8",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/291",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 290,
+    "title": "D3: Incident and support steps for JNR staff",
+    "branch": "codex/b4-d3",
+    "head_sha": "d9bcbc398b283e621ea4d73bcf90ef18f7ccc1b9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/290",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 289,
+    "title": "CQ: correct N1 day-view coverage and evidence/reviewer packet mistakes",
+    "branch": "codex/cq-pr-corrections",
+    "head_sha": "bcf29b1589dfe9a15a593c583984e6c457690b1d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/289",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 288,
+    "title": "CP: 12 November cutover checklist with owners and go/stop gates",
+    "branch": "codex/cp-cutover-day-checklist",
+    "head_sha": "ce2e6cc1268e5965a490f839083ab0fcd17eeae7",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/288",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 287,
+    "title": "CO: plain-word VSR sign-off guide and sourced R1\u2013R8 meanings",
+    "branch": "codex/co-rhys-sign-off-guide",
+    "head_sha": "4b134cbb3f04f63938ef4537e122a43b8af6235f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/287",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 286,
+    "title": "CN: John's eight plain-language working-day checks",
+    "branch": "codex/cn-john-pq-run-sheet",
+    "head_sha": "bfaa31b84ebb04cec74c386787806320c3dee44e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/286",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 285,
+    "title": "CM: fix costing proposal setup TS2559 without changing costing behaviour",
+    "branch": "codex/cm-costing-typecheck",
+    "head_sha": "a4c89af3723703ba5e284bb6500553d42975f925",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/285",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 284,
+    "title": "CL: penny half-up rule and unchanged costing rounding exceptions",
+    "branch": "codex/cl-rounding-rule",
+    "head_sha": "d7d6ff9dbd915becdc096d1eb365e4a73b4ae21d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/284",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 283,
+    "title": "CH: priority review packets with exact heads and remaining work",
+    "branch": "codex/ch-review-packets-next",
+    "head_sha": "e40f9edb24a79769efd03b8f900c6c31d8a6729b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/283",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 282,
+    "title": "CG CK: named AI and accounting evidence with untested conditions",
+    "branch": "codex/cg-ck-evidence",
+    "head_sha": "b80b274b0f2b8b12444915152383564cc1b9bf52",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/282",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 281,
+    "title": "CJ: named fail-closed N1 N5 N6 browser acceptance specs",
+    "branch": "codex/cj-acceptance-specs",
+    "head_sha": "ff29ca191879ec954e305ec0eb200501789a5bcf",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/281",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 280,
+    "title": "CI: exact-head branch audit and failed-command release refusals",
+    "branch": "codex/ci-branch-checks",
+    "head_sha": "f4eacee2236e65e52fdccbdf5cf8f8045fd95d80",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/280",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 277,
+    "title": "CF: plain-English database-day runbook with mandatory stop gates",
+    "branch": "codex/cf-db-day-runbook",
+    "head_sha": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/277",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 275,
+    "title": "CD: fake-only SliQ dry run with no write entry point",
+    "branch": "codex/cd-sliq-no-write",
+    "head_sha": "d73bb240a23b38a7080c0933e4f5b62ddd529f5f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/275",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 271,
+    "title": "Coordinate explicit CA-CI handoff and job evidence",
+    "branch": "codex/ca-ci-ownership",
+    "head_sha": "9caf9ed59b388de5168b476522ca0230067f9845",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/271",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 270,
+    "title": "BB: fake two-company transfer generator with exact reconciliation",
+    "branch": "codex/bb-fake-data",
+    "head_sha": "4f210972adbffa2d5cd5c4148b1065a8df7548ef",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/270",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 269,
+    "title": "BA: explicit go/no-go evidence ledger and source coverage gaps",
+    "branch": "codex/ba-evidence",
+    "head_sha": "89849ae3331bb6703a7d076d540843c4f63b6bc9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/269",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 268,
+    "title": "AZ: named N1 N5 N6 browser and persisted-state acceptance",
+    "branch": "codex/az-acceptance",
+    "head_sha": "94449be9b8a711b2f8eae96f5b30403b22296c7b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/268",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 267,
+    "title": "AY: database day runbook with backup and stop rules",
+    "branch": "codex/ay-db-runbook",
+    "head_sha": "9795ee1a8f5985dcaffb7823f9d55ded8698892d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/267",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 266,
+    "title": "AX: pinned review packets for open Codex changes",
+    "branch": "codex/ax-review-packets",
+    "head_sha": "4fae060450fdfaa180acb073950153a27d6a2cf0",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/266",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 265,
+    "title": "AV: named rollback checks preserve business records or safely refuse",
+    "branch": "codex/av-rollback-tests",
+    "head_sha": "fcb4e9bac74447aef90f9c2d1d1333536024c6f4",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/265",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 264,
+    "title": "AW: document JNR transfer plan and fake-only dry run",
+    "branch": "codex/aw-data-load",
+    "head_sha": "e26fd743e5145f5d9ee56878cc3733d88d147bdf",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/264",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 263,
+    "title": "AR: align go-live manual checks with current candidate",
+    "branch": "codex/ar-manual-final",
+    "head_sha": "8cecd36e5fc852ae52e564db422f6201c8960a56",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/263",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 262,
+    "title": "AQ: proof-gated morning approval checklist",
+    "branch": "codex/aq-morning-checklist",
+    "head_sha": "6be692d3e3fde62baed099c71dc518bfbf2930a5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/262",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 261,
+    "title": "AQ: Write Rhys morning release and merge checklist",
+    "branch": "codex2/aq-morning-checklist",
+    "head_sha": "14e7291070a99ee10658da2781699859310124c7",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/261",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 260,
+    "title": "AP: Report held PR scope inclusion and risks for Rhys",
+    "branch": "codex2/ap-held-prs-report",
+    "head_sha": "3c151ae1b58d05697f9272aa3216d4ee6ffdf087",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/260",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 259,
+    "title": "AO: Package chase atomic settings as guarded release 147",
+    "branch": "codex2/ao-chase-settings-release",
+    "head_sha": "2c9ded37e503d66cf9b96c620e98fdd86abf1302",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/259",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 258,
+    "title": "AK: Map N4 validation to the shipped candidate and save dated evidence",
+    "branch": "codex2/ak-validation-shipped",
+    "head_sha": "349195f498338c352bead29eb6e0afd76b4f53a9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/258",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 257,
+    "title": "AJ: Update takeover handover and reviewer proof state",
+    "branch": "codex2/aj-takeover-handover",
+    "head_sha": "f0a654c5ed894b14884cad4dcedc6cb3a171bccf",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/257",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 256,
+    "title": "AI: Add database reviewer proofs for #234",
+    "branch": "codex2/ai-reviewer-db-234",
+    "head_sha": "d41d122fbf9f3aa9818b886e65e33b765397693a",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/256",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 254,
+    "title": "AI: Add database reviewer proofs for #232",
+    "branch": "codex2/ai-reviewer-db-232",
+    "head_sha": "8d4616f3a61f7acde8646eb3a63224997a120728",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/254",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 252,
+    "title": "AI: Add database reviewer proofs for #239",
+    "branch": "codex2/ai-reviewer-db-239",
+    "head_sha": "5a923801befe5ffd1514ba19938ff9090685a436",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/252",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 251,
+    "title": "AI: Add database reviewer proofs for #236",
+    "branch": "codex2/ai-setup-db-236",
+    "head_sha": "b8e9b3daeb9f6b07d144c57d4a453c39bf731176",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/251",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 250,
+    "title": "AH: Harden reviewed wipe evidence preservation and scope checks",
+    "branch": "codex2/ah-wipe-retention",
+    "head_sha": "7fb1656f5a990239a95109c44565b48f1ece1107",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/250",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 249,
+    "title": "test: propose wipe-kit lines with approval history retained",
+    "branch": "codex/ac-wipe-kit-proposed-lines",
+    "head_sha": "f2ca4650e4032800c11d5ab65fb85e39ae0f22fd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/249",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 248,
+    "title": "test: add Rhys's go-live rehearsal click checklist",
+    "branch": "codex/z-go-live-manual-checks",
+    "head_sha": "a38ffd683c370788fa1c3d98a324081c08d37950",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/248",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 247,
+    "title": "Combine final main rehearsal candidate: chasing, setup, accounting, AI and fonts",
+    "branch": "codex/x-final-main-candidate",
+    "head_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/247",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 246,
+    "title": "test: hand over Codex PRs and remaining validation",
+    "branch": "codex/w-codex-1-handover",
+    "head_sha": "d5ab1c7edbb72e33cd032f9a65860a95e4229160",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/246",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 245,
+    "title": "V: Add reviewer Playwright cases and matching click checks",
+    "branch": "codex/v-reviewer-browser-conditions",
+    "head_sha": "2b4bd18390efc468a01b449dae70c844ee204a05",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/245",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 244,
+    "title": "U: Add explicit local-only Tolra Demo seed",
+    "branch": "codex/u-tolra-demo-seed",
+    "head_sha": "537b3ea4ede00702bb853aadb492e013af38a797",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/244",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 243,
+    "title": "JOB U: demo-data seed for a throwaway database (\"Tolra Demo\")",
+    "branch": "claude/job-u-demo-seed",
+    "head_sha": "15020e5d20afe27cb48847c310ccf39ff1c99da8",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/243",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 242,
+    "title": "T: Build marketing fonts from local assets",
+    "branch": "codex/t-offline-marketing-fonts",
+    "head_sha": "25b792572c7a5df0e141fdbc91cdd54afa46daa8",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/242",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 241,
+    "title": "S: Prove inbound payment wording stays evidence only",
+    "branch": "codex/s-inbound-payment-evidence",
+    "head_sha": "f96087a58bf7dd9030e447e71a10b52ba54671d9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/241",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 240,
+    "title": "Q: Prove cross-company accounting reads stay isolated",
+    "branch": "codex/q-accounting-company-read-tests",
+    "head_sha": "3692debaa9a724762f230412eff17aa911a85ba2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/240",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 239,
+    "title": "Q: Cover ordinary and support access to setup progress",
+    "branch": "codex/q-setup-access-tests",
+    "head_sha": "1226c15f168ae4c77b27412e96d8d2cb06763da5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/239",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 237,
+    "title": "O: Combine accounting adapters and encrypted isolation proofs",
+    "branch": "codex/o-accounting-combined",
+    "head_sha": "86eda4bd48b1237b42140dbd72ace7cb73442f4b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/237",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 236,
+    "title": "N: Combine company breaks, blank setup and email editor",
+    "branch": "codex/n-company-setup-email-combined",
+    "head_sha": "d54d90b0408fbd490f03ada687b27af03bba9800",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/236",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 234,
+    "title": "K: Combine AI modes, reviewer regressions and custom caps on main",
+    "branch": "codex2/k-ai-combined-main",
+    "head_sha": "baafb39e1ff33d11d3c5023cd764c8fcfb8f182e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/234",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 233,
+    "title": "J: Combine reviewed chase work and main for database/browser checks",
+    "branch": "codex2/j-chasing-combined-main",
+    "head_sha": "97811d301479d4e409b8eb89f0e7ff2bc61db7e6",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/233",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 232,
+    "title": "I: Owner-set company AI caps with atomic reservation limits",
+    "branch": "codex2/i-owner-ai-caps",
+    "head_sha": "d5c69bd4f06c1518ccac6af965fb2df29d21cfab",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/232",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 231,
+    "title": "design: owner and admin section, In development tag, screenshots to public/screens (N7)",
+    "branch": "design/n7-owner-admin",
+    "head_sha": "a3958d67c4525640aeb9e628f7e183195e109c0d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/231",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 230,
+    "title": "H3/H4: Prove encrypted accounting tokens and provider isolation",
+    "branch": "codex2/h-accounting-token-isolation",
+    "head_sha": "ad1027ed7b57b73757e27c2dddd4e54fd863eb21",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/230",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 228,
+    "title": "H1: Prove key isolation when switching AI accounts",
+    "branch": "codex2/h-ai-mode-key-isolation",
+    "head_sha": "65bbaecd4f23a3bddb7d85ea34fe8d6737d5a45a",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/228",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 227,
+    "title": "N1\u2013N6 browser specs, manual checks and blocked database CI handoff",
+    "branch": "codex2/n1-n6-browser-checks",
+    "head_sha": "d85c6527ec0459c894a1599133bd739ff117b13c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/227",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 226,
+    "title": "Bring the chase line up to date with main",
+    "branch": "codex2/chase-main-update",
+    "head_sha": "bfd51adfa18ff0fa801bc0d659c614200447af66",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/226",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 225,
+    "title": "Footer: Website by Rhys Hume credit",
+    "branch": "design/footer-credit",
+    "head_sha": "345d3fb8de76561343dead4e64c5e3d3f25acf66",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/225",
+    "draft": false,
+    "state": "open"
+  },
+  {
+    "number": 224,
+    "title": "N2: Optional Tolra-provided AI with encrypted key and company caps",
+    "branch": "codex2/n2-tolra-provided-ai",
+    "head_sha": "f4d7654376256fbe9c88f864b146f72eb5236188",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/224",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 223,
+    "title": "N6: Plain email editor with labelled sections and detail buttons",
+    "branch": "codex2/n6-friendly-email-editor",
+    "head_sha": "f1ed216f494eedf713ee5632fb38b1427d3eee9d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/223",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 222,
+    "title": "N5: guide blank companies through setup across existing screens",
+    "branch": "codex2/n5-guided-company-setup",
+    "head_sha": "970e918318215e7e4c5ba9a5b1e96118534965e3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/222",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 221,
+    "title": "Share accounting connections with Sage cloud and QuickBooks adapters",
+    "branch": "codex/accounting-connections",
+    "head_sha": "53030fd4224c6b2451f2af386fdb9d692b0ee8fc",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/221",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 220,
+    "title": "Add plain-language validation pack under tests",
+    "branch": "codex/validation-pack",
+    "head_sha": "fb8a262060a1a33c87cbe1b548b181b78d4d6ef7",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/220",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 219,
+    "title": "Add the company AI switch to Integrations",
+    "branch": "codex/ai-integration-switch",
+    "head_sha": "02c983894e867d43c0f7eb0edf45850d72ffc3fa",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/219",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 218,
+    "title": "Use company paid-break settings across hours screens",
+    "branch": "codex/company-paid-breaks",
+    "head_sha": "cc2d3f2a89b4c32276d014fa6f2bb0cbc40d0678",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/218",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 216,
+    "title": "Integrate paid-claim and bank evidence checks without automatic payment writes",
+    "branch": "codex/chase-evidence-integration",
+    "head_sha": "8eb7f3370b7024ba36b04d299088cd475906a224",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/216",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 215,
+    "title": "Run E13 schedule checks without a database",
+    "branch": "codex/e13-offline-schedule",
+    "head_sha": "1671a07d096f66821b1538eaf8778d1950b4fb49",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/215",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 214,
+    "title": "Test a complete fictional SliQ export without writes",
+    "branch": "codex/sliq-fake-export",
+    "head_sha": "8b805d5098cc4fb577fc00eeb116516b0d43c67e",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/214",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 213,
+    "title": "Resolve the privacy-clean wording base conflict with main",
+    "branch": "codex/plain-english-main",
+    "head_sha": "09dc47b23b65cb6b13028c958231a129820bf697",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/213",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 212,
+    "title": "Align remaining test names with Late and the reviewed labels",
+    "branch": "codex/test-wording-followup",
+    "head_sha": "6361a12f2ba21ae5931fe2ef22ac982605127d0b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/212",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 211,
+    "title": "Resolve manual checklist conflict with strict sender matching intact",
+    "branch": "codex/manual-checks-main",
+    "head_sha": "321a2a7ef560296f56e52164fe11d9ae71a4d889",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/211",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 210,
+    "title": "Retain main and SliQ preflight guards when merging the shared base",
+    "branch": "codex/sliq-preflight-main",
+    "head_sha": "476a1af11c94cf37d657dbb06c9bea08ba5a1474",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/210",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 209,
+    "title": "Retain main and costing preflight guards when merging the shared base",
+    "branch": "codex/costing-preflight-main",
+    "head_sha": "c3d7cbd7f856122e9c12a6ce22a3acfd91ca43a2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/209",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 208,
+    "title": "Resolve the combined chase settings layout conflict with main",
+    "branch": "codex/chase-layout-main",
+    "head_sha": "29c9a18165a860e665c7fb27c1c3e9b7a62bea9f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/208",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 207,
+    "title": "Combine reviewed chase sends, recovery and UI coverage on the #161 line",
+    "branch": "codex/chase-combined",
+    "head_sha": "8a7daaedebc03c5640bc214c49c2089702998a46",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/207",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 206,
+    "title": "Remove inherited docs from the plain English feature base",
+    "branch": "codex/plain-english-privacy",
+    "head_sha": "23ca102d25b49bc3e37337ba251a01daa2096300",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/206",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 202,
+    "title": "Add disposable database rehearsal for atomic costing saves",
+    "branch": "codex/costing-sql-test-plan",
+    "head_sha": "6431e60284a4591ab6c9552de5bc0dd0468973f3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/202",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 200,
+    "title": "Resolve chase progression conflict without allowing earlier reminders",
+    "branch": "codex/chase-progression-fix",
+    "head_sha": "eea9aecc9d94facf44b84bc6d16f4a15c14201ab",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/200",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 199,
+    "title": "Recover failed chase sends and hold uncertain outcomes",
+    "branch": "codex/chase-send-recovery",
+    "head_sha": "b900aa36f5e0980a132c97f39d403b01d329b381",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/199",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 197,
+    "title": "Keep plain login neutral regardless of remembered company",
+    "branch": "codex/neutral-login",
+    "head_sha": "817b6da88d6b6404f22ffa28dcf0bed2e8fda626",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/197",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 194,
+    "title": "copy: simplify remaining shop-facing wording",
+    "branch": "codex2/wording-pass-2",
+    "head_sha": "3d91a5014e5bc4f25516ddd92b196e836f360db9",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/194",
+    "draft": false,
+    "state": "open"
+  },
+  {
+    "number": 193,
+    "title": "Test SliQ import boundaries and refuse numeric overflow",
+    "branch": "codex2/sliq-more-tests",
+    "head_sha": "b838afafa5323a9029600a285195852b35961232",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/193",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 192,
+    "title": "Test timesheet boundaries and refuse invalid seconds",
+    "branch": "codex2/e13-more-tests",
+    "head_sha": "14eedfed30a82b4a8cf83a5db00ec498a768556f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/192",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 191,
+    "title": "Join safe chase controls, reviewed-text sends and customer matching",
+    "branch": "codex2/chase-join",
+    "head_sha": "03e723e158d0af28507775aef0f66e1575425e78",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/191",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 190,
+    "title": "Join costing port with exact rounding and machine labour rates",
+    "branch": "codex2/costing-join",
+    "head_sha": "0bf7fa4e2f96114bb707af2cd53974fa09d48770",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/190",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 186,
+    "title": "Assemble chase UI and reviewed approval fixes; progression conflict held",
+    "branch": "codex/chase-join",
+    "head_sha": "474a90f63c4625cd29a8253343cd0899aa28f1cc",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/186",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 184,
+    "title": "Join costing engine, screens and atomic settings save",
+    "branch": "codex/costing-join",
+    "head_sha": "a4bd28f9d2b287001cdb6ee7ab11ac6728e7c0e2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/184",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 183,
+    "title": "Add manual go-live checks with current sender and penny rules",
+    "branch": "codex/manual-checks",
+    "head_sha": "6200405e7c6d34f653a6460069738c7db71aa05c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/183",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 180,
+    "title": "Refuse ambiguous chase customers and preserve invoice totals after credits",
+    "branch": "chatgpt2/chase-customer-review-code-only",
+    "head_sha": "800bf2a00ccf5bd75c6cc00819329529e187ce44",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/180",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 178,
+    "title": "Record builder 2 code-only twins in a separate docs-only handover",
+    "branch": "chatgpt2/code-only-queue-docs",
+    "head_sha": "25c388b82f6dcb266a4f20f72f117842475c815c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/178",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 177,
+    "title": "Code-only twin of #158: Reconcile bank CSV quote format and reference safeguards",
+    "branch": "chatgpt2/bank-csv-reconcile-code-only",
+    "head_sha": "a24f875e5e12ccdb41e1e2afae2df73992d73741",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/177",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 176,
+    "title": "Code-only twin of #157: Reconcile paid-claim detector and strict sender adapter without dropping coverage",
+    "branch": "chatgpt2/paid-claim-reconcile-code-only",
+    "head_sha": "71c56fff162c72635936d86fa7d5e113a7bac6dd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/176",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 175,
+    "title": "Code-only twin of #156: Validate actual sender mailbox before suggesting paid invoices",
+    "branch": "chatgpt2/paid-claim-adapter-sender-code-only",
+    "head_sha": "356c31916101afd0776198c1fd2ed7b4752adb44",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/175",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 174,
+    "title": "Code-only twin of #155: Save costing wiring in one transaction and preserve machine labour rates",
+    "branch": "chatgpt2/costing-wiring-atomic-code-only",
+    "head_sha": "e50592913574b966698f1adc6e8c94763b6904ae",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/174",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 173,
+    "title": "Code-only twin of #154: Add throwaway Postgres tests and rollback for atomic settings proposals",
+    "branch": "chatgpt2/atomic-sql-tests-code-only",
+    "head_sha": "968475f1a7ec1558dfcf5f1435c6b3f415318096",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/173",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 172,
+    "title": "Code-only twin of #153: Claim reviewed chase drafts before sending and keep settings saves atomic",
+    "branch": "chatgpt2/chase-approval-atomic-code-only",
+    "head_sha": "adefac577d1ceec79fc6296d39294587b60c4013",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/172",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 171,
+    "title": "Code-only twin of #147: Require matching sender evidence and finish builder 2 code follow-ups",
+    "branch": "chatgpt2/claim-adapter-followup-code-only",
+    "head_sha": "9d29c3b3aa129934f73c79469f3316b28d86aa66",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/171",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 170,
+    "title": "Code-only twin of #146: Await bank confirmations and guard references and repeated payments",
+    "branch": "chatgpt2/bank-followup-code-only",
+    "head_sha": "dfa8c17090790c76814c2548a54b6344a6e80323",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/170",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 169,
+    "title": "Code-only twin of #145: Retain machine labour rates and make costing saves atomic",
+    "branch": "chatgpt2/costing-followup-code-only",
+    "head_sha": "b56d38355ff30f2c330ba9daffda616e94e9f6a5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/169",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 168,
+    "title": "Code-only twin of #144: Fix chase claim reopening reviewed-text approval and atomic save adapter",
+    "branch": "chatgpt2/chase-followup-code-only",
+    "head_sha": "8e34d8c30ea2c86ea16855e2cd5539c40f62a9fb",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/168",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 166,
+    "title": "Code-only twin of #139: Use plain shop-floor words for new costing chasing and bank controls",
+    "branch": "chatgpt2/plain-english-pass-code-only",
+    "head_sha": "276c56ca8b67800f28e238ae05f13861747d3c77",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/166",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 164,
+    "title": "Code-only twin of #137: Add 30 UK paid-claim emails and fix demonstrated detection errors",
+    "branch": "chatgpt2/paid-claim-more-tests-code-only",
+    "head_sha": "e6022261998e6d0c3313bccef88441a81e0399af",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/164",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 163,
+    "title": "Code-only twin of #136: Cover six UK bank CSV layouts and fix demonstrated parsing errors",
+    "branch": "chatgpt2/bank-csv-formats-code-only",
+    "head_sha": "12067894a12a30c6b838389dcd3f122e959b4cb3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/163",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 162,
+    "title": "Code-only twin of #135: costing preview fixes",
+    "branch": "chatgpt2/pr-review-code-only",
+    "head_sha": "5a1af490588494604c79ede274129b9a4f8a8bde",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/162",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 161,
+    "title": "Code-only twin of #134: Add chase screen browser coverage and optional local runner",
+    "branch": "chatgpt2/e2e-chasing-code-only",
+    "head_sha": "d5bcebc34ab60e8f9f08f0210e44c6ddd4710665",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/161",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 160,
+    "title": "Code-only twin of #132: chase screen wiring",
+    "branch": "chatgpt2/chase-wiring-code-only",
+    "head_sha": "b3287117bdcf95f46734b134a52e9790dbcdad61",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/160",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 159,
+    "title": "Record independent review verdicts and the atomic reconciliation fixes",
+    "branch": "chatgpt2/reviewer-merge-order",
+    "head_sha": "073be753c00174fccbf4cbb3d6d1b95dde419d03",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/159",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 158,
+    "title": "Reconcile bank CSV quote format and reference safeguards",
+    "branch": "chatgpt2/bank-csv-reconcile",
+    "head_sha": "63abc9c1a648c8969289bc696b7907a097e9e138",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/158",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 157,
+    "title": "Reconcile paid-claim detector and strict sender adapter without dropping coverage",
+    "branch": "chatgpt2/paid-claim-reconcile",
+    "head_sha": "04598b451b019a986414e5bc92d596a5257c67fd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/157",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 156,
+    "title": "Validate actual sender mailbox before suggesting paid invoices",
+    "branch": "chatgpt2/paid-claim-adapter-sender",
+    "head_sha": "a13ff77ee1d85840f9bb37c87f5aae676a26a84a",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/156",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 155,
+    "title": "Save costing wiring in one transaction and preserve machine labour rates",
+    "branch": "chatgpt2/costing-wiring-atomic",
+    "head_sha": "62692db767a7b185c0e7d14139ed3a0a53787f6a",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/155",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 154,
+    "title": "Add throwaway Postgres tests and rollback for atomic settings proposals",
+    "branch": "chatgpt2/atomic-sql-tests",
+    "head_sha": "e996332ee4f0f51d223e08c8277406f5c6b3f1e6",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/154",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 153,
+    "title": "Claim reviewed chase drafts before sending and keep settings saves atomic",
+    "branch": "chatgpt2/chase-approval-atomic",
+    "head_sha": "5d6b2540f82c50fccc1789dfac9799a851a1a172",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/153",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 152,
+    "title": "Complete builder 2 fixes CI conflict and merge-order handover",
+    "branch": "chatgpt2/final-coordination",
+    "head_sha": "ca7af7c74299df84d19951057099bf776a7064ae",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/152",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 151,
+    "title": "List shared files and exact conflict pairs for all 33 PRs",
+    "branch": "chatgpt2/overlap-review",
+    "head_sha": "84ebc01ed8b5fe5ef9c5b84d1e71c8f08ed0a391",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/151",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 150,
+    "title": "Document the dependency order for PRs 107 to 143",
+    "branch": "chatgpt2/merge-order",
+    "head_sha": "55446ac9e66b338634d28b0ff8d1d2e18fa28c08",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/150",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 149,
+    "title": "Record and resolve builder 2 conflicts with main",
+    "branch": "chatgpt2/base-conflict-review",
+    "head_sha": "76b6eec6b4d7e0fcd7dd951f07bebc40672d7f78",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/149",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 148,
+    "title": "Record exact latest web CI results for builder 2 PRs 132 to 143",
+    "branch": "chatgpt2/ci-web-audit",
+    "head_sha": "6eb787054058876f5de451994ab0aee1495a91c5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/148",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 147,
+    "title": "Require matching sender evidence and finish builder 2 code follow-ups",
+    "branch": "chatgpt2/claim-adapter-followup",
+    "head_sha": "190b440a330d79ce28702b89d0659d63ed8424e1",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/147",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 146,
+    "title": "Await bank confirmations and guard references and repeated payments",
+    "branch": "chatgpt2/bank-followup",
+    "head_sha": "8142d8d0ba67e36363dd780b9ac225e191451ce5",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/146",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 145,
+    "title": "Retain machine labour rates and make costing saves atomic",
+    "branch": "chatgpt2/costing-followup",
+    "head_sha": "b186177bf15cc7a2ddd8c23f57c16d07312746c3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/145",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 144,
+    "title": "Fix chase claim reopening reviewed-text approval and atomic save adapter",
+    "branch": "chatgpt2/chase-followup",
+    "head_sha": "0cceccd5e4bf70cad740c8b30dfb65ca3a113465",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/144",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 143,
+    "title": "Complete builder 2 ownership tracker and integration handover",
+    "branch": "chatgpt2/final-handover",
+    "head_sha": "60250211e24589ec984213c05dbd0611e97b4853",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/143",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 142,
+    "title": "Record blocked whole-suite matrix with exact commits and failure evidence",
+    "branch": "chatgpt2/full-suite-run",
+    "head_sha": "dfcb5e4a99d032e8b6e46db968e999610a3ae01f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/142",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 140,
+    "title": "Add costing settings and quote pricing Playwright smoke specs",
+    "branch": "chatgpt2/costing-playwright",
+    "head_sha": "e9d9f6735726e18c8458702db965d1bf2387e6a6",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/140",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 139,
+    "title": "Use plain shop-floor words for new costing chasing and bank controls",
+    "branch": "chatgpt2/plain-english-pass",
+    "head_sha": "398636987136f3362757558c185b7c3b57fa3dd2",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/139",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 138,
+    "title": "Cover receivables and pence boundaries and reject invalid overdue dates",
+    "branch": "chatgpt2/receivables-tests",
+    "head_sha": "77643f52a8232da3b60268e39c898580a99b96fd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/138",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 137,
+    "title": "Add 30 UK paid-claim emails and fix demonstrated detection errors",
+    "branch": "chatgpt2/paid-claim-more-tests",
+    "head_sha": "3b9713c3bb52423770bc138a156906ddf994f66c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/137",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 136,
+    "title": "Cover six UK bank CSV layouts and fix demonstrated parsing errors",
+    "branch": "chatgpt2/bank-csv-formats",
+    "head_sha": "6c8c7c81b908dbbd8d387262567866c7ae4e2e92",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/136",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 135,
+    "title": "Review open Tolra PRs and fix costing preview failures",
+    "branch": "chatgpt2/pr-review",
+    "head_sha": "ed23f6f3ec506210b3449f0e19f9ff34473c81f1",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/135",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 134,
+    "title": "Add chase screen browser coverage and optional local runner",
+    "branch": "chatgpt2/e2e-chasing",
+    "head_sha": "718baa8b245655ce8e14e00d2f2c416a0adee994",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/134",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 133,
+    "title": "Add JNR go-live day checklist for Thursday 12 November",
+    "branch": "chatgpt2/go-live-day-checklist",
+    "head_sha": "fa2c266778630929f2872b5178f8efc20afe0d1b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/133",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 132,
+    "title": "Wire chase cards into settings approvals and invoice pages",
+    "branch": "chatgpt2/chase-wiring",
+    "head_sha": "9f08f96dd52cfd9cbffdde913b83a0c9286d32a8",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/132",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 131,
+    "title": "Reject bank statements containing unclosed CSV quotes",
+    "branch": "codex/bank-csv-quotes",
+    "head_sha": "0a6b970ababe6b5c8e0f449084e1e81159fa68dd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/131",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 130,
+    "title": "Establish shared ownership tracker and Codex verification handover",
+    "branch": "codex/work-ownership",
+    "head_sha": "b6db532209e1cea1bfcf1533a09b4c668124401d",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/130",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 125,
+    "title": "Plain JNR wipe and go live guide",
+    "branch": "chatgpt/wipe-go-live-plain",
+    "head_sha": "88ebf7811f091d18e2524ed0598567f74f8b934f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/125",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 124,
+    "title": "ChatGPT builder one handover and review checklist",
+    "branch": "chatgpt/final-handover-1",
+    "head_sha": "a18146010dc3b57d7a6ee9b1006c7c3e070fcfd3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/124",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 123,
+    "title": "Wire company costing rates and quote pricing to live screens",
+    "branch": "chatgpt/costing-wiring",
+    "head_sha": "ad515217a4fa033319e368d9b46cd0b98e078c1f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/123",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 118,
+    "title": "Polish invoice chase reminder wording",
+    "branch": "chatgpt/chase-wording",
+    "head_sha": "897eacdb435bbc7d64f559e679b860985ebda23f",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/118",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 117,
+    "title": "Suggest paid invoices from incoming customer emails",
+    "branch": "chatgpt/paid-claim-adapter",
+    "head_sha": "79563720f49a0fe3e733c02ad9734dd38f124a3c",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/117",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 116,
+    "title": "Bank statement confirmation screen",
+    "branch": "chatgpt/bank-check-ui",
+    "head_sha": "d2ddea3c3872e0b7931e43a34d9164c7a02ed283",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/116",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 115,
+    "title": "Add simple staff walkthrough for chasing, timesheet emails and costing",
+    "branch": "chatgpt2/walkthrough-docs",
+    "head_sha": "40747158fbd5ae53a7e03ca1c379803fcd0b9d5b",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/115",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 113,
+    "title": "Add customer says paid invoice controls",
+    "branch": "chatgpt2/customer-says-paid-ui",
+    "head_sha": "3c386f5fdc8cfb79a4ee7d546901a41a3aaa6166",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/113",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 112,
+    "title": "Add chase email approval card",
+    "branch": "chatgpt2/approvals-send-ui",
+    "head_sha": "0e6fede2537ac9fb79347eb171345f625c26c0ea",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/112",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 110,
+    "title": "Port Python costing calculations into Tolra TypeScript",
+    "branch": "chatgpt/costing-in-tolra",
+    "head_sha": "7ab51a6cfd813619b3441e71ae2ca4d388e6f492",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/110",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 109,
+    "title": "Add bank statement parsing and invoice matching",
+    "branch": "chatgpt/bank-matcher",
+    "head_sha": "c547757a3cf3c4c7a4c729d4af6b4a44e12534e0",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/109",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 108,
+    "title": "Add invoice chase scheduling and message rendering",
+    "branch": "chatgpt/chase-steps",
+    "head_sha": "2bd857ba4a8e78e4cfcaa9d50dfe3ba18c703f70",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/108",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 107,
+    "title": "Add paid claim detection with unit coverage",
+    "branch": "chatgpt/paid-claim",
+    "head_sha": "0944385a1e90a31cf5b35331c03acb44be766495",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/107",
+    "draft": true,
+    "state": "open"
+  },
+  {
+    "number": 84,
+    "title": "Security proofs S1-S4 with the full role matrix (supersedes #48)",
+    "branch": "claude/pr48-final",
+    "head_sha": "4765566e14c297da258fd440745af161b234b8bd",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/84",
+    "draft": false,
+    "state": "open"
+  },
+  {
+    "number": 30,
+    "title": "Add Impeccable product and design context",
+    "branch": "design/impeccable-product-context",
+    "head_sha": "ededf846ae240e32aacdd799ce4da8238c4c6908",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/30",
+    "draft": false,
+    "state": "open"
+  },
+  {
+    "number": 11,
+    "title": "CI: browser suite in 4 shards, DB suite once (A10). Proving run only, DO NOT MERGE yet",
+    "branch": "claude/tolra-a10-ci-shard",
+    "head_sha": "f92d4d882f440517958f7a02d227dce9b61f6ad3",
+    "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/11",
+    "draft": false,
+    "state": "open"
+  }
+]
