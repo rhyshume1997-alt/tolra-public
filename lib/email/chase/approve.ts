@@ -16,9 +16,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { pauseActive } from "@/lib/email/chase/steps";
 import { escapeHtml } from "@/lib/email/templates/defaults";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
+import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
-export type ApproveInput = { organizationId: string; userId: string; draftId: string; expectedSubject: string; expectedBody: string; today: string };
+export type ApproveInput = { organizationId: string; userId: string; draftId: string; expectedSubject: string; expectedBody: string; today: string; /** An admin's explicit choice for ONE failed message (never automatic). */ provider?: "resend"; isAdmin?: boolean };
 export type ApproveDeps = {
   /** The person's own session (row level security). */
   db: SupabaseClient;
@@ -26,7 +27,9 @@ export type ApproveDeps = {
   admin: SupabaseClient;
   /** Microsoft 365 / Resend / null (none set up) / "refused" (the test provider on a deployment). */
   provider: (organizationId: string) => Promise<unknown | null | "refused">;
-  send: (input: CompanyEmailInput) => Promise<CompanyEmailResult>;
+  send: (input: CompanyEmailInput, provider?: unknown) => Promise<CompanyEmailResult>;
+  /** Resend from this deployment's configuration (null: not configured); used only for an explicit choice. */
+  resend?: () => unknown | null;
   /** EMAIL_RECIPIENT_DOMAINS. */
   allowlisted: (address: string) => boolean;
 };
@@ -51,6 +54,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   const draft = draftRow as { id: string; organization_id: string; to_email: string; subject: string; body: string; status: string; related_to_type: string | null; related_to_id: string | null } | null;
   if (draftError || !draft || draft.organization_id !== org) return refused(404, "Draft not found.");
   if (typeof input.expectedSubject !== "string" || typeof input.expectedBody !== "string" || input.expectedSubject !== draft.subject || input.expectedBody !== draft.body) return refused(409, "The draft changed after you checked it. Reload and review it before sending.");
+  if (draft.status === "unknown" || draft.status === "sending") return refused(409, "This email's outcome is not known yet. It is held for checking: it will not be retried or sent another way until a person has checked Email history and settled it.");
   if (draft.status !== "drafted") return refused(409, "This e-mail is no longer waiting for approval. Reload the page.");
 
   const { data: chaseRow } = await db.from("chase_sends").select("id, invoice_id, status").eq("draft_history_id", draft.id).eq("organization_id", org).maybeSingle();
@@ -102,7 +106,18 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   const subject = input.expectedSubject;
   const body = input.expectedBody;
 
-  const provider = await deps.provider(org);
+  let provider: unknown;
+  if (input.provider === "resend") {
+    if (!input.isAdmin) return refused(403, "Only an admin can choose another provider for a failed email.");
+    const earlier = await db.from("email_history").select("status").eq("organization_id", org).eq("related_to_id", chase.invoice_id).in("status", ["failed", "unknown"]);
+    const statuses = earlier.error ? ["unknown"] : (earlier.data ?? []).map((r: { status: string }) => r.status);
+    if (statuses.includes("unknown")) return refused(409, "An earlier attempt has an unknown outcome. Check Email history first; nothing is sent another way until it is settled.");
+    if (!statuses.includes("failed")) return refused(409, "Another provider can only be chosen for an email whose send failed.");
+    provider = deps.resend?.() ?? null;
+    if (!provider) return refused(503, "Resend is not set up for this company, so it can't be used. The draft stays for manual sending.");
+  } else {
+    try { provider = await deps.provider(org); } catch { return refused(502, "Microsoft 365 needs attention. Nothing was sent and no other provider was used. An admin can choose Resend for this message if it is set up."); }
+  }
   if (provider === "refused") return refused(503, "E-mail sending is switched off on this site.");
   if (!provider) return { status: "no_provider", message: NO_PROVIDER_MESSAGE };
 
@@ -125,14 +140,16 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   };
   const needsChecking = () => refused(502, "The send result needs checking. Do not send this reminder again until it has been checked.");
 
+  if (input.provider === "resend") await recordSendAudit(db, { outcome: "provider_override", historyId: draft.id, channel: "chase-approve", provider: "resend" });
   let sent: CompanyEmailResult;
   try { sent = await deps.send({
     organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body, html: escapeHtml(body).replace(/\r?\n/g, "<br>\n"),
     recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: approveKey(draft.id),
-  }); } catch { await settleClaim("unknown"); return needsChecking(); }
+  }, input.provider === "resend" ? provider : undefined); } catch { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: "thrown" }); return needsChecking(); }
   if (!sent.ok) {
-    if (sent.uncertain) { await settleClaim("unknown"); return needsChecking(); }
-    if (!await settleClaim("drafted")) return needsChecking();
+    if (sent.uncertain) { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: sent.code }); return needsChecking(); }
+    if (!await settleClaim("drafted")) { await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: "settle_failed" }); return needsChecking(); }
+    await recordSendAudit(db, { outcome: "failed", historyId: draft.id, channel: "chase-approve", code: sent.code });
     const http = sent.code === "invalid" ? 400 : sent.code === "recipient_refused" ? 403 : sent.code === "rate_limited" ? 429 : sent.code === "no_provider" ? 503 : 502;
     if (sent.code === "no_provider") return { status: "no_provider", message: NO_PROVIDER_MESSAGE };
     return refused(http, sent.error);

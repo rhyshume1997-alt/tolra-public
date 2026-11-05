@@ -43,9 +43,10 @@ export async function POST(request: Request) {
     const customerName = String(job.customer ?? job.customer_name ?? "").trim();
     const customerLookup = job.customer_id
       ? supabase.from("customers").select("email").eq("organization_id", profile.organization_id).eq("id", job.customer_id).limit(1)
-      : supabase.from("customers").select("email").eq("organization_id", profile.organization_id).eq("name", customerName || "\u0000no customer").limit(1);
+      : supabase.from("customers").select("email").eq("organization_id", profile.organization_id).eq("name", customerName || "\u0000no customer").limit(2);
     const { data: customers } = await customerLookup;
-    allowed = (customers ?? []).some((row) => clean(row.email) === recipient_email);
+    // Two customers with this name (no customer id on the job): ambiguous, so neither address is trusted.
+    allowed = (job.customer_id || (customers ?? []).length <= 1) && (customers ?? []).some((row) => clean(row.email) === recipient_email);
   }
   if (!allowed) {
     const { data: workshops } = await supabase

@@ -80,9 +80,12 @@ export async function POST(request: Request) {
   const partyTable = spec.party === "customer" ? "customers" : "suppliers";
   const party = row.customer_id
     ? supabase.from(partyTable).select("email").eq("organization_id", profile.organization_id).eq("id", String(row.customer_id)).limit(1)
-    : supabase.from(partyTable).select("email").eq("organization_id", profile.organization_id).eq("name", partyName || "\u0000none").limit(5);
+    : supabase.from(partyTable).select("email").eq("organization_id", profile.organization_id).eq("name", partyName || "\u0000none").limit(2);
   const { data: parties } = await party;
-  for (const p of (parties ?? []) as Array<{ email?: unknown }>) if (lower(p.email)) allowed.add(lower(p.email));
+  // By name only (quotes and invoices hold no customer id): two records with this name are ambiguous, so neither address is trusted
+  // (the same rule as statements and chasing). The person can still use the document's own address, the team or the allowlist.
+  const matched = (parties ?? []) as Array<{ email?: unknown }>;
+  if (row.customer_id || matched.length <= 1) for (const p of matched) if (lower(p.email)) allowed.add(lower(p.email));
   const outside = () => recipients.filter((address) => !allowed.has(address) && !onRecipientAllowlist(address, process.env.EMAIL_RECIPIENT_DOMAINS));
   if (outside().length) {
     const { data: people } = await supabase.from("user_profiles").select("email, workshop_email").eq("organization_id", profile.organization_id);

@@ -115,10 +115,18 @@ export async function selectProvider(organizationId: string, deps: CompanyEmailD
   if (env.EMAIL_PROVIDER === "mock") return env.VERCEL_ENV ? "refused" : (deps.providers?.mock ?? mockProvider)();
   const token = await (deps.getToken ?? getDelegatedAccessToken)(organizationId);
   if (token) return deps.providers?.microsoft ? deps.providers.microsoft(token) : microsoftProvider(token, deps.fetch ?? fetch);
+  return resendFromEnv(env, deps);
+}
+
+/**
+ * Resend from this deployment's own configuration (RESEND_API_KEY and EMAIL_FROM), or null when it is not configured. selectProvider uses
+ * it when the company has no Microsoft 365 connection; an admin's explicit "send this failed message with Resend" uses it directly.
+ * NEVER called after a Microsoft failure by itself: no code path switches provider automatically.
+ */
+export function resendFromEnv(env: Record<string, string | undefined> = process.env, deps: Pick<CompanyEmailDeps, "providers"> = {}): EmailProvider | null {
   const apiKey = env.RESEND_API_KEY?.trim();
   const from = env.EMAIL_FROM ? stripHeader(env.EMAIL_FROM) : "";
-  if (apiKey && from) return (deps.providers?.resend ?? resendProvider)(apiKey, from);
-  return null;
+  return apiKey && from ? (deps.providers?.resend ?? resendProvider)(apiKey, from) : null;
 }
 
 type Checked = { email: OutgoingEmail } | { error: string; code: "invalid" | "recipient_refused" };
