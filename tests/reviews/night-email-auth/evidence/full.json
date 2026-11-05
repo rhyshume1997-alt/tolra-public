@@ -1,0 +1,7 @@
+{
+  "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "command": "npx vitest run --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/night-email-full.json",
+  "passed": 6799,
+  "failed": 0,
+  "skipped": 0
+}

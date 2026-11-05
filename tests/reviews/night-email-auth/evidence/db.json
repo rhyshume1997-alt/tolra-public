@@ -1,0 +1,7 @@
+{
+  "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "command": "npx vitest run --config tests/reviews/night-email-auth/vitest.db.config.ts",
+  "passed": 59,
+  "failed": 0,
+  "skipped": 0
+}
