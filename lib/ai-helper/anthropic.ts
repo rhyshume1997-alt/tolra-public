@@ -41,16 +41,18 @@ export function anthropicProvider(make: MakeClient = makeClient): AiHelperProvid
         // Server errors, timeouts, connection failures and anything else: the model is not available right now.
         throw new AiProviderError("unavailable", undefined, undefined, rejected);
       }
-      const usage: AiUsage = {
-        inputTokens: (response.usage?.input_tokens ?? 0) + (response.usage?.cache_creation_input_tokens ?? 0) + (response.usage?.cache_read_input_tokens ?? 0),
-        outputTokens: response.usage?.output_tokens ?? 0,
-      };
+      // Missing/invalid usage is an uncertain billed attempt, never a free answer.
+      const counts = [response.usage?.input_tokens, response.usage?.output_tokens,
+        response.usage?.cache_creation_input_tokens ?? 0, response.usage?.cache_read_input_tokens ?? 0];
+      if (!counts.every((n) => Number.isSafeInteger(n) && n! >= 0)) throw new AiProviderError("unavailable");
+      const usage: AiUsage = { inputTokens: counts[0]! + counts[2]! + counts[3]!, outputTokens: counts[1]! };
+      if (!Number.isSafeInteger(usage.inputTokens)) throw new AiProviderError("unavailable");
       // The model declined: its content may not match the schema, so none of it is read.
       if (response.stop_reason === "refusal") throw new AiProviderError("refused", usage);
       // Cut short (max_tokens) or anything but a finished answer: not trusted.
       if (response.stop_reason !== "end_turn") throw new AiProviderError("invalid", usage);
-      const text = response.content.filter((block): block is Anthropic.TextBlock => block.type === "text").map((block) => block.text).join("");
       try {
+        const text = response.content.filter((block): block is Anthropic.TextBlock => block.type === "text").map((block) => block.text).join("");
         return { json: JSON.parse(text), usage, model: response.model };
       } catch {
         throw new AiProviderError("invalid", usage);

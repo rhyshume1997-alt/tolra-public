@@ -37,7 +37,7 @@ const db = vi.hoisted(() => ({
   /** What ai_helper_set_finance_check answers (null = it works). */
   financeError: null as null | { code: string },
   /** What ai_helper_save_settings answers as an error (null = it works). */
-  saveError: null as null | { code: string },
+  saveError: null as null | { code: string; hint?: string },
   status: { roundup_enabled: true, rfq_enabled: true } as Record<string, unknown>,
   reserve: null as null | ((args: Record<string, unknown>) => { data: unknown; error: unknown }),
   customers: ["Acme Engineering Ltd"],
@@ -203,18 +203,37 @@ afterEach(() => vi.restoreAllMocks());
 const settleCall = () => db.rpcs.find((r) => r.fn === "ai_helper_settle")?.args;
 
 describe("switches and roles", () => {
-  it("server switch off: 404 on every route before any sign-in check", async () => {
+  it("admins can prepare 1000p company settings and encrypted keys while the server is OFF; office cannot", async () => {
+    process.env.AI_HELPER_ENABLED = "false";
+    auth.role = "office";
+    expect((await status()).status).toBe(403);
+    expect((await settings(post({ roundupEnabled: false, rfqEnabled: false, monthlyCapPence: 1000 }))).status).toBe(403);
+    expect((await keyPost(post({ key: "sk-ant-synthetic-never-live-000000" }))).status).toBe(403);
+    expect(db.rpcs).toEqual([]);
+    auth.role = "admin";
+    const state = await status();
+    expect(state.headers.get("cache-control")).toBe("no-store");
+    expect(await state.json()).toMatchObject({ server_enabled: false });
+    expect((await settings(post({ roundupEnabled: false, rfqEnabled: false, monthlyCapPence: 1000 }))).status).toBe(200);
+    expect((await keyPost(post({ key: "sk-ant-synthetic-never-live-000000" }))).status).toBe(200);
+    expect((await keyDelete(post({}))).status).toBe(200);
+    for (const response of await Promise.all([rfq(post({ text: GOOD_RFQ })), roundup(post({ period: "daily" }))])) expect(response.status).toBe(404);
+    expect(model.calls).toBe(0);
+    expect(db.rpcs.every(r => !r.fn.includes("reserve"))).toBe(true);
+  });
+
+  it("server switch off: provider/decision routes refuse before any sign-in check", async () => {
     for (const value of [undefined, "1", "TRUE"]) {
       if (value === undefined) delete process.env.AI_HELPER_ENABLED; else process.env.AI_HELPER_ENABLED = value;
-      const answers = await Promise.all([status(), settings(post({})), keyPost(post({})), keyDelete(post({})), roundup(post({ period: "daily" })), rfq(post({ text: "x" })), decide(post({}))]);
-      expect(answers.map((r) => r.status)).toEqual([404, 404, 404, 404, 404, 404, 404]);
+      const answers = await Promise.all([roundup(post({ period: "daily" })), rfq(post({ text: "x" })), decide(post({}))]);
+      expect(answers.map((r) => r.status)).toEqual([404, 404, 404]);
     }
     expect(auth.calls).toBe(0);
     expect(db.rpcs).toEqual([]);
   });
 
   it("the routes compare the flag name lib/ai-helper/flag.ts names", () => {
-    for (const f of routeFiles) expect(source(f), f).toContain(`process.env.${AI_HELPER_FLAG} !== "true"`);
+    for (const f of routeFiles.filter((f) => !/\/(status|settings|key)\//.test(f))) expect(source(f), f).toContain(`process.env.${AI_HELPER_FLAG} !== "true"`);
   });
 
   it("office and admin may use it; settings and the key are admin only; workshop and viewer are refused", async () => {
@@ -606,6 +625,14 @@ describe("round-up", () => {
 
 describe("settings and key", () => {
   beforeEach(() => { auth.role = "admin"; });
+
+  it("explains a cap below used plus reserved costs without changing other switches", async () => {
+    db.saveError = { code: "22023", hint: "cap_below_usage" };
+    const response = await settings(post({ roundupEnabled: true, rfqEnabled: true, monthlyCapPence: 1 }));
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatch(/used and reserved/);
+    expect(db.rpcs.map(r => r.fn)).toEqual(["ai_helper_save_settings"]);
+  });
 
   it("validates the switches and the cap", async () => {
     expect((await settings(post({ roundupEnabled: true, rfqEnabled: false, monthlyCapPence: 100_001 }))).status).toBe(400);

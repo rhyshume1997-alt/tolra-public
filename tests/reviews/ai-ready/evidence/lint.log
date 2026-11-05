@@ -1,0 +1,41 @@
+
+> quoteflow-jnr@0.1.0 lint
+> eslint . --ext .js,.jsx,.ts,.tsx
+
+
+/workspace/work/ai-ready-for-keys/components/job-photos.tsx
+  58:6  warning  React Hook useCallback has a missing dependency: 'viewer?.profile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/workspace/work/ai-ready-for-keys/components/rework-dialog.tsx
+  217:6  warning  React Hook useCallback has a missing dependency: 'viewer?.profile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/workspace/work/ai-ready-for-keys/lib/offline/outbox.ts
+  446:55  warning  '_buildId' is defined but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/db/inspection-support.ts
+  19:32  warning  '_override' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/db/integrations-084.test.ts
+  19:20  warning  'as' is defined but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/db/issued-documents.test.ts
+  14:5  warning  'seq' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/db/purchase-order-link-124.test.ts
+  60:73  warning  '_a' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  60:89  warning  '_b' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/unit/cron-ai-helper-purge.test.ts
+  11:40  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/unit/cron-ip-purge.test.ts
+  7:40  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/unit/cron-overview-snapshot.test.ts
+  7:40  warning  '_input' is defined but never used  @typescript-eslint/no-unused-vars
+
+/workspace/work/ai-ready-for-keys/tests/unit/offline-signout-scope.test.ts
+  78:23  warning  '_m' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 12 problems (0 errors, 12 warnings)
+

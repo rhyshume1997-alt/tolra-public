@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { aiHelperConfiguration } from "@/lib/server/ai-helper-configuration";
 import { readCompanyFinanceCheck } from "@/lib/ai/finance-check/flag";
 import { readCompanyAssistant } from "@/lib/ai-helper/assistant";
 import { AI_HELPER_ROLES } from "@/lib/ai-helper/flag";
@@ -11,11 +12,11 @@ import { isErrorResponse, jsonError, requireProfile } from "@/lib/server/auth";
  * server). Also the company's finance-check switch (finance_check_enabled, migration 106) and whether the database can hold it at all
  * (`finance_check_available`; false until 106 is applied, when the AI section leaves that feature out). Likewise the assistant (G3,
  * migration 134): `assistant_enabled`, and `assistant_available` only when this server has AI_ASSISTANT_ENABLED exactly "true" and the
- * database has the switch. Off (404) unless AI_HELPER_ENABLED is exactly "true". Office and admin only; a support session gets nothing.
+ * database has the switch. Admin configuration remains available while the provider routes are switched off. Office and admin only; a support session gets nothing.
  */
 export async function GET() {
-  if (process.env.AI_HELPER_ENABLED !== "true") return jsonError("Not found", 404);
-  const auth = await requireProfile([...AI_HELPER_ROLES]);
+  // Admins can prepare configuration while every provider route stays OFF.
+  const auth = await requireProfile(process.env.AI_HELPER_ENABLED === "true" ? [...AI_HELPER_ROLES] : ["admin"]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't use the AI helper.", 403);
   const { data, error } = await auth.supabase.rpc("ai_helper_status");
@@ -26,5 +27,6 @@ export async function GET() {
   const finance = await readCompanyFinanceCheck(auth.supabase, auth.profile.organization_id);
   const assistant = process.env.AI_ASSISTANT_ENABLED === "true" ? await readCompanyAssistant(auth.supabase, auth.profile.organization_id) : { available: false, enabled: false };
   return NextResponse.json({ ...(data as Record<string, unknown>), finance_check_enabled: finance.enabled, finance_check_available: finance.available,
-    assistant_enabled: assistant.enabled, assistant_available: assistant.available }, { headers: { "Cache-Control": "no-store" } });
+    assistant_enabled: assistant.enabled, assistant_available: assistant.available,
+    ...aiHelperConfiguration((data as { key_set?: boolean } | null)?.key_set === true) }, { headers: { "Cache-Control": "no-store" } });
 }

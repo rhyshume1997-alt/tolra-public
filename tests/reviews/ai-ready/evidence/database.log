@@ -1,0 +1,18 @@
+PASS all proposal verify rows true; replay is guarded and idempotent
+PASS unconfigured company defaults to 1000p, every feature OFF, no key
+PASS existing explicitly saved company cap is unchanged
+PASS setting own key creates default 1000p row but enables nothing
+PASS own-key RFQ, roundup and assistant all refuse while OFF
+PASS only own-company admin can set cap, office and viewer cannot
+PASS RLS returns only own company settings, usage and request rows
+PASS no browser role may read encrypted keys, write ledgers or settle
+PASS viewer RLS sees no AI rows; anonymous has no table grant
+PASS service-only settlement records validated usage/output and cost once in the existing company ledger
+PASS support and admin without MFA cannot set cap or reserve
+PASS all three own-key paths spend one shared company allowance
+PASS cap setter refuses below spent plus outstanding reservations
+PASS switching off keeps cap, spend and reservations; no bypass
+PASS two independent sessions cannot spend the last allowance twice
+PASS cap reduction waits for reservation then refuses below held cost
+PASS B allowance/key/request access remains independent after A races
+TOTAL 17 passed, 0 failed, 0 skipped (real PostgreSQL; synthetic auth/session/audit prerequisites)

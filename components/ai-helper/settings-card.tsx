@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 /**
  * Settings > AI: a pointer only. The AI switches, the monthly limit and the company's own Anthropic key moved to the AI section
- * (/ai-helper), which is the one place for them. Shown to admins only when this server has the AI helper on (AI_HELPER_ENABLED).
+ * (/ai-helper), which is the one place for them. Shown to admins even while requests are switched off, so configuration can be prepared safely.
  */
 export function AiHelperSettingsCard() {
   const { status, allowed } = useAiHelperStatus();

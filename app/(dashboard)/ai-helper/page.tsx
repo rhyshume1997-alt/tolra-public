@@ -12,7 +12,7 @@ import { RoleGate } from "@/components/role-gate";
 /**
  * The AI section (office and admin; anyone else gets the role gate's message): the one place for the company's AI. The master on/off
  * switch with one switch per feature, what each feature shows, how it is customised (the company's own key, monthly limit, who can use
- * it), and the working panels for whichever features are on. Hidden entirely when this server has the AI helper off. Online only:
+ * it), and working panels only when this server and provider configuration are ready. Admin configuration remains visible while requests are off. Online only:
  * nothing here is queued offline.
  */
 export default function AiHelperPage() {
@@ -36,9 +36,9 @@ export default function AiHelperPage() {
             <AiMasterCard status={status} onStatus={setStatus} />
             <AiWhatItShows />
             <AiCustomisedCard status={status} onStatus={setStatus} />
-            {status.roundup_enabled ? <AiRoundupPanel onUsed={() => void reload()} /> : null}
-            {status.rfq_enabled ? <AiRfqPanel onUsed={() => void reload()} /> : null}
-            {status.assistant_available && status.assistant_enabled ? <AiAssistantPanel onUsed={() => void reload()} /> : null}
+            {status.server_enabled && status.configuration_ready && status.roundup_enabled ? <AiRoundupPanel onUsed={() => void reload()} /> : null}
+            {status.server_enabled && status.configuration_ready && status.rfq_enabled ? <AiRfqPanel onUsed={() => void reload()} /> : null}
+            {status.server_enabled && status.configuration_ready && status.assistant_available && status.assistant_enabled ? <AiAssistantPanel onUsed={() => void reload()} /> : null}
           </>
         )}
       </div>

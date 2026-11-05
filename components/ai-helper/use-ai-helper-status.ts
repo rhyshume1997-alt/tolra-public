@@ -23,16 +23,20 @@ export type AiHelperStatus = {
   assistant_available?: boolean;
   /** Set by the settings route when the other settings were saved but the finance-check switch could not be changed. */
   warning?: string;
+  server_enabled?: boolean;
+  provider_state?: string;
+  configuration_ready?: boolean;
+  configuration_message?: string;
 };
 
 /**
  * The company's AI helper state, read from the server (GET /api/ai-helper/status, as the person) only when this server has the helper
- * on and the person is working as office or admin. Null while loading, when off, or on any error: every AI UI then stays hidden.
+ * on and the person is office, or for an admin preparing settings while it is off. Null on loading/error; provider panels require server_enabled and configuration_ready.
  */
 export function useAiHelperStatus() {
   const { aiHelper } = useAiFeatures();
   const { profile, activeRole } = useUser();
-  const allowed = Boolean(aiHelper && profile && (activeRole === "admin" || activeRole === "office"));
+  const allowed = Boolean(profile && (activeRole === "admin" || (aiHelper && activeRole === "office")));
   const [status, setStatus] = useState<AiHelperStatus | null>(null);
   const [loaded, setLoaded] = useState(false);
 
