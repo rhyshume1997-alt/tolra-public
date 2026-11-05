@@ -1,7 +1,7 @@
 # Builder 4: email, recent MFA and provider cards on PR #415
 
 Base: `e42d927383513d1b98ce9cfca444884475622e2f` (PR #415, `cand/12nov-int`).
-Own branch: `codex/b4-415-email-mfa-review`. One draft PR into the candidate; Code integrates it. No merge, production SQL, live provider calls or customer messages.
+Draft PR: [#417](https://github.com/rhyshume1997-alt/tolra-public/pull/417). Implementation commit: `8e61d9398a4b49447517c325650431d7e664bfd0`; later changes only record verification in this handover. Own branch: `codex/b4-415-email-mfa-review`. One draft PR into the candidate; Code integrates it. No merge, production SQL, live provider calls or customer messages.
 
 ## Already present and reused
 
@@ -20,6 +20,9 @@ DONE in the pinned candidate: scheduled chase drafts, human approval, atomic dra
 ## Validation
 
 Final full unit suite: **6,662 passed, 0 failed, 0 skipped, 456 files**, 174.45 seconds. Lint: **0 errors, 14 existing warnings**. Final typecheck: **passed** with the explicit 6 GB Node heap. Focused new/reworked regression selection: **205 passed in 5 files**, 3.67 seconds.
+
+
+Production build: **passed**, exit 0, from a clean `git archive` export of implementation commit `8e61d9398a4b49447517c325650431d7e664bfd0` under `/workspace/b4-415-build`. All 102 static pages generated. The existing outbound network guard was preloaded for the whole build; **0 blocked/external connection attempts**. The nested worktree's first build exited 0 but reported an outer/inner ESLint plugin conflict, so the clean export was built with the normal lint/type checks included. The export's source matches the implementation commit. Existing warnings remain: three application lint warnings and Resend's unused optional `@react-email/render` import is absent from the installed dependencies. The configured workflows send text/HTML, not React email components. No dependency/config/rule was changed to hide a warning.
 
 Focused proof includes 95 cases through the real authentication and recent-MFA guards (mocked Supabase transport/provider side effects): stale, absent, malformed and out-of-window future MFA; aal1/auth errors; office/workshop/read-only/support/inactive refusals; database role refusal and mismatched company; secondary-admin success; session company over stale profile/body/header company; AI ciphertext cannot decrypt in the other company. The helper under test is not mocked.
 
