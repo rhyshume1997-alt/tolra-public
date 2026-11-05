@@ -63,6 +63,8 @@ async function connect(t = alpha(), tenant = `tenant-${randomUUID()}`) {
   await svc("select public.integration_oauth_consume($1, $2, 'xero', $3) as r", [t.id, t.users.admin.id, state]);
   await svc("select public.integration_store_connection($1, $2, 'xero', $3, $4, $5, $6, $7, now() + interval '30 minutes', 1) as r",
     [t.id, t.users.admin.id, tenant, `${t.name} Xero`, randomUUID(), cipher(), cipher()]);
+  // Synthetic transfer tests explicitly opt in; a connection alone now stays OFF.
+  await q(user("admin", t), "select public.integration_xero_set_transfers(true)");
   return tenant;
 }
 async function disconnect(t = alpha()) {

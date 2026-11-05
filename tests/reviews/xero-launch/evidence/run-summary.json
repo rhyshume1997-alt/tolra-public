@@ -1,0 +1,34 @@
+{
+  "code_snapshot_commit": "a6cb8f8399303151080e97fe13f7ca133c64c55e",
+  "recorded_utc": "2026-11-05T08:35:11.525062+00:00",
+  "environment": "mocked provider for unit tests; self-created pinned no-network DB with identity receipts for SQL tests",
+  "counts": {
+    "regression": {
+      "passed": 221,
+      "failed": 0,
+      "skipped": 0
+    },
+    "database": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "release_wrapper": {
+      "passed": 186,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "typecheck_exit": 0,
+  "lint_exit": 0,
+  "logs": {
+    "release-wrapper.log": "8be580d83a2c5e9446eabc115f8e41d52f5953282fb137b9686c53a6220c1c35",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "initial-database.log": "3bb7e29e0a393291138f05f01fe12714ba11e7de46a9a46c29e7961424e03ed1",
+    "database.log": "d95cadb17392621e572e4d913fc97df7b8ccd091b6ae72cd9495a00385d4fa58",
+    "unit.log": "81eead8c2c12924f4d211f189558d36f73da63d1f37687c345e4e0e4539cfc70",
+    "regression.log": "b398b08aa538ad715cabc684d3d838a56871ada589d6fa3324ad6fcac0fa0418",
+    "before-consent-test.log": "0f62b5eac72e2d2f2c5cb5816710659caf384eb4ecc670e3189efff73f9ecc27",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

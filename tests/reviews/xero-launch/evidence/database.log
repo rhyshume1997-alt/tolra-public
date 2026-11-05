@@ -1,0 +1,19 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-xero-launch-hold
+
+stdout | tests/reviews/xero-launch/database.test.ts
+Xero launch evidence: /tmp/tolra-xero-launch-7dc38b12-f577-41cc-a49d-26973c86c125
+
+ ✓ tests/reviews/xero-launch/database.test.ts (5 tests) 34955ms
+   ✓ existing connected companies default OFF; six verification checks pass 711ms
+   ✓ held queue insert creates nothing and old failed send cannot retry 624ms
+   ✓ only current-company admin can enable; office, workshop and anon refuse 1934ms
+   ✓ admin release enables normal queue and retry, disabling blocks them again 1590ms
+   ✓ reconnection resets enable and rollback restores original functions on this disposable only 1682ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  08:33:51
+   Duration  35.24s (transform 62ms, setup 0ms, collect 57ms, tests 34.95s, environment 0ms, prepare 65ms)
+

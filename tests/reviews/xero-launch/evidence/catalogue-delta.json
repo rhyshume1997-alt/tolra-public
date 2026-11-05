@@ -1,0 +1,124 @@
+{
+  "changes": [
+    {
+      "before": {
+        "kind": "function",
+        "object": "public.integration_claim_next(p_org uuid, p_provider text, p_lease_seconds integer, p_doc_type text, p_doc_id uuid)",
+        "detail": "definer search_path=pg_catalog, public 0118c3b96d40eef73181125404f1d591"
+      },
+      "after": {
+        "kind": "function",
+        "object": "public.integration_claim_next(p_org uuid, p_provider text, p_lease_seconds integer, p_doc_type text, p_doc_id uuid)",
+        "detail": "definer search_path=pg_catalog, public 4aadef9b77f6fd365e727ac4b91e4e0d"
+      }
+    },
+    {
+      "before": {
+        "kind": "function",
+        "object": "public.integration_retry_send(p_send uuid)",
+        "detail": "definer search_path=pg_catalog, public, security_audit a4639737f346b6a8e9abf25ea784da2a"
+      },
+      "after": {
+        "kind": "function",
+        "object": "public.integration_retry_send(p_send uuid)",
+        "detail": "definer search_path=pg_catalog, public, security_audit 77ceed4f060d1c57273b9c808d1285bd"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function",
+        "object": "public.integration_xero_connection_hold()",
+        "detail": "invoker search_path=pg_catalog, public d909423a6340cb2591583554882a662d"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function",
+        "object": "public.integration_xero_launch_status()",
+        "detail": "definer search_path=pg_catalog, public e3711fee60093bc623f53311aab5bc75"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function",
+        "object": "public.integration_xero_queue_hold()",
+        "detail": "definer search_path=pg_catalog, public 12e76c671a1ce9c9accf7c008f28ef5c"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function",
+        "object": "public.integration_xero_set_transfers(p_enabled boolean)",
+        "detail": "definer search_path=pg_catalog, public, security_audit 01ce9a42841f0baae11ef2e7b8d7c8d5"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function",
+        "object": "public.integration_xero_transfer_enabled(p_org uuid)",
+        "detail": "definer search_path=pg_catalog, public 3a543b397ca9d4082afe112d80d21b07"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function-grant",
+        "object": "public.integration_xero_connection_hold()",
+        "detail": ""
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function-grant",
+        "object": "public.integration_xero_launch_status()",
+        "detail": "authenticated"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function-grant",
+        "object": "public.integration_xero_queue_hold()",
+        "detail": ""
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function-grant",
+        "object": "public.integration_xero_set_transfers(p_enabled boolean)",
+        "detail": "authenticated"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "function-grant",
+        "object": "public.integration_xero_transfer_enabled(p_org uuid)",
+        "detail": "service_role"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "trigger",
+        "object": "public.integration_connections :: xero_connection_launch_hold",
+        "detail": "O 891320f04bf4e34689ce4c3792b8b87c"
+      }
+    },
+    {
+      "before": null,
+      "after": {
+        "kind": "trigger",
+        "object": "public.integration_sends :: xero_queue_launch_hold",
+        "detail": "O 727cbf1be08f32fc3a3306fa9442e028"
+      }
+    }
+  ]
+}
