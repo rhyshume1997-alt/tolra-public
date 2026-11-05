@@ -10,11 +10,11 @@ const ORG = "org-a";
 const DRAFT = "11111111-1111-4111-8111-111111111111";
 let db: FakeDb;
 let admin: FakeDb & { rpc: ReturnType<typeof vi.fn> };
-const send = vi.fn<(input: CompanyEmailInput) => Promise<CompanyEmailResult>>();
+const send = vi.fn<(input: CompanyEmailInput, provider?: unknown) => Promise<CompanyEmailResult>>();
 let provider: unknown;
 
-const approve = (extra: { expectedSubject?: string; expectedBody?: string } = {}) => approveChaseDraft(
-  { organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay", ...extra },
+const approve = (extra: { expectedTo?: string; expectedSubject?: string; expectedBody?: string } = {}) => approveChaseDraft(
+  { organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedTo: "pay@acme.test", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay", ...extra },
   { db: db as never, admin: admin as never, provider: async () => provider, send, allowlisted: () => false },
 );
 
@@ -87,22 +87,22 @@ describe("Approve and send refuses", () => {
   it("an invoice with an open payment claim", async () => { db.rows("invoices")[0].payment_claimed_at = "2026-11-12T10:00:00Z"; await refusedWith(409); });
   it("chasing paused on the invoice", async () => { db.rows("chase_pauses").push({ organization_id: ORG, invoice_id: "inv-1", customer_id: null, paused_until: null }); await refusedWith(409); });
   it("chasing paused for the customer", async () => { db.rows("chase_pauses").push({ organization_id: ORG, invoice_id: null, customer_id: "c1", paused_until: "2026-11-13" }); await refusedWith(409); });
-  it("a recipient who is not the customer, a reminder recipient or the team", async () => { db.rows("email_history")[0].to_email = "someone@else.test"; await refusedWith(403); });
+  it("a recipient who is not the customer, a reminder recipient or the team", async () => { db.rows("email_history")[0].to_email = "someone@else.test"; expect(await approve({ expectedTo: "someone@else.test" })).toMatchObject({ status: "refused", http: 403 }); expect(send).not.toHaveBeenCalled(); });
   it("but the company's own people are allowed", async () => {
     db.rows("email_history")[0].to_email = "office@jnr.test";
-    expect((await approve()).status).toBe("sent");
+    expect((await approve({ expectedTo: "office@jnr.test" })).status).toBe("sent");
   });
 });
 
  it("refuses a stale reviewed snapshot before a provider call or send", async () => {
-  const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Earlier subject", expectedBody: "Earlier text" }, { db: db as never, admin: admin as never, provider: vi.fn(), send, allowlisted: () => false });
+  const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedTo: "pay@acme.test", expectedSubject: "Earlier subject", expectedBody: "Earlier text" }, { db: db as never, admin: admin as never, provider: vi.fn(), send, allowlisted: () => false });
   expect(out).toMatchObject({ status: "refused", http: 409 });
   expect(send).not.toHaveBeenCalled(); expect(db.log).toEqual([]);
  });
 
 
 it("an edit while the provider is checked invalidates approval before claiming or sending", async () => {
- const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay" }, {
+ const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedTo: "pay@acme.test", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay" }, {
   db: db as never, admin: admin as never, provider: async () => { db.rows("email_history")[0].body = "Changed by another person"; return {}; }, send, allowlisted: () => false
  });
  expect(out).toMatchObject({ status: "refused", http: 409 }); expect(send).not.toHaveBeenCalled();
@@ -120,7 +120,7 @@ it("two concurrent approvals call the mailer once", async () => {
  expect(outcomes.filter(r=>r.status==="sent")).toHaveLength(1); expect(send).toHaveBeenCalledTimes(1);
 });
 it("a missing reviewed snapshot cannot send", async () => {
- expect(await approve({expectedSubject: undefined})).toMatchObject({status:"refused",http:409}); expect(send).not.toHaveBeenCalled();
+ expect(await approve({expectedTo: "pay@acme.test", expectedSubject: undefined})).toMatchObject({status:"refused",http:409}); expect(send).not.toHaveBeenCalled();
 });
 
 it.each(["invalid", "recipient_refused", "rate_limited", "no_provider", "provider_error"] as const)("releases a clear %s failure and retries only the reviewed text", async (code) => {
@@ -196,3 +196,49 @@ it.each([" Subject ", "Subject\u2028changed", "Subject\0changed"])("refuses a su
     expect(send).not.toHaveBeenCalled();
     expect(db.rows("email_history")[0].subject).toBe(subject);
   });
+
+// Builder 4: review must bind the visible mailbox as well as the text.
+it("refuses a recipient changed to another allowed address after the person reviewed it", async () => {
+  db.rows("email_history")[0].to_email = "office@jnr.test";
+  expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+  expect(send).not.toHaveBeenCalled();
+});
+it.each(["chase_pauses", "customers", "email_schedules"])("fails closed when %s cannot be checked", async (table) => {
+  db.failing[table] = { code: "08006", message: "Connection lost" };
+  expect(await approve()).toMatchObject({ status: "refused", http: 503 });
+  expect(send).not.toHaveBeenCalled();
+  expect(db.log).toEqual([]);
+});
+it("passes the checked company provider to the mailer instead of selecting a second time", async () => {
+  await approve();
+  expect(send.mock.calls[0][1]).toBe(provider);
+});
+it.each(["paid", "paused", "disputed", "read_failed"])("rechecks %s while provider setup is being checked, before sending", async (change) => {
+  const out = await approveChaseDraft({ organizationId: ORG, userId: "u-office", draftId: DRAFT, today: "2026-11-13", expectedTo: "pay@acme.test", expectedSubject: "Overdue invoice INV-1", expectedBody: "Hi Acme Ltd\n\nPlease pay" }, {
+    db: db as never, admin: admin as never, send, allowlisted: () => false,
+    provider: async () => {
+      if (change === "paid") Object.assign(db.rows("invoices")[0], { status: "paid", amount_paid: 120 });
+      else if (change === "read_failed") db.failing.chase_pauses = { code: "08006", message: "Unavailable" };
+      else db.rows("chase_pauses").push({ organization_id: ORG, invoice_id: "inv-1", customer_id: null, paused_until: null, reason: change === "disputed" ? "Customer disputes this invoice" : "Checking the invoice" });
+      return provider;
+    },
+  });
+  expect(out).toMatchObject({ status: "refused", http: change === "read_failed" ? 503 : 409 });
+  expect(send).not.toHaveBeenCalled();
+});
+it("checks a pause beyond a smaller API page cap instead of treating the first page as complete", async () => {
+  db.rows("chase_pauses").push(...["other-1", "other-2"].map((invoice_id, n) => ({ id: `a${n}`, organization_id: ORG, invoice_id, customer_id: null, paused_until: null })), { id: "z-target", organization_id: ORG, invoice_id: "inv-1", customer_id: null, paused_until: null, reason: "Disputed" });
+  const from = db.from.bind(db);
+  vi.spyOn(db, "from").mockImplementation((table) => {
+    const query = from(table);
+    if (table === "chase_pauses") {
+      const range = query.range.bind(query);
+      query.range = (start, end) => range(start, Math.min(end, start + 1));
+      // A select without range has the same cap in PostgREST.
+      query.limit(2);
+    }
+    return query;
+  });
+  expect(await approve()).toMatchObject({ status: "refused", http: 409 });
+  expect(send).not.toHaveBeenCalled();
+});

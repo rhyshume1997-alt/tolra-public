@@ -104,7 +104,7 @@ describe("MicrosoftSetupCard: the rules it states", () => {
     overview({ status: "connected", tenant_name: "office@a.test" });
     const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
     expect(h.querySelector('[role="switch"]')).toBeNull();
-    const ready = "Sending: ready. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send.";
+    const ready = "Sending: ready. Each message needs a person to send or approve it. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send.";
     expect(h.querySelector('[data-testid="activation-badge-microsoft"]')?.textContent).toBe(ready);
     expect(text(h, "activation-status-microsoft")).toBe(ready);
     expect(text(h, "microsoft-one-mailbox")).toBe("One mailbox per company: this company's mailbox is never shared with another company.");
@@ -155,6 +155,8 @@ describe("ResendSetupCard: every state", () => {
     route = (url, init) => url === "/api/integrations/resend" ? { status: 200, body: init?.method === "POST" ? rs("connected") : rs("configured") } : { status: 404, body: {} };
     const h = await mount(createElement(ResendSetupCard, {}));
     expect(text(h, "connection-resend")).toContain("domain has not been checked yet");
+    expect(text(h, "activation-status-resend")).toContain("not yet verified");
+    expect(text(h, "activation-status-resend")).not.toContain("Sending: ready");
     await click(button("Check domain"));
     expect(text(h, "connection-resend")).toContain("sender domain verified");
     expect(calls.filter((c) => c.method === "POST").map((c) => c.url)).toEqual(["/api/integrations/resend"]);
@@ -167,7 +169,7 @@ describe("ResendSetupCard: every state", () => {
     route = statusRoute(rs("connected"));
     h = await mount(createElement(ResendSetupCard, {}));
     expect(text(h, "connection-resend")).toContain("orders@mail.test");
-    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: ready (Tolra's verified sender). Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send.");
+    expect(h.querySelector('[data-testid="activation-badge-resend"]')?.textContent).toBe("Sending: ready (Tolra's verified sender). Each message needs a person to send or approve it. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send.");
     expect(h.querySelector('[role="switch"]')).toBeNull();
     expect(h.textContent).toContain("never used automatically after a Microsoft 365 failure");
   });
@@ -252,4 +254,57 @@ describe("ResendSetupCard: the test send", () => {
     expect(text(h, "resend-test-result")).not.toContain("Nothing was sent");
     expect(posts()).toHaveLength(1);
   });
+});
+
+
+describe("shared provider-card truth after connection changes", () => {
+  it.each([null, "error", "unexpected"])("does not claim Resend is ready while Microsoft state is %s", async microsoftStatus => {
+    route = statusRoute(rs("connected"));
+    const h = await mount(createElement(ResendSetupCard, { microsoftStatus }));
+    expect(text(h, "activation-status-resend")).toContain("waiting for the Microsoft 365 connection");
+    expect(h.querySelector('[role="switch"]')).toBeNull();
+    expect(calls.filter(c => c.url.endsWith("test-send"))).toHaveLength(0);
+  });
+  it("holds Resend while the company needs to reconnect Microsoft", async () => {
+    route = statusRoute(rs("connected"));
+    const h = await mount(createElement(ResendSetupCard, { microsoftStatus: "needs_reconnect" }));
+    expect(text(h, "activation-status-resend")).toContain("paused");
+    expect(text(h, "activation-status-resend")).toContain("will not switch to Resend");
+  });
+  it("publishes a disconnected status after confirmation so Resend does not show stale Microsoft status", async () => {
+    const changed = vi.fn(); overview({ status: "connected" });
+    route = () => { overview({ status: "disconnected" }); return { status: 200, body: { status: "disconnected" } }; };
+    await mount(createElement(MicrosoftSetupCard, { status: okStatus, onConnectionChange: changed }));
+    expect(changed).toHaveBeenLastCalledWith("connected");
+    await click(button("Disconnect"));
+    await click([...document.querySelectorAll("button")].filter(b => b.textContent === "Disconnect").pop());
+    expect(changed).toHaveBeenLastCalledWith("disconnected");
+  });
+  it("clears stale connected status when a refresh cannot read the connection", async () => {
+    const changed = vi.fn(); overview({ status: "connected" });
+    route = () => { rpc.mockResolvedValue({ data: null, error: { message: "Unavailable" } }); return { status: 200, body: {} }; };
+    const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus, onConnectionChange: changed }));
+    await click(button("Disconnect"));
+    await click([...document.querySelectorAll("button")].filter(b => b.textContent === "Disconnect").pop());
+    expect(changed).toHaveBeenLastCalledWith("error");
+    expect(text(h, "activation-status-microsoft")).not.toContain("Sending: ready");
+  });
+});
+
+it("a failed Microsoft test refreshes a revoked connection and never leaves Sending: ready", async () => {
+  overview({ status: "connected" }); const changed = vi.fn();
+  route = () => { overview({ status: "needs_reconnect" }); return { status: 409, body: { error: "Connect again" } }; };
+  const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus, onConnectionChange: changed }));
+  await click(button("Test"));
+  expect(text(h, "activation-status-microsoft")).toContain("paused until you reconnect");
+  expect(changed).toHaveBeenLastCalledWith("needs_reconnect");
+  expect(calls).toHaveLength(1);
+});
+it("an unsuccessful Microsoft check never labels an untested connection ready, even if the stored connection still exists", async () => {
+  overview({ status: "connected" });
+  route = () => ({ status: 502, body: { error: "Microsoft did not answer" } });
+  const h = await mount(createElement(MicrosoftSetupCard, { status: okStatus }));
+  await click(button("Test"));
+  expect(text(h, "activation-status-microsoft")).toContain("needs checking");
+  expect(text(h, "activation-status-microsoft")).not.toContain("Sending: ready");
 });

@@ -205,7 +205,7 @@ export default function ApprovalPage() {
       try {
         const res = await fetch(item.chase ? "/api/chase/approve" : "/api/email/approve", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item.chase ? { history_id: item.id, expected_subject: item.subject, expected_body: item.body, provider: "resend" } : { draft_id: item.id, subject: item.subject, body: item.body, to: item.to, provider: "resend" }),
+          body: JSON.stringify(item.chase ? { history_id: item.id, expected_to: item.to, expected_subject: item.subject, expected_body: item.body, provider: "resend" } : { draft_id: item.id, subject: item.subject, body: item.body, to: item.to, provider: "resend" }),
         });
         const answer = (await res.json().catch(() => ({}))) as { error?: string };
         if (!res.ok) throw new Error(answer.error ?? "Could not send this email.");
@@ -270,7 +270,7 @@ export default function ApprovalPage() {
         const response = await fetch("/api/chase/approve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ history_id: item.id, expected_subject: item.subject, expected_body: item.body }),
+          body: JSON.stringify({ history_id: item.id, expected_to: item.to, expected_subject: item.subject, expected_body: item.body }),
         });
         const answer = (await response.json().catch(() => ({}))) as { status?: string; error?: string };
         if (answer.status === "no_provider") {

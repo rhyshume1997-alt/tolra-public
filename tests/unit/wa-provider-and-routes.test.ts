@@ -68,7 +68,7 @@ describe("chase approve: failed and unknown sends, audit rows, explicit Resend",
     provider: async () => ({ name: "microsoft" }), resend: () => ({ name: "resend" }),
     send: async (_i, p) => { sent.push({ provider: p }); return result as never; }, allowlisted: () => false,
   });
-  const go = (extra: Record<string, unknown> = {}) => { const d = fake.rows("email_history").find((r) => r.id === DRAFT)!; return approveChaseDraft({ organizationId: ORG, userId: "u", draftId: DRAFT, expectedSubject: String(d.subject), expectedBody: String(d.body), today: "2026-11-05", ...extra } as never, deps()); };
+  const go = (extra: Record<string, unknown> = {}) => { const d = fake.rows("email_history").find((r) => r.id === DRAFT)!; return approveChaseDraft({ organizationId: ORG, userId: "u", draftId: DRAFT, expectedTo: String(d.to_email), expectedSubject: String(d.subject), expectedBody: String(d.body), today: "2026-11-05", ...extra } as never, deps()); };
   beforeEach(() => {
     audit = []; auditError = false; sent = []; result = { ok: true, mode: "sent", provider: "microsoft", historyId: "sent-1" };
     fake = new FakeDb({

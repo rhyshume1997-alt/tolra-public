@@ -23,7 +23,7 @@ type Approve = { url: string; mailto: string; permissions: Array<{ scope: string
  * Connected means signed in; it does not send anything by itself. The Sending row is NOT a switch (the server has none): it states the rule.
  * One mailbox per company; no automatic fallback to Resend. `status` is the page's /api/integrations status answer, as for the old card.
  */
-export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null }) {
+export function MicrosoftSetupCard({ status, onConnectionChange }: { status: ConnectStatus | null; onConnectionChange?: (status: string | null) => void }) {
   const params = useSearchParams();
   const outcome = params.get("microsoft");
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
@@ -36,11 +36,20 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
   const view = connectCardView("microsoft", status ? status.microsoft.configured : null);
 
   const load = useCallback(async () => {
-    if (!supabase) return;
-    const { data, error } = await supabase.rpc("integration_overview", { p_provider: "microsoft" });
-    if (error) return toast.error(friendlyError(error, "Couldn't load Microsoft 365."));
-    setOverview(data as IntegrationOverview);
-  }, []);
+    if (!supabase) { onConnectionChange?.("error"); return; }
+    try {
+      const { data, error } = await supabase.rpc("integration_overview", { p_provider: "microsoft" });
+      if (error || !data) {
+        setOverview(null); onConnectionChange?.("error");
+        return toast.error(friendlyError(error, "Couldn't load Microsoft 365."));
+      }
+      setOverview(data as IntegrationOverview);
+      onConnectionChange?.((data as IntegrationOverview).status);
+    } catch {
+      setOverview(null); onConnectionChange?.("error");
+      toast.error("Couldn't load Microsoft 365. Check the connection before sending.");
+    }
+  }, [onConnectionChange]);
   useEffect(() => { if (available) void load(); }, [available, load]);
 
   async function run(path: string, onOk: (body: Record<string, unknown>) => void) {
@@ -59,6 +68,7 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
     try {
       const r = await postIntegration("/api/integrations/microsoft/test");
       setTest(r.ok ? { ok: true, text: String(r.body.message ?? "Working") } : { ok: false, text: r.error });
+      await load();
     } finally { setBusy(false); }
   }
   async function makeLink() {
@@ -84,7 +94,8 @@ export function MicrosoftSetupCard({ status }: { status: ConnectStatus | null })
 
   const sending = status === null || (available && !view.notSetUp && !overview) ? "Sending: checking"
     : !available || view.notSetUp ? "Sending: not set up"
-    : connected ? "Sending: ready. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send."
+    : connected && test?.ok === false ? "Sending: needs checking. Test the connection before sending."
+    : connected ? "Sending: ready. Each message needs a person to send or approve it. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send."
     : reconnect ? "Sending: paused until you reconnect" : "Sending: not set up";
   const tested = test?.ok === true;
   const steps: SetupStep[] = [

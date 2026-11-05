@@ -24,10 +24,11 @@ const CONNECTION: Record<Status["state"], { tone: ConnectionTone; label: (s: Sta
  * (the platform owner sets the key and a verified sender domain: not per company, not a mailbox). "Check domain" is the existing read-only
  * test; "Send a test e-mail to me" is the one explicit send: admin only, a recent authenticator code, one to the admin's own address,
  * confirmed in a dialog naming recipient and sender. There is no separate Resend switch: customer e-mails still need approval.
- * `microsoftConnected`: the company is on Microsoft 365, so Resend is not used for it (the page composer passes it; default false).
+ * `microsoftStatus`: the latest company connection state, shared by the Microsoft card (including errors/reconnection).
+ * `microsoftConnected`: compatibility flag for callers that only know a connected/not-connected result.
  * `adminEmail`: the signed-in admin's address if the page already knows it; otherwise read from the browser session.
  */
-export function ResendSetupCard({ microsoftConnected = false, adminEmail }: { microsoftConnected?: boolean; adminEmail?: string | null }) {
+export function ResendSetupCard({ microsoftConnected = false, microsoftStatus, adminEmail }: { microsoftConnected?: boolean; microsoftStatus?: string | null; adminEmail?: string | null }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -74,10 +75,16 @@ export function ResendSetupCard({ microsoftConnected = false, adminEmail }: { mi
   }
 
   const state = status?.state ?? null;
+  const microsoftInUse = microsoftConnected || microsoftStatus === "connected";
+  const microsoftHeld = microsoftStatus === "needs_reconnect";
+  const microsoftUnknown = microsoftStatus === null || (microsoftStatus !== undefined && !["connected", "needs_reconnect", "not_connected", "disconnected"].includes(microsoftStatus));
   const ready = state === "configured" || state === "connected";
   const sending = status === null ? "Sending: checking"
-    : microsoftConnected ? "Sending: not used while Microsoft 365 is connected"
-    : ready ? "Sending: ready (Tolra's verified sender). Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send." : "Sending: not set up";
+    : microsoftInUse ? "Sending: not used while Microsoft 365 is connected"
+    : microsoftHeld ? "Sending: paused. Reconnect Microsoft 365; Tolra will not switch to Resend by itself."
+    : microsoftUnknown ? "Sending: waiting for the Microsoft 365 connection to be checked"
+    : state === "configured" ? "Sending: set up, not yet verified. Check the domain or send a test to yourself. Each message needs a person to send or approve it."
+    : state === "connected" ? "Sending: ready (Tolra's verified sender). Each message needs a person to send or approve it. Scheduled reminders and chasing wait in Approvals until a person approves them; a message you send yourself goes out when you click Send." : "Sending: not set up";
   const connection = status ? { tone: CONNECTION[status.state].tone, label: CONNECTION[status.state].label(status) } : { tone: "working" as const, label: "Checking…" };
   const steps: SetupStep[] = [
     { label: "The platform owner puts the Resend key and a verified sender domain on the server", state: ready ? "done" : "next", hint: "Set once for the whole server, not per company. It is a sender address, not a mailbox: nobody signs in and nothing is read." },
@@ -95,7 +102,7 @@ export function ResendSetupCard({ microsoftConnected = false, adminEmail }: { mi
       activation={{ label: "Sending", on: null, hideSwitch: true, statusText: sending, help: "No automatic fallback: Resend is only used when no Microsoft 365 mailbox is connected." }}
       footnote="Resend is never used automatically after a Microsoft 365 failure. A test e-mail goes only to your own address and is recorded in the audit log without the address or text."
     >
-      {microsoftConnected ? <p className="text-xs text-amber-800" data-testid="resend-ms-note">This company is connected to Microsoft 365, so Resend is not used for it.</p> : null}
+      {microsoftInUse ? <p className="text-xs text-amber-800" data-testid="resend-ms-note">This company is connected to Microsoft 365, so Resend is not used for it.</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" disabled={busy || state === "not_configured" || status === null} onClick={() => void call("POST")}>Check domain</Button>
         <Button size="sm" variant="outline" disabled={busy || !ready || !email} onClick={() => setConfirm(true)} data-testid="resend-test-send">Send a test e-mail to me</Button>

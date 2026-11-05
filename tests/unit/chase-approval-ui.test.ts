@@ -47,7 +47,7 @@ describe("chase draft approval card", () => {
     expect(props.onEdit).toHaveBeenCalledWith("draft-1", { subject: "New subject", body: "New message" });
     expect(props.onApproveAndSend).not.toHaveBeenCalled();
     expect(host.textContent).toContain("New message");
-    await click("Approve and send"); expect(props.onApproveAndSend).toHaveBeenCalledWith("draft-1", { subject: "New subject", body: "New message" });
+    await click("Approve and send"); expect(props.onApproveAndSend).toHaveBeenCalledWith("draft-1", { to: props.draft.to, subject: "New subject", body: "New message" });
   });
   it("cancels edits without saving or sending", async () => {
     const props = mount(); await click("Edit"); change("input", "Throw away"); await click("Cancel edit");
@@ -64,7 +64,7 @@ describe("chase draft approval card", () => {
     ["Pause chasing for this customer", "onPauseCustomer", "customer-2"],
   ] as const)("%s calls only its callback and prevents a repeat", async (label, callback, id) => {
     const props = mount(); await click(label); await click(label);
-    expect(props[callback]).toHaveBeenCalledTimes(1); if (callback === "onApproveAndSend") expect(props[callback]).toHaveBeenCalledWith(id, { subject: props.draft.subject, body: props.draft.body });
+    expect(props[callback]).toHaveBeenCalledTimes(1); if (callback === "onApproveAndSend") expect(props[callback]).toHaveBeenCalledWith(id, { to: props.draft.to, subject: props.draft.subject, body: props.draft.body });
     else expect(props[callback]).toHaveBeenCalledWith(id);
     for (const other of ["onApproveAndSend", "onSkip", "onPauseCustomer", "onEdit"] as const) {
       if (other !== callback) expect(props[other]).not.toHaveBeenCalled();

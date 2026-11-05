@@ -4,7 +4,7 @@
  *   - REQUIRE_ADMIN_MFA on: key save/replace, switching a feature ON (settings) and Tolra ON need an authenticator code under 15 minutes old.
  *     Old code -> 403 mfa_recent_required and NOTHING is written (no rpc). No second step at all -> 403 mfa_required. Fresh code -> goes on.
  *   - Switching OFF never asks (the way out stays open).
- *   - REQUIRE_ADMIN_MFA off: no change from before (the assurance level is not even read).
+ *   - Key save/replace always requires a recent code. Feature switches retain their existing global policy.
  *   - The key: only ciphertext reaches the database, the answer is the status (never the key), nothing is logged with it.
  */
 import { randomBytes } from "node:crypto";
@@ -148,13 +148,14 @@ describe("recent authenticator code (REQUIRE_ADMIN_MFA on)", () => {
   });
 });
 
-describe("REQUIRE_ADMIN_MFA off: unchanged", () => {
-  it("the assurance level is not read and an old code does not matter", async () => {
+describe("REQUIRE_ADMIN_MFA off", () => {
+  it("key save still needs a fresh code; feature switches retain their existing policy", async () => {
     delete process.env.REQUIRE_ADMIN_MFA;
     state.amr = old();
-    expect((await keyPost(post({ key: KEY }))).status).toBe(200);
+    expect((await keyPost(post({ key: KEY }))).status).toBe(403);
+    expect(wrote()).toEqual([]);
     expect((await settingsPost(post(settingsBody(true)))).status).toBe(200);
     expect((await tolraPost(post({ enabled: true }))).status).toBe(200);
-    expect(state.assuranceReads).toBe(0);
+    expect(state.assuranceReads).toBe(1);
   });
 });
