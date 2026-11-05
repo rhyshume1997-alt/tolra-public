@@ -1,6 +1,7 @@
 {
+  "recordedAt": "2026-11-05T15:55:59.793Z",
   "subject": "e42d927383513d1b98ce9cfca444884475622e2f",
-  "database": "xero_verify_24047642265b4a30a00ff2180cdd9f55",
+  "database": "xero_verify_2e464375cb344ad894809cd79daa9597",
   "server": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
   "events": [
     {
@@ -2237,6 +2238,16 @@
       "file": "supabase/release/138_chase_steps.rollback.sql",
       "sha256": "9bb52738a9395713c7700f7dcdfcb479c931bb4f68acfde58efbcf8cf75100af",
       "ok": true
+    },
+    {
+      "kind": "post-rollback-catalogue-difference",
+      "baselineCount": 1701,
+      "restoredCount": 1702,
+      "added": [
+        "public.ai_helper_requests.key_source"
+      ],
+      "removed": [],
+      "changed": []
     },
     {
       "kind": "completed-reverse-rollback",
