@@ -8,7 +8,7 @@
 -- supabase/verify/costing_rates_143.sql is no longer run.
 BEGIN;
 
-DROP FUNCTION IF EXISTS public.save_costing_settings_atomic(uuid, jsonb, jsonb);
+DROP FUNCTION IF EXISTS public."save_costing_settings_atomic"(uuid, jsonb, jsonb);
 DROP TABLE IF EXISTS public.costing_materials;
 DROP TABLE IF EXISTS public.costing_machines;
 DROP TABLE IF EXISTS public.costing_defaults;
