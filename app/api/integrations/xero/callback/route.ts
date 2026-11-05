@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { notConfiguredResponse } from "@/lib/integrations/not-configured";
 import { finishConnect, xeroReady } from "@/lib/integrations/server";
+import { PICKER_COOKIE, PICKER_PATH, PICKER_TTL_SECONDS, sealPicker } from "@/lib/integrations/xero/picker";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { isErrorResponse, requireProfile } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -30,7 +31,14 @@ export async function GET(request: Request) {
   const service = createSupabaseAdminClient();
   if (!ready || !service) return notConfiguredResponse("xero");
   try {
-    const outcome = await finishConnect(service, auth.profile.organization_id, auth.user.id, state, code, ready);
+    const outcome = await finishConnect(service, auth.profile.organization_id, auth.user.id, state, code, ready, { offerPicker: true });
+    if (!outcome.ok && outcome.offer) {
+      // Several organisations were ticked: the admin chooses one (never guessed). The offer goes in a sealed, HttpOnly, 10-minute cookie, not the URL.
+      const res = NextResponse.redirect(new URL("/admin/integrations/xero-organisation", request.url), 303);
+      res.cookies.set(PICKER_COOKIE, sealPicker(auth.profile.organization_id, auth.user.id, outcome.offer, ready.key).cookie,
+        { httpOnly: true, secure: true, sameSite: "lax", path: PICKER_PATH, maxAge: PICKER_TTL_SECONDS });
+      return res;
+    }
     return back(outcome.ok ? "connected" : outcome.reason);
   } catch (err) {
     const hint = (err as { hint?: string }).hint;
