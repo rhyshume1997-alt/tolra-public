@@ -15,7 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { blankCostingRates, type CostingMachine, type CostingMaterial, type CostingRates } from "@/components/costing/types";
 import type { SendAnswer } from "@/lib/mfa-step-up";
 import { MFA_RECENT_CODE } from "@/lib/mfa-policy";
-import { loadCostingRates, type CostingRates as StoredRates } from "@/lib/costing/rates-store";
+import { loadCostingRates, type CostingPartialRates, type CostingRates as StoredRates } from "@/lib/costing/rates-store";
 
 export const NOT_SET_UP_MESSAGE = "No costing rates entered yet";
 export const PANEL_NOT_SET_UP_MESSAGE = "Costing is not set up: enter your rates in Settings > Costing rates";
@@ -38,7 +38,7 @@ const pounds = (pence: number) => pence / 100;
 const toPence = (value: number) => Math.round(value * 100);
 
 /** The stored rows as the card shows them, plus the snapshot to send back as p_expected. */
-export function fromStored(stored: StoredRates): { rates: CostingRates; snapshot: RatesSnapshot } {
+export function fromStored(stored: StoredRates | CostingPartialRates): { rates: CostingRates; snapshot: RatesSnapshot } {
   const rates: CostingRates = {
     materials: stored.materials.map((m): CostingMaterial => ({ id: m.id, name: m.name, unit: m.priceUnit, price: pounds(m.pricePence), scrapPct: m.scrapPct })),
     machines: stored.machines.map((m): CostingMachine => ({ id: m.id, name: m.name, hourlyRate: pounds(m.hourlyRatePence), labourPerHour: m.labourRatePence === null ? null : pounds(m.labourRatePence) })),
@@ -60,6 +60,8 @@ export function fromStored(stored: StoredRates): { rates: CostingRates; snapshot
 export async function loadCompanyRates(client: SupabaseClient | null): Promise<LoadedRates> {
   const result = await loadCostingRates(client);
   if (result.status === "ok") return { status: "ok", ...fromStored(result.rates) };
+  // Blank or half-entered: the rates store answers not_configured with what was entered so far; the page shows what is missing (ratesGaps), never a figure.
+  if (result.status === "not_configured") return { status: "ok", ...fromStored(result.partial) };
   if (result.status === "not_applied") return { status: "not_applied" };
   return { status: "error", message: result.message };
 }
