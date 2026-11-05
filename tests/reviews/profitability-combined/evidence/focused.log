@@ -1,0 +1,21 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/reviewer-profitability
+
+ ✓ tests/unit/purchase-order-link.test.ts (25 tests) 73ms
+ ✓ tests/unit/overview-metrics.test.ts (15 tests) 22ms
+ ✓ tests/unit/job-profitability-actuals.test.ts (32 tests) 18ms
+ ✓ tests/unit/job-profitability-progress.test.ts (15 tests) 17ms
+ ✓ tests/unit/job-profitability-combined-review.test.ts (9 tests) 26ms
+stdout | tests/unit/job-profitability-precision.test.ts > keeps penny precision or refuses an unsafe revenue aggregate
+aggregate revenue {"exact":8999999999994410,"actual":null,"state":"incomplete"}
+
+ ✓ tests/unit/job-profitability-precision.test.ts (4 tests) 103ms
+ ✓ tests/unit/job-profitability-rework.test.ts (2 tests) 5ms
+ ✓ tests/unit/job-profitability-ui.test.ts (10 tests) 233ms
+
+ Test Files  8 passed (8)
+      Tests  112 passed (112)
+   Start at  10:54:32
+   Duration  6.37s (transform 626ms, setup 0ms, collect 1.80s, tests 496ms, environment 1.12s, prepare 932ms)
+
