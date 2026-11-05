@@ -11,7 +11,7 @@ beforeEach(() => {
   copyFileSync("scripts/test-backend.sh", path.join(root, "scripts/test-backend.sh"));
   writeFileSync(path.join(root, "fake-supabase"), `#!/usr/bin/env bash
 set -eu
-if [ "$1" = "--version" ]; then printf '%s\\n' "\${FAKE_CLI_VERSION:-2.108.0}"; exit 0; fi
+if [ "$1" = "--version" ]; then printf '%s\\n' "\${FAKE_CLI_VERSION:-2.40.7}"; exit 0; fi
 printf '%s\\n' "$SUPABASE_INTERNAL_IMAGE_REGISTRY" >> "$BACKEND_REGISTRY_PROOF"
 case "$1" in
  start) exit 0 ;;
@@ -48,9 +48,9 @@ it.each([
   expect(existsSync(path.join(root, ".env.test.local"))).toBe(false);
 });
 
-it("refuses the older SQL parser before starting or writing settings", () => {
-  const result = run({ FAKE_CLI_VERSION: "2.40.7" });
-  expect(result.status).toBe(1); expect(result.stderr).toContain("Supabase CLI 2.108.0 is required");
+it("refuses any other CLI version before starting or writing settings", () => {
+  const result = run({ FAKE_CLI_VERSION: "2.108.0" });
+  expect(result.status).toBe(1); expect(result.stderr).toContain("Supabase CLI 2.40.7 is required");
   expect(existsSync(path.join(root, "registry.txt"))).toBe(false);
   expect(existsSync(path.join(root, ".env.test.local"))).toBe(false);
 });

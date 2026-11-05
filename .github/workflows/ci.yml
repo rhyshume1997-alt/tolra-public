@@ -169,11 +169,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # 2.40.7 misreads names ending in _atomic as BEGIN ATOMIC and joins SQL statements (42601).
-      # 2.108.0 fixes the parser boundary; numbered migrations stay unchanged.
+      # The CLI this suite has always run on. 143 now quotes save_costing_settings_atomic, so 2.40.7 (which misreads an unquoted
+      # name ending in _atomic as BEGIN ATOMIC, 42601) splits it correctly. 2.108.0 starts a stack whose service_role lacks the
+      # default grants these tests rely on (runs 42065110388 and 42091337997: 119 database files fail on assert_privileged_aal).
       - uses: supabase/setup-cli@v1
         with:
-          version: 2.108.0
+          version: 2.40.7
       # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
       - name: Sign in to ghcr.io for the Supabase image pulls
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
@@ -202,7 +203,7 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
           docker pull postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
-          # This proof needs the OLD parser (CLI 2.40.7); the job's own `supabase` is 2.108.0. The test itself refuses any binary whose
+          # This proof needs the OLD parser (CLI 2.40.7); the job's own `supabase` is the same release. The test itself refuses any binary whose
           # sha256 is not 568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c (2.40.7, linux amd64).
           cli_dir="$RUNNER_TEMP/supabase-cli-2.40.7"
           mkdir -p "$cli_dir"
