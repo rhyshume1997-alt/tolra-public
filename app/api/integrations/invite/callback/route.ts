@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * the last 10 minutes (integration_oauth_consume_invite: single use, invite states only; an admin's own Connect state is never accepted
  * here; rate limited per IP with the link's page, failing closed). The connection is completed for that link's company only, as the admin who made the link (still an admin: the database checks),
  * exactly as an admin's own Connect is (lib/integrations/server.ts completeConnect). A fixed page says the outcome; no token, code or
- * state appears in it or in any log.
+ * state appears in it or in any log (only a short fixed word, never database text, is logged).
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -27,8 +27,10 @@ export async function GET(request: Request) {
     const outcome = await finishInviteConnect(service, state, code, ready);
     return invitePage(outcome.ok ? "connected" : outcome.reason, outcome.ok ? 200 : 409);
   } catch (err) {
+    // Only a short fixed word (a hint such as "tenant_in_use" or an error code) is logged: never the database's or Xero's own text.
     const hint = (err as { hint?: string }).hint;
-    console.error("[integrations] invite callback failed:", hint ?? (err as { code?: string }).code ?? (err instanceof Error ? err.name : "error"));
+    const word = (v: unknown) => (typeof v === "string" && /^[A-Za-z0-9_]{1,40}$/.test(v) ? v : undefined);
+    console.error("[integrations] invite callback failed:", word(hint) ?? word((err as { code?: string }).code) ?? (err instanceof Error && word(err.name)) ?? "error");
     return invitePage("failed", 500);
   }
 }

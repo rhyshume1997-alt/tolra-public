@@ -17,10 +17,11 @@ let session: { read_only: boolean; support: boolean } | null = null;
 let refuse: number | null = null;
 let origin = true;
 type RpcFn = (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
-const userRpc = vi.fn<RpcFn>(async () => ({ data: { expires_at: "2026-10-31T15:00:00Z" }, error: null }));
+const userRpc = vi.fn<RpcFn>(async () => ({ data: { id: "inv-1", expires_at: "2026-10-31T15:00:00Z", recipient: "a***@firm.example" }, error: null }));
+const userFrom = () => { const c: Record<string, unknown> = {}; for (const m of ["select", "eq"]) c[m] = () => c; c.maybeSingle = async () => ({ data: { name: "Alpha Ltd" }, error: null }); return c; };
 const requireProfile = vi.fn<(roles: string[]) => Promise<unknown>>(async () => (refuse
   ? NextResponse.json({ error: "Forbidden" }, { status: refuse })
-  : { supabase: { rpc: userRpc, auth: freshMfaAuth() }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session }));
+  : { supabase: { rpc: userRpc, from: userFrom, auth: freshMfaAuth() }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session }));
 vi.mock("@/lib/server/auth", () => ({
   sameOrigin: () => origin,
   clientIp: () => "203.0.113.7",
@@ -38,9 +39,16 @@ let table: { data: unknown; error: unknown } = { data: null, error: null };
 let rate: "ok" | "over" | "down" = "ok";
 const svcRpc = vi.fn<RpcFn>(async (fn) => {
   if (fn === "auth_rate_hit") return rate === "down" ? { data: null, error: { code: "57014" } } : { data: rate === "ok", error: null };
-  if (fn === "integration_invite_peek") return { data: { provider: "xero", company_name: "Alpha <Ltd>" }, error: null };
+  if (fn === "integration_invite_peek") return { data: { provider: "xero", company_name: "Alpha <Ltd>", recipient_hint: "a***@firm.example" }, error: null };
+  if (fn === "integration_invite_code_issue") return { data: { ok: true, recipient: "acct@firm.example", company_name: "Alpha <Ltd>", organization_id: "org-1", sent_number: 1 }, error: null };
+  if (fn === "integration_invite_code_verify") return { data: verify, error: null };
   return { data: null, error: null };
 });
+/** What integration_invite_code_verify answers. */
+let verify: unknown = { ok: true, organization_id: "org-1", provider: "xero" };
+/** The e-mails: the link (admin) and the code (public page). */
+const mail = { link: vi.fn(async (_i: unknown) => ({ ok: true }) as { ok: true } | { ok: false; error: string }), code: vi.fn(async (_i: unknown) => ({ ok: true }) as { ok: true } | { ok: false; error: string }) };
+vi.mock("@/lib/integrations/invite-mail", () => ({ sendInviteLinkEmail: (i: unknown) => mail.link(i), sendInviteCodeEmail: (i: unknown) => mail.code(i) }));
 const serviceClient = () => {
   const c: Record<string, unknown> = {};
   for (const m of ["select", "eq", "neq", "limit"]) c[m] = () => c;
@@ -62,16 +70,17 @@ vi.mock("@/lib/server/platform", () => ({
   requirePlatformOwner: vi.fn(async () => (platformRefusal ? NextResponse.json({ error: "Forbidden" }, { status: platformRefusal }) : { supabase: { rpc: ownerRpc }, user: { id: "owner" }, companies: [], admin: {} })),
 }));
 
-const ENV = { NEXT_PUBLIC_SITE_URL: "https://app.example.test", INTEGRATIONS_ENCRYPTION_KEY: key.toString("base64"), XERO_CLIENT_ID: "x-id", XERO_CLIENT_SECRET: "x-secret" };
+const ENV = { NEXT_PUBLIC_SITE_URL: "https://app.example.test", INTEGRATIONS_ENCRYPTION_KEY: key.toString("base64"), XERO_CLIENT_ID: "x-id", XERO_CLIENT_SECRET: "x-secret", XERO_INVITE_REDIRECT_URIS: "https://app.example.test/api/integrations/invite/callback" };
 const saved: Record<string, string | undefined> = {};
 beforeEach(() => {
   for (const [k, v] of Object.entries(ENV)) { saved[k] = process.env[k]; process.env[k] = v; }
-  session = null; refuse = null; platformRefusal = null; table = { data: null, error: null }; origin = true; rate = "ok";
+  session = null; refuse = null; platformRefusal = null; table = { data: null, error: null }; origin = true; rate = "ok"; verify = { ok: true, organization_id: "org-1", provider: "xero" };
+  mail.link.mockClear(); mail.code.mockClear(); mail.link.mockResolvedValue({ ok: true }); mail.code.mockResolvedValue({ ok: true });
   for (const f of [userRpc, svcRpc, ownerRpc, createSupabaseAdminClient, microsoftReady, requireProfile, ms.beginMicrosoftConnect, ms.disconnectMicrosoft, ms.testMicrosoft]) f.mockClear();
 });
 afterEach(() => { for (const [k, v] of Object.entries(saved)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } });
 
-const post = (url = "https://app.example.test/x", headers: Record<string, string> = {}) => new Request(url, { method: "POST", headers });
+const post = (url = "https://app.example.test/x", headers: Record<string, string> = {}, body?: unknown) => new Request(url, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
 
 const adminRoutes = [
   ["microsoft/connect", () => import("@/app/api/integrations/microsoft/connect/route"), "Support access can't change Microsoft 365 settings."],
@@ -126,52 +135,95 @@ describe("admin routes: support sessions and non-admins are refused first", () =
 });
 
 describe("the accountant's link (create)", () => {
-  it("only the token's hash goes to the database; the link is on NEXT_PUBLIC_SITE_URL, never the request's Host", async () => {
-    const res = await (await import("@/app/api/integrations/invite/route")).POST(post("https://evil.example.test/api/integrations/invite", { host: "evil.example.test", "x-forwarded-host": "evil.example.test" }));
+  const create = async (body: unknown = { email: "Acct@Firm.example" }, headers: Record<string, string> = {}) =>
+    (await import("@/app/api/integrations/invite/route")).POST(post("https://app.example.test/api/integrations/invite", headers, body));
+
+  it("an opaque reference and the recipient go to the database; the link is E-MAILED on NEXT_PUBLIC_SITE_URL (never the request's Host) and is NOT in the answer", async () => {
+    const res = await create({ email: "Acct@Firm.example" }, { host: "evil.example.test", "x-forwarded-host": "evil.example.test" });
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(body.url).toMatch(/^https:\/\/app\.example\.test\/api\/integrations\/invite\/[A-Za-z0-9_-]{43}$/);
-    const token = body.url.split("/").pop();
+    expect(body).toEqual({ id: "inv-1", sent: true, recipient: "a***@firm.example", expiresAt: "2026-10-31T15:00:00Z" });
+    expect(JSON.stringify(body)).not.toMatch(/https?:|invite\//);
     const [fn, args] = userRpc.mock.calls[0];
     expect(fn).toBe("integration_invite_create");
-    expect(args).toEqual({ p_provider: "xero", p_token_hash: expect.stringMatching(/^[0-9a-f]{64}$/) });
-    expect(JSON.stringify(args)).not.toContain(token);
+    expect(args).toEqual({ p_provider: "xero", p_ref: expect.stringMatching(/^[A-Za-z0-9_-]{22}$/), p_recipient: "acct@firm.example" });
   });
 
-  it("107 not applied: 'Not available until database update 107 is applied'", async () => {
+  it("the e-mail carries the link with that reference; no token hash anywhere", async () => {
+    userRpc.mockResolvedValueOnce({ data: { id: "inv-1", expires_at: "2026-10-31T15:00:00Z", recipient: "a***@firm.example" }, error: null });
+    const res = await create();
+    expect(res.status).toBe(200);
+    const [input] = mail.link.mock.calls[0] as [{ url: string; to: string; inviteId: string }];
+    const ref = (userRpc.mock.calls[0][1] as { p_ref: string }).p_ref;
+    expect(input).toMatchObject({ url: `https://app.example.test/api/integrations/invite/${ref}`, to: "acct@firm.example", inviteId: "inv-1" });
+    expect((await res.json()).recipient).toBe("a***@firm.example");
+  });
+
+  it("fails closed: if the e-mail can't be sent the invite is cancelled again and the admin is told why (no link is returned)", async () => {
+    userRpc.mockResolvedValueOnce({ data: { id: "inv-1", expires_at: "x", recipient: "a***@firm.example" }, error: null });
+    mail.link.mockResolvedValueOnce({ ok: false, error: "No e-mail sending is set up for this company, so the invite was not sent." });
+    const res = await create();
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toContain("No e-mail sending is set up");
+    expect(userRpc).toHaveBeenLastCalledWith("integration_invite_revoke", { p_invite: "inv-1" });
+  });
+
+  it.each([{}, { email: "" }, { email: "not-an-address" }, { email: "a@b.example", extra: 1 }, { email: "a@b.example\r\nbcc:x@y.example" }, { email: 5 }])("a bad address or body %j is refused before any database call", async (body) => {
+    expect((await create(body)).status).toBe(400);
+    expect(userRpc).not.toHaveBeenCalled();
+    expect(mail.link).not.toHaveBeenCalled();
+  });
+
+  it("the redirect address must be on the exact allow list: unset, near-miss or http means no invite is made", async () => {
+    for (const v of [undefined, "", "https://app.example.test/api/integrations/invite/callback/", "http://app.example.test/api/integrations/invite/callback", "https://app.example.test/api/integrations/invite/*", "https://app.example.test"]) {
+      if (v === undefined) delete process.env.XERO_INVITE_REDIRECT_URIS; else process.env.XERO_INVITE_REDIRECT_URIS = v;
+      expect((await create()).status).toBe(503);
+    }
+    expect(userRpc).not.toHaveBeenCalled();
+    expect(mail.link).not.toHaveBeenCalled();
+  });
+
+  it("151 not applied: 'Not available until database update 151 is applied'", async () => {
     userRpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST202", message: "Could not find the function" } });
-    const res = await (await import("@/app/api/integrations/invite/route")).POST(post());
+    const res = await create();
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toBe("Not available until database update 107 is applied.");
+    expect((await res.json()).error).toBe("Not available until database update 151 is applied.");
+    expect(mail.link).not.toHaveBeenCalled();
   });
 });
 
 describe("opening a link (public)", () => {
-  const url = (token: string) => `https://app.example.test/api/integrations/invite/${token}`;
-  const route = () => import("@/app/api/integrations/invite/[token]/route");
-  const get = async (token: string) => (await route()).GET(new Request(url(token)), { params: Promise.resolve({ token }) });
-  const press = async (token: string) => (await route()).POST(new Request(url(token), { method: "POST" }), { params: Promise.resolve({ token }) });
+  const url = (ref: string) => `https://app.example.test/api/integrations/invite/${ref}`;
+  const route = () => import("@/app/api/integrations/invite/[ref]/route");
+  const get = async (ref: string) => (await route()).GET(new Request(url(ref)), { params: Promise.resolve({ ref }) });
+  const press = async (ref: string, fields: Record<string, string> = { action: "verify", code: "1234 5678" }) =>
+    (await route()).POST(new Request(url(ref), { method: "POST", body: new URLSearchParams(fields), headers: { "content-type": "application/x-www-form-urlencoded" } }), { params: Promise.resolve({ ref }) });
   const fns = () => svcRpc.mock.calls.map((c) => c[0]);
-  const good = () => randomBytes(32).toString("base64url");
+  const good = () => randomBytes(16).toString("base64url");
 
-  it("a malformed link: a fixed 404 page, no database call (GET or POST)", async () => {
-    expect((await get("not-a-token")).status).toBe(404);
-    expect((await press("not-a-token")).status).toBe(404);
+  it("a malformed link (including an old 43-character token): a fixed 404 page, no database call (GET or POST)", async () => {
+    for (const bad of ["not-a-ref", randomBytes(32).toString("base64url")]) {
+      expect((await get(bad)).status).toBe(404);
+      expect((await press(bad)).status).toBe(404);
+    }
     expect(createSupabaseAdminClient).not.toHaveBeenCalled();
   });
 
-  it("GET (a mail scanner, a chat preview, the accountant) only shows 'Connect <company> to Xero' with Continue: nothing is used up", async () => {
-    const token = good();
+  it("GET (a mail scanner, a chat preview, the accountant) only shows the company, the MASKED address and the two forms: nothing is used up, nothing is sent", async () => {
+    const ref = good();
     for (let i = 0; i < 3; i += 1) {
-      const res = await get(token);
+      const res = await get(ref);
       expect(res.status).toBe(200);
       const html = await res.text();
       expect(html).toContain("Connect Alpha &lt;Ltd&gt; to Xero");
-      expect(html).toContain('<form method="post"><button type="submit">Continue to Xero</button></form>');
+      expect(html).toContain("a***@firm.example");
+      expect(html).toContain('name="action" value="send"');
       expect(res.headers.get("cache-control")).toBe("no-store");
     }
-    expect(fns()).not.toContain("integration_invite_redeem");
+    expect(fns()).not.toContain("integration_invite_code_verify");
+    expect(fns()).not.toContain("integration_invite_code_issue");
     expect(fns().filter((f) => f === "integration_invite_peek")).toHaveLength(3);
+    expect(mail.code).not.toHaveBeenCalled();
   });
 
   it("GET for a link that isn't open: the same fixed page, nothing used up", async () => {
@@ -179,14 +231,76 @@ describe("opening a link (public)", () => {
     const res = await get(good());
     expect(res.status).toBe(404);
     expect(await res.text()).toContain("This link can't be used");
-    expect(fns()).not.toContain("integration_invite_redeem");
+    expect(fns()).not.toContain("integration_invite_code_verify");
   });
 
-  it("POST (the Continue button): used up through the service role and sent straight to Xero", async () => {
+  it("'E-mail me a code': the code goes only to the address the database says the invite is bound to, and is not in the page", async () => {
+    const res = await press(good(), { action: "send", to: "attacker@evil.example", email: "attacker@evil.example" });
+    expect(res.status).toBe(200);
+    const [input] = mail.code.mock.calls[0] as [{ to: string; code: string; organizationId: string }];
+    expect(input.to).toBe("acct@firm.example");
+    expect(input.organizationId).toBe("org-1");
+    expect(input.code).toMatch(/^[0-9]{8}$/);
+    const html = await res.text();
+    expect(html).not.toContain(input.code);
+    expect(html).toContain("a***@firm.example");
+    expect(fns()).toEqual(["auth_rate_hit", "integration_invite_code_issue"]);
+    const [, args] = svcRpc.mock.calls[1];
+    expect(JSON.stringify(args)).not.toContain(input.code);
+  });
+
+  it("'E-mail me a code' when the e-mail can't be sent: a fixed failure page, nothing used up", async () => {
+    mail.code.mockResolvedValueOnce({ ok: false, error: "x" });
+    const res = await press(good(), { action: "send" });
+    expect(res.status).toBe(503);
+    expect(await res.text()).toContain("The code couldn&#39;t be sent".replace("&#39;", "'"));
+    expect(fns()).not.toContain("integration_invite_code_verify");
+  });
+
+  it("too many codes / too soon: refused with a fixed notice, nothing e-mailed", async () => {
+    svcRpc.mockImplementationOnce(async () => ({ data: true, error: null })).mockImplementationOnce(async () => ({ data: { ok: false, reason: "wait" }, error: null }));
+    const res = await press(good(), { action: "send" });
+    expect(res.status).toBe(429);
+    expect(mail.code).not.toHaveBeenCalled();
+  });
+
+  it("verify with the right code: used up through the service role and sent straight to Xero", async () => {
     const res = await press(good());
     expect(res.status).toBe(303);
     expect(res.headers.get("location")).toMatch(/^https:\/\/login\.xero\.com\//);
-    expect(fns()).toEqual(["auth_rate_hit", "integration_invite_redeem"]);
+    expect(res.headers.get("location")).toContain("redirect_uri=" + encodeURIComponent("https://app.example.test/api/integrations/invite/callback"));
+    expect(fns()).toEqual(["auth_rate_hit", "integration_invite_code_verify"]);
+  });
+
+  it("verify with a wrong code: 400 with a fixed notice, never Xero; locked: a fixed page; expired code: asks for a new one", async () => {
+    verify = { ok: false, reason: "wrong_code", attempts_left: 3 };
+    let res = await press(good());
+    expect(res.status).toBe(400);
+    expect(res.headers.get("location")).toBeNull();
+    expect(await res.text()).toContain("That code isn&#39;t right".replace("&#39;", "'"));
+    verify = { ok: false, reason: "locked" };
+    res = await press(good());
+    expect(res.status).toBe(403);
+    expect(await res.text()).toContain("This link is locked");
+    verify = { ok: false, reason: "code_expired" };
+    res = await press(good());
+    expect(res.status).toBe(400);
+    expect(await res.text()).toContain("run out");
+    verify = { ok: false, reason: "invalid" };
+    expect((await press(good())).status).toBe(404);
+  });
+
+  it("verify with something that isn't 8 digits: refused before the database counts an attempt", async () => {
+    for (const code of ["", "1234567", "123456789", "abcdefgh", "1234 567x"]) {
+      svcRpc.mockClear();
+      expect((await press(good(), { action: "verify", code })).status).toBe(400);
+      expect(fns()).not.toContain("integration_invite_code_verify");
+    }
+  });
+
+  it("an unknown action does nothing", async () => {
+    expect((await press(good(), { action: "peek" })).status).toBe(400);
+    expect(fns()).toEqual(["auth_rate_hit"]);
   });
 
   it("POST from another site is refused before anything", async () => {
@@ -195,13 +309,18 @@ describe("opening a link (public)", () => {
     expect(createSupabaseAdminClient).not.toHaveBeenCalled();
   });
 
-  it("Xero not set up: the link is NOT used up", async () => {
+  it("Xero not set up, or the redirect address off the allow list: nothing is used up or sent", async () => {
     delete process.env.XERO_CLIENT_ID;
     expect((await press(good())).status).toBe(503);
-    expect(fns()).not.toContain("integration_invite_redeem");
+    process.env.XERO_CLIENT_ID = "x-id";
+    process.env.XERO_INVITE_REDIRECT_URIS = "https://app.example.test/api/integrations/invite/callback/";
+    expect((await press(good(), { action: "send" })).status).toBe(503);
+    expect((await press(good())).status).toBe(503);
+    expect(fns()).not.toContain("integration_invite_code_verify");
+    expect(fns()).not.toContain("integration_invite_code_issue");
   });
 
-  it("rate limited (20 in 15 minutes per IP), and fails closed when the limiter is down: nothing peeked or used up", async () => {
+  it("rate limited (20 in 15 minutes per IP), and fails closed when the limiter is down: nothing peeked, sent or used up", async () => {
     for (const r of ["over", "down"] as const) {
       rate = r;
       svcRpc.mockClear();

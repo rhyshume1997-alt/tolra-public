@@ -32,7 +32,7 @@ const policy = (formAction) => [
   "manifest-src 'self'",
 ].join("; ");
 const csp = policy("'self'");
-// The accountant's connect link (/api/integrations/invite/<43-character token>): its Continue button is a form POST answered with a
+// The accountant's connect link (/api/integrations/invite/<22-character reference>): its Continue button is a form POST answered with a
 // redirect to Xero, and a browser checks form-action against the redirect target too. Same policy, plus Xero's sign-in address in
 // form-action and nowhere else. (The callback path is shorter than a token, so it keeps the plain policy.)
 const inviteCsp = policy("'self' https://login.xero.com");
@@ -63,7 +63,7 @@ const nextConfig = {
       },
       // Later rule wins for the same key (Next documents this): every other header above still applies to this path.
       {
-        source: "/api/integrations/invite/:token([A-Za-z0-9_-]{43})",
+        source: "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})",
         headers: [{ key: "Content-Security-Policy", value: inviteCsp }],
       },
     ];

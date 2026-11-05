@@ -45,7 +45,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("next.config.mjs security headers (production)", () => {
   it("applies one rule to every path, plus one narrower rule that carries only the accountant's-link CSP", async () => {
     const { rules } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
-    expect(rules.map((rule) => rule.source)).toEqual(["/(.*)", "/api/integrations/invite/:token([A-Za-z0-9_-]{43})"]);
+    expect(rules.map((rule) => rule.source)).toEqual(["/(.*)", "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})"]);
     expect(rules[1].headers.map((header) => header.key)).toEqual(["Content-Security-Policy"]);
   });
 
