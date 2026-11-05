@@ -1,0 +1,12 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/b5-profitability-integration.test.ts (3 tests) 5ms
+ ✓ tests/unit/b5-profitability-range.test.ts (6 tests) 6ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  16:23:23
+   Duration  999ms (transform 104ms, setup 0ms, collect 592ms, tests 11ms, environment 0ms, prepare 125ms)
+
