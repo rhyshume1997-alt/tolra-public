@@ -79,7 +79,7 @@ export function JobProfitabilityActuals({ jobId }: { jobId: string }) {
   const field = 'rounded border p-1 ml-2';
   return <section className="space-y-3 rounded-lg border p-4 text-sm" aria-label="Actual job costing" data-testid="actual-job-costing">
     <h3 className="font-semibold">Actual job costing {figure.state === 'off' ? '— disabled' : `— rates revision ${input.config.revision}`}</h3>
-    <p>Net values, excluding VAT. This uses company costing rates, not employee pay. Rate changes recalculate this view for earlier jobs. The existing profit figure stays above. Actual profit here uses invoiced revenue and recorded costs so far; the job projection is shown separately.</p>
+    <p>Net values, excluding VAT. This uses company costing rates, not employee pay. Rate changes recalculate this view for earlier jobs. The existing profit figure stays above. Actual profit here uses invoiced revenue and recorded production/purchase costs so far, before separate rework adjustments. The progress section includes confirmed extra rework.</p>
     {figure.state !== 'off' && <>
       {figure.invoicedPence === null && <p>No invoiced revenue is available yet. Actual profit stays unavailable; the projection uses the quoted value.</p>}
       {figure.state === 'incomplete' && <p className="font-semibold" role="status">Costing incomplete: {figure.reasons.join('; ')}.</p>}

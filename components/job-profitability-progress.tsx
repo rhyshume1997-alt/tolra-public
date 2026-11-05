@@ -24,6 +24,6 @@ export function JobProfitabilityProgress({input}:{input:ActualCostInputs&{machin
  <p>A blank is unknown. Enter 0 only when no more of that cost is expected. Include remaining rework in these amounts too.</p>
  <label>Recorded rework hours<select aria-label="Rework labour treatment" onChange={e=>setRemaining(r=>({...r,reworkLabour:(e.target.value||null) as RemainingWork['reworkLabour']}))}><option value="">Not confirmed</option><option value="included">Already in timers or machine-inclusive costs</option><option value="additional">Extra; not in timers or machine-inclusive costs</option></select></label>
  <label>Recorded rework material<select aria-label="Rework material treatment" onChange={e=>setRemaining(r=>({...r,reworkMaterial:(e.target.value||null) as RemainingWork['reworkMaterial']}))}><option value="">Not confirmed</option><option value="included">Already in supplier purchases</option><option value="additional">Extra; not in supplier purchases</option></select></label>
- <label><input type="checkbox" onChange={e=>setRemaining(r=>({...r,confirmed:e.target.checked}))} /> These entries cover all remaining work for this projection.</label>
+ <label><input type="checkbox" onChange={e=>setRemaining(r=>({...r,confirmed:e.target.checked}))} /> These entries cover all remaining work and exclude labour and overheads already in machine rates.</label>
  </div></details></section>;
 }
