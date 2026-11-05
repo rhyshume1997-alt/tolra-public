@@ -19,3 +19,5 @@ No approved, public JNR wipe SQL was found in main or the pinned delivery-note t
 Before closing X4, supply the approved exact wipe artifact and hash. On a separately created synthetic/restored disposable target, prove the complete KEEP list includes `dln_numbering_pending`, all Marpet rows/files/counters/holds are unchanged, JNR KEEP records remain, only agreed JNR WIPE records change, and a failed run rolls back. Do not use production data to fill this public test pack.
 
 Acceptance record: requirement X4; expected complete tenant and wipe isolation; actual ____ **NOT EXECUTED**; evidence reference ____; tester ____; date ____; approval ____.
+
+Executed code: `64912e0`, 5 November 2026 UTC, Codex. Result: **20 passed, zero skipped** on the narrow synthetic scope above; lint and TypeScript passed. Evidence is retained under `evidence/`. The initial startup failure (20 checks did not run) and initial TypeScript setup error are retained too. Only readiness/type setup changed; no security expectation was relaxed. Later commit attaches evidence only. This is not operational acceptance; the actual-wipe acceptance record remains NOT EXECUTED.

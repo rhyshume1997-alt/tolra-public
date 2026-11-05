@@ -1,0 +1,3 @@
+tests/reviews/x4/disposable.ts(14,87): error TS2769: No overload matches this call.
+  Overload 3 of 8, '(command: string, args?: readonly string[] | undefined, options?: SpawnSyncOptions | undefined): SpawnSyncReturns<string | NonSharedBuffer>', gave the following error.
+    Property 'NODE_ENV' is missing in type '{ [k: string]: string | undefined; }' but required in type 'ProcessEnv'.
