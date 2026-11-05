@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calcUnitCost, calcDetailedQuote, type DetailedInputs } from '../../lib/costing/engine';
 const operation={name:'Mill',sequence:1,setup_time_hr:1,cycle_time_hr:0.25,allowance_pct:0,machine_rate_per_hr:60,labor_rate_per_hr:30};
-const input=(overrides:Partial<DetailedInputs>={}):DetailedInputs=>({quantity:1,stock_weight_lb:1,cost_per_lb:2,scrap_factor:0.05,ops:[operation],...overrides});
+const input=(overrides:Partial<DetailedInputs>={}):DetailedInputs=>({quantity:1,stock_weight_lb:1,cost_per_lb:2,scrap_factor:0.05,ops:[operation],margin_pct:0.15,programming_rate_per_hr:75,overhead_rate_pct:1.5,...overrides});
 describe('costing extended edge cases',()=>{
  it('quantity one keeps all setup time',()=>expect(calcDetailedQuote(input({quantity:1})).operations[0].time.setup_per_part).toBe(1));
  it('quantity one thousand amortises setup',()=>expect(calcDetailedQuote(input({quantity:1000})).operations[0].time.setup_per_part).toBe(0.001));
