@@ -1,0 +1,65 @@
+{
+  "findings": [
+    {
+      "id": "PICK-01",
+      "subject_sha": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+      "issue": "The picker nonce can be consumed twice concurrently: the reused rate counter is not an atomic single-use claim",
+      "tests": [
+        {
+          "name": "two independent SQL transactions cannot both claim a single-use picker nonce",
+          "status": "failed",
+          "failure_messages": [
+            "AssertionError: single-use cannot be implemented by a non-atomic rate counter: expected [ \u2026(2) ] to have a length of 1 but got 2\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/xero-picker-adversarial/tests/reviews/xero-picker-adversarial/picker.db.test.ts:58:111\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ],
+          "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+          "line": 58
+        },
+        {
+          "name": "two concurrent actual picker POSTs cannot both pass a single-use claim before either RPC transaction commits",
+          "status": "failed",
+          "failure_messages": [
+            "AssertionError: both actual routes must not accept the same sealed choice: expected [ \u2026(2) ] to have a length of 1 but got 2\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/xero-picker-adversarial/tests/reviews/xero-picker-adversarial/picker.db.test.ts:65:130\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ],
+          "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+          "line": 65
+        }
+      ],
+      "reproduction": [
+        "Create one valid sealed offer for synthetic company/admin and obtain its GET CSRF value",
+        "Use two independent service-role PostgreSQL sessions, BEGIN both transactions, and call auth_rate_hit for the same picker nonce hash with max=1",
+        "Allow both function calls to return before either transaction commits. Each sees only its own inserted row and returns true",
+        "The actual-route test applies the identical legal timing to both POST RPC transactions, commits them and returns their real results",
+        "Both actual POSTs pass the single-use gate, reach the recording Xero refresh/store flow, and return 200. A later sequential replay correctly returns 410"
+      ],
+      "affected": [
+        {
+          "file": "app/api/integrations/xero/choose/route.ts",
+          "line": 65
+        },
+        {
+          "file": "lib/server/login.ts",
+          "line": 43
+        },
+        {
+          "file": "supabase/migrations/011_usernames_and_login_limits.sql",
+          "line": 104
+        }
+      ],
+      "recommended_fix": "Replace the picker use of the approximate rate limiter with an atomic service-only consumed-nonce claim scoped to company/admin/purpose, using a unique record or a correctly serialized database operation. Preserve expiry, recent MFA, CSRF, company binding, OFF and held-document gates. Opus owns any approved SQL change; do not rewrite protected historical migration 011 or introduce production SQL in this test PR.",
+      "severity_scope": "Strict single-use guarantee fails under concurrency. Existing company/tenant store constraints still protect their own invariants; no transfers or held releases were observed.",
+      "handover": {
+        "done": [
+          "20 independent actual-route/real-PG cases and 5 crypto/expiry/CSRF/cookie-budget units",
+          "Exact legal-concurrency reproduction and real SQL evidence",
+          "Full unit suite, enlarged-heap typecheck, lint and diff check"
+        ],
+        "in_progress": [],
+        "not_started": [
+          "Opus-owned runtime/SQL fix or integration",
+          "New-SHA retest",
+          "Hosted Auth/PostgREST/browser/live acceptance"
+        ]
+      }
+    }
+  ]
+}
