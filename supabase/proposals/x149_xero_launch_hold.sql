@@ -13,7 +13,13 @@
 -- support session), with the second step where the company requires it (recent code, as release 136) and a connection that is connected AND
 -- mapped, turns it ON (integration_xero_set_transfers); anyone may be refused, nobody else can write the table (no grant to any API role).
 -- Every change that is made is audited (XERO_TRANSFERS_CHANGED, with the actor). Company A's row never touches B.
--- Rollback: supabase/release/149_xero_launch_hold.rollback.sql (restores 084's two functions; drops the table, trigger and functions).
+-- Backlog stays HELD: a queued document can be claimed only if it was queued while the company was ON and connected, in the SAME ON period
+-- (xero_send_release.queued_generation = the hold row's generation, bumped at every OFF to ON), or if the company's own admin reviewed and
+-- explicitly approved it (integration_xero_approve_held: signed in, never support, a fresh authenticator code always, connected; audited
+-- XERO_HELD_SENDS_APPROVED) on the SAME connection (approved_epoch = connection_epoch, bumped by every connection change). So switching ON,
+-- a reconnect, a retry or an existing connection never releases what was waiting: documents queued before this release, while OFF, while the
+-- connection needed reconnecting, or in an earlier ON period wait for an approval (integration_xero_held_sends lists them for the admin).
+-- Rollback: supabase/release/149_xero_launch_hold.rollback.sql (restores 084's two functions; drops the tables, triggers and functions).
 BEGIN;
 -- 1. One hold row per company. Nobody (no API role, not the service role) reads or writes it directly: only the definer functions below.
 CREATE TABLE public.xero_transfer_hold (
@@ -21,12 +27,61 @@ CREATE TABLE public.xero_transfer_hold (
   enabled         boolean NOT NULL DEFAULT false,
   changed_by      uuid,
   changed_at      timestamptz NOT NULL DEFAULT now(),
-  reason          text
+  reason          text,
+  -- Bumped each time the switch goes from OFF to ON: a document queued in an earlier ON period is backlog again (held for review).
+  generation      bigint NOT NULL DEFAULT 0,
+  -- Bumped by every connection change (new connection, reconnect, fresh consent, other organisation, status change, deleted row):
+  -- an admin's approval of a held document counts only for the connection it was given on.
+  connection_epoch bigint NOT NULL DEFAULT 0
 );
 ALTER TABLE public.xero_transfer_hold ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.xero_transfer_hold FROM PUBLIC, anon, authenticated, service_role;
 -- Every company that exists now starts OFF, connected or not.
 INSERT INTO public.xero_transfer_hold (organization_id, enabled, reason) SELECT o.id, false, 'installed off' FROM public.organizations o;
+
+-- 1b. Which queued Xero documents may be claimed. A queued document is HELD (never claimable) unless EITHER it was queued while the company's
+-- transfers were ON and connected, in the SAME ON period as now (queued_generation = the hold row's generation), OR an admin of the company
+-- reviewed and approved it on the SAME connection as now (approved_epoch = the hold row's connection_epoch). Everything queued before this
+-- release (no row here), while the switch was OFF, while the connection needed reconnecting, or in an earlier ON period is held: turning the
+-- switch ON, reconnecting, a retry or an existing connection never releases it by itself. Nobody but the definer functions touches this table.
+CREATE TABLE public.xero_send_release (
+  send_id           uuid PRIMARY KEY REFERENCES public.integration_sends (id) ON DELETE CASCADE,
+  organization_id   uuid NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
+  queued_generation bigint,
+  approved_epoch    bigint,
+  approved_by       uuid,
+  approved_at       timestamptz
+);
+ALTER TABLE public.xero_send_release ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.xero_send_release FROM PUBLIC, anon, authenticated, service_role;
+CREATE INDEX xero_send_release_org ON public.xero_send_release (organization_id);
+
+-- Records, as each Xero send row is queued, whether the company was ON (and connected) at that moment and in which ON period. Read only of
+-- the switch; it never refuses or changes the queued row (an AFTER INSERT trigger only: result writes are never touched).
+CREATE FUNCTION public.integration_xero_send_queued() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+BEGIN
+  IF NEW.provider IS DISTINCT FROM 'xero' THEN RETURN NULL; END IF;
+  INSERT INTO public.xero_send_release (send_id, organization_id, queued_generation)
+  SELECT NEW.id, NEW.organization_id,
+         (SELECT h.generation FROM public.xero_transfer_hold h WHERE h.organization_id = NEW.organization_id AND h.enabled
+            AND EXISTS (SELECT 1 FROM public.integration_connections c WHERE c.organization_id = NEW.organization_id AND c.provider = 'xero' AND c.status = 'connected'))
+  ON CONFLICT (send_id) DO NOTHING;
+  RETURN NULL;
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_xero_send_queued() FROM PUBLIC, anon, authenticated, service_role;
+CREATE TRIGGER xero_send_queued AFTER INSERT ON public.integration_sends
+  FOR EACH ROW EXECUTE FUNCTION public.integration_xero_send_queued();
+
+-- The one rule, used by the claim, the retry, the review list and the approval: may this company's queued Xero send row be claimed now?
+CREATE FUNCTION public.integration_xero_send_released(p_org uuid, p_send uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SELECT EXISTS (SELECT 1 FROM public.xero_send_release r JOIN public.xero_transfer_hold h ON h.organization_id = r.organization_id
+                 WHERE r.send_id = p_send AND r.organization_id = p_org
+                   AND (r.queued_generation = h.generation AND h.enabled OR r.approved_epoch = h.connection_epoch))
+$$;
+REVOKE ALL ON FUNCTION public.integration_xero_send_released(uuid, uuid) FROM PUBLIC, anon, authenticated, service_role;
 
 -- 2. The gate: ON only when the row says on AND the company is connected. Missing row = OFF. Server only.
 CREATE FUNCTION public.integration_xero_transfer_enabled(p_org uuid) RETURNS boolean
@@ -61,7 +116,9 @@ BEGIN
   SELECT c.status INTO v_status FROM public.integration_connections c WHERE c.organization_id = v_org AND c.provider = 'xero';
   v_un := CASE WHEN v_status = 'connected' THEN public.integration_unmapped(v_org, 'xero') ELSE ARRAY['not connected']::text[] END;
   RETURN jsonb_build_object('enabled', public.integration_xero_transfer_enabled(v_org), 'connected', coalesce(v_status = 'connected', false),
-                            'status', coalesce(v_status, 'not_connected'), 'mapped', cardinality(v_un) = 0 AND v_status = 'connected');
+                            'status', coalesce(v_status, 'not_connected'), 'mapped', cardinality(v_un) = 0 AND v_status = 'connected',
+                            'held', (SELECT count(*) FROM public.integration_sends s WHERE s.organization_id = v_org AND s.provider = 'xero'
+                                       AND s.status IN ('pending', 'failed', 'needs_check') AND NOT public.integration_xero_send_released(v_org, s.id)));
 END
 $$;
 
@@ -103,7 +160,9 @@ BEGIN
   INSERT INTO public.xero_transfer_hold (organization_id, enabled) VALUES (v_org, false) ON CONFLICT (organization_id) DO NOTHING;
   SELECT h.enabled INTO v_was FROM public.xero_transfer_hold h WHERE h.organization_id = v_org FOR UPDATE;
   IF v_was IS DISTINCT FROM p_enabled THEN
-    UPDATE public.xero_transfer_hold h SET enabled = p_enabled, changed_by = v_uid, changed_at = now(), reason = 'admin' WHERE h.organization_id = v_org;
+    -- OFF to ON starts a new ON period: whatever was queued before it (or in an earlier ON period) stays held until an admin approves it.
+    UPDATE public.xero_transfer_hold h SET enabled = p_enabled, changed_by = v_uid, changed_at = now(), reason = 'admin',
+      generation = h.generation + CASE WHEN p_enabled THEN 1 ELSE 0 END WHERE h.organization_id = v_org;
     PERFORM security_audit.log_named_event(v_org, 'XERO_TRANSFERS_CHANGED', 'xero_transfer_hold', v_org::text,
       jsonb_build_object('enabled', p_enabled, 'was', v_was, 'actor', v_uid));
   END IF;
@@ -130,6 +189,8 @@ BEGIN
   END IF;
   INSERT INTO public.xero_transfer_hold (organization_id, enabled, reason) VALUES (v_org, false, 'connection changed') ON CONFLICT (organization_id) DO NOTHING;
   SELECT h.enabled INTO v_was FROM public.xero_transfer_hold h WHERE h.organization_id = v_org FOR UPDATE;
+  -- A new connection epoch whatever the switch was: approvals given on the old connection no longer release anything.
+  UPDATE public.xero_transfer_hold h SET connection_epoch = h.connection_epoch + 1 WHERE h.organization_id = v_org;
   IF v_was THEN
     UPDATE public.xero_transfer_hold h SET enabled = false, changed_by = auth.uid(), changed_at = now(), reason = 'connection changed' WHERE h.organization_id = v_org;
     PERFORM security_audit.log_named_event(v_org, 'XERO_TRANSFERS_CHANGED', 'xero_transfer_hold', v_org::text,
@@ -204,6 +265,9 @@ BEGIN
   SELECT s.id, s.doc_type, s.doc_id, s.doc_ref, s.action, s.attempts, s.external_id INTO v_row
   FROM public.integration_sends s
   WHERE s.organization_id = p_org AND s.provider = p_provider AND s.status = 'pending' AND s.next_attempt_at <= now()
+    -- 149: a held document (backlog: queued while OFF, before this release, in an earlier ON period, or approved on another connection) is
+    -- never claimed: only one queued in this ON period, or one an admin approved on this connection.
+    AND (p_provider IS DISTINCT FROM 'xero' OR public.integration_xero_send_released(p_org, s.id))
     -- With a document (the automatic send right after it is issued or voided, Rhys Wed 21 Oct): only that document's first attempt;
     -- every retry and every other document waits for an admin's Send now (or the daily sweep).
     AND (p_doc_id IS NULL OR (s.doc_id = p_doc_id AND s.doc_type = p_doc_type AND s.attempts = 0))
@@ -260,6 +324,10 @@ BEGIN
   IF v_row.status NOT IN ('failed', 'needs_check') THEN
     RAISE EXCEPTION 'Only a failed send, or one to check, can be sent again.' USING ERRCODE = '22023', HINT = 'not_retryable';
   END IF;
+  -- 149: a retry never releases a held document: an admin approves it first (integration_xero_approve_held).
+  IF v_row.provider = 'xero' AND NOT public.integration_xero_send_released(v_org, p_send) THEN
+    RAISE EXCEPTION 'This document is held for review: an admin must approve it before it is sent to Xero.' USING ERRCODE = '55000', HINT = 'xero_held_for_review';
+  END IF;
   UPDATE public.integration_sends s SET status = 'pending', next_attempt_at = now(), claimed_until = NULL, updated_at = now()
   WHERE s.id = p_send AND s.organization_id = v_org;
   PERFORM security_audit.log_named_event(v_org, 'INTEGRATION_SEND_RETRY', 'integration_sends', p_send::TEXT,
@@ -267,4 +335,82 @@ BEGIN
   RETURN jsonb_build_object('id', p_send, 'status', 'pending');
 END
 $$;
+
+-- 8. The admin's review of held documents. The list: this company's held Xero documents (waiting, failed or to check), oldest first.
+CREATE FUNCTION public.integration_xero_held_sends() RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  v_org uuid := public.current_user_organization_id();
+BEGIN
+  IF auth.uid() IS NULL OR v_org IS NULL OR NOT public.has_org_role(ARRAY['admin']) THEN
+    RAISE EXCEPTION 'Admin required.' USING ERRCODE = '42501';
+  END IF;
+  RETURN coalesce((SELECT jsonb_agg(jsonb_build_object('id', s.id, 'doc_type', s.doc_type, 'doc_id', s.doc_id, 'doc_ref', s.doc_ref, 'action', s.action,
+                                                       'status', s.status, 'attempts', s.attempts, 'queued_at', s.created_at) ORDER BY s.created_at, s.id)
+                   FROM (SELECT * FROM public.integration_sends s WHERE s.organization_id = v_org AND s.provider = 'xero'
+                           AND s.status IN ('pending', 'failed', 'needs_check') AND NOT public.integration_xero_send_released(v_org, s.id)
+                         ORDER BY s.created_at, s.id LIMIT 500) s), '[]'::jsonb);
+END
+$$;
+
+-- The approval: the company's own admin, signed in (never a support session), with an authenticator code from the last 15 minutes ALWAYS
+-- (not only where the company requires the second step), while connected, explicitly names each held document (1 to 200 at a time). It
+-- sends nothing: an approved document becomes claimable once transfers are ON, for THIS connection only (a reconnect or a fresh consent puts
+-- it back on hold). A document of another company, or one that is not waiting, failed or to check, refuses the whole call. Audited.
+CREATE FUNCTION public.integration_xero_approve_held(p_sends uuid[]) RETURNS jsonb
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path = pg_catalog, public, security_audit AS $$
+DECLARE
+  v_org    uuid := public.current_user_organization_id();
+  v_uid    uuid := auth.uid();
+  v_status text;
+  v_epoch  bigint;
+  v_ids    uuid[];
+  v_found  integer;
+  v_new    uuid[];
+  v_now    numeric := extract(epoch FROM now());
+BEGIN
+  PERFORM public.assert_privileged_aal();
+  IF v_org IS NULL OR v_uid IS NULL OR NOT public.has_org_role(ARRAY['admin'])
+     OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
+    RAISE EXCEPTION 'Only the company''s own admins can approve held Xero documents.' USING ERRCODE = '42501';
+  END IF;
+  IF coalesce(nullif(current_setting('role', TRUE), 'none'), session_user::text) = 'authenticated'
+     AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(CASE WHEN jsonb_typeof(auth.jwt() -> 'amr') = 'array' THEN auth.jwt() -> 'amr' ELSE '[]'::jsonb END) AS e
+       WHERE e ->> 'method' IN ('totp', 'mfa/totp')
+         AND CASE WHEN jsonb_typeof(e -> 'timestamp') = 'number' THEN (e ->> 'timestamp')::numeric END BETWEEN v_now - 900 AND v_now + 60) THEN
+    RAISE EXCEPTION 'Enter a fresh code from your authenticator app to approve held Xero documents.' USING ERRCODE = '42501', HINT = 'mfa_recent_required';
+  END IF;
+  SELECT array_agg(DISTINCT x) INTO v_ids FROM unnest(p_sends) x WHERE x IS NOT NULL;
+  IF p_sends IS NULL OR v_ids IS NULL OR cardinality(v_ids) <> cardinality(p_sends) OR cardinality(v_ids) > 200 THEN
+    RAISE EXCEPTION 'Choose 1 to 200 held documents, each once.' USING ERRCODE = '22023';
+  END IF;
+  -- Same lock order as the switch and the reset trigger: connection row, then hold row.
+  SELECT c.status INTO v_status FROM public.integration_connections c WHERE c.organization_id = v_org AND c.provider = 'xero' FOR SHARE;
+  IF v_status IS DISTINCT FROM 'connected' THEN
+    RAISE EXCEPTION 'Connect this company to Xero first.' USING ERRCODE = '55000', HINT = 'not_connected';
+  END IF;
+  INSERT INTO public.xero_transfer_hold (organization_id, enabled) VALUES (v_org, false) ON CONFLICT (organization_id) DO NOTHING;
+  SELECT h.connection_epoch INTO v_epoch FROM public.xero_transfer_hold h WHERE h.organization_id = v_org FOR SHARE;
+  PERFORM 1 FROM public.integration_sends s WHERE s.id = ANY (v_ids) AND s.organization_id = v_org FOR UPDATE;
+  SELECT count(*) INTO v_found FROM public.integration_sends s WHERE s.id = ANY (v_ids) AND s.organization_id = v_org AND s.provider = 'xero';
+  IF v_found <> cardinality(v_ids) THEN
+    RAISE EXCEPTION 'Send not found.' USING ERRCODE = 'P0002';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.integration_sends s WHERE s.id = ANY (v_ids) AND s.status NOT IN ('pending', 'failed', 'needs_check')) THEN
+    RAISE EXCEPTION 'Only a waiting, failed or to-check document can be approved.' USING ERRCODE = '22023', HINT = 'not_held';
+  END IF;
+  SELECT array_agg(s.id ORDER BY s.id) INTO v_new FROM public.integration_sends s WHERE s.id = ANY (v_ids) AND NOT public.integration_xero_send_released(v_org, s.id);
+  INSERT INTO public.xero_send_release AS r (send_id, organization_id, approved_epoch, approved_by, approved_at)
+  SELECT x, v_org, v_epoch, v_uid, now() FROM unnest(coalesce(v_new, '{}'::uuid[])) x
+  ON CONFLICT (send_id) DO UPDATE SET approved_epoch = EXCLUDED.approved_epoch, approved_by = EXCLUDED.approved_by, approved_at = EXCLUDED.approved_at;
+  IF cardinality(coalesce(v_new, '{}'::uuid[])) > 0 THEN
+    PERFORM security_audit.log_named_event(v_org, 'XERO_HELD_SENDS_APPROVED', 'integration_sends', v_org::text,
+      jsonb_build_object('sends', to_jsonb(v_new), 'count', cardinality(v_new), 'actor', v_uid, 'connection_epoch', v_epoch));
+  END IF;
+  RETURN jsonb_build_object('approved', cardinality(coalesce(v_new, '{}'::uuid[])), 'already', cardinality(v_ids) - cardinality(coalesce(v_new, '{}'::uuid[])));
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_xero_held_sends(), public.integration_xero_approve_held(uuid[]) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.integration_xero_held_sends(), public.integration_xero_approve_held(uuid[]) TO authenticated;
 COMMIT;

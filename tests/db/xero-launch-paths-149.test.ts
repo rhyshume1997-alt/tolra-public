@@ -5,6 +5,8 @@
  * all (not even to refresh a token). Turning ON one company lets only that company send, on every path. Switched OFF in the middle of a send:
  * nothing is written to Xero afterwards, the route answers 200 (not 500) and the row is put back to pending, never left in 'sending'.
  * Rolled back while this app code is live: nothing sends and the sweep reports skipped instead of throwing.
+ * Backlog stays held: what was queued before a company was switched ON (or in an earlier ON period) is sent by no path until the company's admin
+ * approves it through the real held-review route (with a fresh authenticator code, which the database itself demands).
  * Xero is a stub (global fetch intercepted; only loopback, api.xero.com, identity.xero.com allowed); the database is the disposable one.
  */
 import { readFileSync } from "node:fs";
@@ -14,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const st = vi.hoisted(() => ({ org: "", userId: "", role: "admin", support: false }));
+const st = vi.hoisted(() => ({ org: "", userId: "", role: "admin", support: false, recentCode: undefined as number | undefined }));
 vi.mock("@/lib/server/auth", async () => {
   const { NextResponse } = await import("next/server");
   const { pgSupabase } = await import("./x149-support");
@@ -24,11 +26,14 @@ vi.mock("@/lib/server/auth", async () => {
     isErrorResponse: (v: unknown) => v instanceof NextResponse,
     jsonError: (m: string, s: number) => NextResponse.json({ error: m }, { status: s }),
     readJson: async (r: Request) => ({ ok: true, data: await r.json() }),
+    mfaRecentRequired: (action: string) => NextResponse.json({ error: `fresh code to ${action}`, code: "mfa_recent_required" }, { status: 403 }),
     requireProfile: async (roles?: string[]) => (roles && !roles.includes(st.role)
       ? NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      : { supabase: pgSupabase(process.env.TEST_DATABASE_URL!, { kind: "user", id: st.userId }), user: { id: st.userId }, profile: { organization_id: st.org, role: st.role }, session: st.support ? { support: true } : null }),
+      : { supabase: pgSupabase(process.env.TEST_DATABASE_URL!, { kind: "user", id: st.userId, recentCode: st.recentCode }), user: { id: st.userId }, profile: { organization_id: st.org, role: st.role }, session: st.support ? { support: true } : null }),
   };
 });
+// The route's own early code check is a pass-through here: the DATABASE demands the fresh code itself (no amr in the claims: refused).
+vi.mock("@/lib/server/admin-users", () => ({ requireRecentAal2: async () => null }));
 vi.mock("@/lib/server/supabase-admin", async () => {
   const { pgSupabase } = await import("./x149-support");
   return { createSupabaseAdminClient: () => pgSupabase(process.env.TEST_DATABASE_URL!, { kind: "service" }) };
@@ -200,7 +205,35 @@ describe("turning the switch ON for ONE company (A): only A sends, on every path
     expect(putCount("g-mapped")).toBe(0);
   });
 
-  it("manual send: A's whole queue goes; G, E, B, C, D, H send nothing", async () => {
+  it("manual send: A's backlog stays held until A's admin approves it through the held route (fresh code); then A's whole queue goes; G, E, B, C, D, H send nothing", async () => {
+    // Changed deliberately for the backlog hold: this test used to expect switch-on to release A's old queue by itself.
+    const held = await import("@/app/api/integrations/xero/held/route");
+    xero.reset();
+    asCo(cos["a-mapped"]);
+    expect(await (await routes.send(post({}))).json()).toMatchObject({ sent: 0 });
+    expect(putCount("a-mapped")).toBe(0);
+    const list = (await (await held.GET()).json()).held as Array<{ id: string; status: string }>;
+    expect(list.length).toBeGreaterThanOrEqual(6);
+    st.support = true;
+    expect((await held.GET()).status).toBe(403);
+    expect((await held.POST(post({ sends: list.map((h) => h.id) }))).status).toBe(403);
+    st.support = false;
+    asCo(cos["g-mapped"]);
+    expect((await held.POST(post({ sends: [list[0].id] }))).status).toBe(403); // G has no fresh code ...
+    st.recentCode = 30;
+    expect((await held.POST(post({ sends: [list[0].id] }))).status).toBe(404); // ... and with one, A's document is not G's
+    st.recentCode = undefined;
+    asCo(cos["a-mapped"]);
+    const noCode = await held.POST(post({ sends: list.map((h) => h.id) }));
+    expect(noCode.status).toBe(403);
+    expect(await noCode.json()).toMatchObject({ code: "mfa_recent_required" });
+    expect(((await (await held.GET()).json()).held as unknown[]).length).toBe(list.length);
+    st.recentCode = 30;
+    const yes = await held.POST(post({ sends: list.map((h) => h.id) }));
+    st.recentCode = undefined;
+    expect(yes.status).toBe(200);
+    expect(await yes.json()).toEqual({ approved: list.length, already: 0 });
+    expect((await (await held.GET()).json()).held).toEqual([]);
     xero.reset();
     for (const n of NAMES) { asCo(cos[n]); await routes.send(post({})); }
     expect(putCount("a-mapped")).toBeGreaterThan(0);
@@ -273,9 +306,20 @@ describe("switched OFF in the middle of a send", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ status: "pending", external_id: null });
     expect((await owner<{ n: number }>("select count(*)::int as n from public.integration_sends where organization_id=$1 and status='sending'", [cos["g-mapped"].id]))[0].n).toBe(0);
-    // Turned on again: the same document goes out exactly once (a repeat attempt reads Xero first).
+    // Turned on again: a new ON period, so the half-sent document is held for review (changed deliberately for the backlog hold); once G's admin
+    // approves it, it goes out exactly once (a repeat attempt reads Xero first).
     expect((await setTransfers("g-mapped", true)).error).toBeNull();
     await owner("update public.integration_sends set next_attempt_at = now() where organization_id=$1", [cos["g-mapped"].id]);
+    xero.reset();
+    asCo(cos["g-mapped"]);
+    await routes.send(post({}));
+    expect(putCount("g-mapped")).toBe(0);
+    expect((await sendRows(cos["g-mapped"])).find((x) => x.doc_ref === inv.ref)?.status).toBe("pending");
+    const held = await import("@/app/api/integrations/xero/held/route");
+    const row = (((await (await held.GET()).json()).held) as Array<{ id: string; doc_ref: string }>).find((h) => h.doc_ref === inv.ref)!;
+    st.recentCode = 30;
+    expect((await held.POST(post({ sends: [row.id] }))).status).toBe(200);
+    st.recentCode = undefined;
     xero.reset();
     asCo(cos["g-mapped"]);
     await routes.send(post({}));

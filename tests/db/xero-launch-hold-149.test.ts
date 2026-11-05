@@ -10,6 +10,9 @@
  *     authenticator code where the company requires the second step; OFF is always allowed to an admin; every change is audited with its actor;
  *   - the database function that claims a send (and the retry) refuse while it is OFF, before any row is touched: nothing else can start a send;
  *   - a send already claimed when it goes OFF still records its real result (nothing is stranded in 'sending');
+ *   - backlog stays HELD: only a document queued in the current ON period is claimed by itself; anything queued before 149, while OFF, while the
+ *     connection needed reconnecting, or in an earlier ON period is claimed only after the company's own admin approves it (fresh authenticator
+ *     code always, never support, own company only, audited) on the current connection; switching ON, a reconnect or a retry releases nothing;
  *   - company A's switch never affects company B; no API role (not even the service role) can read or write the hold table;
  *   - the rollback refuses while a connected company is held, restores 084's two functions exactly, and the release can be applied again.
  */
@@ -126,6 +129,13 @@ const claim = async (db: Db, org: string) => ok(await svc<{ r: { blocked: string
 const turn = (db: Db, who: Actor | "anon", on: boolean | null, o: { aal?: string; recent?: number } = {}) => as<{ r: { enabled: boolean } }>(db, who, "SELECT public.integration_xero_set_transfers($1) AS r", [on], o);
 const status = async (db: Db, who: Actor) => ok(await as<{ r: Record<string, unknown> }>(db, who, "SELECT public.integration_xero_launch_status() AS r"))[0].r;
 const rowStates = async (db: Db, org: string) => (await db.query("SELECT status, attempts, claim_token IS NOT NULL AS claimed FROM public.integration_sends WHERE organization_id=$1 ORDER BY doc_ref", [org])).rows;
+/** The admin's review: the held list, and an approval (with an authenticator code entered `recent` seconds ago unless said otherwise). */
+const heldList = async (db: Db, who: Actor) => ok(await as<{ r: Array<{ id: string; doc_ref: string; status: string }> }>(db, who, "SELECT public.integration_xero_held_sends() AS r"))[0].r;
+const approve = (db: Db, who: Actor | "anon", ids: unknown, o: { aal?: string; recent?: number | null } = {}) =>
+  as<{ r: { approved: number; already: number } }>(db, who, "SELECT public.integration_xero_approve_held($1::uuid[]) AS r", [ids], { aal: o.aal, recent: o.recent === null ? undefined : (o.recent ?? 30) });
+const queue = async (db: Db, org: string, ref: string, action = "create") =>
+  (await db.query("INSERT INTO public.integration_sends(organization_id,provider,doc_type,doc_id,doc_ref,action) VALUES($1,'xero','invoice',$2,$3,$4) RETURNING id", [org, randomUUID(), ref, action])).rows[0].id as string;
+const idsOf = async (db: Db, org: string) => (await db.query("SELECT id FROM public.integration_sends WHERE organization_id=$1 ORDER BY doc_ref", [org])).rows.map((r) => r.id as string);
 const auditOf = async (db: Db, org: string) => (await db.query("SELECT actor_user_id, metadata FROM security_audit.audit_log WHERE organization_id=$1 AND action='XERO_TRANSFERS_CHANGED' ORDER BY created_at, id", [org])).rows;
 /** A committed unit of work (BEGIN, the steps, COMMIT): the helpers use savepoints, which need a transaction block. */
 async function committed<T>(db: Db, fn: () => Promise<T>): Promise<T> {
@@ -191,6 +201,16 @@ describe("installed on a database that already has connected companies: every on
       expect((await claim(db, d.org)).blocked).toBe("needs_reconnect");
       const checks = (await db.query(read("supabase/verify/xero_launch_hold_149.sql"))).rows;
       expect(checks.filter((r) => r.ok !== true)).toEqual([]);
+      // An EXISTING connection with a queue from before 149: switching ON releases none of it; only the admin's explicit approval does.
+      ok(await turn(db, a.admin, true));
+      expect(await claim(db, a.org)).toEqual({ blocked: null, send: null });
+      expect(await rowStates(db, a.org)).toEqual(before);
+      expect((await heldList(db, a.admin)).map((h) => h.status)).toEqual(["pending", "pending", "pending"]);
+      expect(await status(db, a.admin)).toMatchObject({ enabled: true, held: 3 });
+      ok(await approve(db, a.admin, (await heldList(db, a.admin)).filter((h) => h.doc_ref.endsWith("-0")).map((h) => h.id)));
+      expect((await claim(db, a.org)).send).toMatchObject({ doc_ref: `INV-X149-${run}-0` });
+      expect(await claim(db, a.org)).toEqual({ blocked: null, send: null });
+      expect(await heldList(db, a.admin)).toHaveLength(2);
       await db.query("ROLLBACK");
     });
   });
@@ -231,9 +251,12 @@ describe("OFF by default, and Connected is not On", () => {
       await mapAll(db, admin);
       expect(ok(await turn(db, admin, true))[0].r).toEqual({ enabled: true });
       expect(await hold(db, org)).toBe(true);
+      // (149 hold) the document queued before ON is held; one queued now goes.
+      expect((await claim(db, org)).send).toBeNull();
+      await queue(db, org, "INV-MAP-AFTER-ON");
       const got = await claim(db, org);
       expect(got.blocked).toBeNull();
-      expect(got.send).toMatchObject({ doc_type: "invoice", action: "create", attempts: 1 });
+      expect(got.send).toMatchObject({ doc_type: "invoice", action: "create", attempts: 1, doc_ref: "INV-MAP-AFTER-ON" });
     });
   });
 });
@@ -361,17 +384,23 @@ describe("the database refuses every route into a send while OFF, and lets exact
       expect((await claim(db, b.org)).blocked).toBe("launch_hold");
       ok(await turn(db, a.admin, true));
       expect((await claim(db, b.org)).blocked).toBe("launch_hold"); // company isolation: A's switch is not B's
+      // (149 hold) ON does not release the failed row queued before it: the retry refuses it until an admin approves it.
+      expect((await as(db, a.admin, "SELECT public.integration_retry_send($1)", [failed])).error).toMatchObject({ code: "55000", hint: "xero_held_for_review" });
+      expect((await db.query("SELECT status FROM public.integration_sends WHERE id=$1", [failed])).rows[0].status).toBe("failed");
+      ok(await approve(db, a.admin, [failed]));
       expect(ok(await as(db, a.admin, "SELECT public.integration_retry_send($1) AS r", [failed]))[0]).toMatchObject({ r: { status: "pending" } });
       const got = await claim(db, a.org);
-      expect(got.send).not.toBeNull();
+      expect(got.send).toMatchObject({ id: failed });
+      expect(await claim(db, a.org)).toEqual({ blocked: null, send: null }); // the other row queued before ON is still held
       expect((await claim(db, b.org)).blocked).toBe("launch_hold");
       expect((await rowStates(db, b.org))).toEqual([{ status: "pending", attempts: 0, claimed: false }]);
     });
   });
   it("switched OFF after a send was claimed: its real result is still recorded (never stranded in 'sending'), and nothing further is claimed", async () => {
     await inTx(async (db) => {
-      const { org, admin } = await company(db, "mid", { queued: 3 });
+      const { org, admin } = await company(db, "mid", { queued: 0 });
       ok(await turn(db, admin, true));
+      for (let i = 0; i < 3; i += 1) await queue(db, org, `INV-MID-${i}`); // queued while ON (this ON period)
       const got = (await claim(db, org)).send as { id: string; claim: string };
       expect(got).toBeTruthy();
       ok(await turn(db, admin, false));
@@ -385,13 +414,17 @@ describe("the database refuses every route into a send while OFF, and lets exact
       expect(second.rowCount).toBeGreaterThan(0);
     });
   });
-  it("documents issued while OFF are queued (nothing is dropped) but cannot be claimed until an admin turns the switch on", async () => {
+  it("documents issued while OFF are queued (nothing is dropped) and stay HELD when an admin turns the switch on, until the admin approves them", async () => {
+    // Changed deliberately for the backlog hold: this test used to expect switch-on to release INV-KEPT by itself.
     await inTx(async (db) => {
       const { org, admin } = await company(db, "kept", { queued: 0 });
       await db.query("INSERT INTO public.integration_sends(organization_id,provider,doc_type,doc_id,doc_ref,action) VALUES($1,'xero','invoice',$2,'INV-KEPT','create')", [org, randomUUID()]);
       expect((await rowStates(db, org))).toHaveLength(1);
       expect((await claim(db, org)).send).toBeNull();
       ok(await turn(db, admin, true));
+      expect(await claim(db, org)).toEqual({ blocked: null, send: null });
+      expect((await heldList(db, admin)).map((h) => h.doc_ref)).toEqual(["INV-KEPT"]);
+      ok(await approve(db, admin, (await heldList(db, admin)).map((h) => h.id)));
       expect((await claim(db, org)).send).toMatchObject({ doc_ref: "INV-KEPT" });
     });
   });
@@ -404,6 +437,130 @@ describe("the database refuses every route into a send while OFF, and lets exact
       expect(list).not.toContain(off.org);
       ok(await svc(db, "SELECT public.integration_mark_needs_reconnect($1,'xero','x')", [on.org]));
       expect((ok(await svc<{ id: string }>(db, "SELECT x AS id FROM unnest(public.integration_xero_enabled_orgs()) x"))).map((r) => r.id)).not.toContain(on.org);
+    });
+  });
+});
+
+describe("backlog release: what was waiting stays HELD until an admin approves it (no automatic release)", () => {
+  it("switch-on, a new ON period, a reconnect and a retry release nothing that was waiting; an approval releases it for the current connection only", async () => {
+    await inTx(async (db) => {
+      const { org, admin } = await company(db, "backlog", { queued: 0 });
+      const x = await queue(db, org, "INV-BL-1-OFF");              // queued while OFF (connected, mapped)
+      ok(await turn(db, admin, true));
+      expect(await claim(db, org)).toEqual({ blocked: null, send: null }); // switch-on released nothing
+      const y = await queue(db, org, "INV-BL-2-ON");               // queued in this ON period: goes by itself
+      expect((await claim(db, org)).send).toMatchObject({ id: y });
+      const w = await queue(db, org, "INV-BL-3-ON-EARLIER");       // queued while ON, not yet sent ...
+      ok(await turn(db, admin, false));
+      const z = await queue(db, org, "INV-BL-4-OFF-AGAIN");
+      ok(await turn(db, admin, true));                              // ... a new ON period: W is backlog now too
+      expect(await claim(db, org)).toEqual({ blocked: null, send: null });
+      expect((await heldList(db, admin)).map((h) => h.id)).toEqual([x, w, z].sort((p, q) => (p < q ? -1 : 1)));
+      expect(await status(db, admin)).toMatchObject({ enabled: true, held: 3 });
+      // Approval of X (fresh code) releases X only.
+      expect(ok(await approve(db, admin, [x]))[0].r).toEqual({ approved: 1, already: 0 });
+      expect((await claim(db, org)).send).toMatchObject({ id: x });
+      expect(await claim(db, org)).toEqual({ blocked: null, send: null });
+      // An approval is for this connection only: approve W, then a reconnect (same organisation, fresh consent) puts W back on hold.
+      ok(await approve(db, admin, [w]));
+      await connect(db, org, admin, (await db.query("SELECT tenant_id FROM public.integration_connections WHERE organization_id=$1", [org])).rows[0].tenant_id);
+      expect(await hold(db, org)).toBe(false);
+      ok(await turn(db, admin, true));
+      expect(await claim(db, org)).toEqual({ blocked: null, send: null });
+      expect((await heldList(db, admin)).map((h) => h.id).sort()).toEqual([w, z].sort());
+      // needs_reconnect then connected again: still held. A retry of a held failed row is refused and changes nothing.
+      ok(await svc(db, "SELECT public.integration_mark_needs_reconnect($1,'xero','invalid_grant')", [org]));
+      await connect(db, org, admin, (await db.query("SELECT tenant_id FROM public.integration_connections WHERE organization_id=$1", [org])).rows[0].tenant_id);
+      ok(await turn(db, admin, true));
+      await db.query("UPDATE public.integration_sends SET status='failed', last_error='x' WHERE id=$1", [z]);
+      expect((await as(db, admin, "SELECT public.integration_retry_send($1)", [z])).error).toMatchObject({ code: "55000", hint: "xero_held_for_review" });
+      expect((await db.query("SELECT status FROM public.integration_sends WHERE id=$1", [z])).rows[0].status).toBe("failed");
+      expect(await claim(db, org)).toEqual({ blocked: null, send: null });
+      // Approved on THIS connection: the failed one can be retried and sent, the waiting one goes.
+      ok(await approve(db, admin, [w, z]));
+      ok(await as(db, admin, "SELECT public.integration_retry_send($1)", [z]));
+      const sent = [(await claim(db, org)).send?.id, (await claim(db, org)).send?.id].sort();
+      expect(sent).toEqual([w, z].sort());
+      expect(await heldList(db, admin)).toEqual([]);
+      expect(await status(db, admin)).toMatchObject({ held: 0 });
+    });
+  });
+
+  it("approving is the company's own admin only, with a fresh authenticator code every time, never support, never another company's document, audited", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "apA", { queued: 2 }), b = await company(db, "apB", { queued: 1 });
+      const [a1, a2] = await idsOf(db, a.org);
+      const [b1] = await idsOf(db, b.org);
+      for (const role of ["office", "workshop", "viewer"]) {
+        const person = await makeActor(db, a.org, role);
+        expect((await approve(db, person, [a1])).error, role).toMatchObject({ code: "42501" });
+        expect((await as(db, person, "SELECT public.integration_xero_held_sends()")).error, role).toMatchObject({ code: "42501" });
+      }
+      expect((await approve(db, "anon", [a1])).error?.code).toBe("42501");
+      expect((await svc(db, "SELECT public.integration_xero_approve_held(ARRAY[$1]::uuid[])", [a1])).error).toMatchObject({ code: "42501" });
+      expect((await svc(db, "SELECT public.integration_xero_held_sends()")).error).toMatchObject({ code: "42501" });
+      const support = await makeActor(db, a.org, "admin", { support: true });
+      await db.query("UPDATE security_audit.session_company SET elevated_until = now() + interval '30 minutes' WHERE session_id=$1", [support.session]);
+      expect((await approve(db, support, [a1])).error).toMatchObject({ code: "42501" });
+      // the second step, recent: none, an old code, aal1
+      expect((await approve(db, a.admin, [a1], { recent: null })).error).toMatchObject({ code: "42501", hint: "mfa_recent_required" });
+      expect((await approve(db, a.admin, [a1], { recent: 1000 })).error).toMatchObject({ code: "42501", hint: "mfa_recent_required" });
+      expect((await approve(db, a.admin, [a1], { aal: "aal1", recent: null })).error?.code).toBe("42501");
+      // company isolation: B's document, or a list with one of B's, approves nothing at all
+      expect((await approve(db, a.admin, [b1])).error).toMatchObject({ code: "P0002" });
+      expect((await approve(db, a.admin, [a1, b1])).error).toMatchObject({ code: "P0002" });
+      expect((await heldList(db, b.admin)).map((h) => h.id)).toEqual([b1]);
+      expect((await heldList(db, a.admin)).map((h) => h.id).sort()).toEqual([a1, a2].sort());
+      // bad lists
+      for (const bad of [[], null, [a1, a1], [null]]) expect((await approve(db, a.admin, bad)).error?.code, JSON.stringify(bad)).toBe("22023");
+      expect((await approve(db, a.admin, Array.from({ length: 201 }, () => randomUUID()))).error?.code).toBe("22023");
+      expect((await db.query("SELECT count(*)::int AS n FROM public.xero_send_release WHERE approved_epoch IS NOT NULL AND organization_id = ANY($1)", [[a.org, b.org]])).rows[0].n).toBe(0);
+      // a sent document is not held: refused
+      await db.query("UPDATE public.integration_sends SET status='sent', external_id='x-1' WHERE id=$1", [a2]);
+      expect((await approve(db, a.admin, [a2])).error).toMatchObject({ code: "22023", hint: "not_held" });
+      // the real approval: audited with the actor; a repeat approves nothing new and adds no audit row
+      expect(ok(await approve(db, a.admin, [a1]))[0].r).toEqual({ approved: 1, already: 0 });
+      expect(ok(await approve(db, a.admin, [a1]))[0].r).toEqual({ approved: 0, already: 1 });
+      const audit = (await db.query("SELECT actor_user_id, metadata FROM security_audit.audit_log WHERE organization_id=$1 AND action='XERO_HELD_SENDS_APPROVED'", [a.org])).rows;
+      expect(audit).toHaveLength(1);
+      expect(audit[0].actor_user_id).toBe(a.admin.id);
+      expect(audit[0].metadata).toMatchObject({ sends: [a1], count: 1, actor: a.admin.id });
+      // B is untouched by A's approval; approving while OFF sends nothing (claim still launch_hold)
+      expect((await heldList(db, b.admin)).map((h) => h.id)).toEqual([b1]);
+      expect((await claim(db, a.org)).blocked).toBe("launch_hold");
+      // not connected: refused
+      const nc = await company(db, "apNC", { connected: false });
+      expect((await approve(db, nc.admin, [a1])).error).toMatchObject({ code: "55000", hint: "not_connected" });
+      // nobody reads or writes the review table directly
+      for (const sql of ["SELECT * FROM public.xero_send_release", `UPDATE public.xero_send_release SET approved_epoch=0 WHERE organization_id='${b.org}'`, `INSERT INTO public.xero_send_release(send_id,organization_id,queued_generation) VALUES('${b1}','${b.org}',1)`, "DELETE FROM public.xero_send_release"]) {
+        expect((await as(db, b.admin, sql)).error?.code, sql).toBe("42501");
+        expect((await as(db, "anon", sql)).error?.code, sql).toBe("42501");
+        expect((await svc(db, sql)).error?.code, sql).toBe("42501");
+      }
+      for (const sql of ["SELECT public.integration_xero_send_released($1, $1)"]) {
+        expect((await as(db, a.admin, sql, [a1])).error?.code).toBe("42501");
+        expect((await svc(db, sql, [a1])).error?.code).toBe("42501");
+      }
+    });
+  });
+
+  it("the rollback refuses while a queued document is still held for review, even when every connected company is ON", async () => {
+    // The rollback's own guard (its DO block, unchanged from the file), run inside a transaction that is rolled back: every connected company
+    // is ON here, so only the held-backlog condition can refuse.
+    const rb = read("supabase/release/149_xero_launch_hold.rollback.sql");
+    const guard = rb.slice(rb.indexOf("DO $rb$"), rb.indexOf("END $rb$;") + "END $rb$;".length);
+    await inTx(async (db) => {
+      const co = await company(db, "rb-backlog", { queued: 1 });
+      ok(await turn(db, co.admin, true));
+      await db.query("UPDATE public.xero_transfer_hold h SET enabled = true FROM public.integration_connections c WHERE c.organization_id = h.organization_id AND c.provider = 'xero' AND c.status = 'connected'");
+      await db.query("SAVEPOINT g1");
+      await expect(db.query(guard)).rejects.toThrow(/^149 rollback refused: a queued Xero document is still held for review/);
+      await db.query("ROLLBACK TO SAVEPOINT g1");
+      // Once nothing anywhere is held (approved here), the same guard lets the rollback through.
+      const held = (await db.query("SELECT s.id FROM public.integration_sends s WHERE s.provider='xero' AND s.status IN ('pending','failed','needs_check') AND NOT public.integration_xero_send_released(s.organization_id, s.id)")).rows;
+      await db.query("UPDATE public.integration_sends SET status='skipped' WHERE id = ANY($1) AND organization_id <> $2", [held.map((r) => r.id), co.org]);
+      ok(await approve(db, co.admin, (await heldList(db, co.admin)).map((h) => h.id)));
+      await db.query(guard);
     });
   });
 });
@@ -438,7 +595,9 @@ describe("nobody reads or writes the hold table or the gate except through the f
       ok(await turn(db, a.admin, false));
       expect([await hold(db, a.org), await hold(db, b.org)]).toEqual([false, true]);
       expect((await claim(db, a.org)).blocked).toBe("launch_hold");
-      expect((await claim(db, b.org)).send).not.toBeNull();
+      expect((await claim(db, b.org)).send).toBeNull(); // B's document queued before B was ON is held
+      await queue(db, b.org, "INV-ISO-B-ON");
+      expect((await claim(db, b.org)).send).toMatchObject({ doc_ref: "INV-ISO-B-ON" });
       expect((await auditOf(db, a.org)).map((r) => r.actor_user_id)).toEqual([a.admin.id, a.admin.id]);
       expect((await auditOf(db, b.org)).map((r) => r.actor_user_id)).toEqual([b.admin.id]);
     });
@@ -518,7 +677,8 @@ describe("rollback", () => {
       await db.query(read("supabase/release/149_xero_launch_hold.rollback.sql"));
       expect(await md5()).toEqual({ integration_claim_next: "1e926cf7051cc6614f0cfc6b2124b470", integration_retry_send: "1e8e2136759e43952aa406f8a6bcac88" });
       expect((await db.query("SELECT count(*)::int AS n FROM pg_proc WHERE proname LIKE 'integration_xero_%'")).rows[0].n).toBe(0);
-      expect((await db.query("SELECT count(*)::int AS n FROM pg_trigger WHERE tgname='xero_connection_reset'")).rows[0].n).toBe(0);
+      expect((await db.query("SELECT count(*)::int AS n FROM pg_trigger WHERE tgname IN ('xero_connection_reset','xero_send_queued')")).rows[0].n).toBe(0);
+      expect((await db.query("SELECT to_regclass('public.xero_send_release') AS t")).rows[0].t).toBeNull();
       // Old behaviour in SQL: the company that was held is claimable again (this is why the rollback is gated).
       expect((await committed(db, () => claim(db, held.org))).send).not.toBeNull();
       // Rolling back twice is refused (nothing to roll back).

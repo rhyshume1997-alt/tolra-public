@@ -8,7 +8,8 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import pg from "pg";
 
-export type Who = { kind: "service" } | { kind: "user"; id: string };
+/** `recentCode`: the user entered an authenticator code that many seconds ago (aal2 with a totp amr entry, as GoTrue issues it). */
+export type Who = { kind: "service" } | { kind: "user"; id: string; recentCode?: number };
 
 const parsers = (oid: number, format?: "text" | "binary") => {
   if (oid === 1700 || oid === 20) return (v: string) => Number(v);
@@ -78,7 +79,8 @@ export async function inRole<T>(url: string, who: Who, fn: (db: pg.Client) => Pr
     if (who.kind === "service") await db.query("set local role service_role");
     else {
       await db.query("set local role authenticated");
-      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: who.id, role: "authenticated", aud: "authenticated", session_id: randomUUID(), aal: "aal1" })]);
+      const code = who.recentCode === undefined ? {} : { aal: "aal2", amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) - who.recentCode }] };
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: who.id, role: "authenticated", aud: "authenticated", session_id: randomUUID(), aal: "aal1", ...code })]);
     }
     const out = await fn(db);
     await db.query("commit");

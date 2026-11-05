@@ -1,6 +1,7 @@
 -- Rollback of post-144 release 149 (restores 084's integration_claim_next and integration_retry_send; drops the switch). ONE transaction.
--- Rolling back removes the switch: every company that is connected and mapped can send again. So it REFUSES while any connected Xero company
--- is still held (off), unless the runner first says, in the same session, that old sending is accepted:
+-- Rolling back removes the switch and the review hold: every company that is connected and mapped can send again, and every queued document,
+-- including the backlog an admin has not approved, becomes claimable. So it REFUSES while any connected Xero company is still held (off), or
+-- while any queued Xero document is still held for review, unless the runner first says, in the same session, that old sending is accepted:
 --     SET tolra.x149_accept_old_sending = 'yes';
 -- Never run while any sender, app or cron is active. Needs Rhys's separate approval; there is no automatic rollback. After it, roll the app back
 -- to the code without the hold too: app code that still has it finds no hold function, so it sends NOTHING (every path fails closed) and the
@@ -13,8 +14,14 @@ DO $rb$ BEGIN
                   AND NOT public.integration_xero_transfer_enabled(c.organization_id)) THEN
   RAISE EXCEPTION '149 rollback refused: a connected Xero company is still held (off); rolling back lets it send. SET tolra.x149_accept_old_sending = ''yes'' first if that is accepted.';
  END IF;
+ IF coalesce(current_setting('tolra.x149_accept_old_sending', TRUE), '') <> 'yes'
+    AND EXISTS (SELECT 1 FROM public.integration_sends s WHERE s.provider = 'xero' AND s.status IN ('pending', 'failed', 'needs_check')
+                  AND NOT public.integration_xero_send_released(s.organization_id, s.id)) THEN
+  RAISE EXCEPTION '149 rollback refused: a queued Xero document is still held for review; rolling back releases it without an admin''s approval. SET tolra.x149_accept_old_sending = ''yes'' first if that is accepted.';
+ END IF;
 END $rb$;
 DROP TRIGGER xero_connection_reset ON public.integration_connections;
+DROP TRIGGER xero_send_queued ON public.integration_sends;
 CREATE OR REPLACE FUNCTION public.integration_claim_next(p_org UUID, p_provider TEXT, p_lease_seconds INTEGER DEFAULT 120,
                                                         p_doc_type TEXT DEFAULT NULL, p_doc_id UUID DEFAULT NULL)
 RETURNS JSONB
@@ -130,6 +137,8 @@ BEGIN
 END
 $$;
 DROP FUNCTION public.integration_xero_connection_reset(), public.integration_xero_set_transfers(boolean), public.integration_xero_launch_status(),
-  public.integration_xero_enabled_orgs(), public.integration_xero_transfer_enabled(uuid);
+  public.integration_xero_enabled_orgs(), public.integration_xero_transfer_enabled(uuid), public.integration_xero_held_sends(),
+  public.integration_xero_approve_held(uuid[]), public.integration_xero_send_queued(), public.integration_xero_send_released(uuid, uuid);
+DROP TABLE public.xero_send_release;
 DROP TABLE public.xero_transfer_hold;
 COMMIT;
