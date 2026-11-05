@@ -1,38 +1,53 @@
 'use client';
+import { NOT_SET_UP_MESSAGE, ratesGaps } from '@/lib/costing/app-rates';
 import type { CostingRates, CostingMaterial, CostingMachine } from './types';
-export type CostingRatesProps = { value: CostingRates; onChange: (value: CostingRates) => void; onSave?: () => void; saving?: boolean };
-const numeric = (v: string) => Math.max(0, Number(v) || 0);
-export function CostingRatesEditor({ value, onChange, onSave, saving }: CostingRatesProps) {
+export type EditorNotice = { tone: 'ok' | 'error'; text: string } | null;
+export type CostingRatesProps = {
+  value: CostingRates; onChange: (value: CostingRates) => void; onSave?: () => void; saving?: boolean;
+  notice?: EditorNotice; /** shown beside a stale-save notice: loads the company's current rates again */ onReload?: () => void;
+};
+/** A blank box is null: nothing is filled in for the company. */
+const entered = (v: string): number | null => (v.trim() === '' || !Number.isFinite(Number(v)) ? null : Math.max(0, Number(v)));
+export function CostingRatesEditor({ value, onChange, onSave, saving, notice, onReload }: CostingRatesProps) {
   const change = (patch: Partial<CostingRates>) => onChange({ ...value, ...patch });
-  const input = (name: string, number: number, update: (n: number) => void) =>
-    <label className="block text-sm">{name}<input aria-label={name} className="block w-full rounded border p-2" type="number" min="0" step="0.01" value={number} onChange={e => update(numeric(e.target.value))} /></label>;
+  const input = (name: string, number: number | null, update: (n: number | null) => void, step = '0.01') =>
+    <label className="block text-sm">{name}<input aria-label={name} className="block w-full rounded border p-2" type="number" min="0" step={step} value={number ?? ''} onChange={e => update(entered(e.target.value))} /></label>;
   const modifyMaterial = (id: string, patch: Partial<CostingMaterial>) => change({ materials: value.materials.map(m => m.id === id ? { ...m, ...patch } : m) });
   const modifyMachine = (id: string, patch: Partial<CostingMachine>) => change({ machines: value.machines.map(m => m.id === id ? { ...m, ...patch } : m) });
+  const modifyDefaults = (patch: Partial<CostingRates['defaults']>) => change({ defaults: { ...value.defaults, ...patch } });
+  const gaps = ratesGaps(value);
   return <section aria-label="Costing rates" className="space-y-4">
     <h2 className="text-lg font-semibold">Costing rates</h2>
-    <p className="text-sm">All prices are in pounds. Set your materials and machines before pricing a quote.</p>
+    <p className="text-sm">All prices are in pounds. Enter your own materials, machines and rates: nothing is filled in for you, and quotes can only be priced from what you enter here.</p>
+    {gaps.blank
+      ? <p role="status" className="rounded border border-amber-200 bg-amber-50 p-2 text-sm">{NOT_SET_UP_MESSAGE}</p>
+      : gaps.missing.length > 0 ? <p role="status" className="rounded border border-amber-200 bg-amber-50 p-2 text-sm">Still to enter: {gaps.missing.join(', ')}.</p> : null}
     <h3 className="font-medium">Materials</h3>
     {value.materials.map(m => <div key={m.id} className="grid gap-2 rounded border p-3 sm:grid-cols-4">
-      <input aria-label={'Material name ' + m.id} className="border p-2" value={m.name} onChange={e => modifyMaterial(m.id, { name: e.target.value })} />
+      <input aria-label={'Material name ' + m.id} placeholder="Material name" className="border p-2" value={m.name} onChange={e => modifyMaterial(m.id, { name: e.target.value })} />
       <select aria-label={'Material unit ' + m.id} value={m.unit} onChange={e => modifyMaterial(m.id, { unit: e.target.value as 'kg' | 'each' })}><option value="kg">Per kg</option><option value="each">Each</option></select>
       {input('Price £ ' + m.id, m.price, price => modifyMaterial(m.id, { price }))}
       {input('Scrap % ' + m.id, m.scrapPct, scrapPct => modifyMaterial(m.id, { scrapPct }))}
       <button type="button" onClick={() => change({ materials: value.materials.filter(x => x.id !== m.id) })}>Remove material</button>
     </div>)}
-    <button type="button" onClick={() => change({ materials: [...value.materials, { id: crypto.randomUUID(), name: '', unit: 'kg', price: 0, scrapPct: 5 }] })}>Add material</button>
+    <button type="button" onClick={() => change({ materials: [...value.materials, { id: crypto.randomUUID(), name: '', unit: 'kg', price: null, scrapPct: null }] })}>Add material</button>
     <h3 className="font-medium">Machines</h3>
-    {value.machines.map(m => <div key={m.id} className="flex gap-3 rounded border p-3">
-      <input aria-label={'Machine name ' + m.id} className="border p-2" value={m.name} onChange={e => modifyMachine(m.id, { name: e.target.value })} />
+    {value.machines.map(m => <div key={m.id} className="grid gap-2 rounded border p-3 sm:grid-cols-3">
+      <input aria-label={'Machine name ' + m.id} placeholder="Machine name" className="border p-2" value={m.name} onChange={e => modifyMachine(m.id, { name: e.target.value })} />
       {input('Machine £ per hour ' + m.id, m.hourlyRate, hourlyRate => modifyMachine(m.id, { hourlyRate }))}
+      {input('Machine labour £ per hour (optional) ' + m.id, m.labourPerHour, labourPerHour => modifyMachine(m.id, { labourPerHour }))}
       <button type="button" onClick={() => change({ machines: value.machines.filter(x => x.id !== m.id) })}>Remove machine</button>
     </div>)}
-    <button type="button" onClick={() => change({ machines: [...value.machines, { id: crypto.randomUUID(), name: '', hourlyRate: 0 }] })}>Add machine</button>
+    <button type="button" onClick={() => change({ machines: [...value.machines, { id: crypto.randomUUID(), name: '', hourlyRate: null, labourPerHour: null }] })}>Add machine</button>
+    <h3 className="font-medium">Company rates</h3>
     <div className="grid gap-3 sm:grid-cols-2">
-      {input('Labour £ per hour', value.labourPerHour, labourPerHour => change({ labourPerHour }))}
-      {input('Programming £ per hour', value.programmingPerHour, programmingPerHour => change({ programmingPerHour }))}
-      {input('Overhead %', value.overheadPct, overheadPct => change({ overheadPct }))}
-      {input('Margin %', value.marginPct, marginPct => change({ marginPct }))}
+      {input('Labour £ per hour', value.defaults.labourPerHour, labourPerHour => modifyDefaults({ labourPerHour }))}
+      {input('Programming £ per hour', value.defaults.programmingPerHour, programmingPerHour => modifyDefaults({ programmingPerHour }))}
+      {input('Overhead %', value.defaults.overheadPct, overheadPct => modifyDefaults({ overheadPct }))}
+      {input('Margin %', value.defaults.marginPct, marginPct => modifyDefaults({ marginPct }))}
     </div>
-    {onSave && <button type="button" disabled={saving} onClick={onSave}>Save costing rates</button>}
+    <p className="text-xs text-slate-500">Overhead % is charged on machine and labour time: 100 means none, 150 means half as much again. Margin % is added on top of cost. A machine&apos;s own labour rate, if you give one, replaces the company labour rate for that machine.</p>
+    {notice ? <p role={notice.tone === 'error' ? 'alert' : 'status'} className={notice.tone === 'error' ? 'text-sm text-red-700' : 'text-sm text-green-700'}>{notice.text}{onReload && notice.tone === 'error' ? <> <button type="button" className="underline" onClick={onReload}>Reload costing rates</button></> : null}</p> : null}
+    {onSave && <button type="button" disabled={saving} onClick={onSave}>{saving ? 'Saving…' : 'Save costing rates'}</button>}
   </section>;
 }
