@@ -153,7 +153,8 @@ export function paymentsCsv(rows: PaymentExportRow[]) {
 
 async function all(table: string) {
   if (!supabase) throw new Error("Supabase is not configured.");
-  const { rows } = await fetchAll<Row>((from, to) => supabase!.from(table).select("*").order("id").range(from, to));
+  const { rows, truncated } = await fetchAll<Row>((from, to) => supabase!.from(table).select("*").order("id").range(from, to));
+  if (truncated) throw new Error(`Too many ${table.replaceAll("_", " ")} records for a complete export. Export stopped; a checked full export is needed.`);
   return rows;
 }
 
