@@ -21,7 +21,7 @@ export type PartEntry = {
 
 export type PartFigures = {
   materialCost: number; machineCost: number; labourCost: number; programmingCost: number; overheadCost: number;
-  unitCost: number; unitPrice: number; extendedPrice: number; marginPct: number; quantity: number;
+  unitCost: number; unitPrice: number; extendedPrice: number; engineExtendedPrice?: number; marginPct: number; quantity: number;
 };
 
 export type PartPricing =
@@ -61,7 +61,7 @@ export function priceThisPart(rates: CostingRates, entry: PartEntry): PartPricin
   const c = result.cost_breakdown;
   return { status: "ok", figures: {
     materialCost: c.material.total, machineCost: c.machine_cost, labourCost: c.labor_cost, programmingCost: c.programming_cost, overheadCost: c.overhead_cost,
-    unitCost: result.summary.unit_cost, unitPrice: result.summary.unit_price, extendedPrice: fromPence(linePence(entry.quantity, result.summary.unit_price)),
+    unitCost: result.summary.unit_cost, unitPrice: result.summary.unit_price, extendedPrice: fromPence(linePence(entry.quantity, result.summary.unit_price)), engineExtendedPrice: result.summary.extended_price,
     marginPct: result.summary.margin_pct, quantity: entry.quantity,
   } };
 }
