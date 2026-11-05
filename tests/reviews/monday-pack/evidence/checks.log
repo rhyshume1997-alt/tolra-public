@@ -1,0 +1,8 @@
+test_known_red_review_gates_not_promoted (pack_test.Pack.test_known_red_review_gates_not_promoted) ... ok
+test_no_final_candidate_or_live_reconciliation_invented (pack_test.Pack.test_no_final_candidate_or_live_reconciliation_invented) ... ok
+test_requested_sections_and_missing_values_explicit (pack_test.Pack.test_requested_sections_and_missing_values_explicit) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+OK
