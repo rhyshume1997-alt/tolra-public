@@ -50,3 +50,6 @@ next-env.d.ts
 # Local disposable Supabase (scripts/test-backend.sh)
 /supabase/.temp/
 /supabase/.branches/
+
+# Claude Code per-checkout task note (.claude/hooks/session-context.mjs reads it)
+/.claude/*.local.md
