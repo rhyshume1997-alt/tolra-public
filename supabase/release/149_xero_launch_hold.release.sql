@@ -40,7 +40,7 @@ GRANT EXECUTE ON FUNCTION public.integration_xero_launch_status(),public.integra
 CREATE FUNCTION public.integration_xero_connection_hold() RETURNS trigger
 LANGUAGE plpgsql SET search_path=pg_catalog,public AS $$
 BEGIN
- IF TG_OP='INSERT' OR NEW.status IS DISTINCT FROM OLD.status OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id THEN NEW.transfers_enabled:=false; END IF;
+ IF TG_OP='INSERT' OR NEW.status IS DISTINCT FROM OLD.status OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id OR NEW.connected_at IS DISTINCT FROM OLD.connected_at THEN NEW.transfers_enabled:=false; END IF;
  RETURN NEW;
 END $$;
 CREATE TRIGGER xero_connection_launch_hold BEFORE INSERT OR UPDATE ON public.integration_connections

@@ -50,6 +50,9 @@ it('admin release enables normal queue and retry, disabling blocks them again',(
 });
 it('reconnection resets enable and rollback restores original functions on this disposable only',()=>{
  db.ok(auth('SELECT integration_xero_set_transfers(true)'));
+ db.ok(`UPDATE integration_connections SET connected_at=now()+interval '1 second' WHERE organization_id='${A}'`);
+ expect(db.ok(`SELECT transfers_enabled FROM integration_connections WHERE organization_id='${A}'`)).toBe('f');
+ db.ok(auth('SELECT integration_xero_set_transfers(true)'));
  db.ok(`UPDATE integration_connections SET status='disconnected' WHERE organization_id='${A}'`);
  expect(db.ok(`SELECT transfers_enabled FROM integration_connections WHERE organization_id='${A}'`)).toBe('f');
  db.ok(readFileSync('supabase/release/149_xero_launch_hold.rollback.sql','utf8'));
