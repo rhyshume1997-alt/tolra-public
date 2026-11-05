@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SetupCard } from "@/components/integrations/setup-card";
+import { XeroHeldReview } from "@/components/integrations/xero-held-review";
 import { type ConnectStatus, postIntegration } from "@/components/microsoft-connect-card";
 import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { Button } from "@/components/ui/button";
@@ -185,6 +186,8 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
         onMappingsChanged={() => void load()}
         onSwitch={flip}
       />
+      {/* Release 149: what was waiting before transfers were on stays held until an admin approves it here. */}
+      <XeroHeldReview requestCode={requestCode} refreshKey={switchOn} />
       <ConfirmDialog
         open={confirm}
         title="Disconnect from Xero?"

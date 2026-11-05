@@ -16,7 +16,7 @@ export const HOLD_NOT_APPROVED = "Transfers cannot be switched on from here yet:
 export const NOT_SET_UP = "Xero is not set up on this server: nothing is sent.";
 export const SENDS_AUTOMATICALLY = "This company is connected and mapped: transfers happen automatically when invoices are issued.";
 export const HELD_TEXT = "Connected is not On. Transfers are OFF for this company: nothing is sent to Xero until an admin turns transfers on below.";
-export const TRANSFERS_ON_TEXT = "Transfers are ON for this company: documents are sent to Xero automatically when invoices are issued, and what is already waiting in the queue is sent too.";
+export const TRANSFERS_ON_TEXT = "Transfers are ON for this company: documents issued from now on are sent to Xero automatically. Anything that was already waiting stays held until an admin approves it under Held for review.";
 export const HOLD_UNREADABLE = "Couldn't read the transfer switch, so nothing is sent: transfers stay off unless the switch is confirmed on. Reload to try again.";
 export const EMERGENCY_NOTE = "Server emergency disable: removing Xero's app details from the server stops all sending to Xero, for every company, at once.";
 export const TRANSFERS_NEED_MAPPING = "Transfers cannot be turned on while anything is unmapped.";
@@ -100,7 +100,7 @@ export function activationFor(i: XeroInputs, busy = false, onChange?: (next: boo
   const reason = turningOn && !eligible
     ? b === "unmapped" ? TRANSFERS_NEED_MAPPING : b === "needs_reconnect" ? "Connect to Xero again first." : b === "not_connected" ? "Connect to Xero first." : b === "not_set_up" ? NOT_SET_UP : "Checking Xero's status…"
     : null;
-  return { label, on: hold.on, busy, disabledReason: reason, onChange, help: "Off until an admin turns it on, with a fresh authenticator code. Connecting, reconnecting or a new consent never turns it on (and switches it off again). Turning it on also sends what is already waiting in the queue." };
+  return { label, on: hold.on, busy, disabledReason: reason, onChange, help: "Off until an admin turns it on, with a fresh authenticator code. Connecting, reconnecting or a new consent never turns it on (and switches it off again). Turning it on never sends what was already waiting: each held document is sent only after an admin approves it under Held for review." };
 }
 
 /** The ?xero= outcome as an alert/status line for the card, or null. Tenant held by another company is a plain error. */
