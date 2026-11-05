@@ -99,11 +99,11 @@ async function svc<T = Record<string, unknown>>(db: Db, sql: string, params: unk
 }
 const ok = <T>(r: { rows?: T[]; error?: Err }) => { if (r.error) throw new Error(`${r.error.code}: ${r.error.message}`); return r.rows!; };
 
-async function connect(db: Db, org: string, admin: Actor, tenant = `tenant-${randomUUID()}`) {
+async function connect(db: Db, org: string, admin: Actor, tenant = `tenant-${randomUUID()}`, externalId = randomUUID()) {
   const state = randomBytes(32).toString("hex");
   ok(await as(db, admin, "SELECT public.integration_oauth_begin('xero',$1,$2)", [state, cipher()]));
   ok(await svc(db, "SELECT public.integration_oauth_consume($1,$2,'xero',$3)", [org, admin.id, state]));
-  ok(await svc(db, "SELECT public.integration_store_connection($1,$2,'xero',$3,$4,$5,$6,$7,now()+interval '30 minutes',1)", [org, admin.id, tenant, "Synthetic Xero", randomUUID(), cipher(), cipher()]));
+  ok(await svc(db, "SELECT public.integration_store_connection($1,$2,'xero',$3,$4,$5,$6,$7,now()+interval '30 minutes',1)", [org, admin.id, tenant, "Synthetic Xero", externalId, cipher(), cipher()]));
   return tenant;
 }
 async function mapAll(db: Db, admin: Actor) {
@@ -260,6 +260,10 @@ describe("who may turn it on", () => {
       const { org } = await company(db, "sup");
       const support = await makeActor(db, org, "admin", { support: true });
       expect((await turn(db, support, true)).error).toMatchObject({ code: "42501" });
+      // Even elevated (the platform owner's write window is open, so has_org_role says admin), a support session is refused by the function itself.
+      await db.query("UPDATE security_audit.session_company SET elevated_until = now() + interval '30 minutes' WHERE session_id=$1", [support.session]);
+      expect(ok(await as<{ r: boolean }>(db, support, "SELECT public.has_org_role(ARRAY['admin']) AS r"))[0].r).toBe(true);
+      expect((await turn(db, support, true)).error).toMatchObject({ code: "42501" });
       expect(await hold(db, org)).toBe(false);
       const stranger = { id: randomUUID(), session: randomUUID(), org: "", email: "s@example.test", role: "admin" };
       await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)", [stranger.id, stranger.email]);
@@ -324,6 +328,23 @@ describe("a connection change puts the company back OFF (a token refresh does no
       // Each reset that switched it off was audited with the reason.
       const resets = (await auditOf(db, org)).filter((r) => r.metadata.because === "connection changed");
       expect(resets.length).toBeGreaterThanOrEqual(4);
+    });
+  });
+});
+
+describe("a fresh consent, in its own transaction, as the callback runs it", () => {
+  it("the same Xero organisation and the same Xero connection id, consented to again later: only the new consent time differs, and that alone puts the company back OFF", async () => {
+    const co = await withDb((db) => committed(db, () => company(db, "consent", { queued: 1 })));
+    const keep = await withDb(async (db) => (await db.query("SELECT tenant_id, external_connection_id FROM public.integration_connections WHERE organization_id=$1", [co.org])).rows[0]);
+    await withDb((db) => committed(db, async () => { ok(await turn(db, co.admin, true)); }));
+    expect(await withDb((db) => hold(db, co.org))).toBe(true);
+    await new Promise((r) => setTimeout(r, 20));
+    await withDb((db) => committed(db, () => connect(db, co.org, co.admin, keep.tenant_id, keep.external_connection_id)));
+    await withDb(async (db) => {
+      const row = (await db.query("SELECT tenant_id, external_connection_id, status FROM public.integration_connections WHERE organization_id=$1", [co.org])).rows[0];
+      expect(row).toEqual({ tenant_id: keep.tenant_id, external_connection_id: keep.external_connection_id, status: "connected" });
+      expect(await hold(db, co.org)).toBe(false);
+      expect((await committed(db, () => claim(db, co.org))).blocked).toBe("launch_hold");
     });
   });
 });
