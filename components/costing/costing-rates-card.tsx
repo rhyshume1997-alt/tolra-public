@@ -1,7 +1,8 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCodePrompt } from '@/components/authenticator-code-dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { loadCompanyRates, NOT_APPLIED_MESSAGE, ratesProblem, saveRates, type LoadedRates, type RatesSnapshot, type SaveBody } from '@/lib/costing/app-rates';
 import { sendWithCode, type SendAnswer } from '@/lib/mfa-step-up';
 import { supabase } from '@/lib/supabase';
@@ -56,10 +57,10 @@ export function CostingRatesPanel({ role, load, save, requestCode }: RatesPanelP
   };
 
   if (!CAN_EDIT.includes(role)) return null;
-  return <Card id="setup-costing"><CardHeader><CardTitle>Costing rates</CardTitle></CardHeader><CardContent>
+  return <Card id="setup-costing"><CardContent className="pt-6">
     {state === 'loading' ? <p className="text-sm text-slate-500">Loading costing rates…</p> : null}
     {state === 'not_applied' ? <p role="status" className="text-sm text-slate-600">{NOT_APPLIED_MESSAGE}</p> : null}
-    {state === 'error' ? <p role="alert" className="text-sm text-red-700">{loadError} <button type="button" className="underline" onClick={() => { setState('loading'); void reload(); }}>Try again</button></p> : null}
+    {state === 'error' ? <p role="alert" className="text-sm text-red-700">{loadError} <Button type="button" variant="outline" size="xs" onClick={() => { setState('loading'); void reload(); }}>Try again</Button></p> : null}
     {state === 'ready' ? <CostingRatesEditor value={rates} onChange={(next) => { setRates(next); setNotice(null); }} onSave={onSave} saving={saving} notice={notice} onReload={stale ? () => void reload() : undefined} /> : null}
   </CardContent></Card>;
 }

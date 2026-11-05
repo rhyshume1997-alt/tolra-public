@@ -1,5 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { loadCompanyRates, PANEL_NOT_SET_UP_MESSAGE, type LoadedRates } from '@/lib/costing/app-rates';
 import { appliedLine, costNote, priceThisPart, type AppliedLine } from '@/lib/costing/price-part';
 import { gbp } from '@/lib/money';
@@ -44,16 +46,16 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
   }
   // aria-label of the Quantity box differs from the quote line's own "Quantity" so the two never share an accessible name.
   const field = (name: string, value: string, update: (v: string) => void, step = '0.01', label = name) =>
-    <label className="block text-sm">{name}<input aria-label={label} type="number" min="0" step={step} className="block w-full rounded border p-2" value={value} onChange={e => update(e.target.value)} /></label>;
+    <label className="grid gap-1 text-sm text-slate-600">{name}<Input aria-label={label} type="number" min="0" step={step} value={value} onChange={e => update(e.target.value)} /></label>;
   const figures = pricing.status === 'ok' ? pricing.figures : null;
   const ready = Boolean(figures && description.trim());
   // Inside the quote form: Enter in a box here must not save the quote.
   const noSubmit = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') e.preventDefault(); };
   return <section aria-label="Price this part" className="space-y-3 rounded border p-4" onKeyDown={noSubmit}>
     <h2 className="text-lg font-semibold">Price this part</h2>
-    <label className="block text-sm">Description<input aria-label="Part description" className="block w-full rounded border p-2" value={description} onChange={e => setDescription(e.target.value)} /></label>
-    <label className="block text-sm">Material<select aria-label="Part material" className="block w-full rounded border p-2" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
-    <label className="block text-sm">Machine<select aria-label="Part machine" className="block w-full rounded border p-2" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm text-slate-600">Description<Input aria-label="Part description" maxLength={500} value={description} onChange={e => setDescription(e.target.value)} /></label>
+    <label className="grid gap-1 text-sm text-slate-600">Material<select aria-label="Part material" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={material?.id} onChange={e => setMaterialId(e.target.value)}>{rates.materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+    <label className="grid gap-1 text-sm text-slate-600">Machine<select aria-label="Part machine" className="h-10 w-full rounded-lg border border-input bg-surface px-3 text-sm text-ink" value={machine?.id} onChange={e => setMachineId(e.target.value)}>{rates.machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
     <div className="grid gap-3 sm:grid-cols-2">
       {field('Quantity', quantity, setQuantity, '1', 'Part quantity')}
       {field(material?.unit === 'each' ? 'Pieces per part' : 'Material weight kg per part', amount, setAmount)}
@@ -73,8 +75,8 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
       <div>Total quote: {gbp(figures.extendedPrice)}</div>
     </div> : null}
     <div className="flex flex-wrap gap-2">
-      <button type="button" disabled={!ready} onClick={() => { if (figures && description.trim()) onAdd(appliedLine(description, figures)); }}>Add as quote line</button>
-      {onCostNote ? <button type="button" disabled={!ready} onClick={() => { if (figures && description.trim()) onCostNote(costNote(description, figures, today ?? new Date().toISOString().slice(0, 10))); }}>Add cost to internal notes</button> : null}
+      <Button type="button" disabled={!ready} onClick={() => { if (figures && description.trim()) onAdd(appliedLine(description, figures)); }} className="bg-brand text-brand-ink hover:bg-brand-hover">Add as quote line</Button>
+      {onCostNote ? <Button type="button" variant="outline" disabled={!ready} onClick={() => { if (figures && description.trim()) onCostNote(costNote(description, figures, today ?? new Date().toISOString().slice(0, 10))); }}>Add cost to internal notes</Button> : null}
     </div>
     <p className="text-xs text-slate-500">The price is copied into the quote line as plain numbers. Changing your costing rates later does not change a quote already saved.</p>
   </section>;
