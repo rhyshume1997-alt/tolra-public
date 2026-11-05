@@ -13,3 +13,5 @@ Source component SHA-256: `1a4e32ba690cff557df4d4d5d876f41439061b09c34fccde5b1ef
 Committed run `42878a7`, 5 November 2026 UTC: **2 passed, 4 failed, zero skipped; exit 1**, as intended for the missing alert. Source lint passed; the initial TypeScript alias-resolution failure is retained and corrected by the local fixture import. Original failing logs are retained unchanged with their hash. The failures demonstrate actual generic wording, not fixture/import/setup failure. This evidence commit implements nothing.
 
 Harness correction: the public component hash above identifies the original file; the only overlay changes `@/lib/job-delivery-note-no-order` to `./job-delivery-note-no-order`. No application file, behaviour, security check or red-test expectation is changed.
+
+After the import-only harness fix, committed `2f3d3f1` rerun still reports 2 passed / 4 failed / 0 skipped (exit 1). TypeScript now passes. The corrected original log is retained as well; no intended UX failure was changed or implemented.
