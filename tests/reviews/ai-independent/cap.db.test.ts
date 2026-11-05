@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
-import { actor, cap, cipher, connection, db, enable, mode, remove, replace, reserve, snapshot, start, stop, switches, world, type World } from "./database";
+import { actor, cap, cipher, clearPlatformKey, connection, db, enable, mode, remove, replace, reserve, snapshot, start, stop, switches, world, type World } from "./database";
 let w:World;
 beforeAll(start);afterAll(stop);beforeEach(async()=>{w=await world();});
 const paid=["rfq","roundup","assistant"];
@@ -133,3 +133,34 @@ it("changing key/mode cannot select a separate higher company allowance",async()
   await reserve(db,"rfq",25);await replace(w);await enable(w,25);await actor(db,w.admin);expect((await reserve(db,"assistant",1)).reason).toBe("cap");
  }
 });
+
+if(mode==='tolra'){
+ it('a company admin cannot remove the shared platform key, even with the correct impact phrase',async()=>{
+  await enable(w);await actor(db,w.admin);
+  await expect(clearPlatformKey(db,w.admin)).rejects.toMatchObject({code:'42501'});
+  await db.query('reset role');expect((await db.query('select enabled,api_key_enc is not null as key_set from ai_helper_tolra_control')).rows[0]).toEqual({enabled:true,key_set:true});
+ });
+ it('a service-role caller cannot nominate a company admin as the platform key owner',async()=>{
+  await enable(w);await db.query('reset role');await db.query('set role service_role');
+  await expect(clearPlatformKey(db,w.admin)).rejects.toMatchObject({code:'42501'});
+  await db.query('reset role');expect((await db.query('select enabled,api_key_enc is not null as key_set from ai_helper_tolra_control')).rows[0]).toEqual({enabled:true,key_set:true});
+ });
+ it('the platform owner must supply the correct impact confirmation; refusal changes no control, usage or history',async()=>{
+  await enable(w);await seedHistory();const before=await snapshot(w);
+  const control=(await db.query('select to_jsonb(c) as v from ai_helper_tolra_control c')).rows;
+  await db.query('set role service_role');
+  await expect(clearPlatformKey(db,w.owner,'not approved')).rejects.toMatchObject({code:'22023'});
+  await assertOldRowsKept(before);expect((await db.query('select to_jsonb(c) as v from ai_helper_tolra_control c')).rows).toEqual(control);
+ });
+ it('confirmed platform key removal deletes the key, forces OFF and appends an owner audit without rewriting old audit rows',async()=>{
+  await enable(w);await seedHistory();const before=await snapshot(w);
+  const old=(await db.query('select to_jsonb(a) as v from security_audit.audit_log a')).rows.map(r=>r.v);
+  await remove(w);await assertOldRowsKept(before);
+  expect((await db.query('select enabled,api_key_enc from ai_helper_tolra_control')).rows[0]).toEqual({enabled:false,api_key_enc:null});
+  const after=(await db.query('select to_jsonb(a) as v from security_audit.audit_log a')).rows.map(r=>r.v);
+  for(const row of old)expect(after.find(r=>r.id===row.id)).toEqual(row);
+  const added=after.filter(r=>!old.some(a=>a.id===r.id));
+  expect(added.some(r=>r.actor_user_id===w.owner&&r.organization_id===null),'platform removal needs an owner-attributed audit event').toBe(true);
+  expect(JSON.stringify(added)).not.toContain(cipher());
+ });
+}
