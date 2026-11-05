@@ -1,6 +1,6 @@
 {
   "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
-  "database": "picker_adv_02fc642e98274d94b35650ac61f80115",
+  "database": "picker_adv_6fc4cd514bde4deb87efd73ef0affe41",
   "files": [
     {
       "file": "tests/reviews/xero-picker-adversarial/bootstrap.sql",
@@ -556,7 +556,7 @@
     },
     {
       "file": "supabase/release/151_xero_invite_hardening.release.sql",
-      "sha256": "cc3e4877a206facf0b60a8b91b0a639d2f163f090bfd467e81656f342e140d4a"
+      "sha256": "ff420b52daeafbb6ff901c6672e3fbfde66ef719fcb738841b946c90266f4e16"
     }
   ],
   "server": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit"

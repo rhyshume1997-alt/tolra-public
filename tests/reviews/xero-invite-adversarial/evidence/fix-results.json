@@ -1,0 +1,37 @@
+{
+  "codeCommit": "5da869a204e54207d4640be156122238a386be77",
+  "results": {
+    "invite-db": {
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0
+    },
+    "picker-db": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "invite-unit": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "picker-unit": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "commands": [
+    "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts",
+    "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts",
+    "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.unit.config.ts",
+    "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.unit.config.ts"
+  ],
+  "note": "Runtime includes published picker commit cherry-picked onto own423 branch. Picker tests use dedicated atomic RPC instead of old rate counter; same two-transaction/barrier assertions retained. Prior red evidence is historical.",
+  "unchecked": [
+    "Hosted Auth/PostgREST/browser and live provider",
+    "Exact company-name match deliberately fails closed for differently named Xero organisations; it is not proof of legal ownership",
+    "151 remains proposal-only; existing two packaging failures conflict with that status"
+  ]
+}

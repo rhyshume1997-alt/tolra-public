@@ -1,6 +1,6 @@
 {
   "subject": "656a79390650fe87a6e7513679246e82df3f3a40",
-  "database": "invite_adv_c424faf3848f44d4acc086503dd1b245",
+  "database": "invite_adv_44982cb74c5b43dba6457cb48065eeae",
   "files": [
     {
       "file": "tests/reviews/xero-invite-adversarial/bootstrap.sql",
@@ -556,7 +556,7 @@
     },
     {
       "file": "supabase/release/151_xero_invite_hardening.release.sql",
-      "sha256": "98d95110214b15645d92ea4cbe9ad3865e6bef468f1af2d95b06a08cf4d6be5e"
+      "sha256": "ff420b52daeafbb6ff901c6672e3fbfde66ef719fcb738841b946c90266f4e16"
     },
     {
       "file": "supabase/verify/xero_invite_hardening_151.sql",
@@ -564,15 +564,15 @@
     },
     {
       "file": "supabase/release/151_xero_invite_hardening.rollback.sql",
-      "sha256": "61b9842c71d24f93bb19f4170b98121f46472464e8206dc64e0700d238774690"
+      "sha256": "cffe620ad870a6fcfa4b35d1057afd2ac404c2afc939042578fdef67c67b8529"
     },
     {
       "file": "supabase/release/151_xero_invite_hardening.rollback.sql",
-      "sha256": "61b9842c71d24f93bb19f4170b98121f46472464e8206dc64e0700d238774690"
+      "sha256": "cffe620ad870a6fcfa4b35d1057afd2ac404c2afc939042578fdef67c67b8529"
     },
     {
       "file": "supabase/release/151_xero_invite_hardening.release.sql",
-      "sha256": "98d95110214b15645d92ea4cbe9ad3865e6bef468f1af2d95b06a08cf4d6be5e"
+      "sha256": "ff420b52daeafbb6ff901c6672e3fbfde66ef719fcb738841b946c90266f4e16"
     },
     {
       "file": "supabase/verify/xero_invite_hardening_151.sql",

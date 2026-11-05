@@ -54,7 +54,7 @@ it('callback completion uses the consumed company/admin, never request-supplied 
  const state='synthetic-state',verifier='synthetic-verifier';
  rpc.mockResolvedValue({data:{organization_id:'company-a',user_id:'admin-a',verifier_enc:encryptSecret(verifier,inviteVerifierContext(hashState(state)),key)},error:null});
  await finishInviteConnect(service,state,'synthetic-code',ready,{env});
- expect(spies.complete).toHaveBeenCalledWith(service,'company-a','admin-a',verifier,'synthetic-code',{config:inviteConfig(ready.config),key},{env});
+ expect(spies.complete).toHaveBeenCalledWith(service,'company-a','admin-a',verifier,'synthetic-code',{config:inviteConfig(ready.config),key},{env,inviteStateHash:hashState(state)});
 });
 it.each(['/api/integrations/xero/callback/extra','/prefix/api/integrations/xero/callback','/api/integrations/xero/callback?next=https://attacker.example.test','/api/integrations/xero/callback#fragment'])('redirect config rejects non-exact callback path/query %s',suffix=>{
  expect(validRedirectUri('xero',`https://tolra.example.test${suffix}`)).toBeNull();

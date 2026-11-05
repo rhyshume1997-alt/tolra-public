@@ -519,4 +519,3 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER) TO service_role;
-
