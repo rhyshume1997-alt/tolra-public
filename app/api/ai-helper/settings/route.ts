@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { readCompanyFinanceCheck } from "@/lib/ai/finance-check/flag";
 import { readCompanyAssistant } from "@/lib/ai-helper/assistant";
+import { adminMfaRequired } from "@/lib/mfa-policy";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
 const settingsSchema = z.object({
@@ -33,6 +35,12 @@ export async function POST(request: Request) {
   if (!json.ok) return json.response;
   const parsed = settingsSchema.safeParse(json.data);
   if (!parsed.success) return jsonError("Invalid request", 400);
+  // F1: switching any AI feature ON needs a recent authenticator code (G1). Switching off, and changing only the limit, never do.
+  const turningOn = parsed.data.roundupEnabled || parsed.data.rfqEnabled || parsed.data.financeCheckEnabled === true || parsed.data.assistantEnabled === true;
+  if (turningOn && adminMfaRequired()) {
+    const refused = await requireRecentAal2(auth, "turn on AI");
+    if (refused) return refused;
+  }
   const { data, error } = await auth.supabase.rpc("ai_helper_save_settings", {
     p_roundup: parsed.data.roundupEnabled, p_rfq: parsed.data.rfqEnabled, p_cap_pence: parsed.data.monthlyCapPence,
   });
