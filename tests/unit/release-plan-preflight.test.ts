@@ -16,10 +16,10 @@ describe("no proposal silently disappears from release preflight", () => {
   it("covers every proposal, both ordered post-144 packages and every preflight marker", () => {
     expect(checkReleasePlan(root)).toEqual([]);
   });
-  it("orders the post-144 phases 145, 146, 147, 148, 149, 150 and leaves the numbered cutover and its catalogue alone", () => {
+  it("orders the post-144 phases 145, 146, 147, 148, 149, 150, 151 and leaves the numbered cutover and its catalogue alone", () => {
     const plan = JSON.parse(readFileSync(path.join(root, "supabase/release-plan.json"), "utf8"));
     expect(plan.numbered_through).toBe(144);
-    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"]]);
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"]]);
     const c17 = plan.phases[2];
     expect(c17).toMatchObject({ source: "supabase/proposals/c17_job_delivery_note.sql", release: "supabase/release/147_job_delivery_note.release.sql", rollback: "supabase/release/147_job_delivery_note.rollback.sql", verify: "supabase/verify/job_delivery_note_147.sql", marker: "post-144 marker 147 job_delivery_note" });
     const preflight = readFileSync(path.join(root, "supabase/verify/release_preflight.sql"), "utf8");
@@ -28,6 +28,8 @@ describe("no proposal silently disappears from release preflight", () => {
     expect(preflight).toContain("('supabase/proposals/p148_job_profitability_actuals.sql', 'post-144 release 148; apply only after 147 (reads only 143''s rates)')");
     expect(plan.phases[4]).toMatchObject({ source: "supabase/proposals/x149_xero_launch_hold.sql", release: "supabase/release/149_xero_launch_hold.release.sql", rollback: "supabase/release/149_xero_launch_hold.rollback.sql", verify: "supabase/verify/xero_launch_hold_149.sql", marker: "post-144 marker 149 xero_launch_hold" });
     expect(preflight).toContain("('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147')");
+    expect(plan.phases[6]).toMatchObject({ source: "supabase/proposals/p151_xero_invite_hardening.sql", release: "supabase/release/151_xero_invite_hardening.release.sql", rollback: "supabase/release/151_xero_invite_hardening.rollback.sql", verify: "supabase/verify/xero_invite_hardening_151.sql", marker: "post-144 marker 151 xero_invite_hardening" });
+    expect(preflight).toContain("('supabase/proposals/p151_xero_invite_hardening.sql', 'post-144 release 151; apply only after 150 (replaces 107''s token invite functions; no 107 token link survives)')");
   });
   it("fails when a new proposal has no plan or preflight disposition", () => {
     const copy=tree();

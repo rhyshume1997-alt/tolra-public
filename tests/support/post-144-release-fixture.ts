@@ -9,6 +9,7 @@ const phases = [
   { marker: "post-144 marker 148 job_profitability_actuals", file: "supabase/release/148_job_profitability_actuals.release.sql", verifyFile: "supabase/verify/job_profitability_actuals_148.sql" },
   { marker: "post-144 marker 149 xero_launch_hold", file: "supabase/release/149_xero_launch_hold.release.sql", verifyFile: "supabase/verify/xero_launch_hold_149.sql" },
   { marker: "post-144 marker 150 ai_cap_key_off", file: "supabase/release/150_ai_cap_key_off.release.sql", verifyFile: "supabase/verify/ai_cap_key_off_150.sql" },
+  { marker: "post-144 marker 151 xero_invite_hardening", file: "supabase/release/151_xero_invite_hardening.release.sql", verifyFile: "supabase/verify/xero_invite_hardening_151.sql" },
 ];
 export async function preparePost144Fixture(deps: {
   verify: () => Promise<unknown>;

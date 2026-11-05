@@ -2,6 +2,8 @@
 --   PGPASSWORD=... psql -h 127.0.0.1 -U postgres -d <copy> -v ON_ERROR_STOP=1 -f tests/scripts/integrations_connect_107_proof.sql
 -- Synthetic companies, people and sessions; forged session claims as PostgREST sends them; everything rolled back at the end.
 -- Prints one PASS line per check; any failed expectation raises and stops the script.
+-- Proves the baseline "107 applied, release 151 not applied": release 151 replaces the token invite functions used below (its own proof is
+-- tests/db/xero-invite-151.test.ts). Run this file only on a database without 151, or after the 151 rollback.
 BEGIN;
 
 CREATE FUNCTION pg_temp.be(p_user UUID, p_session UUID, p_aal TEXT) RETURNS VOID LANGUAGE plpgsql AS $$

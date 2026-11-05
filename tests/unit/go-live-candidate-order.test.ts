@@ -57,6 +57,12 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(ci).toContain("147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note");
     expect(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/ai_cap_key_off_150.sql"'));
     expect(ci).toContain("150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off");
+    // 151 replaces 107's token invite functions: after 150, last in the fixture, its proof file last of all, and the CI install loop installs it.
+    expect(fixture.indexOf('verifyFile: "supabase/verify/ai_cap_key_off_150.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/xero_invite_hardening_151.sql"'));
+    expect(post144ProofFiles.at(-1)).toBe("xero-invite-151.test.ts");
+    expect(post144ProofFiles).not.toContain("integrations-connect-107.test.ts");
+    expect(ci).toContain("151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening");
+    expect(ci).toContain("tests/db/xero-invite-151.test.ts");
     expect(fixture).toContain("verify: verifyBackendIdentity");
     expect(fixture).toContain("checks.some(row => (row.ok ?? row.passed) !== true)");
   });

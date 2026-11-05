@@ -8,6 +8,13 @@
  *     is completed by the invite callback only, once; the tables are unreadable through the API;
  *   - app-level credentials: a company admin can neither set, remove nor list them; the table is unreadable through the API.
  * The same checks with the platform owner, support sessions and the two-step rule: tests/scripts/integrations_connect_107_proof.sql.
+ *
+ * RELEASE 151 (xero invite hardening) REPLACES the token invite functions asserted here (integration_invite_create(text,text), _redeem, _peek(token hash)
+ * and the token_hash column as the only key). This file is therefore the proof of the baseline state "107 applied, 151 not yet", which is the state every
+ * baseline file sees: tests/support/db-release-sequencer.ts runs all baseline files before any post-144 proof, and the first proof installs the releases.
+ * Nothing here was deleted or weakened; the 151 behaviour (opaque reference, e-mailed code, lockout, expiry, refusal log, rollback to these functions) is
+ * proved by tests/db/xero-invite-151.test.ts, which also proves that rolling 151 back restores the functions this file calls. If this file is run against
+ * a database where 151 is already installed it stops with a clear message instead of failing on the first old call.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -49,6 +56,8 @@ const owner = <R extends Record<string, unknown> = Record<string, unknown>>(text
 
 beforeAll(async () => {
   await verifyBackendIdentity();
+  const has151 = await withDb(async (db) => (await db.query("select to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') is not null as t")).rows[0].t as boolean);
+  if (has151) throw new Error("107's token invite proof needs a database without release 151 (it replaces these functions): run it before the post-144 proofs, as the sequencer does, or roll 151 back first");
   world = await createSyntheticWorld();
 });
 
