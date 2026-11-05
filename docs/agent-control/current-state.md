@@ -8,7 +8,7 @@ Tolra main already has quotes, orders, jobs, supplier purchases/allocations, inv
 
 - AI helper and assistant: **BUILT, DISABLED** for authorised launch policy; code has default-off flags and company switches. **CONFIGURATION REQUIRED**: approval, credentials, company enable and agreed cap. Production OFF is required, not remotely verified.
 - Xero: built OAuth, mappings, contacts, send/retry/reconciliation source. **CONFIGURATION REQUIRED**: app, tenant, mappings and approval. Transfers must stay OFF until authorised. Existing-source verification is separate from live proof.
-- Actual job profitability: **IN PROGRESS; BUILT, DISABLED** in #378, not main. John must approve rates. Two precision findings remain in #391. Existing profit stays available.
+- Actual job profitability: **IN PROGRESS; BUILT, DISABLED** in #378, not main. John must approve rates. Both #391 precision findings have a coded fix in #378 fa5e358 (61 pass, no failures/skips); review and activation still pending. Existing profit stays available.
 - Release 147 / DEV-001: owned by Claude Code; #359 is occupied. Codex tests #389 pass; #390 has four deliberate red staff-message contracts. Neither is a production acceptance.
 - ISO: company draft packs #371/#372 and supplements #392 exist. Company decisions, real records and readiness remain unproven. Documents cannot certify a company.
 

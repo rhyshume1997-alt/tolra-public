@@ -5,7 +5,7 @@ Source: Rhys's instructions in this session, 5 November 2026. These are scope de
 | Decision | Agreed rule |
 | --- | --- |
 | AI | AI is in and integrated. Production stays OFF until authorised; do not remove it or redesign it. |
-| AI allowance | Settable **1000p (GBP 10) per company per calendar month**. One company's allowance must not affect another. #387 replaces the old required-£5 finding; legacy own-key 500p default is still a separate alignment issue, not silently fixed. |
+| AI allowance | Settable **1000p (GBP 10) per company per calendar month**. One company's allowance must not affect another. #387 replaces the old required-£5 finding; legacy own-key 500p controls the company-funded credential path. #399 documents the allowed separate-funding exception and no platform-key fallback; it is not silently changed or claimed universally aligned. |
 | Cutover | Apply **138, 140, 141, 144, 145, 146, 147**, in order, then the approved JNR wipe, verify KEEP/Marpet/numbering holds, then the delivery-note counter. No production execution is authorised by this record. |
 | Import/deployment positions | #388 proposes historical SliQ dry run/load/reconciliation while delivery-note holds remain, recheck retained records, counter/verify, app deployment, staff smoke checks. Exact import/deploy positions still need Rhys's explicit adoption. Company-wide hold and delivery-note hold are different. |
 | DEV-001 | Add the held-company staff alert plus a plain message; preserve entered work and distinguish numbering hold from other errors. Code implements; #390 supplies red contracts. |

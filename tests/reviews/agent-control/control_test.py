@@ -1,4 +1,4 @@
-import pathlib, subprocess, unittest
+import pathlib, subprocess, unittest, json
 ROOT=pathlib.Path(__file__).resolve().parents[3]
 class Control(unittest.TestCase):
  def test_original_guidance_retained(self):
@@ -15,3 +15,15 @@ class Control(unittest.TestCase):
    self.assertIn(value,t)
   for row in t.splitlines():
    if row.startswith('| ') and 'DONE' in row:self.assertIn('DONE (coded)',row)
+
+ def test_review_coverage_385_to_398(self):
+  rows=json.loads((ROOT/'docs/agent-control/review-status-385-398.json').read_text())
+  self.assertEqual([r['pr'] for r in rows],list(range(385,399)))
+  board=(ROOT/'docs/agent-control/task-board.md').read_text()
+  for r in rows:
+   self.assertIn(f"REC-{r['pr']}",board)
+   self.assertEqual(r['review_status'],'AWAITING CHATGPT REVIEW')
+   self.assertEqual(r['github_reviews'],[])
+  gates=(ROOT/'docs/agent-control/release-gates.md').read_text()
+  self.assertIn('integration=skipped',gates)
+  self.assertIn('not an Xero assertion failure or an environment/resource limit',gates)

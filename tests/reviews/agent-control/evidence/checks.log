@@ -1,8 +1,9 @@
 test_decisions_and_gates (control_test.Control.test_decisions_and_gates) ... ok
 test_each_task_has_required_columns (control_test.Control.test_each_task_has_required_columns) ... ok
 test_original_guidance_retained (control_test.Control.test_original_guidance_retained) ... ok
+test_review_coverage_385_to_398 (control_test.Control.test_review_coverage_385_to_398) ... ok
 
 ----------------------------------------------------------------------
-Ran 3 tests in 0.006s
+Ran 4 tests in 0.006s
 
 OK
