@@ -63,7 +63,11 @@ async function inRole<T>(options: PgClientOptions, fn: (db: PoolClient) => Promi
   }
 }
 
-const toError = (e: unknown) => ({ code: (e as { code?: string }).code, message: e instanceof Error ? e.message : String(e) });
+const toError = (e: unknown) => {
+  const out = { code: (e as { code?: string }).code, message: e instanceof Error ? e.message : String(e) };
+  console.log(`E2-PG-ERROR code=${out.code ?? "none"} message=${out.message.slice(0, 200)}`); // test log only: the SQLSTATE behind a StoreError
+  return out;
+};
 
 class Query implements PromiseLike<Result> {
   private action: "select" | "insert" | "update" | "delete" | "upsert" = "select";

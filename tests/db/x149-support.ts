@@ -95,7 +95,7 @@ export async function inRole<T>(url: string, who: Who, fn: (db: pg.Client) => Pr
 
 /** The supabase-js subset the Xero server code uses, over the disposable database at `url`. */
 export function pgSupabase(url: string, who: Who): SupabaseClient {
-  if (!/^postgresql:\/\/[^@]*@127\.0\.0\.1:54[5-9]\d\d\//.test(url)) throw new Error("x149-support: refusing a database that is not loopback 545xx to 549xx");
+  if (!/^postgresql:\/\/[^@]*@127\.0\.0\.1:(?:54322|54[5-9]\d\d)\//.test(url)) throw new Error("x149-support: refusing a database that is not loopback 54322 (the test stack) or 545xx to 549xx");
   return {
     from: (table: string) => new Query(url, who, table),
     async rpc(fn: string, args: Record<string, unknown> = {}) {

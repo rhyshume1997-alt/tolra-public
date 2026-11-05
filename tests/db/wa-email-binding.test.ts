@@ -132,7 +132,9 @@ beforeAll(async () => {
   const identity = await verifyBackendIdentity();
   const loopback = await sql<{ a: string; p: number; n: string }>("select host(inet_server_addr()) as a, inet_server_port() as p, current_database() as n");
   evidence("database", { host: identity.database.host, port: identity.database.port, name: identity.database.name, version: identity.database.serverVersion, server: loopback[0] });
-  expect(loopback[0].a).toBe("127.0.0.1");
+  // The client connects to loopback (asserted below / by verifyBackendIdentity); inside the Supabase container the server sees its own private address.
+  expect(loopback[0].a).toMatch(/^(127\.0\.0\.1|::1|(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.).*)$/);
+  expect(["127.0.0.1", "localhost"]).toContain(identity.database.host);
 });
 beforeEach(() => {
   h.transport.calls.length = 0; h.transport.outcomes.length = 0;

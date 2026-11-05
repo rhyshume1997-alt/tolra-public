@@ -172,9 +172,18 @@ jobs:
       # The CLI this suite has always run on. 143 now quotes save_costing_settings_atomic, so 2.40.7 (which misreads an unquoted
       # name ending in _atomic as BEGIN ATOMIC, 42601) splits it correctly. 2.108.0 starts a stack whose service_role lacks the
       # default grants these tests rely on (runs 42065110388 and 42091337997: 119 database files fail on assert_privileged_aal).
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 2.40.7
+      # Pinned by checksum, not only by version: the tarball must match the sha256 published in the release's own
+      # supabase_2.40.7_checksums.txt (21dccbce...), and the installed binary must report 2.40.7. No fallback to another version.
+      - name: Install Supabase CLI 2.40.7 (checksum-verified)
+        run: |
+          set -euo pipefail
+          cli_home="$RUNNER_TEMP/supabase-cli-main"
+          mkdir -p "$cli_home/bin"
+          curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+          tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+          test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+          echo "$cli_home/bin" >> "$GITHUB_PATH"
       # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
       - name: Sign in to ghcr.io for the Supabase image pulls
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
