@@ -303,9 +303,10 @@ describe("opening a link (public)", () => {
     }
   });
 
-  it("an unknown action does nothing", async () => {
+  it("an unknown action only records a correlated security refusal", async () => {
     expect((await press(good(), { action: "peek" })).status).toBe(400);
-    expect(fns()).toEqual(["auth_rate_hit"]);
+    expect(fns()).toEqual(["auth_rate_hit", "integration_invite_refusal_log"]);
+    expect(svcRpc.mock.calls.at(-1)?.[1]).toMatchObject({ p_step: "request", p_reason: "invalid_request" });
   });
 
   it("POST from another site is refused before anything but the security log", async () => {
