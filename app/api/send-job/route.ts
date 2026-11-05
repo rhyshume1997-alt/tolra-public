@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { checkInput, selectProvider, onRecipientAllowlist } from "@/lib/email/send-company-email";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -101,11 +102,18 @@ export async function POST(request: Request) {
   // If this write is lost the ledger stays 'sending' and becomes 'unknown' after ten minutes: never a silent retry.
   if (completeError) {
     console.error("[send-job] outcome not recorded", completeError.code);
+    await recordSendAudit(supabase, { outcome: "unknown", historyId, channel: "send-job", code: "outcome_not_recorded" });
     return NextResponse.json({ status: "unknown", error: UNKNOWN_MESSAGE }, { status: 502 });
   }
 
-  if (outcome === "failed") return NextResponse.json({ status: "failed", error: "Could not send email" }, { status: 502 });
-  if (outcome === "unknown") return NextResponse.json({ status: "unknown", error: UNKNOWN_MESSAGE }, { status: 502 });
+  if (outcome === "failed") {
+    await recordSendAudit(supabase, { outcome: "failed", historyId, channel: "send-job", code: "provider_refused" });
+    return NextResponse.json({ status: "failed", error: "Could not send email" }, { status: 502 });
+  }
+  if (outcome === "unknown") {
+    await recordSendAudit(supabase, { outcome: "unknown", historyId, channel: "send-job", code: "provider_unknown" });
+    return NextResponse.json({ status: "unknown", error: UNKNOWN_MESSAGE }, { status: 502 });
+  }
   return NextResponse.json({ status: "sent" });
 }
 

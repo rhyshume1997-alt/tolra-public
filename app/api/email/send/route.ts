@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { type CompanyEmailResult, EMAIL_SEND_ROLES, IDEMPOTENCY_KEY, cleanAddress, onRecipientAllowlist, sendCompanyEmail } from "@/lib/email/send-company-email";
+import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { MAX_PDF_BYTES, fileNameMatches } from "@/lib/email/attachment-check";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -115,6 +116,10 @@ export async function POST(request: Request) {
     },
     { db: supabase },
   );
-  if (!result.ok) return NextResponse.json({ status: "failed", error: result.error, code: result.code }, { status: STATUS[result.code] });
+  if (!result.ok) {
+    // A failed or uncertain send leaves an audit row (document id and codes only); a lost audit write changes nothing.
+    await recordSendAudit(supabase, { outcome: result.uncertain ? "unknown" : "failed", historyId: input.record_id, entityTable: spec.table, channel: "email-send", code: result.code });
+    return NextResponse.json({ status: "failed", error: result.error, code: result.code, ...(result.uncertain ? { held: true } : {}) }, { status: STATUS[result.code] });
+  }
   return NextResponse.json({ status: result.mode, provider: result.provider, history_id: result.historyId ?? null });
 }

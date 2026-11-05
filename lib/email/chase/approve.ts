@@ -16,6 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { pauseActive } from "@/lib/email/chase/steps";
 import { escapeHtml } from "@/lib/email/templates/defaults";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
+import { attemptKey } from "@/lib/email/chase/attempt";
 import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { balanceDue, invoiceLifecycle } from "@/lib/receivables";
 
@@ -49,6 +50,7 @@ export const approveKey = (draftId: string) => `chase-approve:${draftId}`;
 export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps): Promise<ApproveResult> {
   const org = input.organizationId;
   const { db } = deps;
+  if (input.provider === "resend" && !input.isAdmin) return refused(403, "Only an admin can choose another provider for a failed email.");
   const { data: draftRow, error: draftError } = await db.from("email_history")
     .select("id, organization_id, to_email, subject, body, status, related_to_type, related_to_id").eq("id", input.draftId).maybeSingle();
   const draft = draftRow as { id: string; organization_id: string; to_email: string; subject: string; body: string; status: string; related_to_type: string | null; related_to_id: string | null } | null;
@@ -108,7 +110,6 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
 
   let provider: unknown;
   if (input.provider === "resend") {
-    if (!input.isAdmin) return refused(403, "Only an admin can choose another provider for a failed email.");
     const earlier = await db.from("email_history").select("status").eq("organization_id", org).eq("related_to_id", chase.invoice_id).in("status", ["failed", "unknown"]);
     const statuses = earlier.error ? ["unknown"] : (earlier.data ?? []).map((r: { status: string }) => r.status);
     if (statuses.includes("unknown")) return refused(409, "An earlier attempt has an unknown outcome. Check Email history first; nothing is sent another way until it is settled.");
@@ -144,7 +145,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   let sent: CompanyEmailResult;
   try { sent = await deps.send({
     organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body, html: escapeHtml(body).replace(/\r?\n/g, "<br>\n"),
-    recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: approveKey(draft.id),
+    recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: await attemptKey(db, org, approveKey(draft.id), chase.invoice_id, draft.id),
   }, input.provider === "resend" ? provider : undefined); } catch { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: "thrown" }); return needsChecking(); }
   if (!sent.ok) {
     if (sent.uncertain) { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: sent.code }); return needsChecking(); }

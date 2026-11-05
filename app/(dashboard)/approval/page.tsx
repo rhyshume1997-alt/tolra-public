@@ -16,7 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { auditEvent } from "@/lib/audit";
 import { fmtDate, fmtDateTime, nowIso } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { awaitingApproval } from "@/lib/approval-queue";
+import { awaitingApproval, needsChecking } from "@/lib/approval-queue";
+import { NeedsChecking, SendViaResendButton, type NeedsCheckingItem } from "@/components/approval-recovery";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { useSaving } from "@/lib/use-saving";
@@ -37,6 +38,9 @@ type ApprovalItem = {
   /** 138: a chase step's draft (a chase_sends row points at it): it can be approved and sent from here. */
   chase: boolean;
   canApprove: boolean;
+  /** An earlier send of this record was refused for certain (a 'failed' history row): the admin may choose Resend for it. */
+  failedBefore: boolean;
+  related: string;
 };
 
 type SentItem = { id: string; customer: string; when: string; status: string };
@@ -71,6 +75,8 @@ function toApproval(row: any): ApprovalItem {
     subject: row.subject || "",
     body: row.body || "",
     chase: false,
+    failedBefore: false,
+    related: String(row.related_to_id ?? ""),
     canApprove: String(row.related_to_id ?? "").startsWith("customer_statement:") || (type === "invoice" && row.drafted_by === null),
   };
 }
@@ -90,6 +96,9 @@ export default function ApprovalPage() {
   const [approveSubject, setApproveSubject] = useState("");
   const [approveBody, setApproveBody] = useState("");
   const [noProvider, setNoProvider] = useState<string | null>(null);
+  const [checking, setChecking] = useState<NeedsCheckingItem[]>([]);
+  const [resendAvailable, setResendAvailable] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -115,6 +124,17 @@ export default function ApprovalPage() {
         const ids = new Set(chase.error ? [] : (chase.data ?? []).map((row: any) => String(row.draft_history_id)));
         for (const item of items) item.chase = ids.has(item.id);
       }
+      // Earlier refused sends (status 'failed') for these records, and the held ones (unknown / stuck sending). Reads only.
+      if (items.length) {
+        const failed = await supabase.from("email_history").select("related_to_id").eq("status", "failed").in("related_to_id", items.map((item) => item.related).filter(Boolean));
+        const failedIds = new Set(failed.error ? [] : (failed.data ?? []).map((row: any) => String(row.related_to_id)));
+        for (const item of items) item.failedBefore = failedIds.has(item.related);
+      }
+      const held = await needsChecking(supabase.from("email_history").select("id, to_email, subject, status, related_to_type, drafted_at")).order("drafted_at", { ascending: false });
+      setChecking(held.error ? [] : (held.data ?? []).map((row: any) => ({ id: String(row.id), to: row.to_email || "Recipient", subject: row.subject || "", status: String(row.status), related: String(row.related_to_type ?? ""), drafted: row.drafted_at ? fmtDate(row.drafted_at) : "" })));
+      const options = await fetch("/api/email/provider-options").then((r) => (r.ok ? r.json() : { resend: false, admin: false })).catch(() => ({ resend: false, admin: false }));
+      setResendAvailable(options.resend === true);
+      setIsAdminUser(options.admin === true);
       setApprovals(items);
       updateSharedApprovalCount(items.length);
       setRecent((sent.data ?? []).map((row: any) => ({
@@ -161,6 +181,36 @@ export default function ApprovalPage() {
         setPreviewItem(null);
         removeLocal(item.id);
       } catch (err) { toast.error(err instanceof Error ? err.message : "Could not send this draft."); }
+      finally { await load(); }
+    });
+  }
+
+  function resolveHeld(item: NeedsCheckingItem, outcome: "sent" | "not_sent") {
+    if (!window.confirm(outcome === "sent" ? `Record that the email to ${item.to} WAS sent? Only do this after you have checked.` : `Record that the email to ${item.to} was NOT sent and return it to the queue? Only do this after you have checked.`)) return;
+    void run(async () => {
+      try {
+        const job = item.related === "job";
+        const res = await fetch(job ? "/api/send-job/resolve" : "/api/email/resolve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(job ? { historyId: item.id, as: outcome === "sent" ? "sent" : "failed" } : { history_id: item.id, outcome }) });
+        const answer = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) throw new Error(answer.error ?? "Could not record this.");
+        toast.success("Recorded. Nothing was sent.");
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not record this."); }
+      finally { await load(); }
+    });
+  }
+
+  /** The admin's explicit Resend choice for one message that failed for certain. The route re-checks everything. */
+  function sendViaResend(item: ApprovalItem) {
+    void run(async () => {
+      try {
+        const res = await fetch(item.chase ? "/api/chase/approve" : "/api/email/approve", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item.chase ? { history_id: item.id, expected_subject: item.subject, expected_body: item.body, provider: "resend" } : { draft_id: item.id, subject: item.subject, body: item.body, to: item.to, provider: "resend" }),
+        });
+        const answer = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) throw new Error(answer.error ?? "Could not send this email.");
+        toast.success("Sent through Resend.");
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not send this email."); }
       finally { await load(); }
     });
   }
@@ -316,6 +366,7 @@ export default function ApprovalPage() {
               <Button variant="outline" onClick={() => void copyToClipboard(item)}>Copy draft</Button>
               <Button variant="outline" onClick={() => openEmailClient(item)}>Open in email app</Button>
               <Button variant="outline" disabled={saving} onClick={() => markSentManually(item)}>Mark as Sent Manually</Button>
+              <SendViaResendButton available={resendAvailable} failed={item.failedBefore} disabled={saving} recipient={item.to} subject={item.subject} onConfirm={() => sendViaResend(item)} />
             </>} />;
             const styles = toneStyles[item.tone];
             return (
@@ -368,6 +419,7 @@ export default function ApprovalPage() {
                     </Button>
                     <Button variant="outline" onClick={() => openEdit(item)}>Edit</Button>
                     <Button variant="outline" onClick={() => setPreviewItem(item)}>Full preview</Button>
+                    {item.canApprove ? <SendViaResendButton available={resendAvailable} failed={item.failedBefore} disabled={saving} recipient={item.to} subject={item.subject} onConfirm={() => sendViaResend(item)} /> : null}
                     <Button variant="ghost" disabled={saving} className="text-slate-500 hover:text-slate-900 md:ml-auto" onClick={() => skipApproval(item)}>Skip</Button>
                   </div>
                 </CardContent>
@@ -376,6 +428,8 @@ export default function ApprovalPage() {
           })
         )}
       </section>
+
+      <NeedsChecking items={checking} isAdmin={isAdminUser} busy={saving} onResolve={resolveHeld} />
 
       {/* 113: reopened jobs waiting for an admin's sign-off (nothing shows before the database has 113). */}
       <ReopenApprovals />

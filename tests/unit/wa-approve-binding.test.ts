@@ -96,6 +96,14 @@ describe("approved recipient, subject and body are exactly what is sent", () => 
     expect(auditRows()).toHaveLength(1);
     expect(auditRows()[0]).toMatchObject({ p_action: "UPDATE", p_entity_table: "email_history", p_entity_id: DRAFT, p_new: { outcome: "changed" } });
   });
+  it("a customer e-mail that changes after the claim also voids it: nothing is sent to the old address", async () => {
+    hookAfterClaim = () => { fake.rows("customers")[0].email = "moved@customer.test"; };
+    const out = await approve();
+    expect(out.status).toBe(409);
+    expect(sends).toEqual([]);
+    expect(history().status).toBe("drafted");
+    expect(auditRows()[0]).toMatchObject({ p_new: { outcome: "changed" } });
+  });
   it("a recipient changed after the claim also voids it", async () => {
     hookAfterClaim = () => { history().to_email = "redirected@evil.test"; };
     expect((await approve()).status).toBe(409);
