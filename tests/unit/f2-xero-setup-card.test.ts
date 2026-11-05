@@ -9,7 +9,7 @@ vi.mock("@/components/xero-mappings", () => ({ XeroMappings: (p: { connected: bo
 
 import { XeroSetupCard, XeroSetupCardView, type XeroSetupCardViewProps } from "@/components/integrations/xero-setup-card";
 import type { IntegrationOverview } from "@/lib/integrations/overview";
-import { HOLD_NOT_APPROVED, NOT_SET_UP, SENDS_AUTOMATICALLY, activationFor, serverBehaviour, type LaunchHold } from "@/lib/integrations/xero-setup-state";
+import { HOLD_NOT_APPROVED, NOT_SET_UP, SENDS_AUTOMATICALLY, TRANSFERS_ON_TEXT, activationFor, serverBehaviour, type LaunchHold } from "@/lib/integrations/xero-setup-state";
 
 const ov = (o: Partial<IntegrationOverview> = {}): IntegrationOverview => ({ provider: "xero", status: "connected", tenant_name: "Marpet Ltd (Xero)", connected_at: "2026-11-01T10:00:00Z", status_reason: null, unmapped: [], counts: {}, contact_problems: 0, ...o });
 
@@ -223,13 +223,16 @@ describe("XeroSetupCard (container): reads the real status and uses the existing
     return calls;
   }
 
-  it("connected and mapped on a server with credentials: shows the automatic sentence from what the server reported", async () => {
+  it("connected and mapped on a server with credentials, and the server's transfer switch (release 149) reads ON: says so from what the server reported", async () => {
     rpc.mockResolvedValue({ data: ov(), error: null });
-    mockFetch({ "/api/integrations/status": () => ({ body: { db107: true, xero: { configured: true }, microsoft: { configured: false } } }) });
+    mockFetch({
+      "/api/integrations/status": () => ({ body: { db107: true, xero: { configured: true }, microsoft: { configured: false } } }),
+      "/api/integrations/xero/launch": () => ({ body: { enabled: true, connected: true, mapped: true, status: "connected" } }),
+    });
     const { host, done } = await render(createElement(XeroSetupCard, { outcome: null }), true);
     expect(rpc).toHaveBeenCalledWith("integration_overview", { p_provider: "xero" });
-    expect(t(host, "xero-behaviour")).toBe(SENDS_AUTOMATICALLY);
-    expect(sw(host).disabled).toBe(true);
+    expect(t(host, "xero-behaviour")).toBe(TRANSFERS_ON_TEXT);
+    expect(sw(host).disabled).toBe(false);
     await done();
   });
 

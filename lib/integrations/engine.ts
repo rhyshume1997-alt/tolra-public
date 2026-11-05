@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 
 import { decideContact } from "@/lib/integrations/contacts";
 import type { AccountingProvider, IntegrationDocument, Mappings, ProviderDocument, ProviderId } from "@/lib/integrations/types";
-import { ProviderError } from "@/lib/integrations/types";
+import { ProviderError, TransfersHeldError } from "@/lib/integrations/types";
 import { expectedTotals, missingMappings, totalsDifference, UnmappedError } from "@/lib/integrations/xero/mapper";
 import { VOID_IN_XERO, voidRefusedMessage } from "@/lib/integrations/xero/policy";
 
@@ -60,7 +60,7 @@ export type RunSummary = {
   needsCheck: number;
   retryLater: number;
   skipped: number;
-  /** Why the run stopped early, if it did: not_connected, needs_reconnect, disconnected, unmapped, rate_limited, no_token. */
+  /** Why the run stopped early, if it did: not_connected, needs_reconnect, disconnected, unmapped, rate_limited, no_token, launch_hold. */
   blocked: string | null;
   unmapped: string[];
 };
@@ -95,7 +95,17 @@ export async function runSends(org: string, providerId: ProviderId, deps: Engine
     }
     const send = claimed.send;
     if (!send) break;
-    if (!token) token = await deps.accessToken(org, providerId);
+    if (!token) {
+      try {
+        token = await deps.accessToken(org, providerId);
+      } catch (err) {
+        if (!(err instanceof TransfersHeldError)) throw err;
+        // Switched off after the claim (release 149): nothing was sent, so the row goes back and the run stops. Never left in 'sending'.
+        await record(deps.db, send, { status: "pending", retryAt: new Date(now() + 60_000), error: err.message });
+        summary.blocked = "launch_hold";
+        break;
+      }
+    }
     if (!token) {
       // The claim runs out and the row becomes needs_check... unless it is put back now: nothing was sent.
       await record(deps.db, send, { status: "pending", retryAt: new Date(now() + 60_000), error: "Xero sign-in is not available: connect again." });
@@ -155,6 +165,8 @@ function laterOrFail(send: ClaimedSend, reason: string, now: () => number): Resu
 /** What to record when a call to the provider was refused for now (rate limit, token), or null for the caller to decide. */
 function holdBack(err: unknown, now: () => number): Result | null {
   if (!(err instanceof ProviderError)) return null;
+  // Switched off while this document was being sent (release 149): the call it stopped never left, so it simply waits (a repeat attempt reads Xero first).
+  if (err instanceof TransfersHeldError) return { status: "pending", error: err.message, retryAt: new Date(now() + 60_000), stop: "launch_hold" };
   if (err.outcome === "rate_limited") return { status: "pending", error: err.message, retryAt: new Date(now() + (err.retryAfterMs ?? 60_000)), stop: "rate_limited" };
   if (err.outcome === "unauthorized") return { status: "pending", error: err.message, retryAt: new Date(now() + 60_000), stop: "unauthorized" };
   if (err.outcome === "forbidden") return { status: "pending", error: err.message, retryAt: new Date(now() + 60_000), stop: "forbidden" };

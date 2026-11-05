@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SetupCard } from "@/components/integrations/setup-card";
 import { useCodePrompt } from "@/components/authenticator-code-dialog";
@@ -10,6 +11,8 @@ import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { Button } from "@/components/ui/button";
 import { XeroMappings } from "@/components/xero-mappings";
 import type { IntegrationOverview } from "@/lib/integrations/overview";
+import { postJson, safeMessage } from "@/lib/integrations/ai-setup";
+import { sendWithCode } from "@/lib/mfa-step-up";
 import {
   EMERGENCY_NOTE, type LaunchHold, activationFor, connectionLine, outcomeNotice, serverBehaviour, setupSteps,
 } from "@/lib/integrations/xero-setup-state";
@@ -43,7 +46,7 @@ export function XeroSetupCardView(p: XeroSetupCardViewProps) {
   const linked = connected || status === "needs_reconnect";
   const canConnect = p.configured === true && p.overview !== null && !p.busy;
   const behaviourTone = behaviour.kind === "sends" ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-    : behaviour.kind === "unknown" || behaviour.kind === "needs_reconnect" ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700";
+    : behaviour.kind === "unknown" || behaviour.kind === "needs_reconnect" || behaviour.kind === "held" ? "border-amber-300 bg-amber-50 text-amber-900" : "border-slate-200 bg-slate-50 text-slate-700";
   const unmapped = p.overview?.unmapped ?? [];
   return (
     <SetupCard
@@ -85,10 +88,16 @@ export function XeroSetupCardView(p: XeroSetupCardViewProps) {
  * Admin > Integrations > Xero, in the shared SetupCard frame. Reads the company's overview (integration_overview, this company only) and the
  * status route (are Xero's app details on this server). Connect, Check, Disconnect and the mappings reuse the existing routes and
  * components; their authorisation (admin role, second step of sign-in) is the routes' and the database's, unchanged.
- * `launchHold` is the wiring point for the launch status (#403): absent, the transfers switch is disabled and says why.
+ * The "Turn on transfers" switch is the company's own, persisted, server-side Xero transfer switch (release 149; GET and POST
+ * /api/integrations/xero/launch): OFF by default, separate from Connected, enabled only when the company is connected and mapped, and turned on
+ * only with a fresh authenticator code (the same code prompt as the AI switch: the route answers mfa_recent_required, the dialog opens, the same
+ * request is sent once more). It is read from the server, never assumed. `launchHold` (a test seam): when given, it replaces the real switch.
  * The Connect, Disconnect and Check logic is copied from components/integrations-panel.tsx (which is not edited).
  */
-export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold; outcome?: string | null }) {
+export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: LaunchHold; outcome?: string | null }) {
+  const { requestCode, codeDialog } = useCodePrompt();
+  const [switchOn, setSwitchOn] = useState<boolean | null>(null);
+  const [switchReadable, setSwitchReadable] = useState(true);
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -110,6 +119,15 @@ export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold
     setOverview(data as IntegrationOverview);
   }, []);
   useEffect(() => { void load(); }, [load]);
+  // The transfer switch, as the server holds it (admin only). Unreadable: shown as such, and nothing is sent (the app fails closed).
+  const loadSwitch = useCallback(async () => {
+    try {
+      const res = await fetch("/api/integrations/xero/launch", { credentials: "same-origin", cache: "no-store" });
+      const body = res.ok ? ((await res.json().catch(() => null)) as { enabled?: unknown } | null) : null;
+      if (body && typeof body.enabled === "boolean") { setSwitchOn(body.enabled); setSwitchReadable(true); } else { setSwitchOn(null); setSwitchReadable(false); }
+    } catch { setSwitchOn(null); setSwitchReadable(false); }
+  }, []);
+  useEffect(() => { if (!injected) void loadSwitch(); }, [injected, loadSwitch]);
   useEffect(() => {
     let active = true;
     void fetch("/api/integrations/status", { credentials: "same-origin" })
@@ -141,7 +159,14 @@ export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold
     const r = await postIntegration("/api/integrations/xero/test");
     setCheck(r.ok ? { ok: true, text: String(r.body.message ?? "Working") } : { ok: false, text: r.error });
   });
-  const flip = launchHold ? (next: boolean) => { void run(async () => { await launchHold.set(next); await load(); }); } : undefined;
+  const changeSwitch = async (next: boolean) => {
+    const outcome = await sendWithCode(() => postJson("/api/integrations/xero/launch", { enabled: next }), requestCode);
+    if (outcome.result === "cancelled") setActionError("Cancelled. Nothing was changed.");
+    else if (outcome.result === "failed") setActionError(safeMessage(outcome.answer.body, "Xero transfers were not changed. Try again."));
+    await loadSwitch();
+  };
+  const launchHold: LaunchHold | undefined = injected ?? { available: switchReadable, on: switchOn, set: changeSwitch };
+  const flip = (next: boolean) => { void run(async () => { await launchHold.set(next); await load(); }); };
 
   return (
     <>
@@ -162,6 +187,7 @@ export function XeroSetupCard({ launchHold, outcome }: { launchHold?: LaunchHold
         onMappingsChanged={() => void load()}
         onSwitch={flip}
       />
+      {codeDialog}
       <ConfirmDialog
         open={confirm}
         title="Disconnect from Xero?"

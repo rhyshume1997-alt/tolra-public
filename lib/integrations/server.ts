@@ -6,7 +6,8 @@ import { getAppCredentials } from "@/lib/integrations/app-credentials";
 import { KEY_VERSION, encryptSecret, encryptionKey, decryptSecret } from "@/lib/integrations/crypto";
 import { type EngineDb, type EngineDeps, type RunSummary, runSends } from "@/lib/integrations/engine";
 import { createTokenSource } from "@/lib/integrations/tokens";
-import type { AccountingProvider, Mappings, ProviderId } from "@/lib/integrations/types";
+import { type AccountingProvider, type Mappings, type ProviderId, TransfersHeldError } from "@/lib/integrations/types";
+import { XERO_HOLD_MESSAGE, heldXeroProvider, xeroTransfersEnabled } from "@/lib/integrations/xero/launch-hold";
 import { createXeroClient } from "@/lib/integrations/xero/client";
 import {
   type XeroConfig, type XeroConnection, XeroAuthError, authorizeUrl, chooseConnection, deleteConnection, exchangeCode, hashState, listConnections,
@@ -67,16 +68,22 @@ export async function xeroReady(env: Record<string, string | undefined> = proces
   return { config: { clientId: creds.clientId, clientSecret: creds.clientSecret, redirectUri: creds.redirectUri }, key };
 }
 
-function engineDeps(db: EngineDb, ready: { config: XeroConfig; key: Buffer }): EngineDeps {
-  return {
+function engineDeps(db: EngineDb, ready: { config: XeroConfig; key: Buffer }, enabled?: () => Promise<boolean>): EngineDeps {
+  const deps: EngineDeps = {
     db,
     accessToken: createTokenSource({
       db, key: ready.key,
       refresh: (refreshToken) => refreshTokens(ready.config, refreshToken),
       isRefused: (err) => err instanceof XeroAuthError,
     }),
-    provider: (accessToken, tenantId) => createXeroClient({ accessToken, tenantId }),
+    provider: (accessToken, tenantId) => { const p = createXeroClient({ accessToken, tenantId }); return enabled ? heldXeroProvider(p, enabled) : p; },
   };
+  if (enabled) {
+    // Release 149: the switch is re-read before the sign-in is renewed and before each provider call, so turning it off mid-run stops the next step.
+    const token = deps.accessToken;
+    deps.accessToken = async (...args) => { if (!(await enabled())) throw new TransfersHeldError(XERO_HOLD_MESSAGE); return token(...args); };
+  }
+  return deps;
 }
 
 /**
@@ -104,9 +111,12 @@ export async function companyXeroToken(service: SupabaseClient, org: string, rea
 }
 
 /** Sends what one company has queued (bounded: a few documents per call; the rest go on the next call). */
-export function sendQueued(client: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer },
-                           opts?: { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string } }): Promise<RunSummary> {
-  return runSends(org, "xero", engineDeps(serviceDb(client), ready), opts);
+export async function sendQueued(client: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer },
+                                 opts?: { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string } }): Promise<RunSummary> {
+  // Release 149: the company's transfer switch. Off (or unreadable) is answered here before any token or Xero work; the database's claim judges it again.
+  const enabled = () => xeroTransfersEnabled(client, org);
+  if (!(await enabled())) return { sent: 0, failed: 0, needsCheck: 0, retryLater: 0, skipped: 0, blocked: "launch_hold", unmapped: [] };
+  return runSends(org, "xero", engineDeps(serviceDb(client), ready, enabled), opts);
 }
 
 /** Connect, step 1: the state and PKCE verifier are kept (as the signed-in admin: the database checks admin and two-step) and Xero's URL returned. */
@@ -218,11 +228,17 @@ export function sweepDeps(service: SupabaseClient, ready: { config: XeroConfig; 
   return {
     async connected() {
       // Accounting providers only: a Microsoft 365 connection (107) is renewed by its own token source when mail is sent.
-      const { data, error } = await service.from("integration_connections").select("organization_id, provider").eq("status", "connected").eq("provider", "xero");
+      // Release 149: only companies whose transfer switch is on (and connected). A database without the switch (149 not applied or rolled back)
+      // answers PGRST202 / 42883: the caller (xero-pass) reports 'skipped' and nothing is sent; this never reads the connections table directly.
+      const { data, error } = await service.rpc("integration_xero_enabled_orgs");
       if (error) throw new DbError(error.message, error.code);
-      return ((data ?? []) as Array<{ organization_id: string; provider: ProviderId }>).map((r) => ({ organizationId: r.organization_id, provider: r.provider }));
+      return ((data ?? []) as string[]).map((id) => ({ organizationId: id, provider: "xero" as ProviderId }));
     },
-    renew: (org: string, provider: ProviderId) => deps.accessToken(org, provider, { force: true }),
+    // Renewal is a Xero call: only while the switch is on (re-read here, so a company switched off after the list was made is not touched).
+    renew: async (org: string, provider: ProviderId) => {
+      if (!(await xeroTransfersEnabled(service, org))) throw new TransfersHeldError(XERO_HOLD_MESSAGE);
+      return deps.accessToken(org, provider, { force: true });
+    },
     send: (org: string) => sendQueued(service, org, ready),
   };
 }
