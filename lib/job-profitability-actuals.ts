@@ -25,7 +25,7 @@ export const costForMilliseconds = (ms: number, pencePerHour: number) => {
   if (!Number.isSafeInteger(ms) || ms < 0 || !validRate(pencePerHour)) throw new Error("Invalid hours or costing rate");
   return roundedRatio(BigInt(ms) * BigInt(pencePerHour), BigInt(HOUR));
 };
-function plannedCost(hours: string | number | null, rate: number): number | null {
+export function plannedCostPence(hours: string | number | null, rate: number): number | null {
   if (hours === null || !/^\d+(?:\.\d{1,6})?$/.test(String(hours))) return null;
   const [whole, fraction = ""] = String(hours).split(".");
   const scale = BigInt(10) ** BigInt(fraction.length);
@@ -86,7 +86,7 @@ export type ActualCostFigure = { state: "off" | "incomplete" | "complete"; reaso
   chargedLabourMilliseconds: number | null; labourPence: number | null; machineMilliseconds: number | null; machinePence: number | null;
   overheadPence: number | null; estimatedProfitPence: number | null; actualProfitPence: number | null; marginPct: number | null; differencePence: number | null };
 
-export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
+export function actualJobProfit(input: ActualCostInputs, options: { allowUninvoicedCosts?: boolean } = {}): ActualCostFigure {
   const out: ActualCostFigure = { state: "incomplete", reasons: [], warnings: [], quotedPence: null, invoicedPence: null, supplierPence: null,
     labourMilliseconds: null, chargedLabourMilliseconds: null, labourPence: null, machineMilliseconds: null, machinePence: null,
     overheadPence: null, estimatedProfitPence: null, actualProfitPence: null, marginPct: null, differencePence: null };
@@ -99,7 +99,7 @@ export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
   out.quotedPence = input.quoteLines ? quoteSellPence(input.quoteLines) : null;
   if (!input.invoices || !input.credits) fail("Invoice or credit note records could not be read");
   else if (!safeRevenue(input.invoices, input.credits)) fail("Revenue exceeds supported pence range");
-  else { const sell = invoicedSellPence(input.invoices, input.credits); if (sell.issued && sell.pence !== null) out.invoicedPence = sell.pence; else fail("No complete issued net revenue yet"); }
+  else { const sell = invoicedSellPence(input.invoices, input.credits); if (sell.issued && sell.pence !== null) out.invoicedPence = sell.pence; else if (sell.issued || !options.allowUninvoicedCosts) fail("No complete issued net revenue yet"); }
   const purchases = input.pos ? boughtIn(input.pos) : null;
   if (!purchases) fail("Supplier allocations are missing or unreadable"); else out.supplierPence = purchases.pence;
   if (input.ambiguousQuoteCosts) fail("A quote-only supplier allocation is shared by multiple jobs; allocate it to a job");
@@ -155,30 +155,30 @@ export function actualJobProfit(input: ActualCostInputs): ActualCostFigure {
     }
     out.machinePence = machineCost;
     out.overheadPence = input.config.overhead_basis === "none" ? 0 : validRate(input.config.overhead_rate_pence) ? costForMicroseconds(overheadTime, input.config.overhead_rate_pence) : null;
-    if (!out.reasons.length && out.invoicedPence !== null && out.supplierPence !== null && out.labourPence !== null && out.overheadPence !== null) {
+    if (!out.reasons.length && out.supplierPence !== null && out.labourPence !== null && out.overheadPence !== null) {
       const costs = out.supplierPence + out.labourPence + machineCost + out.overheadPence;
-      out.actualProfitPence = out.invoicedPence - costs;
-      if (!Number.isSafeInteger(costs) || !Number.isSafeInteger(out.actualProfitPence)) throw new Error("Cost exceeds supported pence range");
-      out.marginPct = out.invoicedPence > 0 ? roundedRatio(BigInt(out.actualProfitPence) * BigInt(1000), BigInt(out.invoicedPence)) / 10 : null;
+      out.actualProfitPence = out.invoicedPence === null ? null : out.invoicedPence - costs;
+      if (!Number.isSafeInteger(costs) || (out.actualProfitPence !== null && !Number.isSafeInteger(out.actualProfitPence))) throw new Error("Cost exceeds supported pence range");
+      out.marginPct = out.invoicedPence !== null && out.invoicedPence > 0 && out.actualProfitPence !== null ? roundedRatio(BigInt(out.actualProfitPence) * BigInt(1000), BigInt(out.invoicedPence)) / 10 : null;
       out.state = "complete";
     }
     const estimate = input.estimate;
     if (input.config.approved_at && estimate && out.quotedPence !== null && validRate(estimate.supplier_pence) && validRate(input.config.labour_rate_pence) && input.plans) {
-      const lab = plannedCost(estimate.labour_hours, input.config.labour_rate_pence);
-      const oh = input.config.overhead_basis === "none" ? 0 : validRate(input.config.overhead_rate_pence) ? plannedCost(estimate.overhead_hours, input.config.overhead_rate_pence) : null;
+      const lab = plannedCostPence(estimate.labour_hours, input.config.labour_rate_pence);
+      const oh = input.config.overhead_basis === "none" ? 0 : validRate(input.config.overhead_rate_pence) ? plannedCostPence(estimate.overhead_hours, input.config.overhead_rate_pence) : null;
       let machineEstimate = 0, estimatedMs = 0, complete = lab !== null && oh !== null;
       if (!input.plans.length && !estimate.machines_not_required) complete = false;
       for (const plan of input.plans) {
         const rate = input.rates.find(r => r.machine_id === plan.machine_id);
-        const cost = rate && validRate(rate.rate_pence) ? plannedCost(plan.estimated_hours, rate.rate_pence) : null;
-        const ms = plannedCost(plan.estimated_hours, HOUR);
+        const cost = rate && validRate(rate.rate_pence) ? plannedCostPence(plan.estimated_hours, rate.rate_pence) : null;
+        const ms = plannedCostPence(plan.estimated_hours, HOUR);
         if (cost === null || ms === null) complete = false; else { machineEstimate += cost; estimatedMs += ms; }
       }
       if (complete) {
         out.estimatedProfitPence = out.quotedPence - estimate.supplier_pence - lab! - machineEstimate - oh!;
         if (!Number.isSafeInteger(out.estimatedProfitPence)) throw new Error("Estimate exceeds supported range");
         out.differencePence = out.actualProfitPence === null ? null : out.actualProfitPence - out.estimatedProfitPence;
-        const estimatedLabourMs = plannedCost(estimate.labour_hours, HOUR)!;
+        const estimatedLabourMs = plannedCostPence(estimate.labour_hours, HOUR)!;
         if (chargedLabour > estimatedLabourMs * 1000) out.warnings.push("Additional labour hours exceed the estimate");
         if (out.machineMilliseconds! > estimatedMs) out.warnings.push("Machine hours exceed the estimate");
         if (out.supplierPence !== null && out.supplierPence > estimate.supplier_pence) out.warnings.push("Supplier costs exceed the estimate");

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, type FormEvent } from 'react';
+import { JobProfitabilityProgress } from "@/components/job-profitability-progress";
 import { actualJobProfit, type ActualCostInputs } from '@/lib/job-profitability-actuals';
 import { gbp, toPence } from '@/lib/money';
 import { supabase } from '@/lib/supabase';
@@ -50,7 +51,7 @@ export function JobProfitabilityActuals({ jobId }: { jobId: string }) {
   if (!allowed) return null;
   if (!input || input.organizationId !== organizationId) return message ? <p role="status">{message}</p> : null;
   if (!input.config.enabled && !input.canConfigure) return null;
-  const figure = actualJobProfit(input);
+  const figure = actualJobProfit(input, { allowUninvoicedCosts: true });
   async function save(event: FormEvent<HTMLFormElement>, rates: boolean) {
     event.preventDefault();
     if (!input || !supabase || busy) return;
@@ -78,8 +79,9 @@ export function JobProfitabilityActuals({ jobId }: { jobId: string }) {
   const field = 'rounded border p-1 ml-2';
   return <section className="space-y-3 rounded-lg border p-4 text-sm" aria-label="Actual job costing" data-testid="actual-job-costing">
     <h3 className="font-semibold">Actual job costing {figure.state === 'off' ? '— disabled' : `— rates revision ${input.config.revision}`}</h3>
-    <p>Net values, excluding VAT. This uses company costing rates, not employee pay. Rate changes recalculate this view for earlier jobs. The existing profit figure stays above.</p>
+    <p>Net values, excluding VAT. This uses company costing rates, not employee pay. Rate changes recalculate this view for earlier jobs. The existing profit figure stays above. Actual profit here uses invoiced revenue and recorded production/purchase costs so far, before separate rework adjustments. The progress section includes confirmed extra rework.</p>
     {figure.state !== 'off' && <>
+      {figure.invoicedPence === null && <p>No invoiced revenue is available yet. Actual profit stays unavailable; the projection uses the quoted value.</p>}
       {figure.state === 'incomplete' && <p className="font-semibold" role="status">Costing incomplete: {figure.reasons.join('; ')}.</p>}
       <dl className="grid grid-cols-2 gap-2">
         {Object.entries({ 'Quoted value': money(figure.quotedPence), 'Invoiced less credits': money(figure.invoicedPence), 'Supplier costs': money(figure.supplierPence),
@@ -91,6 +93,7 @@ export function JobProfitabilityActuals({ jobId }: { jobId: string }) {
           'Actual minus estimated profit': money(figure.differencePence) }).map(([name, value]) => <div key={name}><dt>{name}</dt><dd className="font-semibold">{value}</dd></div>)}
       </dl>
       {figure.warnings.map(w => <p className="text-amber-800" key={w}>{w}</p>)}
+      <JobProfitabilityProgress key={`${organizationId}:${jobId}:${version}`} input={input} />
       <details><summary>Job estimate and required hours</summary>
         <p>Use the original estimate. Machine estimates come from the job’s planned machines. Additional hours exclude labour or overheads already included in machine rates. Blank estimates stay unknown.</p>
         <form key={`estimate-${version}`} onSubmit={e => void save(e, false)} className="grid gap-2 py-2">
