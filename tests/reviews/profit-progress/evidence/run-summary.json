@@ -1,0 +1,20 @@
+{
+  "code_snapshot_commit": "1d74d203a32a318c4e1da40d777bbbd88292ec73",
+  "base_pr": 378,
+  "base_commit": "f5de19ac22f51304fcaae0ced344e642ff2f73b0",
+  "utc": "2026-11-05T10:02:02.995148+00:00",
+  "environment": "local Vitest synthetic inputs/mocked reads; no SQL or provider calls",
+  "passed": 63,
+  "failed": 0,
+  "skipped": 0,
+  "typecheck_exit": 0,
+  "lint_exit": 0,
+  "logs": {
+    "focused.log": "f01ae3e4768408c96b90ef0ff757e9553874ad49617a40c350a7a0d359e5a30e",
+    "lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ui-test-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "pre-fix-typecheck.log": "d7967ea5b884e8801081bc3513b82a974039d2507154a1a83a8f923759a032ec",
+    "pre-fix-ui-label.log": "92688c9dcf28efbe4f6731be277cecbe101517008f60ede5fcb0c69788e1954e",
+    "typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
