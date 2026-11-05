@@ -1,0 +1,65 @@
+--- a/tests/GO-NO-GO-EVIDENCE.md
++++ b/tests/GO-NO-GO-EVIDENCE.md
+@@ -1,4 +1,7 @@
+ # Go / no-go evidence register
++
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
+ 
+ Decision: NO GO. Software is NOT VALIDATED. This register is not approval for SQL, wipe, merge, deployment or release. The independent reviewer has not given this new integration plain SAFE. Target date: Thursday 12 November 2026.
+ 
+@@ -21,7 +24,7 @@
+ | Local disposable backend bootstrap | FAIL | Docker image registration ENOSPC before backend start; no test database started, no release SQL executed. Raw bootstrap logs remain private under /tmp; no credentials copied. This is a setup failure, not a skipped DB test or software failure. |
+ | Frozen-code typecheck and targeted new-file lint | PASS | CA to CD typecheck and explicit changed-file lint exited 0. Correction: old no-argument npm lint is NOT accepted full lint evidence. The CI report separately runs explicit eslint app components lib on every frozen head and fixes the npm script on its own branch. |
+ | Actual final integrated commit approved and all evidence rerun | NOT TESTED | Current stack contains unmerged drafts. An old SHA or documentation-only change cannot be silently accepted by the gate. |
+-| #247 plain SAFE | NOT TESTED | No new independent verdict recorded for the 140/141 integration. Historical extras are scoped, not whole-release approval. |
++| **Historical sequence; G32 order controls** #247 plain SAFE | NOT TESTED | No new independent verdict recorded for the 140/141 integration. Historical extras are scoped, not whole-release approval. |
+ | #250 plain SAFE, exact combined kit | NOT TESTED | Reviewer previously NOT SAFE; real combined driver rehearsal, 18 checks below and updated verdict missing locally. Temporary source twins are not the real combined kit. |
+ | #258 plain SAFE and validation completion | NOT TESTED | Historical SAFE WITH CONDITIONS is not plain SAFE; refreshed pack #276 remains NOT VALIDATED, VSR unsigned. |
+ | Mock production run plain SAFE | NOT TESTED | Same-final-head complete restore/release/wipe/import/browser rehearsal not executed. |
+@@ -38,7 +41,7 @@
+ | preflight | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+ | db-full | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+ | db-two-company | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+-| db-import-140-141 | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
++| **Historical sequence; G32 order controls** db-import-140-141 | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+ | db-chase-atomic | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+ | db-chase-exact-once | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+ | db-chase-edit | NOT TESTED | Complete same-final-head actual result and artifact required; prior scoped unit results above do not complete this release condition. |
+@@ -68,12 +71,12 @@
+ 
+ | Release | State | Required exact-head proof |
+ | --- | --- | --- |
+-| 138 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
+-| 140 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
+-| 141 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
+-| 144 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
+-| 145 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
+-| 146 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
++| **Historical sequence; G32 order controls** 138 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
++| **Historical sequence; G32 order controls** 140 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
++| **Historical sequence; G32 order controls** 141 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
++| **Historical sequence; G32 order controls** 144 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
++| **Historical sequence; G32 order controls** 145 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
++| **Historical sequence; G32 order controls** 146 | NOT TESTED | Reviewed release/verify file hashes, exact disposable identity, actual ordered install or existing-install verification, every expected verify row true. Required marker including 145/146 and independent actual upgrade-order rehearsal. |
+ 
+ 140 and 141 are REQUIRED for JNR. No 142 or 143 in this candidate. Full final preflight must match after the final step. Second-install 145/146 refusals and outstanding-reservation 146 rollback refusal must be real tests. Successful 146 rollback retains request history/key_source: STOP and reset only an independently disposable test copy before any fresh 146 rehearsal. No real-data reset or history deletion.
+ 
+@@ -111,7 +114,7 @@
+ | G00.1 | NOT TESTED | Ask Code for the candidate commit and any uncommitted differences. Write down the app address and exact revision. Expected: The release being checked is identified. Any differences are reviewed before testing. |
+ | G00.2 | NOT TESTED | Ask Code to record Node and npm versions and compare them with CI. Expected: Supported versions or an approved difference are recorded. |
+ | G00.3 | NOT TESTED | Ask Code for the successful locked dependency install log (`npm ci`). Expected: The dependency versions match the lock file. |
+-| G00.4 | NOT TESTED | Ask Code to confirm the database is disposable, the backup can be restored and the reviewed release inventory is present, verified 138, required JNR 140 and 141, verified 144, then 145 setup and 146 AI/cap. Expected: The copy has fake data and the expected schema. This checklist grants no permission to apply SQL. |
++| **Historical sequence; G32 order controls** G00.4 | NOT TESTED | Ask Code to confirm the database is disposable, the backup can be restored and the reviewed release inventory is present, verified 138, required JNR 140 and 141, verified 144, then 145 setup and 146 AI/cap. Expected: The copy has fake data and the expected schema. This checklist grants no permission to apply SQL. |
+ | G00.5 | NOT TESTED | Check that A, B and separate admin, office, workshop, viewer and support logins are ready. Expected: Access can be checked without sharing logins or using real companies. |
+ | G00.6 | NOT TESTED | Ask Code for `npm run validate:pack`, typecheck and lint logs for this exact revision. Expected: All pass, with any warnings recorded and assessed. The dated unit log is supporting evidence only. |
+ | G01.1 | NOT TESTED | Sign in to Company A. Open Customers and add `ZZ Rehearsal Customer`, using only the controlled test inbox. Expected: Only A has this fake customer. There is no real customer address on the record. |
+@@ -168,7 +171,7 @@
+ | G13.3 | NOT TESTED | Preview the two supported print layouts using fake company records. Check the selected job, drawing, number and totals. Expected: The selected layout and documents all belong to that job and company and are usable by the floor. |
+ | G13.4 | NOT TESTED | As ordinary staff change a fake record. As admin inspect who changed what and when; try erasing the history as staff. Expected: Actor, action and time are present. Staff cannot erase history or see another company's audit. |
+ | G14.1 | NOT TESTED | Review every URS row, risk, IQ/OQ/PQ result, dated log, coverage gap, deviation and staff feedback. Fill the VSR only after the checks have actually run. Expected: Every required check has evidence or an explicit reviewed restriction. Failed or unrun checks stay visible. Rhys alone signs as validation lead; this template and unit runner never grant approval. |
+-| G15.1 | NOT TESTED | Ask Code to show the reviewed 138, required 140/141, 144, 145 and 146 files, markers, checksum and backup restore comparison for the frozen commit. Expected: Same-commit evidence, correct order, no missing proof. This grants no SQL permission. |
++| **Historical sequence; G32 order controls** G15.1 | NOT TESTED | Ask Code to show the reviewed 138, required 140/141, 144, 145 and 146 files, markers, checksum and backup restore comparison for the frozen commit. Expected: Same-commit evidence, correct order, no missing proof. This grants no SQL permission. |
+ | G15.2 | NOT TESTED | Ask Code to show the exact combined wipe rehearsal before and after report, locked append-only approval archive, and Xero/Sage/QuickBooks JNR-only disconnect checks. Expected: Marpet, logins, settings, numbering and audit unchanged; every refusal and permission proof passed. |
+ | G15.3 | NOT TESTED | Compare the reviewed JNR import report, customer balances, payments, credits, jobs, WIP and next numbers with John's actual exports. Expected: Every difference resolved in exact pence; accountant confirms WIP. No missing export treated as zero. |
+ | G15.4 | NOT TESTED | Ask Code for the same-commit database/browser results and release gate report. Rhys makes the decision only after independent review. Expected: Missing, failed, unaccepted skipped or older-head evidence refuses. A fake report is not production proof. |

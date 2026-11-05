@@ -1,0 +1,19 @@
+--- a/docs/signoff/BUILDER-3-CROSS-REVIEW.md
++++ b/docs/signoff/BUILDER-3-CROSS-REVIEW.md
+@@ -1,4 +1,7 @@
+ # Builder 4 cross-review of builder 3's latest queue
++
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
+ 
+ Reviewed 4 November 2026 under Rhys's explicit instruction. Scope: earlier CM/CN/CO/CP/CQ drafts #285–#289 plus newly published CR/CS/CT/CU #298/#299/#300/#305, not the stopped broad historical audit. One correction PR targets #305 (`codex/cu-first-day-smoke`); all original source branches remain unchanged. No permission or calculation change.
+ 
+@@ -38,7 +41,7 @@
+ 
+ CR #298, CS #299, CT #300 and CU #305 still have the full heads recorded above. Their earlier scoped review remains valid for those unchanged files. CV has **no PR in the open/closed PR search** at this snapshot; its published `codex/cv-current-stack-checks` branch is `e7581c43b5f92836ceaedcf2716d495392a9d9e6`. Its one new commit copies the three sibling CN/CO/CP guides into the CU stack. The added files match #286/#287/#288. No new runtime code, test log or result report was added, so the branch is not proof of a successful CV check run. Our corrected CN and smoke guide must win when combining the branches; the CV copies retain the original CN findings corrected here. No source branch was overwritten and no new PR was created for builder 3.
+ 
+-BA #269 is at `89849ae3331bb6703a7d076d540843c4f63b6bc9`. Read all 144 lines and compared its source paths/rows with its pinned sources and the current expanded register. **Its scope summary says G01–G06 although it actually includes G01–G08.** The correction appendix supplies the exact replacement. Its grouped missing-release row also needs to distinguish required 140/141 from deferred 142/143; none of those files exists in its explicitly pinned older #247 tree. This historical observation is not a fresh failure on a newer candidate, and a deferred feature is not automatically a mandatory missing-release failure. All other missing-runtime rows stay open. Historical local PASS counts are carried as reported observations, not independently rerun proof.
++**Historical sequence (superseded by G32):** BA #269 is at `89849ae3331bb6703a7d076d540843c4f63b6bc9`. Read all 144 lines and compared its source paths/rows with its pinned sources and the current expanded register. **Its scope summary says G01–G06 although it actually includes G01–G08.** The correction appendix supplies the exact replacement. Its grouped missing-release row also needs to distinguish required 140/141 from deferred 142/143; none of those files exists in its explicitly pinned older #247 tree. This historical observation is not a fresh failure on a newer candidate, and a deferred feature is not automatically a mandatory missing-release failure. All other missing-runtime rows stay open. Historical local PASS counts are carried as reported observations, not independently rerun proof.
+ 
+ `tests/reviews/BA-269-SOURCE-CORRECTIONS.md` contains the corrected wording and integration rule. The complete newer `tests/GO-NO-GO-EVIDENCE.md` remains intact; do not replace its expanded gates with BA's older ledger. Original BA source is preserved, and no absent execution evidence was turned into PASS.
+ 

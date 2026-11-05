@@ -1,0 +1,27 @@
+--- a/tests/validation/README.md
++++ b/tests/validation/README.md
+@@ -1,4 +1,7 @@
+ # Tolra validation pack
++
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
+ 
+ **Software status: NOT VALIDATED.** #258 is SAFE WITH CONDITIONS, not completed validation or release/SQL approval. See the fully unticked [database, browser and manual evidence list](OUTSTANDING-CHECKS.md).
+ 
+@@ -29,7 +32,7 @@
+ 
+ ## Checks this command cannot complete
+ 
+-[COVERAGE-GAPS.md](COVERAGE-GAPS.md) explicitly lists the inbound-email automated gap on #247 and expanded SQL proofs still on draft follow-ups. Every URS has a real candidate test or a numbered manual check, but this does not prove every subcondition is automated or passed. IQ requires baseline through 144 followed by the reviewed 145 setup and 146 AI/cap inventory. The separately authorised operator prepares and tests the database; this pack never does so.
++**Historical sequence (superseded by G32):** [COVERAGE-GAPS.md](COVERAGE-GAPS.md) explicitly lists the inbound-email automated gap on #247 and expanded SQL proofs still on draft follow-ups. Every URS has a real candidate test or a numbered manual check, but this does not prove every subcondition is automated or passed. IQ requires baseline through 144 followed by the reviewed 145 setup and 146 AI/cap inventory. The separately authorised operator prepares and tests the database; this pack never does so.
+ 
+ On a separately authorised disposable backend, Code must still run the full `npm run test:db`, the real two-session cap race, all reviewer database proofs after correct release sequencing, and the #245 browser checks once integrated. Browser/provider/manual work must use fake companies and controlled recipients. None was run by generating this pack. Do not replace those checks with unit mocks or silently accept a skip. Failed high-risk checks block release; unrun checks stay visible until Rhys reviews the evidence.
+ 
+@@ -37,6 +40,6 @@
+ 
+ The earlier CE code baseline was `d73bb240a23b38a7080c0933e4f5b62ddd529f5f`, stacking #272 to #275 on #247 (`41c685c416305637d86b580324fff9e6cda037ff`). The manifest now points to CI code checkpoint `0cc2463d0a6375ada1d65e249939efa02e3b3cf2`, which includes the command-exit gate fix. PR #280 records the actual final full reporting head and its checks externally; that head must match the release evidence gate. None of those drafts is merged. The original #258 owner branch is unchanged. This refresh copies its pack onto the tested integration for review. This is an assumption about review packaging, not a declaration that this is the final approved production SHA. Any integration change requires rerunning evidence. See CURRENT-RESULTS.md and RHYS-ACTIONS.md. Old dated logs retain their old commits and are historical only.
+ 
+-140 and 141 are REQUIRED for JNR. Real order: verified 138, 140, 141, verified 144, 145, 146; exclude 142/143. Test fixture baseline order is not proof of this real sequence.
++**Historical sequence (superseded by G32):** 140 and 141 are REQUIRED for JNR. Real order: verified 138, 140, 141, verified 144, 145, 146; exclude 142/143. Test fixture baseline order is not proof of this real sequence.
+ 
+ CI follow-up keeps the new requirement/risk/OQ/PQ rows inside their actual Markdown tables and validates their column counts. All complete final-installation IQ/OQ/PQ results remain NOT TESTED. Earlier scoped local identification and unit results stay historical evidence, never substitute for final installation checks.

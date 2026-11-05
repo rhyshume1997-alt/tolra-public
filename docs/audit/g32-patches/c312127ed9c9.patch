@@ -1,0 +1,24 @@
+--- a/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md
++++ b/tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md
+@@ -1,8 +1,11 @@
+ # Restrictions and assumptions
++
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
+ 
+ **Software status: NOT VALIDATED.** Nothing in this file is accepted yet. R1 to R8 are proposed wordings for the VSR "accepted restriction" section. Rhys accepts, edits or rejects each one and initials it himself; every acceptance line below is blank. Code does not accept restrictions on his behalf.
+ 
+-Release order for go-live, as declared in `manifest.json`: backup, preflight, then releases **138, 140, 141, 144, 145, 146**, each with its verify file, then a first-day smoke check.
++**Historical sequence (superseded by G32):** Release order for go-live, as declared in `manifest.json`: backup, preflight, then releases **138, 140, 141, 144, 145, 146**, each with its verify file, then a first-day smoke check.
+ 
+ ## Proposed limits — unproved pre-use checks still block affected use
+ 
+@@ -14,7 +17,7 @@
+ | R4 | The private combined wipe kit is outside this software validation scope. Its exact rehearsal/review result is not established by this file. No production use until the exact kit has its own passing disposable-restore rehearsal, all preservation/archive/refusal checks, independent review and separate authority. A temporary source twin or unit mock is insufficient. Missing evidence blocks clearing/import; a scope restriction cannot waive it. | ____ |
+ | R5 | Controlled catcher/mock and real SQL/browser chase tests exist; name actual passing same-version reports before calling them proved. Their definitions do not establish real mailbox receipt or deliverability. First approved live use is supervised, one exact reviewed message at a time. Uncertain delivery stays held with no blind resend or ordinary-draft bypass. Receipt is separate from provider acceptance and never marks an invoice paid. | ____ |
+ | R6 | Cap/key/isolation and two-session reservation tests exist; attach their actual results before calling them proved. Synthetic keys/mocks do not prove real billing or latency. New/unconfigured company caps default to 1000p (£10), maximum 100000p (£1,000); existing saved caps/usage must not be reset. API changes require a registered platform owner with MFA; the SQL writer is service-only and checks the supplied owner registry identity. Rhys is the intended operator, not a hard-coded sole identity. A cap equal to used+reserved is not an off switch; settlement can release headroom. Use the company AI-off controls. | ____ |
+-| R7 | Record each actual tested version, target, dated command result and environment. This proposal does not assert completed local or hosted validation. Disposable results do not prove hosted Supabase/Vercel behaviour, JNR volume or a full working period. Required release order is backup, preflight, 138, 140, 141, 144, 145, 146, each verified, followed by the approved transfer/opening checks and Rhys's smoke check. A changed version needs affected checks repeated; no first-day sheet waives missing pre-use evidence. | ____ |
++| **Historical sequence; G32 order controls** R7 | Record each actual tested version, target, dated command result and environment. This proposal does not assert completed local or hosted validation. Disposable results do not prove hosted Supabase/Vercel behaviour, JNR volume or a full working period. Required release order is backup, preflight, 138, 140, 141, 144, 145, 146, each verified, followed by the approved transfer/opening checks and Rhys's smoke check. A changed version needs affected checks repeated; no first-day sheet waives missing pre-use evidence. | ____ |
+ | R8 | The declared release plan excludes 142 (optional weekday email scheduling) and 143 (costing rates/atomic costing proposal). That does not remove existing timesheet-email/editor features or accounting balance checks. The separate bank-reconciliation workflow is not identified as an included feature; bank-details fields and payment comparisons are not that workflow. Identify each excluded manual ID in tests/MANUAL-CHECKS-GO-LIVE.md and obtain an explicit scope decision; keep unrun rows visible, never auto-mark N/A or Pass. No accepted exclusion is filled here. | ____ |
+ 
+ ## Assumptions

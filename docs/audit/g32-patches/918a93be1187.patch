@@ -1,0 +1,19 @@
+--- a/docs/signoff/R1-R8-ACCEPT-SHEET.md
++++ b/docs/signoff/R1-R8-ACCEPT-SHEET.md
+@@ -1,4 +1,7 @@
+ # Rhys — accept or refuse these eight limits
++
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
+ 
+ **Nothing is accepted or proved by this blank sheet.** Read each row with Code, ask for the saved report, then tick one choice and sign that row yourself; leave it blank if you cannot decide. A missing safety check is a STOP, not something a signature fixes. Final software validation/release approval is separate.
+ 
+@@ -12,7 +15,7 @@
+ | **R4:** The wipe kit needs its own exact practice run and independent approval before anybody may clear JNR's live data. | Exact combined-kit version, disposable rehearsal, archive/restore comparisons and reviewer verdict. | That this kit was rehearsed, or is covered by software validation, merely because a checklist exists. | [ ] Accept [ ] Not accept<br>Rhys: ______ Date: ______ |
+ | **R5:** Practice chase-email tests do not prove real delivery, so a named person approves the first live chases one at a time. | Catcher/mock-provider report, exact approved text and uncertain-delivery hold. | Real mail timing, deliverability or receipt; a sent chase does not prove a customer paid. | [ ] Accept [ ] Not accept<br>Rhys: ______ Date: ______ |
+ | **R6:** Practice AI tests do not prove real bills or speed, so keep the approved allowance and let only an authorised platform owner change it after the extra sign-in check. | Synthetic-provider key-isolation, allowance and two-request race reports. | Real billing/latency, reset of existing allowances, or a permanent off switch from an exhausted allowance. | [ ] Accept [ ] Not accept<br>Rhys: ______ Date: ______ |
+-| **R7:** Local test results do not prove the hosted app or a real working week, so Rhys needs backup, preflight, verified releases 138/140/141/144/145/146 and first-day checks. | Exact app/test versions, disposable-stack results and each release's verification report. | Hosted Supabase/Vercel differences, real JNR load, or completed validation from a green unit test. | [ ] Accept [ ] Not accept<br>Rhys: ______ Date: ______ |
++| **Historical sequence; G32 order controls** **R7:** Local test results do not prove the hosted app or a real working week, so Rhys needs backup, preflight, verified releases 138/140/141/144/145/146 and first-day checks. | Exact app/test versions, disposable-stack results and each release's verification report. | Hosted Supabase/Vercel differences, real JNR load, or completed validation from a green unit test. | [ ] Accept [ ] Not accept<br>Rhys: ______ Date: ______ |
+ | **R8:** The separate bank-check workflow, optional timesheet weekday scheduling 142 and costing 143 are outside this cutover, so Code and Rhys must mark the exact excluded manual rows. | Approved scope and matching IDs/revision of `tests/MANUAL-CHECKS-GO-LIVE.md`. | A bank-check/costing/142 pass, or permission to omit ordinary timesheets, existing email/editor, bank details or provider-balance checks. | [ ] Accept [ ] Not accept<br>Rhys: ______ Date: ______ |
+ 
+ Final app version: __________  Evidence folder / row-by-row reports: __________  Changed wording (attach signed version): __________

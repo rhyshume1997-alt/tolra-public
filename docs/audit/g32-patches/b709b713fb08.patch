@@ -1,0 +1,11 @@
+--- a/docs/runbooks/WIPE-DAY-SATURDAY-7-NOVEMBER.md
++++ b/docs/runbooks/WIPE-DAY-SATURDAY-7-NOVEMBER.md
+@@ -1,4 +1,7 @@
+-# WIPE-DAY — Rhys's Saturday 7 November 2026 sheet
++# Historical sequence (superseded by G32): WIPE-DAY — Rhys's Saturday 7 November 2026 sheet
++
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
+ 
+ **HOLD / NOT SAFE until the gates below are signed.** This is a guide, not approval to delete data. Rhys alone runs the approved kit on his own trusted computer. Builder 4 has not run any SQL. Saturday's date does not overrule a failed or missing check.
+ 

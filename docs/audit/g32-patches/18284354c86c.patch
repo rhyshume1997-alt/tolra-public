@@ -1,0 +1,13 @@
+--- a/tests/GO-LIVE-DATA-LOAD.md
++++ b/tests/GO-LIVE-DATA-LOAD.md
+@@ -1,6 +1,9 @@
+ # JNR transfer day: SliQ data load
+ 
+-Assumption: Claude uses the reviewed `claude/sliq-import` importer, checked at 3593615, and a separately approved release containing its database support. #247 does not include release files 140 to 143. This plan gives no permission to install SQL or write live data. All automated checks for this document use repository fake fixtures only.
++> **G32 current sequence — supersedes every older cutover sequence below.** 138 → 140 → 141 → 144 → 145 → 146 → 147; verify each release; only then the separately approved JNR wipe; verify all retained records, Marpet and both numbering holds. Proposed explicit remaining positions: approved SliQ dry run → authorised import → independent penny/identity reconciliation → recheck retained records and holds → delivery-note counter step and independent verification → approved app deployment → staff smoke checks. Keep staff writers and automation stopped throughout. This is a draft dependency plan, not permission to run anything. The original checks below remain required; their older sequencing is historical.
++
++
++**Historical sequence (superseded by G32):** Assumption: Claude uses the reviewed `claude/sliq-import` importer, checked at 3593615, and a separately approved release containing its database support. #247 does not include release files 140 to 143. This plan gives no permission to install SQL or write live data. All automated checks for this document use repository fake fixtures only.
+ 
+ 1. **Pick the copy.** Name the exact source commit, JNR company ID, target database and person doing the work. Keep Marpet separate. Do the first run on a disposable copy. Never guess which company is selected.
+ 2. **Save the starting point.** Before transfer, the authorised operator takes and checks a recoverable database and file backup. Save counts and balances for JNR and Marpet. Keep SliQ available as the fallback. Record the stop/restore decision maker and cutoff time.
