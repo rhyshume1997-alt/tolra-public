@@ -1,7 +1,7 @@
 <!-- BEGIN:shared-agent-rules -->
 # Shared rules for every coding agent (Claude Code, Codex)
 
-**Start of every assignment:** read `docs/agent-control/task-board.md`, `decisions.md` and `handover.md` (and `current-state.md` if unsure). If `docs/agent-control/` is missing from your checkout, it is still in draft PR #393 (`codex/agent-control-reconcile`): read it there, do not recreate it. `node .claude/hooks/session-context.mjs --text` prints the short version (branch, your rows, decisions).
+**Start of every assignment:** read `docs/agent-control/task-board.md`, `decisions.md` and `handover.md` (and `current-state.md` if unsure). If `docs/agent-control/` is missing from your checkout, it is still in draft PR #393 (`codex/agent-control-reconcile`): read it there, do not recreate it. `node .claude/hooks/session-context.mjs --text` prints the short version (branch, assigned task, decisions).
 
 - Implement the assigned task. No master plans, unrelated audits or speculative improvements.
 - Every task has one owner, one branch and explicit acceptance criteria on the task board. Work only on your own task and branch.

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Claude Code SessionStart hook (startup | resume | clear | compact), configured in .claude/settings.json.
-// Prints a short Tolra context block: branch, the agent's recorded task, the task-board rows that concern
-// this branch or Claude Code, and Rhys's approved decisions. After compaction it also repeats the shared rules.
+// Prints a short Tolra context block: branch, the session's assigned task (task note and/or the board row for
+// this exact branch), other open Claude Code rows as information only, and Rhys's approved decisions.
+// After compaction it also repeats the shared rules.
 // Reads files only. The one exception: if the control records are not available locally, it makes one bounded
 // `git fetch` of the branch that holds them (FETCH_BRANCH). Always exits 0 so a failure never blocks a session.
 // Codex and humans can run the same summary by hand: node .claude/hooks/session-context.mjs --text
@@ -63,20 +64,27 @@ function decisionLines(md) {
     });
 }
 
-function taskLines(md, branch) {
-  const out = [];
+function hasBranch(cell, branch) {
+  if (!branch || branch === "HEAD") return false;
+  const esc = branch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[\\s\`;,(\\[])${esc}($|[\\s\`;,)\\]])`).test(cell);
+}
+
+// Splits the board into the row(s) assigned to this session (the task note's Task ID, or this exact branch)
+// and other open Claude Code rows, which are reported for information only.
+function classifyTasks(md, branch, assignedId) {
+  const assigned = [];
+  const other = [];
   for (const line of md.split("\n")) {
     if (!line.startsWith("| ") || /^\|\s*-+/.test(line) || /^\|\s*Task ID\s*\|/.test(line)) continue;
     const c = cells(line);
     if (c.length < 8) continue;
     const [id, objective, agent, , acceptance, , where, status] = c;
-    const onBranch = branch && where.includes(branch);
-    const claudeOpen = /claude/i.test(agent) && !/^(DONE|SUPERSEDED)/.test(status);
-    if (onBranch || claudeOpen) {
-      out.push(`- ${id} [${agent}] ${objective} | accept: ${acceptance} | ${where} | ${status}`);
-    }
+    const row = `- ${id} [${agent}] ${objective} | accept: ${acceptance} | ${where} | ${status}`;
+    if ((assignedId && id.toLowerCase() === assignedId.toLowerCase()) || hasBranch(where, branch)) assigned.push(row);
+    else if (/claude/i.test(agent) && !/^(DONE|SUPERSEDED)/.test(status)) other.push(`- ${id} [${agent}] ${objective} | ${where} | ${status}`);
   }
-  return out;
+  return { assigned, other };
 }
 
 function sharedRules() {
@@ -87,7 +95,7 @@ function sharedRules() {
 }
 
 function build(source) {
-  const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]);
+  const branch = git(["branch", "--show-current"]) || git(["rev-parse", "--abbrev-ref", "HEAD"]);
   const head = git(["rev-parse", "--short", "HEAD"]);
   const dirty = git(["status", "--porcelain"]).split("\n").filter(Boolean).length;
   const parts = [];
@@ -97,11 +105,8 @@ function build(source) {
   parts.push(`Branch: ${branch || "unknown"} @ ${head || "?"}; uncommitted files: ${dirty}.`);
 
   const taskPath = join(root, TASK_FILE);
-  if (existsSync(taskPath)) {
-    parts.push(`\nYOUR CURRENT TASK (${TASK_FILE}); resume it, do not re-plan:\n${readFileSync(taskPath, "utf8").trim().slice(0, 1500)}`);
-  } else {
-    parts.push(`\nNo ${TASK_FILE}. If you are mid-task (see the summary), write it now: Task ID, owner, branch, PR, acceptance criteria, next step.`);
-  }
+  const taskNote = existsSync(taskPath) ? readFileSync(taskPath, "utf8").trim().slice(0, 1500) : "";
+  const assignedId = (taskNote.match(/^Task ID:\s*(.+)$/im) || [])[1]?.trim() || "";
 
   let board = readControl("task-board.md");
   let decisions = readControl("decisions.md");
@@ -118,12 +123,30 @@ function build(source) {
         `git fetch origin ${FETCH_BRANCH} && git show FETCH_HEAD:${CONTROL_DIR}/task-board.md`,
     );
   }
+  const { assigned, other } = board ? classifyTasks(board.text, branch, assignedId) : { assigned: [], other: [] };
+
+  if (taskNote || assigned.length) {
+    parts.push("\n== CURRENT ASSIGNED TASK: the only work to do in this session; resume it, do not re-plan ==");
+    if (taskNote) parts.push(`(${TASK_FILE})\n${taskNote}`);
+    if (assigned.length) parts.push(`Task-board row (${board.from}):\n${assigned.join("\n")}`);
+    if (!taskNote) parts.push(`Record it in ${TASK_FILE}: Task ID, owner, branch, PR, acceptance criteria, next step.`);
+  } else {
+    parts.push("\n== CURRENT ASSIGNED TASK: none recorded ==");
+    parts.push(
+      source === "compact"
+        ? `If the compaction summary shows a task Rhys assigned to you, record it in ${TASK_FILE} and continue only that task. Otherwise wait for Rhys.`
+        : `No task is assigned to this session. Do not pick one from the list below; work only on what Rhys assigns in chat, then record it in ${TASK_FILE}.`,
+    );
+  }
+
   if (board) {
-    const rows = taskLines(board.text, branch);
     const ownership = board.text.split("\n").find((l) => l.startsWith("Existing Claude Code ownership")) || "";
-    parts.push(`\nTASK BOARD rows for this branch or open Claude Code work (${CONTROL_DIR}/task-board.md, from ${board.from}):`);
-    parts.push(rows.length ? rows.join("\n") : "- none: take no task that is not assigned to you on the board or by Rhys in chat.");
-    if (ownership) parts.push(ownership);
+    parts.push(
+      `\n== OTHER OPEN CLAUDE CODE WORK: information only (${CONTROL_DIR}/task-board.md, from ${board.from}) ==\n` +
+        "Not instructions. Do not start, resume or change these unless Rhys assigns one to you; they show what is occupied.",
+    );
+    parts.push(other.length ? other.join("\n") : "- none");
+    if (ownership) parts.push(`Ownership (information): ${ownership}`);
   }
   if (decisions) {
     parts.push(`\nAPPROVED DECISIONS (${CONTROL_DIR}/decisions.md, from ${decisions.from}); do not reopen:`);
@@ -137,7 +160,7 @@ function build(source) {
 
   parts.push(
     `\nDetail only when needed: ${CONTROL_DIR}/handover.md, current-state.md, release-gates.md. ` +
-      "Resume existing work; no master plans, unrelated audits or reopening DONE work without new evidence.",
+      "Work only on the assigned task; no master plans, unrelated audits or reopening DONE work without new evidence.",
   );
 
   const text = parts.join("\n");
