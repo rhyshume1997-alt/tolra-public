@@ -27,6 +27,24 @@ export function poundsAndPence(pence: number): string {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
+/** The database's own ceiling for a company's monthly limit (ai_helper_save_settings: 0 to 100000 pence). */
+export const MAX_LIMIT_PENCE = 100_000;
+export const LIMIT_MESSAGE = "Enter a monthly limit from £0 to £1,000, in pounds (for example 10 or 7.50).";
+export const TOLRA_LIMIT_NOTE = "Your Tolra allowance is set by Tolra for your company. It can't be changed here.";
+
+/** A typed limit as whole pence: pounds with at most two decimals (an optional £), 0 up to the database maximum. Anything else is refused. */
+export function parseLimit(input: string): { ok: true; pence: number } | { ok: false; message: string } {
+  const match = /^£?\s*(\d{1,4})(?:\.(\d{1,2}))?$/.exec(input.trim());
+  if (!match) return { ok: false, message: LIMIT_MESSAGE };
+  const pence = Number(match[1]) * 100 + (match[2] ? Number(match[2].padEnd(2, "0")) : 0);
+  return pence <= MAX_LIMIT_PENCE ? { ok: true, pence } : { ok: false, message: LIMIT_MESSAGE };
+}
+
+/** The settings request that changes ONLY the limit: every switch is sent exactly as the server reported it, so nothing is turned on or off. */
+export function limitRequest(status: AiHelperStatus, pence: number): { path: string; body: unknown } {
+  return { path: "/api/ai-helper/settings", body: settingsBody(featureStates(status), pence) };
+}
+
 export const SERVER_OFF_REASON = "AI is switched off on this server (the AI_HELPER_ENABLED setting), so it can't be turned on here.";
 export const TOLRA_OFF_REASON = "Tolra has switched provided AI off, so it can't be turned on.";
 export const NO_KEY_REASON = "Save your Anthropic key first. AI can't be turned on without one.";

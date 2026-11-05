@@ -231,6 +231,36 @@ describe("release 150: replacing or removing the own key switches AI off", () =>
     expect(answer(await reserve(J, "roundup", 100))?.ok).toBe(true);
   });
 
+  it("a limit change (what the AI card's Save limit sends) persists, leaves every switch as it was, keeps the usage rows and writes no force-off row; out-of-range values are refused", async () => {
+    const { J } = companies;
+    expect((await saveSettings(J, true, true, 700)).ok).toBe(true);
+    expect((await admin(J, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
+    expect((await admin(J, "SELECT public.ai_helper_set_finance_check(TRUE)")).ok).toBe(true);
+    const switches = async () => { const row = (await settingsRow(J))!; return { roundup_enabled: row.roundup_enabled, rfq_enabled: row.rfq_enabled, assistant_enabled: row.assistant_enabled, finance_check_enabled: row.finance_check_enabled }; };
+    const before = { sw: await switches(), usage: await usageRows(J), requests: await requestRows(J), events: (await forcedOff(J)).length, keys: await secretCount(J) };
+    allOn(await settingsRow(J));
+    // The route's calls: save_settings with the switches as they are and the new cap, then the finance check and assistant as they are.
+    for (const pence of [1550, 0, 100000, 700]) {
+      expect((await saveSettings(J, true, true, pence)).ok).toBe(true);
+      expect((await admin(J, "SELECT public.ai_helper_set_finance_check(TRUE)")).ok).toBe(true);
+      expect((await admin(J, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
+      expect(await settingsRow(J)).toMatchObject({ monthly_cap_pence: pence });
+      expect((await status(J)).monthly_cap_pence).toBe(pence);
+      expect(await switches()).toEqual(before.sw);
+    }
+    expect({ usage: await usageRows(J), requests: await requestRows(J), events: (await forcedOff(J)).length, keys: await secretCount(J) }).toEqual({ usage: before.usage, requests: before.requests, events: before.events, keys: before.keys });
+    expect(await saveSettings(J, true, true, 100001)).toMatchObject({ ok: false, code: "22023" });
+    expect(await saveSettings(J, true, true, -1)).toMatchObject({ ok: false, code: "22023" });
+    expect(await office(J, "SELECT public.ai_helper_save_settings(TRUE,TRUE,900)")).toMatchObject({ ok: false, code: "42501" });
+    expect(await settingsRow(J)).toMatchObject({ monthly_cap_pence: 700 });
+    // On a company that has AI off, a limit-only change leaves it off.
+    const { K } = companies;
+    expect((await setKey(K, enc("k9"))).ok).toBe(true);
+    expect((await saveSettings(K, false, false, 1234)).ok).toBe(true);
+    allOff(await settingsRow(K));
+    expect(await settingsRow(K)).toMatchObject({ monthly_cap_pence: 1234 });
+  });
+
   it("remove: the same switches go off, the key is gone (no_key), the audit row says key_removed", async () => {
     const { K } = companies;
     expect((await setKey(K, enc("k1"))).ok).toBe(true);

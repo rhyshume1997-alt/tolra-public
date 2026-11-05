@@ -183,3 +183,71 @@ describe("A150: a key change switches AI off and the card says so", () => {
     expect(keyChangeNotice("removed", true)).toContain("AI was switched off because the key changed");
   });
 });
+
+describe("A150: the company's own monthly limit field", () => {
+  const limitInput = () => q<HTMLInputElement>("#ai-limit");
+  const saveLimit = async (value: string) => { await type(limitInput()!, value); await act(async () => { q<HTMLButtonElement>('form[aria-label="Monthly limit"] button[type="submit"]')!.click(); }); };
+  const bodyOf = (i = 0) => calls[i].body as Record<string, unknown>;
+
+  it("shows the server's limit in pounds and Save is disabled until it is changed", async () => {
+    await draw({ status: base({ key_set: true, monthly_cap_pence: 750 }) });
+    expect(limitInput()!.value).toBe("7.50");
+    expect(q<HTMLButtonElement>('form[aria-label="Monthly limit"] button[type="submit"]')!.disabled).toBe(true);
+  });
+
+  it("a valid limit (whole pounds, pence, a £ sign) is sent to the settings route as whole pence with every switch exactly as the server reported; AI stays as it was", async () => {
+    for (const [typed, pence] of [["12", 1200], ["7.5", 750], ["£3.05", 305], ["1000", 100000], ["0", 0], ["0.00", 0]] as const) {
+      calls = [];
+      const status = base({ key_set: true, roundup_enabled: false, rfq_enabled: false, finance_check_enabled: true, assistant_enabled: false });
+      const props = await draw({ status });
+      replies = [{ status: 200, body: {} }];
+      await saveLimit(typed);
+      expect(calls, typed).toHaveLength(1);
+      expect(calls[0].url).toBe("/api/ai-helper/settings");
+      expect(bodyOf()).toEqual({ roundupEnabled: false, rfqEnabled: false, financeCheckEnabled: true, assistantEnabled: false, monthlyCapPence: pence });
+      expect(props.reload).toHaveBeenCalledTimes(1);
+      expect(q('[data-testid="ai-notice"]')!.textContent).toContain("does not turn AI on or off");
+    }
+  });
+
+  it("with AI on, the switches are sent as they are (still on) and the code prompt is used once, same request sent again", async () => {
+    const props = await draw({ status: base({ ...ON, assistant_enabled: true }) });
+    replies = [{ status: 403, body: MFA }, { status: 200, body: {} }];
+    await saveLimit("20");
+    expect(props.requestCode).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toEqual(calls[0]);
+    expect(bodyOf()).toMatchObject({ roundupEnabled: true, rfqEnabled: true, assistantEnabled: true, monthlyCapPence: 2000 });
+  });
+
+  it("invalid values are refused before anything is sent: empty, text, negative, over the maximum, three decimals, an exponent", async () => {
+    await draw({ status: base({ key_set: true }) });
+    for (const bad of ["", "abc", "-1", "1000.01", "1001", "5000", "1.234", "1e2", "10,50", "NaN"]) {
+      await saveLimit(bad);
+      expect(calls, bad).toHaveLength(0);
+      if (bad !== "") expect(q('[data-testid="ai-notice"]')!.textContent, bad).toContain("£0 to £1,000");
+    }
+  });
+
+  it("cancelling the code prompt sends nothing more; a refusal shows the server's sentence", async () => {
+    const props = await draw({ status: base(ON), requestCode: vi.fn(async () => false) });
+    replies = [{ status: 403, body: MFA }];
+    await saveLimit("9");
+    expect(props.requestCode).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(1);
+    expect(q('[data-testid="ai-notice"]')!.textContent).toBe("Cancelled. Nothing was changed.");
+    calls = [];
+    await draw({ status: base({ key_set: true }) });
+    replies = [{ status: 403, body: { error: "The AI helper settings could not be saved." } }];
+    await saveLimit("9");
+    expect(q('[data-testid="ai-notice"]')!.textContent).toBe("The AI helper settings could not be saved.");
+  });
+
+  it("not offered without admin rights; in Tolra mode it is read-only and says Tolra sets it", async () => {
+    await draw({ status: base({ key_set: true, can_manage: false }) });
+    expect(limitInput()).toBeNull();
+    await draw({ status: base({ tolra_enabled: true, roundup_enabled: true }) });
+    expect(limitInput()).toBeNull();
+    expect(q('[data-testid="ai-limit-tolra-note"]')!.textContent).toBe("Your Tolra allowance is set by Tolra for your company. It can't be changed here.");
+  });
+});

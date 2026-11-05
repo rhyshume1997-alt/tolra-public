@@ -9,7 +9,7 @@ import { SetupCard } from "@/components/integrations/setup-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  ANTHROPIC_KEYS_URL, KEY_SHAPE_MESSAGE, type AiProvider, buildAiSetup, effectiveProvider, keyChangeNotice, keyLooksRight, postJson, requestJson, safeMessage, switchRequest,
+  ANTHROPIC_KEYS_URL, KEY_SHAPE_MESSAGE, TOLRA_LIMIT_NOTE, type AiProvider, limitRequest, parseLimit, buildAiSetup, effectiveProvider, keyChangeNotice, keyLooksRight, postJson, requestJson, safeMessage, switchRequest,
 } from "@/lib/integrations/ai-setup";
 import { sendWithCode } from "@/lib/mfa-step-up";
 
@@ -51,7 +51,8 @@ export function AiSetupPanel(props: {
   const { serverOn, loaded, status, reload, requestCode, fetchFn } = props;
   const [picked, setPicked] = useState<AiProvider>("anthropic");
   const [key, setKey] = useState("");
-  const [busy, setBusy] = useState<"key" | "switch" | null>(null);
+  const [busy, setBusy] = useState<"key" | "switch" | "limit" | null>(null);
+  const [limitDraft, setLimitDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
   const provider = effectiveProvider(status, picked);
@@ -80,6 +81,30 @@ export function AiSetupPanel(props: {
       setNotice({ tone: "error", text: "Cancelled. Nothing was changed." });
     } else {
       setNotice({ tone: "error", text: safeMessage(outcome.answer.body, "The key could not be saved. Try again.", value) });
+    }
+    setBusy(null);
+  }
+
+  async function saveLimit(event: FormEvent) {
+    event.preventDefault();
+    if (busy || !status || limitDraft === null) return;
+    const parsed = parseLimit(limitDraft);
+    if (!parsed.ok) {
+      setNotice({ tone: "error", text: parsed.message });
+      return;
+    }
+    const request = limitRequest(status, parsed.pence);
+    setBusy("limit");
+    setNotice(null);
+    const outcome = await sendWithCode(send(request.path, request.body), requestCode);
+    if (outcome.result === "done") {
+      setLimitDraft(null);
+      await reload();
+      setNotice({ tone: "ok", text: "Monthly limit saved. Saving the limit does not turn AI on or off." });
+    } else if (outcome.result === "cancelled") {
+      setNotice({ tone: "error", text: "Cancelled. Nothing was changed." });
+    } else {
+      setNotice({ tone: "error", text: safeMessage(outcome.answer.body, "The limit could not be saved. Try again.") });
     }
     setBusy(null);
   }
@@ -167,6 +192,17 @@ export function AiSetupPanel(props: {
                 {model.keySaved ? <Button type="button" variant="outline" disabled={busy !== null} onClick={() => void removeKey()} className="ml-2 min-h-9">Remove key</Button> : null}
               </div>
               <p className="text-xs text-slate-500">Replacing or removing the key switches AI off. You turn it on again with the switch above.</p>
+            </form>
+          ) : null}
+          {provider === "tolra" ? <p className="text-xs text-slate-500" data-testid="ai-limit-tolra-note">{TOLRA_LIMIT_NOTE}</p> : null}
+          {provider === "anthropic" && canManage ? (
+            <form onSubmit={(event) => void saveLimit(event)} className="grid gap-2" aria-label="Monthly limit">
+              <label htmlFor="ai-limit" className="font-medium">Monthly limit (£)</label>
+              <Input id="ai-limit" name="ai-limit" inputMode="decimal" autoComplete="off" value={limitDraft ?? (status!.monthly_cap_pence / 100).toFixed(2)} onChange={(event) => setLimitDraft(event.target.value)} className="max-w-40" />
+              <p className="text-xs text-slate-500">When the limit is reached AI stops for the month. Saving it never turns AI on or off. If AI is on, saving asks for a fresh authenticator code.</p>
+              <div>
+                <Button type="submit" disabled={busy !== null || limitDraft === null} className="min-h-9">{busy === "limit" ? "Saving…" : "Save limit"}</Button>
+              </div>
             </form>
           ) : null}
         </>
