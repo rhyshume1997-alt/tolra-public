@@ -2,12 +2,12 @@
 
  RUN  v2.1.9 /workspace/tolra-public/work/queue-profit-review
 
- ✓ tests/reviews/profitability/original.test.ts (32 tests) 15ms
+ ✓ tests/reviews/profitability/original.test.ts (32 tests) 22ms
 stdout | tests/reviews/profitability/adversarial.test.ts > keeps penny precision or refuses an unsafe revenue aggregate
 aggregate revenue {"exact":8999999999994410,"actual":8999999999994409,"state":"complete"}
 
- ❯ tests/reviews/profitability/adversarial.test.ts (4 tests | 2 failed) 33ms
-   × keeps penny precision or refuses an unsafe revenue aggregate 8ms
+ ❯ tests/reviews/profitability/adversarial.test.ts (4 tests | 2 failed) 39ms
+   × keeps penny precision or refuses an unsafe revenue aggregate 9ms
      → expected 8999999999994409 to be 8999999999994410 // Object.is equality
    × retains recorded microseconds when they add up to half a penny 4ms
      → expected 3600000 to be 3600001 // Object.is equality
@@ -54,6 +54,6 @@ AssertionError: expected 3600000 to be 3600001 // Object.is equality
 
  Test Files  1 failed | 1 passed (2)
       Tests  2 failed | 34 passed (36)
-   Start at  07:04:10
-   Duration  510ms (transform 93ms, setup 0ms, collect 123ms, tests 48ms, environment 0ms, prepare 107ms)
+   Start at  07:04:58
+   Duration  814ms (transform 183ms, setup 0ms, collect 238ms, tests 61ms, environment 0ms, prepare 130ms)
 

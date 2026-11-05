@@ -8,7 +8,7 @@ it('keeps penny precision or refuses an unsafe revenue aggregate', () => {
   const x = fixture();
   x.invoices = Array.from({length:91}, (_,i) => ({id:`invoice-${i}`, status:'sent', subtotal:'999999999999.99'}));
   x.credits = []; x.pos = [{id:'po', status:'sent', total_value:'999999999999.99', linked_net:'999999999999.99'}];
-  const exact = Number(90n * 99999999999999n - 5500n);
+  const exact = Number(BigInt(90) * BigInt("99999999999999") - BigInt(5500));
   const out = actualJobProfit(x);
   console.log('aggregate revenue', JSON.stringify({exact, actual:out.actualProfitPence, state:out.state}));
   if (out.state === 'complete') expect(out.actualProfitPence).toBe(exact);
