@@ -1,0 +1,86 @@
+{
+  "queue": "PM-approved findings fixes and e2e rewrite",
+  "done": "All five code/test items committed to own codex draft PRs. Browser execution remains blocked; existing151 packaging conflict remains red and explicit.",
+  "inProgress": [],
+  "notStarted": [],
+  "checks": "Typecheck with6144MiB heap, lint and diff checks passed on all changed branches. Full/focused results are listed per item. Mock and plain-PostgreSQL proofs do not substitute for browser/hosted/provider proof.",
+  "integrationOrder": [
+    "423 before429/430",
+    "425 before431",
+    "424 and427 retain historical independent red evidence; fixes are423 and430 respectively"
+  ],
+  "constraints": "No cand/12nov-int, #415,100bb06 or main edits; no merges/deploys, production SQL, live provider calls, real data or other chats/agents.151 remains unregistered.",
+  "items": [
+    {
+      "item": 1,
+      "pr": 423,
+      "historicalReview": 424,
+      "branch": "codex/xero-invite-adversarial",
+      "sha": "e91da2727f5f12c70512815c133bf27d24a247f1",
+      "done": "Atomic final invite write, pending revocation, refusal logging, dedicated atomic picker claims. Published picker commit included as prerequisite. Emailed flow rejects differing company names at final store.",
+      "results": {
+        "inviteDB": "38 passed / 0 failed / 0 skipped",
+        "pickerDB": "20 passed / 0 failed / 0 skipped",
+        "focusedUnit": "24 passed / 0 failed / 0 skipped",
+        "full": "6854 passed / 2 failed / 0 skipped"
+      },
+      "remaining": "Two existing packaging tests demand151 registration, contrary to PM proposal-only rule. Tests unchanged and not suppressed. Hosted Auth/browser/provider proof unchecked. Company-name matching is conservative, not legal ownership proof."
+    },
+    {
+      "item": 2,
+      "pr": 429,
+      "branch": "codex/fix-invite-e2e",
+      "sha": "9648370c5d737c0d58a346e68d3c6101480e158e",
+      "dependsOn": 423,
+      "done": "Rewritten emailed-reference/code browser flow; Microsoft/platform/access-denial coverage retained; fixed HTTPS synthetic callback allowlist and identity-verified disposable151 setup.",
+      "results": {
+        "discovery": "8 cases discovered",
+        "browser": "0 executed: global setup blocked, exit 1, TEST_SUPABASE_URL missing; Docker socket denied and no Supabase CLI",
+        "full": "6854 passed / 2 failed / 0 skipped (same unchanged151 packaging conflicts)"
+      },
+      "nextCommand": "npx playwright test tests/e2e/integrations-connect.spec.ts",
+      "required": "Provide disposable Supabase Auth/PostgREST test backend and its loopback test configuration. Do not substitute hosted or production endpoints, remove isolation guard or claim browser passes."
+    },
+    {
+      "item": 3,
+      "pr": 425,
+      "branch": "codex/night-cost-profit",
+      "sha": "78222015ef3d7e0dec60af0eea083d2bb88d9a89",
+      "done": "Preview extension follows copied rounded unit price; engine batch estimate retained separately. Profitability148 business money rounds half pennies up.143 is sole company rate source; costing engine/60goldens unchanged.",
+      "results": {
+        "focused": "566 passed / 0 failed / 0 skipped",
+        "database": "37 passed / 0 failed / 0 skipped; successful suite cleanup",
+        "full": "6799 passed / 0 failed / 0 skipped"
+      },
+      "remaining": "Hosted release rehearsal and full-app browser; no historical snapshot recalculation performed."
+    },
+    {
+      "item": 4,
+      "pr": 430,
+      "historicalReview": 427,
+      "branch": "codex/fix-151-verifier",
+      "sha": "2c85dda1aa4e8973c7332075d1015b3c642c36f7",
+      "dependsOn": 423,
+      "done": "Exact search_path and presence check for all11definers; new final-store and picker service-only ACL verification. Original failing assertion unchanged and now passes; per-function mutants and missing-helper/grant mutants fail verification correctly.",
+      "results": {
+        "hashRegistration": "5 passed / 0 failed / 0 skipped",
+        "database": "14 passed / 0 failed / 0 skipped",
+        "full": "6854 passed / 2 failed / 0 skipped (same unchanged151 packaging conflicts)"
+      },
+      "remaining": "Hosted rehearsal;151 must stay unregistered. Do not apply production SQL."
+    },
+    {
+      "item": 5,
+      "pr": 431,
+      "branch": "codex/fix-costing-validation",
+      "codeCommit": "3a74687f0e0d83da2672f6eb8664de8ad052853f",
+      "dependsOn": 425,
+      "done": "Trim/case-insensitive duplicate names in each list and explicit up-to-two-decimal percentage error; invalid input makes no RPC.",
+      "results": {
+        "focused": "70 passed / 0 failed / 0 skipped",
+        "full": "6813 passed / 0 failed / 0 skipped"
+      },
+      "remaining": "Full-app browser validation and hosted transport."
+    }
+  ]
+}

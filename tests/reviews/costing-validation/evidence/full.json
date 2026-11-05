@@ -1,0 +1,11 @@
+{
+  "codeCommit": "3a74687f0e0d83da2672f6eb8664de8ad052853f",
+  "command": "npx vitest run --maxWorkers=2 --minWorkers=1",
+  "passed": 6813,
+  "failed": 0,
+  "skipped": 0,
+  "success": true,
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit 0",
+  "lint": "npm run lint: exit 0",
+  "diff": "git diff --check: passed"
+}
