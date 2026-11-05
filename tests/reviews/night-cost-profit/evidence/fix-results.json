@@ -1,0 +1,30 @@
+{
+  "codeCommit": "8826ef8",
+  "commands": [
+    "npx vitest run --config tests/reviews/night-cost-profit/vitest.unit.config.ts",
+    "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts"
+  ],
+  "results": {
+    "unit-final": {
+      "passed": 566,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    },
+    "db-final": {
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "success": true
+    }
+  },
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit0",
+  "lint": "npm run lint: exit0",
+  "diff": "git diff --check: passed",
+  "exception": "Frozen costing engine and60goldens unchanged; preview unit pennies and actual148money half-up; original engine estimate remains a separate display field. Hours/margin display keep existing exact half-even helper.",
+  "unchecked": [
+    "Hosted release rehearsal",
+    "Browser rendering on full app",
+    "Existing production snapshots are not rewritten"
+  ]
+}
