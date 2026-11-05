@@ -590,7 +590,7 @@ checks(n, check_name, value, expected) AS (
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
-    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )

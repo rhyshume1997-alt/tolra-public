@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { SetupCard } from "@/components/integrations/setup-card";
-import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { type ConnectStatus, postIntegration } from "@/components/microsoft-connect-card";
 import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { Button } from "@/components/ui/button";
@@ -107,7 +106,6 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
   const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [urlOutcome, setUrlOutcome] = useState<string | null>(null);
-  const { requestCode, codeDialog } = useCodePrompt();
 
   useEffect(() => { if (outcome === undefined) setUrlOutcome(new URLSearchParams(window.location.search).get("xero")); }, [outcome]);
 
@@ -187,7 +185,6 @@ export function XeroSetupCard({ launchHold: injected, outcome }: { launchHold?: 
         onMappingsChanged={() => void load()}
         onSwitch={flip}
       />
-      {codeDialog}
       <ConfirmDialog
         open={confirm}
         title="Disconnect from Xero?"
