@@ -39,9 +39,10 @@ vi.mock("@supabase/ssr", () => ({
   }),
 }));
 
-vi.mock("@/lib/resend", () => ({
-  resend: { emails: { send: async (payload: Record<string, unknown>, options: Record<string, unknown>) => { sends.push({ payload, options }); return providerAnswer(); } } },
-}));
+vi.mock("@/lib/integrations/microsoft/token-source", () => ({ getDelegatedAccessToken: async () => null }));
+vi.mock("resend", () => ({ Resend: class {
+  emails = { send: async (payload: Record<string, unknown>, options: Record<string, unknown>) => { sends.push({ payload, options }); return providerAnswer(); } };
+} }));
 
 import { POST as sendJob } from "@/app/api/send-job/route";
 import { POST as resolveJob } from "@/app/api/send-job/resolve/route";
@@ -54,6 +55,7 @@ const completed = () => rpcCalls.filter((c) => c.name === "complete_job_email").
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:1";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "anon";
+  process.env.RESEND_API_KEY = "re_fake_not_live";
   process.env.EMAIL_FROM = "Test <notifications@example.test>";
   who = { role: "office", org: ORG };
   rpcResults = { reserve_job_email: { data: { history_id: HISTORY, replay: false, status: "sending" } } };
@@ -197,4 +199,10 @@ describe("POST /api/send-job/resolve (admin settles an unknown send)", () => {
     expect((await resolveJob(post("/api/send-job/resolve", { historyId: "nope", as: "sent" }))).status).toBe(400);
     expect((await resolveJob(post("/api/send-job/resolve", { historyId: HISTORY, as: "maybe" }))).status).toBe(400);
   });
+});
+
+it("does not report success when the job-send outcome could not be recorded", async () => {
+  rpcResults.complete_job_email = { error: { code: "XX000", message: "Synthetic database failure" } };
+  const response = await sendJob(post("/api/send-job", request));
+  expect(response.status).toBe(502); expect(await response.json()).toMatchObject({ status: "unknown" }); expect(sends).toHaveLength(1);
 });

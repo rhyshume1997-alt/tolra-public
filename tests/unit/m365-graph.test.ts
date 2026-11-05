@@ -325,3 +325,22 @@ describe("errors", () => {
     expect(calls.filter((c) => c.url.includes("login.microsoftonline.com")).length).toBe(3); // failed, first good, re-fetched after the 401
   });
 });
+
+describe("company delegated RFQ mail bridge", () => {
+  it("uses the company's own token and /me, never an app token or another mailbox", async () => {
+    for (const org of [ORG, "22222222-2222-4222-8222-222222222222"]) {
+      const delegated = { ...config, organizationId: org, delegatedAccessToken: `delegated-${org}` };
+      await replyToMessage("message-id", "Human approved reply", delegated, ["buyer@customer.test"]);
+      const call = calls.at(-1)!;
+      expect(call.url).toContain("/v1.0/me/messages/message-id/reply");
+      expect(call.headers.authorization).toBe(`Bearer delegated-${org}`);
+      expect(call.body).toContain("Human approved reply");
+    }
+    expect(calls.every((c) => !c.url.includes("login.microsoftonline.com") && !c.url.includes("/users/"))).toBe(true);
+  });
+});
+
+it("a 409 during a delegated send is uncertain, never a safe automatic retry", async () => {
+  graphResponse = () => json({ error: { code: "Conflict" } }, 409);
+  await expect(replyToMessage("message-id", "Approved reply", { ...config, delegatedAccessToken: "mock-token" }, ["buyer@customer.test"])).rejects.toMatchObject({ outcome: "unknown" });
+});
