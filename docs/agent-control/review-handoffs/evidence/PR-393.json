@@ -3,11 +3,11 @@
   "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/393",
   "title": "A: reconcile public agent control facts and approved decisions",
   "branch": "codex/agent-control-reconcile",
-  "observed_head": "b8c9fef57cbfd66e2f27b5556cdae6d8ea6669b7",
+  "observed_head": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
   "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
   "github_state": "open (not merged)",
   "merged_at": null,
-  "observed_at": "2026-11-05T07:21:59Z",
+  "observed_at": "2026-11-05T07:26:02Z",
   "files": [
     "AGENTS.md",
     "CLAUDE.md",
@@ -29,9 +29,9 @@
   ],
   "workflow_runs": [
     {
-      "id": 41986708403,
-      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41986708403",
-      "head_sha": "b8c9fef57cbfd66e2f27b5556cdae6d8ea6669b7",
+      "id": 41987148209,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41987148209",
+      "head_sha": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
       "status": "pending",
       "conclusion": null
     }

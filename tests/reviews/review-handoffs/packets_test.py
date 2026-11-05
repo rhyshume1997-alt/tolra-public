@@ -5,7 +5,7 @@ class Packets(unittest.TestCase):
  def test_inventory_and_requested_recent_prs(self):
   rows=json.loads((PACK/'index.json').read_text());ns=[r['number'] for r in rows]
   self.assertEqual(len(ns),len(set(ns)));self.assertGreaterEqual(len(ns),175)
-  for n in range(385,398):self.assertIn(n,ns)
+  for n in range(385,399):self.assertIn(n,ns)
   self.assertEqual(len(list(PACK.glob('PR-*.md'))),len(ns))
  def test_required_fields_and_hashes(self):
   for r in json.loads((PACK/'index.json').read_text()):

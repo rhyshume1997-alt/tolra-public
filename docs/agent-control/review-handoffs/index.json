@@ -1702,11 +1702,11 @@
   {
     "number": 393,
     "branch": "codex/agent-control-reconcile",
-    "observed_head": "b8c9fef57cbfd66e2f27b5556cdae6d8ea6669b7",
+    "observed_head": "e1ee1526b8ad513d23eea1c3519bd52d8f2fe877",
     "state": "open (not merged)",
     "packet": "PR-393.md",
     "evidence": "evidence/PR-393.json",
-    "evidence_sha256": "c68ae4d692f7ad300b29e4feefc7623c2a640c473b1055eab384d6a5a584876b",
+    "evidence_sha256": "256db2dfdc6c6293e2b1874a91fb7ef1c22abc027d3a819f043c00a9196061ef",
     "review_status": "AWAITING CHATGPT REVIEW"
   },
   {
@@ -1747,6 +1747,16 @@
     "packet": "PR-397.md",
     "evidence": "evidence/PR-397.json",
     "evidence_sha256": "9362ecb322837590b8bf0eef9b95cbd402616f9199d36944268ba082a5d73f51",
+    "review_status": "AWAITING CHATGPT REVIEW"
+  },
+  {
+    "number": 398,
+    "branch": "codex/chatgpt-review-handoff-records",
+    "observed_head": "2a33d4b10ff6eb8a5f781c0566023deb9160eb25",
+    "state": "open (not merged)",
+    "packet": "PR-398.md",
+    "evidence": "evidence/PR-398.json",
+    "evidence_sha256": "13c37e649e5f0a716cf99cecbd9e8fa731a185bc41786eef21b6d515bf90457b",
     "review_status": "AWAITING CHATGPT REVIEW"
   }
 ]

@@ -1,6 +1,6 @@
 # Public Codex review handoffs
 
-175 public Codex-prefixed PRs; every packet is **AWAITING CHATGPT REVIEW**. No reviews were requested through GitHub and no messages sent.
+176 public Codex-prefixed PRs; every packet is **AWAITING CHATGPT REVIEW**. No reviews were requested through GitHub and no messages sent.
 
 Coverage uses all public `codex/` PR branches as a conservative superset because builders share the GitHub account. This does not assign another builder's work to this agent. Existing ownership, historical review and GitHub merge state remain intact. Includes closed/merged historical PRs and #385–#392; no closed PR is reopened. No private repo or file is an input.
 
@@ -12,6 +12,7 @@ Review packets are evidence summaries, not a master plan. No release, production
 
 | PR | Packet | GitHub state | Review |
 | --- | --- | --- | --- |
+| #398 | [PR-398.md](PR-398.md) | open (not merged) | AWAITING CHATGPT REVIEW |
 | #397 | [PR-397.md](PR-397.md) | open (not merged) | AWAITING CHATGPT REVIEW |
 | #396 | [PR-396.md](PR-396.md) | open (not merged) | AWAITING CHATGPT REVIEW |
 | #395 | [PR-395.md](PR-395.md) | open (not merged) | AWAITING CHATGPT REVIEW |
