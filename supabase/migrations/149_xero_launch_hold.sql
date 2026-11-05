@@ -1,6 +1,5 @@
 -- 149: per-company Xero transfer launch hold, OFF for existing and new connections.
 -- Main ends at 137; release147 and optional profitability148 are not modified.
-BEGIN;
 ALTER TABLE public.integration_connections ADD COLUMN transfers_enabled boolean NOT NULL DEFAULT false;
 
 CREATE FUNCTION public.integration_xero_transfer_enabled(p_org uuid) RETURNS boolean
@@ -180,4 +179,3 @@ BEGIN
   RETURN jsonb_build_object('id', p_send, 'status', 'pending');
 END
 $$;
-COMMIT;

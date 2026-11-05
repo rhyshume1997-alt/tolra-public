@@ -16,7 +16,7 @@ beforeAll(async()=>{
  INSERT INTO organization_members(user_id,organization_id,role,active) VALUES('${U}','${A}','admin',true),('${V}','${B}','admin',true);
  INSERT INTO integration_connections(organization_id,provider,status,tenant_id,tenant_name) VALUES('${A}','xero','connected','synthetic-tenant-A','Synthetic A'),('${B}','xero','connected','synthetic-tenant-B','Synthetic B');
  INSERT INTO integration_sends(id,organization_id,provider,doc_type,doc_id,action,status) VALUES('${S}','${A}','xero','invoice',gen_random_uuid(),'create','failed');`);
- db.ok(readFileSync('supabase/migrations/149_xero_launch_hold.sql','utf8'));
+ db.ok(readFileSync('supabase/release/149_xero_launch_hold.release.sql','utf8'));
 });
 afterAll(()=>db.stop());
 it('existing connected companies default OFF; six verification checks pass',()=>{
