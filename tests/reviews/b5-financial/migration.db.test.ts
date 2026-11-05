@@ -104,3 +104,23 @@ it('candidate accounting state uses actual DB hold/mapping/company rows and refu
  expect(json("SELECT integration_overview('sage')",V).tenant_name).toBe('Synthetic Sage B');
  expect(db.sql(auth("SELECT * FROM integration_secrets")).code).not.toBe(0);
 });
+it('whole-set rate saves serialize concurrent editors and reject a foreign rate without partial writes',async()=>{
+ const O='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',FM='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ db.ok(`INSERT INTO auth.users(id,email) VALUES('${O}','office-a@example.test');
+ INSERT INTO user_profiles(id,email,full_name,role,organization_id,active,must_change_password) VALUES('${O}','office-a@example.test','Synthetic office','office','${A}',true,false);
+ INSERT INTO organization_members(user_id,organization_id,role,active) VALUES('${O}','${A}','office',true);`);
+ const loaded=await loadCompanyRates(ratesClient());if(loaded.status!=='ok')throw Error('Rates must load');
+ const first=structuredClone(loaded.rates),second=structuredClone(loaded.rates);
+ first.materials[0].price=5;first.machines[0].hourlyRate=90;first.defaults.labourPerHour=60;
+ second.materials[0].price=6;second.machines[0].hourlyRate=100;second.defaults.labourPerHour=70;
+ const expected=literal(toRpcValue(loaded.rates));
+ const results=await Promise.all([db.parallelSql(auth(`SELECT save_costing_settings_atomic('${A}',${expected},${literal(toRpcValue(first))})`)),db.parallelSql(auth(`SELECT save_costing_settings_atomic('${A}',${expected},${literal(toRpcValue(second))})`,O))]);
+ expect(results.filter(r=>r.code===0)).toHaveLength(1);expect(results.find(r=>r.code!==0)?.error).toContain('Settings changed; reload');
+ const final=await loadCompanyRates(ratesClient());if(final.status!=='ok')throw Error('Rates must load');
+ expect(toRpcValue(final.rates)).toEqual(toRpcValue(final.rates.materials[0].price===5?first:second));
+ db.ok(`INSERT INTO costing_machines(id,organization_id,name,hourly_rate_pence) VALUES('${FM}','${B}','Synthetic foreign mill',1)`);
+ const invalid=toRpcValue(final.rates);invalid.machines=[{...invalid.machines[0],id:FM}];
+ const refused=db.sql(auth(`SELECT save_costing_settings_atomic('${A}',${literal(toRpcValue(final.rates))},${literal(invalid)})`));
+ expect(refused.code).not.toBe(0);expect(refused.error).toContain('Invalid rate ID');
+ const after=await loadCompanyRates(ratesClient());if(after.status!=='ok')throw Error('Rates must remain readable');expect(toRpcValue(after.rates)).toEqual(toRpcValue(final.rates));
+});
