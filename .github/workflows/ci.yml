@@ -224,6 +224,19 @@ jobs:
           with open(os.environ["GITHUB_ENV"], "a") as target:
               target.write("\n".join(rows) + "\n")
           PY_ENV
+      - name: "Permission diagnostic (read-only, informational, who may run the privileged-aal check on this stack)"
+        continue-on-error: true
+        run: |
+          psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=0 -X <<'SQL'
+          select version();
+          select rolname, rolsuper, rolbypassrls, rolcanlogin from pg_roles where rolname in ('postgres','supabase_admin','authenticator','anon','authenticated','service_role') order by 1;
+          select p.oid::regprocedure as fn, pg_get_userbyid(p.proowner) as owner, p.proacl::text as acl,
+                 has_function_privilege('service_role', p.oid, 'execute') as service_role_can,
+                 has_function_privilege('authenticated', p.oid, 'execute') as authenticated_can
+            from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('assert_privileged_aal','site_network_ip_purge','require_admin_mfa_guard') order by 1;
+          select pg_get_userbyid(d.defaclrole) as for_role, d.defaclnamespace::regnamespace as in_schema, d.defaclobjtype as kind, d.defaclacl::text as acl from pg_default_acl d order by 1,2,3;
+          select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'organization_members' and grantee in ('service_role','authenticated','anon') order by 1,2;
+          SQL
       - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
