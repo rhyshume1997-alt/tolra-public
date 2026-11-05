@@ -1,7 +1,7 @@
 # Builder 4: email, recent MFA and provider cards on PR #415
 
 Base: `e42d927383513d1b98ce9cfca444884475622e2f` (PR #415, `cand/12nov-int`).
-Draft PR: [#417](https://github.com/rhyshume1997-alt/tolra-public/pull/417). Implementation commit: `8e61d9398a4b49447517c325650431d7e664bfd0`; later changes only record verification in this handover. Own branch: `codex/b4-415-email-mfa-review`. One draft PR into the candidate; Code integrates it. No merge, production SQL, live provider calls or customer messages.
+Draft PR: [#417](https://github.com/rhyshume1997-alt/tolra-public/pull/417). Final implementation commit: `e77e6beca3cf96a8d9c94a2250dfd7733ee9351d`; subsequent changes only record verification in this handover. Own branch: `codex/b4-415-email-mfa-review`. One draft PR into the candidate; Code integrates it. No merge, production SQL, live provider calls or customer messages.
 
 ## Already present and reused
 
@@ -15,14 +15,15 @@ DONE in the pinned candidate: scheduled chase drafts, human approval, atomic dra
 - Chase approval selected the provider twice. The checked provider is now passed to the existing mailer. Provider selection fails closed for a Microsoft connection needing reconnection, unavailable app credentials/token, unreadable connection state or absent service client. Configured Resend is eligible only when this company has no Microsoft connection or an admin explicitly disconnected it. The legacy inbox reader's existing null result is preserved; the stricter mode is used for sending.
 - Saving/replacing an AI key bypassed recent MFA when the global MFA flag was off. It now uses `requireRecentAal2(..., true)`, as Xero and Microsoft connect/disconnect already do. Existing switch-off/key-removal policy stays available.
 - Resend called unverified configuration “ready”; a second, stale Microsoft overview could also leave its card misleading after disconnect/reconnection. The cards share the Microsoft card's latest state, including failed reads. Resend shows “set up, not yet verified”, or a hold while Microsoft needs attention. A failed Microsoft test refreshes the stored connection and does not leave “Sending: ready”. Both cards explicitly require a person to send or approve each message, without a fake switch.
+- Direct document send routes trimmed the reviewed subject; job sends also trimmed the reviewed body. Thirteen focused cases reproduced eleven transformations. The routes now refuse subjects they would rewrite and preserve the exact job body, including leading/trailing spaces and line breaks, rather than silently changing approved text.
 - The sender parser accepted incomplete angle brackets and silently stripped header controls. One shared parser now rejects those settings in both status and provider selection, before creating a Resend provider.
 
 ## Validation
 
-Final full unit suite: **6,662 passed, 0 failed, 0 skipped, 456 files**, 174.45 seconds. Lint: **0 errors, 14 existing warnings**. Final typecheck: **passed** with the explicit 6 GB Node heap. Focused new/reworked regression selection: **205 passed in 5 files**, 3.67 seconds.
+Final full unit suite: **6,675 passed, 0 failed, 0 skipped, 456 files**, 263.22 seconds. Lint: **0 errors, 14 existing warnings**. Final typecheck: **passed** with the explicit 6 GB Node heap. Focused new/reworked regression selection: **205 passed in 5 files**, 3.67 seconds. Follow-up direct-send/provider/route selection: **69 passed in 5 files**, 5.02 seconds. These selections overlap the full suite; do not add the counts.
 
 
-Production build: **passed**, exit 0, from a clean `git archive` export of implementation commit `8e61d9398a4b49447517c325650431d7e664bfd0` under `/workspace/b4-415-build`. All 102 static pages generated. The existing outbound network guard was preloaded for the whole build; **0 blocked/external connection attempts**. The nested worktree's first build exited 0 but reported an outer/inner ESLint plugin conflict, so the clean export was built with the normal lint/type checks included. The export's source matches the implementation commit. Existing warnings remain: three application lint warnings and Resend's unused optional `@react-email/render` import is absent from the installed dependencies. The configured workflows send text/HTML, not React email components. No dependency/config/rule was changed to hide a warning.
+Production build: **passed**, exit 0, from a clean `git archive` export of final implementation commit `e77e6beca3cf96a8d9c94a2250dfd7733ee9351d` under `/workspace/b4-415-build-latest`. All 2,143 exported files were compared against their Git blob hashes, with zero differences. All 102 static pages generated. The existing outbound network guard was preloaded for the whole build; **0 blocked/external connection attempts**. The nested worktree's first build exited 0 but reported an outer/inner ESLint plugin conflict, so the clean export was built with the normal lint/type checks included. The export's source matches the implementation commit. Existing warnings remain: three application lint warnings and Resend's unused optional `@react-email/render` import is absent from the installed dependencies. The configured workflows send text/HTML, not React email components. No dependency/config/rule was changed to hide a warning.
 
 Focused proof includes 95 cases through the real authentication and recent-MFA guards (mocked Supabase transport/provider side effects): stale, absent, malformed and out-of-window future MFA; aal1/auth errors; office/workshop/read-only/support/inactive refusals; database role refusal and mismatched company; secondary-admin success; session company over stale profile/body/header company; AI ciphertext cannot decrypt in the other company. The helper under test is not mocked.
 
@@ -36,9 +37,9 @@ Database/browser limitations, recorded separately from passes:
 - Standard Playwright chase/controls/schedule selection: 16 tests collected across 3 files; global setup fails on the same missing isolated backend. No browser scenario ran.
 - Existing optional reviewer browser runner: 4 skipped, 0 passed. These skips are not proof.
 - The local Supabase startup attempt is already recorded in `work/email-backend-start.log`: the environment's network policy refuses `public.ecr.aws` when Docker requests the pinned Supabase Postgres image. No hosted or production backend was substituted.
-- Initial red regressions were used to reproduce the defects, then fixed. During verification, typecheck first exhausted Node's default 2 GB heap; the final command uses `node --max-old-space-size=6144 node_modules/typescript/bin/tsc --noEmit`. Test fixture/type errors found during the change were corrected. No checks were disabled.
+- Initial red regressions were used to reproduce the defects, then fixed. During verification, typecheck first exhausted Node's default 2 GB heap; the final command uses `node --max-old-space-size=6144 node_modules/typescript/bin/tsc --noEmit`. Test fixture/type errors found during the change were corrected. No source lint or test rule was changed or disabled.
 
-Commands: full units `node node_modules/vitest/vitest.mjs run`; lint `node node_modules/eslint/bin/eslint.js . --no-eslintrc --config .eslintrc.json --ext .js,.jsx,.ts,.tsx` (explicit project config avoids the outer worktree's duplicate Next plugin); typecheck as above. Logs stay outside this worktree in `work/review415-*.log`.
+Commands: full units `node node_modules/vitest/vitest.mjs run`; lint `node node_modules/eslint/bin/eslint.js . --no-eslintrc --config .eslintrc.json --ignore-pattern next-env.d.ts --ext .js,.jsx,.ts,.tsx` (explicit project config avoids the outer worktree's duplicate Next plugin; the generated Next bootstrap is excluded after build, because its new triple-slash route reference triggers the existing general TypeScript lint rule; it is not application source); typecheck as above. Logs stay outside this worktree in `work/review415-*.log`.
 
 ## Status and integration handover
 
@@ -48,13 +49,15 @@ External configuration remains the existing Microsoft app client ID/secret, exac
 
 Estimated integration: 45–60 minutes of Code/Opus review and integration if the pinned base is unchanged, plus the existing isolated DB/browser runner time. No new migration or SQL deployment step. Ship the approval UI and `expected_to` API contract together; a stale tab must reload rather than infer approval from the database. Merge nothing from this worktree automatically.
 
-Overlap for Opus: the changes touch the candidate's AI key-save route, shared Microsoft token source and the three integration-card files. Coordinate any concurrent edits to those exact files rather than replaying this patch over Code's work. No other agent branch or PR #415 was edited. No unverified changes from the earlier #413 worktree were copied in.
+Overlap for Opus: the changes touch the candidate's AI key-save route, shared Microsoft token source and the three integration-card files, plus the document/job direct-send routes. Coordinate any concurrent edits to those exact files rather than replaying this patch over Code's work. No other agent branch or PR #415 was edited. No unverified changes from the earlier #413 worktree were copied in.
 
 ## Exact changed files
 
 - `app/(dashboard)/approval/page.tsx`
 - `app/api/ai-helper/key/route.ts`
 - `app/api/chase/approve/route.ts`
+- `app/api/email/send/route.ts`
+- `app/api/send-job/route.ts`
 - `components/chase/approval-card.tsx`
 - `components/chase/connected-approval.tsx`
 - `components/integrations/integrations-overview.tsx`
@@ -78,9 +81,11 @@ Overlap for Opus: the changes touch the candidate's AI key-save route, shared Mi
 - `tests/unit/chase-customer-review.test.ts`
 - `tests/unit/chase-reviewed-text.test.ts`
 - `tests/unit/chase-ui-wiring.test.ts`
+- `tests/unit/email-send-route.test.ts`
 - `tests/unit/f1-ai-routes-mfa.test.ts`
 - `tests/unit/f3-cards.test.ts`
 - `tests/unit/mailbox-delegated.test.ts`
 - `tests/unit/resend-status.test.ts`
+- `tests/unit/send-job.test.ts`
 - `tests/unit/wa-provider-and-routes.test.ts`
 - `tests/unit/wm-ms-isolation.test.ts`
