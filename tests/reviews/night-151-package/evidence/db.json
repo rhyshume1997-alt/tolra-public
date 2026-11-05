@@ -1,0 +1,13 @@
+{
+  "subject": "656a79390650fe87a6e7513679246e82df3f3a40",
+  "command": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts",
+  "passed": 1,
+  "failed": 1,
+  "skipped": 0,
+  "failures": [
+    {
+      "test": "151 verification rejects a service security-definer callback with a temporary-schema-first search path",
+      "message": "AssertionError: the verifier claims a pinned search path, but pg_temp now precedes public: expected false to be true // Object.is equality"
+    }
+  ]
+}
