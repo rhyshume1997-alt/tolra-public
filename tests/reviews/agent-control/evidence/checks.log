@@ -1,8 +1,17 @@
 test_decisions_and_gates (control_test.Control.test_decisions_and_gates) ... ok
-test_each_task_has_required_columns (control_test.Control.test_each_task_has_required_columns) ... ok
+test_each_task_has_required_columns (control_test.Control.test_each_task_has_required_columns) ... FAIL
 test_original_guidance_retained (control_test.Control.test_original_guidance_retained) ... ok
 
+======================================================================
+FAIL: test_each_task_has_required_columns (control_test.Control.test_each_task_has_required_columns)
 ----------------------------------------------------------------------
-Ran 3 tests in 0.005s
+Traceback (most recent call last):
+  File "/workspace/tolra-public/work/queue-control/tests/reviews/agent-control/control_test.py", line 17, in test_each_task_has_required_columns
+    if row.startswith('| ') and 'DONE' in row:self.assertIn('DONE (coded)',row)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'DONE (coded)' not found in '| C | Verify AI implementation; smallest provider fix only if placeholder | Codex | Existing lib/ai-helper; tests; AI verification note | Real adapter/wiring demonstrated with mocks; cap not bypassed; OFF | 190 passed, 0 skipped; real SDK mocked | #395 | DONE (coded verification); live checks unproven |'
 
-OK
+----------------------------------------------------------------------
+Ran 3 tests in 0.006s
+
+FAILED (failures=1)
