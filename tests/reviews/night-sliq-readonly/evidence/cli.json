@@ -1,0 +1,56 @@
+{
+  "command": "node --require ./tests/support/no-network.cjs scripts/sliq-reconcile/cli.mjs --sliq tests/fixtures/sliq-reconcile/clean/sliq --tolra tests/fixtures/sliq-reconcile/clean/tolra --out /tmp/night-sliq-readonly-cli --mapping synthetic --generated-at 2026-10-13T09:00:00Z --require-pass",
+  "exit": 5,
+  "expected": "EXIT.NOT_PASS because synthetic open WIP valuation remains UNVERIFIED",
+  "verdict": {
+    "status": "INCOMPLETE",
+    "text": "INCOMPLETE: no proven blocking difference, but 1 UNVERIFIED and 0 WARN row(s) remain that a person must settle. This is not a pass."
+  },
+  "signOff": {
+    "allowed": false,
+    "text": "cannot sign off: 0 BLOCKER, 0 WARN, 1 UNVERIFIED row(s) remain. Resolve or explain each, supply any missing file or table, and run again."
+  },
+  "inputHashes": {
+    "tests/fixtures/sliq-reconcile/clean/sliq/allocations.csv": "ccb221af30da5eb06fd302816614b738091a80784eb3871ffa1daedd9e6e9e94",
+    "tests/fixtures/sliq-reconcile/clean/sliq/credit-notes.csv": "ad2b2817cd88cb31bd88e25e942cd3afbe5a0380e819383cd908a89a66d9cb92",
+    "tests/fixtures/sliq-reconcile/clean/sliq/customers.csv": "77fc71345d18745a97439e5359eaf0f739dc01c03c153ce36f9402eb1b03817c",
+    "tests/fixtures/sliq-reconcile/clean/sliq/deliveries.csv": "81cebe134cd6603e22b542669158bd67b44156b594b2cb755c8c38878b0980ac",
+    "tests/fixtures/sliq-reconcile/clean/sliq/invoice-lines.csv": "f8ab29465f657105fdca43a1ef980ad286766b40309e0941d5b39929f3cfd62f",
+    "tests/fixtures/sliq-reconcile/clean/sliq/invoices.csv": "998d7a87c5bebf77b91080f209c6680a362bd323fd6dfa23e02418b48beb8afa",
+    "tests/fixtures/sliq-reconcile/clean/sliq/jobs.csv": "40eef7382b3176b58a7d6772fdad4a4b8a24df965bb1b4bc3831cefae8231942",
+    "tests/fixtures/sliq-reconcile/clean/sliq/opening-balances.csv": "d8559f7e7349675d0d692ec780bd63ad481a450f7f7480680067529b40b0f903",
+    "tests/fixtures/sliq-reconcile/clean/sliq/payments.csv": "4c1c03a9afb220f437b7b662ddee9ff276f9c2e068fd9cda1fbd65a48e1db147",
+    "tests/fixtures/sliq-reconcile/clean/sliq/purchase-orders.csv": "1a4eefe9942203ee7b701d4055bb52f886be76eb4745f08c35baec9c76f6de22",
+    "tests/fixtures/sliq-reconcile/clean/sliq/quotes.csv": "0d94b82bdc304f2ed5a86e86be663e2bb9776bfdd73d3282ec7dabf7552fbd8b",
+    "tests/fixtures/sliq-reconcile/clean/sliq/refunds.csv": "3017862a0df3d3f4edd28669f0b93e78b0cadf6f41b1d9ad176630a5eb34ee36",
+    "tests/fixtures/sliq-reconcile/clean/sliq/sales-orders.csv": "4aaba374b57e9f9f396d84d73e83c16207f185665bef4a9a55ca38021908e629",
+    "tests/fixtures/sliq-reconcile/clean/sliq/supplier-bills.csv": "6e8050273a3327ee53e7b23bd7105a17932f0261e0a9f1ae2050c53a41b46288",
+    "tests/fixtures/sliq-reconcile/clean/sliq/suppliers.csv": "9f19ae56cd650b5993aca4d7b0c77e52e1bf7e97aa6c984122546772a4d9ea74",
+    "tests/fixtures/sliq-reconcile/clean/tolra/credit_notes.json": "62faac4b2f677b771e25a418c41bb6a885851899be705dce4e2a6bc3f6f1a3ab",
+    "tests/fixtures/sliq-reconcile/clean/tolra/customer_credit_ledger.json": "4cee10e4a2304ed320dc8693d18d9a4bb34a25305f514f564290d94fbd351ef3",
+    "tests/fixtures/sliq-reconcile/clean/tolra/customers.json": "0a3252ab2e7bc7697a2282c1c97484e3efc862d34e79e778e37caf4db72b65a0",
+    "tests/fixtures/sliq-reconcile/clean/tolra/delivery_note_items.json": "dbe975a33c5e73fe01f8dc512acf632bdc0644caacf7b7f1fd56db3c5dd44474",
+    "tests/fixtures/sliq-reconcile/clean/tolra/delivery_notes.json": "f5f7ece8654c258680722661d1e72480751ff9a59e788899973c5b75f74cc20a",
+    "tests/fixtures/sliq-reconcile/clean/tolra/invoice_credit_allocations.json": "d6f3fcfb7259cabbc1e5bbde6b2cac83b2af9b6b0d075cb8ff1e5656fbcf239d",
+    "tests/fixtures/sliq-reconcile/clean/tolra/invoice_line_items.json": "45792ee539ddc3bad93da1b03c4356380ad42880451f7a63042fabad125f722c",
+    "tests/fixtures/sliq-reconcile/clean/tolra/invoice_payments.json": "f972739ad401952d6c24306dc9bf87ead5cad5d3e538c97eb8099fdc3211aea1",
+    "tests/fixtures/sliq-reconcile/clean/tolra/invoices.json": "90ddad6a1c50bcf94761e914aa6615c4c5eaf8ff5b1f997830175784d00ff347",
+    "tests/fixtures/sliq-reconcile/clean/tolra/job_quantities.json": "9c1d0200584e5c70fa97fcb8e083a7cdedf2c44cde7ec12f8a82bc11687ab6a8",
+    "tests/fixtures/sliq-reconcile/clean/tolra/jobs.json": "db38af5a40bf2261eac174329454b002c43d10763fc483af47e761450bc65fd0",
+    "tests/fixtures/sliq-reconcile/clean/tolra/legacy_import_map.json": "fa298427391cdb8afa48ca9c84dab1fc9a2e50c6fcee1b5af232885d3e31df8c",
+    "tests/fixtures/sliq-reconcile/clean/tolra/meta.json": "9b25dd4159ff33d4f7c3e5ce47652e184d89f9d5f87eb71686d0f72025fd62de",
+    "tests/fixtures/sliq-reconcile/clean/tolra/opening_balances.json": "b7041f26f1ce543d57f1e029491762f1ba6cd7354f1e6030580d871b65a6e7a7",
+    "tests/fixtures/sliq-reconcile/clean/tolra/purchase_orders.json": "fccbda877b0500e8beb1185be4c5b4fcfd6f18b825a3cfa7d32a3fdee28d09de",
+    "tests/fixtures/sliq-reconcile/clean/tolra/quotes.json": "1eeffcb69ca491655d549f580b5a5903f9125cb175bec71ea7692931280c1840",
+    "tests/fixtures/sliq-reconcile/clean/tolra/sales_orders.json": "a4001d07f8033dbc3aab78f16ba674326b1d54ce516bd33b7e6807ef34349a3d",
+    "tests/fixtures/sliq-reconcile/clean/tolra/supplier_bills.json": "5a3b89ab36806492f08df56b4ef7f3df177809a1599205b5b648d4c21eb37775",
+    "tests/fixtures/sliq-reconcile/clean/tolra/suppliers.json": "15499b40f8cfa4548f5662e8f4bc0593286f85d07060694e25af31d40a3d2ffc"
+  },
+  "unchecked": [
+    "Real JNR exports and totals (2035 invoices, 2 credit notes, 79 customers)",
+    "Original report-style .xls parsing/approved conversion; load.mjs reads CSV and XLSX",
+    "Dedicated aged-debtors export tie-out; no such mapping in source.mjs EXTRA_KINDS",
+    "Actual import dry-run or final import; no write tool invoked",
+    "tests/GO-LIVE-DATA-LOAD.md absent from this public source pin"
+  ]
+}
