@@ -52,3 +52,13 @@ describe("SetupCard (the one frame for the four Integrations cards)", () => {
     await done();
   });
 });
+
+describe("SetupCard with hideSwitch (a card whose server has no switch)", () => {
+  it("renders no switch, and the badge and row show the status wording, not On/Off", async () => {
+    const { host, done } = await render({ ...base, activation: { label: "Sending", on: null, hideSwitch: true, statusText: "Sending: ready. Each message needs approval.", help: "Fact." } });
+    expect(host.querySelector('[role="switch"]')).toBeNull();
+    expect(host.querySelector('[data-testid="activation-badge-x"]')?.textContent).toBe("Sending: ready. Each message needs approval.");
+    expect(host.querySelector('[data-testid="activation-status-x"]')?.textContent).toBe("Sending: ready. Each message needs approval.");
+    await done();
+  });
+});
