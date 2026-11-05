@@ -9,3 +9,5 @@ Tests cover blank/typed pre-counter refusals without consuming numbers; a narrow
 **Wipe boundary:** the stock deletion is a test-only KEEP contract demonstration, not the actual JNR wipe. Actual private wipe-kit execution/preservation remains **unverified here, owned by Code**. This PR supplies no private wipe files and no evidence that the final combined kit preserves all protected objects. Do not substitute this fixture for Code's proof. Final browser/API, actual installed state and operational approval remain unproven.
 
 Acceptance record: requirement REL147; expected safe numbering, idempotency and retained holds; actual ____ NOT EXECUTED for final operational acceptance; evidence ____; tester ____; date ____; approval ____.
+
+Executed `8c67abd`, 5 November 2026 UTC: 7 passed, zero failed/skipped; current verifier returned 16 true rows. Lint/TypeScript passed. Committed original logs, SQL/identity/provenance records are archived with SHA-256. Later commit adds evidence only. Actual wipe-kit preservation and operational acceptance remain unverified, owned by Code.
