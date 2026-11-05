@@ -1866,7 +1866,7 @@
  },
  {
   "kind": "function",
-  "object": "public.save_costing_settings_txn(p_org uuid, p_expected jsonb, p_value jsonb)",
+  "object": "public.save_costing_settings_atomic(p_org uuid, p_expected jsonb, p_value jsonb)",
   "detail": "invoker search_path=pg_catalog, public fc2e317d6af26bcf8ff3a7e2a1ba0c8a"
  },
  {
@@ -4116,7 +4116,7 @@
  },
  {
   "kind": "function-grant",
-  "object": "public.save_costing_settings_txn(p_org uuid, p_expected jsonb, p_value jsonb)",
+  "object": "public.save_costing_settings_atomic(p_org uuid, p_expected jsonb, p_value jsonb)",
   "detail": "authenticated"
  },
  {

@@ -211,7 +211,7 @@ markers(migration, present) AS (
     ('143 costing rates',                 to_regclass('public.costing_materials') IS NOT NULL AND to_regclass('public.costing_machines') IS NOT NULL
                                           AND to_regclass('public.costing_defaults') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.costing_rates_stamp()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e262df9f33ad0ece30d5ac7122995f3')
-                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_txn(uuid,jsonb,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2c779bca11212d8bf660c4526719c919')),
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2c779bca11212d8bf660c4526719c919')),
     ('144 accounting connections', to_regprocedure('public.accounting_cloud_connections_ready()') IS NOT NULL)
 ),
 proposal_files(file, disposition) AS (

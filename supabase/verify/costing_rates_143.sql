@@ -1,4 +1,4 @@
--- Migration 143 (costing rates inside Tolra: costing_materials, costing_machines, costing_defaults, save_costing_settings_txn). Read only: every row should be TRUE (14).
+-- Migration 143 (costing rates inside Tolra: costing_materials, costing_machines, costing_defaults, save_costing_settings_atomic). Read only: every row should be TRUE (14).
 WITH t(name) AS (VALUES ('costing_materials'), ('costing_machines'), ('costing_defaults')),
 want(table_name, cols) AS (VALUES
   ('costing_materials', 'created_at:timestamp with time zone:NO,id:uuid:NO,name:text:NO,organization_id:uuid:NO,price_pence:integer:NO,price_unit:text:NO,scrap_pct:numeric:NO,updated_at:timestamp with time zone:NO,updated_by:uuid:YES'),
@@ -62,8 +62,8 @@ UNION ALL SELECT 'inputs_only_no_foreign_key_into_them',
 UNION ALL SELECT 'save_function_is_143s_invoker',
   coalesce((SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2c779bca11212d8bf660c4526719c919' AND NOT p.prosecdef AND p.prorettype = 'void'::regtype
                    AND EXISTS (SELECT 1 FROM unnest(p.proconfig) cfg WHERE cfg LIKE 'search_path=pg_catalog%')
-            FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_txn(uuid,jsonb,jsonb)')), FALSE)
+            FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)')), FALSE)
 UNION ALL SELECT 'save_function_execute_authenticated_only',
   coalesce((SELECT has_function_privilege('authenticated', p.oid, 'EXECUTE') AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
                    AND NOT has_function_privilege('service_role', p.oid, 'EXECUTE') AND NOT has_function_privilege('public', p.oid, 'EXECUTE')
-            FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_txn(uuid,jsonb,jsonb)')), FALSE);
+            FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)')), FALSE);

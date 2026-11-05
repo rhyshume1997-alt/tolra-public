@@ -8,7 +8,7 @@
  *   material 2.10, machine 19.50, labour 7.50, programming 8.00, overhead 13.50, cost per part 50.60, price per part 60.72, total 607.20.
  *   After the rates change (machine GBP 80/h, margin 35%): cost 57.35, price 77.42 (unit test "after the rates change").
  *
- * Needs release 143 (costing tables and save_costing_settings_txn) in the test database. Never run in the build that wrote it: CI only.
+ * Needs release 143 (costing tables and save_costing_settings_atomic) in the test database. Never run in the build that wrote it: CI only.
  * No Python costing service is involved (it stays off); the quote's own line picker is not used.
  */
 import { expect, test, type Page } from "@playwright/test";

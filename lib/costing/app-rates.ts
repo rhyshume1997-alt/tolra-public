@@ -1,7 +1,7 @@
 /**
  * The app side of the company's costing rates: reading them (through lib/costing/rates-store.ts, migration 143's tables under RLS), turning them
  * into the form the Settings card edits (pounds and percentages, blank = not entered), saying what is missing, and saving them in ONE step
- * through public.save_costing_settings_txn(p_org, p_expected, p_value) (all materials, machines and the defaults, or nothing).
+ * through public.save_costing_settings_atomic(p_org, p_expected, p_value) (all materials, machines and the defaults, or nothing).
  *
  * No built-in rates: a company with no rows has blank rates (blankCostingRates). rates-store's BUILT_IN_COSTING_DEFAULTS is deliberately not used.
  *
@@ -24,7 +24,7 @@ export const STALE_MESSAGE = "Someone else changed the costing rates since you o
 const PENCE_MAX = 10_000_000;
 const NAME_MAX = 80;
 
-/** The rows as the database holds them (what save_costing_settings_txn compares p_expected with). */
+/** The rows as the database holds them (what save_costing_settings_atomic compares p_expected with). */
 export type RatesSnapshot = {
   materials: { id: string; name: string; price_pence: number; price_unit: "kg" | "each"; scrap_pct: number }[];
   machines: { id: string; name: string; hourly_rate_pence: number; labour_rate_pence: number | null }[];
@@ -159,7 +159,7 @@ export async function saveRates(client: SupabaseClient | null, organizationId: s
   if (problem) return { ok: false, status: 400, body: { kind: "invalid", message: problem } };
   if (!client) return { ok: false, status: 503, body: { kind: "error", message: "Supabase is not configured." } };
   try {
-    const { error } = await client.rpc("save_costing_settings_txn", { p_org: organizationId, p_expected: expected, p_value: toRpcValue(rates) });
+    const { error } = await client.rpc("save_costing_settings_atomic", { p_org: organizationId, p_expected: expected, p_value: toRpcValue(rates) });
     if (!error) return { ok: true, status: 200, body: { kind: "saved", message: "Costing rates saved." } };
     const kind = classifySaveError(error);
     if (kind === "mfa") return { ok: false, status: 403, body: { kind, code: MFA_RECENT_CODE, message: "Enter a fresh authenticator code to save the costing rates." } };

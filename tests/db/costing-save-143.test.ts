@@ -1,5 +1,5 @@
 /**
- * Costing rates, release 143, part two: public.save_costing_settings_txn(p_org, p_expected, p_value) and what the rates must never do.
+ * Costing rates, release 143, part two: public.save_costing_settings_atomic(p_org, p_expected, p_value) and what the rates must never do.
  * Real SQL on the disposable database: synthetic companies, forged session claims (no Auth API), one transaction per request as PostgREST
  * runs it, committed rows so two connections can race. Proves:
  *   - nothing is built in: no rate column has a default, a new company has no rows (costing off), a half-entered set is refused by the database;
@@ -78,7 +78,7 @@ async function as<T>(p: Person | null, fn: (db: Client) => Promise<T>, role: Rol
 
 type Fail = { ok: false; code: string; message: string; hint?: string };
 type Result = { ok: true } | Fail;
-const SAVE = "select public.save_costing_settings_txn($1, $2::jsonb, $3::jsonb)";
+const SAVE = "select public.save_costing_settings_atomic($1, $2::jsonb, $3::jsonb)";
 async function save(p: Person | null, org: string | null, expected: unknown, value: unknown, role: Role = "authenticated"): Promise<Result> {
   try {
     await as(p, (db) => db.query(SAVE, [org, JSON.stringify(expected), JSON.stringify(value)]), role);
@@ -271,7 +271,7 @@ describe("143: who can save, and for which company", () => {
     expect(owner).toBe("Not permitted");
     expect(await sql(`select prosecdef, proconfig::text as cfg, has_function_privilege('anon', oid, 'EXECUTE') as anon, has_function_privilege('authenticated', oid, 'EXECUTE') as auth,
                        has_function_privilege('service_role', oid, 'EXECUTE') as svc, has_function_privilege('public'::name, oid, 'EXECUTE') as pub
-                      from pg_proc where oid = 'public.save_costing_settings_txn(uuid,jsonb,jsonb)'::regprocedure`))
+                      from pg_proc where oid = 'public.save_costing_settings_atomic(uuid,jsonb,jsonb)'::regprocedure`))
       .toEqual([{ prosecdef: false, cfg: expect.stringContaining("search_path=pg_catalog"), anon: false, auth: true, svc: false, pub: false }]);
   });
 
