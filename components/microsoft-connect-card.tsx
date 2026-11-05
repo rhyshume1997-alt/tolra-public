@@ -17,8 +17,10 @@ import { supabase } from "@/lib/supabase";
 export type ConnectStatus = { db107: boolean; xero: { configured: boolean; problem?: string | null }; microsoft: { configured: boolean } };
 
 /** POST to one of the integration routes; the error's own words on failure. */
-export async function postIntegration(path: string): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false; error: string }> {
-  const res = await fetch(path, { method: "POST", credentials: "same-origin" }).catch(() => null);
+export async function postIntegration(path: string, json?: Record<string, unknown>): Promise<{ ok: true; body: Record<string, unknown> } | { ok: false; error: string }> {
+  const res = await fetch(path, json
+    ? { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(json) }
+    : { method: "POST", credentials: "same-origin" }).catch(() => null);
   const body = (res ? await res.json().catch(() => ({})) : {}) as Record<string, unknown>;
   if (!res || !res.ok) return { ok: false, error: typeof body.error === "string" ? body.error : "That didn't work. Try again." };
   return { ok: true, body };

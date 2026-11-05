@@ -1,6 +1,6 @@
 /**
  * E2/E7 (migration 107): app-level credentials (stored row, else the environment, else nothing; a missing 107 table falls back to the
- * environment), the accountant's one-use connect link (token hash, invalid links refused before any database call, the invite state
+ * environment), the accountant's one-use connect link (opaque reference + e-mailed code, invalid links refused before any database call, the invite state
  * bound to its own state hash and completed for the invite's company only), Microsoft 365's delegated Connect (the state bound to this
  * admin and company, PKCE, the mailbox stored as the connection) and its token refresh under 084's lease. The database, Xero and
  * Microsoft are faked: nothing reaches the network.
@@ -14,7 +14,7 @@ import {
   appSecretContext, databaseHas107, defaultRedirectUri, envCredentials, getAppCredentials, inviteRedirectUri, last4, missingDbObject, validRedirectUri,
 } from "@/lib/integrations/app-credentials";
 import { decryptSecret, encryptSecret } from "@/lib/integrations/crypto";
-import { INVITE_TOKEN, finishInviteConnect, hashInviteToken, inviteConfirmPage, inviteVerifierContext, invitePage, newInviteToken, peekInvite, redeemInvite } from "@/lib/integrations/invite";
+import { INVITE_REF, INVITE_TOKEN, finishInviteConnect, hashInviteToken, inviteCodeHash, inviteConfirmPage, inviteVerifierContext, invitePage, issueInviteCode, newInviteRef, newInviteToken, peekInvite, redeemInvite } from "@/lib/integrations/invite";
 import { disconnectAndRevoke } from "@/lib/integrations/server";
 import { microsoftTokenSource } from "@/lib/integrations/microsoft/client";
 import { beginMicrosoftConnect, finishMicrosoftConnect } from "@/lib/integrations/microsoft/connect";
@@ -121,36 +121,51 @@ describe("app credentials: stored row, else environment, else nothing", () => {
 
 const xeroReady = { config: { clientId: "xid", clientSecret: "xsecret", redirectUri: `${SITE}/api/integrations/xero/callback` }, key };
 
-describe("the accountant's connect link", () => {
-  it("a random 43-character token; only its SHA-256 is sent to the database", () => {
-    const a = newInviteToken();
-    const b = newInviteToken();
-    expect(a.token).toMatch(INVITE_TOKEN);
-    expect(a.token).not.toBe(b.token);
-    expect(a.tokenHash).toBe(createHash("sha256").update(a.token).digest("hex"));
-    expect(hashInviteToken(a.token)).toMatch(/^[0-9a-f]{64}$/);
+const ALLOW = { XERO_INVITE_REDIRECT_URIS: `${SITE}/api/integrations/invite/callback` };
+
+describe("the accountant's connect link (opaque reference + e-mailed code; proposal 151)", () => {
+  const ref = () => newInviteRef();
+
+  it("a random 22-character reference; the old 43-character token helpers stay only for the 129 invite", () => {
+    const a = newInviteRef();
+    const b = newInviteRef();
+    expect(a).toMatch(INVITE_REF);
+    expect(a).not.toBe(b);
+    const t = newInviteToken();
+    expect(t.token).toMatch(INVITE_TOKEN);
+    expect(t.tokenHash).toBe(createHash("sha256").update(t.token).digest("hex"));
+    expect(hashInviteToken(t.token)).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("a malformed link is refused before any database call", async () => {
+  it("a malformed reference or code is refused before any database call", async () => {
     const svc = fakeClient({});
-    for (const bad of ["", "short", `${"a".repeat(42)}!`, "a".repeat(44)]) expect(await redeemInvite(svc.client, bad, xeroReady)).toEqual({ ok: false, reason: "invalid" });
-    expect(svc.calls).toEqual([]);
+    for (const bad of ["", "short", `${"a".repeat(21)}!`, "a".repeat(23), "a".repeat(43)]) {
+      expect(await redeemInvite(svc.client, bad, "12345678", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await issueInviteCode(svc.client, bad, key)).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await peekInvite(svc.client, bad)).toBeNull();
+    }
+    expect(await redeemInvite(svc.client, ref(), "1234567", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
+    // Only the security log is written (a refusal each); the invite itself is never asked.
+    expect(svc.calls.every((c) => c.fn === "integration_invite_refusal_log")).toBe(true);
   });
 
-  it("used, expired or unknown (the database refuses): the same 'invalid' answer", async () => {
-    const svc = fakeClient({ rpc: { integration_invite_redeem: { error: { code: "42501", message: "expired or used", hint: "invite_invalid" } } } });
-    expect(await redeemInvite(svc.client, newInviteToken().token, xeroReady)).toEqual({ ok: false, reason: "invalid" });
+  it("used, expired, locked or unknown (the database answers invalid): the same 'invalid' answer", async () => {
+    const svc = fakeClient({ rpc: { integration_invite_code_verify: { data: { ok: false, reason: "invalid" } } } });
+    expect(await redeemInvite(svc.client, ref(), "12345678", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
+    const refused = fakeClient({ rpc: { integration_invite_code_verify: { error: { code: "42501", message: "x", hint: "invite_invalid" } } } });
+    expect(await redeemInvite(refused.client, ref(), "12345678", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
   });
 
-  it("a good link: used up with its hash, a state and a verifier bound to that state; Xero's URL comes back to the invite callback", async () => {
-    const { token, tokenHash } = newInviteToken();
-    const svc = fakeClient({ rpc: { integration_invite_redeem: { data: { organization_id: ORG, provider: "xero" } } } });
-    const out = await redeemInvite(svc.client, token, xeroReady);
+  it("a good code: used up with the code's keyed hash, a state and a verifier bound to that state; Xero's URL comes back to the invite callback", async () => {
+    const r = ref();
+    const svc = fakeClient({ rpc: { integration_invite_code_verify: { data: { ok: true, organization_id: ORG, provider: "xero" } } } });
+    const out = await redeemInvite(svc.client, r, "12345678", xeroReady, { ...ALLOW });
     expect(out.ok).toBe(true);
     const call = svc.calls[0];
-    expect(call.fn).toBe("integration_invite_redeem");
-    expect(call.args.p_token_hash).toBe(tokenHash);
-    expect(JSON.stringify(call.args)).not.toContain(token);
+    expect(call.fn).toBe("integration_invite_code_verify");
+    expect(call.args.p_ref).toBe(r);
+    expect(call.args.p_code_hash).toBe(inviteCodeHash(key, r, "12345678"));
+    expect(JSON.stringify(call.args)).not.toContain("12345678");
     const url = new URL((out as { url: string }).url);
     expect(url.searchParams.get("redirect_uri")).toBe(`${SITE}/api/integrations/invite/callback`);
     const state = url.searchParams.get("state")!;
@@ -164,9 +179,9 @@ describe("the accountant's connect link", () => {
   it("the callback: a state that isn't an invite's (or was used) completes nothing", async () => {
     const svc = fakeClient({ rpc: { integration_oauth_consume_invite: { data: null } } });
     const fetchImpl = vi.fn();
-    expect(await finishInviteConnect(svc.client, "state", "code", xeroReady, { fetchImpl: fetchImpl as never })).toEqual({ ok: false, reason: "expired" });
+    expect(await finishInviteConnect(svc.client, "state", "code", xeroReady, { fetchImpl: fetchImpl as never, env: ALLOW })).toMatchObject({ ok: false, reason: "expired", correlationId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(svc.calls.map((c) => c.fn)).toEqual(["integration_oauth_consume_invite"]);
+    expect(svc.calls.map((c) => c.fn)).toEqual(["integration_oauth_consume_invite", "integration_invite_refusal_log"]);
   });
 
   it("the callback: the invite's company and admin, the code exchanged at the invite callback, stored for that company", async () => {
@@ -179,7 +194,7 @@ describe("the accountant's connect link", () => {
       if (url.endsWith("/connect/token")) { bodies.push(String(init?.body)); return new Response(JSON.stringify({ access_token: at, refresh_token: "r", expires_in: 1800 }), { status: 200 }); }
       return new Response(JSON.stringify([{ id: "c1", tenantId: "t1", tenantName: "Alpha Ltd", tenantType: "ORGANISATION", authEventId: "evt" }]), { status: 200 });
     });
-    expect(await finishInviteConnect(svc.client, state, "code", xeroReady, { fetchImpl: fetchImpl as never })).toEqual({ ok: true, tenantName: "Alpha Ltd" });
+    expect(await finishInviteConnect(svc.client, state, "code", xeroReady, { fetchImpl: fetchImpl as never, env: ALLOW })).toEqual({ ok: true, tenantName: "Alpha Ltd" });
     expect(new URLSearchParams(bodies[0]).get("redirect_uri")).toBe(`${SITE}/api/integrations/invite/callback`);
     expect(new URLSearchParams(bodies[0]).get("code_verifier")).toBe("the-verifier");
     const store = svc.calls.find((c) => c.fn === "integration_store_connection")!;
@@ -187,15 +202,16 @@ describe("the accountant's connect link", () => {
     expect(svc.calls[0]).toEqual({ fn: "integration_oauth_consume_invite", args: { p_provider: "xero", p_state_hash: hashState(state) } });
   });
 
-  it("the link's page (peek) asks the database for the company only: nothing is used up; a malformed link asks nothing", async () => {
-    const { token, tokenHash } = newInviteToken();
-    const svc = fakeClient({ rpc: { integration_invite_peek: { data: { company_name: "Alpha Ltd" } } } });
-    expect(await peekInvite(svc.client, token)).toEqual({ companyName: "Alpha Ltd" });
-    expect(svc.calls).toEqual([{ fn: "integration_invite_peek", args: { p_token_hash: tokenHash } }]);
+  it("the link's page (peek) asks the database for the company and the masked address only: nothing is used up; a malformed link asks nothing", async () => {
+    const r = ref();
+    const svc = fakeClient({ rpc: { integration_invite_peek: { data: { company_name: "Alpha Ltd", recipient_hint: "a***@firm.example" } } } });
+    expect(await peekInvite(svc.client, r)).toEqual({ companyName: "Alpha Ltd", recipientHint: "a***@firm.example" });
+    expect(svc.calls).toEqual([{ fn: "integration_invite_peek", args: { p_ref: r } }]);
     expect(await peekInvite(svc.client, "bad")).toBeNull();
     expect(svc.calls).toHaveLength(1);
-    const html = await inviteConfirmPage("A&B <x>").text();
+    const html = await inviteConfirmPage("A&B <x>", "a***@firm.example").text();
     expect(html).toContain("Connect A&amp;B &lt;x&gt; to Xero");
+    expect(html).toContain("a***@firm.example");
     expect(html).not.toContain("<x>");
   });
 

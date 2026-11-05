@@ -45,8 +45,9 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
   const [version, setVersion] = useState(0);
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
-  const [invite, setInvite] = useState<{ url: string; expiresAt: string | null } | null>(null);
-  const [openInvites, setOpenInvites] = useState<Array<{ id: string; created_at: string; expires_at: string; created_by_name: string | null }>>([]);
+  const [invite, setInvite] = useState<{ recipient: string | null; expiresAt: string | null } | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [openInvites, setOpenInvites] = useState<Array<{ id: string; created_at: string; expires_at: string; created_by_name: string | null; recipient?: string | null }>>([]);
   const [cancelInvite, setCancelInvite] = useState<string | null>(null);
   const { organizations } = useUser();
   const company = organizations.find((org) => org.is_current)?.name ?? null;
@@ -177,22 +178,15 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
   async function makeInvite() {
     setBusy(true);
     try {
-      const r = await postIntegration("/api/integrations/invite");
+      const r = await postIntegration("/api/integrations/invite", { email: inviteEmail });
       if (!r.ok) toast.error(r.error);
-      else if (typeof r.body.url === "string") setInvite({ url: r.body.url, expiresAt: typeof r.body.expiresAt === "string" ? r.body.expiresAt : null });
+      else if (r.body.sent === true) {
+        setInvite({ recipient: typeof r.body.recipient === "string" ? r.body.recipient : null, expiresAt: typeof r.body.expiresAt === "string" ? r.body.expiresAt : null });
+        setInviteEmail("");
+      }
       await loadInvites();
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function copyInvite() {
-    if (!invite) return;
-    try {
-      await navigator.clipboard.writeText(invite.url);
-      toast.success("Link copied. Send it to the accountant: it works once, for 24 hours.");
-    } catch {
-      toast.error("Couldn't copy: select the link and copy it.");
     }
   }
 
@@ -254,21 +248,21 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
                   <p className="text-sm text-slate-500" data-testid="xero-invite-needs-107">{NEEDS_107}</p>
                 ) : !xeroView.offerInvite ? null : (
                   <>
-                    <Button variant="outline" onClick={makeInvite} disabled={busy}>Send the accountant a connect link</Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input type="email" aria-label="Accountant's e-mail address" placeholder="accountant@firm.example" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+                        className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 px-2 text-sm" data-testid="xero-invite-email" />
+                      <Button variant="outline" onClick={makeInvite} disabled={busy || !inviteEmail.trim()}>E-mail the accountant a connect link</Button>
+                    </div>
                     {invite ? (
                       <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input readOnly aria-label="Connect link" value={invite.url} onFocus={(e) => e.currentTarget.select()} className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 font-mono text-xs" data-testid="xero-invite-url" />
-                          <Button variant="outline" size="sm" onClick={copyInvite}>Copy</Button>
-                        </div>
-                        <p className="text-xs text-slate-500">Works once{invite.expiresAt ? `, until ${fmtDate(invite.expiresAt)} (24 hours)` : ", for 24 hours"}. It opens Xero&apos;s sign-in for this company only and gives no access to Tolra.</p>
+                        <p className="text-xs text-slate-500" data-testid="xero-invite-sent">Sent to {invite.recipient ?? "the accountant"}. It works once{invite.expiresAt ? `, until ${fmtDate(invite.expiresAt)} (24 hours)` : ", for 24 hours"}. The accountant asks for a code on the page, and it is e-mailed to that address only. The link gives no access to Tolra.</p>
                       </div>
                     ) : null}
                     {openInvites.length ? (
                       <ul className="space-y-1" data-testid="xero-open-invites">
                         {openInvites.map((i) => (
                           <li key={i.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                            <span>Open link{i.created_by_name ? ` from ${i.created_by_name}` : ""}, made {fmtDateTime(i.created_at)}, expires {fmtDateTime(i.expires_at)}</span>
+                            <span>Open link{i.recipient ? ` to ${i.recipient}` : ""}{i.created_by_name ? ` from ${i.created_by_name}` : ""}, made {fmtDateTime(i.created_at)}, expires {fmtDateTime(i.expires_at)}</span>
                             <Button variant="outline" size="sm" onClick={() => setCancelInvite(i.id)} disabled={busy}>Cancel</Button>
                           </li>
                         ))}
@@ -302,7 +296,7 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
       </Card>
       {/* C3 (129): the accountant joins as a viewer; the Xero step is offered only while Xero is set up here and not connected. */}
       <AccountantInviteCard
-        offerXero={Boolean(status?.db107 && !xeroView.notSetUp && xeroView.offerInvite && overview && overview.status !== "connected")}
+        offerXero={false}
         onXeroLink={() => void loadInvites()}
       />
       <AccountingCloudCards />
