@@ -30,6 +30,9 @@ export type Activation = {
   onChange?: (next: boolean) => void;
   /** Words under the switch (what turning it on does). */
   help?: string;
+  /** No switch at all (the server has none): the row and the badge show `statusText` instead of On/Off. */
+  hideSwitch?: boolean;
+  statusText?: string;
 };
 
 export function SetupCard(props: {
@@ -52,7 +55,7 @@ export function SetupCard(props: {
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle id={`setup-title-${id}`}>{title}</CardTitle>
-          <Badge variant="outline" data-testid={`activation-badge-${id}`}>{activation.label.replace(/^Turn on /, "")}: {stateWord}</Badge>
+          <Badge variant="outline" data-testid={`activation-badge-${id}`}>{activation.hideSwitch ? (activation.statusText ?? activation.label) : `${activation.label.replace(/^Turn on /, "")}: ${stateWord}`}</Badge>
         </div>
         <CardDescription>{summary}</CardDescription>
       </CardHeader>
@@ -67,6 +70,12 @@ export function SetupCard(props: {
           ))}
         </ol>
         {children ? <div className="grid gap-2">{children}</div> : null}
+        {activation.hideSwitch ? (
+          <div className="grid gap-1 rounded-md border p-3" data-testid={`activation-${id}`}>
+            <p className="font-medium" data-testid={`activation-status-${id}`}>{activation.statusText ?? activation.label}</p>
+            {activation.help ? <p className="text-xs text-slate-500">{activation.help}</p> : null}
+          </div>
+        ) : (
         <div className="grid gap-1 rounded-md border p-3" data-testid={`activation-${id}`}>
           <div className="flex items-center justify-between gap-3">
             <span id={`activation-label-${id}`} className="font-medium">{activation.label}</span>
@@ -85,6 +94,7 @@ export function SetupCard(props: {
           {activation.help ? <p className="text-xs text-slate-500">{activation.help}</p> : null}
           {activation.disabledReason ? <p className="text-xs text-amber-800" data-testid={`activation-why-${id}`}>{activation.disabledReason}</p> : null}
         </div>
+        )}
         {footnote ? <p className="text-xs text-slate-500">{footnote}</p> : null}
       </CardContent>
     </Card>

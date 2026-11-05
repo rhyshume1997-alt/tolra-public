@@ -75,6 +75,9 @@ export function ResendSetupCard({ microsoftConnected = false, adminEmail }: { mi
 
   const state = status?.state ?? null;
   const ready = state === "configured" || state === "connected";
+  const sending = status === null ? "Sending: checking"
+    : microsoftConnected ? "Sending: not used while Microsoft 365 is connected"
+    : ready ? "Sending: ready (Tolra's verified sender). Each message needs approval." : "Sending: not set up";
   const connection = status ? { tone: CONNECTION[status.state].tone, label: CONNECTION[status.state].label(status) } : { tone: "working" as const, label: "Checking…" };
   const steps: SetupStep[] = [
     { label: "The platform owner puts the Resend key and a verified sender domain on the server", state: ready ? "done" : "next", hint: "Set once for the whole server, not per company. It is a sender address, not a mailbox: nobody signs in and nothing is read." },
@@ -89,12 +92,7 @@ export function ResendSetupCard({ microsoftConnected = false, adminEmail }: { mi
       summary="Sends Tolra's e-mails from the server's verified sender address when this company has no Microsoft 365 mailbox connected."
       connection={connection}
       steps={steps}
-      activation={{
-        label: "Sending",
-        on: status === null ? null : ready && !microsoftConnected,
-        disabledReason: "There is no separate switch for Resend. It is used for this company only while no Microsoft 365 mailbox is connected, and only when someone sends or approves a message.",
-        help: "Customer e-mails still need approval; there is no separate switch.",
-      }}
+      activation={{ label: "Sending", on: null, hideSwitch: true, statusText: sending, help: "No automatic fallback: Resend is only used when no Microsoft 365 mailbox is connected." }}
       footnote="Resend is never used automatically after a Microsoft 365 failure. A test e-mail goes only to your own address and is recorded in the audit log without the address or text."
     >
       {microsoftConnected ? <p className="text-xs text-amber-800" data-testid="resend-ms-note">This company is connected to Microsoft 365, so Resend is not used for it.</p> : null}
