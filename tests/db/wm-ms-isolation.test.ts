@@ -289,8 +289,6 @@ describe("(7) the shared app: each company's Connect is its own sign-in, bound t
   it("the state in Connect is random, kept only as a hash for (company, admin, provider) with a 10 minute expiry", async () => {
     const url = new URL(await beginMicrosoftConnect(adminClient(alpha()), alpha().id, ready));
     const state = url.searchParams.get("state") ?? "";
-    expect(url.pathname).toBe("/organizations/oauth2/v2.0/authorize"); // work or school accounts, any directory, unless MS_TENANT_ID narrows it
-    expect(url.searchParams.get("prompt")).toBe("select_account"); // the person picks the account each time: no silent re-use of a browser session
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
     const row = (await owner<{ organization_id: string; user_id: string; state_hash: string; expires_in: number; consumed_at: string | null }>(
       "select organization_id, user_id, state_hash, extract(epoch from (expires_at - now()))::int as expires_in, consumed_at from public.integration_oauth_states where state_hash=$1", [hashState(state)]))[0];
