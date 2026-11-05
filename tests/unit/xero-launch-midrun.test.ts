@@ -57,6 +57,18 @@ describe("switched OFF in the middle of a send (the real engine, a fake database
     expect(recorded[0]).toMatchObject({ p_status: "pending" });
     expect(recorded[0].p_retry_at).toBeTruthy();
   });
+  it("off after the claim, when the sign-in is asked for: the row goes back to pending, the run stops with launch_hold, the error never escapes the run", async () => {
+    const { db, recorded, raw } = setup();
+    state.enabled = false;
+    const summary = await run(db, raw as never, async () => state.enabled); // the default sign-in throws TransfersHeldError while off
+    expect(summary).toMatchObject({ sent: 0, blocked: "launch_hold" });
+    expect(raw.findContacts).not.toHaveBeenCalled();
+    expect(recorded.map((r) => r.p_status)).toEqual(["pending"]);
+  });
+  it("any other sign-in failure still escapes (it is not mistaken for the switch)", async () => {
+    const { db, raw } = setup();
+    await expect(run(db, raw as never, async () => true, async () => { throw new Error("token store down"); })).rejects.toThrow("token store down");
+  });
   it("off after the contact lookup and before the push: the invoice is not pushed, the row goes back to pending", async () => {
     const { db, recorded, raw } = setup();
     state.enabled = true;
