@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { resend } from "@/lib/resend";
+import { checkInput, selectProvider, onRecipientAllowlist } from "@/lib/email/send-company-email";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
-import { PRODUCT } from "@/lib/product";
-import { sendWithOutcome } from "@/lib/send-outcome";
 
 const sendJobSchema = z.object({
   job_id: z.string().uuid(),
@@ -16,14 +14,7 @@ const sendJobSchema = z.object({
 });
 
 /** EMAIL_RECIPIENT_DOMAINS: comma separated; "example.com" allows the domain, "a@example.com" allows one address. */
-function onAllowlist(email: string) {
-  const entries = (process.env.EMAIL_RECIPIENT_DOMAINS || "")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  const domain = email.split("@")[1] ?? "";
-  return entries.some((entry) => (entry.includes("@") ? entry === email : entry.replace(/^@/, "") === domain));
-}
+const onAllowlist = (email: string) => onRecipientAllowlist(email, process.env.EMAIL_RECIPIENT_DOMAINS);
 
 const clean = (value: unknown) => (typeof value === "string" ? value.trim().toLowerCase() : "");
 
@@ -32,6 +23,7 @@ export async function POST(request: Request) {
 
   const auth = await requireProfile(["admin", "office"]);
   if (isErrorResponse(auth)) return auth;
+  if (auth.session?.support) return jsonError("Support access can't send e-mail.", 403);
   const { supabase, profile } = auth;
 
   const json = await readJson(request, 32 * 1024);
@@ -65,8 +57,12 @@ export async function POST(request: Request) {
   }
   if (!allowed) return jsonError("Recipient not allowed for this job", 403);
 
-  const from = resend ? process.env.EMAIL_FROM || (process.env.NODE_ENV === "production" ? "" : `${PRODUCT.name} <notifications@resend.dev>`) : "";
-  if (resend && !from) return jsonError("Email sender not configured", 503);
+  const checked = checkInput({ organizationId: profile.organization_id, userId: auth.user.id, kind: "job", to: [recipient_email], subject, text: body }, process.env);
+  if ("error" in checked) return jsonError(checked.error, checked.code === "recipient_refused" ? 403 : 400);
+  let provider: Awaited<ReturnType<typeof selectProvider>>;
+  try { provider = await selectProvider(profile.organization_id); }
+  catch { return jsonError("Microsoft 365 needs attention before sending. No other provider was used.", 502); }
+  if (provider === "refused") return jsonError("The mock email provider is not allowed on a deployed site.", 503);
 
   // Limits are checked and the attempt recorded in one database transaction (migration 025), before any provider
   // call, in a ledger the visible history can't reset.
@@ -76,7 +72,7 @@ export async function POST(request: Request) {
     p_subject: subject,
     p_body: body,
     p_key: key,
-    p_mode: resend ? "sending" : "drafted",
+    p_mode: provider ? "sending" : "drafted",
   });
   if (reserveError) {
     if (reserveError.code === "PT429") return NextResponse.json({ status: "failed", error: reserveError.message }, { status: 429 });
@@ -92,18 +88,20 @@ export async function POST(request: Request) {
     if (status === "unknown") return NextResponse.json({ status: "unknown", error: UNKNOWN_MESSAGE }, { status: 409 });
     return NextResponse.json({ status: "failed", error: "This email is already being sent." }, { status: 409 });
   }
-  if (!resend) return NextResponse.json({ status: "drafted" });
-  const provider = resend;
+  if (!provider) return NextResponse.json({ status: "drafted" });
 
   // The outcome is recorded in the ledger, not only the history (migration 033). A definite refusal (the provider's own 4xx
   // answer) may be tried again; a network error, timeout or server error is 'unknown': it may have gone, so there is no
   // automatic second attempt and an admin settles it (Email history).
-  const { outcome, detail } = await sendWithOutcome(() => provider.emails.send({ from, to: recipient_email, subject, text: body }, { idempotencyKey: `job-email/${key}` }));
+  const { outcome, detail } = await provider.send({ ...checked.email, idempotencyKey: `job-email/${key}` });
   if (outcome !== "accepted") console.error("[send-job] send", outcome, detail);
 
   const { error: completeError } = await supabase.rpc("complete_job_email", { p_history: historyId, p_outcome: outcome });
   // If this write is lost the ledger stays 'sending' and becomes 'unknown' after ten minutes: never a silent retry.
-  if (completeError) console.error("[send-job] outcome not recorded", completeError.code);
+  if (completeError) {
+    console.error("[send-job] outcome not recorded", completeError.code);
+    return NextResponse.json({ status: "unknown", error: UNKNOWN_MESSAGE }, { status: 502 });
+  }
 
   if (outcome === "failed") return NextResponse.json({ status: "failed", error: "Could not send email" }, { status: 502 });
   if (outcome === "unknown") return NextResponse.json({ status: "unknown", error: UNKNOWN_MESSAGE }, { status: 502 });

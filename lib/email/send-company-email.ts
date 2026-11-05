@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { PLACEHOLDERS } from "@/lib/email/templates/defaults";
 
+
 import { mockProvider } from "@/lib/email/providers/mock";
 import { microsoftProvider } from "@/lib/email/providers/microsoft";
 import { resendProvider } from "@/lib/email/providers/resend";
@@ -29,7 +30,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
  * allows the document's own customer or supplier, the company's own people, or the allowlist).
  */
 
-export type CompanyEmailKind = "quote" | "invoice" | "purchase_order" | "delivery_note" | "invoice_reminder" | "timesheet" | "job" | "rfq" | "alert" | "test";
+export type CompanyEmailKind = "quote" | "invoice" | "purchase_order" | "delivery_note" | "invoice_reminder" | "timesheet" | "job" | "rfq" | "alert" | "test" | "statement";
 export interface CompanyEmailInput {
   organizationId: string;
   userId: string | null;
@@ -43,6 +44,8 @@ export interface CompanyEmailInput {
   recordId?: string;
   attachments?: { filename: string; content: Buffer | Uint8Array; contentType: string }[];
   idempotencyKey?: string;
+  draftOnly?: boolean;
+  requireLedger?: boolean;
 }
 export type CompanyEmailResult =
   | { ok: true; mode: "sent" | "drafted"; provider: "resend" | "microsoft" | "mock" | "none"; providerMessageId?: string; historyId?: string }
@@ -54,6 +57,7 @@ export type CompanyEmailDeps = {
   env?: Record<string, string | undefined>;
   getToken?: (organizationId: string) => Promise<string | null>;
   fetch?: typeof fetch;
+  provider?: EmailProvider;
   providers?: { resend?: (apiKey: string, from: string) => EmailProvider; microsoft?: (token: string) => EmailProvider; mock?: () => EmailProvider };
 };
 
@@ -109,12 +113,7 @@ export function relatedType(kind: CompanyEmailKind, recordType?: string): string
 export async function selectProvider(organizationId: string, deps: CompanyEmailDeps = {}): Promise<EmailProvider | null | "refused"> {
   const env = deps.env ?? process.env;
   if (env.EMAIL_PROVIDER === "mock") return env.VERCEL_ENV ? "refused" : (deps.providers?.mock ?? mockProvider)();
-  let token: string | null = null;
-  try {
-    token = await (deps.getToken ?? getDelegatedAccessToken)(organizationId);
-  } catch {
-    token = null;
-  }
+  const token = await (deps.getToken ?? getDelegatedAccessToken)(organizationId);
   if (token) return deps.providers?.microsoft ? deps.providers.microsoft(token) : microsoftProvider(token, deps.fetch ?? fetch);
   const apiKey = env.RESEND_API_KEY?.trim();
   const from = env.EMAIL_FROM ? stripHeader(env.EMAIL_FROM) : "";
@@ -191,7 +190,14 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
   const key = ledgerKey(input);
   const email: OutgoingEmail = { ...checked.email, idempotencyKey: `company-email/${key}` };
 
-  const selected = await selectProvider(input.organizationId, { ...deps, env });
+  // A scheduled customer message is a draft, not permission to send. Internal alerts/timesheets retain their existing policy.
+  const needsApproval = input.draftOnly || !input.userId && ["quote", "invoice", "purchase_order", "delivery_note", "invoice_reminder", "job", "rfq", "statement"].includes(input.kind);
+  let selected: EmailProvider | null | "refused";
+  try {
+    selected = needsApproval ? null : deps.provider ?? await selectProvider(input.organizationId, { ...deps, env });
+  } catch {
+    return { ok: false, error: "Microsoft 365 mail could not be checked. Reconnect or resolve the connection before sending; no other provider was used.", code: "provider_error" };
+  }
   if (selected === "refused") return { ok: false, error: MOCK_REFUSED_MESSAGE, code: "no_provider" };
   const provider = selected;
   const db = deps.db === undefined ? createSupabaseAdminClient() : deps.db;
@@ -203,7 +209,10 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
     p_org: input.organizationId, p_user: input.userId, p_key: key, p_to: to, p_subject: email.subject, p_body: email.text,
     p_related_type: related, p_related_id: input.recordId ?? null, p_mode: provider ? "sending" : "drafted",
   });
-  if (reserveError && isMissingFunction(reserveError)) return sendWithoutLedger(input, email, provider, db, to, related);
+  if (reserveError && isMissingFunction(reserveError)) {
+    if (input.requireLedger) return { ok: false, code: "provider_error", error: "The email send ledger is unavailable. Nothing was sent." };
+    return sendWithoutLedger(input, email, provider, db, to, related);
+  }
   if (reserveError) {
     if (reserveError.code === "PT429") return { ok: false, error: "Too many e-mails sent in the last hour. Try again later.", code: "rate_limited" };
     console.error("[company-email] not reserved", reserveError.code);
@@ -221,6 +230,7 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
   const { error: completeError } = await db.rpc("complete_company_email", { p_org: input.organizationId, p_user: input.userId, p_send: reservation.send_id, p_outcome: result.outcome });
   // If this write is lost the ledger stays 'sending' and becomes 'unknown' after ten minutes: never a silent second send.
   if (completeError) console.error("[company-email] outcome not recorded", completeError.code);
+  if (completeError) return { ok: false, error: UNKNOWN_OUTCOME_MESSAGE, code: "provider_error", uncertain: true };
   return outcomeResult(result, provider.name, reservation.history_id);
 }
 

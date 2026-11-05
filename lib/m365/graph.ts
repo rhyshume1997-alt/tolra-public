@@ -24,7 +24,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Message ids that stay the same when a message moves folder, so a stored id keeps working. */
 const IMMUTABLE_IDS = 'IdType="ImmutableId"';
 
-export type MailConfig = { tenantId: string; clientId: string; clientSecret: string; mailbox: string; organizationId: string; pageSize: number };
+export type MailConfig = { delegatedAccessToken?: string; tenantId: string; clientId: string; clientSecret: string; mailbox: string; organizationId: string; pageSize: number };
 
 /**
  * outcome says what is known about a failed call that may have changed something: "failed" (Microsoft refused it, or the
@@ -62,6 +62,7 @@ export function resetTokenCache() {
 
 /** App token for Graph, reused until 60 seconds before it expires. */
 async function accessToken(config: MailConfig): Promise<string> {
+  if (config.delegatedAccessToken) return config.delegatedAccessToken;
   const key = `${config.tenantId}/${config.clientId}`;
   if (cached && cached.key === key && Date.now() < cached.expiresAt - 60_000) return cached.token;
   let res: Response;
@@ -90,7 +91,7 @@ async function accessToken(config: MailConfig): Promise<string> {
 /** Plain-English message for a Graph failure; from the status and error code only. */
 function safeMessage(status: number, code: string): string {
   if (status === 401) return "Microsoft 365 rejected the app's sign-in.";
-  if (status === 403 || code === "ErrorAccessDenied") return "The app isn't allowed to do this on the mailbox (check the Exchange access scope for Mail.Read / Mail.Send).";
+  if (status === 403 || code === "ErrorAccessDenied") return "The app isn't allowed to do this on the mailbox (check Mail.Read / Mail.Send permissions or reconnect).";
   if (status === 404 || code === "ErrorItemNotFound" || code === "MailboxNotFound") return "Mailbox or message not found.";
   if (status === 400 || status === 422) return "Microsoft 365 refused the request.";
   if (status === 429) return "Microsoft 365 is busy. Try again shortly.";
@@ -121,14 +122,14 @@ async function graphUrl(config: MailConfig, url: string, init: { method: "GET" |
     const json = (await res.json().catch(() => null)) as { error?: { code?: unknown } } | null;
     const code = typeof json?.error?.code === "string" ? json.error.code.slice(0, 64) : `http_${res.status}`;
     // A definite 4xx means Microsoft refused it. A 5xx (or 408) may have been acted on before it failed.
-    const unknown = res.status >= 500 || res.status === 408;
+    const unknown = res.status >= 500 || res.status === 408 || res.status === 409;
     throw new GraphError(safeMessage(res.status, code), res.status === 429 ? 429 : 502, code, unknown ? "unknown" : "failed");
   }
   return res.status === 202 || res.status === 204 ? null : res.json().catch(() => null);
 }
 
 const graph = (config: MailConfig, path: string, init: { method: "GET" | "POST"; body?: unknown; prefer?: string[] }) =>
-  graphUrl(config, `${GRAPH}/users/${encodeURIComponent(config.mailbox)}${path}`, init);
+  graphUrl(config, `${GRAPH}${config.delegatedAccessToken ? "/me" : `/users/${encodeURIComponent(config.mailbox)}`}${path}`, init);
 
 export type InboxMessage = {
   id: string;
@@ -202,7 +203,7 @@ export async function listInboxSince(
   const query = `$filter=${encodeURIComponent(`receivedDateTime ge ${since.toISOString()}`)}&$orderby=${encodeURIComponent("receivedDateTime asc")}&$select=${SELECT}&$top=${limit}`;
   const messages: InboxMessage[] = [];
   if (resumeLink && !isGraphLink(resumeLink)) throw new GraphError("Unexpected response from Microsoft 365", 502, "bad_next_link");
-  let url: string | null = resumeLink || `${GRAPH}/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`;
+  let url: string | null = resumeLink || `${GRAPH}${config.delegatedAccessToken ? "/me" : `/users/${encodeURIComponent(config.mailbox)}`}/mailFolders/inbox/messages?${query}`;
   let pages = 0;
   while (url) {
     if (pages >= maxPages) return { messages, more: true, nextLink: url };

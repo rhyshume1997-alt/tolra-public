@@ -36,6 +36,7 @@ type ApprovalItem = {
   body: string;
   /** 138: a chase step's draft (a chase_sends row points at it): it can be approved and sent from here. */
   chase: boolean;
+  canApprove: boolean;
 };
 
 type SentItem = { id: string; customer: string; when: string; status: string };
@@ -70,6 +71,7 @@ function toApproval(row: any): ApprovalItem {
     subject: row.subject || "",
     body: row.body || "",
     chase: false,
+    canApprove: String(row.related_to_id ?? "").startsWith("customer_statement:") || (type === "invoice" && row.drafted_by === null),
   };
 }
 
@@ -95,7 +97,7 @@ export default function ApprovalPage() {
     try {
       if (!supabase) throw new Error("Supabase is not configured.");
       const [drafts, sent] = await Promise.all([
-        awaitingApproval(supabase.from("email_history").select("id, to_email, to_name, subject, body, related_to_type, drafted_at, skipped_until"))
+        awaitingApproval(supabase.from("email_history").select("id, to_email, to_name, subject, body, related_to_type, related_to_id, drafted_by, drafted_at, skipped_until"))
           .order("drafted_at", { ascending: false }),
         supabase
           .from("email_history")
@@ -146,6 +148,21 @@ export default function ApprovalPage() {
       console.error(err);
       toast.error("Couldn't copy. Open Full preview, select the text and copy it by hand.");
     }
+  }
+
+  async function approveCustomerDraft(item: ApprovalItem) {
+    if (!window.confirm(`Send this exact reviewed message to ${item.to}?`)) return;
+    await run(async () => {
+      try {
+        const res = await fetch("/api/email/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft_id: item.id, subject: item.subject, body: item.body, to: item.to }) });
+        const answer = await res.json();
+        if (!res.ok) throw new Error(answer.error ?? "Could not send this draft.");
+        toast.success("Sent. You can check the record in Email history.");
+        setPreviewItem(null);
+        removeLocal(item.id);
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not send this draft."); }
+      finally { await load(); }
+    });
   }
 
   function markSentManually(item: ApprovalItem) {
@@ -264,7 +281,7 @@ export default function ApprovalPage() {
         <CardContent className="flex gap-3 p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
           <p className="text-sm font-medium text-blue-950">
-            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
+            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. Customer statements and system-created invoice drafts also offer Approve and send in Full preview when a provider is configured. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
             {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
           </p>
         </CardContent>
@@ -445,7 +462,7 @@ export default function ApprovalPage() {
               <div className="whitespace-pre-wrap rounded-lg border border-slate-200 p-4 text-sm leading-6 text-slate-700">{previewItem.body}</div>
             </div>
           ) : null}
-        </DialogContent>
+        {previewItem?.canApprove ? <Button disabled={saving} onClick={() => void approveCustomerDraft(previewItem)}>Approve and send</Button> : null}</DialogContent>
       </Dialog>
     </div>
     </RoleGate>
