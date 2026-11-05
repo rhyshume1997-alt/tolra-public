@@ -1,4 +1,4 @@
-import { finishInviteConnect, invitePage, inviteRateOk } from "@/lib/integrations/invite";
+import { finishInviteConnect, invitePage, inviteRateOk, logInviteRefusal } from "@/lib/integrations/invite";
 import { xeroReady } from "@/lib/integrations/server";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
@@ -16,21 +16,23 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  if (url.searchParams.get("error")) return invitePage("cancelled");
-  if (!code || !state || code.length > 2000 || state.length > 200) return invitePage("invalid", 400);
   const service = createSupabaseAdminClient();
+  if (url.searchParams.get("error")) return invitePage("cancelled", 200, await logInviteRefusal(service, "callback", "callback_error"));
+  if (!code || !state || code.length > 2000 || state.length > 200) return invitePage("invalid", 400, await logInviteRefusal(service, "callback", "callback_state"));
   if (!service) return invitePage("not_configured", 503);
-  if (!(await inviteRateOk(service, request))) return invitePage("busy", 429);
+  if (!(await inviteRateOk(service, request))) return invitePage("busy", 429, await logInviteRefusal(service, "request", "rate_limited"));
   const ready = await xeroReady(process.env, service);
   if (!ready) return invitePage("not_configured", 503);
   try {
     const outcome = await finishInviteConnect(service, state, code, ready);
-    return invitePage(outcome.ok ? "connected" : outcome.reason, outcome.ok ? 200 : 409);
+    if (outcome.ok) return invitePage("connected");
+    return invitePage(outcome.reason, 409, outcome.correlationId ?? await logInviteRefusal(service, "callback", "callback_error"));
   } catch (err) {
     // Only a short fixed word (a hint such as "tenant_in_use" or an error code) is logged: never the database's or Xero's own text.
     const hint = (err as { hint?: string }).hint;
     const word = (v: unknown) => (typeof v === "string" && /^[A-Za-z0-9_]{1,40}$/.test(v) ? v : undefined);
-    console.error("[integrations] invite callback failed:", word(hint) ?? word((err as { code?: string }).code) ?? (err instanceof Error && word(err.name)) ?? "error");
-    return invitePage("failed", 500);
+    const id = await logInviteRefusal(service, "callback", "callback_error");
+    console.error("[integrations] invite callback failed:", id, word(hint) ?? word((err as { code?: string }).code) ?? (err instanceof Error && word(err.name)) ?? "error");
+    return invitePage("failed", 500, id);
   }
 }

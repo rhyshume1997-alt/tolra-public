@@ -140,19 +140,20 @@ describe("the accountant's connect link (opaque reference + e-mailed code; propo
   it("a malformed reference or code is refused before any database call", async () => {
     const svc = fakeClient({});
     for (const bad of ["", "short", `${"a".repeat(21)}!`, "a".repeat(23), "a".repeat(43)]) {
-      expect(await redeemInvite(svc.client, bad, "12345678", xeroReady, { ...ALLOW })).toEqual({ ok: false, reason: "invalid" });
-      expect(await issueInviteCode(svc.client, bad, key)).toEqual({ ok: false, reason: "invalid" });
+      expect(await redeemInvite(svc.client, bad, "12345678", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await issueInviteCode(svc.client, bad, key)).toMatchObject({ ok: false, reason: "invalid" });
       expect(await peekInvite(svc.client, bad)).toBeNull();
     }
-    expect(await redeemInvite(svc.client, ref(), "1234567", xeroReady, { ...ALLOW })).toEqual({ ok: false, reason: "invalid" });
-    expect(svc.calls).toEqual([]);
+    expect(await redeemInvite(svc.client, ref(), "1234567", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
+    // Only the security log is written (a refusal each); the invite itself is never asked.
+    expect(svc.calls.every((c) => c.fn === "integration_invite_refusal_log")).toBe(true);
   });
 
   it("used, expired, locked or unknown (the database answers invalid): the same 'invalid' answer", async () => {
     const svc = fakeClient({ rpc: { integration_invite_code_verify: { data: { ok: false, reason: "invalid" } } } });
-    expect(await redeemInvite(svc.client, ref(), "12345678", xeroReady, { ...ALLOW })).toEqual({ ok: false, reason: "invalid" });
+    expect(await redeemInvite(svc.client, ref(), "12345678", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
     const refused = fakeClient({ rpc: { integration_invite_code_verify: { error: { code: "42501", message: "x", hint: "invite_invalid" } } } });
-    expect(await redeemInvite(refused.client, ref(), "12345678", xeroReady, { ...ALLOW })).toEqual({ ok: false, reason: "invalid" });
+    expect(await redeemInvite(refused.client, ref(), "12345678", xeroReady, { ...ALLOW })).toMatchObject({ ok: false, reason: "invalid" });
   });
 
   it("a good code: used up with the code's keyed hash, a state and a verifier bound to that state; Xero's URL comes back to the invite callback", async () => {
@@ -178,9 +179,9 @@ describe("the accountant's connect link (opaque reference + e-mailed code; propo
   it("the callback: a state that isn't an invite's (or was used) completes nothing", async () => {
     const svc = fakeClient({ rpc: { integration_oauth_consume_invite: { data: null } } });
     const fetchImpl = vi.fn();
-    expect(await finishInviteConnect(svc.client, "state", "code", xeroReady, { fetchImpl: fetchImpl as never, env: ALLOW })).toEqual({ ok: false, reason: "expired" });
+    expect(await finishInviteConnect(svc.client, "state", "code", xeroReady, { fetchImpl: fetchImpl as never, env: ALLOW })).toMatchObject({ ok: false, reason: "expired", correlationId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
     expect(fetchImpl).not.toHaveBeenCalled();
-    expect(svc.calls.map((c) => c.fn)).toEqual(["integration_oauth_consume_invite"]);
+    expect(svc.calls.map((c) => c.fn)).toEqual(["integration_oauth_consume_invite", "integration_invite_refusal_log"]);
   });
 
   it("the callback: the invite's company and admin, the code exchanged at the invite callback, stored for that company", async () => {

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sendInviteCodeEmail } from "@/lib/integrations/invite-mail";
-import { INVITE_REF, allowedInviteRedirect, cleanInviteCode, inviteConfirmPage, invitePage, inviteRateOk, issueInviteCode, maskRecipient, peekInvite, redeemInvite, type InviteNotice } from "@/lib/integrations/invite";
+import { INVITE_REF, allowedInviteRedirect, cleanInviteCode, inviteConfirmPage, invitePage, inviteRateOk, issueInviteCode, logInviteRefusal, maskRecipient, peekInvite, redeemInvite, type InviteNotice } from "@/lib/integrations/invite";
 import { xeroReady } from "@/lib/integrations/server";
 import { sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -22,13 +22,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request, { params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
-  if (!INVITE_REF.test(ref)) return invitePage("invalid", 404);
   const service = createSupabaseAdminClient();
   if (!service) return invitePage("not_configured", 503);
-  if (!(await inviteRateOk(service, request))) return invitePage("busy", 429);
+  if (!(await inviteRateOk(service, request))) return invitePage("busy", 429, await logInviteRefusal(service, "request", "rate_limited", ref));
+  if (!INVITE_REF.test(ref)) return invitePage("invalid", 404, await logInviteRefusal(service, "page", "malformed_ref", ref));
   try {
     const open = await peekInvite(service, ref);
-    return open ? inviteConfirmPage(open.companyName, open.recipientHint) : invitePage("invalid", 404);
+    return open ? inviteConfirmPage(open.companyName, open.recipientHint) : invitePage("invalid", 404, await logInviteRefusal(service, "page", "not_open", ref));
   } catch (err) {
     console.error("[integrations] invite page failed:", (err as { code?: string }).code ?? (err instanceof Error ? err.name : "error"));
     return invitePage("failed", 500);
@@ -36,26 +36,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ ref:
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ ref: string }> }) {
-  if (!sameOrigin(request)) return invitePage("invalid", 403);
   const { ref } = await params;
-  if (!INVITE_REF.test(ref)) return invitePage("invalid", 404);
   const service = createSupabaseAdminClient();
+  if (!sameOrigin(request)) return invitePage("invalid", 403, await logInviteRefusal(service, "request", "bad_origin", ref));
   if (!service) return invitePage("not_configured", 503);
-  if (!(await inviteRateOk(service, request))) return invitePage("busy", 429);
+  if (!(await inviteRateOk(service, request))) return invitePage("busy", 429, await logInviteRefusal(service, "request", "rate_limited", ref));
+  if (!INVITE_REF.test(ref)) return invitePage("invalid", 404, await logInviteRefusal(service, "request", "malformed_ref", ref));
   const ready = await xeroReady(process.env, service);
   if (!ready || !allowedInviteRedirect(ready.config)) return invitePage("not_configured", 503);
   const form = await request.formData().catch(() => null);
   const action = form?.get("action");
   try {
-    const again = async (notice: InviteNotice, status: number) => {
+    const again = async (notice: InviteNotice, status: number, correlationId?: string) => {
       const open = await peekInvite(service, ref);
-      return open ? inviteConfirmPage(open.companyName, open.recipientHint, notice, status) : invitePage("invalid", 404);
+      return open ? inviteConfirmPage(open.companyName, open.recipientHint, notice, status, correlationId) : invitePage("invalid", 404, correlationId ?? await logInviteRefusal(service, "page", "not_open", ref));
     };
     if (action === "send") {
       const issued = await issueInviteCode(service, ref, ready.key);
-      if (!issued.ok) return issued.reason === "invalid" ? invitePage("invalid", 404) : again(issued.reason, 429);
+      if (!issued.ok) return issued.reason === "invalid" ? invitePage("invalid", 404, issued.correlationId) : again(issued.reason, 429, issued.correlationId);
       const sent = await sendInviteCodeEmail({ organizationId: issued.organizationId, to: issued.recipient, companyName: issued.companyName, code: issued.code });
-      if (!sent.ok) return invitePage("mail_failed", 503);
+      if (!sent.ok) return invitePage("mail_failed", 503, await logInviteRefusal(service, "code", "mail_failed", ref));
       return inviteConfirmPage(issued.companyName, maskRecipient(issued.recipient), "code_sent");
     }
     if (action === "verify") {
@@ -63,11 +63,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ ref
       if (!code) return again("enter_code", 400);
       const outcome = await redeemInvite(service, ref, code, ready);
       if (outcome.ok) return NextResponse.redirect(outcome.url, 303);
-      if (outcome.reason === "wrong_code") return again("wrong_code", 400);
-      if (outcome.reason === "code_expired") return again("code_expired", 400);
-      if (outcome.reason === "locked") return invitePage("locked", 403);
-      if (outcome.reason === "redirect_not_allowed") return invitePage("not_configured", 503);
-      return invitePage("invalid", 404);
+      if (outcome.reason === "wrong_code") return again("wrong_code", 400, outcome.correlationId);
+      if (outcome.reason === "code_expired") return again("code_expired", 400, outcome.correlationId);
+      if (outcome.reason === "locked") return invitePage("locked", 403, outcome.correlationId);
+      if (outcome.reason === "redirect_not_allowed") return invitePage("not_configured", 503, outcome.correlationId);
+      return invitePage("invalid", 404, outcome.correlationId);
     }
     return invitePage("invalid", 400);
   } catch (err) {

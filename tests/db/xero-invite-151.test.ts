@@ -13,7 +13,11 @@
  *   - single use: a replay after redeem, an expired invite, a revoked invite, an expired code and a tampered reference are all refused;
  *   - bound to ONE company and the creating admin: a demoted or removed creator or a closed company ends the invite at once;
  *   - exactly one of two simultaneous redeems wins;
- *   - audit rows for created / opened / code issued / verified / used / revoked / expired / refused carry no reference, code, hash or full address;
+ *   - company audit rows for created / opened / code issued / verified / used / revoked / expired carry no reference, code, hash or full address;
+ *   - EVERY refusal is a row of the SECURITY LOG (security_audit.integration_invite_refusals) with a correlation id, never a company audit row; only a hash of
+ *     the reference is kept, and a company only when a matched invite proves it (tests "BLOCK: untraceable refusals");
+ *   - expiry is enforced by the database on EVERY use (page, code request, code check, redeem, the OAuth callback): "BLOCK: expired still redeemable";
+ *   - the recipient check cannot be bypassed by forwarding: "BLOCK: forwarded link bypassing the recipient check";
  *   - a connection made this way is like any other (release 149): transfers stay OFF and queued documents stay held;
  *   - the rollback refuses while an invite is open, restores 107's functions, and the release installs again (and refuses a second install).
  */
@@ -136,6 +140,13 @@ const row = async (db: Db, id: string) => (await db.query("SELECT * FROM public.
 const audit = async (db: Db, org: string, action?: string) =>
   (await db.query("SELECT action, entity_id, metadata FROM security_audit.audit_log WHERE organization_id=$1 AND entity_table='integration_connect_invites' AND ($2::text IS NULL OR action=$2) ORDER BY created_at, id", [org, action ?? null])).rows as Array<{ action: string; entity_id: string; metadata: Json }>;
 const states = async (db: Db, id: string) => (await db.query("SELECT count(*)::int AS n FROM public.integration_oauth_states WHERE via_invite=$1", [id])).rows[0].n as number;
+const refusals = async (db: Db, org: string) =>
+  (await db.query("SELECT correlation_id, step, reason, ref_hash, organization_id FROM security_audit.integration_invite_refusals WHERE organization_id=$1 ORDER BY id", [org])).rows as Array<{ correlation_id: string; step: string; reason: string; ref_hash: string | null; organization_id: string | null }>;
+const refusalById = async (db: Db, id: unknown) =>
+  (await db.query("SELECT correlation_id, step, reason, ref_hash, organization_id FROM security_audit.integration_invite_refusals WHERE correlation_id=$1", [id])).rows as Array<{ step: string; reason: string; ref_hash: string | null; organization_id: string | null }>;
+const hashOf = async (db: Db, ref: string) => (await db.query("SELECT left(encode(sha256(convert_to($1,'UTF8')),'hex'),16) AS h", [ref])).rows[0].h as string;
+/** Make the invite older than 24 hours (the table allows at most 24 hours between made and expires). */
+const expireNow = (db: Db, id: string) => db.query("UPDATE public.integration_connect_invites SET created_at = now() - interval '25 hours', expires_at = now() - interval '1 hour' WHERE id=$1", [id]);
 /** Let the 60-second pause between codes pass. */
 const unthrottle = (db: Db, id: string) => db.query("UPDATE public.integration_connect_invites SET code_sent_at = now() - interval '2 minutes' WHERE id=$1", [id]);
 
@@ -161,7 +172,7 @@ afterAll(async () => {
 it("the verify file: every row true", async () => {
   await withDb(async (db) => {
     const checks = (await db.query(read(VERIFY))).rows;
-    expect(checks.length).toBe(8);
+    expect(checks.length).toBe(11);
     expect(checks.filter((r) => r.ok !== true)).toEqual([]);
   });
 });
@@ -262,19 +273,19 @@ describe("the code, single use and the whole path", () => {
     });
   });
 
-  it("replay after redeem: the same code, a new code request and a peek are all refused; no second state; the refusals are audited as 'used'", async () => {
+  it("replay after redeem: the same code, a new code request and a peek are all refused; no second state; the refusals are in the security log as 'used'", async () => {
     await inTx(async (db) => {
       const a = await company(db, "replay");
       const made = await create(db, a.admin);
       const hash = newHash();
       await issue(db, made.ref, hash);
       await verify(db, made.ref, hash);
-      expect(await verify(db, made.ref, hash)).toEqual({ ok: false, reason: "invalid" });
-      expect(await issue(db, made.ref)).toEqual({ ok: false, reason: "invalid" });
+      expect(await verify(db, made.ref, hash)).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await issue(db, made.ref)).toMatchObject({ ok: false, reason: "invalid" });
       expect(await peek(db, made.ref)).toBeNull();
       expect(await states(db, made.id)).toBe(1);
-      const refused = await audit(db, a.org, "INTEGRATION_INVITE_REFUSED");
-      expect(refused.map((e) => e.metadata.reason)).toEqual(["used", "used"]);
+      expect((await refusals(db, a.org)).map((r) => r.reason)).toEqual(["used", "used"]);
+      expect(await audit(db, a.org, "INTEGRATION_INVITE_REFUSED")).toEqual([]); // a refusal is not the company's audit
     });
   });
 
@@ -284,19 +295,18 @@ describe("the code, single use and the whole path", () => {
       const made = await create(db, a.admin);
       const good = newHash();
       await issue(db, made.ref, good);
-      for (let n = 1; n <= 4; n += 1) expect(await verify(db, made.ref, newHash())).toEqual({ ok: false, reason: "wrong_code", attempts_left: 5 - n });
-      expect(await verify(db, made.ref, newHash())).toEqual({ ok: false, reason: "locked" });
+      for (let n = 1; n <= 4; n += 1) expect(await verify(db, made.ref, newHash())).toMatchObject({ ok: false, reason: "wrong_code", attempts_left: 5 - n });
+      expect(await verify(db, made.ref, newHash())).toMatchObject({ ok: false, reason: "locked" });
       const r = await row(db, made.id);
       expect(r.locked_at).not.toBeNull();
       expect(r.revoked_at).not.toBeNull();
       expect(r.revoke_reason).toBe("locked");
       expect(r.code_hash).toBeNull();
-      expect(await verify(db, made.ref, good)).toEqual({ ok: false, reason: "invalid" });
-      expect(await issue(db, made.ref)).toEqual({ ok: false, reason: "invalid" });
+      expect(await verify(db, made.ref, good)).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await issue(db, made.ref)).toMatchObject({ ok: false, reason: "invalid" });
       expect(await peek(db, made.ref)).toBeNull();
       expect(await states(db, made.id)).toBe(0);
-      const refused = (await audit(db, a.org, "INTEGRATION_INVITE_REFUSED")).map((e) => e.metadata.reason);
-      expect(refused.slice(0, 5)).toEqual(["wrong_code", "wrong_code", "wrong_code", "wrong_code", "locked"]);
+      expect((await refusals(db, a.org)).map((r) => r.reason).slice(0, 5)).toEqual(["wrong_code", "wrong_code", "wrong_code", "wrong_code", "locked"]);
     });
   });
 
@@ -309,8 +319,8 @@ describe("the code, single use and the whole path", () => {
       await unthrottle(db, made.id);
       const fresh = newHash();
       expect(await issue(db, made.ref, fresh)).toMatchObject({ ok: true, sent_number: 2 });
-      expect(await verify(db, made.ref, newHash())).toEqual({ ok: false, reason: "locked" });
-      expect(await verify(db, made.ref, fresh)).toEqual({ ok: false, reason: "invalid" });
+      expect(await verify(db, made.ref, newHash())).toMatchObject({ ok: false, reason: "locked" });
+      expect(await verify(db, made.ref, fresh)).toMatchObject({ ok: false, reason: "invalid" });
     });
   });
 
@@ -320,14 +330,14 @@ describe("the code, single use and the whole path", () => {
       const made = await create(db, a.admin);
       const first = newHash();
       await issue(db, made.ref, first);
-      expect(await issue(db, made.ref)).toEqual({ ok: false, reason: "wait" });
+      expect(await issue(db, made.ref)).toMatchObject({ ok: false, reason: "wait" });
       await unthrottle(db, made.id);
       const second = newHash();
       expect(await issue(db, made.ref, second)).toMatchObject({ ok: true, sent_number: 2 });
       expect(await verify(db, made.ref, first)).toMatchObject({ ok: false, reason: "wrong_code" });
       for (let n = 3; n <= 5; n += 1) { await unthrottle(db, made.id); expect(await issue(db, made.ref)).toMatchObject({ ok: true, sent_number: n }); }
       await unthrottle(db, made.id);
-      expect(await issue(db, made.ref)).toEqual({ ok: false, reason: "too_many_codes" });
+      expect(await issue(db, made.ref)).toMatchObject({ ok: false, reason: "too_many_codes" });
       expect((await audit(db, a.org, "INTEGRATION_INVITE_OPENED"))).toHaveLength(1);
       expect((await audit(db, a.org, "INTEGRATION_INVITE_CODE_ISSUED"))).toHaveLength(5);
     });
@@ -340,7 +350,7 @@ describe("the code, single use and the whole path", () => {
       const hash = newHash();
       await issue(db, made.ref, hash);
       await db.query("UPDATE public.integration_connect_invites SET code_expires_at = now() - interval '1 second' WHERE id=$1", [made.id]);
-      expect(await verify(db, made.ref, hash)).toEqual({ ok: false, reason: "code_expired" });
+      expect(await verify(db, made.ref, hash)).toMatchObject({ ok: false, reason: "code_expired" });
       const r = await row(db, made.id);
       expect([r.used_at, r.revoked_at, r.code_attempts]).toEqual([null, null, 0]);
       expect(await states(db, made.id)).toBe(0);
@@ -350,11 +360,11 @@ describe("the code, single use and the whole path", () => {
       expect(await verify(db, made.ref, fresh)).toMatchObject({ ok: true });
       // no code was ever requested: also "code_expired", never a pass
       const other = await create(db, a.admin);
-      expect(await verify(db, other.ref, newHash())).toEqual({ ok: false, reason: "code_expired" });
+      expect(await verify(db, other.ref, newHash())).toMatchObject({ ok: false, reason: "code_expired" });
     });
   });
 
-  it("a malformed hash is refused outright (22023); a tampered or unknown reference changes nothing and writes no audit row", async () => {
+  it("a malformed hash is refused outright (22023); a tampered or unknown reference changes nothing, writes no company audit row, and leaves a security-log row with a correlation id", async () => {
     await inTx(async (db) => {
       const a = await company(db, "tamper");
       const made = await create(db, a.admin);
@@ -366,8 +376,16 @@ describe("the code, single use and the whole path", () => {
       }
       const flip = (s: string) => `${s.slice(0, 3)}${s[3] === "A" ? "B" : "A"}${s.slice(4)}`;
       for (const ref of [flip(made.ref), newRef(), made.ref.slice(1), `${made.ref}0`, "", "' OR '1'='1"]) {
-        expect(await verify(db, ref, newHash())).toEqual({ ok: false, reason: "invalid" });
-        expect(await issue(db, ref)).toEqual({ ok: false, reason: "invalid" });
+        const v = await verify(db, ref, newHash());
+        const i = await issue(db, ref);
+        expect(v).toMatchObject({ ok: false, reason: "invalid" });
+        expect(i).toMatchObject({ ok: false, reason: "invalid" });
+        for (const out of [v, i]) {
+          const logged = await refusalById(db, out.correlation_id);
+          expect(logged, ref).toHaveLength(1);
+          expect(logged[0].organization_id).toBeNull(); // a company only from a MATCHED invite
+          expect(logged[0].reason).toMatch(/^(unknown_ref|malformed_ref)$/);
+        }
       }
       expect(await row(db, made.id)).toEqual(before);
       expect((await audit(db, a.org)).map((e) => e.action)).toEqual(["INTEGRATION_INVITE_CREATED", "INTEGRATION_INVITE_OPENED", "INTEGRATION_INVITE_CODE_ISSUED"]);
@@ -381,9 +399,9 @@ describe("the code, single use and the whole path", () => {
       const id = (await db.query(`INSERT INTO public.integration_connect_invites (organization_id, provider, ref, recipient_email, created_by, created_at, expires_at)
         VALUES ($1,'xero',$2,$3,$4, now() - interval '25 hours', now() - interval '1 hour') RETURNING id`, [a.org, ref, RECIPIENT, a.admin.id])).rows[0].id as string;
       expect(await peek(db, ref)).toBeNull();
-      expect(await issue(db, ref)).toEqual({ ok: false, reason: "invalid" });
-      expect(await verify(db, ref, newHash())).toEqual({ ok: false, reason: "invalid" });
-      expect(await issue(db, ref)).toEqual({ ok: false, reason: "invalid" });
+      expect(await issue(db, ref)).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await verify(db, ref, newHash())).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await issue(db, ref)).toMatchObject({ ok: false, reason: "invalid" });
       expect(await audit(db, a.org, "INTEGRATION_INVITE_EXPIRED")).toHaveLength(1);
       expect(await states(db, id)).toBe(0);
       // another one that no one ever opened is recorded when the admin makes the next invite
@@ -414,13 +432,13 @@ describe("the code, single use and the whole path", () => {
       const r = await row(db, made.id);
       expect([r.revoke_reason, r.revoked_by, r.code_hash]).toEqual(["cancelled", a.admin.id, null]);
       expect(await peek(db, made.ref)).toBeNull();
-      expect(await verify(db, made.ref, hash)).toEqual({ ok: false, reason: "invalid" });
-      expect(await issue(db, made.ref)).toEqual({ ok: false, reason: "invalid" });
+      expect(await verify(db, made.ref, hash)).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await issue(db, made.ref)).toMatchObject({ ok: false, reason: "invalid" });
       expect(await states(db, made.id)).toBe(0);
       const revoked = await audit(db, a.org, "INTEGRATION_INVITE_REVOKED");
       expect(revoked).toHaveLength(1);
       expect(revoked[0].metadata).toMatchObject({ reason: "cancelled", by: a.admin.id });
-      expect((await audit(db, a.org, "INTEGRATION_INVITE_REFUSED")).map((e) => e.metadata.reason)).toEqual(["revoked", "revoked"]);
+      expect((await refusals(db, a.org)).map((r) => r.reason)).toEqual(["revoked", "revoked"]);
     });
   });
 
@@ -459,13 +477,13 @@ describe("the code, single use and the whole path", () => {
         await issue(db, made.ref, hash);
         await db.query(sql, [a.admin.id, a.org]);
         expect(await peek(db, made.ref), label).toBeNull();
-        expect(await verify(db, made.ref, hash), label).toEqual({ ok: false, reason: "invalid" });
+        expect(await verify(db, made.ref, hash), label).toMatchObject({ ok: false, reason: "invalid" });
         expect(await states(db, made.id), label).toBe(0);
         const r = await row(db, made.id);
         expect(r.used_at, label).toBeNull();
         expect(r.revoke_reason, label).toBe("creator_not_admin");
-        expect(await issue(db, made.ref), label).toEqual({ ok: false, reason: "invalid" });
-        expect((await audit(db, a.org, "INTEGRATION_INVITE_REFUSED")).map((e) => e.metadata.reason).slice(0, 1), label).toEqual(["creator_not_admin"]);
+        expect(await issue(db, made.ref), label).toMatchObject({ ok: false, reason: "invalid" });
+        expect((await refusals(db, a.org)).map((r) => r.reason).slice(0, 1), label).toEqual(["creator_not_admin"]);
       });
     }
   });
@@ -495,9 +513,242 @@ describe("the code, single use and the whole path", () => {
       await verify(db, made.ref, hash, state);
       await create(db, a.admin, "second@firm.example");
       const all = JSON.stringify(await audit(db, a.org));
-      for (const secret of [made.ref, hash, state, RECIPIENT, "second@firm.example"]) expect(all).not.toContain(secret);
+      const log = JSON.stringify((await db.query("SELECT * FROM security_audit.integration_invite_refusals WHERE organization_id=$1", [a.org])).rows);
+      expect(log).toContain("wrong_code");
+      for (const secret of [made.ref, hash, state, RECIPIENT, "second@firm.example"]) { expect(all).not.toContain(secret); expect(log).not.toContain(secret); }
+      expect(log).toContain(await hashOf(db, made.ref));
       expect(all).toContain("a***@firm.example");
       expect(all).not.toMatch(/code_hash|token_hash|"ref"|"code"/);
+    });
+  });
+});
+
+describe("BLOCK: expired still redeemable", () => {
+  it("a code that is still valid does not keep an expired invite alive: verify, a new code and the page are all refused, nothing is used up, and the expiry is audited once", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "exp-code");
+      const made = await create(db, a.admin);
+      const hash = newHash();
+      await issue(db, made.ref, hash);
+      expect(await peek(db, made.ref)).not.toBeNull(); // the page was opened before the expiry
+      await expireNow(db, made.id);
+      // the code itself has not run out
+      await db.query("UPDATE public.integration_connect_invites SET code_expires_at = now() + interval '10 minutes' WHERE id=$1", [made.id]);
+      expect(await peek(db, made.ref)).toBeNull();
+      const v = await verify(db, made.ref, hash);
+      expect(v).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await refusalById(db, v.correlation_id)).toMatchObject([{ step: "verify", reason: "expired", organization_id: a.org }]);
+      expect(await issue(db, made.ref)).toMatchObject({ ok: false, reason: "invalid" });
+      expect(await states(db, made.id)).toBe(0);
+      const r = await row(db, made.id);
+      expect([r.used_at, r.code_hash]).toEqual([null, null]); // the stale code is wiped
+      expect(await audit(db, a.org, "INTEGRATION_INVITE_EXPIRED")).toHaveLength(1);
+    });
+  });
+
+  it("clock edge: an invite a minute from expiry hands out a code that never outlives it, and its state never outlives it either", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "exp-edge");
+      const ref = newRef();
+      const id = (await db.query(`INSERT INTO public.integration_connect_invites (organization_id, provider, ref, recipient_email, created_by, created_at, expires_at)
+        VALUES ($1,'xero',$2,$3,$4, now() - interval '23 hours 59 minutes', now() + interval '1 minute') RETURNING id`, [a.org, ref, RECIPIENT, a.admin.id])).rows[0].id as string;
+      const hash = newHash();
+      expect(await issue(db, ref, hash)).toMatchObject({ ok: true });
+      const r = await row(db, id);
+      expect(Date.parse(String(r.code_expires_at))).toBeLessThanOrEqual(Date.parse(String(r.expires_at)));
+      expect(await verify(db, ref, hash)).toMatchObject({ ok: true });
+      const st = (await db.query("SELECT expires_at FROM public.integration_oauth_states WHERE via_invite=$1", [id])).rows[0];
+      expect(Date.parse(String(st.expires_at))).toBeLessThanOrEqual(Date.parse(String(r.expires_at)));
+    });
+  });
+
+  it("an expired invite can't be revoked into life or redeemed by any path: revoke says no, the old 107 functions don't exist", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "exp-revoke");
+      const made = await create(db, a.admin);
+      await expireNow(db, made.id);
+      expect(ok(await as<{ r: boolean }>(db, a.admin, "SELECT public.integration_invite_revoke($1) AS r", [made.id]))[0].r).toBe(false);
+      expect((await svc(db, "SELECT public.integration_invite_redeem($1,$2,$3)", [newHash(), newHash(), cipher()])).error).toMatchObject({ code: "42883" });
+    });
+  });
+
+  it("the OAuth callback after expiry: verified before the expiry, called after it: refused, the state is used up, NO connection is stored, the refusal is traced", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "exp-callback");
+      const made = await create(db, a.admin);
+      const hash = newHash(), state = newHash();
+      await issue(db, made.ref, hash);
+      await verify(db, made.ref, hash, state);
+      await expireNow(db, made.id);
+      const c = ok(await svc<{ c: Json }>(db, "SELECT public.integration_oauth_consume_invite('xero',$1) AS c", [state]))[0].c;
+      expect(c).toMatchObject({ ok: false, reason: "expired" });
+      expect(c).not.toHaveProperty("verifier_enc");
+      expect(c).not.toHaveProperty("organization_id");
+      expect(await refusalById(db, c.correlation_id)).toMatchObject([{ step: "callback", reason: "expired", organization_id: a.org, ref_hash: await hashOf(db, made.ref) }]);
+      // the state is gone either way: a second try finds nothing, and nothing was connected
+      expect(ok(await svc<{ c: Json | null }>(db, "SELECT public.integration_oauth_consume_invite('xero',$1) AS c", [state]))[0].c).toBeNull();
+      expect((await db.query("SELECT count(*)::int AS n FROM public.integration_connections WHERE organization_id=$1", [a.org])).rows[0].n).toBe(0);
+    });
+  });
+
+  it("the OAuth callback also re-checks the company and the creating admin: demoted between the code and the callback means no connection", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "cb-demote");
+      const made = await create(db, a.admin);
+      const hash = newHash(), state = newHash();
+      await issue(db, made.ref, hash);
+      await verify(db, made.ref, hash, state);
+      await db.query("UPDATE public.organization_members SET role='office' WHERE user_id=$1 AND organization_id=$2", [a.admin.id, a.org]);
+      expect(ok(await svc<{ c: Json }>(db, "SELECT public.integration_oauth_consume_invite('xero',$1) AS c", [state]))[0].c).toMatchObject({ ok: false, reason: "creator_not_admin" });
+    });
+  });
+
+  it("an unexpired invite still passes the callback check (the check does not refuse good use)", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "cb-good");
+      const made = await create(db, a.admin);
+      const hash = newHash(), state = newHash();
+      await issue(db, made.ref, hash);
+      await verify(db, made.ref, hash, state);
+      expect(ok(await svc<{ c: Json }>(db, "SELECT public.integration_oauth_consume_invite('xero',$1) AS c", [state]))[0].c).toMatchObject({ organization_id: a.org, user_id: a.admin.id });
+    });
+  });
+});
+
+describe("BLOCK: forwarded link bypassing the recipient check", () => {
+  it("no caller can pick or change the address: the code request takes no address, the table can't be written through the API, and the address in the answer is the bound one", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "fwd-bound");
+      const made = await create(db, a.admin, "bound@firm.example");
+      const args = (await db.query("SELECT proargnames FROM pg_proc WHERE oid = to_regprocedure('public.integration_invite_code_issue(text,text)')")).rows[0].proargnames as string[];
+      expect(args).toEqual(["p_ref", "p_code_hash"]);
+      for (const who of [a.admin, a.office, "anon" as const]) {
+        expect((await as(db, who, "UPDATE public.integration_connect_invites SET recipient_email = 'attacker@evil.example'")).error).toMatchObject({ code: "42501" });
+      }
+      expect(await issue(db, made.ref)).toMatchObject({ ok: true, recipient: "bound@firm.example" });
+      expect((await row(db, made.id)).recipient_email).toBe("bound@firm.example");
+    });
+  });
+
+  it("whoever holds only the link (a forwardee) gets nowhere: no code can be verified before one is requested, guesses are counted and traced, and no state ever exists", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "fwd-guess");
+      const made = await create(db, a.admin);
+      // a forwardee can't make the code reach themselves, so they only guess: first without any code requested, then after the real recipient's request
+      expect(await verify(db, made.ref, newHash())).toMatchObject({ ok: false, reason: "code_expired" });
+      await issue(db, made.ref, newHash());
+      const tries: Json[] = [];
+      for (let n = 0; n < 5; n += 1) tries.push(await verify(db, made.ref, newHash()));
+      expect(tries.map((t) => t.reason)).toEqual(["wrong_code", "wrong_code", "wrong_code", "wrong_code", "locked"]);
+      expect(await states(db, made.id)).toBe(0);
+      for (const t of tries) expect(await refusalById(db, t.correlation_id)).toHaveLength(1);
+    });
+  });
+
+  it("a code issued for one invite does not open another invite to the same address", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "fwd-other");
+      const one = await create(db, a.admin);
+      const two = await create(db, a.admin);
+      const h1 = newHash();
+      await issue(db, one.ref, h1);
+      await issue(db, two.ref, newHash());
+      expect(await verify(db, two.ref, h1)).toMatchObject({ ok: false, reason: "wrong_code" });
+    });
+  });
+});
+
+describe("BLOCK: untraceable refusals", () => {
+  it("every refusal path returns a correlation id that is a row of the security log: wrong code, locked, code expired, used, revoked, expired, unknown and malformed references, too many codes, wait", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "trace");
+      const seen: Array<[string, Json]> = [];
+      const m1 = await create(db, a.admin), m2 = await create(db, a.admin), m3 = await create(db, a.admin);
+      const h = newHash();
+      await issue(db, m1.ref, h);
+      seen.push(["wait", await issue(db, m1.ref)]);
+      seen.push(["wrong_code", await verify(db, m1.ref, newHash())]);
+      await db.query("UPDATE public.integration_connect_invites SET code_expires_at = now() - interval '1 second' WHERE id=$1", [m1.id]);
+      seen.push(["code_expired", await verify(db, m1.ref, h)]);
+      await db.query("UPDATE public.integration_connect_invites SET code_expires_at = now() + interval '5 minutes' WHERE id=$1", [m1.id]);
+      await verify(db, m1.ref, h); // used
+      seen.push(["used", await verify(db, m1.ref, h)]);
+      await as(db, a.admin, "SELECT public.integration_invite_revoke($1)", [m2.id]);
+      seen.push(["revoked", await issue(db, m2.ref)]);
+      await expireNow(db, m3.id);
+      seen.push(["expired", await verify(db, m3.ref, newHash())]);
+      seen.push(["unknown_ref", await verify(db, newRef(), newHash())]);
+      seen.push(["malformed_ref", await issue(db, "short", newHash())]);
+      const m4 = await create(db, a.admin);
+      for (let n = 0; n < 5; n += 1) { await unthrottle(db, m4.id); await issue(db, m4.ref); }
+      await unthrottle(db, m4.id);
+      seen.push(["too_many_codes", await issue(db, m4.ref)]);
+      for (const [reason, out] of seen) {
+        expect(out.ok, reason).toBe(false);
+        expect(out.correlation_id, reason).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+        const logged = await refusalById(db, out.correlation_id);
+        expect(logged, reason).toHaveLength(1);
+        expect(logged[0].reason, reason).toBe(reason);
+        expect(logged[0].ref_hash === null || /^[0-9a-f]{16}$/.test(logged[0].ref_hash!), reason).toBe(true);
+      }
+      // two refusals never share an id
+      expect(new Set(seen.map(([, o]) => o.correlation_id)).size).toBe(seen.length);
+    });
+  });
+
+  it("the refusal log keeps a hash of the reference only, and a company only for a matched invite", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "trace-hash");
+      const made = await create(db, a.admin);
+      const out = await verify(db, made.ref, newHash());
+      const [r] = await refusalById(db, out.correlation_id);
+      expect(r.ref_hash).toBe(await hashOf(db, made.ref));
+      expect(r.organization_id).toBe(a.org);
+      const all = JSON.stringify((await db.query("SELECT * FROM security_audit.integration_invite_refusals WHERE organization_id=$1", [a.org])).rows);
+      expect(all).not.toContain(made.ref);
+      const stranger = await verify(db, newRef(), newHash());
+      expect((await refusalById(db, stranger.correlation_id))[0].organization_id).toBeNull();
+    });
+  });
+
+  it("the app's own refusals (page for an invite not open, rate limit, callback state, bad origin): service role only, the reason for 'not_open' is worked out by the database, an unknown reason is 'other', an id given twice is one row", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "trace-app");
+      const made = await create(db, a.admin);
+      const log = async (step: string, reason: string, ref: string | null, id = randomUUID()) =>
+        ok(await svc<{ r: string }>(db, "SELECT public.integration_invite_refusal_log($1,$2,$3,$4) AS r", [step, reason, ref, id]))[0].r;
+      const open = await log("page", "not_open", made.ref);
+      expect((await refusalById(db, open))[0]).toMatchObject({ reason: "creator_not_admin", organization_id: a.org }); // matched, but nothing marks why: its admin check
+      await as(db, a.admin, "SELECT public.integration_invite_revoke($1)", [made.id]);
+      const revoked = await log("page", "not_open", made.ref);
+      expect((await refusalById(db, revoked))[0]).toMatchObject({ reason: "revoked", organization_id: a.org });
+      expect((await refusalById(db, await log("page", "not_open", newRef())))[0]).toMatchObject({ reason: "unknown_ref", organization_id: null });
+      expect((await refusalById(db, await log("page", "not_open", "nope")))[0]).toMatchObject({ reason: "malformed_ref", organization_id: null });
+      expect((await refusalById(db, await log("request", "rate_limited", null)))[0]).toMatchObject({ reason: "rate_limited", ref_hash: null, organization_id: null });
+      expect((await refusalById(db, await log("callback", "callback_state", null)))[0]).toMatchObject({ step: "callback", reason: "callback_state" });
+      expect((await refusalById(db, await log("request", "bad_origin", made.ref)))[0]).toMatchObject({ reason: "bad_origin" });
+      expect((await refusalById(db, await log("nonsense", "made_up_reason", null)))[0]).toMatchObject({ step: "page", reason: "other" });
+      const same = randomUUID();
+      await log("request", "rate_limited", null, same);
+      await log("request", "rate_limited", null, same);
+      expect(await refusalById(db, same)).toHaveLength(1);
+      for (const who of [a.admin, a.office, "anon" as const]) {
+        expect((await as(db, who, "SELECT public.integration_invite_refusal_log('page','other',null,null)")).error).toMatchObject({ code: "42501" });
+      }
+    });
+  });
+
+  it("nobody can read or write the refusal log through the API, not even the service role, and its writer can't be called", async () => {
+    await inTx(async (db) => {
+      const a = await company(db, "trace-grants");
+      for (const who of [a.admin, a.office, "anon" as const]) {
+        expect((await as(db, who, "SELECT count(*) FROM security_audit.integration_invite_refusals")).error, "select").toBeDefined();
+        expect((await as(db, who, "DELETE FROM security_audit.integration_invite_refusals")).error, "delete").toBeDefined();
+        expect((await as(db, who, "SELECT security_audit.integration_invite_refuse('page','other',null,null)")).error, "writer").toBeDefined();
+      }
+      expect((await svc(db, "SELECT count(*) FROM security_audit.integration_invite_refusals")).error).toBeDefined();
+      expect((await svc(db, "INSERT INTO security_audit.integration_invite_refusals(step,reason) VALUES ('page','other')")).error).toBeDefined();
+      expect((await svc(db, "SELECT security_audit.integration_invite_refuse('page','other',null,null)")).error).toBeDefined();
     });
   });
 });
@@ -513,7 +764,7 @@ describe("concurrency: two redeems of one invite at the same moment", () => {
     }));
     const outcomes = await Promise.all([0, 1].map(() => withDb(async (db) => committed(db, async () => verify(db, co.made.ref, co.hash)))));
     expect(outcomes.filter((o) => o.ok === true)).toHaveLength(1);
-    expect(outcomes.filter((o) => o.ok !== true)).toEqual([{ ok: false, reason: "invalid" }]);
+    expect(outcomes.filter((o) => o.ok !== true)).toMatchObject([{ ok: false, reason: "invalid" }]);
     await withDb(async (db) => expect(await states(db, co.made.id)).toBe(1));
   });
 });

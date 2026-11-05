@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, createHmac, randomBytes, randomInt } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, randomUUID } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -117,61 +117,90 @@ export async function inviteRateOk(service: SupabaseClient, request: Request): P
   }
 }
 
+/** A hash of a reference for the server's own log lines: 16 hex characters, never the reference. */
+export const refHash = (ref: string) => createHash("sha256").update(ref.slice(0, 200), "utf8").digest("hex").slice(0, 16);
+
+export type RefusalStep = "page" | "code" | "verify" | "callback" | "request";
+export type RefusalReason = "not_open" | "unknown_ref" | "malformed_ref" | "rate_limited" | "callback_state" | "callback_error" | "redirect_not_allowed" | "mail_failed" | "bad_origin" | "wrong_code";
+
+/**
+ * A refusal the app itself meets (a malformed or unknown reference, a page for an invite that isn't open, a rate limit, a callback with an unknown
+ * state or a failed hand-back) goes to the SECURITY LOG (integration_invite_refusal_log, never a company's audit) under a fresh random correlation id,
+ * which is also written to the server log and shown on the page. Only the id, the step, the reason and a hash of the reference are ever written.
+ * Best effort: if the database can't be written, the server log still has the id. Returns the id.
+ */
+export async function logInviteRefusal(service: SupabaseClient | null, step: RefusalStep, reason: RefusalReason, ref?: string): Promise<string> {
+  const id = randomUUID();
+  console.warn("[integrations] invite refused:", id, step, reason, ref ? refHash(ref) : "-");
+  if (service) {
+    await Promise.resolve(service.rpc("integration_invite_refusal_log", { p_step: step, p_reason: reason, p_ref: ref ? ref.slice(0, 200) : null, p_correlation: id }))
+      .catch(() => undefined);
+  }
+  return id;
+}
+
 export type CodeIssue =
   | { ok: true; code: string; recipient: string; companyName: string; organizationId: string; sentNumber: number }
-  | { ok: false; reason: "invalid" | "too_many_codes" | "wait" };
+  | { ok: false; reason: "invalid" | "too_many_codes" | "wait"; correlationId?: string };
 
 /** "E-mail me a code": the database keeps the code's hash and answers with the BOUND address; the caller e-mails the code there and never logs it. */
 export async function issueInviteCode(service: SupabaseClient, ref: string, key: Buffer): Promise<CodeIssue> {
-  if (!INVITE_REF.test(ref)) return { ok: false, reason: "invalid" };
+  if (!INVITE_REF.test(ref)) return { ok: false, reason: "invalid", correlationId: await logInviteRefusal(service, "code", "malformed_ref", ref) };
   const code = newInviteCode();
-  const out = await serviceDb(service).rpc<{ ok?: boolean; reason?: string; recipient?: string; company_name?: string; organization_id?: string; sent_number?: number } | null>(
+  const out = await serviceDb(service).rpc<{ ok?: boolean; reason?: string; recipient?: string; company_name?: string; organization_id?: string; sent_number?: number; correlation_id?: string } | null>(
     "integration_invite_code_issue", { p_ref: ref, p_code_hash: inviteCodeHash(key, ref, code) });
   if (out?.ok === true && typeof out.recipient === "string" && typeof out.company_name === "string" && typeof out.organization_id === "string") {
     return { ok: true, code, recipient: out.recipient, companyName: out.company_name, organizationId: out.organization_id, sentNumber: Number(out.sent_number) || 1 };
   }
-  return { ok: false, reason: out?.reason === "too_many_codes" || out?.reason === "wait" ? out.reason : "invalid" };
+  return { ok: false, reason: out?.reason === "too_many_codes" || out?.reason === "wait" ? out.reason : "invalid", correlationId: safeId(out?.correlation_id) };
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A correlation id from the database, only if it really is one (it is printed on a page). */
+const safeId = (v: unknown): string | undefined => (typeof v === "string" && UUID_RE.test(v) ? v : undefined);
 
 export type RedeemOutcome =
   | { ok: true; url: string }
-  | { ok: false; reason: "invalid" | "code_expired" | "wrong_code" | "locked" | "redirect_not_allowed"; attemptsLeft?: number };
+  | { ok: false; reason: "invalid" | "code_expired" | "wrong_code" | "locked" | "redirect_not_allowed"; attemptsLeft?: number; correlationId?: string };
 
 /**
  * The code is typed: checked and the invite used up (once) in one database call, and Xero's sign-in URL returned (state + PKCE as an admin's
  * own Connect). The redirect URI must be on the exact allow list BEFORE anything is used up.
  */
 export async function redeemInvite(service: SupabaseClient, ref: string, code: string, ready: { config: XeroConfig; key: Buffer }, env: Record<string, string | undefined> = process.env): Promise<RedeemOutcome> {
-  if (!INVITE_REF.test(ref) || !INVITE_CODE.test(code)) return { ok: false, reason: "invalid" };
+  if (!INVITE_REF.test(ref) || !INVITE_CODE.test(code)) return { ok: false, reason: "invalid", correlationId: await logInviteRefusal(service, "verify", INVITE_REF.test(ref) ? "wrong_code" : "malformed_ref", ref) };
   const redirect = allowedInviteRedirect(ready.config, env);
-  if (!redirect) return { ok: false, reason: "redirect_not_allowed" };
+  if (!redirect) return { ok: false, reason: "redirect_not_allowed", correlationId: await logInviteRefusal(service, "verify", "redirect_not_allowed", ref) };
   const auth = newAuthorisation();
-  let out: { ok?: boolean; reason?: string; attempts_left?: number } | null;
+  let out: { ok?: boolean; reason?: string; attempts_left?: number; correlation_id?: string } | null;
   try {
     out = await serviceDb(service).rpc("integration_invite_code_verify", {
       p_ref: ref, p_code_hash: inviteCodeHash(ready.key, ref, code), p_state_hash: auth.stateHash,
       p_verifier_enc: encryptSecret(auth.verifier, inviteVerifierContext(auth.stateHash), ready.key),
     });
   } catch (err) {
-    if (err instanceof DbError && (err.hint === "invite_invalid" || err.code === "42501")) return { ok: false, reason: "invalid" };
+    if (err instanceof DbError && (err.hint === "invite_invalid" || err.code === "42501")) return { ok: false, reason: "invalid", correlationId: await logInviteRefusal(service, "verify", "unknown_ref", ref) };
     throw err;
   }
   if (out?.ok === true) return { ok: true, url: authorizeUrl({ ...ready.config, redirectUri: redirect }, auth.state, auth.challenge) };
   const reason = out?.reason;
-  if (reason === "code_expired" || reason === "locked") return { ok: false, reason };
-  if (reason === "wrong_code") return { ok: false, reason, attemptsLeft: typeof out?.attempts_left === "number" ? out.attempts_left : undefined };
-  return { ok: false, reason: "invalid" };
+  const correlationId = safeId(out?.correlation_id);
+  if (reason === "code_expired" || reason === "locked") return { ok: false, reason, correlationId };
+  if (reason === "wrong_code") return { ok: false, reason, attemptsLeft: typeof out?.attempts_left === "number" ? out.attempts_left : undefined, correlationId };
+  return { ok: false, reason: "invalid", correlationId };
 }
 
 /** Xero sent the accountant back: the invite's state (only an invite's) is used up and the connection completed for its company. */
 export async function finishInviteConnect(service: SupabaseClient, state: string, code: string, ready: { config: XeroConfig; key: Buffer },
-                                          deps: { fetchImpl?: typeof fetch; now?: () => number; env?: Record<string, string | undefined> } = {}): Promise<ConnectOutcome> {
+                                          deps: { fetchImpl?: typeof fetch; now?: () => number; env?: Record<string, string | undefined> } = {}): Promise<ConnectOutcome & { correlationId?: string }> {
   // The redirect URI sent to Xero's token endpoint is the one on the allow list; anything else is refused before the state is used up.
   const redirect = allowedInviteRedirect(ready.config, deps.env ?? process.env);
-  if (!redirect) return { ok: false, reason: "not_configured" };
+  if (!redirect) return { ok: false, reason: "not_configured", correlationId: await logInviteRefusal(service, "callback", "redirect_not_allowed") };
   const stateHash = hashState(state);
-  const consumed = await serviceDb(service).rpc<{ organization_id: string; user_id: string; verifier_enc: string } | null>("integration_oauth_consume_invite", { p_provider: "xero", p_state_hash: stateHash });
-  if (!consumed) return { ok: false, reason: "expired" };
+  const consumed = await serviceDb(service).rpc<{ ok?: boolean; reason?: string; correlation_id?: string; organization_id: string; user_id: string; verifier_enc: string } | null>("integration_oauth_consume_invite", { p_provider: "xero", p_state_hash: stateHash });
+  if (!consumed) return { ok: false, reason: "expired", correlationId: await logInviteRefusal(service, "callback", "callback_state") };
+  // The database re-checked the INVITE at this moment (not expired, not cancelled, its admin still an admin): nothing is exchanged or stored otherwise.
+  if (consumed.ok === false || typeof consumed.organization_id !== "string") return { ok: false, reason: "expired", correlationId: safeId(consumed.correlation_id) };
   const verifier = decryptSecret(consumed.verifier_enc, inviteVerifierContext(stateHash), ready.key);
   return completeConnect(service, consumed.organization_id, consumed.user_id, verifier, code, { config: { ...ready.config, redirectUri: redirect }, key: ready.key }, deps);
 }
@@ -192,6 +221,9 @@ const PAGE: Record<string, { title: string; body: string }> = {
   mail_failed: { title: "The code couldn't be sent", body: "Tolra couldn't e-mail the code just now. Nothing was used up. Try again later, or ask for a new link." },
 };
 
+/** "Reference: <id>" for a refused request: the random correlation id only, so it can be quoted and traced in the security log. */
+export const referenceLine = (id?: string) => (id && UUID_RE.test(id) ? `<p style="font-size:13px">Reference: <code>${id}</code></p>` : "");
+
 export const escapeHtml = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 /** The fixed, self-contained page the public link routes answer with (no app shell; the accountant invite (129) uses it too). */
@@ -207,9 +239,9 @@ export function page(title: string, inner: string, status: number, extra: Record
 }
 
 /** A fixed page for the accountant (no Tolra session, so no app page): fixed text by outcome only, nothing from the request. */
-export function invitePage(outcome: string, status = 200): Response {
+export function invitePage(outcome: string, status = 200, correlationId?: string): Response {
   const p = PAGE[outcome] ?? PAGE.failed;
-  return page(p.title, `<h1>${p.title}</h1><p>${p.body}</p>`, status);
+  return page(p.title, `<h1>${p.title}</h1><p>${p.body}</p>${referenceLine(correlationId)}`, status);
 }
 
 /** What the confirm page can say above its forms: fixed texts only (never anything typed or received). */
@@ -227,13 +259,13 @@ const NOTICE: Record<InviteNotice, string> = {
  * The link's page for an open link: "Connect <company> to Xero", the masked address the code goes to, and two forms (same origin): e-mail me a code,
  * and type the code. Only the code form uses the link up. The company's name and the masked address are the only data on it (HTML-escaped).
  */
-export function inviteConfirmPage(companyName: string, recipientHint: string, notice?: InviteNotice, status = 200): Response {
+export function inviteConfirmPage(companyName: string, recipientHint: string, notice?: InviteNotice, status = 200, correlationId?: string): Response {
   const name = escapeHtml(companyName);
   const hint = escapeHtml(recipientHint);
   return page(`Connect ${name} to Xero`,
     `<h1>Connect ${name} to Xero</h1><p>You were sent this link to connect ${name}'s Tolra to its Xero organisation.</p>`
     + `<p>To make sure it is you, we send a one-time code to ${hint}. Only whoever can read that mailbox can continue.</p>`
-    + (notice ? `<p role="status"><strong>${NOTICE[notice]}</strong></p>` : "")
+    + (notice ? `<p role="status"><strong>${NOTICE[notice]}</strong></p>${referenceLine(correlationId)}` : "")
     + `<form method="post"><input type="hidden" name="action" value="send"><button type="submit">E-mail me a code</button></form>`
     + `<form method="post" autocomplete="off"><input type="hidden" name="action" value="verify">`
     + `<p><label>Code from the e-mail<br><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" required style="font:inherit;padding:8px;margin-top:4px"></label></p>`

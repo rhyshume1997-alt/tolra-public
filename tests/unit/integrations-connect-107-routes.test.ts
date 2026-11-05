@@ -42,8 +42,11 @@ const svcRpc = vi.fn<RpcFn>(async (fn) => {
   if (fn === "integration_invite_peek") return { data: { provider: "xero", company_name: "Alpha <Ltd>", recipient_hint: "a***@firm.example" }, error: null };
   if (fn === "integration_invite_code_issue") return { data: { ok: true, recipient: "acct@firm.example", company_name: "Alpha <Ltd>", organization_id: "org-1", sent_number: 1 }, error: null };
   if (fn === "integration_invite_code_verify") return { data: verify, error: null };
+  if (fn === "integration_oauth_consume_invite") return { data: consume, error: null };
   return { data: null, error: null };
 });
+/** What integration_oauth_consume_invite answers (null: no such state). */
+let consume: unknown = null;
 /** What integration_invite_code_verify answers. */
 let verify: unknown = { ok: true, organization_id: "org-1", provider: "xero" };
 /** The e-mails: the link (admin) and the code (public page). */
@@ -74,7 +77,7 @@ const ENV = { NEXT_PUBLIC_SITE_URL: "https://app.example.test", INTEGRATIONS_ENC
 const saved: Record<string, string | undefined> = {};
 beforeEach(() => {
   for (const [k, v] of Object.entries(ENV)) { saved[k] = process.env[k]; process.env[k] = v; }
-  session = null; refuse = null; platformRefusal = null; table = { data: null, error: null }; origin = true; rate = "ok"; verify = { ok: true, organization_id: "org-1", provider: "xero" };
+  session = null; refuse = null; platformRefusal = null; table = { data: null, error: null }; origin = true; rate = "ok"; verify = { ok: true, organization_id: "org-1", provider: "xero" }; consume = null;
   mail.link.mockClear(); mail.code.mockClear(); mail.link.mockResolvedValue({ ok: true }); mail.code.mockResolvedValue({ ok: true });
   for (const f of [userRpc, svcRpc, ownerRpc, createSupabaseAdminClient, microsoftReady, requireProfile, ms.beginMicrosoftConnect, ms.disconnectMicrosoft, ms.testMicrosoft]) f.mockClear();
 });
@@ -206,7 +209,9 @@ describe("opening a link (public)", () => {
       expect((await get(bad)).status).toBe(404);
       expect((await press(bad)).status).toBe(404);
     }
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
+    // Nothing about an invite is asked: only the rate limiter and the security log (a refusal each) are written.
+    expect(fns().every((f) => f === "auth_rate_hit" || f === "integration_invite_refusal_log")).toBe(true);
+    expect(fns().filter((f) => f === "integration_invite_refusal_log")).toHaveLength(4);
   });
 
   it("GET (a mail scanner, a chat preview, the accountant) only shows the company, the MASKED address and the two forms: nothing is used up, nothing is sent", async () => {
@@ -303,10 +308,10 @@ describe("opening a link (public)", () => {
     expect(fns()).toEqual(["auth_rate_hit"]);
   });
 
-  it("POST from another site is refused before anything", async () => {
+  it("POST from another site is refused before anything but the security log", async () => {
     origin = false;
     expect((await press(good())).status).toBe(403);
-    expect(createSupabaseAdminClient).not.toHaveBeenCalled();
+    expect(fns()).toEqual(["integration_invite_refusal_log"]);
   });
 
   it("Xero not set up, or the redirect address off the allow list: nothing is used up or sent", async () => {
@@ -328,7 +333,7 @@ describe("opening a link (public)", () => {
       expect((await press(good())).status).toBe(429);
       const cb = await (await import("@/app/api/integrations/invite/callback/route")).GET(new Request("https://app.example.test/api/integrations/invite/callback?state=s&code=c"));
       expect(cb.status).toBe(429);
-      expect(fns().every((f) => f === "auth_rate_hit")).toBe(true);
+      expect(fns().every((f) => f === "auth_rate_hit" || f === "integration_invite_refusal_log")).toBe(true);
     }
     const [, args] = svcRpc.mock.calls[0];
     expect(args).toMatchObject({ p_bucket: "integration_invite", p_window_seconds: 900, p_max: 20 });
@@ -337,7 +342,116 @@ describe("opening a link (public)", () => {
   it("the invite callback without a code completes nothing", async () => {
     const res = await (await import("@/app/api/integrations/invite/callback/route")).GET(new Request("https://app.example.test/api/integrations/invite/callback?state=x"));
     expect(res.status).toBe(400);
-    expect(svcRpc).not.toHaveBeenCalled();
+    expect(fns()).toEqual(["integration_invite_refusal_log"]);
+  });
+});
+
+const CORR = "5c1f3b0e-8a64-4f43-9d0a-2f6a7a1e9b11";
+const UUID_IN_PAGE = /Reference: <code>([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})<\/code>/;
+
+describe("BLOCK: untraceable refusals (routes)", () => {
+  const ref = randomBytes(16).toString("base64url");
+  const route = () => import("@/app/api/integrations/invite/[ref]/route");
+  const get = async (r: string) => (await route()).GET(new Request(`https://app.example.test/api/integrations/invite/${r}`), { params: Promise.resolve({ ref: r }) });
+  const press = async (fields: Record<string, string>, r = ref) =>
+    (await route()).POST(new Request(`https://app.example.test/api/integrations/invite/${r}`, { method: "POST", body: new URLSearchParams(fields) }), { params: Promise.resolve({ ref: r }) });
+  const logs = () => svcRpc.mock.calls.filter((c) => c[0] === "integration_invite_refusal_log").map((c) => c[1] as Record<string, unknown>);
+  const idOf = async (res: Response) => UUID_IN_PAGE.exec(await res.text())?.[1];
+
+  it("the page for a malformed reference, for an invite that isn't open and when rate limited: each answers with a reference id that is exactly the id written to the security log", async () => {
+    svcRpc.mockClear();
+    let res = await get("not-a-ref");
+    let id = await idOf(res);
+    expect(id).toBeDefined();
+    expect(logs().at(-1)).toMatchObject({ p_step: "page", p_reason: "malformed_ref", p_correlation: id });
+    svcRpc.mockImplementationOnce(async () => ({ data: true, error: null })).mockImplementationOnce(async () => ({ data: null, error: null }));
+    res = await get(ref);
+    id = await idOf(res);
+    expect(id).toBeDefined();
+    expect(logs().at(-1)).toMatchObject({ p_step: "page", p_reason: "not_open", p_correlation: id });
+    rate = "over";
+    res = await get(ref);
+    id = await idOf(res);
+    expect(res.status).toBe(429);
+    expect(logs().at(-1)).toMatchObject({ p_step: "request", p_reason: "rate_limited", p_correlation: id });
+  });
+
+  it("wrong code, locked, expired invite and the code e-mail failing: each page shows the database's correlation id (or the app's own), never the reference or the code", async () => {
+    verify = { ok: false, reason: "wrong_code", attempts_left: 2, correlation_id: CORR };
+    let res = await press({ action: "verify", code: "12345678" });
+    let html = await res.text();
+    expect(html).toContain(CORR);
+    for (const secret of [ref, "12345678"]) expect(html).not.toContain(secret);
+    verify = { ok: false, reason: "locked", correlation_id: CORR };
+    expect(await (await press({ action: "verify", code: "12345678" })).text()).toContain(CORR);
+    verify = { ok: false, reason: "invalid", correlation_id: CORR };
+    res = await press({ action: "verify", code: "12345678" });
+    expect(res.status).toBe(404);
+    expect(await res.text()).toContain(CORR);
+    verify = { ok: false, reason: "invalid", correlation_id: "<script>alert(1)</script>" }; // a bad id from the database is never printed
+    html = await (await press({ action: "verify", code: "12345678" })).text();
+    expect(html).not.toContain("<script>alert");
+    expect(html).not.toContain("Reference:");
+    svcRpc.mockClear();
+    mail.code.mockResolvedValueOnce({ ok: false, error: "x" });
+    res = await press({ action: "send" });
+    const id = await idOf(res);
+    expect(logs().at(-1)).toMatchObject({ p_step: "code", p_reason: "mail_failed", p_correlation: id });
+    expect(id).toBeDefined();
+  });
+
+  it("a request from another site, and an unknown action's neighbours: the cross-site refusal is traced too", async () => {
+    origin = false;
+    svcRpc.mockClear();
+    const res = await press({ action: "verify", code: "12345678" });
+    expect(res.status).toBe(403);
+    expect(logs().at(-1)).toMatchObject({ p_step: "request", p_reason: "bad_origin", p_correlation: await idOf(res) });
+  });
+});
+
+describe("the callback after expiry (route): no code exchange, no connection stored", () => {
+  const callback = async (q = "?state=the-state&code=the-code") => (await import("@/app/api/integrations/invite/callback/route")).GET(new Request(`https://app.example.test/api/integrations/invite/callback${q}`));
+  const fns = () => svcRpc.mock.calls.map((c) => c[0]);
+
+  it("the database says the invite expired: Xero is never called, nothing is stored, the page says so with the database's reference", async () => {
+    consume = { ok: false, reason: "expired", correlation_id: CORR };
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      const res = await callback();
+      expect(res.status).toBe(409);
+      const html = await res.text();
+      expect(html).toContain("That took too long");
+      expect(html).toContain(CORR);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(fns()).toEqual(["auth_rate_hit", "integration_oauth_consume_invite"]);
+      expect(fns()).not.toContain("integration_store_connection");
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("an unknown or used state: refused with its own traced reference, nothing exchanged", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      const res = await callback();
+      expect(res.status).toBe(409);
+      const id = UUID_IN_PAGE.exec(await res.text())?.[1];
+      expect(id).toBeDefined();
+      const logged = svcRpc.mock.calls.filter((c) => c[0] === "integration_invite_refusal_log").map((c) => c[1] as Record<string, unknown>);
+      expect(logged.at(-1)).toMatchObject({ p_step: "callback", p_reason: "callback_state", p_correlation: id });
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it("Xero hands back an error, a missing code, or too many requests: each is traced and shows its reference", async () => {
+    for (const q of ["?error=access_denied", "?state=x", "?state=s&code=c"]) {
+      svcRpc.mockClear();
+      rate = q === "?state=s&code=c" ? "over" : "ok";
+      const res = await callback(q);
+      const id = UUID_IN_PAGE.exec(await res.text())?.[1];
+      expect(id, q).toBeDefined();
+      expect(svcRpc.mock.calls.some((c) => c[0] === "integration_invite_refusal_log" && (c[1] as { p_correlation: string }).p_correlation === id), q).toBe(true);
+    }
   });
 });
 
