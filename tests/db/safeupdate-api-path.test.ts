@@ -76,9 +76,10 @@ describe.runIf(API)("safeupdate through the real API path", () => {
   });
 });
 
-describe.runIf(!API)("safeupdate through the real API path: backend not configured", () => {
-  it("is a failure in CI and the only skip-equivalent locally", () => {
-    if (process.env.CI) throw new Error("The disposable API is not configured in CI: the safeupdate API-path proof did not run");
-    expect(API).toBe(false);
+// Always runs (never reported as a skip): in CI the API must be configured, locally an absent backend is the one acceptable case.
+describe("safeupdate through the real API path: backend configured", () => {
+  it("is configured in CI", () => {
+    if (!API && process.env.CI) throw new Error("The disposable API is not configured in CI: the safeupdate API-path proof did not run");
+    expect(API || !process.env.CI).toBe(true);
   });
 });
