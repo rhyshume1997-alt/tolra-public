@@ -1,0 +1,13 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-sage-file-mode
+
+ ✓ tests/unit/year-end-payment-reconciliation.test.ts (3 tests) 20ms
+ ✓ tests/unit/year-end-export.test.ts (6 tests) 7ms
+ ✓ tests/unit/sage-file-export.test.ts (5 tests) 17ms
+
+ Test Files  3 passed (3)
+      Tests  14 passed (14)
+   Start at  09:39:57
+   Duration  2.12s (transform 331ms, setup 0ms, collect 1.55s, tests 43ms, environment 0ms, prepare 152ms)
+

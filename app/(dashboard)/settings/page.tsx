@@ -580,7 +580,7 @@ function YearEndExportCard() {
     }
   }
   return (
-    <Card>
+    <Card id="year-end-export">
       <CardHeader><CardTitle className="flex items-center gap-2"><FileArchive className="size-5 text-brand-accent" /> Year-end export</CardTitle></CardHeader>
       <CardContent className="space-y-3 text-sm">
         <p className="text-slate-600 dark:text-slate-300">One zip with the PDF of every issued invoice, sent quote, purchase order and delivery note in the period, plus <strong>summary.csv</strong> (opens in Excel: number, date, customer, net, VAT, gross, paid, balance due, paid date) and <strong>payments.csv</strong> (every payment recorded on those invoices). An invoice whose payment amount is not known is left blank and listed in problems.txt. Drafts are left out. The export is logged.</p>
