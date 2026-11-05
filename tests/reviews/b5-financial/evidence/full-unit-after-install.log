@@ -1,0 +1,1559 @@
+
+> quoteflow-jnr@0.1.0 test
+> vitest run
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/release-sql.test.ts (190 tests) 210ms
+stderr | tests/unit/mailbox-delegated.test.ts > idempotent ingestion > a store failure leaves the cursor where it was (the next check re-reads; nothing is lost or doubled)
+[mail/delegated] store failed Error
+
+stderr | tests/unit/mailbox-delegated.test.ts > PO capture (125) on the delegated check: suggest only, for that company only, never failing the check > the pass hands each company only the messages it stored for the first time, scoped to that company; counts in the summary
+[mail/poll] PO matching skipped error
+
+stderr | tests/unit/mailbox-delegated.test.ts > PO capture (125) on the delegated check: suggest only, for that company only, never failing the check > a message read again (already stored) is not matched again, and the check stands
+[mail/poll] PO matching skipped error
+
+stderr | tests/unit/mailbox-delegated.test.ts > PO capture (125) on the delegated check: suggest only, for that company only, never failing the check > the real step on the server's client: every read is the company's and the only write is 127's suggestion (no link_inbound_email)
+[mail/poll] PO matching skipped error
+
+ ✓ tests/unit/mailbox-delegated.test.ts (42 tests) 329ms
+ ✓ tests/unit/ai-helper-routes.test.ts (46 tests) 146ms
+stderr | tests/unit/ms-consent-app-test.test.ts > the signed state > works once: the first use is allowed, every later one refused, and a limiter that can't be used refuses
+[login] rate limiter unavailable 57014
+
+stderr | tests/unit/ms-consent-app-test.test.ts > Not set up yet: the routes answer a clean 503 not_configured, never a 500 > set up: Microsoft and Xero connect still reach their providers' flow (the 503 is only for 'not set up')
+[integrations] connect start failed: error
+
+stderr | tests/unit/ms-consent-app-test.test.ts > the 503 not_configured answers expose no configuration: the exact JSON body of every route > POST /api/integrations/xero/connect: 503, exactly { error, code }, nothing of the configuration
+[integrations] Xero is not set up: the redirect URI setting is unusable
+
+ ✓ tests/unit/ms-consent-app-test.test.ts (52 tests) 553ms
+ ✓ tests/unit/sliq-archive.test.ts (48 tests) 1345ms
+   ✓ command line > exits 0 for a good archive and non-zero for each kind of failure 749ms
+ ✓ tests/unit/admin-recent-mfa.test.ts (101 tests) 387ms
+ ✓ tests/unit/sliq-reconcile.test.ts (49 tests) 1214ms
+ ✓ tests/unit/api-route-guards.test.ts (23 tests) 538ms
+ ✓ tests/unit/ai-assistant.test.ts (27 tests) 302ms
+ ✓ tests/unit/costing-proxy.test.ts (86 tests) 6007ms
+   ✓ no client bundle reads COSTING_ENGINE_TOKEN / COSTING_ENGINE_URL > the only files that mention COSTING_ENGINE_* are the proxy, the status route and the server caller 3720ms
+   ✓ no client bundle reads COSTING_ENGINE_TOKEN / COSTING_ENGINE_URL > every file reachable from a 'use client' file by value imports is free of COSTING_ENGINE_* and does not import a server-only module 1845ms
+ ✓ tests/unit/company-email.test.ts (28 tests) 89ms
+stderr | tests/unit/wc-ai-cap-paths.test.ts > runAiHelper with per-company caps (app-level model; the database proof is tests/db/wc-ai-cap-paths.test.ts) > a provider that fails after an ok keeps the full reservation unless it certainly did no work (so the cap is never under-charged)
+[ai-helper] model call failed unavailable 
+[ai-helper] model call failed unavailable rate
+
+stderr | tests/unit/wc-ai-cap-paths.test.ts > runAiHelper with per-company caps (app-level model; the database proof is tests/db/wc-ai-cap-paths.test.ts) > without the service role nothing is reserved at all
+[ai-helper] service role not configured
+
+ ✓ tests/unit/wc-ai-cap-paths.test.ts (30 tests) 257ms
+ ✓ tests/unit/ai-helper.test.ts (31 tests) 81ms
+ ✓ tests/unit/integrations-connect-107.test.ts (28 tests) 86ms
+ ✓ tests/unit/machine-schedule.test.ts (46 tests) 20ms
+ ✓ tests/unit/sliq-import.test.ts (39 tests) 281ms
+ ✓ tests/unit/sliq-import-formats.test.ts (24 tests) 394ms
+ ✓ tests/unit/integrations-engine.test.ts (21 tests) 78ms
+ ✓ tests/unit/costing-rates-store.test.ts (21 tests) 21ms
+ ✓ tests/unit/wm-ms-isolation.test.ts (17 tests) 52ms
+ ✓ tests/unit/print-layout.test.ts (23 tests) 468ms
+ ✓ tests/unit/admin-users-add-existing.test.ts (36 tests) 99ms
+ ✓ tests/unit/job-board-play.test.ts (18 tests) 44ms
+ ✓ tests/unit/sliq-reconcile-output.test.ts (19 tests) 564ms
+ ✓ tests/unit/ai-finance-check-route.test.ts (35 tests) 221ms
+ ✓ tests/unit/admin-users-owner-takeover.test.ts (23 tests) 99ms
+stderr | tests/unit/job-flow.test.ts > an inspection kept offline (InspectOp) replays through inspect_job > a queued pass by the finisher is refused (held with the server's words); with an admin's reason it is recorded; a replay of the key answers it
+{
+  code: '42501',
+  hint: 'not_independent',
+  message: "You finished J-0001, so someone else must inspect it: the person who finished a job can't record its pass."
+}
+
+stderr | tests/unit/job-flow.test.ts > early release (release_job_early, 081): admin only, with a reason > says when it was already released, and hands back the server's refusal (the dialog words it with friendlyError)
+{
+  code: '42501',
+  hint: 'early_release_admin_only',
+  message: 'Only an admin can release a job before it passes inspection.'
+}
+
+ ✓ tests/unit/job-flow.test.ts (26 tests) 64ms
+ ✓ tests/unit/purchase-order-link.test.ts (25 tests) 67ms
+ ✓ tests/unit/admin-users-patch.test.ts (25 tests) 91ms
+ ✓ tests/unit/admin-users-ban-scope.test.ts (7 tests) 54ms
+ ✓ tests/unit/change-password-route.test.ts (31 tests) 85ms
+ ✓ tests/unit/time-day-flags.test.ts (19 tests) 76ms
+ ✓ tests/unit/m365-graph.test.ts (32 tests) 83ms
+stderr | tests/unit/integrations-connect-107-routes.test.ts > opening a link (public) > rate limited (20 in 15 minutes per IP), and fails closed when the limiter is down: nothing peeked or used up
+[login] rate limiter unavailable 57014
+[login] rate limiter unavailable 57014
+[login] rate limiter unavailable 57014
+
+ ✓ tests/unit/integrations-connect-107-routes.test.ts (32 tests) 259ms
+ ✓ tests/unit/email-templates.test.ts (20 tests) 226ms
+stderr | tests/unit/m365-routes.test.ts > /api/mail/status (drives the RFQ Check inbox button) > says not configured for another company's admin, a denied mailbox, and refuses non-admins
+[auth] request refused: profile-role 
+
+stderr | tests/unit/m365-routes.test.ts > who may use the mailbox > office of the mapped company gets 403 on every endpoint with zero calls
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+
+stderr | tests/unit/m365-routes.test.ts > who may use the mailbox > workshop of the mapped company gets 403 on every endpoint with zero calls
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+
+stderr | tests/unit/m365-routes.test.ts > who may use the mailbox > viewer of the mapped company gets 403 on every endpoint with zero calls
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+[auth] request refused: profile-role 
+
+stderr | tests/unit/m365-routes.test.ts > poll state > a stored paging link that isn't Microsoft Graph's is discarded and never followed
+[mail/poll] stored paging link discarded
+
+stderr | tests/unit/m365-routes.test.ts > send accounting > if the outcome can't be written the caller is told it is unknown
+[mail/send] outcome not recorded XX000
+
+stderr | tests/unit/m365-routes.test.ts > send accounting > a definite refusal (400) is recorded failed
+[mail/send] send failed ErrorInvalidRecipients
+[mail/send] graph error ErrorInvalidRecipients
+
+stderr | tests/unit/m365-routes.test.ts > send accounting > a timeout after the request went out is recorded unknown, and says so
+[mail/send] send unknown unreachable
+
+stderr | tests/unit/m365-routes.test.ts > send accounting > a server error after the request went out is recorded unknown, and says so
+[mail/send] send unknown http_502
+
+stderr | tests/unit/m365-routes.test.ts > resolve > is admin of the mapped company only, and audited
+[auth] request refused: profile-role 
+
+ ✓ tests/unit/m365-routes.test.ts (48 tests) 158ms
+ ✓ tests/unit/time-sheet.test.ts (26 tests) 53ms
+ ✓ tests/unit/security-headers.test.ts (20 tests) 593ms
+ ✓ tests/unit/reopen-sign-off.test.ts (20 tests) 205ms
+ ✓ tests/unit/payment-attempts.test.ts (22 tests) 15ms
+ ✓ tests/unit/attention-items.test.ts (46 tests) 87ms
+ ✓ tests/unit/email-ready-workflows.test.ts (28 tests) 435ms
+ ✓ tests/unit/org-settings-store.test.ts (24 tests) 86ms
+ ✓ tests/unit/ai-finance-check.test.ts (34 tests) 92ms
+ ✓ tests/unit/sliq-reconcile-protect.test.ts (16 tests) 886ms
+stderr | tests/unit/dashboard-tile-figures.test.ts > 132 loaders: one call per tile, the old reads while 132 is missing > another failure blanks only that tile (a dash), never falls back or fakes a number
+{
+  code: '57014',
+  message: 'canceling statement due to statement timeout'
+}
+{
+  code: '57014',
+  message: 'canceling statement due to statement timeout'
+}
+
+ ✓ tests/unit/dashboard-tile-figures.test.ts (29 tests) 164ms
+ ✓ tests/unit/accountant-invite-129.test.ts (11 tests) 975ms
+   ✓ the list's states > open until the expiry; accepted, cancelled and expired are not open 696ms
+ ✓ tests/unit/sync-status.test.ts (23 tests) 90ms
+ ✓ tests/unit/admin-users-sign-in.test.ts (16 tests) 66ms
+ ✓ tests/unit/sliq-reconcile-safety.test.ts (14 tests) 399ms
+ ✓ tests/unit/email-schedules-due.test.ts (35 tests) 142ms
+stderr | tests/unit/offline-clock-idle-shell.test.ts > the 12-hour offline clock with an idle shell (no queued changes) > offline: opened from an identity saved at T0, the app works until T0 + 12 h and locks just after it
+{
+  name: 'AuthRetryableFetchError',
+  message: 'Failed to fetch',
+  status: 0
+}
+
+ ✓ tests/unit/offline-clock-idle-shell.test.ts (9 tests) 1533ms
+   ✓ the 12-hour offline clock with an idle shell (no queued changes) > online: the saved identity is restarted at least every 10 minutes for two hours (the access recheck, not a per-minute pass) 873ms
+   ✓ the offline lock is measured from the last SUCCESSFUL verification, never later than 12 hours after it, and keeps queued work > online for two hours, then offline: open until last success + 12 h, locked just after; failed checks do not extend it 310ms
+stderr | tests/unit/pre-073-fallbacks.test.ts > Void > each refusal reads in plain English, never the raw database text
+{ code: 'XX000', message: 'relation "invoices" violates something' }
+
+stderr | tests/unit/pre-073-fallbacks.test.ts > Void > sends the trimmed reason once; a blank reason is never sent; a refusal or a network failure is a message, not a throw
+Error: Failed to fetch
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/pre-073-fallbacks.test.ts:124:37
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11
+    at withEnv (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)
+
+stderr | tests/unit/pre-073-fallbacks.test.ts > the invoice status allowlist (073) > a refused status reads in plain English
+{
+  code: '23514',
+  hint: 'invoice_status_not_allowed',
+  message: "An invoice's status must be exactly one of: draft, issued, sent, partial, paid, credited, void, cancelled, written_off."
+}
+{
+  code: '23514',
+  hint: 'invoice_status_not_allowed',
+  message: 'new row violates check constraint'
+}
+
+ ✓ tests/unit/pre-073-fallbacks.test.ts (18 tests) 29ms
+stderr | tests/unit/offline-photo-discard.test.ts > explicit sign-out (everything on the device) > Cancel keeps every queued and held photo; the questions list them and offer an export first
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:52:37)
+    at Module.confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:59:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+stderr | tests/unit/offline-photo-discard.test.ts > explicit sign-out (everything on the device) > OK exports the photos, then OK removes them (and only then are they wiped)
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:52:37)
+    at Module.confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:71:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+stderr | tests/unit/offline-photo-discard.test.ts > company switch (that company only) > Cancel keeps; the other company's photo isn't counted or touched
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:52:37)
+    at Module.confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:92:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+stderr | tests/unit/offline-photo-discard.test.ts > company switch (that company only) > OK (after the export offer) removes only that company's photos
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:52:37)
+    at Module.confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:100:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+stderr | tests/unit/offline-photo-discard.test.ts > a shared tablet: another person's unsynced work > sign-out describes and exports only the signed-in person's work; other people's is not mentioned, counted or removed
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:52:37)
+    at Module.confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:203:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+stderr | tests/unit/offline-photo-discard.test.ts > a shared tablet: another person's unsynced work > a company switch never counts or names another person's work
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:52:37)
+    at Module.confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-photo-discard.test.ts:234:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ tests/unit/offline-photo-discard.test.ts (15 tests) 55ms
+ ✓ tests/unit/mfa-step-up.test.ts (59 tests) 60ms
+ ✓ tests/unit/overview.test.ts (21 tests) 31ms
+stderr | tests/unit/customer-signoff.test.ts > apart from the internal sign-off > shows the database's messages for the person, and a friendly one otherwise
+Error: boom
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/customer-signoff.test.ts:129:33
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11
+
+ ✓ tests/unit/customer-signoff.test.ts (15 tests) 112ms
+ ✓ tests/unit/sliq-reconcile-money.test.ts (17 tests) 666ms
+ ✓ tests/unit/floor-attendance.test.ts (16 tests) 48ms
+ ✓ tests/unit/numbers.test.ts (24 tests) 57ms
+ ✓ tests/unit/bench-pause.test.ts (12 tests) 15ms
+ ✓ tests/unit/brand-flash.test.ts (21 tests) 29ms
+ ✓ tests/unit/global-search-route.test.ts (26 tests) 116ms
+ ✓ tests/unit/xero-batch-chunk.test.ts (20 tests) 17ms
+ ✓ tests/unit/accounting-token-isolation.test.ts (4 tests) 102ms
+ ✓ tests/unit/integrations-connect-safety.test.ts (10 tests) 161ms
+ ✓ tests/unit/job-machine-plan.test.ts (22 tests) 65ms
+ ✓ tests/unit/rehearsal-inject-point.test.ts (31 tests) 1546ms
+   ✓ rehearsal injection point > proof on migrations: with their section breaks removed, the old picker lands inside a body, the new one never does 694ms
+   ✓ rehearsal injection point > every current migration: the chosen point lies between statements, outside every body (and exists) 373ms
+   ✓ rehearsal candidates for 100 (it creates nothing: the probe is record_archive_state's new check, or set_archive_state's new body) > a check with no string literal gives no candidate; earlier files' lists are unchanged by the new fallback 429ms
+ ✓ tests/unit/xero-pr2-access.test.ts (19 tests) 166ms
+stderr | tests/unit/job-problems.test.ts > reading the open problems > the office's Needs attention read: rows with the job when 117 is there, nothing before it, null when the read failed
+{ code: 'XX000', message: 'boom' }
+
+ ✓ tests/unit/job-problems.test.ts (20 tests) 31ms
+ ✓ tests/unit/chase-run.test.ts (25 tests) 22ms
+ ✓ tests/unit/xero-mappings-send-log.test.ts (21 tests) 116ms
+ ✓ tests/unit/email-schedules-timesheet.test.ts (17 tests) 264ms
+ ✓ tests/unit/activity.test.ts (20 tests) 16ms
+ ✓ tests/unit/import-detect.test.ts (29 tests) 86ms
+ ✓ tests/unit/schedule-live.test.ts (20 tests) 45ms
+ ✓ tests/unit/offline-switch-other-tab.test.ts (12 tests) 268ms
+stderr | tests/unit/offline-concurrency.test.ts > offline outbox: no lost or duplicated work under concurrency > a storage transaction that aborts after its write succeeded rejects, and nothing is kept as saved
+Error: Offline storage transaction was aborted.
+    at FDBTransaction.tx.onabort (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/store.ts:83:43)
+    at invoke (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/fake-indexeddb/build/esm/lib/FakeEventTarget.js:14:16)
+    at invokeEventListeners (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/fake-indexeddb/build/esm/lib/FakeEventTarget.js:51:7)
+    at FDBTransaction.dispatchEvent (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/fake-indexeddb/build/esm/lib/FakeEventTarget.js:100:7)
+    at Immediate.<anonymous> (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/fake-indexeddb/build/esm/FDBTransaction.js:102:12)
+    at processImmediate (node:internal/timers:574:21)
+
+ ✓ tests/unit/offline-concurrency.test.ts (14 tests) 1163ms
+stderr | tests/unit/chase-approve.test.ts > Approve and send > a mailer failure is passed on and nothing is recorded
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > releases a clear invalid failure and retries only the reviewed text
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > releases a clear recipient_refused failure and retries only the reviewed text
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > releases a clear rate_limited failure and retries only the reviewed text
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > releases a clear no_provider failure and retries only the reviewed text
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > releases a clear provider_error failure and retries only the reviewed text
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > marks a returned uncertain result Needs checking and refuses every retry
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > marks a thrown uncertain result Needs checking and refuses every retry
+[send-audit] not recorded
+
+ ✓ tests/unit/chase-approve.test.ts (38 tests) 114ms
+stderr | tests/unit/chase-approve.test.ts > a second click while the first send is pending cannot send or release its claim
+[send-audit] not recorded
+
+stderr | tests/unit/chase-approve.test.ts > editing a released draft cancels the previous approval
+[send-audit] not recorded
+
+ ✓ tests/unit/sliq-reconcile-offline.test.ts (35 tests) 832ms
+   ✓ zero outbound network while the tool runs > as a real process under the repo's outbound-network guard, nothing is blocked (and nothing is attempted) 382ms
+ ✓ tests/unit/pdf-entry-points.test.ts (36 tests) 1989ms
+   ✓ each PDF builder loads the same document component on the press > app/(dashboard)/quotes/page.tsx: QuotePDF 907ms
+stderr | tests/unit/invoice-write-off-105.test.ts > writeOffInvoice / reverseWriteOff (the client calls) > not found, not authorised, an unknown failure and a thrown error
+{
+  code: 'XX000',
+  message: 'relation public.invoices violates something'
+}
+Error: Failed to fetch
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/invoice-write-off-105.test.ts:102:26
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ tests/unit/invoice-write-off-105.test.ts (15 tests) 126ms
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"42501","message":"x","hint":"not_company_admin"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 42501 not_company_admin
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"42501","message":"x","hint":"mfa_required"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 42501 mfa_required
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"23514","message":"x","hint":"last_admin"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 23514 last_admin
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"23514","message":"x","hint":"self_demotion"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 23514 self_demotion
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"23514","message":"x","hint":"self_removal"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 23514 self_removal
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"23514","message":"x","hint":"last_company"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 23514 last_company
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"42501","message":"x","hint":"support_membership"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 42501 support_membership
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"42501","message":"x","hint":"unknown_login"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 42501 unknown_login
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > a refusal ({"code":"40P01","message":"deadlock detected"}) comes back as a sentence; nothing else is touched
+[admin/users/companies] admin_set_company_access refused 40P01 no-hint
+
+stderr | tests/unit/admin-users-companies.test.ts > each change is the database's decision, made as the caller > one refused and one saved: 207 with both outcomes
+[admin/users/companies] admin_set_company_access refused 23514 last_admin
+
+stderr | tests/unit/admin-users-companies.test.ts > a login that also belongs to a company the caller doesn't administer (other_company_login) > a Marpet-only admin's grant is refused by the database: 403 with the plain sentence, no ban touched
+[admin/users/companies] admin_set_company_access refused 42501 other_company_login
+
+stderr | tests/unit/admin-users-companies.test.ts > a login that also belongs to a company the caller doesn't administer (other_company_login) > refused in one company and saved in another: 207, each outcome listed
+[admin/users/companies] admin_set_company_access refused 42501 other_company_login
+
+stderr | tests/unit/admin-users-companies.test.ts > a login that also belongs to a company the caller doesn't administer (other_company_login) > any other refusal keeps 409
+[admin/users/companies] admin_set_company_access refused 23514 last_admin
+
+ ✓ tests/unit/admin-users-companies.test.ts (25 tests) 87ms
+ ✓ tests/unit/sliq-reconcile-isolation.test.ts (13 tests) 374ms
+ ✓ tests/unit/tolra-ai.test.ts (27 tests) 105ms
+ ✓ tests/unit/mfa-guard.test.ts (14 tests) 65ms
+ ✓ tests/unit/data-import-run.test.ts (19 tests) 386ms
+   ✓ a check that failed on the road is sent once more, with the same key > a 502 from the gateway or a dropped connection: the dry run is repeated; a database refusal is not 307ms
+ ✓ tests/unit/machine-runs.test.ts (13 tests) 66ms
+ ✓ tests/unit/marketing-home.test.ts (18 tests) 1288ms
+   ✓ home page content > has exactly one h1, the proof line, and no prices or numeric claims 446ms
+ ✓ tests/unit/error-alert.test.ts (16 tests) 49ms
+stderr | tests/unit/offline-photos.test.ts > executePhotoOp: reserve, upload the exact object, finalise > a removed photo is refused for good, with the server's reason; missing bytes are refused too
+{
+  message: "This photo was removed, so it can't be uploaded.",
+  code: '42501',
+  hint: 'photo_removed'
+}
+
+ ✓ tests/unit/offline-photos.test.ts (13 tests) 41ms
+stderr | tests/unit/po-capture-poll.test.ts > suggestPoLinks > a failure while loading never throws: status failed
+[mail/poll] PO matching skipped error
+[mail/poll] PO matching skipped XX000
+
+stderr | tests/unit/po-capture-poll.test.ts > suggestPoLinks > a refused suggestion is counted and the rest carry on
+[mail/poll] PO suggestion not saved P0002
+
+stderr | tests/unit/po-capture-poll.test.ts > /api/mail/poll with the PO step > the matcher's data failing never fails the check
+[mail/poll] PO matching skipped error
+
+ ✓ tests/unit/po-capture-poll.test.ts (12 tests) 147ms
+ ✓ tests/unit/pay-worked-example.test.ts (22 tests) 110ms
+ ✓ tests/unit/f3-resend-test-send.test.ts (18 tests) 54ms
+ ✓ tests/unit/job-parts.test.ts (22 tests) 26ms
+ ✓ tests/unit/date-format.test.ts (15 tests) 41ms
+ ✓ tests/unit/new-company.test.ts (35 tests) 280ms
+ ✓ tests/unit/photo-image.test.ts (12 tests) 1557ms
+   ✓ preparePhoto > when no quality fits, the edge is reduced step by step; a photo that can't be made small enough is refused 1251ms
+ ✓ tests/unit/costing-price-part.test.ts (36 tests) 51ms
+ ✓ tests/unit/send-job.test.ts (16 tests) 98ms
+ ✓ tests/unit/customer-signoff-pdf.test.ts (17 tests) 3725ms
+   ✓ the printed block > prints on the delivery note, on one page, with name, statement and time 1153ms
+   ✓ the printed block > prints on the invoice, on one page, beside the totals 836ms
+   ✓ the printed block > prints a typed signature as text 473ms
+   ✓ the printed block > draws a drawn signature (the same note with an unreadable path has no stroke) 827ms
+   ✓ the printed block > without a sign-off the documents are exactly as before 421ms
+ ✓ tests/unit/check-migrations.test.ts (29 tests) 665ms
+stderr | tests/unit/wa-approve-binding.test.ts > failed and unknown sends leave an audit row and keep the right state > a failed audit write (error) never turns an uncertain send into a retryable one or sends twice
+[send-audit] not recorded 42501
+
+stderr | tests/unit/wa-approve-binding.test.ts > failed and unknown sends leave an audit row and keep the right state > a failed audit write (throw) never turns an uncertain send into a retryable one or sends twice
+[send-audit] not recorded
+
+ ✓ tests/unit/wa-approve-binding.test.ts (18 tests) 139ms
+ ✓ tests/unit/import-sliq-parties.test.ts (17 tests) 91ms
+ ✓ tests/unit/display-own-view.test.ts (14 tests) 75ms
+ ✓ tests/unit/admin-mfa-onboarding.test.ts (13 tests) 64ms
+ ✓ tests/unit/export-pdf-layout.test.ts (11 tests) 5993ms
+   ✓ shared document header and table layout > prints a 45-character company name in full, with no ellipsis, beside a long title 727ms
+   ✓ shared document header and table layout > renders a long title and long wrapped descriptions without losing any text 491ms
+   ✓ real customer documents are laid out as before the export fix > keeps each document's page count 4648ms
+ ✓ tests/unit/columns-parity.test.ts (20 tests) 61ms
+ ✓ tests/unit/cron-email-schedules.test.ts (16 tests) 297ms
+ ✓ tests/unit/offline-signoff.test.ts (13 tests) 22ms
+ ✓ tests/unit/credit-notes.test.ts (13 tests) 774ms
+   ✓ CreditNotePDF > is the invoice layout titled Credit Note, with the credit note number, the invoice it credits and the reason 568ms
+stderr | tests/unit/clock-in-lock.test.ts > the refusal reaches the person as a refusal > shows the database's own words
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded. Join the workshop Wi-Fi and try again, or ask an admin if you are working off site today."
+}
+
+stderr | tests/unit/clock-in-lock.test.ts > the refusal reaches the person as a refusal > executeClockOp holds it as rejected (not network, not blocked)
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded. Join the workshop Wi-Fi and try again, or ask an admin if you are working off site today."
+}
+
+stderr | tests/unit/clock-in-lock.test.ts > the refusal reaches the person as a refusal > 128: the refusal is reported (record_clock_in_refusal, the action's own key) and the outcome is the same whatever the report answers
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded. Join the workshop Wi-Fi and try again, or ask an admin if you are working off site today."
+}
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded. Join the workshop Wi-Fi and try again, or ask an admin if you are working off site today."
+}
+
+ ✓ tests/unit/clock-in-lock.test.ts (18 tests) 80ms
+ ✓ tests/unit/xero-batch-select.test.ts (19 tests) 84ms
+ ✓ tests/unit/sliq-import-audit.test.ts (12 tests) 595ms
+ ✓ tests/unit/people.test.ts (15 tests) 83ms
+ ✓ tests/unit/admin-reset-link.test.ts (15 tests) 91ms
+ ✓ tests/unit/wa-approval-ui-routes.test.ts (12 tests) 198ms
+ ✓ tests/unit/ai-master-switch.test.ts (14 tests) 218ms
+ ✓ tests/unit/rls-select-wrap-131.test.ts (7 tests) 83ms
+ ✓ tests/unit/access-ended-signal.test.ts (7 tests) 15ms
+ ✓ tests/unit/pdf-warm.test.ts (12 tests) 1970ms
+   ✓ warmPdfExport > loads exactly the modules exportRows("pdf") loads (the renderer and BaseDocumentPDF), after idle, once 1466ms
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the refused clock action is answered at once, whatever the report does > report recorded: the clock action stays refused with its message, without waiting
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the refused clock action is answered at once, whatever the report does > report refused by the server (not_refused): the clock action stays refused with its message, without waiting
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the refused clock action is answered at once, whatever the report does > report fails (no connection): the clock action stays refused with its message, without waiting
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the refused clock action is answered at once, whatever the report does > report throws: the clock action stays refused with its message, without waiting
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the refused clock action is answered at once, whatever the report does > report never answers: the clock action stays refused with its message, without waiting
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the refused clock action is answered at once, whatever the report does > the report queued (no answer) and even queueing failing: still refused at once, nothing thrown
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > a refusal report that can't reach the server is queued (the report only) > queues one clock_refusal entry with the refused action's key when the report gets no answer; the clock outcome is unchanged
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > a refusal report that can't reach the server is queued (the report only) > queues nothing when the server answered the report (recorded or refused)
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+stderr | tests/unit/clock-refusal-queue-128.test.ts > the queued report on reconnect > a clock action the lock refused is held as rejected, and a later pass never re-submits it
+{
+  code: '42501',
+  hint: 'clock_in_network_locked',
+  message: "Clock in from the workshop Wi-Fi: this device isn't on it, so nothing was recorded."
+}
+
+ ✓ tests/unit/clock-refusal-queue-128.test.ts (12 tests) 65ms
+ ✓ tests/unit/xero-batch-routes.test.ts (17 tests) 131ms
+ ✓ tests/unit/company-access.test.ts (33 tests) 13ms
+ ✓ tests/unit/company-sync-tabs.test.ts (8 tests) 127ms
+stderr | tests/unit/friendly-error.test.ts > friendlyError > shows messages our own database checks wrote for people
+{
+  code: 'PT409',
+  message: 'Quote QUO-1 was changed by someone else since you opened it. Reload it and make your changes again.'
+}
+{
+  code: '42501',
+  message: 'Quote QUO-1 has been issued: copy it to make changes.'
+}
+{
+  code: '22023',
+  message: 'Prices are in pounds and pence (at most 2 decimal places)'
+}
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > never shows raw database text
+{
+  code: '42501',
+  message: 'new row violates row-level security policy for table "quotes"'
+}
+{ code: '22023', message: 'invalid input syntax for type uuid: "x"' }
+{
+  code: '23505',
+  message: 'duplicate key value violates unique constraint "jobs_job_no_org_uniq"'
+}
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > names the booking identity refusal (064, 23514 + hint), not the quantities/prices message
+{
+  code: '23514',
+  hint: 'booking_has_runs',
+  message: 'This booking has machine run history. Keep its job and machine, or create a separate booking.'
+}
+{
+  code: '23514',
+  hint: 'run_booking_mismatch',
+  message: "The booking must belong to this run's job, machine and company."
+}
+{
+  code: '23514',
+  hint: 'booking_has_runs',
+  message: 'new row for relation "machine_bookings" violates check constraint'
+}
+{ code: '23514', hint: 'booking_has_runs' }
+{ code: '23514', message: 'x' }
+{ code: '23514', hint: 'toString', message: 'x' }
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > names the job flow refusals (081): the database's own sentence, or the fixed text when the message is raw
+{
+  code: '42501',
+  hint: 'not_independent',
+  message: "You finished J-0001, so someone else must inspect it: the person who finished a job can't record its pass."
+}
+{ code: '42501', hint: 'not_independent' }
+{
+  code: '22023',
+  hint: 'job_not_released',
+  message: 'new row for relation "delivery_notes" violates check constraint'
+}
+{ code: '22023', hint: 'criteria_required' }
+{ code: '22023', hint: 'reopen_required' }
+{ code: '22023', hint: 'reopen_not_allowed' }
+{ code: '22023', hint: 'job_not_complete' }
+{ code: '22023', hint: 'job_has_draft' }
+{ code: '22023', hint: 'concession_admin_only' }
+{ code: '22023', hint: 'record_immutable' }
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > shows 082's refusals (blocked supplier, used supplier or customer, traceable job) as written, or a fixed sentence
+{
+  code: '22023',
+  hint: 'supplier_in_use',
+  message: "Steel Ltd is on 2 purchase orders and can't be deleted: those records keep it. To stop new orders, set it to Blocked."
+}
+{
+  code: '22023',
+  hint: 'supplier_blocked',
+  message: "Steel Ltd is a blocked supplier, so this purchase order can't be issued. An admin can change its status on the Suppliers page."
+}
+{
+  code: '22023',
+  hint: 'traceability_missing',
+  message: 'J-0001 is traceable: enter its heat/cast no. on the worksheet before it can pass.'
+}
+{
+  code: '22023',
+  hint: 'supplier_in_use',
+  message: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA is on 1 purchase order'
+}
+{
+  code: '22023',
+  hint: 'customer_in_use',
+  message: 'update or delete on table "customers" violates foreign key constraint'
+}
+{ code: '22023', hint: 'traceability_missing' }
+{
+  code: '22023',
+  hint: 'customer_in_use',
+  message: "Acme is on 3 documents (quotes, RFQs, orders, jobs, delivery notes, invoices or credit notes) and can't be renamed: those records keep its name."
+}
+{ code: '22023', hint: 'supplier_in_use' }
+{
+  code: '22023',
+  hint: 'supplier_not_listed',
+  message: "Choose the supplier from the Suppliers list: Typed Ltd isn't on it. Add it on the Suppliers page first."
+}
+{ code: '22023', hint: 'supplier_not_listed' }
+{
+  code: '42501',
+  hint: 'supplier_status_admin_only',
+  message: "Only an admin can change a supplier's status."
+}
+{
+  code: '42501',
+  hint: 'supplier_status_admin_only',
+  message: 'permission denied for table suppliers'
+}
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > shows 083's refusals (not on the inspectors list, drawing revision needed) as written, or a fixed sentence
+{
+  code: '22023',
+  hint: 'drawing_revision_required',
+  message: 'J-0001 needs its drawing revision before it can be Complete: enter it under Drawing revision on the job.'
+}
+{
+  code: '22023',
+  hint: 'drawing_revision_required',
+  message: 'new row for relation "jobs" violates check constraint'
+}
+{ code: '42501', hint: 'not_authorised_inspector' }
+{ code: '42501', hint: 'drawing_revision_via_rpc' }
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > shows 088's refusal (a converted sales order's value and VAT) as the page's own sentence
+{
+  code: '42501',
+  hint: 'sales_order_converted',
+  message: 'Converted to J-0042: change the job, not the order.'
+}
+{
+  code: '42501',
+  hint: 'sales_order_converted',
+  message: 'permission denied for table sales_orders'
+}
+{ code: '42501', hint: 'sales_order_converted' }
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > shows 089's three invoice receipt refusals as written
+{
+  code: '42501',
+  hint: 'invoice_receipts_direct',
+  message: 'A new invoice starts with nothing paid or credited: payments are recorded with Record payment and credits applied with Apply credit, once it is issued.'
+}
+{
+  code: '42501',
+  hint: 'invoice_receipts_direct',
+  message: 'INV-0001: what is paid or credited changes only when a payment is recorded (Record payment) or a credit applied (Apply credit), not by editing it.'
+}
+{
+  code: '22023',
+  hint: 'invoice_receipts_mismatch',
+  message: 'This draft shows £120.00 paid and £0.00 credited, but its recorded payments and credits come to £0.00 and £0.00: it was not issued. Ask for the invoice to be checked.'
+}
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > shows 091's invoice issue refusal as written, and its own text when the message can't be shown
+{
+  code: '42501',
+  hint: 'invoice_issue_direct',
+  message: 'This draft: a draft invoice is issued with Issue invoice, which gives it the next number. Its number and status are not set by editing it.'
+}
+{
+  code: '42501',
+  hint: 'invoice_issue_direct',
+  message: 'permission denied for table invoices'
+}
+{ code: '42501', hint: 'invoice_issue_direct' }
+
+stderr | tests/unit/friendly-error.test.ts > friendlyError > DEV-001: a held delivery note (147, 55000 + dln_numbering_not_set) always reads as the fixed staff wording
+{
+  code: '55000',
+  hint: 'dln_numbering_not_set',
+  message: "Delivery note numbering for this company hasn't been set yet."
+}
+{ code: '55000', hint: 'dln_numbering_not_set' }
+{
+  code: '55000',
+  hint: 'dln_numbering_not_set',
+  message: 'relation other_company contains a@b.test'
+}
+{ code: '55000', message: 'x' }
+{ code: '55000', hint: 'unknown_synthetic' }
+
+ ✓ tests/unit/friendly-error.test.ts (10 tests) 9ms
+ ✓ tests/unit/list-filter.test.ts (17 tests) 11ms
+stderr | tests/unit/offline-downgrade.test.ts > the previous build meets 049 entries on the device (D1b) > files them as rejected (not applied, not network): no Start or Pause call, no row changed, the op kept exactly
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+
+stderr | tests/unit/offline-downgrade.test.ts > re-upgrade: requeueHeldRunOps > puts the old build's held run entries back once per build, in capture order per job; the new build then opens and closes the bench run
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+
+stderr | tests/unit/offline-downgrade.test.ts > re-upgrade: requeueHeldRunOps > partial downgrade: the older build refused the Start but lost connectivity before the Pause; recovery puts the Start BEFORE the pending Pause
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+
+stderr | tests/unit/offline-downgrade.test.ts > re-upgrade: requeueHeldRunOps > upgrade, rollback, restore the same newer build: what the older build held is recovered and replayed once, in order
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+{
+  code: '22P02',
+  message: 'invalid input syntax for type uuid: "undefined"',
+  details: null,
+  hint: null
+}
+
+ ✓ tests/unit/offline-downgrade.test.ts (4 tests) 14ms
+ ✓ tests/unit/import-build.test.ts (14 tests) 22ms
+ ✓ tests/unit/dashboard-analytics.test.ts (16 tests) 10ms
+ ✓ tests/unit/quote-status.test.ts (21 tests) 10ms
+ ✓ tests/unit/po-capture.test.ts (64 tests) 17ms
+ ✓ tests/unit/sign-in-list.test.ts (9 tests) 75ms
+ ✓ tests/unit/middleware-early-returns.test.ts (35 tests) 28ms
+ ✓ tests/unit/offline-replay-after-revocation.test.ts (14 tests) 562ms
+   ✓ the connection coming back (useOfflineSync's 'online' listener, the real hook mounted) > revoked while offline: reconnecting confirms first and replays nothing; once access is back, reconnecting confirms, then replays 549ms
+ ✓ tests/unit/f1-ai-routes-mfa.test.ts (9 tests) 23ms
+ ✓ tests/unit/confirmed-user.test.ts (16 tests) 9ms
+ ✓ tests/unit/admin-password-auth-failure.test.ts (16 tests) 21ms
+ ✓ tests/unit/email-schedules-run.test.ts (16 tests) 29ms
+ ✓ tests/unit/year-end-payment-reconciliation.test.ts (3 tests) 22ms
+stderr | tests/unit/email-send-route.test.ts > POST /api/email/send > maps the mailer's answers: drafted 200, refused/limited/no provider/provider error with their codes
+[send-audit] not recorded
+[send-audit] not recorded
+[send-audit] not recorded
+[send-audit] not recorded
+[send-audit] not recorded
+
+ ✓ tests/unit/email-send-route.test.ts (8 tests) 62ms
+ ✓ tests/unit/chase-draft-customer-match.test.ts (38 tests) 37ms
+ ✓ tests/unit/offline-clock.test.ts (7 tests) 14ms
+ ✓ tests/unit/time-payroll-export.test.ts (11 tests) 8ms
+stderr | tests/unit/session-refresh-paths.test.ts > the browser client refreshes its own tokens > in a browser, the client lib/supabase.ts builds has autoRefreshToken on and stores the session in the auth cookies
+GoTrueClient@sb-127-auth-token:1 (2.105.4) 2026-11-05T15:29:11.281Z Multiple GoTrueClient instances detected in the same browser context. It is not an error, but this should be avoided as it may produce undefined behavior when used concurrently under the same storage key.
+
+ ✓ tests/unit/session-refresh-paths.test.ts (14 tests) 98ms
+ ✓ tests/unit/cron-daily.test.ts (14 tests) 130ms
+ ✓ tests/unit/xero-mapper.test.ts (12 tests) 10ms
+ ✓ tests/unit/bank-details.test.ts (14 tests) 658ms
+ ✓ tests/unit/invoice-credits-pdf.test.ts (14 tests) 907ms
+ ✓ tests/unit/overview-metrics.test.ts (15 tests) 11ms
+ ✓ tests/unit/quote-versions.test.ts (11 tests) 21ms
+ ✓ tests/unit/session-ended.test.ts (12 tests) 14ms
+ ✓ tests/unit/integrations-crypto-oauth.test.ts (8 tests) 15ms
+stderr | tests/unit/offline-sync-authority.test.ts > a 403 on a replayed change while the session is valid (getUser OK, my_session confirms) holds that change only: no lock, no marks, one normal recheck
+{
+  code: '42501',
+  message: 'permission denied for function pause_machine_run',
+  details: null,
+  hint: null
+}
+
+ ✓ tests/unit/offline-sync-authority.test.ts (11 tests) 24ms
+ ✓ tests/unit/whole-floor.test.ts (15 tests) 10ms
+ ✓ tests/unit/customer-po-123.test.ts (11 tests) 472ms
+stderr | tests/unit/wa-provider-and-routes.test.ts > fail closed: Microsoft problems never switch to Resend > a Microsoft send that is refused or unknown is not re-sent through Resend
+[company-email] send microsoft failed x
+[company-email] send microsoft unknown x
+
+stderr | tests/unit/wa-provider-and-routes.test.ts > chase approve: failed and unknown sends, audit rows, explicit Resend > an uncertain send is held, audited, and a lost audit write changes nothing
+[send-audit] not recorded
+
+ ✓ tests/unit/wa-provider-and-routes.test.ts (7 tests) 14ms
+ ✓ tests/unit/report-error-budget.test.ts (6 tests) 31ms
+ ✓ tests/unit/r1-recent-mfa-routes.test.ts (43 tests) 32ms
+ ✓ tests/unit/global-search-scope.test.ts (11 tests) 18ms
+ ✓ tests/unit/site-network-retention.test.ts (10 tests) 39ms
+ ✓ tests/unit/import-columns.test.ts (14 tests) 12ms
+ ✓ tests/unit/time-sync-rejections.test.ts (8 tests) 13ms
+ ✓ tests/unit/b23-access-ended-kept-notice.test.ts (11 tests) 12ms
+ ✓ tests/unit/organization-switch-lock.test.ts (9 tests) 12ms
+ ✓ tests/unit/job-actions.test.ts (21 tests) 8ms
+ ✓ tests/unit/email-schedules-reminders.test.ts (27 tests) 13ms
+ ✓ tests/unit/access-recheck-session-vanished.test.ts (7 tests) 4ms
+ ✓ tests/unit/sliq-import-edge-cases.test.ts (36 tests) 29ms
+ ✓ tests/unit/pre-067-fallbacks.test.ts (14 tests) 8ms
+ ✓ tests/unit/inbox-auto-check.test.ts (9 tests) 8ms
+ ✓ tests/unit/set-password-link.test.ts (13 tests) 8ms
+ ✓ tests/unit/sales-orders-switch.test.ts (17 tests) 8ms
+ ✓ tests/unit/year-end-po-totals.test.ts (11 tests) 180ms
+ ✓ tests/unit/phone-lag-sync-idle.test.ts (8 tests) 13ms
+ ✓ tests/unit/cron-ip-purge.test.ts (19 tests) 63ms
+ ✓ tests/unit/run-plan.test.ts (12 tests) 7ms
+ ✓ tests/unit/invoice-display-totals.test.ts (16 tests) 415ms
+ ✓ tests/unit/compact-invoice-list.test.ts (14 tests) 9ms
+stderr | tests/unit/company-switch-mid-form.test.ts > the page's company against the session's > refuses, with the clear message and its hint, when the session is now in another company or in none
+CompanyChangedError: You have switched company in another tab since this page was opened, so nothing was saved (it would have gone into the other company). Reload the page to work in the company you are in now, or switch back and try again.
+    at Module.assertPageCompany (/workspace/tolra-public/work/b5-financial-candidate/lib/page-company.ts:43:69)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/company-switch-mid-form.test.ts:65:32
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/company-switch-mid-form.test.ts:65:87
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15) {
+  code: 'company_changed',
+  hint: 'company_changed'
+}
+
+ ✓ tests/unit/company-switch-mid-form.test.ts (11 tests) 14ms
+ ✓ tests/unit/delivery-notes-for.test.ts (12 tests) 17ms
+ ✓ tests/unit/import-file.test.ts (16 tests) 1272ms
+   ✓ limits > a workbook that unpacks to over 100 MB is refused before it is parsed 1199ms
+ ✓ tests/unit/pdf-lazy-load.test.ts (13 tests) 454ms
+ ✓ tests/unit/company-prime.test.ts (11 tests) 179ms
+ ✓ tests/unit/capacity-check.test.ts (10 tests) 207ms
+stderr | tests/unit/offline-signout-scope.test.ts > sign-out on a shared device > two users: Alice signing out leaves Bob's unsent items (and his photo bytes) untouched
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:16:37)
+    at confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at Module.confirmSignOut (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:285:9)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:38:23
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+stderr | tests/unit/offline-signout-scope.test.ts > sign-out on a shared device > a failed sync leaves items unsent: they are asked about, then removed on OK; Cancel keeps them
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:16:37)
+    at confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at Module.confirmSignOut (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:285:9)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:79:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:16:37)
+    at confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at Module.confirmSignOut (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:285:9)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:82:23
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+stderr | tests/unit/offline-signout-scope.test.ts > sign-out on a shared device > re-login: Bob's items are still there, Alice's confirmed ones are gone, items added mid-prompt survive
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:16:37)
+    at confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at Module.confirmSignOut (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:285:9)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:92:30
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+stderr | tests/unit/offline-signout-scope.test.ts > sign-out on a shared device > a second tab queues after the final check (between confirmSignOut and the wipe): that item and its bytes are kept
+Error: Failed to fetch
+    at offline (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:16:37)
+    at confirmUnsyncedDiscard (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:215:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at Module.confirmSignOut (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:285:9)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/offline-signout-scope.test.ts:104:23
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+
+ ✓ tests/unit/offline-signout-scope.test.ts (7 tests) 26ms
+ ✓ tests/unit/csv-and-dates.test.ts (12 tests) 14ms
+ ✓ tests/unit/marketing-privacy.test.ts (8 tests) 314ms
+ ✓ tests/unit/access-recheck-runner.test.ts (9 tests) 13ms
+stderr | tests/unit/customer-save-conflict.test.ts > saving a customer two people have open (E6) > a rename of a customer in use is refused by the database, with its own message (not the conflict one)
+{
+  code: '22023',
+  hint: 'customer_in_use',
+  message: "Acme Ltd is on 2 documents (quotes, RFQs, orders, jobs, delivery notes, invoices or credit notes) and can't be renamed: those records keep its name."
+}
+{
+  code: '22023',
+  hint: 'customer_in_use',
+  message: "Acme Ltd is on 2 documents (quotes, RFQs, orders, jobs, delivery notes, invoices or credit notes) and can't be renamed: those records keep its name."
+}
+
+ ✓ tests/unit/customer-save-conflict.test.ts (6 tests) 11ms
+ ✓ tests/unit/accounting-cloud-adapters.test.ts (11 tests) 25ms
+ ✓ tests/unit/email-schedules-form.test.ts (13 tests) 33ms
+ ✓ tests/unit/payments.test.ts (13 tests) 8ms
+ ✓ tests/unit/my-jobs-render.test.ts (8 tests) 93ms
+ ✓ tests/unit/alert-test-route.test.ts (12 tests) 14ms
+ ✓ tests/unit/money.test.ts (17 tests) 10ms
+ ✓ tests/unit/xero-launch-hold.test.ts (15 tests) 11ms
+ ✓ tests/unit/status-colours.test.ts (9 tests) 310ms
+   ✓ the sync chip (top bar) > changes waiting to upload are blue, the map's sync pending colour; the words stay '1 to upload' 301ms
+ ✓ tests/unit/xero-launch-midrun.test.ts (6 tests) 12ms
+ ✓ tests/unit/offline.test.ts (10 tests) 11ms
+ ✓ tests/unit/invoice-message.test.ts (12 tests) 481ms
+ ✓ tests/unit/post-144-release-fixture.test.ts (10 tests) 14ms
+ ✓ tests/unit/a150-ai-page.test.ts (7 tests) 22ms
+ ✓ tests/unit/exports-ignore-hidden-columns.test.ts (31 tests) 13ms
+ ✓ tests/unit/accept-quote.test.ts (14 tests) 10ms
+ ✓ tests/unit/my-company-logos.test.ts (8 tests) 19ms
+ ✓ tests/unit/signin-last-active-mfa.test.ts (4 tests) 23ms
+ ✓ tests/unit/draft-invoice-edit.test.ts (8 tests) 9ms
+ ✓ tests/unit/phone-lag-recheck-renders.test.ts (3 tests) 1095ms
+   ✓ an access recheck that changes nothing does not re-render useUser() consumers > same answer: no render; changed page access: one render with the new sections 678ms
+   ✓ coming back to the app runs one recheck, not two > visibilitychange then focus: one pass; a later focus on its own still asks 415ms
+ ✓ tests/unit/pdf-offline-message.test.ts (10 tests) 220ms
+ ✓ tests/unit/inspect-action.test.ts (14 tests) 7ms
+ ✓ tests/unit/known-customers.test.ts (9 tests) 24ms
+ ✓ tests/unit/time-features.test.ts (7 tests) 9ms
+ ✓ tests/unit/ai-mode-key-isolation.test.ts (1 test) 25ms
+ ✓ tests/unit/import-mappings.test.ts (8 tests) 96ms
+ ✓ tests/unit/limiter-fail-safe.test.ts (10 tests) 20ms
+ ✓ tests/unit/return-ask-server-enforcement.test.ts (7 tests) 13ms
+ ✓ tests/unit/year-end-unknown-payments.test.ts (2 tests) 16ms
+ ✓ tests/unit/company-working-hours.test.ts (10 tests) 8ms
+ ✓ tests/unit/time-labour-offline.test.ts (7 tests) 10ms
+ ✓ tests/unit/invoice-delivery-notes.test.ts (8 tests) 14ms
+stderr | tests/unit/customer-archive.test.ts > readArchivedCustomerIds > end to end: when the archive list can't be read the picker gets no names, archived or not
+Error: The archived customers could not be read (no data returned).
+    at __vite_ssr_import_2__.fetchAll.maxRows (/workspace/tolra-public/work/b5-financial-candidate/lib/customers.ts:166:52)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at Module.fetchAll (/workspace/tolra-public/work/b5-financial-candidate/lib/fetch-all.ts:25:29)
+    at Module.readArchivedCustomerIds (/workspace/tolra-public/work/b5-financial-candidate/lib/customers.ts:163:20)
+    at load (/workspace/tolra-public/work/b5-financial-candidate/tests/unit/customer-archive.test.ts:61:53)
+    at Module.loadPickerNames (/workspace/tolra-public/work/b5-financial-candidate/lib/customers.ts:189:22)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/customer-archive.test.ts:62:12
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+
+ ✓ tests/unit/customer-archive.test.ts (11 tests) 22ms
+ ✓ tests/unit/snapshot-hash.test.ts (11 tests) 16ms
+ ✓ tests/unit/go-live-candidate-order.test.ts (3 tests) 16ms
+ ✓ tests/unit/unrecognised-network-banner.test.ts (11 tests) 10ms
+ ✓ tests/unit/session-policy.test.ts (15 tests) 12ms
+ ✓ tests/unit/signin-last-active.test.ts (7 tests) 17ms
+ ✓ tests/unit/year-end-unresolved-quote.test.ts (2 tests) 260ms
+ ✓ tests/unit/reset-link-origin.test.ts (7 tests) 14ms
+ ✓ tests/unit/parts-render.test.ts (9 tests) 63ms
+ ✓ tests/unit/rfq-stage.test.ts (9 tests) 5ms
+ ✓ tests/unit/release-plan-preflight.test.ts (6 tests) 73ms
+ ✓ tests/unit/admin-user-save.test.ts (13 tests) 9ms
+ ✓ tests/unit/open-drawing.test.ts (5 tests) 5ms
+ ✓ tests/unit/offline-legacy-replay.test.ts (4 tests) 7ms
+ ✓ tests/unit/rls-helper-speed-121.test.ts (5 tests) 13ms
+ ✓ tests/unit/my-jobs.test.ts (11 tests) 9ms
+ ✓ tests/unit/quote-expiry.test.ts (21 tests) 10ms
+ ✓ tests/unit/hours-display.test.ts (6 tests) 7ms
+ ✓ tests/unit/columns-render.test.ts (5 tests) 54ms
+ ✓ tests/unit/admin-users-load.test.ts (9 tests) 6ms
+ ✓ tests/unit/accounting-routes.test.ts (5 tests) 14ms
+ ✓ tests/unit/dashboard-display.test.ts (7 tests) 14ms
+ ✓ tests/unit/run-timer.test.ts (15 tests) 8ms
+ ✓ tests/unit/spreadsheet.test.ts (9 tests) 48ms
+ ✓ tests/unit/signin-lookup.test.ts (5 tests) 15ms
+ ✓ tests/unit/access-forbidden-not-ended.test.ts (9 tests) 12ms
+ ✓ tests/unit/machine-picker-empty.test.ts (9 tests) 6ms
+ ✓ tests/unit/new-job-bookings.test.ts (6 tests) 6ms
+ ✓ tests/unit/year-end-export.test.ts (6 tests) 6ms
+ ✓ tests/unit/xero-launch-route.test.ts (6 tests) 18ms
+ ✓ tests/unit/job-delivery-note-no-order.test.ts (9 tests) 5ms
+ ✓ tests/unit/job-board-files.test.ts (10 tests) 7ms
+ ✓ tests/unit/split-clear-shift.test.ts (8 tests) 13ms
+ ✓ tests/unit/numbers-overview-reconcile.test.ts (6 tests) 6ms
+ ✓ tests/unit/site-network.test.ts (6 tests) 8ms
+stderr | tests/unit/support-session.test.ts > the offline store in a support session > saves nothing: no snapshot, no identity, no queued change
+Error: Support access doesn't keep anything on this device, so changes can't be queued offline. Reconnect and try again.
+    at Module.enqueue (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/outbox.ts:197:33)
+    at Module.queueOffline (/workspace/tolra-public/work/b5-financial-candidate/lib/offline/scope.ts:128:11)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/support-session.test.ts:25:18
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ tests/unit/support-session.test.ts (5 tests) 13ms
+ ✓ tests/unit/check-preview-env.test.ts (7 tests) 8ms
+ ✓ tests/unit/brand-remember.test.ts (7 tests) 10ms
+ ✓ tests/unit/delivery-note-invoice-link.test.ts (7 tests) 6ms
+stderr | tests/unit/document-integrity.test.ts > imported quote reprint > with its stored total the PDF is refused, with the reason, and nothing is invented
+DocumentTotalsMismatchError: QUO-7099 has a stored total of £120.00, but its line items add up to £144.00. The original prices or VAT can't be worked out from the record, so it can't be printed or sent as it is. The stored amount is kept unchanged; copy it to a new document if it needs to go out again.
+    at Module.totalsMismatch (/workspace/tolra-public/work/b5-financial-candidate/lib/document-integrity.ts:37:12)
+    at Module.storedTotalsProblem (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/pdf-totals.ts:51:10)
+    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:317:20)
+    at Object.react_stack_bottom_frame (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:262994)
+    at Xn (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:141967)
+    at Wr (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:166603)
+    at rl (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:188791)
+    at le (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:112320)
+    at Ta (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233899)
+    at Pa (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233790) {
+  reference: 'QUO-7099',
+  stored: { total: 120 },
+  computed: {
+    subtotal: 120,
+    carriage: 0,
+    vat: 24,
+    total: 144,
+    payments: null,
+    balance: 144,
+    vatBreakdown: [ [Object] ]
+  },
+  issued: true
+} {
+  componentStack: '\n' +
+    '    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:294:28)\n' +
+    '    at QuotePDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/QuotePDF.tsx:24:21)'
+}
+
+stderr | tests/unit/document-integrity.test.ts > imported invoice reprint > a stored VAT or subtotal that differs from the lines refuses the PDF (total alone isn't enough)
+DocumentTotalsMismatchError: INV-7099 has a stored total of £129.99, but its line items add up to £129.99. The original prices or VAT can't be worked out from the record, so it can't be printed or sent as it is. The stored amount is kept unchanged; copy it to a new document if it needs to go out again.
+    at Module.totalsMismatch (/workspace/tolra-public/work/b5-financial-candidate/lib/document-integrity.ts:37:12)
+    at Module.storedTotalsProblem (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/pdf-totals.ts:51:10)
+    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:317:20)
+    at Object.react_stack_bottom_frame (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:262994)
+    at Xn (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:141967)
+    at Wr (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:166603)
+    at rl (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:188791)
+    at le (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:112320)
+    at Ta (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233899)
+    at Pa (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233790) {
+  reference: 'INV-7099',
+  stored: { subtotal: 99.99, vat: 0, total: 129.99 },
+  computed: {
+    subtotal: 99.99,
+    carriage: 10,
+    vat: 20,
+    total: 129.99,
+    payments: 0,
+    balance: 129.99,
+    vatBreakdown: [ [Object] ]
+  },
+  issued: true
+} {
+  componentStack: '\n' +
+    '    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:294:28)\n' +
+    '    at InvoicePDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/InvoicePDF.tsx:15:23)'
+}
+DocumentTotalsMismatchError: INV-7099 has a stored total of £129.99, but its line items add up to £129.99. The original prices or VAT can't be worked out from the record, so it can't be printed or sent as it is. The stored amount is kept unchanged; copy it to a new document if it needs to go out again.
+    at Module.totalsMismatch (/workspace/tolra-public/work/b5-financial-candidate/lib/document-integrity.ts:37:12)
+    at Module.storedTotalsProblem (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/pdf-totals.ts:51:10)
+    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:317:20)
+    at Object.react_stack_bottom_frame (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:262994)
+    at Xn (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:141967)
+    at Wr (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:166603)
+    at rl (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:188791)
+    at le (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:112320)
+    at Ta (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233899)
+    at Pa (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233790) {
+  reference: 'INV-7099',
+  stored: { subtotal: 109.99, vat: 20, total: 129.99 },
+  computed: {
+    subtotal: 99.99,
+    carriage: 10,
+    vat: 20,
+    total: 129.99,
+    payments: 0,
+    balance: 129.99,
+    vatBreakdown: [ [Object] ]
+  },
+  issued: true
+} {
+  componentStack: '\n' +
+    '    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:294:28)\n' +
+    '    at InvoicePDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/InvoicePDF.tsx:15:23)'
+}
+DocumentTotalsMismatchError: INV-7099 has a stored total of £120.00, but its line items add up to £129.99. The original prices or VAT can't be worked out from the record, so it can't be printed or sent as it is. The stored amount is kept unchanged; copy it to a new document if it needs to go out again.
+    at Module.totalsMismatch (/workspace/tolra-public/work/b5-financial-candidate/lib/document-integrity.ts:37:12)
+    at Module.storedTotalsProblem (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/pdf-totals.ts:51:10)
+    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:317:20)
+    at Object.react_stack_bottom_frame (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:262994)
+    at Xn (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:141967)
+    at Wr (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:166603)
+    at rl (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:188791)
+    at le (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:112320)
+    at Ta (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233899)
+    at Pa (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233790) {
+  reference: 'INV-7099',
+  stored: { subtotal: 99.99, vat: 20, total: 120 },
+  computed: {
+    subtotal: 99.99,
+    carriage: 10,
+    vat: 20,
+    total: 129.99,
+    payments: 0,
+    balance: 129.99,
+    vatBreakdown: [ [Object] ]
+  },
+  issued: true
+} {
+  componentStack: '\n' +
+    '    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:294:28)\n' +
+    '    at InvoicePDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/InvoicePDF.tsx:15:23)'
+}
+
+stderr | tests/unit/document-integrity.test.ts > imported invoice reprint > the paid watermark copy follows the same rule
+DocumentTotalsMismatchError: INV-7099 has a stored total of £150.00, but its line items add up to £129.99. The original prices or VAT can't be worked out from the record, so it can't be printed or sent as it is. The stored amount is kept unchanged; copy it to a new document if it needs to go out again.
+    at Module.totalsMismatch (/workspace/tolra-public/work/b5-financial-candidate/lib/document-integrity.ts:37:12)
+    at Module.storedTotalsProblem (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/pdf-totals.ts:51:10)
+    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:317:20)
+    at Object.react_stack_bottom_frame (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:262994)
+    at Xn (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:141967)
+    at Wr (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:166603)
+    at rl (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:188791)
+    at le (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:112320)
+    at Ta (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233899)
+    at Pa (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@react-pdf/reconciler/lib/reconciler-33.js:10:233790) {
+  reference: 'INV-7099',
+  stored: { subtotal: 99.99, vat: 20, total: 150 },
+  computed: {
+    subtotal: 99.99,
+    carriage: 10,
+    vat: 20,
+    total: 129.99,
+    payments: 129.99,
+    balance: 0,
+    vatBreakdown: [ [Object] ]
+  },
+  issued: true
+} {
+  componentStack: '\n' +
+    '    at BaseDocumentPDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/BaseDocumentPDF.tsx:294:28)\n' +
+    '    at InvoicePDF (/workspace/tolra-public/work/b5-financial-candidate/components/pdf/InvoicePDF.tsx:15:23)'
+}
+
+ ✓ tests/unit/document-integrity.test.ts (7 tests) 316ms
+ ✓ tests/unit/chase-settings.test.ts (14 tests) 7ms
+ ✓ tests/unit/cron-nightly.test.ts (7 tests) 48ms
+ ✓ tests/unit/rework-pending-cost.test.ts (8 tests) 7ms
+ ✓ tests/unit/tolra-ai-caps.test.ts (10 tests) 15ms
+ ✓ tests/unit/company-form-hydrate.test.ts (8 tests) 6ms
+ ✓ tests/unit/costing-golden.test.ts (474 tests) 62ms
+ ✓ tests/unit/time-send-notice.test.ts (9 tests) 7ms
+ ✓ tests/unit/offline-revocation.test.ts (4 tests) 11ms
+ ✓ tests/unit/cron-ai-helper-purge.test.ts (10 tests) 56ms
+ ✓ tests/unit/invoice-pdf-after-reversal.test.ts (1 test) 13ms
+ ✓ tests/unit/auth-errors.test.ts (11 tests) 7ms
+ ✓ tests/unit/job-picker.test.ts (6 tests) 5ms
+ ✓ tests/unit/cron-xero-sweep.test.ts (9 tests) 53ms
+ ✓ tests/unit/cron-overview-snapshot.test.ts (10 tests) 63ms
+ ✓ tests/unit/db-probe-get.test.ts (6 tests) 14ms
+ ✓ tests/unit/offline-identity-age.test.ts (6 tests) 7ms
+ ✓ tests/unit/job-on-time.test.ts (8 tests) 6ms
+ ✓ tests/unit/receivables.test.ts (9 tests) 6ms
+ ✓ tests/unit/order-from-quote.test.ts (10 tests) 20ms
+ ✓ tests/unit/schedule-display.test.ts (5 tests) 7ms
+ ✓ tests/unit/traceability-082.test.ts (5 tests) 7ms
+ ✓ tests/unit/year-end-unresolved-po.test.ts (2 tests) 291ms
+ ✓ tests/unit/status-badge.test.ts (9 tests) 23ms
+ ✓ tests/unit/invoice-null-status.test.ts (4 tests) 275ms
+ ✓ tests/unit/offline-support-session.test.ts (8 tests) 13ms
+ ✓ tests/unit/wa-send-routes-binding.test.ts (3 tests) 177ms
+ ✓ tests/unit/who-when-load.test.ts (8 tests) 6ms
+ ✓ tests/unit/sales-order-convert.test.ts (18 tests) 6ms
+ ✓ tests/unit/money-receivables-more.test.ts (30 tests) 13ms
+ ✓ tests/unit/start-after-booking.test.ts (7 tests) 6ms
+ ✓ tests/unit/late-count-agreement.test.ts (2 tests) 5ms
+ ✓ tests/unit/chase-context.test.ts (6 tests) 13ms
+ ✓ tests/unit/costing-ui.test.ts (7 tests) 25ms
+ ✓ tests/unit/chase-inbound-never-paid.test.ts (4 tests) 10ms
+ ✓ tests/unit/working-hours.test.ts (10 tests) 6ms
+ ✓ tests/unit/ai-company-setting-isolation.test.ts (1 test) 11ms
+ ✓ tests/unit/middleware-route-roles.test.ts (3 tests) 14ms
+ ✓ tests/unit/branding.test.ts (7 tests) 6ms
+ ✓ tests/unit/access-recheck.test.ts (10 tests) 5ms
+ ✓ tests/unit/costing-extra-edge.test.ts (21 tests) 9ms
+ ✓ tests/unit/time-week-export.test.ts (4 tests) 4ms
+ ✓ tests/unit/resend-status.test.ts (11 tests) 6ms
+ ✓ tests/unit/import-small-workbook.test.ts (3 tests) 49ms
+ ✓ tests/unit/job-table-columns.test.ts (6 tests) 5ms
+ ✓ tests/unit/chase-ui-wiring.test.ts (13 tests) 12ms
+ ✓ tests/unit/next-clear-start.test.ts (5 tests) 14ms
+ ✓ tests/unit/ci-workflow-inputs.test.ts (3 tests) 14ms
+ ✓ tests/unit/list-card-counts.test.ts (8 tests) 7ms
+ ✓ tests/unit/rfq-clarification.test.ts (5 tests) 6ms
+ ✓ tests/unit/chase-customer-review.test.ts (5 tests) 10ms
+ ✓ tests/unit/sign-in-access.test.ts (6 tests) 4ms
+ ✓ tests/unit/invoice-pdf-print-after-reversal.test.ts (5 tests) 595ms
+ ✓ tests/unit/money-decimal.test.ts (8 tests) 11ms
+ ✓ tests/unit/breached-password.test.ts (5 tests) 29ms
+ ✓ tests/unit/shell-status.test.ts (8 tests) 6ms
+ ✓ tests/unit/accounting-replay-guard.test.ts (3 tests) 6ms
+ ✓ tests/unit/page-titles.test.ts (48 tests) 15ms
+ ✓ tests/unit/delivery-note-pdf-goods-out.test.ts (4 tests) 451ms
+ ✓ tests/unit/money-receivables-edge.test.ts (36 tests) 11ms
+ ✓ tests/unit/db-probe-get-068.test.ts (4 tests) 13ms
+ ✓ tests/unit/receivables-money-extra.test.ts (40 tests) 11ms
+ ✓ tests/unit/chase-steps.test.ts (17 tests) 20ms
+ ✓ tests/unit/costing-engine-parity.test.ts (9 tests) 9ms
+ ✓ tests/unit/document-snapshot.test.ts (7 tests) 6ms
+ ✓ tests/unit/approvals-display.test.ts (4 tests) 9ms
+ ✓ tests/unit/brand-pending.test.ts (6 tests) 6ms
+ ✓ tests/unit/activity-table-labels.test.ts (52 tests) 10ms
+ ✓ tests/unit/print-layout-jnr.test.ts (4 tests) 31ms
+ ✓ tests/unit/global-search-component.test.ts (5 tests) 21ms
+ ✓ tests/unit/b5-profitability-integration.test.ts (3 tests) 5ms
+ ✓ tests/unit/purchase-order-total.test.ts (7 tests) 4ms
+ ✓ tests/unit/list-toolbar.test.ts (7 tests) 34ms
+ ✓ tests/unit/invoice-delivery-notes-pdf.test.ts (4 tests) 571ms
+ ✓ tests/unit/r1-accounting-recent-mfa.test.ts (7 tests) 10ms
+ ✓ tests/unit/so-machines.test.ts (5 tests) 4ms
+ ✓ tests/unit/session-revocation-contract.test.ts (4 tests) 4ms
+ ✓ tests/unit/draft-invoice-links-race.test.ts (3 tests) 4ms
+ ✓ tests/unit/chase-more.test.ts (26 tests) 19ms
+ ✓ tests/unit/chase-browser-proposal.test.ts (5 tests) 6ms
+ ✓ tests/unit/destinations.test.ts (6 tests) 6ms
+ ✓ tests/unit/finished-booking-status.test.ts (5 tests) 4ms
+ ✓ tests/unit/audit-fixes-2.test.ts (6 tests) 6ms
+ ✓ tests/unit/alert-test-message.test.ts (14 tests) 6ms
+ ✓ tests/unit/m365-live-guards.test.ts (6 tests) 81ms
+ ✓ tests/unit/people-names.test.ts (4 tests) 4ms
+ ✓ tests/unit/invoice-tax-point.test.ts (3 tests) 558ms
+stderr | tests/unit/resilient-fetch.test.ts > gateway retry for server Supabase clients > retries a safe request once after a 502
+[supabase] gateway 502 retrying once: POST /rest/v1/rpc/current_user_organization_id
+
+stderr | tests/unit/resilient-fetch.test.ts > gateway retry for server Supabase clients > retries only once, and not on ordinary errors
+[supabase] gateway 502 retrying once: GET /rest/v1/jobs
+
+stderr | tests/unit/resilient-fetch.test.ts > the session reads in every API guard are retried (go-live polish item 15) > my_session and company_people are read-only and retried once on a gateway 502
+[supabase] gateway 502 retrying once: POST /rest/v1/rpc/my_session
+
+ ✓ tests/unit/resilient-fetch.test.ts (5 tests) 13ms
+ ✓ tests/unit/list-skeleton.test.ts (4 tests) 13ms
+ ✓ tests/unit/team-week.test.ts (3 tests) 4ms
+ ✓ tests/unit/users.test.ts (6 tests) 40ms
+stderr | tests/unit/booking-time-zero-quote-126.test.ts > 126: a booking with recorded machine time > deleteBooking keeps the hint, so the schedule page and the Machines dialog show the database's sentence
+Error: This booking has recorded machine time; finish or release it instead.
+    at Module.deleteBooking (/workspace/tolra-public/work/b5-financial-candidate/lib/machine-schedule.ts:783:34)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/booking-time-zero-quote-126.test.ts:22:17
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11 {
+  hint: 'booking_has_runs'
+}
+
+stderr | tests/unit/booking-time-zero-quote-126.test.ts > 126: a booking with recorded machine time > set_job_machines' refusal (the same error, straight from the RPC) shows the same sentence
+{
+  code: '23514',
+  hint: 'booking_has_runs',
+  message: 'This booking has recorded machine time; finish or release it instead.'
+}
+
+stderr | tests/unit/booking-time-zero-quote-126.test.ts > 126: a booking with recorded machine time > the other delete refusals read as before
+Error: Only admin, office or workshop staff can remove bookings
+    at Module.deleteBooking (/workspace/tolra-public/work/b5-financial-candidate/lib/machine-schedule.ts:783:34)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/booking-time-zero-quote-126.test.ts:35:17
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:5
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:11)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11 {
+  hint: null
+}
+
+ ✓ tests/unit/booking-time-zero-quote-126.test.ts (4 tests) 11ms
+stderr | tests/unit/booking-time-zero-quote-126.test.ts > 126: a quote for £0.00 > accept_quote's refusal is the app's own sentence, shown as the database wrote it
+{
+  code: '22023',
+  hint: 'quote_zero_value',
+  message: "A quote for £0.00 can't be accepted. Add a price or decline it."
+}
+
+ ✓ tests/unit/offline-block-cookie-secure.test.ts (5 tests) 4ms
+ ✓ tests/unit/delivery-note-print.test.ts (6 tests) 4ms
+ ✓ tests/unit/pre-068-fallbacks.test.ts (4 tests) 4ms
+ ✓ tests/unit/paid-breaks-two-companies.test.ts (1 test) 7ms
+ ✓ tests/unit/rfq-display.test.ts (5 tests) 4ms
+stderr | tests/unit/attention-load-archived-drafts.test.ts > the dashboard's old-drafts count matches Invoicing's open drafts > 3 old drafts with 2 archived show 1
+TypeError: db.rpc is not a function
+    at unbilledJobsOf (/workspace/tolra-public/work/b5-financial-candidate/lib/attention-load.ts:38:38)
+    at Module.loadAttention (/workspace/tolra-public/work/b5-financial-candidate/lib/attention-load.ts:95:29)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/attention-load-archived-drafts.test.ts:43:28
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+
+stderr | tests/unit/attention-load-archived-drafts.test.ts > the dashboard's old-drafts count matches Invoicing's open drafts > a failed archive read reports the invoice sections as not loaded
+TypeError: db.rpc is not a function
+    at unbilledJobsOf (/workspace/tolra-public/work/b5-financial-candidate/lib/attention-load.ts:38:38)
+    at Module.loadAttention (/workspace/tolra-public/work/b5-financial-candidate/lib/attention-load.ts:95:29)
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/attention-load-archived-drafts.test.ts:51:28
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+Error: boom
+    at /workspace/tolra-public/work/b5-financial-candidate/tests/unit/attention-load-archived-drafts.test.ts:50:57
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:533:11
+    at runWithTimeout (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:39:7)
+    at runTest (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1056:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runSuite (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1205:15)
+    at runFiles (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1262:5)
+    at startTests (file:///workspace/tolra-public/work/b5-financial-candidate/node_modules/@vitest/runner/dist/index.js:1271:3)
+
+ ✓ tests/unit/attention-load-archived-drafts.test.ts (3 tests) 15ms
+ ✓ tests/unit/migration-102-independent.test.ts (3 tests) 6ms
+ ✓ tests/unit/payment-figures-agree.test.ts (2 tests) 4ms
+ ✓ tests/unit/rfq-quote.test.ts (8 tests) 5ms
+ ✓ tests/unit/inspectors.test.ts (3 tests) 3ms
+ ✓ tests/unit/chunk-reload.test.ts (3 tests) 5ms
+ ✓ tests/unit/day-plan-clock-change.test.ts (4 tests) 5ms
+ ✓ tests/unit/r1-post-with-code.test.ts (5 tests) 8ms
+ ✓ tests/unit/display-name.test.ts (5 tests) 4ms
+ ✓ tests/unit/document-attachments.test.ts (5 tests) 6ms
+ ✓ tests/unit/empty-list.test.ts (4 tests) 15ms
+ ✓ tests/unit/schedule-colours.test.ts (5 tests) 4ms
+ ✓ tests/unit/due-window.test.ts (4 tests) 5ms
+ ✓ tests/unit/invoice-draft-payment.test.ts (10 tests) 4ms
+ ✓ tests/unit/ai-integration-card.test.ts (3 tests) 26ms
+ ✓ tests/unit/display-settings.test.ts (5 tests) 6ms
+ ✓ tests/unit/signature-pad.test.ts (4 tests) 8ms
+ ✓ tests/unit/reviewer-provider-mocks.test.ts (4 tests) 8ms
+ ✓ tests/unit/ai-helper-101-header.test.ts (3 tests) 4ms
+ ✓ tests/unit/b5-yearend-missing-amounts.test.ts (5 tests) 11ms
+ ✓ tests/unit/open-drafts.test.ts (4 tests) 7ms
+ ✓ tests/unit/email-schedules-live.test.ts (2 tests) 3ms
+ ✓ tests/unit/job-delivery-note.test.ts (7 tests) 5ms
+ ✓ tests/unit/drawing-revision.test.ts (2 tests) 4ms
+ ✓ tests/unit/job-status.test.ts (4 tests) 3ms
+ ✓ tests/unit/uninvoiced.test.ts (5 tests) 4ms
+ ✓ tests/unit/xero-batch-deps.test.ts (1 test) 3ms
+ ✓ tests/unit/sliq-risk-guards.test.ts (14 tests) 8ms
+ ✓ tests/unit/use-now.test.ts (3 tests) 12ms
+ ✓ tests/unit/delivery-notes-for-view.test.ts (8 tests) 23ms
+ ✓ tests/unit/invoice-ref-cell.test.ts (4 tests) 9ms
+ ✓ tests/unit/invoice-link.test.ts (6 tests) 4ms
+ ✓ tests/unit/auto-booking.test.ts (3 tests) 4ms
+ ✓ tests/unit/overview-people-render.test.ts (3 tests) 16ms
+ ✓ tests/unit/company-paid-breaks.test.ts (3 tests) 5ms
+ ✓ tests/unit/isolation.test.ts (3 tests) 5ms
+ ✓ tests/unit/accounting-sql-shape.test.ts (2 tests) 3ms
+ ✓ tests/unit/company-load-retry.test.ts (3 tests) 5ms
+ ✓ tests/unit/picker-summary.test.ts (3 tests) 3ms
+ ✓ tests/unit/fetch-all.test.ts (3 tests) 68ms
+ ✓ tests/unit/run-bookings.test.ts (3 tests) 3ms
+ ✓ tests/unit/add-machine-reason.test.ts (4 tests) 4ms
+ ✓ tests/unit/invoice-ref.test.ts (5 tests) 5ms
+ ✓ tests/unit/audit-contract.test.ts (1 test) 12ms
+ ✓ tests/unit/no-network.test.ts (2 tests) 155ms
+ ✓ tests/unit/company-setup.test.ts (4 tests) 4ms
+ ✓ tests/unit/email-template-editor-parts.test.ts (19 tests) 7ms
+ ✓ tests/unit/empty-hints.test.ts (4 tests) 3ms
+ ✓ tests/unit/marketing-local-fonts.test.ts (2 tests) 4ms
+ ✓ tests/unit/dialog-sticky-close.test.ts (2 tests) 19ms
+ ✓ tests/unit/job-photo-thumb.test.ts (2 tests) 3ms
+ ✓ tests/unit/job-signoff.test.ts (2 tests) 2ms
+ ✓ tests/unit/job-link.test.ts (7 tests) 4ms
+ ✓ tests/unit/approval-banner-wording.test.ts (1 test) 19ms
+ ✓ tests/unit/parts-activity.test.ts (4 tests) 8ms
+ ✓ tests/unit/data-import-path.test.ts (2 tests) 3ms
+ ✓ tests/unit/invoice-detail-status-label.test.ts (3 tests) 3ms
+ ✓ tests/unit/hand-made-delivery-note.test.ts (2 tests) 4ms
+ ✓ tests/unit/footer-contact.test.ts (3 tests) 3ms
+ ✓ tests/unit/vat-registration-rule.test.ts (6 tests) 3ms
+ ✓ tests/unit/money-calendar-edges.test.ts (18 tests) 6ms
+ ✓ tests/unit/lock-retry.test.ts (3 tests) 11ms
+ ✓ tests/unit/b5-financial-export.test.ts (5 tests) 53ms
+ ✓ tests/unit/b5-financial-boundaries.test.ts (11 tests) 4ms
+ ✓ tests/unit/time-sheet-signed.test.ts (6 tests) 3ms
+ ✓ tests/unit/range-label.test.ts (6 tests) 4ms
+ ✓ tests/unit/auth-lock-timeout.test.ts (1 test) 6ms
+ ✓ tests/unit/numbering.test.ts (4 tests) 3ms
+ ✓ tests/unit/delivery-note-source.test.ts (4 tests) 3ms
+ ✓ tests/unit/optional-browser-database.test.ts (7 tests) 5ms
+ ✓ tests/unit/job-board-no-bulk-start.test.ts (3 tests) 4ms
+ ✓ tests/unit/invoice-phase-filters.test.ts (2 tests) 3ms
+ ✓ tests/unit/reviewer-ci.test.ts (1 test) 3ms
+ ✓ tests/unit/chase-wording.test.ts (8 tests) 17ms
+ ✓ tests/unit/client-ip.test.ts (3 tests) 4ms
+ ✓ tests/unit/attention.test.ts (2 tests) 3ms
+ ✓ tests/unit/org-settings-nav.test.ts (1 test) 4ms
+ ✓ tests/unit/attention-load-null-status.test.ts (2 tests) 2ms
+ ✓ tests/unit/sign-off.test.ts (1 test) 3ms
+ ✓ tests/unit/invoice-void-state.test.ts (1 test) 2ms
+ ✓ tests/unit/f1-ai-setup-card.test.ts (31 tests) 385ms
+ ✓ tests/unit/costing-wiring-ui.test.ts (49 tests) 357ms
+ ✓ tests/unit/f2-xero-setup-card.test.ts (25 tests) 189ms
+ ✓ tests/unit/f3-cards.test.ts (25 tests) 638ms
+ ✓ tests/unit/a150-ai-setup-card.test.ts (18 tests) 351ms
+ ✓ tests/unit/f4-guarded-calls.test.ts (10 tests) 820ms
+ ✓ tests/unit/f4-integrations-overview.test.ts (10 tests) 481ms
+ ✓ tests/unit/xero-switch-card.test.ts (9 tests) 196ms
+ ✓ tests/unit/customer-says-paid-ui.test.ts (10 tests) 94ms
+ ✓ tests/unit/chase-approval-ui.test.ts (10 tests) 152ms
+ ✓ tests/unit/company-setup-access.test.ts (8 tests) 62ms
+ ✓ tests/unit/dev001-held-alert.test.ts (6 tests) 86ms
+ ✓ tests/unit/chase-settings-ui.test.ts (8 tests) 135ms
+ ✓ tests/unit/setup-card.test.ts (6 tests) 79ms
+ ✓ tests/unit/email-template-editor-ui.test.ts (4 tests) 129ms
+ ✓ tests/unit/tolra-ai-controls-ui.test.ts (4 tests) 87ms
+ ✓ tests/unit/b5-costing-stale-ui.test.ts (2 tests) 114ms
+ ✓ tests/unit/tolra-ai-caps-ui.test.ts (1 test) 72ms
+ ✓ tests/unit/ai-company-status.test.ts (1 test) 34ms
+ ✓ tests/unit/email-choice-guide.test.ts (2 tests) 30ms
+ ✓ tests/unit/chase-reviewed-text.test.ts (1 test) 48ms
+
+ Test Files  458 passed (458)
+      Tests  6541 passed (6541)
+   Start at  15:26:26
+   Duration  278.20s (transform 14.71s, setup 0ms, collect 85.43s, tests 69.83s, environment 11.35s, prepare 32.14s)
+

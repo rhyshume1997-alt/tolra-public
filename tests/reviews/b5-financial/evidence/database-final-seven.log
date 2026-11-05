@@ -1,0 +1,21 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+stdout | tests/reviews/b5-financial/migration.db.test.ts
+Disposable proof: /tmp/tolra-b5-financial-7c5825bb-3fb0-46e6-9724-39d8fbe22835
+
+ ✓ tests/reviews/b5-financial/migration.db.test.ts (7 tests) 142624ms
+   ✓ original143 reproduces exact CLI prepared-statement error; whole migration writes nothing 3189ms
+   ✓ quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true 2190ms
+   ✓ existing company isolation, roles, whole-pence constraints and audit SQL proof all hold 593ms
+   ✓ Settings to panel uses the real company RLS rates; changing rates does not rewrite a saved quote line 12896ms
+   ✓ financial export source rows are company-scoped under RLS; foreign and workshop rows cannot be read 6352ms
+   ✓ candidate accounting state uses actual DB hold/mapping/company rows and refuses reconnect/error states 13570ms
+   ✓ whole-set rate saves serialize concurrent editors and reject a foreign rate without partial writes 11611ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  15:26:31
+   Duration  143.59s (transform 375ms, setup 0ms, collect 506ms, tests 142.62s, environment 0ms, prepare 95ms)
+

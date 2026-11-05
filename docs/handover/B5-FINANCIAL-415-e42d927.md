@@ -6,7 +6,7 @@ Base: public PR415, e42d927383513d1b98ce9cfca444884475622e2f. Owner Codex Builde
 
 Original public CI42044653049 / integration job127305039262 failed with SQLSTATE42601, `cannot insert multiple commands into a prepared statement`, statement9. That statement wrongly contained CREATE FUNCTION, REVOKE, GRANT and the following DO block.
 
-Exact cause: Supabase CLI2.40.7 pkg/parser/state.go ReadyState.Next enters AtomicState whenever text ends in ATOMIC, without a keyword boundary or preceding BEGIN. It mistakes the unquoted identifier save_costing_settings_atomic for BEGIN ATOMIC. Migration execution uses pkg/migration/file.go ExecBatch / ExecParams, which rejects the combined commands. This is not a bad function body, RLS failure or provider failure.
+Exact cause: [Supabase CLI2.40.7 pkg/parser/state.go](https://github.com/supabase/cli/blob/v2.40.7/pkg/parser/state.go#L48) ReadyState.Next enters AtomicState whenever text ends in ATOMIC, without a keyword boundary or preceding BEGIN. It mistakes the unquoted identifier save_costing_settings_atomic for BEGIN ATOMIC. Migration execution uses pkg/migration/file.go ExecBatch / ExecParams, which rejects the combined commands. This is not a bad function body, RLS failure or provider failure.
 
 Small fix: quote the same lower-case function name in CREATE OR REPLACE FUNCTION, REVOKE and GRANT; regenerate143_costing_rates.release.sql with scripts/release-sql.mjs. No function body, MD5, signature, grant or business calculation changes. CLI2.40.7 inside our new network-isolated database reproduces the original error and proves the fixed migration succeeds; all143 verifier rows and the original SQL role/isolation/audit/constraint proof pass. No check was weakened. This does not authorise a production release order.
 
@@ -41,3 +41,21 @@ Candidate file export is generic accountant CSV/XLSX/year-end ZIP, not a certifi
 Focused logs, original failures and disposable receipts: tests/reviews/b5-financial/evidence. Code must integrate this exact diff, rerun fresh/upgrade/catalogue/browser checks, and supply an exact final candidate SHA. ChatGPT reviews the changed head. Rhys owns release scope/order/activation; John/company owns actual rates, overhead meaning, machine mapping and historical-cost approval; accountant owns Sage import mapping. These approvals and production/deployment/live checks remain UNPROVEN. Software does not certify a company. CODED/TESTED only; no self-merge.
 
 The DB-backed accounting proof honours149's guards: the disposable copy receives the candidate's145,146,147,149 release files once, in order, after baseline144; no guard is stubbed out.150 is not installed by this financial proof. This rehearsal dependency is not a production manifest amendment. Original143 bodies, all role checks, the existing quote/supplier-profit code and Python engine stay unchanged. The incomplete-invoice cases are synthetic response shapes, not claims about production data.
+
+The final test source is60a1a27 (product fixes18179a2). Focused Vitest:961 passed/0 failed/0 skipped; includes60 frozen engine cases and412 frozen round cases. Independent local CPython round:412 passed/0 failed. Disposable suite:7 passed/0 failed/0 skipped, including concurrent full-rate saves and rollback after a foreign-ID failure. TypeScript/lint and full-suite completion are recorded with final receipts, not inferred here. The earlier full run was6540 passed/1 failed/0 skipped solely because this isolated worktree lacked an already-declared font package; npm ci installed the unchanged assigned lockfile. Original log retained. No dependency version or marketing source was changed.
+
+A further accountant-export regression found all() discarded fetchAll.truncated, allowing the20,000-row safety cap to silently omit records. The export now stops on a truncated source read; it does not lower/increase the cap or invent a complete ZIP. No date-range workaround is promised because existing reads precede date filtering. The failing test and targeted export regressions are retained.
+
+## Exact changed product files
+
+- supabase/migrations/143_costing_rates.sql and supabase/release/143_costing_rates.release.sql: quote the same function identifier, no body/grant changes.
+- lib/costing/price-part.ts and components/costing/price-this-part.tsx: validate input and keep stale IDs visible until reselected.
+- lib/html.ts and lib/spreadsheet.ts: reuse existing integer-pence conversion for financial CSV/XLSX.
+- lib/year-end-export.tsx: financial rounding, missing stored invoice totals stay UNRESOLVED, truncated source reads stop the export.
+- .github/workflows/ci.yml: run the isolated financial CLI/database proof, retaining receipts in the existing evidence artifact. No gate or existing test is removed.
+
+Focused test sources: tests/unit/b5-{financial-boundaries,costing-stale-ui,financial-export,yearend-missing-amounts,yearend-completeness,profitability-integration}.test.ts; tests/reviews/b5-financial/migration.db.test.ts, disposable.ts, bootstrap.sql and vitest.config.ts. The public pending-calculator oracle is test-only.
+
+Local environment receipts also retain the2GB TypeScript heap exhaustion and identical ancestor/current ESLint plugin conflict. TypeScript succeeds with4GB; lint uses the SAME checked-in config explicitly with --no-eslintrc to avoid loading the identical parent worktree config twice. No compiler option, lint rule, source dependency version or assertion is relaxed. Three pre-existing lint warnings are outside these changed files; no ownership is taken over.
+
+Final local validation at19bbdae7aa4f33c5453d24c29a0a01163fee7401: **6542 full unit passed /0 failed /0 skipped**; focused subset961/0/0 (not additional to the full count). Disposable database7/0/0 at60a1a27; all its SQL/calculator/test inputs are byte-identical at19bbdae, checked in run-summary.json. Independent CPython round412/0; TypeScript4GB exit0; full checked-in ESLint rules exit0 with3 existing unrelated warnings. Migration guard passes. Original failure logs are retained; no baseline assertion/gate is weakened. The final metadata commit changes no tested product source.
