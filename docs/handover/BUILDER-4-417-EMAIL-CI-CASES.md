@@ -6,14 +6,16 @@ Use the latest pushed head of `codex/b4-415-email-mfa-review`, not #415 or anoth
 
 All six cases in `tests/db/reviewer-chase-conditions.test.ts` failed at `verifyBackendIdentity()` because `TEST_SUPABASE_URL` was absent. No SQL or email was attempted. The helper had not completed, so it had not written `.env.test.local`.
 
-The local CLI used a different default image registry from CI. CI uses Supabase CLI **2.40.7**, and `supabase/setup-cli@v1` selects the official **ghcr.io** images. A plain local CLI tried `public.ecr.aws`, which this worker's network policy refused. `scripts/test-backend.sh` now uses CI's official registry by default and honours an explicit `SUPABASE_INTERNAL_IMAGE_REGISTRY`; it never silently retries through another registry.
+The local CLI used a different default image registry from CI. CI uses Supabase CLI **2.108.0**, and `supabase/setup-cli@v1` selects the official **ghcr.io** images. A plain local CLI tried `public.ecr.aws`, which this worker's network policy refused. `scripts/test-backend.sh` now uses CI's official registry by default and honours an explicit `SUPABASE_INTERNAL_IMAGE_REGISTRY`; it never silently retries through another registry.
+
+A controlled CI run also exposed a separate startup failure already present on #415: CLI 2.40.7 treats the `_atomic` suffix in `save_costing_settings_atomic` as the `BEGIN ATOMIC` keyword and combines separate commands into one prepared statement (`SQLSTATE 42601`, migration 143 statement 9). The upstream 2.108.0 parser's `isBeginAtomic` checks identifier boundaries and the preceding BEGIN. CI is now pinned to **2.108.0**, and the backend helper refuses the old version before startup. The numbered migration, its checksum and Code's costing implementation are unchanged. Upstream reference: `supabase/cli`, tag `v2.108.0`, `apps/cli-go/pkg/parser/state.go`.
 
 With the CI-matched CLI and registry the download succeeded. Extraction then failed with **no space left on device** on this worker's 8 GB disk. Removing 2.2 GB of this builder's generated build files left 4.2 GB free; a second extraction still filled the disk and failed. Docker removed the incomplete pull; there is no running backend. A worker with more disk (request: at least 20 GB) or a pre-existing disposable local stack is needed here. Do not remove someone else's files, change Docker's storage driver, weaken the identity guard, invent connection settings, or substitute a hosted database.
 
 On a runner with Docker, sufficient disk and the CI-pinned CLI:
 
 ```sh
-supabase --version                       # expected: 2.40.7
+supabase --version                       # expected: 2.108.0
 npm ci
 npm run test:backend                     # expected: local services healthy, .env.test.local written
 mkdir -p evidence
