@@ -10,15 +10,19 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     expect(files).toContain("138_chase_steps.sql");
     expect(files).toContain("140_import_source_ref.sql");
     expect(files).toContain("141_opening_wip.sql");
+    expect(files).toContain("143_costing_rates.sql");
     expect(files).toContain("144_accounting_connections.sql");
     const preflight = read("supabase/verify/release_preflight.sql");
     expect(preflight).toContain("('138 chase steps'");
     expect(preflight).toContain("('140 import source ref'");
     expect(preflight).toContain("('141 opening wip'");
+    expect(preflight).toContain("('143 costing rates'");
     expect(preflight).toContain("('144 accounting connections'");
     expect(preflight.indexOf("('138 chase steps'")).toBeLessThan(preflight.indexOf("('140 import source ref'"));
     expect(preflight.indexOf("('140 import source ref'")).toBeLessThan(preflight.indexOf("('141 opening wip'"));
     expect(preflight.indexOf("('141 opening wip'")).toBeLessThan(preflight.indexOf("('144 accounting connections'"));
+    expect(preflight.indexOf("('141 opening wip'")).toBeLessThan(preflight.indexOf("('143 costing rates'"));
+    expect(preflight.indexOf("('143 costing rates'")).toBeLessThan(preflight.indexOf("('144 accounting connections'"));
     expect(preflight).not.toMatch(/^(<<<<<<<|=======|>>>>>>>)/m);
   });
   it("runs the full ordered database proofs once, then the independent upgrade rehearsal", async () => {

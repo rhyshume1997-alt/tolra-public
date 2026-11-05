@@ -27,6 +27,14 @@
       "marker": "141 opening wip"
     },
     {
+      "number": 143,
+      "migration": "supabase/migrations/143_costing_rates.sql",
+      "release": "supabase/release/143_costing_rates.release.sql",
+      "rollback": "supabase/release/143_costing_rates.rollback.sql",
+      "verify": "supabase/verify/costing_rates_143.sql",
+      "marker": "143 costing rates"
+    },
+    {
       "number": 144,
       "migration": "supabase/migrations/144_accounting_connections.sql",
       "release": "supabase/release/144_accounting_connections.release.sql",
@@ -36,8 +44,7 @@
     }
   ],
   "numbers_not_in_this_candidate": {
-    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover",
-    "143": "costing_rates: deferred, unapplied proposal builder2_costing_settings_atomic.sql"
+    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover"
   },
   "mode": "post-numbered-one-time",
   "phases": [
@@ -94,7 +101,7 @@
     },
     {
       "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
-      "disposition": "deferred: requires costing 143, absent from this candidate"
+      "disposition": "superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied"
     },
     {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",

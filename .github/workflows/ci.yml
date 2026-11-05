@@ -234,6 +234,8 @@ jobs:
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/ai-cap-key-off-150.test.ts || rc=1
           echo "== SliQ releases 140 and 141: isolation and preflight proofs =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/opening-wip-141-isolation.test.ts tests/db/sliq-import-preflight-140-141.test.ts || rc=1
+          echo "== Costing rates (release 143, after 141 and before 144): no built-in rate, company scoping, roles, second step, stale refusal, serialised saves, all-or-nothing, past records unchanged =="
+          node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/costing-rates-143.test.ts tests/db/costing-save-143.test.ts || rc=1
           echo "== #253 and #255 proofs =="
           node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/reviewer-inbound-conditions.test.ts tests/db/reviewer-chase-conditions.test.ts || rc=1
           exit $rc

@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 149.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 149. Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -208,6 +208,10 @@ markers(migration, present) AS (
     ('141 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'opening_wip' AND p.policyname = 'opening_wip rbac select'
                                                  AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '6a18e9fed9ee8dd956c314df2b296562')),
+    ('143 costing rates',                 to_regclass('public.costing_materials') IS NOT NULL AND to_regclass('public.costing_machines') IS NOT NULL
+                                          AND to_regclass('public.costing_defaults') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.costing_rates_stamp()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e262df9f33ad0ece30d5ac7122995f3')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2c779bca11212d8bf660c4526719c919')),
     ('144 accounting connections', to_regprocedure('public.accounting_cloud_connections_ready()') IS NOT NULL)
 ),
 proposal_files(file, disposition) AS (
@@ -218,7 +222,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147'),
     ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 149'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
-    ('supabase/proposals/builder2_costing_settings_atomic.sql', 'deferred: requires costing 143, absent from this candidate'),
+    ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
 ),
 post_release_markers(label, present) AS (

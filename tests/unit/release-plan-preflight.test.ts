@@ -39,9 +39,9 @@ describe("no proposal silently disappears from release preflight", () => {
     expect(checkReleasePlan(copy)).toContain("Proposal missing from release preflight: supabase/proposals/n2_tolra_provided_ai.sql");
     expect(checkReleasePlan(copy)).toContain("Release marker missing: post-144 marker 145 company_setup");
   });
-  it("lists 138, 140, 141 and 144 in order for the JNR cutover and refuses a missing file, marker or release", () => {
+  it("lists 138, 140, 141, 143 and 144 in order for the JNR cutover and refuses a missing file, marker or release", () => {
     const plan = JSON.parse(readFileSync(path.join(root, "supabase/release-plan.json"), "utf8"));
-    expect(plan.jnr_cutover_numbered_order.map((entry: { number: number }) => entry.number)).toEqual([138, 140, 141, 144]);
+    expect(plan.jnr_cutover_numbered_order.map((entry: { number: number }) => entry.number)).toEqual([138, 140, 141, 143, 144]);
     const copy = tree();
     rmSync(path.join(copy, "supabase/verify/opening_wip_141.sql"));
     const preflight = path.join(copy, "supabase/verify/release_preflight.sql");
