@@ -1,5 +1,6 @@
 /**
- * F2: what the Xero setup card relies on, proved in SQL (disposable PG16, migrations 000-137 + releases 138-147; NO release 149).
+ * F2: what the Xero setup card relies on, proved in SQL (disposable PG16, migrations 000-137 + releases 138-147). Correct with or without
+ * release 149: where its transfer switch is installed, a connected and mapped company is handed nothing until the switch is turned on.
  *   - tenant binding: a Xero organisation belongs to one company at a time (migration 084's unique index on provider + tenant where not
  *     disconnected); a second company is refused with tenant_in_use; after the first disconnects it can take it;
  *   - company isolation: A's connection, mappings and queue are never visible or usable by B;
@@ -73,6 +74,12 @@ async function issueInvoice(t: Tenant) {
 const claim = (t: Tenant) => svc<{ r: { blocked: string | null; unmapped?: string[]; send: Record<string, string | number | null> | null } }>("select public.integration_claim_next($1, 'xero', 120) as r", [t.id]).then((r) => r[0].r);
 const sendRows = (t: Tenant) => owner<{ doc_id: string; status: string; attempts: number }>("select doc_id, status, attempts from public.integration_sends where organization_id = $1 order by doc_id", [t.id]);
 const mappingRows = (t: Tenant) => owner<{ kind: string; tolra_key: string | null; external_code: string }>("select kind, tolra_key, external_code from public.integration_mappings where organization_id = $1 order by kind, tolra_key nulls first", [t.id]);
+/** Release 149 (the per-company transfer switch) installed? This file runs both before it (CI baseline order) and after it (everything installed). */
+const hasSwitch = async () => (await owner<{ f: string | null }>("select to_regclass('public.xero_transfer_hold')::text as f"))[0].f !== null;
+/** An admin turns the switch ON with the real function (needs connected and mapped). */
+const turnOn = (t: Tenant) => q(admin(t), "select public.integration_xero_set_transfers(true) as r");
+/** Only for the company that is deliberately unmapped (the function refuses ON then): the row as an admin's turn-on leaves it, written as the owner. */
+const forceOn = (t: Tenant) => owner("insert into public.xero_transfer_hold (organization_id, enabled, changed_by, reason) values ($1, true, $2, 'admin') on conflict (organization_id) do update set enabled = true, changed_by = excluded.changed_by, reason = 'admin'", [t.id, t.users.admin.id]);
 async function clean(...ts: Tenant[]) {
   for (const t of ts) {
     if ((await overview(t).catch(() => ({ status: "not_connected" }))).status !== "not_connected") await disconnect(t).catch(() => undefined);
@@ -139,7 +146,11 @@ describe("F2 company isolation", () => {
     expect(b.blocked).toBe("disconnected");
     expect((await sendRows(alpha())).map((r) => r.doc_id)).toContain(id);
     expect((await sendRows(beta()))).toEqual([]);
-    // A's own claim does return A's document (mapped and connected).
+    // A's own claim does return A's document (mapped and connected), once the switch is on where release 149 is installed (default OFF: nothing).
+    if (await hasSwitch()) {
+      expect(await claim(alpha())).toMatchObject({ blocked: "launch_hold", send: null });
+      await turnOn(alpha());
+    }
     expect((await claim(alpha())).send).toMatchObject({ doc_id: id });
     await owner("delete from public.integration_mappings where organization_id = $1", [beta().id]);
     await clean(alpha(), beta());
@@ -186,6 +197,8 @@ describe("F2 refusal before activation (what this candidate CAN prove in SQL)", 
     // unmapped
     await owner("delete from public.integration_mappings where organization_id = $1", [beta().id]);
     await connect(beta(), `f2-ref-${randomUUID()}`);
+    // With 149 installed a new connection is OFF and the switch answers before the mapping does; ON (unmapped, so written as the owner) shows the mapping gate itself.
+    if (await hasSwitch()) await forceOn(beta());
     await issueInvoice(beta());
     expect(await claim(beta())).toMatchObject({ blocked: "unmapped", send: null });
     expect((await claim(beta())).unmapped).toEqual(expect.arrayContaining(["account:sales", "account:credit", "vat:20"]));
@@ -199,10 +212,15 @@ describe("F2 refusal before activation (what this candidate CAN prove in SQL)", 
     await clean(beta());
   });
 
-  it("STATED PLAINLY: connected AND mapped is handed its queued document (with Xero app credentials the app then sends it; see W-X's report). There is no hold in this candidate", async () => {
+  it("STATED PLAINLY: connected AND mapped is handed its queued document only once the transfer switch is on (release 149: OFF by default, nothing is handed out until an admin turns it on; without 149 it is handed out at once)", async () => {
     await connect(alpha(), `f2-go-${randomUUID()}`);
     await mapAll(alpha());
     const id = await issueInvoice(alpha());
+    if (await hasSwitch()) {
+      expect(await claim(alpha())).toMatchObject({ blocked: "launch_hold", send: null });
+      expect((await sendRows(alpha())).find((r) => r.doc_id === id)).toMatchObject({ status: "pending", attempts: 0 });
+      await turnOn(alpha());
+    }
     const got = await claim(alpha());
     expect(got.blocked).toBeNull();
     expect(got.send).toMatchObject({ doc_id: id });
