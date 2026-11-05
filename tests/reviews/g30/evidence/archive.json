@@ -1,0 +1,11 @@
+{
+  "artifact": "synthetic-run.tar.gz",
+  "sha256": "43d17cb3af7b7bc9f328058c12b0342d52f4f60811d80c0b7af30a427eb63c54",
+  "tested_commit": "d3c4d76",
+  "passed": 9,
+  "failed": 0,
+  "skipped": 0,
+  "synthetic_only": true,
+  "real_scenario_B": "unverified here, owned by Code",
+  "approval": "NOT APPROVED"
+}

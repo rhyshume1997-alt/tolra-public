@@ -29,4 +29,4 @@ Nine cases cover complete capture, every expected JNR removal, every wrong-compa
 
 Real scenario B comparison: **unverified here, owned by Code**. Operational record template: requirement G30; expected the approved per-company policy and all other identities/hashes unchanged; actual ____ **NOT EXECUTED**; evidence ____; tester ____; date ____; approval ____.
 
-Verification results will be attached from a committed synthetic-only run.
+Executed code `d3c4d76`, 5 November 2026 UTC, Codex: **9 passed, zero failed/skipped**. Lint and TypeScript passed. `evidence/synthetic-run.tar.gz` contains only synthetic snapshots/differences, original test output and SQL/identity receipts; `archive.json` records its SHA-256. This later commit attaches synthetic evidence only. Real scenario B comparison: **unverified here, owned by Code**.
