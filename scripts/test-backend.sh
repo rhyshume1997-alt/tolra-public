@@ -9,6 +9,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SUPABASE="${SUPABASE_BIN:-supabase}"
+# Match supabase/setup-cli@v1 in CI (CLI 2.40.7): use the official GHCR images.
+# A plain local CLI otherwise defaults to public.ecr.aws, which can be unavailable
+# even when CI's registry works. Honour an explicit registry; never retry via another.
+export SUPABASE_INTERNAL_IMAGE_REGISTRY="${SUPABASE_INTERNAL_IMAGE_REGISTRY:-ghcr.io}"
 EXCLUDE="studio,realtime,edge-runtime,logflare,vector,imgproxy,supavisor,postgres-meta"
 
 write_env() {
