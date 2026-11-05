@@ -287,6 +287,7 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bbb5d3b56c51fe63f21917836857427' AND p.prosecdef)
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '48b3f8302686bc6310402b117ea09ad5' AND p.prosecdef)
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3c415227fefdeda349442ff870a88e64' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_save_settings(boolean,boolean,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2d9f74178c3527f28dab42e17dcc29b0' AND p.prosecdef)
       AND NOT has_function_privilege('authenticated', to_regprocedure('public._ai_helper_force_off(uuid,text)'), 'EXECUTE')), FALSE))
 ),
 checks(n, check_name, value, expected) AS (

@@ -221,9 +221,11 @@ describe("provided AI cap: per company, off by default, every entry point", () =
     // A is full at 1000p of provided use. An own-key limit of 100000p does not make room.
     expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,100000)")).ok).toBe(true);
     expect(answer(await reserve(A, "roundup"))).toMatchObject({ ok: false, reason: "cap" });
-    // With the provided cap raised by 100p, an own-key limit of 1p now stops the provided request (release 150: least of the two caps).
+    // With the provided cap raised by 100p, an own-key limit at this month's use (1000p) now stops the provided request (release 150: least
+    // of the two caps); an own-key limit below that use (1p) is refused outright (release 150, 22023 cap_below_usage).
     expect((await setCap(A, 1100)).ok).toBe(true);
-    expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,1)")).ok).toBe(true);
+    expect(await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,1)")).toMatchObject({ ok: false, code: "22023", hint: "cap_below_usage" });
+    expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,1000)")).ok).toBe(true);
     expect(answer(await reserve(A, "roundup"))).toMatchObject({ ok: false, reason: "cap" });
     // With the own-key limit back above it, the provided cap binds again: exactly the 100p of room, then cap.
     expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,100000)")).ok).toBe(true);

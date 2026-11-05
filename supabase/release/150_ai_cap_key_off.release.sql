@@ -11,6 +11,7 @@ DO $post_release_guard$ BEGIN
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)')) IS DISTINCT FROM 'a100254532a8b9635e0b2b0952801b60'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')) IS DISTINCT FROM '9c5edca01d9bed8602b6186dfffa278b'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)')) IS DISTINCT FROM '9d2ef791742a5b67a02277ea04bb08e3'
+    OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_save_settings(boolean,boolean,integer)')) IS DISTINCT FROM '70658b5b1ebd4547872d8d152c29fb56'
     OR to_regprocedure('public._ai_helper_force_off(uuid,text)') IS NOT NULL
     OR (SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence') IS DISTINCT FROM '500' THEN
   RAISE EXCEPTION '150: the AI key functions, status or cap default are not exactly as 101, 122 and 146 left them (or 150 is already applied); stop and compare first';
@@ -235,7 +236,43 @@ END $$;
 REVOKE ALL ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER) TO authenticated;
 
--- 7. Self-check before COMMIT: the settings rows are exactly as they were; the default is 1000.
+-- 7. Admin: the two switches and the own-key monthly cap (101's function). A cap below what the company has already spent plus reserved this
+--    month is refused (22023, hint cap_below_usage), as ai_helper_tolra_set_cap refuses for the Tolra cap. The usage row is locked while checking,
+--    so a reservation cannot slip in between the check and the save. Same signature, grants, definer, search path and audit row as 101.
+--    Lock order: the usage row, then the settings row (no other function takes the settings row before the usage row).
+CREATE OR REPLACE FUNCTION public.ai_helper_save_settings(p_roundup BOOLEAN, p_rfq BOOLEAN, p_cap_pence INTEGER)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_org   UUID := public._ai_helper_caller(ARRAY['admin']);
+  v_month DATE := date_trunc('month', now() AT TIME ZONE 'Europe/London')::DATE;
+  v_used  INTEGER;
+BEGIN
+  IF p_roundup IS NULL OR p_rfq IS NULL OR p_cap_pence IS NULL OR p_cap_pence NOT BETWEEN 0 AND 100000 THEN
+    RAISE EXCEPTION 'Choose both switches and a monthly limit between £0 and £1000.' USING ERRCODE = '22023';
+  END IF;
+  SELECT u.spent_pence + u.reserved_pence INTO v_used FROM public.ai_helper_usage u WHERE u.organization_id = v_org AND u.month = v_month FOR UPDATE;
+  IF p_cap_pence < coalesce(v_used, 0) THEN
+    RAISE EXCEPTION 'The limit cannot be below used and reserved AI.' USING ERRCODE = '22023', HINT = 'cap_below_usage';
+  END IF;
+  INSERT INTO public.ai_helper_settings AS s (organization_id, roundup_enabled, rfq_enabled, monthly_cap_pence, updated_at, updated_by)
+  VALUES (v_org, p_roundup, p_rfq, p_cap_pence, now(), auth.uid())
+  ON CONFLICT (organization_id) DO UPDATE
+    SET roundup_enabled = EXCLUDED.roundup_enabled, rfq_enabled = EXCLUDED.rfq_enabled,
+        monthly_cap_pence = EXCLUDED.monthly_cap_pence, updated_at = now(), updated_by = auth.uid();
+  PERFORM public._ai_helper_audit(v_org, 'ai_helper_settings_updated', 'ai_helper_settings', v_org::TEXT,
+    jsonb_build_object('roundup_enabled', p_roundup, 'rfq_enabled', p_rfq, 'monthly_cap_pence', p_cap_pence));
+  RETURN public.ai_helper_status();
+END
+$$;
+REVOKE ALL ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
+
+-- 8. Self-check before COMMIT: the settings rows are exactly as they were; the default is 1000.
 DO $$
 BEGIN
   IF coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s), 'none') IS DISTINCT FROM current_setting('a150.settings_before') THEN

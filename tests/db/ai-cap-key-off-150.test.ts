@@ -31,7 +31,7 @@ const DIGEST = "d".repeat(64);
 const FEATURES = ["roundup", "rfq", "assistant"] as const;
 type Feature = (typeof FEATURES)[number];
 type Co = { id: string; user: string; office: string; email: string; officeEmail: string; session: string; officeSession: string };
-const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V"] as const;
+const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X"] as const;
 type Name = (typeof NAMES)[number];
 
 const runId = newRunId();
@@ -242,7 +242,11 @@ describe("release 150: replacing or removing the own key switches AI off", () =>
     const before = { sw: await switches(), usage: await usageRows(J), requests: await requestRows(J), events: (await forcedOff(J)).length, keys: await secretCount(J) };
     allOn(await settingsRow(J));
     // The route's calls: save_settings with the switches as they are and the new cap, then the finance check and assistant as they are.
-    for (const pence of [1550, 0, 100000, 700]) {
+    // Release 150: the lowest accepted limit is this month's spent + reserved (J has use from the cases above); 0 is refused while it has use.
+    const floor = await used(J);
+    expect(floor).toBeGreaterThan(0);
+    expect(await saveSettings(J, true, true, 0)).toMatchObject({ ok: false, code: "22023", hint: "cap_below_usage" });
+    for (const pence of [1550, floor, 100000, 700]) {
       expect((await saveSettings(J, true, true, pence)).ok).toBe(true);
       expect((await admin(J, "SELECT public.ai_helper_set_finance_check(TRUE)")).ok).toBe(true);
       expect((await admin(J, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
@@ -503,6 +507,52 @@ describe("release 150: one company cap across own-key and Tolra-provided AI", ()
     expect(oks(v)).toBe(4);
     expect(caps(v)).toBe(21);
     expect(await used(V)).toBe(400);
+  });
+});
+
+describe("release 150: the own-key cap cannot be set below this month's spent + reserved", () => {
+  const settingsAudits = (co: Co) => owned(async (db) => Number((await db.query("SELECT count(*) AS n FROM security_audit.audit_log WHERE organization_id=$1 AND action='ai_helper_settings_updated'", [co.id])).rows[0].n));
+  it("a cap below spent + reserved is refused (22023 cap_below_usage) and changes nothing; equal to it is accepted and binds; out-of-range keeps its plain 22023", async () => {
+    const { W } = companies;
+    expect((await setKey(W, enc("w1"))).ok).toBe(true);
+    expect((await saveSettings(W, true, true, 1000)).ok).toBe(true);
+    const granted = [];
+    for (let i = 0; i < 3; i++) granted.push(answer(await reserve(W, "roundup"))!.request_id as string);
+    expect((await settle(granted[0], "suggested", 100)).ok).toBe(true);
+    expect(await used(W)).toBe(300);
+    const audits = await settingsAudits(W);
+    for (const cap of [299, 1, 0]) expect(await saveSettings(W, false, false, cap)).toMatchObject({ ok: false, code: "22023", hint: "cap_below_usage" });
+    expect(await settingsRow(W)).toMatchObject({ monthly_cap_pence: 1000, roundup_enabled: true, rfq_enabled: true });
+    expect(await settingsAudits(W)).toBe(audits);
+    expect(await saveSettings(W, true, true, 100001)).toMatchObject({ ok: false, code: "22023" });
+    expect((await saveSettings(W, true, true, 300)).ok).toBe(true);
+    expect(await settingsRow(W)).toMatchObject({ monthly_cap_pence: 300 });
+    expect(await settingsAudits(W)).toBe(audits + 1);
+    expect(answer(await reserve(W, "rfq", 1))).toMatchObject({ ok: false, reason: "cap" });
+    // Releasing a reservation (failed at 0p) makes room again, and a cap down to the new use is then accepted.
+    expect((await settle(granted[1], "failed", 0)).ok).toBe(true);
+    expect((await saveSettings(W, true, true, 200)).ok).toBe(true);
+    // An office user still cannot change the cap.
+    expect((await office(W, "SELECT public.ai_helper_save_settings(TRUE,TRUE,5000) AS s")).ok).toBe(false);
+  });
+
+  it("a cap cut racing a burst of reservations: if the cut is accepted, used + reserved never ends above it; if refused, never above the old cap", async () => {
+    const { X } = companies;
+    expect((await setKey(X, enc("x1"))).ok).toBe(true);
+    expect((await saveSettings(X, true, true, 2000)).ok).toBe(true);
+    expect((await admin(X, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
+    const [outs, cut] = await Promise.all([burst(X, 15), saveSettings(X, true, true, 600)]);
+    expect(outs.every((o) => o.ok)).toBe(true);
+    const total = await used(X);
+    expect(total).toBe(oks(outs) * 100);
+    if (cut.ok) {
+      expect(total).toBeLessThanOrEqual(600);
+      expect(await settingsRow(X)).toMatchObject({ monthly_cap_pence: 600 });
+    } else {
+      expect(cut).toMatchObject({ code: "22023", hint: "cap_below_usage" });
+      expect(total).toBeLessThanOrEqual(2000);
+      expect(await settingsRow(X)).toMatchObject({ monthly_cap_pence: 2000 });
+    }
   });
 });
 
