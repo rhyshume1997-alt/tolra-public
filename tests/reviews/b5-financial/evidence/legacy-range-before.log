@@ -1,0 +1,114 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ❯ tests/unit/b5-profitability-range.test.ts (6 tests | 5 failed) 16ms
+   × refuses unsafe invoiced totals before a falsely precise profit can be shown 9ms
+     → expected { issued: true, …(1) } to deeply equal { issued: true, pence: null }
+   × does not accept a sum that lost precision before credits bring it back into range 1ms
+     → expected { issued: true, …(1) } to deeply equal { issued: true, pence: null }
+   × refuses unsafe supplier and quoted aggregates 1ms
+     → expected { pence: 9099999999999908, count: 91 } to be null
+   × refuses a single value whose pennies are not safe integers 0ms
+     → expected 10000000000000000000 to be null
+   × refuses final profit overflow even when both sell and buy are safe 2ms
+     → expected 'actual' to be 'unavailable' // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-profitability-range.test.ts > refuses unsafe invoiced totals before a falsely precise profit can be shown
+AssertionError: expected { issued: true, …(1) } to deeply equal { issued: true, pence: null }
+
+- Expected
++ Received
+
+  Object {
+    "issued": true,
+-   "pence": null,
++   "pence": 9099999999999908,
+  }
+
+ ❯ tests/unit/b5-profitability-range.test.ts:6:130
+      4| const invoices=(n:number)=>Array.from({length:n},(_,i)=>({id:`syntheti…
+      5| const pos=(n:number)=>Array.from({length:n},(_,i)=>({id:`synthetic-${i…
+      6| it('refuses unsafe invoiced totals before a falsely precise profit can…
+       |                                                                                                                                  ^
+      7| it('does not accept a sum that lost precision before credits bring it …
+      8|  expect(invoicedSellPence(invoices(91),[{invoice_id:'synthetic-0',stat…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  tests/unit/b5-profitability-range.test.ts > does not accept a sum that lost precision before credits bring it back into range
+AssertionError: expected { issued: true, …(1) } to deeply equal { issued: true, pence: null }
+
+- Expected
++ Received
+
+  Object {
+    "issued": true,
+-   "pence": null,
++   "pence": 8999999999999909,
+  }
+
+ ❯ tests/unit/b5-profitability-range.test.ts:8:102
+      6| it('refuses unsafe invoiced totals before a falsely precise profit can…
+      7| it('does not accept a sum that lost precision before credits bring it …
+      8|  expect(invoicedSellPence(invoices(91),[{invoice_id:'synthetic-0',stat…
+       |                                                                                                      ^
+      9| });
+     10| it('refuses unsafe supplier and quoted aggregates',()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  tests/unit/b5-profitability-range.test.ts > refuses unsafe supplier and quoted aggregates
+AssertionError: expected { pence: 9099999999999908, count: 91 } to be null
+
+- Expected: 
+null
+
++ Received: 
+Object {
+  "count": 91,
+  "pence": 9099999999999908,
+}
+
+ ❯ tests/unit/b5-profitability-range.test.ts:11:28
+      9| });
+     10| it('refuses unsafe supplier and quoted aggregates',()=>{
+     11|  expect(boughtIn(pos(91))).toBeNull();expect(quoteSellPence(Array.from…
+       |                            ^
+     12| });
+     13| it('refuses a single value whose pennies are not safe integers',()=>{e…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  tests/unit/b5-profitability-range.test.ts > refuses a single value whose pennies are not safe integers
+AssertionError: expected 10000000000000000000 to be null
+
+- Expected: 
+null
+
++ Received: 
+10000000000000000000
+
+ ❯ tests/unit/b5-profitability-range.test.ts:13:145
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  tests/unit/b5-profitability-range.test.ts > refuses final profit overflow even when both sell and buy are safe
+AssertionError: expected 'actual' to be 'unavailable' // Object.is equality
+
+Expected: "unavailable"
+Received: "actual"
+
+ ❯ tests/unit/b5-profitability-range.test.ts:16:20
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 1 passed (6)
+   Start at  16:21:05
+   Duration  317ms (transform 71ms, setup 0ms, collect 73ms, tests 16ms, environment 0ms, prepare 61ms)
+
