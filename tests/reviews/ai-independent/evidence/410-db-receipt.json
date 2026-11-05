@@ -1,0 +1,34 @@
+{
+  "database": "ai_verify_a8c203af0877446380729bbab6b22fca",
+  "sourceRoot": "/workspace/work/ai-ready-for-keys",
+  "mode": "own",
+  "version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+  "overlays": [
+    {
+      "file": "/workspace/work/ai-ready-for-keys/supabase/proposals/ai_ready_for_keys.sql",
+      "sha256": "26ae0259af1a50cd7788929d38b4e76e4b12802435c647d1b0f9f9d49a2effa4"
+    }
+  ],
+  "baseline": [
+    {
+      "file": "101_ai_helper.sql",
+      "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128"
+    },
+    {
+      "file": "103_ai_helper_service_role.sql",
+      "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e"
+    },
+    {
+      "file": "122_ai_helper_cap_default.sql",
+      "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a"
+    },
+    {
+      "file": "133_ai_helper_pre_enable.sql",
+      "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e"
+    },
+    {
+      "file": "134_ai_assistant.sql",
+      "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd"
+    }
+  ]
+}

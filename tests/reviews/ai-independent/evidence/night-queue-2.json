@@ -1,0 +1,149 @@
+{
+  "item": 2,
+  "source_sha": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "note": "Published shared AI/readback code carried by #422; not a claim about the candidate, production or deployment",
+  "profiles": [
+    {
+      "profile": "own_key_db",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "af1698abc699537d9792b557e99e7ea4c264e7fbddfef184b845da2c0225472d",
+      "failures": []
+    },
+    {
+      "profile": "provided_key_db",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "9177b7d58240a9b5c563d508e85e28a75d1cae3f92bdf2c61cf29e4caf3ec7fd",
+      "failures": []
+    },
+    {
+      "profile": "ai_and_readback_units",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "2164f29b15567a3e1bb232e40e3c32e435b261d277149400e439d93c34981497",
+      "failures": []
+    },
+    {
+      "profile": "verification_branch_full_units",
+      "passed": 5110,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "cd8d122776b49aa359bf15dcd590f68b5cf2c73dddff50b874bd4952aab18877",
+      "failures": []
+    }
+  ],
+  "receipts": [
+    {
+      "database": "ai_verify_69223f69ebae484d8c2a4d27463e5429",
+      "sourceRoot": "/workspace/work/xero-picker-adversarial",
+      "mode": "own",
+      "version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "overlays": [
+        {
+          "file": "/workspace/work/xero-picker-adversarial/supabase/release/146_tolra_provided_ai.release.sql",
+          "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd"
+        },
+        {
+          "file": "/workspace/work/xero-picker-adversarial/supabase/proposals/a150_ai_cap_key_off.sql",
+          "sha256": "30c31b23a0c582adde0af14f18de38c316f6ec14632ee0c7db811be377e903ef"
+        }
+      ],
+      "baseline": [
+        {
+          "file": "101_ai_helper.sql",
+          "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128"
+        },
+        {
+          "file": "103_ai_helper_service_role.sql",
+          "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e"
+        },
+        {
+          "file": "122_ai_helper_cap_default.sql",
+          "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a"
+        },
+        {
+          "file": "133_ai_helper_pre_enable.sql",
+          "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e"
+        },
+        {
+          "file": "134_ai_assistant.sql",
+          "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd"
+        }
+      ]
+    },
+    {
+      "database": "ai_verify_eb5aa54591b646bea1d0595a6c92888c",
+      "sourceRoot": "/workspace/work/xero-picker-adversarial",
+      "mode": "tolra",
+      "version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+      "overlays": [
+        {
+          "file": "/workspace/work/xero-picker-adversarial/supabase/release/146_tolra_provided_ai.release.sql",
+          "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd"
+        },
+        {
+          "file": "/workspace/work/xero-picker-adversarial/supabase/proposals/a150_ai_cap_key_off.sql",
+          "sha256": "30c31b23a0c582adde0af14f18de38c316f6ec14632ee0c7db811be377e903ef"
+        }
+      ],
+      "baseline": [
+        {
+          "file": "101_ai_helper.sql",
+          "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128"
+        },
+        {
+          "file": "103_ai_helper_service_role.sql",
+          "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e"
+        },
+        {
+          "file": "122_ai_helper_cap_default.sql",
+          "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a"
+        },
+        {
+          "file": "133_ai_helper_pre_enable.sql",
+          "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e"
+        },
+        {
+          "file": "134_ai_assistant.sql",
+          "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd"
+        }
+      ]
+    }
+  ],
+  "commands": [
+    "AI_CONTRACT_SOURCE_ROOT=/workspace/work/xero-picker-adversarial npx vitest run -c tests/reviews/ai-independent/vitest.unit.config.ts",
+    "AI_CONTRACT_ADMIN_URL=postgresql://xero_test@127.0.0.1:54849/postgres AI_CONTRACT_SOURCE_ROOT=/workspace/work/xero-picker-adversarial AI_CONTRACT_MODE=own|tolra AI_CONTRACT_SQL_FILES='[\"/workspace/work/xero-picker-adversarial/supabase/release/146_tolra_provided_ai.release.sql\",\"/workspace/work/xero-picker-adversarial/supabase/proposals/a150_ai_cap_key_off.sql\"]' AI_CONTRACT_TOLRA_CLEAR_FUNCTION=public.ai_helper_tolra_remove_key AI_CONTRACT_TOLRA_CLEAR_CONFIRMATION='REMOVE SHARED TOLRA KEY' npx vitest run -c tests/reviews/ai-independent/vitest.db.config.ts",
+    "npx vitest run",
+    "npx tsc --noEmit",
+    "npm run lint",
+    "git diff --check"
+  ],
+  "checks": {
+    "typecheck": {
+      "exit": 0,
+      "output": ""
+    },
+    "lint": {
+      "exit": 0,
+      "output": "\n> quoteflow-jnr@0.1.0 lint\n> eslint\n\n"
+    },
+    "diff": {
+      "exit": 0
+    }
+  },
+  "done": [
+    "Default 1000p both modes and one company allowance across modes",
+    "Concurrent reservations, roles/company isolation, key change OFF and exact owner-only removal confirmation",
+    "Remove key, purge platform audit, marker remains OFF, configure new key remains OFF, explicit enable succeeds",
+    "All 16 read-back regressions pass on the published code"
+  ],
+  "unchecked": [
+    "Hosted Auth/PostgREST/browser proof",
+    "Real keys/provider acceptance or production configuration",
+    "Any candidate commit newer than the pinned public shared code"
+  ]
+}
