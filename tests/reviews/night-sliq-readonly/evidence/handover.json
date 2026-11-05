@@ -1,0 +1,227 @@
+{
+  "task": "PM builder3 final independent verification queue",
+  "done": "All six assigned verification items completed on own codex draft PRs; unresolved findings handed to Opus, not fixed outside test ownership",
+  "inProgress": [],
+  "notStarted": [],
+  "publicSubjects": {
+    "421": "656a79390650fe87a6e7513679246e82df3f3a40",
+    "422": "cab1bbe19a16b6575c6680a35fe25820631e5f20"
+  },
+  "subjectsReadBackUnchanged": true,
+  "checks": "Typecheck (6144MiB heap), lint and diff checks passed for changes; full/focused counts listed per item. No mocked pass substitutes for hosted/database/browser proof.",
+  "constraints": "No other agents/chats, main/cand/#415 edits, merges, production SQL, provider calls or real data.151remainsproposalonly.",
+  "items": [
+    {
+      "item": 1,
+      "pr": 423,
+      "branch": "codex/xero-invite-adversarial",
+      "sha": "b26d469332e6bf38fb9aaecbe9bd2e613b8b7021",
+      "files": "tests/reviews/xero-invite-adversarial/**",
+      "results": {
+        "database": {
+          "pass": 30,
+          "fail": 6,
+          "skip": 0
+        },
+        "independentUnit": {
+          "pass": 19,
+          "fail": 0,
+          "skip": 0
+        },
+        "full": {
+          "pass": 6834,
+          "fail": 2,
+          "skip": 0
+        }
+      },
+      "remaining": [
+        "Expiry during token exchange not checked atomically before store",
+        "Revocation after OTP cannot cancel pending callback",
+        "Three early refusal paths lack correlation security logging",
+        "Single unbound unrelated tenant accepted: identity/policy gap, not demonstrated RLS bypass",
+        "Existing full-suite151 packaging conflicts; PM says keep proposal-only"
+      ],
+      "fixOwner": "Opus; recommendations, exact reproductions and assertions on PR423"
+    },
+    {
+      "item": 1,
+      "pr": 424,
+      "branch": "codex/xero-picker-adversarial",
+      "sha": "9a95fe9c5fc6e0da9b1056ccaac775eb1aef5a6d",
+      "files": "tests/reviews/xero-picker-adversarial/**",
+      "results": {
+        "database": {
+          "pass": 18,
+          "fail": 2,
+          "skip": 0
+        },
+        "independentUnit": {
+          "pass": 5,
+          "fail": 0,
+          "skip": 0
+        },
+        "full": {
+          "pass": 6799,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      "remaining": [
+        "Concurrent service-role auth_rate_hit transactions accept the same nonce twice; route race both POST200"
+      ],
+      "proposedFix": "Atomic service-only consumed nonce scoped to company/admin/purpose; do not rewrite historic migrations"
+    },
+    {
+      "item": 2,
+      "pr": 416,
+      "branch": "codex/ai-independent-verification",
+      "sha": "669b1cc0d874b6617c0b6dab01b6ba2a94084ecd",
+      "files": "tests/reviews/ai-independent/**",
+      "results": {
+        "ownKeyDB": {
+          "pass": 24,
+          "fail": 0,
+          "skip": 0
+        },
+        "tolraDB": {
+          "pass": 30,
+          "fail": 0,
+          "skip": 0
+        },
+        "focusedUnit": {
+          "pass": 41,
+          "fail": 0,
+          "skip": 0
+        },
+        "verificationBranchFull": {
+          "pass": 5110,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      "remaining": [
+        "Newer integrated candidate and hosted Auth/provider proof not checked"
+      ],
+      "note": "Database fixture overlays exact public146/150 SQL in isolated synthetic schema; not full migration-chain proof. Includes shared-key confirmation rejection, persistent OFF across audit purge, configure then explicit re-enable, and16readback regressions."
+    },
+    {
+      "item": 3,
+      "pr": 425,
+      "branch": "codex/night-cost-profit",
+      "sha": "652c52bff763fed2129d44d7c57699c8c07701fa",
+      "files": "tests/reviews/night-cost-profit/**",
+      "results": {
+        "focusedUnit": {
+          "pass": 559,
+          "fail": 3,
+          "skip": 0
+        },
+        "database": {
+          "pass": 35,
+          "fail": 2,
+          "skip": 0
+        },
+        "full": {
+          "pass": 6799,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      "remaining": [
+        "priceThisPart extended preview differs from copied rounded quote-unit times quantity7,99,1000000",
+        "148 explicitly rounds half-even: actual half-penny machine cost disappears under Rhys half-up business-money rule"
+      ],
+      "proposedFix": "Opus: fix preview wrapper without changing engine or60goldens; resolve148 policy discrepancy without silently broadening quotation-engine exception. Exact repro/failures on425."
+    },
+    {
+      "item": 4,
+      "pr": 426,
+      "branch": "codex/night-email-auth",
+      "sha": "a93842bacf59505b1a9f19e51adcada8ae12be51",
+      "files": "tests/reviews/night-email-auth/**",
+      "results": {
+        "focusedUnit": {
+          "pass": 550,
+          "fail": 0,
+          "skip": 0
+        },
+        "database": {
+          "pass": 59,
+          "fail": 0,
+          "skip": 0
+        },
+        "full": {
+          "pass": 6799,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      "remaining": [
+        "Hosted Auth/TOTP and browser",
+        "Real mailbox/provider acceptance/delivery",
+        "Newer integrated candidate"
+      ],
+      "note": "No product defect demonstrated. Real route guards and SQL; projected identity/AMR, minimal Auth schema, mock providers."
+    },
+    {
+      "item": 5,
+      "pr": 427,
+      "branch": "codex/night-151-package",
+      "sha": "adca5630c3ae322cdee3f47a8760547001fc0aa7",
+      "files": "tests/reviews/night-151-package/**",
+      "results": {
+        "focusedUnit": {
+          "pass": 5,
+          "fail": 0,
+          "skip": 0
+        },
+        "database": {
+          "pass": 1,
+          "fail": 1,
+          "skip": 0
+        },
+        "full": {
+          "pass": 6834,
+          "fail": 2,
+          "skip": 0
+        }
+      },
+      "remaining": [
+        "Verifier accepts security-definer function search_path=pg_temp,public because onlyproconfignonnull checked",
+        "Existing check-migrations and release-plan-preflight demand151registration: conflicts with PM proposal-only rule"
+      ],
+      "proposedFix": "Opus: verify exact approvedsearch_path perfunction; reconcile toolingwithoutregistering151. Productionfunctionitselfcorrectlypinned. Actual11verifyrows/apply/guardedrollback/reapplypass; refusal-logrowsintentionallydropped byrollback,companyauditpreserved."
+    },
+    {
+      "item": 6,
+      "pr": 428,
+      "branch": "codex/night-sliq-readonly",
+      "files": "tests/reviews/night-sliq-readonly/**",
+      "results": {
+        "focusedUnit": {
+          "pass": 168,
+          "fail": 0,
+          "skip": 0
+        },
+        "full": {
+          "pass": 6799,
+          "fail": 0,
+          "skip": 0
+        },
+        "offlineCLI": {
+          "exit": 5,
+          "verdict": "INCOMPLETE",
+          "expected": true,
+          "reason": "Synthetic open WIP valuation UNVERIFIED"
+        }
+      },
+      "remaining": [
+        "Real JNR exports/counts/money not checked",
+        "CSV/XLSX loader does not establish original report-style.xls shape handling",
+        "No dedicated aged-debtors mapping at publicpin",
+        "GO-LIVE-DATA-LOAD.md absent frompin"
+      ],
+      "requiredFromCode": "Approved export mapping/conversion, independent aged-debtors control totals, matching read-only post-load snapshot; no realdataused orimportperformed."
+    }
+  ]
+}
