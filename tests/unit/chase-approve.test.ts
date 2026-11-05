@@ -37,8 +37,9 @@ describe("Approve and send", () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][0]).toMatchObject({
       organizationId: ORG, userId: "u-office", kind: "invoice_reminder", to: ["pay@acme.test"], subject: "Overdue invoice INV-1", text: "Hi Acme Ltd\n\nPlease pay",
-      html: "Hi Acme Ltd<br>\n<br>\nPlease pay", recordType: "invoice", recordId: "inv-1", idempotencyKey: approveKey(DRAFT),
+      recordType: "invoice", recordId: "inv-1", idempotencyKey: approveKey(DRAFT),
     });
+    expect(send.mock.calls[0][0]).not.toHaveProperty("html");
     expect(admin.rpc).toHaveBeenCalledWith("chase_record_sent", { p_org: ORG, p_draft: DRAFT, p_sent: "sent-1", p_user: "u-office" });
   });
   it("the key fits the mailer and is the same on a retry (so a double click never sends twice)", () => {

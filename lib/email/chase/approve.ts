@@ -15,7 +15,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchAll } from "@/lib/fetch-all";
 import { pauseActive } from "@/lib/email/chase/steps";
-import { escapeHtml } from "@/lib/email/templates/defaults";
 import type { CompanyEmailInput, CompanyEmailResult } from "@/lib/email/send-company-email";
 import { attemptKey } from "@/lib/email/chase/attempt";
 import { recordSendAudit } from "@/lib/email/chase/send-audit";
@@ -168,7 +167,7 @@ export async function approveChaseDraft(input: ApproveInput, deps: ApproveDeps):
   if (input.provider === "resend") await recordSendAudit(db, { outcome: "provider_override", historyId: draft.id, channel: "chase-approve", provider: "resend" });
   let sent: CompanyEmailResult;
   try { sent = await deps.send({
-    organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body, html: escapeHtml(body).replace(/\r?\n/g, "<br>\n"),
+    organizationId: org, userId: input.userId, kind: "invoice_reminder", to, subject, text: body,
     recordType: "invoice", recordId: chase.invoice_id, idempotencyKey: await attemptKey(db, org, approveKey(draft.id), chase.invoice_id, draft.id),
   }, provider); } catch { await settleClaim("unknown"); await recordSendAudit(db, { outcome: "unknown", historyId: draft.id, channel: "chase-approve", code: "thrown" }); return needsChecking(); }
   if (!sent.ok) {
