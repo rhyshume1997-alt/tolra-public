@@ -1,0 +1,23 @@
+{
+  "subject": "656a79390650fe87a6e7513679246e82df3f3a40",
+  "command": "npx vitest run --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/night-151-full.json",
+  "passed": 6834,
+  "failed": 2,
+  "skipped": 0,
+  "failures": [
+    {
+      "file": "tests/unit/check-migrations.test.ts",
+      "test": "this repository passes: nothing applied has changed and every new migration has its file set",
+      "message": "AssertionError: expected [ \u2026(2) ] to deeply equal []"
+    },
+    {
+      "file": "tests/unit/release-plan-preflight.test.ts",
+      "test": "no proposal silently disappears from release preflight covers every proposal, both ordered post-144 packages and every preflight marker",
+      "message": "AssertionError: expected [ \u2026(2) ] to deeply equal []"
+    }
+  ],
+  "interpretation": "Both existing packaging checks require 151 registration. PM explicitly says 151 is a proposal only: do not fix by registering it. Opus must reconcile tooling with proposal status.",
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit 0",
+  "lint": "npm run lint: exit 0",
+  "diff": "git diff --check: passed"
+}
