@@ -5,7 +5,7 @@ export async function GET(){
  const auth=await requireProfile(['admin']);if(isErrorResponse(auth))return auth;
  if(auth.session?.support)return jsonError('Support access cannot change Xero transfers.',403);
  const {data,error}=await auth.supabase.rpc('integration_xero_launch_status');
- return error?jsonError('Xero transfer controls are unavailable. Transfers stay off.',503):NextResponse.json(data);
+ return error?jsonError('Xero transfer controls are unavailable. Nothing was changed.',503):NextResponse.json(data);
 }
 export async function POST(request:Request){
  if(!sameOrigin(request))return forbiddenOrigin();

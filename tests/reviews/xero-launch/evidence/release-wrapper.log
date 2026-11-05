@@ -1,0 +1,11 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-xero-launch-hold
+
+ ✓ tests/unit/release-sql.test.ts (186 tests) 202ms
+
+ Test Files  1 passed (1)
+      Tests  186 passed (186)
+   Start at  08:20:42
+   Duration  563ms (transform 97ms, setup 0ms, collect 109ms, tests 202ms, environment 0ms, prepare 91ms)
+
