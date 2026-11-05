@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResendStatusCard } from "@/components/resend-status-card";
 import { XeroMappings } from "@/components/xero-mappings";
 import { XeroSendLog } from "@/components/xero-send-log";
 import { NEEDS_DATABASE_UPDATE, databaseHas084, missingDbObject } from "@/lib/db-features";
@@ -289,6 +290,7 @@ export function IntegrationsPanel() {
       />
       <AccountingCloudCards />
       <MicrosoftConnectCard status={status} />
+      <ResendStatusCard />
       {overview && linked ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
       {overview && (linked || anySends) ? <XeroSendLog reloadKey={version} onChanged={() => void load()} /> : null}
     </div>
