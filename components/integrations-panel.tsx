@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { AccountingCloudCards } from "@/components/integrations/accounting-cloud-cards";
 import { AccountantInviteCard } from "@/components/accountant-invite-card";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { NEEDS_DATABASE_UPDATE, databaseHas084, missingDbObject } from "@/lib/db
 import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { NEEDS_107, cardStatusLabel, connectCardView, connectOutcomeMessage, overviewSummary, type IntegrationOverview } from "@/lib/integrations/overview";
+import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
@@ -33,6 +35,8 @@ import { useUser } from "@/lib/use-user";
  */
 export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {}) {
   const params = useSearchParams();
+  // Xero Connect and Disconnect need a recent authenticator code: the prompt opens on the server's say-so and the request is sent once more.
+  const { requestCode, codeDialog } = useCodePrompt();
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
   const [missing084, setMissing084] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -94,11 +98,17 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
     return body;
   }
 
+  async function postGuarded(path: string): Promise<Record<string, unknown> | null> {
+    const r = await postIntegrationWithCode(path, requestCode);
+    if (!r.ok) { toast.error(r.error); return null; }
+    return r.body;
+  }
+
   async function connect() {
     if (xeroView.connectDisabled) return;
     setBusy(true);
     try {
-      const body = await post("/api/accounting/xero/connect");
+      const body = await postGuarded("/api/accounting/xero/connect");
       if (body && typeof body.url === "string") window.location.assign(body.url);
     } finally {
       setBusy(false);
@@ -109,7 +119,7 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
     setConfirmDisconnect(false);
     setBusy(true);
     try {
-      if (await post("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
+      if (await postGuarded("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
       setTest(null);
       await load();
     } finally {
@@ -194,6 +204,7 @@ export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {})
 
   return (
     <div className="space-y-6">
+      {codeDialog}
       {company && !guided ? <p className="text-sm text-slate-600" data-testid="integrations-company">For <strong>{company}</strong>. Each company has its own page: switch company to set up the other.</p> : null}
       <Card>
         <CardHeader>
