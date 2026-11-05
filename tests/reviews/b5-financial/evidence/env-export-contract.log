@@ -1,0 +1,3 @@
+Synthetic allowlist export: PASS (4 expected keys, unrelated omitted)
+Incomplete environment: REFUSED before export
+No SQL or provider calls; no real credentials
