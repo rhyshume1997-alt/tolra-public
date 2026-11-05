@@ -1,0 +1,30 @@
+{
+  "number": 262,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/262",
+  "title": "AQ: proof-gated morning approval checklist",
+  "branch": "codex/aq-morning-checklist",
+  "observed_head": "6be692d3e3fde62baed099c71dc518bfbf2930a5",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/MORNING-CHECKLIST.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/MORNING-CHECKLIST.md with 14 numbered checks and conditional exact approval sentences pinned to #247 head 41c685c416305637d86b580324fff9e6cda037ff. Explicitly states 140 to 143 have no release files on #247. Explains destructive 138/145 rollback limits, retained 146 history, prerequisite order, missing-proof STOP and merge-only approval.\n\nAssumption: these are draft words for Rhys, not approval already given. No SQL applied, merge, deployment or Ready label. Validation: 14 numbered checks, missing-release warning, no em dashes and diff check passed. Manual proofs are NOT RUN.",
+  "historical_test_claims": [
+    "Adds tests/MORNING-CHECKLIST.md with 14 numbered checks and conditional exact approval sentences pinned to #247 head 41c685c416305637d86b580324fff9e6cda037ff. Explicitly states 140 to 143 have no release files on #247. Explains destructive 138/145 rollback limits, retained 146 history, prerequisite order, missing-proof STOP and merge-only approval.",
+    "Assumption: these are draft words for Rhys, not approval already given. No SQL applied, merge, deployment or Ready label. Validation: 14 numbered checks, missing-release warning, no em dashes and diff check passed. Manual proofs are NOT RUN."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41785642508,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41785642508",
+      "head_sha": "6be692d3e3fde62baed099c71dc518bfbf2930a5",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

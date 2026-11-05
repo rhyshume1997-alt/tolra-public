@@ -1,0 +1,33 @@
+{
+  "number": 322,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/322",
+  "title": "CZ: correct every visible R1\u2013R8 restriction claim against pinned source",
+  "branch": "codex/cz-restriction-claims",
+  "observed_head": "1b4ed92dcd4337e2c0bde4c67520ac3055aba72e",
+  "base_sha": "9515eda33b50878a057a431b06498a5b1f15b204",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:07Z",
+  "files": [
+    "docs/handover/R1-R8-CODE-CHECK.md",
+    "docs/handover/R1-R8-OCCURRENCES.json",
+    "tests/RHYS-SIGN-OFF-GUIDE.md",
+    "tests/validation/EVIDENCE-INDEX.md",
+    "tests/validation/RESTRICTIONS-AND-ASSUMPTIONS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Inventories 27 R-key-bearing lines across all 14 refreshed validation files and 17 builder-pack files, checking the declared 9c3f5c6 application/test definitions. Adds corrected documentation-only RESTRICTIONS-AND-ASSUMPTIONS.md from f76a5b84; does not merge diagnostic application code, manifests or protocol counts. Corrects CS's R8 scope summary and adds a version-qualified notice to older CO. docs/handover/R1-R8-CODE-CHECK.md and occurrence JSON preserve exact findings/source lines.\n\nFixes unsupported completed-proof claims, Sage/QBO export promise, pre-filled Accepted, unsafe disposable-reset/live-recovery conflation, cap default-versus-existing/registry-owner wording, incorrect manual path and blanket timesheet-email exclusion. Preserves six-release order, no 146 reinstall, ordinary money rule and protected costing half-even/60 golden answers. Historical CI41816512073 is overall FAILURE, not completed validation.\n\nNo docs/handover files were present in four checked public snapshots; unseen private handover remains explicitly unreviewed. Static source/inventory checks: 27 occurrences, eight unique blank-acceptance proposals, exact paths/lines read. No runtime/SQL/parity pass claimed, no assertion/app/SQL/fixture change, main merge or Ready label. Exact head 1b4ed92dcd4337e2c0bde4c67520ac3055aba72e.",
+  "historical_test_claims": [
+    "Inventories 27 R-key-bearing lines across all 14 refreshed validation files and 17 builder-pack files, checking the declared 9c3f5c6 application/test definitions. Adds corrected documentation-only RESTRICTIONS-AND-ASSUMPTIONS.md from f76a5b84; does not merge diagnostic application code, manifests or protocol counts. Corrects CS's R8 scope summary and adds a version-qualified notice to older CO. docs/handover/R1-R8-CODE-CHECK.md and occurrence JSON preserve exact findings/source lines."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41843717998,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41843717998",
+      "head_sha": "1b4ed92dcd4337e2c0bde4c67520ac3055aba72e",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

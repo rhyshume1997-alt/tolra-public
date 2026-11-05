@@ -1,0 +1,31 @@
+{
+  "number": 382,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/382",
+  "title": "G12: require a complete KEEP list before any wipe rehearsal",
+  "branch": "codex/g12-wipe-control-plan",
+  "observed_head": "9bc6904ddb903f584e45dca67d654e5b778fbe55",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:01Z",
+  "files": [
+    "docs/audit/G12-WIPE-CONTROL-CHECKLIST.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds one short document under docs/audit: wipe-control checklist, minimum KEEP table list explicitly including dln_numbering_pending, and five blank test records. Requires a full schema/file inventory and exact approved filters, created-and-identified disposable target, exact kit/SQL hashes, dry-run equality, all-Marpet preservation, atomic failure/repeat checks and recovery comparisons. Database-owner RLS bypass is called out.\n\nComplements #373/#379 rather than claiming their narrow fixtures prove the absent final wipe kit. Every actual result stays NOT EXECUTED and approvals remain blank. No SQL or wipe ran. Reviewed required fields and git diff --check.\n\nG12: checklist/test plan ready, execution NOT EXECUTED; approved final kit/inventory remain required. Separate branch from main 68f89ca, docs only, no main merge, production SQL/data, #359/candidate edits, Ready label or message to John.",
+  "historical_test_claims": [
+    "Adds one short document under docs/audit: wipe-control checklist, minimum KEEP table list explicitly including dln_numbering_pending, and five blank test records. Requires a full schema/file inventory and exact approved filters, created-and-identified disposable target, exact kit/SQL hashes, dry-run equality, all-Marpet preservation, atomic failure/repeat checks and recovery comparisons. Database-owner RLS bypass is called out.",
+    "Complements #373/#379 rather than claiming their narrow fixtures prove the absent final wipe kit. Every actual result stays NOT EXECUTED and approvals remain blank. No SQL or wipe ran. Reviewed required fields and git diff --check.",
+    "G12: checklist/test plan ready, execution NOT EXECUTED; approved final kit/inventory remain required. Separate branch from main 68f89ca, docs only, no main merge, production SQL/data, #359/candidate edits, Ready label or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41957447971,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41957447971",
+      "head_sha": "9bc6904ddb903f584e45dca67d654e5b778fbe55",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

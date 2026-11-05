@@ -1,0 +1,35 @@
+{
+  "number": 362,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/362",
+  "title": "M1: independent second review and corrections for #350\u2013#354",
+  "branch": "codex/m1-second-review-c03-c16",
+  "observed_head": "7f3a8d48e7bc498628c175e62ed50419b4841856",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:03Z",
+  "files": [
+    "docs/handover/C03-MANUAL-CHECKS.md",
+    "docs/handover/C04-VSR-DRAFT.md",
+    "docs/handover/C05-P6-OPEN-RISKS.md",
+    "docs/handover/C16-CUTOVER-CONTROLS-12-NOV.md",
+    "docs/handover/M1-OPEN-ITEMS.json",
+    "docs/handover/M1-SECOND-REVIEW-350-354.md",
+    "docs/handover/SLIQ-HEADER-MAPPING-TEMPLATE-JOHN.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Reads all five source documents at the pinned heads listed in docs/handover/M1-SECOND-REVIEW-350-354.md. Lists and fixes 21 findings; M1-OPEN-ITEMS.json inventories all 452 unfilled source table rows. Carries corrected copies onto this independent docs-only branch; original builder6 PRs unchanged.\n\nFixes C03 fake-only versus real-practice boundaries, missing break fixture, overbroad AI-off inference, email-code versus authenticator MFA, live-write wording and explicit signers; C04 count/scope and technical/financial sign-off; C05 missing older transfer risk and required delivery-note risk/owner acknowledgment; C16 circular future-stage prerequisites and final GO before smoke, named signatures and rehearsal-only loader boundary; SliQ template .xls/row6/totals/Crd/VAT/aged/quote-line/PO-line/final-date-gap controls.\n\nAll189 existing C03 IDs and125 canonical fields retained; results, acceptance and signatures remain blank. A separate verbatim reviewer condition register/private Operations Pack is not visible: C03/C04/C05/C16 intent is checked against supplied scope, not claimed to close unseen subconditions. Actual real files, financial totals, runtime/provider/import proof and signatories remain open.\n\nStatic source/inventory and whitespace checks pass. No app/SQL/test assertion changed or runtime suite claimed. No main merge, production SQL, Ready label, deployment or new feature. Exact head 7f3a8d48e7bc498628c175e62ed50419b4841856.",
+  "historical_test_claims": [
+    "Static source/inventory and whitespace checks pass. No app/SQL/test assertion changed or runtime suite claimed. No main merge, production SQL, Ready label, deployment or new feature. Exact head 7f3a8d48e7bc498628c175e62ed50419b4841856."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41887095613,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41887095613",
+      "head_sha": "7f3a8d48e7bc498628c175e62ed50419b4841856",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

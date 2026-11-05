@@ -1,0 +1,30 @@
+{
+  "number": 203,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/203",
+  "title": "Fix approval browser editor lookup without pulling in the chase stack",
+  "branch": "codex/161-approval-test-only",
+  "observed_head": "96dd1bd11f4df024fa95764c3df51e8f423cdf7c",
+  "base_sha": "011a8516b33c27b3ae5535c74a78819969226a2c",
+  "github_state": "merged",
+  "merged_at": "2026-11-03T12:46:19Z",
+  "observed_at": "2026-11-05T07:22:19Z",
+  "files": [
+    "tests/e2e/chase-steps.spec.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Replaces closed #198 with the same browser-test fix based directly on #161's branch, `chatgpt2/e2e-chasing-code-only`. Only `tests/e2e/chase-steps.spec.ts` changes.\n\nLocate the active editor outside the card when the page uses its portalled Body dialog. Retain the inline chase editor, approval, single-send, queue-removal and approver checks. Compare the entire reviewed subject and body with the saved draft, approval confirmation, provider payload and sent history.\n\nValidation: targeted ESLint passed and all four tests collect. Live execution remains unrun because no disposable Supabase backend is configured. No SQL or migrations applied. The approval snapshot transport defect is addressed separately, not hidden by weakening this test.\n",
+  "historical_test_claims": [
+    "Replaces closed #198 with the same browser-test fix based directly on #161's branch, `chatgpt2/e2e-chasing-code-only`. Only `tests/e2e/chase-steps.spec.ts` changes.",
+    "Validation: targeted ESLint passed and all four tests collect. Live execution remains unrun because no disposable Supabase backend is configured. No SQL or migrations applied. The approval snapshot transport defect is addressed separately, not hidden by weakening this test."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41635328100,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41635328100",
+      "head_sha": "96dd1bd11f4df024fa95764c3df51e8f423cdf7c",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

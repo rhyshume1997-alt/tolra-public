@@ -1,0 +1,39 @@
+{
+  "number": 296,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/296",
+  "title": "AU: simplify confusing shop-screen words in PRs #232\u2013#261",
+  "branch": "codex/b4-au-wording",
+  "observed_head": "b35e5caf003fba6c6f25082bcfae311ae35e5fd4",
+  "base_sha": "41c685c416305637d86b580324fff9e6cda037ff",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:10Z",
+  "files": [
+    "app/api/accounting/[provider]/[action]/route.ts",
+    "app/api/chase/run/route.ts",
+    "components/email-schedules/chase-steps-editor.tsx",
+    "components/email/email-templates-card.tsx",
+    "components/integrations/accounting-cloud-cards.tsx",
+    "components/integrations/ai-connection-card.tsx",
+    "components/platform/tolra-ai-caps.tsx",
+    "tests/AU-SCREEN-WORDING-REVIEW.md",
+    "tests/HANDOVER-BUILDER-4-AU.md",
+    "tests/unit/ai-integration-card.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Review of all 30 PR snapshot diffs is recorded with full heads in the handover. Fixes only confusing screen/server-message wording in accounting, AI, reminder settings and email editing; no behavior or stored-text changes.\n\nValidation: 90 affected tests pass (64 accounting/chase/AI plus 26 editor/integration); typecheck and explicit changed-code lint pass. One existing wording assertion updated to preserve the same refusal-state check. Operator visual/browser checks remain unrun.\n\nCommitted job handover included. Draft only, no Ready label, production SQL, main merge or deployment. Builder 3 CM/CN/CO/CP/CQ untouched. Build/test deadline 6 November; conditional go-live 12 November 2026.\n",
+  "historical_test_claims": [
+    "Validation: 90 affected tests pass (64 accounting/chase/AI plus 26 editor/integration); typecheck and explicit changed-code lint pass. One existing wording assertion updated to preserve the same refusal-state check. Operator visual/browser checks remain unrun.",
+    "Committed job handover included. Draft only, no Ready label, production SQL, main merge or deployment. Builder 3 CM/CN/CO/CP/CQ untouched. Build/test deadline 6 November; conditional go-live 12 November 2026."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41831188039,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41831188039",
+      "head_sha": "b35e5caf003fba6c6f25082bcfae311ae35e5fd4",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

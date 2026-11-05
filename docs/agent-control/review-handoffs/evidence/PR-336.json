@@ -1,0 +1,28 @@
+{
+  "number": 336,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/336",
+  "title": "I2: Add controlled document register and revision approval procedure",
+  "branch": "codex/b5-i2-iso9001",
+  "observed_head": "b30d8dea204162c9baded499de7fef516d526b57",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:06Z",
+  "files": [
+    "docs/iso9001/CONTROLLED-DOCUMENTS-REGISTER.md",
+    "docs/iso9001/DOCUMENT-REVISION-APPROVAL-PROCEDURE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a blank controlled-documents register, 158-path public source inventory with exact revision links and proposed owners, and a revision/approval procedure. Snapshot covers main, the diagnostic refresh and document changes in 180 open PRs; private JNR/Operations Pack reconciliation remains explicit.\n\nTolra supports JNR\u2019s quality work. Software/documents cannot certify JNR; JNR is audited.\n\n- [x] Source review and git diff --check; documentation only.\n- [ ] John appoints owners, reviews/adopts controls and supplies real evidence.\n\nBuilder 5 claim claims/I2. Independent draft on main 68f89ca7; all files under docs/iso9001/. Builders 3 and 4 untouched. No runtime validation, main merge, Ready label, production SQL, deployment or new feature. Handover: docs/iso9001/BUILDER-5-HANDOVER.md on I7.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41845056678,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845056678",
+      "head_sha": "b30d8dea204162c9baded499de7fef516d526b57",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

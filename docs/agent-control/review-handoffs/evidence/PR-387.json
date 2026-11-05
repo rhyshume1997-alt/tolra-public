@@ -1,0 +1,38 @@
+{
+  "number": 387,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/387",
+  "title": "G31: specify and prove settable 1000p per-company AI caps",
+  "branch": "codex/g31-company-ai-cap",
+  "observed_head": "09060dadd660beeb5ff42d39f3ee0a5d94548a64",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:00Z",
+  "files": [
+    "docs/audit/G31-AI-CAP-SPEC.md",
+    "tests/reviews/g31/README.md",
+    "tests/reviews/g31/bootstrap.sql",
+    "tests/reviews/g31/cap.test.ts",
+    "tests/reviews/g31/disposable.ts",
+    "tests/reviews/g31/evidence/archive.json",
+    "tests/reviews/g31/evidence/run.tar.gz",
+    "tests/reviews/g31/no-provider.test.ts",
+    "tests/reviews/g31/vitest.config.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Rhys's 5 November decision supersedes #381's earlier required-500p finding for release 146's Tolra-provided mode: default GBP 10 (1000p) per company per calendar month, independently settable, AI OFF by default. Old evidence is retained as historical; no application or migration implementation changes.\n\nSix committed-code tests pass, zero skipped: new-company defaults/off, exact setter operation, privilege/non-owner refusal, concurrent separate company budgets, raising a cap and refusing an unsafe reduction, and cap refusal stopping before key/provider access. Full public numbered chain plus 145/146/147 at 9d7725e runs in a newly created nonce-identified network-isolated PostgreSQL container with synthetic records. Minimal Auth/Storage prerequisites are explicit; no running services or real provider call. Code c4a3fa4; original logs/SQL hashes/identity/commit/environment/time/exits retained. Lint and TypeScript passed.\n\nActual setter is ai_helper_tolra_set_cap(uuid,integer,uuid), a platform-owner administrator operation through the service-role server path. Company admin/office/anon direct calls refuse. Final server route/MFA proof remains separate. Legacy own-key 122 still has its distinct 500p default; this PR neither changes it nor claims alignment of all modes. Spec: docs/audit/G31-AI-CAP-SPEC.md.\n\nG31: 6 passed, 0 skipped; provided-mode decision verified in synthetic SQL. Separate branch from main; docs/tests only. No merge, production SQL/configuration, private files, #359/go-live edits, live AI or message to John.",
+  "historical_test_claims": [
+    "Six committed-code tests pass, zero skipped: new-company defaults/off, exact setter operation, privilege/non-owner refusal, concurrent separate company budgets, raising a cap and refusing an unsafe reduction, and cap refusal stopping before key/provider access. Full public numbered chain plus 145/146/147 at 9d7725e runs in a newly created nonce-identified network-isolated PostgreSQL container with synthetic records. Minimal Auth/Storage prerequisites are explicit; no running services or real provider call. Code c4a3fa4; original logs/SQL hashes/identity/commit/environment/time/exits retained. Lint and TypeScript passed.",
+    "G31: 6 passed, 0 skipped; provided-mode decision verified in synthetic SQL. Separate branch from main; docs/tests only. No merge, production SQL/configuration, private files, #359/go-live edits, live AI or message to John."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41982418841,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41982418841",
+      "head_sha": "09060dadd660beeb5ff42d39f3ee0a5d94548a64",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

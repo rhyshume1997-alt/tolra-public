@@ -1,0 +1,29 @@
+{
+  "number": 343,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/343",
+  "title": "LAG-MORE: list timesheet and customer fetch waits",
+  "branch": "codex/b4-lag-more",
+  "observed_head": "a4ebfbfae996b077e5956aec8bf28a35fab20d14",
+  "base_sha": "9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/handover/LAG-MORE-TIMESHEETS-CUSTOMERS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Lists sequential fetches and wildcard selects used by the timesheets and customers routes, including their loading helpers, with file/line references pinned to candidate 9c3f5c6. Distinguishes independent waits from required revision/feature dependencies.\n\nDocumentation only; source/line comparison and whitespace check passed. No fixes, middleware edits, production operations, main merge or Ready label. Separate LAG-PAGES draft carries the requested implementation. Targets a new review branch pinned to the candidate; #247 is untouched.\n",
+  "historical_test_claims": [
+    "Documentation only; source/line comparison and whitespace check passed. No fixes, middleware edits, production operations, main merge or Ready label. Separate LAG-PAGES draft carries the requested implementation. Targets a new review branch pinned to the candidate; #247 is untouched."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41855647065,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41855647065",
+      "head_sha": "a4ebfbfae996b077e5956aec8bf28a35fab20d14",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

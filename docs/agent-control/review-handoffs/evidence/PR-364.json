@@ -1,0 +1,27 @@
+{
+  "number": 364,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/364",
+  "title": "M2: SliQ real-report load runbook and aged-debtors reconciliation",
+  "branch": "codex/m2-sliq-load-runbook",
+  "observed_head": "83a2826b29ca6fdb139f4a0e7812d103865426be",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:03Z",
+  "files": [
+    "docs/handover/SLIQ-LOAD-RUNBOOK.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/handover/SLIQ-LOAD-RUNBOOK.md for the reported .xls/title/header-row6/totals layout, DD/MM/YYYY, gross20%VAT, 2035 invoices plus2 Crd=2037 baseline rows to13October and79 customers. These are attributed user facts, not inspected originals; final November counts/totals remain blank and require fresh full exports or reviewed delta covering14October to cut-off.\n\nExplains true-format conversion/provenance (loader supports CSV/XLSX and first-nonblank header), kind/sign/VAT/credit de-duplication, actual shared quote-line support, empty PO-line limitation, report/transaction/control distinctions and rehearsal-only CLI guard. No invented production command or guard bypass; operational route must be separately reviewed.\n\nIncludes complete before/after ID/count/money controls, all unpaid invoices both ways, account/bucket/grand-total three-way aged-debtors tie-out, opening/unallocated credits/cash bridge and protected-company comparisons. John/accounts/Code/reviewer/Rhys sign separately. Missing original files, totals, loader, comparison or signer stops affected use. Source/calendar/arithmetic/control and whitespace checks pass; no actual load/runtime or reconciliation result claimed. No production SQL, main merge, Ready label, deployment or new importer feature. Exact head 83a2826b29ca6fdb139f4a0e7812d103865426be.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41887740603,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41887740603",
+      "head_sha": "83a2826b29ca6fdb139f4a0e7812d103865426be",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

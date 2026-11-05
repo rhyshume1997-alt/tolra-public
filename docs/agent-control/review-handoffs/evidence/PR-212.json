@@ -1,0 +1,35 @@
+{
+  "number": 212,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/212",
+  "title": "Align remaining test names with Late and the reviewed labels",
+  "branch": "codex/test-wording-followup",
+  "observed_head": "6361a12f2ba21ae5931fe2ef22ac982605127d0b",
+  "base_sha": "e706726e7c3b4771c71f34e59414702643587b5b",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:17Z",
+  "files": [
+    "tests/db/protect-platform-owner-login-093.test.ts",
+    "tests/e2e/rfq-clarification.spec.ts",
+    "tests/e2e/rfq-flow.spec.ts",
+    "tests/unit/admin-users-owner-takeover.test.ts",
+    "tests/unit/status-badge.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Update remaining test names and comments to the reviewed wording: jobs say Late, the RFQ heading is Waiting for details, and the support action is Switch off support access. This follows #188/#194; the selector updates already on those branches are retained.\n\nBase: codex2/wording-pass-2 (#194), so tests stay paired with the product wording they describe. Only tests change. Assertions, invoice wording, status keys, database/API terms and the actual unchanged RFQ toast are untouched.\n\nValidation: focused status-badge and admin-owner tests passed, RFQ browser tests collect, targeted ESLint and whitespace checks passed. Live browser and database execution were not run; the database-test change is a comment only. No SQL applied.\n",
+  "historical_test_claims": [
+    "Update remaining test names and comments to the reviewed wording: jobs say Late, the RFQ heading is Waiting for details, and the support action is Switch off support access. This follows #188/#194; the selector updates already on those branches are retained.",
+    "Base: codex2/wording-pass-2 (#194), so tests stay paired with the product wording they describe. Only tests change. Assertions, invoice wording, status keys, database/API terms and the actual unchanged RFQ toast are untouched.",
+    "Validation: focused status-badge and admin-owner tests passed, RFQ browser tests collect, targeted ESLint and whitespace checks passed. Live browser and database execution were not run; the database-test change is a comment only. No SQL applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41646702537,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41646702537",
+      "head_sha": "6361a12f2ba21ae5931fe2ef22ac982605127d0b",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

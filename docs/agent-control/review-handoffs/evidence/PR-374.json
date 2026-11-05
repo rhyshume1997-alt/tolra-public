@@ -1,0 +1,56 @@
+{
+  "number": 374,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/374",
+  "title": "G10/G11/G22: independent access negatives and audit/retrieval limitations",
+  "branch": "codex/b5-g10-g11-g22-access-review",
+  "observed_head": "3b085e7e0e5e79570f38c03930d3a77fb2ec9552",
+  "base_sha": "31f965e7f0cbb2d9caf336b0a2067411bec8fb45",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    "tests/reviews/b5-g10-g11-g22/B5-G10-G11-G22-REVIEW.md",
+    "tests/reviews/b5-g10-g11-g22/evidence-sha256.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-45-05.698840+00-00-empty-stack-start-412e86/sql-inputs.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-45-07.017329+00-00-security-units-6c3e1d/sql-inputs.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-50-27.747510+00-00-adversarial-security-05c333/sql-inputs.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-51-26.929456+00-00-adversarial-security-ready-8b7b17/sql-inputs.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-52-14.610616+00-00-changed-types-e9e6d5/sql-inputs.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-53-05.289564+00-00-changed-lint-04f1f7/sql-inputs.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-57-40.566771+00-00-committed-access-c2b80a/original.log",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-57-40.566771+00-00-committed-access-c2b80a/run.json",
+    "tests/reviews/b5-g10-g11-g22/evidence/2026-11-04T21-57-40.566771+00-00-committed-access-c2b80a/sql-inputs.json",
+    "tests/unit/b5-g10-access-boundaries.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds nine independent access-boundary tests; 9/9 pass on committed reviewer code 09cb1258. The pinned-candidate baseline passed 280 tests across 14 files. Original complete logs, failure attempts, SQL manifests, UTC/exit/environment/commit and log hashes retained.\n\nProduction enrolment is not MFA enforcement: actual named access list, per-company/server MFA settings and departed-session checks remain unverified. Audit source and latest-25 versus filtered/per-record views reviewed; actual audit-chain/retention preservation checks need the full identified stack and approved schedule. Historic invoice/signature/older-audit/excluded-SliQ timed retrieval not executed: no approved archive/sample supplied. Full-stack registry-policy failure retained, not called a pass.\n\nNo claim that unit doubles prove production access or actual historical retrieval. Handover: tests/reviews/b5-g10-g11-g22/B5-G10-G11-G22-REVIEW.md.\n\n- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.\n- [ ] Independent owner assessment, actual final-candidate runtime evidence and authorised acceptance remain open.\n\nExplicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval.",
+  "historical_test_claims": [
+    "Adds nine independent access-boundary tests; 9/9 pass on committed reviewer code 09cb1258. The pinned-candidate baseline passed 280 tests across 14 files. Original complete logs, failure attempts, SQL manifests, UTC/exit/environment/commit and log hashes retained.",
+    "Production enrolment is not MFA enforcement: actual named access list, per-company/server MFA settings and departed-session checks remain unverified. Audit source and latest-25 versus filtered/per-record views reviewed; actual audit-chain/retention preservation checks need the full identified stack and approved schedule. Historic invoice/signature/older-audit/excluded-SliQ timed retrieval not executed: no approved archive/sample supplied. Full-stack registry-policy failure retained, not called a pass.",
+    "No claim that unit doubles prove production access or actual historical retrieval. Handover: tests/reviews/b5-g10-g11-g22/B5-G10-G11-G22-REVIEW.md.",
+    "- [x] Separate owned reviewer branch; original failures retained; source/lint/type/whitespace checks scoped in report. Raw logs kept byte-for-byte, including original whitespace.",
+    "Explicit Rhys overnight allocation. New b5 test/tool/review files only; no Claude-owned source/test edits, #359 branch modification, ISO pack work, Ready label, main merge, production migrations/wipe/import/counter change, deployment, live AI/automated email or message to John. PRs targeting #359\u2019s branch are review follow-ups only; no merge is requested. Production actions remain subject to Rhys\u2019s separate approval."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41921269884,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41921269884",
+      "head_sha": "3b085e7e0e5e79570f38c03930d3a77fb2ec9552",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

@@ -1,0 +1,29 @@
+{
+  "number": 367,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/367",
+  "title": "M4: finish John's ISO 9001 pack gap actions and sign-off evidence list",
+  "branch": "codex/m4-john-iso-pack-gaps",
+  "observed_head": "a23e3041e75ec5a90dc2bb66f68247614ea77c7f",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:02Z",
+  "files": [
+    "docs/iso9001/JOHN-PACK-GAPS.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds docs/iso9001/JOHN-PACK-GAPS.md: 30 plain actions with proposed owner/timing, exact source sheet and actual evidence needed; all14 I7 feature-gap needs mapped and all18 builder5 source paths/revisions preserved. Covers scope/climate/applicability, policy/objectives, controlled docs/records, competence/gauges/suppliers/production/release/NC/effectiveness, required goods-out, measurements/audits/review, technical recovery and real SliQ control proof.\n\nCompletes the actionable list, not JNR's missing private records or certification. Existing private controls can close rows after evidence review; no claim that the company lacks them. Separate John/process/quality-checker/Rhys-Code/accounts signers; no invented dates/targets/results/acceptance. Needed current-work controls cannot be deferred for proposed future modules; audit/review dates follow actual obligations, not a made-up mandatory interval.\n\nRead the18 public pack files; static checks pass for30 unique actions,14 gap mappings,18 source paths, blank approvals and whitespace. No company audit/meeting/test/calibration/training/transfer operation or certification claimed. Builder5 masters and ownership unchanged. One draft, no main merge, production SQL, Ready label, deployment or new feature. Exact head a23e3041e75ec5a90dc2bb66f68247614ea77c7f.",
+  "historical_test_claims": [
+    "Read the18 public pack files; static checks pass for30 unique actions,14 gap mappings,18 source paths, blank approvals and whitespace. No company audit/meeting/test/calibration/training/transfer operation or certification claimed. Builder5 masters and ownership unchanged. One draft, no main merge, production SQL, Ready label, deployment or new feature. Exact head a23e3041e75ec5a90dc2bb66f68247614ea77c7f."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41888854407,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41888854407",
+      "head_sha": "a23e3041e75ec5a90dc2bb66f68247614ea77c7f",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

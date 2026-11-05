@@ -1,0 +1,30 @@
+{
+  "number": 319,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/319",
+  "title": "B4/D5: John's desktop and workshop UAT tick list",
+  "branch": "codex/b4-d5-john-device-uat",
+  "observed_head": "ae5564652c09af54d09f0b67baed3f9211cf5546",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "tests/UAT-JOHN-DESKTOP-WORKSHOP.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds tests/UAT-JOHN-DESKTOP-WORKSHOP.md: 18 plain click/expected-result rows, per-device identification, Pass/Fail/Not run boxes and John\u2019s signature. Separates office and workshop tasks, uses trial-only actions in a protected practice copy, and keeps actual device/runtime completion blank.\n\nSource checked against corrected CN, D4 guides, time day-sheet buttons and workshop-my-jobs browser spec. In particular My jobs navigation opens the Job Board; it does not start a timer. No live sends, real staff hours, external AI or duplicate work instructed. Source/count review only; no runtime tests claimed or added for documentation. Exact head ae5564652c09af54d09f0b67baed3f9211cf5546. Original sign-off sheets and implementation owners untouched. No main merge, production SQL, Ready label or new feature.",
+  "historical_test_claims": [
+    "Adds tests/UAT-JOHN-DESKTOP-WORKSHOP.md: 18 plain click/expected-result rows, per-device identification, Pass/Fail/Not run boxes and John\u2019s signature. Separates office and workshop tasks, uses trial-only actions in a protected practice copy, and keeps actual device/runtime completion blank.",
+    "Source checked against corrected CN, D4 guides, time day-sheet buttons and workshop-my-jobs browser spec. In particular My jobs navigation opens the Job Board; it does not start a timer. No live sends, real staff hours, external AI or duplicate work instructed. Source/count review only; no runtime tests claimed or added for documentation. Exact head ae5564652c09af54d09f0b67baed3f9211cf5546. Original sign-off sheets and implementation owners untouched. No main merge, production SQL, Ready label or new feature."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41841871211,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41841871211",
+      "head_sha": "ae5564652c09af54d09f0b67baed3f9211cf5546",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

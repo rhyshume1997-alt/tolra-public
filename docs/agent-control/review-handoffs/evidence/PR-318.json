@@ -1,0 +1,32 @@
+{
+  "number": 318,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/318",
+  "title": "CX: one-line reviewer packets for all open builder 4 PRs",
+  "branch": "codex/b4-cx-review-packets",
+  "observed_head": "a0044d2c87f3e741470ed70a5e16cf359c60f7ae",
+  "base_sha": "359249878c17b7e4586e39bbee4b7e3961c2a2e2",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:08Z",
+  "files": [
+    "tests/HANDOVER-BUILDER-4-CX.md",
+    "tests/REVIEW-PACKETS-NEXT.md",
+    "tests/review-packets/BUILDER-4-CX-SNAPSHOT.json"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "CX adds one line for each of the 23 open builder-4 PRs to tests/REVIEW-PACKETS-NEXT.md: full captured head SHA plus the specific reviewer check. The prior 148-packet inventory is preserved byte-for-byte; capture metadata and its prefix hash are in tests/review-packets/BUILDER-4-CX-SNAPSHOT.json.\n\nThe CX self-row records the already-open draft head before the packet commit; it cannot contain this eventual commit hash. **Final CX publication head: a0044d2c87f3e741470ed70a5e16cf359c60f7ae**. Use this final head for reviewing CX and refresh other heads if they move.\n\nFinal handover for comparison/push, CR\u2013CV/BA review, CW and CX: tests/HANDOVER-BUILDER-4-CX.md. Cross-review draft #314 now includes current CV #315 and BA #317; CW replacement papers are #316.\n\nValidation: 23 unique open builder-4 PRs, full 40-character snapshot heads, one specific check each, original prefix hash/bytes preserved, git diff --check. Metadata/documentation only; no unit/runtime result or SAFE verdict is inferred. Actual sign-offs and database/provider/browser/restore/manual checks stay open. No Ready label, main merge, production SQL or deployment.\n",
+  "historical_test_claims": [
+    "CX adds one line for each of the 23 open builder-4 PRs to tests/REVIEW-PACKETS-NEXT.md: full captured head SHA plus the specific reviewer check. The prior 148-packet inventory is preserved byte-for-byte; capture metadata and its prefix hash are in tests/review-packets/BUILDER-4-CX-SNAPSHOT.json.",
+    "Final handover for comparison/push, CR\u2013CV/BA review, CW and CX: tests/HANDOVER-BUILDER-4-CX.md. Cross-review draft #314 now includes current CV #315 and BA #317; CW replacement papers are #316."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41840788907,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41840788907",
+      "head_sha": "a0044d2c87f3e741470ed70a5e16cf359c60f7ae",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

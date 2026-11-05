@@ -1,0 +1,30 @@
+{
+  "number": 277,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/277",
+  "title": "CF: plain-English database-day runbook with mandatory stop gates",
+  "branch": "codex/cf-db-day-runbook",
+  "observed_head": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+  "base_sha": "e71a80072148077a4c0f05184fe40d79688c01ee",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:13Z",
+  "files": [
+    "tests/GO-LIVE-DB-RUNBOOK.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Adds a plain-English database-day runbook with a STOP after every backup/restore, preflight, release, permission, wipe/import, reconciliation and browser gate. Required order is verified 138, JNR-required 140 and 141, verified 144, then 145 and 146. Explains that the frozen test fixture chronology does not independently prove the actual upgrade order.\n\nAssumption: Code rehearses on an independently identified disposable restore first; real work always requires separate review. Every command is documentation only. No SQL was executed by this job. A 146 rollback keeps history/key_source and requires STOP, not reinstall on the same database. #207, exact #250 wipe and unrun independent proofs remain blockers.\n\nChecks: 18 referenced paths and explicit order/146 stop rule checked; git diff --check passes. Documentation-only addition; no tests weakened. Full branch checks are recorded in CI job. Coordination #271.\n\n- [x] CF ordered runbook and stop rules\n- [ ] Actual same-commit backup/restore, DB, exact combined wipe/import and browser evidence\n- [ ] Independent reviewer and Rhys decision\n",
+  "historical_test_claims": [
+    "Adds a plain-English database-day runbook with a STOP after every backup/restore, preflight, release, permission, wipe/import, reconciliation and browser gate. Required order is verified 138, JNR-required 140 and 141, verified 144, then 145 and 146. Explains that the frozen test fixture chronology does not independently prove the actual upgrade order.",
+    "Checks: 18 referenced paths and explicit order/146 stop rule checked; git diff --check passes. Documentation-only addition; no tests weakened. Full branch checks are recorded in CI job. Coordination #271."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41812612560,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41812612560",
+      "head_sha": "87c4bbf52b895c1e618d32205e5023adb4d60cbc",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

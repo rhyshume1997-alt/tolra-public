@@ -1,0 +1,35 @@
+{
+  "number": 344,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/344",
+  "title": "LAG-PAGES: overlap dashboard reads and reduce jobs traffic",
+  "branch": "codex/b4-lag-pages",
+  "observed_head": "40ad1d6e6aeb6a47c715d0e0aa8072e3426fdc86",
+  "base_sha": "9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "app/(dashboard)/dashboard/page.tsx",
+    "app/(dashboard)/jobs/page.tsx",
+    "docs/handover/LAG-PAGES-RESULTS.md",
+    "lib/fetch-all.ts",
+    "tests/unit/__snapshots__/page-loading-lag.test.ts.snap",
+    "tests/unit/fetch-all.test.ts",
+    "tests/unit/page-loading-lag.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Dashboard tile, analytics and owner-only money reads currently wait in three successive groups. Start the independent groups together while keeping the same queries, calculations and role restrictions. Jobs now selects its 24 used columns and polls every five minutes, preserving the hidden-tab guard and immediate focus/sync refreshes.\n\nfetchAll skips the empty terminal request after an established page size followed by a shorter page. Rhys chose smaller-cap compatibility: an initial short page still requires confirmation. At cap 1,000, 1,500 rows take 3 -> 2 requests; a first 500-row page remains 2. The one-row admin dashboard fixture keeps 34 requests but overlaps its three groups; office keeps 19 and excludes money reads. Jobs timer core RPCs fall from 15 to 3 per five visible minutes, excluding initial/focus/sync and additional run-fact reads. No live latency measurement claimed.\n\nValidation: 5,491/5,491 units across 415 files passed, no failures/skips/todo, 196.55s. Typecheck passed. Explicit full JS/TS lint with the unchanged project config: 0 errors, 14 existing warnings in unchanged files. Four snapshots captured before production edits match after; concurrency, named projection and hidden/focus/timer cleanup tested. All 62 dashboard query/filter argument calls match the pinned candidate. Initial environment failures, corrected dependency/permission setup and exact commands are recorded in docs/handover/LAG-PAGES-RESULTS.md.\n\nBased exactly on 9c3f5c6cf51cfb3c41b1fe23fe532b5ddb5254a8; targets the NEW codex/b4-lag-review branch. No #247/source-branch or middleware edits, migrations, main merge, production SQL, deployment or Ready label. LAG-MORE findings only: #343.\n",
+  "historical_test_claims": [
+    "Validation: 5,491/5,491 units across 415 files passed, no failures/skips/todo, 196.55s. Typecheck passed. Explicit full JS/TS lint with the unchanged project config: 0 errors, 14 existing warnings in unchanged files. Four snapshots captured before production edits match after; concurrency, named projection and hidden/focus/timer cleanup tested. All 62 dashboard query/filter argument calls match the pinned candidate. Initial environment failures, corrected dependency/permission setup and exact commands are recorded in docs/handover/LAG-PAGES-RESULTS.md."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41857472763,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41857472763",
+      "head_sha": "40ad1d6e6aeb6a47c715d0e0aa8072e3426fdc86",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

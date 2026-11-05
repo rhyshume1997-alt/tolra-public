@@ -1,0 +1,14 @@
+{
+  "code_snapshot_commit": "9138aca77b6da1cde83d344992ef90c49ae9c21c",
+  "environment": "local Python unittest, frozen PUBLIC GitHub metadata only; no SQL/network in checks",
+  "sql_hash": null,
+  "time_utc": "2026-11-05T07:27:27.136391+00:00",
+  "exit_code": 0,
+  "tests": {
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "packets": 176,
+  "checks_log_sha256": "aa4b2e4d781b52d7eeb5d87056461b8e95f3b4181e0245cc2b0fc37f36745cb4"
+}

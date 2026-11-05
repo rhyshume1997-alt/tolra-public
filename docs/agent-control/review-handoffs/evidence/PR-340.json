@@ -1,0 +1,27 @@
+{
+  "number": 340,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/340",
+  "title": "I5: Add source-linked risks and opportunities register",
+  "branch": "codex/b5-i5-iso9001",
+  "observed_head": "2429eda5831a93f6966a89ec8ba8c6a4dde2e1ae",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:05Z",
+  "files": [
+    "docs/iso9001/RISKS-AND-OPPORTUNITIES-REGISTER.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Preserves CE validation RISK-001\u2013015, explains the later refresh\u2019s 001\u2013014 scope, and adds separate rollback/paper-cutover risks and shop prompts. Likelihood, residual acceptance, actual proof and signatures remain blank. Includes opportunity actions and a repeatable action/review row.\n\nTolra supports JNR\u2019s quality work. Software/documents cannot certify JNR; JNR is audited.\n\n- [x] Source review and git diff --check; documentation only.\n- [ ] John appoints owners, reviews/adopts controls and supplies real evidence.\n\nBuilder 5 claim claims/I5. Independent draft on main 68f89ca7; all files under docs/iso9001/. Builders 3 and 4 untouched. No runtime validation, main merge, Ready label, production SQL, deployment or new feature. Handover: docs/iso9001/BUILDER-5-HANDOVER.md on I7.",
+  "historical_test_claims": [],
+  "workflow_runs": [
+    {
+      "id": 41845227513,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41845227513",
+      "head_sha": "2429eda5831a93f6966a89ec8ba8c6a4dde2e1ae",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

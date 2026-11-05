@@ -1,0 +1,29 @@
+{
+  "number": 263,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/263",
+  "title": "AR: align go-live manual checks with current candidate",
+  "branch": "codex/ar-manual-final",
+  "observed_head": "8cecd36e5fc852ae52e564db422f6201c8960a56",
+  "base_sha": "a38ffd683c370788fa1c3d98a324081c08d37950",
+  "github_state": "open (not merged)",
+  "merged_at": null,
+  "observed_at": "2026-11-05T07:22:14Z",
+  "files": [
+    "tests/MANUAL-CHECKS-GO-LIVE.md"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "Refreshes #248 against #247 head 41c685c416305637d86b580324fff9e6cda037ff. Corrects the approval card's direct send action, recognises #239/#240 as included, states 140-143 packaging is absent, adds the missing-global-key proof and the 146 rollback/reset stop rule.\n\nAssumption: follow-up is stacked on #248, preserving its existing click checks. 36 unique steps with expected result and NOT RUN evidence verified; diff check passed; no em dashes. Source checked against candidate approval/claim/setup components and release plan/proof matrix. No manual clicks, SQL, migration, merge, Ready label or deployment performed.",
+  "historical_test_claims": [
+    "Assumption: follow-up is stacked on #248, preserving its existing click checks. 36 unique steps with expected result and NOT RUN evidence verified; diff check passed; no em dashes. Source checked against candidate approval/claim/setup components and release plan/proof matrix. No manual clicks, SQL, migration, merge, Ready label or deployment performed."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41785729704,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41785729704",
+      "head_sha": "8cecd36e5fc852ae52e564db422f6201c8960a56",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}

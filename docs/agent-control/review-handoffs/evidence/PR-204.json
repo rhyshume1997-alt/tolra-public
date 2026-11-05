@@ -1,0 +1,37 @@
+{
+  "number": 204,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/pull/204",
+  "title": "Pass the exact reviewed chase email text to the sender",
+  "branch": "codex/161-reviewed-text",
+  "observed_head": "7f30174b6e6e763c90eaef5681c36f50dc7ee783",
+  "base_sha": "011a8516b33c27b3ae5535c74a78819969226a2c",
+  "github_state": "merged",
+  "merged_at": "2026-11-03T12:46:09Z",
+  "observed_at": "2026-11-05T07:22:18Z",
+  "files": [
+    "app/api/chase/approve/route.ts",
+    "components/chase/approval-card.tsx",
+    "components/chase/connected-approval.tsx",
+    "lib/chase/ui-store.ts",
+    "lib/email/chase/approve.ts",
+    "tests/unit/chase-approve.test.ts",
+    "tests/unit/chase-reviewed-text.test.ts",
+    "tests/unit/chase-ui-wiring.test.ts"
+  ],
+  "migration_verification_rollback_paths": [],
+  "public_pr_body": "The #161 approval card did not pass the reviewed email text to the send path: `components/chase/connected-approval.tsx:48` called `approveDraft(draftId)`, and `lib/chase/ui-store.ts:29` posted only `history_id`. The server could therefore send newer database text that the person had not reviewed.\n\nPass a copy of the card's displayed saved subject/body through the connected callback and request. Require those fields at the API boundary, refuse missing or stale snapshots, and pass the exact reviewed strings to the company mailer. The approval endpoint no longer rewrites the draft or normalizes a subject without review; subjects the mailer would transform must be corrected and reviewed first. Save edits separately using the existing editor.\n\nThis is a separate small fix based directly on #161's branch, `chatgpt2/e2e-chasing-code-only`. No integration stack, migrations, docs or send-recovery changes are included. The browser-test correction is separate in #203.\n\nValidation: all 34 targeted tests passed (approval button, wiring, and server approval), including exact whitespace preservation, stale subject/body refusal and ID-only refusal. Typecheck and targeted ESLint passed. Live email/database browser flow and full unit suite were not run; no disposable Supabase backend is configured and no SQL or migrations were applied.\n",
+  "historical_test_claims": [
+    "This is a separate small fix based directly on #161's branch, `chatgpt2/e2e-chasing-code-only`. No integration stack, migrations, docs or send-recovery changes are included. The browser-test correction is separate in #203.",
+    "Validation: all 34 targeted tests passed (approval button, wiring, and server approval), including exact whitespace preservation, stale subject/body refusal and ID-only refusal. Typecheck and targeted ESLint passed. Live email/database browser flow and full unit suite were not run; no disposable Supabase backend is configured and no SQL or migrations were applied."
+  ],
+  "workflow_runs": [
+    {
+      "id": 41635708024,
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/41635708024",
+      "head_sha": "7f30174b6e6e763c90eaef5681c36f50dc7ee783",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "review_status": "AWAITING CHATGPT REVIEW"
+}
