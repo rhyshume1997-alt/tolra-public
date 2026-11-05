@@ -1,0 +1,10 @@
+{
+  "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "command": "npx vitest run --reporter=json --outputFile=/tmp/night-cost-full.json",
+  "passed": 6799,
+  "failed": 0,
+  "skipped": 0,
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: passed",
+  "lint": "npm run lint: passed",
+  "diff": "git diff --check: passed"
+}

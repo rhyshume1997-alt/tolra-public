@@ -1,0 +1,24 @@
+{
+  "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "command": "npx vitest run --config tests/reviews/night-cost-profit/vitest.unit.config.ts",
+  "passed": 559,
+  "failed": 3,
+  "skipped": 0,
+  "failures": [
+    {
+      "file": "pennies.unit.test.ts",
+      "test": "copied unit price times quantity 7 matches integer-pence quote preview",
+      "message": "AssertionError: expected 50244 to be 50246 // Object.is equality"
+    },
+    {
+      "file": "pennies.unit.test.ts",
+      "test": "copied unit price times quantity 99 matches integer-pence quote preview",
+      "message": "AssertionError: expected 371508 to be 371547 // Object.is equality"
+    },
+    {
+      "file": "pennies.unit.test.ts",
+      "test": "copied unit price times quantity 1000000 matches integer-pence quote preview",
+      "message": "AssertionError: expected 3492025800 to be 3492000000 // Object.is equality"
+    }
+  ]
+}

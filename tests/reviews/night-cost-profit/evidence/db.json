@@ -1,0 +1,19 @@
+{
+  "subject": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "command": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts",
+  "passed": 35,
+  "failed": 2,
+  "skipped": 0,
+  "failures": [
+    {
+      "file": "profit-rates.db.test.ts",
+      "test": "148 actual-cost rounding follows the money half-up rule outside the frozen quotation-engine exception",
+      "message": "AssertionError: 0.5p business actual cost must not disappear: expected +0 to be 1 // Object.is equality"
+    },
+    {
+      "file": "profit-rates.db.test.ts",
+      "test": "a half-penny actual machine cost from 143 rates is retained as one penny in 148 business money",
+      "message": "AssertionError: 30 minutes at 1p/hour is 0.5p, a money-rule boundary: expected +0 to be 1 // Object.is equality"
+    }
+  ]
+}
