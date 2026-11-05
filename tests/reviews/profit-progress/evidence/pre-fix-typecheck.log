@@ -1,0 +1,2 @@
+tests/unit/job-profitability-ui.test.ts(62,2): error TS18046: 'mock.payload.config' is of type 'unknown'.
+tests/unit/job-profitability-ui.test.ts(62,35): error TS18046: 'mock.payload.config' is of type 'unknown'.

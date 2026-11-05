@@ -58,3 +58,9 @@ it('clears the financial display when access or company changes', async () => {
   mock.hidden = ['invoices']; await mount(); expect(host.textContent).toBe('');
   mock.hidden = []; mock.org = 'other'; await mount(); expect(host.textContent).toBe('');
 });
+it('labels the progress view as an unsaved projection, separate from actual profit',async()=>{
+ mock.payload.config={enabled:true,revision:1,approved_at:'2026-11-05',labour_rate_pence:2000,overhead_basis:'none',overhead_rate_pence:null};
+ Object.assign(mock.payload,{labour:[],machines:[],plans:[],pos:[],invoices:[],credits:[],quoteLines:[]});
+ await mount();const section=host.querySelector('[aria-label="Job progress projection"]');
+ expect(section?.textContent).toContain('It is not actual profit');expect(section?.textContent).toContain('not saved');expect(section?.textContent).toContain('Not available');
+});
