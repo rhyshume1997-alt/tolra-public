@@ -4,7 +4,7 @@ WITH fn AS (
   WHERE p.oid IN (to_regprocedure('public._ai_helper_status_own_key()'), to_regprocedure('public.ai_helper_set_key(text,text)'),
                   to_regprocedure('public._ai_helper_force_off(uuid,text)'), to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)'),
                   to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'), to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)'),
-                  to_regprocedure('public.ai_helper_save_settings(boolean,boolean,integer)'))
+                  to_regprocedure('public.ai_helper_save_settings(boolean,boolean,integer)'), to_regprocedure('public.ai_helper_tolra_remove_key(uuid,text)'))
 )
 SELECT 'own-key cap defaults to 1000p on new rows' AS check_name,
   coalesce((SELECT column_default = '1000' FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence'), false) AS ok
@@ -35,7 +35,7 @@ UNION ALL SELECT 'the force-off is internal: no PUBLIC, anon, signed-in or servi
                    AND prosrc LIKE '%SET enabled = FALSE%' AND prosrc LIKE '%ai_forced_off_key_changed%' AND prosrc NOT LIKE '%monthly_cap_pence%'
             FROM fn WHERE proname = '_ai_helper_force_off'), false)
 UNION ALL SELECT 'ai_helper_tolra_configure is 150''s; owner service only (signed-in users and anon may not); a replaced platform key switches the platform off',
-  coalesce((SELECT body = '9bbb5d3b56c51fe63f21917836857427' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
+  coalesce((SELECT body = '80db66ad5c5f014b3c18b25ae04a16ef' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
                    AND has_function_privilege('service_role', oid, 'EXECUTE') AND NOT has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')
                    AND prosrc LIKE '%v_replaced := TRUE; v_enabled := FALSE%'
             FROM fn WHERE proname = 'ai_helper_tolra_configure'), false)
@@ -52,6 +52,18 @@ UNION ALL SELECT 'ai_helper_save_settings is 150''s (a cap below this month''s s
                    AND has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')
                    AND NOT EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE p.oid = fn.oid AND a.grantee = 0)
             FROM fn WHERE proname = 'ai_helper_save_settings'), false)
+UNION ALL SELECT 'ai_helper_tolra_remove_key is 150''s: owner service only (signed-in users, anon and PUBLIC may not), needs the typed confirmation, audits ai_tolra_key_removed with companies_affected',
+  coalesce((SELECT body = '9db1a99fee5d5e3345df8049ccdc3de2' AND prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
+                   AND has_function_privilege('service_role', oid, 'EXECUTE') AND NOT has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')
+                   AND NOT EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE p.oid = fn.oid AND a.grantee = 0)
+                   AND prosrc LIKE '%''REMOVE SHARED TOLRA KEY''%' AND prosrc LIKE '%ai_tolra_key_removed%' AND prosrc LIKE '%companies_affected%'
+                   AND prosrc NOT LIKE '%monthly_cap_pence%' AND prosrc NOT LIKE '%ai_helper_usage%' AND prosrc NOT LIKE '%ai_helper_requests%'
+            FROM fn WHERE proname = 'ai_helper_tolra_remove_key'), false)
+UNION ALL SELECT 'the shared Tolra key is either set or switched off (no platform switch on without a key)',
+  NOT EXISTS (SELECT 1 FROM public.ai_helper_tolra_control WHERE enabled AND api_key_enc IS NULL)
+UNION ALL SELECT 'every platform key removal / re-add audit row carries only counts, flags, ids and source (no key)',
+  NOT EXISTS (SELECT 1 FROM security_audit.audit_log a, jsonb_object_keys(a.metadata) k
+              WHERE a.action IN ('ai_tolra_key_removed', 'ai_tolra_key_readded') AND k NOT IN ('companies_affected', 'was_on', 'source', 'removal_ids', 'enabled'))
 UNION ALL SELECT 'signed-in users still cannot write the AI tables directly',
   NOT has_table_privilege('authenticated', 'public.ai_helper_settings', 'UPDATE') AND NOT has_table_privilege('authenticated', 'public.ai_helper_settings', 'INSERT')
   AND NOT has_table_privilege('authenticated', 'public.ai_helper_secrets', 'SELECT') AND NOT has_table_privilege('authenticated', 'public.ai_helper_tolra_companies', 'UPDATE')

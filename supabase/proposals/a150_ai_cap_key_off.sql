@@ -18,6 +18,9 @@
 --      cap only where the company has a Tolra row). Switching mode no longer reaches the higher of the two caps. The reservers are unchanged.
 --   g. ai_helper_save_settings(): 101's body; an own-key cap below this month's spent + reserved is refused (22023, hint cap_below_usage),
 --      the usage row locked while checking (as ai_helper_tolra_set_cap does for the Tolra cap). Same signature, grants and audit row.
+--   h. ai_helper_tolra_remove_key(owner, confirm): new, platform owner only (service role), exact confirmation 'REMOVE SHARED TOLRA KEY';
+--      clears the shared key, switches the platform off, audits 'ai_tolra_key_removed' with companies_affected. Company rows, usage, requests
+--      and audit rows are kept. ai_helper_tolra_configure (d) stores a key added after a removal OFF (a second call switches it on).
 --   Lock order, so nothing can deadlock: Tolra company row, then the settings row (as ai_helper_set_tolra_mode does).
 BEGIN;
 -- 0. Before-image of every settings row, compared at the end: this release must not change one.
@@ -134,16 +137,23 @@ REVOKE ALL ON FUNCTION public.ai_helper_set_key(TEXT, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ai_helper_set_key(TEXT, TEXT) TO authenticated;
 
 -- 5. Platform owner: 146's function; replacing Tolra's platform key switches the platform switch off whatever the call asked for (the owner
---    switches it on again with a second call). The first key (none stored before) keeps the asked switch. The companies' own rows are not touched:
---    with the platform switch off every provided-AI reservation is refused (ai_helper_off) and nothing reaches the provider.
+--    switches it on again with a second call). The first key (none stored before) keeps the asked switch. A key added after the shared key was
+--    REMOVED (5b) counts as a replacement: it is stored with the switch off and one 'ai_tolra_key_readded' audit row marks that removal as
+--    answered. The companies' own rows are not touched: with the platform switch off every provided-AI reservation is refused (ai_helper_off).
 CREATE OR REPLACE FUNCTION public.ai_helper_tolra_configure(p_enabled BOOLEAN,p_key_enc TEXT,p_owner UUID)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
-DECLARE v_key TEXT; v_was_on BOOLEAN; v_enabled BOOLEAN := p_enabled; v_replaced BOOLEAN := FALSE;
+DECLARE v_key TEXT; v_was_on BOOLEAN; v_enabled BOOLEAN := p_enabled; v_replaced BOOLEAN := FALSE; v_removals JSONB;
 BEGIN
  IF p_enabled IS NULL OR p_owner IS NULL THEN RAISE EXCEPTION 'Invalid setting.' USING ERRCODE = '22023'; END IF;
  IF NOT EXISTS (SELECT 1 FROM security_audit.platform_admins WHERE user_id = p_owner) THEN RAISE EXCEPTION 'Owner required.' USING ERRCODE = '42501'; END IF;
  SELECT api_key_enc, enabled INTO v_key, v_was_on FROM public.ai_helper_tolra_control WHERE singleton FOR UPDATE;
- IF p_key_enc IS NOT NULL AND v_key IS NOT NULL THEN v_replaced := TRUE; v_enabled := FALSE; END IF;
+ IF p_key_enc IS NOT NULL AND v_key IS NULL THEN
+  SELECT jsonb_agg(r.id::TEXT) INTO v_removals FROM security_audit.audit_log r
+  WHERE r.organization_id IS NULL AND r.action = 'ai_tolra_key_removed' AND r.entity_table = 'ai_helper_tolra_control'
+    AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log k WHERE k.organization_id IS NULL AND k.action = 'ai_tolra_key_readded'
+                    AND k.entity_table = 'ai_helper_tolra_control' AND k.metadata -> 'removal_ids' ? r.id::TEXT);
+ END IF;
+ IF p_key_enc IS NOT NULL AND (v_key IS NOT NULL OR v_removals IS NOT NULL) THEN v_replaced := TRUE; v_enabled := FALSE; END IF;
  v_key := coalesce(p_key_enc,v_key);
  IF v_enabled AND v_key IS NULL THEN RAISE EXCEPTION 'Add a key first.' USING ERRCODE = '22023'; END IF;
  UPDATE public.ai_helper_tolra_control SET enabled = v_enabled,api_key_enc = v_key,updated_by = p_owner,updated_at = now() WHERE singleton;
@@ -152,10 +162,43 @@ BEGIN
   VALUES(NULL,p_owner,(SELECT p.email FROM public.user_profiles p WHERE p.id = p_owner),'ai_forced_off_key_changed','ai_helper_tolra_control','singleton',
    jsonb_build_object('reason','key_replaced','scope','platform','tolra_was_on',TRUE,'source','platform_owner'));
  END IF;
+ IF v_removals IS NOT NULL THEN
+  INSERT INTO security_audit.audit_log(organization_id,actor_user_id,actor_email,action,entity_table,entity_id,metadata)
+  VALUES(NULL,p_owner,(SELECT p.email FROM public.user_profiles p WHERE p.id = p_owner),'ai_tolra_key_readded','ai_helper_tolra_control','singleton',
+   jsonb_build_object('removal_ids',v_removals,'enabled',FALSE,'source','platform_owner'));
+ END IF;
  RETURN jsonb_build_object('enabled',v_enabled,'key_set',v_key IS NOT NULL);
 END $$;
 REVOKE ALL ON FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) TO service_role;
+
+-- 5b. Platform owner: remove the shared Tolra key. Owner only (platform_admins, as configure), service role only (as configure); needs the exact
+--     confirmation 'REMOVE SHARED TOLRA KEY'. A wrong or missing confirmation is refused (22023, hint confirmation_required) and the refusal's
+--     DETAIL says how many companies use provided AI now. Removal clears the key and switches the platform off in one transaction and writes
+--     one 'ai_tolra_key_removed' audit row (organization NULL, actor = owner; companies_affected, was_on, source; no key). Company rows (mode,
+--     caps), usage, requests and audit rows are not touched; every provided reservation is then refused (ai_helper_off) before any provider call.
+--     A key added later is stored OFF (5): turning provided AI on again is a second, explicit call.
+CREATE FUNCTION public.ai_helper_tolra_remove_key(p_owner UUID, p_confirm TEXT)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v_key TEXT; v_was_on BOOLEAN; v_n INTEGER;
+BEGIN
+ IF p_owner IS NULL THEN RAISE EXCEPTION 'Invalid setting.' USING ERRCODE = '22023'; END IF;
+ IF NOT EXISTS (SELECT 1 FROM security_audit.platform_admins WHERE user_id = p_owner) THEN RAISE EXCEPTION 'Owner required.' USING ERRCODE = '42501'; END IF;
+ SELECT api_key_enc, enabled INTO v_key, v_was_on FROM public.ai_helper_tolra_control WHERE singleton FOR UPDATE;
+ SELECT count(*)::INTEGER INTO v_n FROM public.ai_helper_tolra_companies c WHERE c.enabled;
+ IF p_confirm IS DISTINCT FROM 'REMOVE SHARED TOLRA KEY' THEN
+  RAISE EXCEPTION 'Type REMOVE SHARED TOLRA KEY to remove the shared Tolra key.' USING ERRCODE = '22023', HINT = 'confirmation_required',
+   DETAIL = format('%s companies use Tolra-provided AI now; removing the key stops provided AI for all of them.', v_n);
+ END IF;
+ IF v_key IS NULL THEN RAISE EXCEPTION 'There is no shared Tolra key to remove.' USING ERRCODE = '22023', HINT = 'no_key'; END IF;
+ UPDATE public.ai_helper_tolra_control SET enabled = FALSE, api_key_enc = NULL, updated_by = p_owner, updated_at = now() WHERE singleton;
+ INSERT INTO security_audit.audit_log(organization_id,actor_user_id,actor_email,action,entity_table,entity_id,metadata)
+ VALUES(NULL,p_owner,(SELECT p.email FROM public.user_profiles p WHERE p.id = p_owner),'ai_tolra_key_removed','ai_helper_tolra_control','singleton',
+  jsonb_build_object('companies_affected',v_n,'was_on',coalesce(v_was_on,FALSE),'source','platform_owner'));
+ RETURN jsonb_build_object('enabled',FALSE,'key_set',FALSE,'companies_affected',v_n);
+END $$;
+REVOKE ALL ON FUNCTION public.ai_helper_tolra_remove_key(UUID,TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ai_helper_tolra_remove_key(UUID,TEXT) TO service_role;
 
 -- 6. One company cap across both modes. 146's two public entry points dispatch to the Tolra-provided reserver (which checks only the Tolra cap)
 --    or the own-key reserver (which checks only the own-key cap) over the same usage row, so switching mode could reach the higher cap. They now

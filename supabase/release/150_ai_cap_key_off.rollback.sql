@@ -1,7 +1,7 @@
 -- Post-144 rollback of release 150. Review first: puts the own-key default cap back to 500, the status fallback back to 500, ai_helper_set_key back to 101's
 -- body (a key save, replacement or removal no longer switches AI off), ai_helper_tolra_configure, ai_helper_reserve and ai_helper_reserve_assistant
 -- back to 146's bodies (each mode checks only its own cap again), ai_helper_save_settings back to 101's, and removes the internal force-off
--- function. Every ai_helper_settings row, usage row, request and audit row is kept as it is, including 'ai_forced_off_key_changed' audit rows and the
+-- function and the platform key removal function (its audit rows are kept). Every ai_helper_settings row, usage row, request and audit row is kept as it is, including 'ai_forced_off_key_changed' audit rows and the
 -- switches 150 turned off (they stay off). Rows made while 150 was installed keep the 1000 they were made with. Nothing here switches anything on.
 BEGIN;
 DO $$ BEGIN
@@ -133,6 +133,7 @@ $$;
 REVOKE ALL ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 DROP FUNCTION public._ai_helper_force_off(UUID, TEXT);
+DROP FUNCTION public.ai_helper_tolra_remove_key(UUID, TEXT);
 DO $$ BEGIN
  IF (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()')) IS DISTINCT FROM '3ef44c838451b46ea14030164d9b1384'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_set_key(text,text)')) IS DISTINCT FROM 'a6680aba0f169e5331110ba388f05e49'

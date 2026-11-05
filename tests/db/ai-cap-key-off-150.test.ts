@@ -31,7 +31,7 @@ const DIGEST = "d".repeat(64);
 const FEATURES = ["roundup", "rfq", "assistant"] as const;
 type Feature = (typeof FEATURES)[number];
 type Co = { id: string; user: string; office: string; email: string; officeEmail: string; session: string; officeSession: string };
-const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X"] as const;
+const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"] as const;
 type Name = (typeof NAMES)[number];
 
 const runId = newRunId();
@@ -553,6 +553,99 @@ describe("release 150: the own-key cap cannot be set below this month's spent + 
       expect(total).toBeLessThanOrEqual(2000);
       expect(await settingsRow(X)).toMatchObject({ monthly_cap_pence: 2000 });
     }
+  });
+});
+
+describe("release 150: removing the shared Tolra key (platform owner, typed confirmation)", () => {
+  const CONFIRM = "REMOVE SHARED TOLRA KEY";
+  const removeKey = (confirm: string | null, who: string = owner.id) => service("SELECT public.ai_helper_tolra_remove_key($1,$2) AS s", [who, confirm]);
+  const controlRow = () => owned(async (db) => (await db.query("SELECT enabled, api_key_enc IS NOT NULL AS key_set FROM public.ai_helper_tolra_control WHERE singleton")).rows[0] as { enabled: boolean; key_set: boolean });
+  const keyEvents = () => owned(async (db) => (await db.query("SELECT id, action, actor_user_id, organization_id, entity_table, entity_id, metadata FROM security_audit.audit_log WHERE organization_id IS NULL AND action IN ('ai_tolra_key_removed','ai_tolra_key_readded') ORDER BY created_at, id")).rows as Array<{ id: string; action: string; actor_user_id: string; organization_id: string | null; entity_table: string; entity_id: string; metadata: Record<string, unknown> }>);
+  const companyHistory = (co: Co) => owned(async (db) => {
+    const one = async (sql: string) => (await db.query(sql, [co.id])).rows.map((r) => JSON.stringify(r));
+    return {
+      tolra: await one("SELECT * FROM public.ai_helper_tolra_companies WHERE organization_id=$1"),
+      settings: await one("SELECT * FROM public.ai_helper_settings WHERE organization_id=$1"),
+      usage: await one("SELECT * FROM public.ai_helper_usage WHERE organization_id=$1 ORDER BY month"),
+      requests: await one("SELECT * FROM public.ai_helper_requests WHERE organization_id=$1 ORDER BY id"),
+      audit: await one("SELECT id, action, metadata FROM security_audit.audit_log WHERE organization_id=$1 ORDER BY id"),
+    };
+  });
+  const enabledCompanies = () => owned(async (db) => Number((await db.query("SELECT count(*) AS n FROM public.ai_helper_tolra_companies WHERE enabled")).rows[0].n));
+  let removalId = "";
+  let baseEvents = 0;
+  const newEvents = async () => (await keyEvents()).slice(baseEvents);
+
+  it("only the platform owner, through the service role, with the exact confirmation, removes the key; it reports and audits the companies affected; company rows, usage, requests and audit are kept; provided AI is then refused before any provider call", async () => {
+    const { Y, Z } = companies;
+    await owned((db) => db.query("SELECT public.ai_helper_tolra_configure(TRUE, CASE WHEN (SELECT api_key_enc FROM public.ai_helper_tolra_control WHERE singleton) IS NULL THEN $1 END, $2)", [enc("rk"), owner.id]));
+    await owned((db) => db.query("SELECT public.ai_helper_tolra_configure(TRUE, NULL, $1)", [owner.id]));
+    for (const co of [Y, Z]) expect((await admin(co, "SELECT public.ai_helper_set_tolra_mode(TRUE)")).ok).toBe(true);
+    expect((await service("SELECT public.ai_helper_tolra_set_cap($1,700,$2)", [Y.id, owner.id])).ok).toBe(true);
+    const granted = answer(await reserve(Y, "rfq", 120))!;
+    expect(granted).toMatchObject({ ok: true, key_source: "tolra" });
+    const inFlight = granted.request_id as string;
+    expect(value(await service("SELECT public.ai_helper_tolra_key($1,$2) AS k", [inFlight, Y.id])).k).not.toBeNull();
+    baseEvents = (await keyEvents()).length;
+    const n = await enabledCompanies();
+    expect(n).toBeGreaterThanOrEqual(2);
+    // Wrong, empty, lower-case and missing confirmations are refused with the impact in the detail; nothing changes.
+    for (const bad of [null, "", "remove shared tolra key", "REMOVE SHARED TOLRA KEY ", "yes"]) {
+      const r = await removeKey(bad);
+      expect(r).toMatchObject({ ok: false, code: "22023", hint: "confirmation_required" });
+    }
+    const detail = await owned(async (db) => { try { await db.query("SELECT public.ai_helper_tolra_remove_key($1,'no')", [owner.id]); return ""; } catch (e) { return (e as { detail?: string }).detail ?? ""; } });
+    expect(detail).toContain(`${n} companies use Tolra-provided AI now`);
+    // A company admin, an office user, anonymous and a service call naming a non-owner are refused; nothing changes.
+    expect(await admin(Y, "SELECT public.ai_helper_tolra_remove_key($1,$2)", [owner.id, CONFIRM])).toMatchObject({ ok: false, code: "42501" });
+    expect(await admin(Y, "SELECT public.ai_helper_tolra_remove_key($1,$2)", [Y.user, CONFIRM])).toMatchObject({ ok: false, code: "42501" });
+    expect(await office(Y, "SELECT public.ai_helper_tolra_remove_key($1,$2)", [owner.id, CONFIRM])).toMatchObject({ ok: false, code: "42501" });
+    expect(await as("anon", null, "SELECT public.ai_helper_tolra_remove_key($1,$2)", [owner.id, CONFIRM])).toMatchObject({ ok: false, code: "42501" });
+    expect(await removeKey(CONFIRM, Y.user)).toMatchObject({ ok: false, code: "42501" });
+    expect(await controlRow()).toEqual({ enabled: true, key_set: true });
+    expect(await newEvents()).toHaveLength(0);
+
+    const before = { y: await companyHistory(Y), z: await companyHistory(Z) };
+    expect(value(await removeKey(CONFIRM)).s).toEqual({ enabled: false, key_set: false, companies_affected: n });
+    expect(await controlRow()).toEqual({ enabled: false, key_set: false });
+    const events = await newEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ action: "ai_tolra_key_removed", actor_user_id: owner.id, organization_id: null, entity_table: "ai_helper_tolra_control", entity_id: "singleton",
+      metadata: { companies_affected: n, was_on: true, source: "platform_owner" } });
+    removalId = events[0].id;
+    expect({ y: await companyHistory(Y), z: await companyHistory(Z) }).toEqual(before);
+    expect(await tolraRow(Y)).toEqual({ enabled: true, monthly_cap_pence: 700 });
+    // No provider call: the in-flight request gets no key, and every entry point refuses before reserving anything.
+    expect(value(await service("SELECT public.ai_helper_tolra_key($1,$2) AS k", [inFlight, Y.id])).k).toBeNull();
+    for (const co of [Y, Z]) for (const feature of FEATURES) expect(await reserve(co, feature)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    expect({ y: await companyHistory(Y), z: await companyHistory(Z) }).toEqual(before);
+    expect(await status(Y)).toMatchObject({ tolra_available: false, tolra_enabled: true });
+    expect((await admin(Z, "SELECT public.ai_helper_set_tolra_mode(TRUE)")).ok).toBe(false);
+    // The granted reservation still settles (released at 0p), counted once.
+    expect((await settle(inFlight, "failed", 0)).ok).toBe(true);
+    expect(await reservedNow(Y)).toBe(0);
+    // Nothing left to remove.
+    expect(await removeKey(CONFIRM)).toMatchObject({ ok: false, code: "22023", hint: "no_key" });
+    expect(await newEvents()).toHaveLength(1);
+  });
+
+  it("a key added after the removal stays OFF (a second, explicit call switches provided AI on); later replacements keep the replace rule; the first-key rule is unchanged once the removal is answered", async () => {
+    const { Y } = companies;
+    expect(removalId).not.toBe("");
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("ra"), owner.id])).s).toEqual({ enabled: false, key_set: true });
+    expect(await controlRow()).toEqual({ enabled: false, key_set: true });
+    const events = await newEvents();
+    expect(events.map((e) => e.action)).toEqual(["ai_tolra_key_removed", "ai_tolra_key_readded"]);
+    expect(events[1]).toMatchObject({ actor_user_id: owner.id, organization_id: null, metadata: { removal_ids: [removalId], enabled: false, source: "platform_owner" } });
+    for (const feature of FEATURES) expect(await reserve(Y, feature)).toMatchObject({ ok: false, code: "42501", hint: "ai_helper_off" });
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,NULL,$1) AS s", [owner.id])).s).toEqual({ enabled: true, key_set: true });
+    expect(answer(await reserve(Y, "roundup"))).toMatchObject({ ok: true, key_source: "tolra" });
+    // A replacement now is an ordinary replacement (off, one forced-off row); no second re-add row.
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("rb"), owner.id])).s).toEqual({ enabled: false, key_set: true });
+    expect((await newEvents()).map((e) => e.action)).toEqual(["ai_tolra_key_removed", "ai_tolra_key_readded"]);
+    // With the removal answered, an empty control taking its first key keeps the asked switch, as before.
+    await owned((db) => db.query("UPDATE public.ai_helper_tolra_control SET enabled=FALSE, api_key_enc=NULL WHERE singleton"));
+    expect(value(await service("SELECT public.ai_helper_tolra_configure(TRUE,$1,$2) AS s", [enc("rc"), owner.id])).s).toEqual({ enabled: true, key_set: true });
   });
 });
 
