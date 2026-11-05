@@ -11,6 +11,8 @@
  *     reservations never deadlocks and never lets used + reserved pass the cap;
  *   - company isolation: A's key change touches nothing of B;
  *   - the platform key: replacing Tolra's key switches the platform switch off with an audit row; the first key keeps the asked switch.
+ *   - one company cap across both modes: a reservation in either mode is refused unless used + reserved stays within least(own-key cap, Tolra cap),
+ *     so switching between own key and Tolra-provided AI never reaches the higher cap, also under concurrency.
  * All data is synthetic (slug prefix t-<run>-, e-mail <name>.<run>@example.test) and removed in afterAll; the platform control row is put back.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -29,7 +31,7 @@ const DIGEST = "d".repeat(64);
 const FEATURES = ["roundup", "rfq", "assistant"] as const;
 type Feature = (typeof FEATURES)[number];
 type Co = { id: string; user: string; office: string; email: string; officeEmail: string; session: string; officeSession: string };
-const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q"] as const;
+const NAMES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V"] as const;
 type Name = (typeof NAMES)[number];
 
 const runId = newRunId();
@@ -409,6 +411,98 @@ describe("release 150: replacing the platform key", () => {
     // A company or an anonymous caller cannot reach it.
     expect((await admin(I, "SELECT public.ai_helper_tolra_configure(TRUE,$1,$2)", [enc("t4"), owner.id])).ok).toBe(false);
     expect((await as("anon", null, "SELECT public.ai_helper_tolra_configure(TRUE,$1,$2)", [enc("t5"), owner.id])).ok).toBe(false);
+  });
+});
+
+describe("release 150: one company cap across own-key and Tolra-provided AI", () => {
+  /** The platform switch on with a key (the platform-key case elsewhere in this file may have left it off). */
+  const platformOn = () => owned((db) => db.query("SELECT public.ai_helper_tolra_configure(TRUE, CASE WHEN (SELECT api_key_enc FROM public.ai_helper_tolra_control WHERE singleton) IS NULL THEN $1 END, $2)", [enc("pc"), owner.id]));
+  const setTolraCap = (co: Co, cap: number) => service("SELECT public.ai_helper_tolra_set_cap($1,$2,$3)", [co.id, cap, owner.id]);
+  const tolraMode = (co: Co, on: boolean) => admin(co, "SELECT public.ai_helper_set_tolra_mode($1)", [on]);
+  const capRefusals = (co: Co) => owned(async (db) => (await db.query("SELECT key_source, count(*)::int AS n FROM public.ai_helper_requests WHERE organization_id=$1 AND status='refused' AND refusal='cap' GROUP BY key_source ORDER BY key_source", [co.id])).rows as Array<{ key_source: string; n: number }>);
+  const inSequence = async (co: Co, n: number, pence = 100) => { const out: Outcome[] = []; for (let i = 0; i < n; i++) out.push(await reserve(co, FEATURES[i % 3], pence)); return out; };
+
+  it("(a) own 1000 + Tolra 1000: spent up to the cap in own-key mode, switching to Tolra mode is refused (cap); raising the Tolra cap to 5000 still leaves the own 1000 binding", async () => {
+    const { R } = companies;
+    expect((await setKey(R, enc("r1"))).ok).toBe(true);
+    expect((await saveSettings(R, true, true, 1000)).ok).toBe(true);
+    expect((await admin(R, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
+    const own = await inSequence(R, 12);
+    expect(oks(own)).toBe(10);
+    expect(caps(own)).toBe(2);
+    // Half of it settled at cost (spent), half still reserved: both count.
+    const granted = own.filter((o) => answer(o)?.ok).map((o) => answer(o)!.request_id as string);
+    for (const id of granted.slice(0, 5)) expect((await settle(id, "suggested", 100)).ok).toBe(true);
+    expect(await used(R)).toBe(1000);
+    await platformOn();
+    expect((await tolraMode(R, true)).ok).toBe(true);
+    expect(await tolraRow(R)).toEqual({ enabled: true, monthly_cap_pence: 1000 });
+    for (const feature of FEATURES) expect(answer(await reserve(R, feature, 1))).toMatchObject({ ok: false, reason: "cap" });
+    expect((await setTolraCap(R, 5000)).ok).toBe(true);
+    for (const feature of FEATURES) expect(answer(await reserve(R, feature, 100))).toMatchObject({ ok: false, reason: "cap" });
+    expect(await used(R)).toBe(1000);
+    expect(await reservedNow(R)).toBe(500);
+    expect(await capRefusals(R)).toEqual([{ key_source: "own", n: 2 }, { key_source: "tolra", n: 6 }]);
+    // Back to own-key mode: the own cap still binds.
+    expect((await tolraMode(R, false)).ok).toBe(true);
+    expect((await saveSettings(R, true, true, 1000)).ok).toBe(true);
+    expect(answer(await reserve(R, "roundup", 1))).toMatchObject({ ok: false, reason: "cap" });
+  });
+
+  it("(b) the own-key cap lowered below the Tolra cap binds in Tolra mode: own 500, Tolra 5000, ten 100p reservations in Tolra mode give exactly 5", async () => {
+    const { S } = companies;
+    expect((await setKey(S, enc("s1"))).ok).toBe(true);
+    expect((await saveSettings(S, true, true, 500)).ok).toBe(true);
+    await platformOn();
+    expect((await tolraMode(S, true)).ok).toBe(true);
+    expect((await setTolraCap(S, 5000)).ok).toBe(true);
+    expect(await settingsRow(S)).toMatchObject({ monthly_cap_pence: 500, roundup_enabled: true, rfq_enabled: true, assistant_enabled: true });
+    const out = await inSequence(S, 10);
+    expect(oks(out)).toBe(5);
+    expect(caps(out)).toBe(5);
+    expect(out.filter((o) => answer(o)?.ok).every((o) => answer(o)?.key_source === "tolra")).toBe(true);
+    expect(await used(S)).toBe(500);
+    expect(await capRefusals(S)).toEqual([{ key_source: "tolra", n: 5 }]);
+    // A larger single request that would pass 500 is refused and nothing is left reserved by it.
+    expect(answer(await reserve(S, "rfq", 1))).toMatchObject({ ok: false, reason: "cap" });
+    expect(await reservedNow(S)).toBe(500);
+  });
+
+  it("(c) a Tolra cap lower than the own-key cap binds in own-key mode: Tolra 300 (company not on Tolra mode), own 1000, six 100p own-key reservations give exactly 3", async () => {
+    const { T } = companies;
+    expect((await setTolraCap(T, 300)).ok).toBe(true);
+    expect(await tolraRow(T)).toEqual({ enabled: false, monthly_cap_pence: 300 });
+    expect((await setKey(T, enc("t1"))).ok).toBe(true);
+    expect((await saveSettings(T, true, true, 1000)).ok).toBe(true);
+    expect((await admin(T, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
+    const out = await inSequence(T, 6);
+    expect(oks(out)).toBe(3);
+    expect(caps(out)).toBe(3);
+    expect(out.filter((o) => answer(o)?.ok).every((o) => answer(o)?.key_source !== "tolra")).toBe(true);
+    expect(await used(T)).toBe(300);
+    expect(await capRefusals(T)).toEqual([{ key_source: "own", n: 3 }]);
+  });
+
+  it("(d) concurrency: 25 reservations at once per company, in both modes, never pass least(own, Tolra): Tolra mode own 700 / Tolra 5000 gives 7, own-key mode own 5000 / Tolra 400 gives 4", async () => {
+    const { U, V } = companies;
+    expect((await setKey(U, enc("u1"))).ok).toBe(true);
+    expect((await saveSettings(U, true, true, 700)).ok).toBe(true);
+    await platformOn();
+    expect((await tolraMode(U, true)).ok).toBe(true);
+    expect((await setTolraCap(U, 5000)).ok).toBe(true);
+    expect((await setTolraCap(V, 400)).ok).toBe(true);
+    expect((await setKey(V, enc("v1"))).ok).toBe(true);
+    expect((await saveSettings(V, true, true, 5000)).ok).toBe(true);
+    expect((await admin(V, "SELECT public.ai_helper_set_assistant(TRUE)")).ok).toBe(true);
+    const [u, v] = await Promise.all([burst(U, 25), burst(V, 25)]);
+    expect(u.every((o) => o.ok)).toBe(true);
+    expect(v.every((o) => o.ok)).toBe(true);
+    expect(oks(u)).toBe(7);
+    expect(caps(u)).toBe(18);
+    expect(await used(U)).toBe(700);
+    expect(oks(v)).toBe(4);
+    expect(caps(v)).toBe(21);
+    expect(await used(V)).toBe(400);
   });
 });
 

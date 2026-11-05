@@ -1,5 +1,6 @@
 -- Post-144 rollback of release 150. Review first: puts the own-key default cap back to 500, the status fallback back to 500, ai_helper_set_key back to 101's
--- body (a key save, replacement or removal no longer switches AI off) and ai_helper_tolra_configure back to 146's body, and removes the internal force-off
+-- body (a key save, replacement or removal no longer switches AI off), ai_helper_tolra_configure, ai_helper_reserve and ai_helper_reserve_assistant
+-- back to 146's bodies (each mode checks only its own cap again), and removes the internal force-off
 -- function. Every ai_helper_settings row, usage row, request and audit row is kept as it is, including 'ai_forced_off_key_changed' audit rows and the
 -- switches 150 turned off (they stay off). Rows made while 150 was installed keep the 1000 they were made with. Nothing here switches anything on.
 BEGIN;
@@ -82,11 +83,36 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) TO service_role;
+-- 146's two public reserve entry points (each mode checks only its own cap again).
+CREATE OR REPLACE FUNCTION public.ai_helper_reserve(p_feature TEXT, p_estimate_pence INTEGER, p_input_digest TEXT, p_input_bytes INTEGER)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v_org UUID := public._ai_helper_caller(ARRAY['admin','office']);
+BEGIN
+ IF EXISTS (SELECT 1 FROM public.ai_helper_tolra_companies WHERE organization_id = v_org AND enabled) THEN
+  -- Preserve the original two-feature API; assistant has its own entry point.
+  IF p_feature IS NULL OR p_feature NOT IN ('roundup','rfq') THEN RAISE EXCEPTION 'Invalid feature.' USING ERRCODE = '22023'; END IF;
+  RETURN public._ai_helper_reserve_tolra(p_feature,p_estimate_pence,p_input_digest,p_input_bytes);
+ END IF;
+ RETURN public._ai_helper_reserve_own_key(p_feature,p_estimate_pence,p_input_digest,p_input_bytes);
+END $$;
+CREATE OR REPLACE FUNCTION public.ai_helper_reserve_assistant(p_estimate_pence INTEGER, p_input_digest TEXT, p_input_bytes INTEGER)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE v_org UUID := public._ai_helper_caller(ARRAY['admin','office']);
+BEGIN
+ IF EXISTS (SELECT 1 FROM public.ai_helper_tolra_companies WHERE organization_id = v_org AND enabled) THEN
+  RETURN public._ai_helper_reserve_tolra('assistant',p_estimate_pence,p_input_digest,p_input_bytes);
+ END IF;
+ RETURN public._ai_helper_reserve_assistant_own_key(p_estimate_pence,p_input_digest,p_input_bytes);
+END $$;
+REVOKE ALL ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER) TO authenticated;
 DROP FUNCTION public._ai_helper_force_off(UUID, TEXT);
 DO $$ BEGIN
  IF (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()')) IS DISTINCT FROM '3ef44c838451b46ea14030164d9b1384'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_set_key(text,text)')) IS DISTINCT FROM 'a6680aba0f169e5331110ba388f05e49'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)')) IS DISTINCT FROM 'a100254532a8b9635e0b2b0952801b60'
+    OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')) IS DISTINCT FROM '9c5edca01d9bed8602b6186dfffa278b'
+    OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)')) IS DISTINCT FROM '9d2ef791742a5b67a02277ea04bb08e3'
     OR (SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence') IS DISTINCT FROM '500' THEN
   RAISE EXCEPTION '150 rollback: the restored functions or default are not exactly 101, 122 and 146';
  END IF;

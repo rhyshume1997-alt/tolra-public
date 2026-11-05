@@ -216,14 +216,17 @@ describe("provided AI cap: per company, off by default, every entry point", () =
     expect(await capOf(B)).toBe(1000);
   });
 
-  it("the company's own-key limit cannot raise or lower the provided cap", async () => {
+  it("the company's own-key limit cannot raise the provided cap; since release 150 (one company cap, the lower of the two) it can lower it", async () => {
     const { A } = companies;
     // A is full at 1000p of provided use. An own-key limit of 100000p does not make room.
     expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,100000)")).ok).toBe(true);
     expect(answer(await reserve(A, "roundup"))).toMatchObject({ ok: false, reason: "cap" });
-    // With the provided cap raised by 100p, an own-key limit of 1p does not stop the provided request either.
+    // With the provided cap raised by 100p, an own-key limit of 1p now stops the provided request (release 150: least of the two caps).
     expect((await setCap(A, 1100)).ok).toBe(true);
     expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,1)")).ok).toBe(true);
+    expect(answer(await reserve(A, "roundup"))).toMatchObject({ ok: false, reason: "cap" });
+    // With the own-key limit back above it, the provided cap binds again: exactly the 100p of room, then cap.
+    expect((await asAdmin(A, "SELECT public.ai_helper_save_settings(TRUE,TRUE,100000)")).ok).toBe(true);
     expect(answer(await reserve(A, "roundup"))).toMatchObject({ ok: true, key_source: "tolra" });
     expect(answer(await reserve(A, "roundup"))).toMatchObject({ ok: false, reason: "cap" });
     expect(await capOf(A)).toBe(1100);

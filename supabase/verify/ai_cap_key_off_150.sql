@@ -2,7 +2,8 @@
 WITH fn AS (
   SELECT p.oid, p.proname, p.prosrc, p.prosecdef, p.provolatile, p.proconfig, md5(regexp_replace(p.prosrc, '\s', '', 'g')) AS body FROM pg_proc p
   WHERE p.oid IN (to_regprocedure('public._ai_helper_status_own_key()'), to_regprocedure('public.ai_helper_set_key(text,text)'),
-                  to_regprocedure('public._ai_helper_force_off(uuid,text)'), to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)'))
+                  to_regprocedure('public._ai_helper_force_off(uuid,text)'), to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)'),
+                  to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'), to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)'))
 )
 SELECT 'own-key cap defaults to 1000p on new rows' AS check_name,
   coalesce((SELECT column_default = '1000' FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence'), false) AS ok
@@ -37,6 +38,13 @@ UNION ALL SELECT 'ai_helper_tolra_configure is 150''s; owner service only (signe
                    AND has_function_privilege('service_role', oid, 'EXECUTE') AND NOT has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')
                    AND prosrc LIKE '%v_replaced := TRUE; v_enabled := FALSE%'
             FROM fn WHERE proname = 'ai_helper_tolra_configure'), false)
+UNION ALL SELECT 'one company cap across both modes: ai_helper_reserve and ai_helper_reserve_assistant are 150''s (refuse above least(own-key cap, Tolra cap)), definer, signed-in only (anon and PUBLIC may not)',
+  coalesce((SELECT count(*) = 2 AND bool_and(prosecdef AND proconfig = ARRAY['search_path=pg_catalog, public']
+                   AND body IN ('48b3f8302686bc6310402b117ea09ad5', '3c415227fefdeda349442ff870a88e64')
+                   AND prosrc LIKE '%least(coalesce((SELECT s.monthly_cap_pence FROM public.ai_helper_settings s WHERE s.organization_id = v_org), 1000)%'
+                   AND has_function_privilege('authenticated', oid, 'EXECUTE') AND NOT has_function_privilege('anon', oid, 'EXECUTE')
+                   AND NOT EXISTS (SELECT 1 FROM pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a WHERE p.oid = fn.oid AND a.grantee = 0))
+            FROM fn WHERE proname IN ('ai_helper_reserve', 'ai_helper_reserve_assistant')), false)
 UNION ALL SELECT 'signed-in users still cannot write the AI tables directly',
   NOT has_table_privilege('authenticated', 'public.ai_helper_settings', 'UPDATE') AND NOT has_table_privilege('authenticated', 'public.ai_helper_settings', 'INSERT')
   AND NOT has_table_privilege('authenticated', 'public.ai_helper_secrets', 'SELECT') AND NOT has_table_privilege('authenticated', 'public.ai_helper_tolra_companies', 'UPDATE')

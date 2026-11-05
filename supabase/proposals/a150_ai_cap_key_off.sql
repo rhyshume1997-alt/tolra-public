@@ -13,6 +13,9 @@
 --      Tolra mode to FALSE, only where one was on, and writes one 'ai_forced_off_key_changed' audit row (codes and booleans only). The cap, the usage
 --      ledger, the request log and requests already reserved are not touched: a granted reservation is settled as before (settle does not look at
 --      the switches), and a reservation whose key is gone or replaced is settled by the app as failed at 0p (released), or runs on the new key.
+--   f. ai_helper_reserve() and ai_helper_reserve_assistant(): 146's dispatch kept; one company cap across both modes. A reservation in either
+--      mode is refused ('cap') unless used + reserved stays within least(own-key cap, Tolra cap) (own-key 1000 where no settings row; the Tolra
+--      cap only where the company has a Tolra row). Switching mode no longer reaches the higher of the two caps. The reservers are unchanged.
 --   Lock order, so nothing can deadlock: Tolra company row, then the settings row (as ai_helper_set_tolra_mode does).
 BEGIN;
 -- 0. Before-image of every settings row, compared at the end: this release must not change one.
@@ -152,7 +155,88 @@ END $$;
 REVOKE ALL ON FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ai_helper_tolra_configure(BOOLEAN,TEXT,UUID) TO service_role;
 
--- 6. Self-check before COMMIT: the settings rows are exactly as they were; the default is 1000.
+-- 6. One company cap across both modes. 146's two public entry points dispatch to the Tolra-provided reserver (which checks only the Tolra cap)
+--    or the own-key reserver (which checks only the own-key cap) over the same usage row, so switching mode could reach the higher cap. They now
+--    keep 146's dispatch and refuse with 'cap' unless used + reserved after this reservation is within least(own-key cap, Tolra cap): own-key cap
+--    from ai_helper_settings (1000 where no row), Tolra cap from ai_helper_tolra_companies only where the company has a row (enabled or not).
+--    The check runs after the reserver's own guarded usage UPDATE, while this transaction holds that usage row's lock, so a concurrent reservation
+--    waits and then sees this one: no overshoot. An over-cap grant is undone (subtransaction rolled back) and a 'cap' refusal recorded instead.
+--    No lock is added or reordered (the reservers' own order is kept: control, Tolra company row, then usage); the reservers' bodies are unchanged.
+CREATE OR REPLACE FUNCTION public.ai_helper_reserve(p_feature TEXT, p_estimate_pence INTEGER, p_input_digest TEXT, p_input_bytes INTEGER)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+ v_org UUID := public._ai_helper_caller(ARRAY['admin','office']);
+ v_month DATE := date_trunc('month', now() AT TIME ZONE 'Europe/London')::DATE;
+ v_tolra BOOLEAN;
+ v_res JSONB;
+ v_id UUID;
+BEGIN
+ v_tolra := EXISTS (SELECT 1 FROM public.ai_helper_tolra_companies WHERE organization_id = v_org AND enabled);
+ IF v_tolra THEN
+  -- Preserve the original two-feature API; assistant has its own entry point.
+  IF p_feature IS NULL OR p_feature NOT IN ('roundup','rfq') THEN RAISE EXCEPTION 'Invalid feature.' USING ERRCODE = '22023'; END IF;
+ END IF;
+ BEGIN
+  IF v_tolra THEN
+   v_res := public._ai_helper_reserve_tolra(p_feature,p_estimate_pence,p_input_digest,p_input_bytes);
+  ELSE
+   v_res := public._ai_helper_reserve_own_key(p_feature,p_estimate_pence,p_input_digest,p_input_bytes);
+  END IF;
+  IF coalesce((v_res ->> 'ok')::BOOLEAN, FALSE)
+     AND (SELECT u.spent_pence + u.reserved_pence FROM public.ai_helper_usage u WHERE u.organization_id = v_org AND u.month = v_month)
+         > least(coalesce((SELECT s.monthly_cap_pence FROM public.ai_helper_settings s WHERE s.organization_id = v_org), 1000),
+                 (SELECT c.monthly_cap_pence FROM public.ai_helper_tolra_companies c WHERE c.organization_id = v_org)) THEN
+   RAISE EXCEPTION 'Company AI cap reached.' USING ERRCODE = 'TC150';
+  END IF;
+ EXCEPTION WHEN SQLSTATE 'TC150' THEN
+  v_res := NULL;
+ END;
+ IF v_res IS NOT NULL THEN RETURN v_res; END IF;
+ INSERT INTO public.ai_helper_requests (organization_id, user_id, feature, month, status, refusal, input_digest, input_bytes, settled_at, key_source)
+ VALUES (v_org, auth.uid(), p_feature, v_month, 'refused', 'cap', p_input_digest, p_input_bytes, now(), CASE WHEN v_tolra THEN 'tolra' ELSE 'own' END)
+ RETURNING id INTO v_id;
+ PERFORM public._ai_helper_audit(v_org, 'ai_helper_refused', 'ai_helper_requests', v_id::TEXT,
+   jsonb_build_object('feature', p_feature, 'reason', 'cap', 'estimate_pence', p_estimate_pence));
+ RETURN jsonb_build_object('ok', FALSE, 'reason', 'cap', 'request_id', v_id);
+END $$;
+
+CREATE OR REPLACE FUNCTION public.ai_helper_reserve_assistant(p_estimate_pence INTEGER, p_input_digest TEXT, p_input_bytes INTEGER)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+ v_org UUID := public._ai_helper_caller(ARRAY['admin','office']);
+ v_month DATE := date_trunc('month', now() AT TIME ZONE 'Europe/London')::DATE;
+ v_tolra BOOLEAN;
+ v_res JSONB;
+ v_id UUID;
+BEGIN
+ v_tolra := EXISTS (SELECT 1 FROM public.ai_helper_tolra_companies WHERE organization_id = v_org AND enabled);
+ BEGIN
+  IF v_tolra THEN
+   v_res := public._ai_helper_reserve_tolra('assistant',p_estimate_pence,p_input_digest,p_input_bytes);
+  ELSE
+   v_res := public._ai_helper_reserve_assistant_own_key(p_estimate_pence,p_input_digest,p_input_bytes);
+  END IF;
+  IF coalesce((v_res ->> 'ok')::BOOLEAN, FALSE)
+     AND (SELECT u.spent_pence + u.reserved_pence FROM public.ai_helper_usage u WHERE u.organization_id = v_org AND u.month = v_month)
+         > least(coalesce((SELECT s.monthly_cap_pence FROM public.ai_helper_settings s WHERE s.organization_id = v_org), 1000),
+                 (SELECT c.monthly_cap_pence FROM public.ai_helper_tolra_companies c WHERE c.organization_id = v_org)) THEN
+   RAISE EXCEPTION 'Company AI cap reached.' USING ERRCODE = 'TC150';
+  END IF;
+ EXCEPTION WHEN SQLSTATE 'TC150' THEN
+  v_res := NULL;
+ END;
+ IF v_res IS NOT NULL THEN RETURN v_res; END IF;
+ INSERT INTO public.ai_helper_requests (organization_id, user_id, feature, month, status, refusal, input_digest, input_bytes, settled_at, key_source)
+ VALUES (v_org, auth.uid(), 'assistant', v_month, 'refused', 'cap', p_input_digest, p_input_bytes, now(), CASE WHEN v_tolra THEN 'tolra' ELSE 'own' END)
+ RETURNING id INTO v_id;
+ PERFORM public._ai_helper_audit(v_org, 'ai_helper_refused', 'ai_helper_requests', v_id::TEXT,
+   jsonb_build_object('feature', 'assistant', 'reason', 'cap', 'estimate_pence', p_estimate_pence));
+ RETURN jsonb_build_object('ok', FALSE, 'reason', 'cap', 'request_id', v_id);
+END $$;
+REVOKE ALL ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.ai_helper_reserve(TEXT,INTEGER,TEXT,INTEGER), public.ai_helper_reserve_assistant(INTEGER,TEXT,INTEGER) TO authenticated;
+
+-- 7. Self-check before COMMIT: the settings rows are exactly as they were; the default is 1000.
 DO $$
 BEGIN
   IF coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s), 'none') IS DISTINCT FROM current_setting('a150.settings_before') THEN

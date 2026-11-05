@@ -254,7 +254,7 @@ post_release_markers(label, present) AS (
         ('public.ai_helper_tolra_set_cap(uuid,integer,uuid)','d3aa64310bd74d79e6bf85317f663710',true)
       ) expected(signature, body, definer)
         LEFT JOIN pg_proc p ON p.oid = to_regprocedure(expected.signature)
-        WHERE p.oid IS NULL OR (md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> expected.body AND NOT (expected.signature = 'public.ai_helper_tolra_configure(boolean,text,uuid)' AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bbb5d3b56c51fe63f21917836857427')) OR p.prosecdef <> expected.definer OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public'])
+        WHERE p.oid IS NULL OR (md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> expected.body AND NOT ((expected.signature, md5(regexp_replace(p.prosrc, '\s', '', 'g'))) IN (('public.ai_helper_tolra_configure(boolean,text,uuid)', '9bbb5d3b56c51fe63f21917836857427'), ('public.ai_helper_reserve(text,integer,text,integer)', '48b3f8302686bc6310402b117ea09ad5'), ('public.ai_helper_reserve_assistant(integer,text,integer)', '3c415227fefdeda349442ff870a88e64')))) OR p.prosecdef <> expected.definer OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public'])
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = '972540e833a42bbb35ac5b670c56daa8')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_assistant_own_key(integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
       AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(prosrc,'\s','','g')) IN ('3ef44c838451b46ea14030164d9b1384', 'a144add4b49efdc0b08fb9a3ad4657d9'))
@@ -285,6 +285,8 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_set_key(text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '423fd435ce49775980461ee998cff63f' AND p.prosecdef)
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_force_off(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '81fb7034c4cddc39c8cba5d4f6822fbf' AND p.prosecdef)
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bbb5d3b56c51fe63f21917836857427' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '48b3f8302686bc6310402b117ea09ad5' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3c415227fefdeda349442ff870a88e64' AND p.prosecdef)
       AND NOT has_function_privilege('authenticated', to_regprocedure('public._ai_helper_force_off(uuid,text)'), 'EXECUTE')), FALSE))
 ),
 checks(n, check_name, value, expected) AS (
