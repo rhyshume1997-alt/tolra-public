@@ -1,0 +1,12 @@
+{
+  "pr": 396,
+  "head_sha": "638a12c5fcd494597e1e99da95d77bb430256195",
+  "run_id": 41986450659,
+  "job_id": 127110173148,
+  "log_sha256": "857b80194f07f36fc299a7ed4e4adf188a205f01387173ca1fc297cb000cb399",
+  "log_exit_code": 1,
+  "web": "success",
+  "integration": "skipped",
+  "ready": false,
+  "environment_limit_observed": false
+}
