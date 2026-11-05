@@ -1,7 +1,7 @@
 -- REVIEW PROPOSAL ONLY, SUPERSEDED. The hardened version of this function now ships INSIDE numbered release 143 (supabase/migrations/143_costing_rates.sql, section 5:
 -- same signature; adds shape and range validation to 22023 before any write, unchanged rows left alone, id-case-insensitive comparison, 500-row limit also on p_expected,
 -- EXECUTE for authenticated only). This file is the original reviewed text, kept for tests/postgres/atomic-settings.test.mjs (its own fixture) and never applied to a real database.
-CREATE OR REPLACE FUNCTION public.save_costing_settings_atomic(p_org uuid,p_expected jsonb,p_value jsonb)
+CREATE OR REPLACE FUNCTION public.save_costing_settings_txn(p_org uuid,p_expected jsonb,p_value jsonb)
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog,public AS $$
 DECLARE v_org uuid:=public.current_user_organization_id(); v_current jsonb; v_expected jsonb; v_session jsonb;
 BEGIN
@@ -29,5 +29,5 @@ BEGIN
   INSERT INTO public.costing_defaults(organization_id,labour_rate_pence,programming_rate_pence,overhead_pct,default_margin_pct) VALUES(v_org,(p_value#>>'{defaults,labour_rate_pence}')::integer,(p_value#>>'{defaults,programming_rate_pence}')::integer,(p_value#>>'{defaults,overhead_pct}')::numeric,(p_value#>>'{defaults,default_margin_pct}')::numeric)
     ON CONFLICT(organization_id) DO UPDATE SET labour_rate_pence=excluded.labour_rate_pence,programming_rate_pence=excluded.programming_rate_pence,overhead_pct=excluded.overhead_pct,default_margin_pct=excluded.default_margin_pct;
 END $$;
-REVOKE ALL ON FUNCTION public.save_costing_settings_atomic(uuid,jsonb,jsonb) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.save_costing_settings_atomic(uuid,jsonb,jsonb) TO authenticated;
+REVOKE ALL ON FUNCTION public.save_costing_settings_txn(uuid,jsonb,jsonb) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.save_costing_settings_txn(uuid,jsonb,jsonb) TO authenticated;

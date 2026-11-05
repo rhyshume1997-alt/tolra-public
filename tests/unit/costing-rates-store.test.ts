@@ -215,7 +215,7 @@ describe("the same rules as 143's CHECKs, before anything is sent", () => {
   });
 });
 
-describe("the whole-set atomic save (143's save_costing_settings_atomic)", () => {
+describe("the whole-set atomic save (143's save_costing_settings_txn)", () => {
   const ID1 = "11111111-1111-4111-8111-111111111111", ID2 = "22222222-2222-4222-8222-222222222222", ID3 = "33333333-3333-4333-8333-333333333333";
   const loaded = {
     materials: [{ id: ID1, name: "Mild steel", pricePence: 235, priceUnit: "kg" as const, scrapPct: 5, updatedAt: "x" }],
@@ -231,7 +231,7 @@ describe("the whole-set atomic save (143's save_costing_settings_atomic)", () =>
   it("sends the company, what was loaded and the new whole set (snake_case, names trimmed, no timestamps) in ONE rpc call and nothing else", async () => {
     const calls: unknown[][] = [];
     expect(await saveCostingSettingsAtomic(client({}, calls), "org-1", loaded, value)).toEqual({ ok: true });
-    expect(calls).toEqual([["rpc", "save_costing_settings_atomic", {
+    expect(calls).toEqual([["rpc", "save_costing_settings_txn", {
       p_org: "org-1",
       p_expected: {
         materials: [{ id: ID1, name: "Mild steel", price_pence: 235, price_unit: "kg", scrap_pct: 5 }],
@@ -255,13 +255,13 @@ describe("the whole-set atomic save (143's save_costing_settings_atomic)", () =>
   });
 
   it("stale (40001) is its own answer with the reload message; permission, values, a name clash and 143 not applied are told apart", async () => {
-    const refuse = (code: string, message = "x") => saveCostingSettingsAtomic(client({ "rpc:save_costing_settings_atomic": { error: { code, message } } }), "org-1", loaded, value);
+    const refuse = (code: string, message = "x") => saveCostingSettingsAtomic(client({ "rpc:save_costing_settings_txn": { error: { code, message } } }), "org-1", loaded, value);
     expect(await refuse("40001", "Settings changed; reload")).toEqual({ ok: false, reason: "stale", notApplied: false, message: COSTING_STALE_MESSAGE });
     expect(await refuse("42501")).toMatchObject({ ok: false, reason: "refused", message: expect.stringMatching(/permission/) });
     expect(await refuse("22023")).toMatchObject({ ok: false, reason: "refused", message: expect.stringMatching(/Check the values/) });
     expect(await refuse("23505")).toMatchObject({ ok: false, reason: "refused", message: "A material or machine already has that name." });
-    expect(await refuse("PGRST202", "Could not find the function public.save_costing_settings_atomic")).toEqual({ ok: false, reason: "not_applied", notApplied: true, message: COSTING_NOT_APPLIED_MESSAGE });
-    expect(await refuse("42883", "function public.save_costing_settings_atomic(uuid, jsonb, jsonb) does not exist")).toMatchObject({ reason: "not_applied" });
+    expect(await refuse("PGRST202", "Could not find the function public.save_costing_settings_txn")).toEqual({ ok: false, reason: "not_applied", notApplied: true, message: COSTING_NOT_APPLIED_MESSAGE });
+    expect(await refuse("42883", "function public.save_costing_settings_txn(uuid, jsonb, jsonb) does not exist")).toMatchObject({ reason: "not_applied" });
     expect(await refuse("XX000")).toMatchObject({ ok: false, reason: "refused", notApplied: false });
     expect(await saveCostingSettingsAtomic({ rpc: () => { throw new Error("Failed to fetch"); } } as never, "org-1", loaded, value)).toMatchObject({ ok: false, reason: "refused" });
     expect(await saveCostingSettingsAtomic(null, "org-1", loaded, value)).toMatchObject({ ok: false, reason: "refused" });

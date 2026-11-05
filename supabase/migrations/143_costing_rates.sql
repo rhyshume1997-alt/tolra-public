@@ -20,7 +20,7 @@
 --      rate first-article inspection is charged at, as the engine does: it has no separate inspection rate), overhead_pct (the engine's
 --      overhead multiplier as a percentage: 150 = 1.5, i.e. 50% of machine and labour cost added; 100 = none; 100 to 500),
 --      default_margin_pct (0 to 95, the margin the calculation starts at). All four are entered by the company; there is no default.
---   d. public.save_costing_settings_atomic(p_org, p_expected, p_value): saves the company's WHOLE rate set (every material, every machine, the
+--   d. public.save_costing_settings_txn(p_org, p_expected, p_value): saves the company's WHOLE rate set (every material, every machine, the
 --      defaults) in one transaction, all or nothing. SECURITY INVOKER (row-level security and the table triggers still apply). p_org must be the
 --      caller's own company; admin and office only; a support session is refused; the second step (assert_privileged_aal) as every privileged
 --      function; p_expected must equal what the company has now (materials, machines and defaults as they were loaded) or the save is refused
@@ -38,7 +38,7 @@
 -- updated_by are stamped by the database (costing_rates_stamp); a row never moves to another company. support_read_only, admin_mfa
 -- and the row audit trigger, as 106's email_templates carry.
 -- GUARD (section 1). Verify: supabase/verify/costing_rates_143.sql (every row TRUE). Preflight marker 143 (pins costing_rates_stamp's and
--- save_costing_settings_atomic's md5). Rollback: supabase/release/143_costing_rates.rollback.sql (drops the three tables and both functions;
+-- save_costing_settings_txn's md5). Rollback: supabase/release/143_costing_rates.rollback.sql (drops the three tables and both functions;
 -- Rhys's approval). The app works with 143 not applied: costing reads as off.
 -- =====================================================================================================
 
@@ -52,10 +52,10 @@ BEGIN
      OR to_regprocedure('security_audit.log_row_change()') IS NULL OR to_regclass('public.organizations') IS NULL THEN
     RAISE EXCEPTION '143: a function or table it needs (000, 031, 033, 036, the audit log) is missing';
   END IF;
-  IF to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)') IS NOT NULL
-     AND (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)'))
+  IF to_regprocedure('public.save_costing_settings_txn(uuid,jsonb,jsonb)') IS NOT NULL
+     AND (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_txn(uuid,jsonb,jsonb)'))
          <> '2c779bca11212d8bf660c4526719c919' THEN
-    RAISE EXCEPTION '143: public.save_costing_settings_atomic exists with another body; stop and compare it first';
+    RAISE EXCEPTION '143: public.save_costing_settings_txn exists with another body; stop and compare it first';
   END IF;
   IF to_regprocedure('public.costing_rates_stamp()') IS NOT NULL
      AND (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.costing_rates_stamp()'))
@@ -156,7 +156,7 @@ $$;
 -- -----------------------------------------------------------------------------------------------------
 -- 5. Save the whole rate set in one transaction (all or nothing). SECURITY INVOKER: the caller's own row-level security, the support,
 -- second-step and audit triggers all still apply to every statement below.
-CREATE OR REPLACE FUNCTION public.save_costing_settings_atomic(p_org UUID, p_expected JSONB, p_value JSONB)
+CREATE OR REPLACE FUNCTION public.save_costing_settings_txn(p_org UUID, p_expected JSONB, p_value JSONB)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -302,8 +302,8 @@ BEGIN
           IS DISTINCT FROM (excluded.labour_rate_pence, excluded.programming_rate_pence, excluded.overhead_pct, excluded.default_margin_pct);
 END
 $$;
-REVOKE ALL ON FUNCTION public.save_costing_settings_atomic(UUID, JSONB, JSONB) FROM PUBLIC, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.save_costing_settings_atomic(UUID, JSONB, JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public.save_costing_settings_txn(UUID, JSONB, JSONB) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.save_costing_settings_txn(UUID, JSONB, JSONB) TO authenticated;
 
 -- -----------------------------------------------------------------------------------------------------
 -- 6. Self-check: what this file made is what it says.
@@ -318,11 +318,11 @@ BEGIN
                                                      to_regclass('public.costing_defaults')) AND relrowsecurity) <> 3 THEN
     RAISE EXCEPTION '143: the costing tables do not have their 12 policies and row-level security';
   END IF;
-  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)'))
+  IF (SELECT md5(regexp_replace(p.prosrc, '\s', '', 'g')) FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_txn(uuid,jsonb,jsonb)'))
      IS DISTINCT FROM '2c779bca11212d8bf660c4526719c919'
-     OR has_function_privilege('anon', 'public.save_costing_settings_atomic(uuid,jsonb,jsonb)', 'EXECUTE')
-     OR NOT has_function_privilege('authenticated', 'public.save_costing_settings_atomic(uuid,jsonb,jsonb)', 'EXECUTE') THEN
-    RAISE EXCEPTION '143: public.save_costing_settings_atomic is not this file''s body, or its EXECUTE grants are wrong';
+     OR has_function_privilege('anon', 'public.save_costing_settings_txn(uuid,jsonb,jsonb)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.save_costing_settings_txn(uuid,jsonb,jsonb)', 'EXECUTE') THEN
+    RAISE EXCEPTION '143: public.save_costing_settings_txn is not this file''s body, or its EXECUTE grants are wrong';
   END IF;
 END
 $$;

@@ -268,7 +268,7 @@ export function deleteCostingMachine(client: SupabaseClient | null, organization
   return deleteRow(client, "costing_machines", organizationId, id, "machine");
 }
 
-// ---- Saving the whole set at once (143's public.save_costing_settings_atomic): all or nothing, company-scoped, and refused when stale. ----
+// ---- Saving the whole set at once (143's public.save_costing_settings_txn): all or nothing, company-scoped, and refused when stale. ----
 
 /** 143's limit: this many materials and this many machines at most in one save. */
 export const COSTING_ROWS_MAX = 500;
@@ -326,7 +326,7 @@ export function costingSettingsJson(set: { materials: Array<CostingMaterialInput
 export function isCostingSaveFunctionMissing(error: DbError): boolean {
   if (!error) return false;
   const code = String(error.code ?? "");
-  return code === "PGRST202" || code === "42883" || (/save_costing_settings_atomic/.test(String(error.message ?? "")) && /(does not exist|could not find|schema cache)/i.test(String(error.message ?? "")));
+  return code === "PGRST202" || code === "42883" || (/save_costing_settings_txn/.test(String(error.message ?? "")) && /(does not exist|could not find|schema cache)/i.test(String(error.message ?? "")));
 }
 
 /**
@@ -340,7 +340,7 @@ export async function saveCostingSettingsAtomic(client: SupabaseClient | null, o
   if (problem) return refuse(problem);
   if (!client) return refuse("Supabase is not configured.");
   try {
-    const { error } = await client.rpc("save_costing_settings_atomic", {
+    const { error } = await client.rpc("save_costing_settings_txn", {
       p_org: organizationId,
       p_expected: costingSettingsJson(loaded),
       p_value: costingSettingsJson(value),

@@ -37,7 +37,7 @@ async function expected(org) {
   } };
 }
 const chase = (c, org, before, value) => c.query('SELECT public.save_chase_steps_atomic($1,$2::jsonb,$3::jsonb)', [org, JSON.stringify(before), JSON.stringify(value)]);
-const costing = (c, org, before, value) => c.query('SELECT public.save_costing_settings_atomic($1,$2::jsonb,$3::jsonb)', [org, JSON.stringify(before), JSON.stringify(value)]);
+const costing = (c, org, before, value) => c.query('SELECT public.save_costing_settings_txn($1,$2::jsonb,$3::jsonb)', [org, JSON.stringify(before), JSON.stringify(value)]);
 const clone = x => structuredClone(x);
 async function unchangedAfter(action, code) {
   const before = await Promise.all(orgs.map(snapshot));
@@ -132,7 +132,7 @@ test('atomic proposal contracts on a new throwaway PostgreSQL', {timeout: 60_000
       await owner.query(read('supabase/proposals/builder2_atomic_settings.rollback.sql'));
       await owner.query(read('supabase/proposals/builder2_atomic_settings.rollback.sql'));
       assert.deepEqual(await Promise.all(orgs.map(snapshot)),before);
-      for(const signature of ['public.save_chase_steps_atomic(uuid,jsonb,jsonb)','public.save_costing_settings_atomic(uuid,jsonb,jsonb)']) assert.equal((await owner.query('select to_regprocedure($1) as f',[signature])).rows[0].f,null);
+      for(const signature of ['public.save_chase_steps_atomic(uuid,jsonb,jsonb)','public.save_costing_settings_txn(uuid,jsonb,jsonb)']) assert.equal((await owner.query('select to_regprocedure($1) as f',[signature])).rows[0].f,null);
       await owner.query(read('supabase/proposals/builder2_chase_settings_atomic.sql'));
       await owner.query(read('supabase/proposals/builder2_costing_settings_atomic.sql'));
       assert.deepEqual(await Promise.all(orgs.map(snapshot)),before);

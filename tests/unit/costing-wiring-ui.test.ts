@@ -2,7 +2,7 @@
 /**
  * The two wirings, with the real components and stand-ins for the database (no network):
  *   Settings > Costing rates (CostingRatesPanel): admin/office only, blank ("No costing rates entered yet"), partly set up (says what is missing),
- *   configured, save sends ONE save_costing_settings_atomic call with the snapshot read at load, stale conflict (40001), fresh authenticator code
+ *   configured, save sends ONE save_costing_settings_txn call with the snapshot read at load, stale conflict (40001), fresh authenticator code
  *   asked once and the same save sent once more (cancel sends nothing), permission / invalid / 143-not-applied / network errors, load errors.
  *   Quote builder (QuotePricePanelView): admin/office only, blank and partly set up show no figures, configured prices from the company's rates,
  *   "Add as quote line" hands over plain values, "Add cost to internal notes", Enter doesn't submit the quote form, load error, 143 not applied.
@@ -183,12 +183,12 @@ describe("Settings > Costing rates", () => {
 
 describe("saveRates against the database function", () => {
   const fake = (error: unknown) => { const rpc = vi.fn(async () => ({ error })); return { client: { rpc } as never, rpc }; };
-  it("calls save_costing_settings_atomic(p_org, p_expected, p_value) once, in whole pence", async () => {
+  it("calls save_costing_settings_txn(p_org, p_expected, p_value) once, in whole pence", async () => {
     const { client, rpc } = fake(null);
     const answer = await saveRates(client, "org-1", SNAP, CONFIGURED);
     expect(answer.ok).toBe(true);
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith("save_costing_settings_atomic", { p_org: "org-1", p_expected: SNAP, p_value: SNAP });
+    expect(rpc).toHaveBeenCalledWith("save_costing_settings_txn", { p_org: "org-1", p_expected: SNAP, p_value: SNAP });
   });
   it.each([
     [{ code: "40001", message: "Settings changed; reload" }, 409, "stale"],

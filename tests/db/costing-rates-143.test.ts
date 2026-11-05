@@ -7,7 +7,7 @@
  * (every row TRUE); preflight marker 143 applied, and "not applied" when the stamp function's body is not 143's or a table is missing
  * (the negative test); the file runs again cleanly and its guard refuses a stamp function with another body; the rollback removes it all.
  * No rate is built in: the proof also checks that a defaults row, material or machine with a figure missing is refused (no column default).
- * The save function (save_costing_settings_atomic) is proved in tests/db/costing-save-143.test.ts.
+ * The save function (save_costing_settings_txn) is proved in tests/db/costing-save-143.test.ts.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -27,7 +27,7 @@ const CHECKS = (PROOF.match(/(SELECT|PERFORM) pg_temp\.(ok|expect_refused)\(/g) 
 const unwrapped = (sql: string) => sql.replace(/^BEGIN;$/m, "").replace(/^COMMIT;\s*$/m, "");
 const MD5_143 = "7e262df9f33ad0ece30d5ac7122995f3";
 const SIG = "public.costing_rates_stamp()";
-const SAVE_SIG = "public.save_costing_settings_atomic(uuid,jsonb,jsonb)";
+const SAVE_SIG = "public.save_costing_settings_txn(uuid,jsonb,jsonb)";
 const MD5_SAVE = "2c779bca11212d8bf660c4526719c919";
 
 /** fn inside one transaction that is always rolled back. */
@@ -121,7 +121,7 @@ describe("costing rates (143)", () => {
     await rolledBack(async (db) => {
       await alterSave(db);
       expect(await marker143(db)).toBe("not applied");
-      await expect(db.query(read("supabase/migrations/143_costing_rates.sql"))).rejects.toThrow(/143: public.save_costing_settings_atomic exists with another body/);
+      await expect(db.query(read("supabase/migrations/143_costing_rates.sql"))).rejects.toThrow(/143: public.save_costing_settings_txn exists with another body/);
     });
   });
 
