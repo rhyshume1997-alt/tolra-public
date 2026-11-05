@@ -1,0 +1,186 @@
+{
+  "recorded_at": "2026-11-05T16:41:10.116859+00:00",
+  "base_sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+  "candidate_sha": "e42d927383513d1b98ce9cfca444884475622e2f",
+  "fixture_sha": "842b752c598ee4916152020ef7f85124d3845513",
+  "implementation_changed": false,
+  "profiles": [
+    {
+      "profile": "branch-full-unit",
+      "command": "npx vitest run --reporter=json --outputFile=/tmp/ai-fixture-full-unit.json",
+      "passed": 5110,
+      "failed": 0,
+      "skipped": 0,
+      "total": 5110,
+      "raw_sha256": "373d6774e8a7526f608c38a3396dc9d3f42bf39f56479070f83136bf5ddba658",
+      "failures": []
+    },
+    {
+      "profile": "candidate-focused-unit",
+      "command": "AI_CONTRACT_SOURCE_ROOT=/workspace/work/xero-candidate-snapshot npx vitest run -c tests/reviews/ai-independent/vitest.unit.config.ts --reporter=json --outputFile=/tmp/ai-fixture-150-focused-unit.json",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "total": 25,
+      "raw_sha256": "829f5e17f1a90d377a681e613b0d588f161829296a186cbcadafa988eaf740d7",
+      "failures": []
+    },
+    {
+      "profile": "candidate-150-own-db",
+      "command": "AI_CONTRACT_ADMIN_URL=postgresql://xero_test@127.0.0.1:54849/postgres AI_CONTRACT_SOURCE_ROOT=/workspace/work/xero-candidate-snapshot AI_CONTRACT_MODE=own AI_CONTRACT_SQL_FILES='[\"/workspace/work/xero-candidate-snapshot/supabase/release/146_tolra_provided_ai.release.sql\",\"/workspace/work/xero-candidate-snapshot/supabase/proposals/a150_ai_cap_key_off.sql\"]' AI_CONTRACT_RECEIPT=/tmp/ai-fixture-150-own-receipt.json npx vitest run -c tests/reviews/ai-independent/vitest.db.config.ts --reporter=json --outputFile=/tmp/ai-fixture-150-own.json",
+      "passed": 23,
+      "failed": 1,
+      "skipped": 0,
+      "total": 24,
+      "raw_sha256": "ecee5d5b7543e5835b24c3262df890b9f2e5706f4e05318849a74f42f7628472",
+      "failures": [
+        {
+          "name": "cap cannot be lowered below already spent plus reserved usage",
+          "message": "Error: promise resolved \"undefined\" instead of rejecting"
+        }
+      ],
+      "receipt": {
+        "database": "ai_verify_1f68605b5d5f4eb5b92c598d22630f17",
+        "sourceRoot": "/workspace/work/xero-candidate-snapshot",
+        "mode": "own",
+        "version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+        "overlays": [
+          {
+            "file": "/workspace/work/xero-candidate-snapshot/supabase/release/146_tolra_provided_ai.release.sql",
+            "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd"
+          },
+          {
+            "file": "/workspace/work/xero-candidate-snapshot/supabase/proposals/a150_ai_cap_key_off.sql",
+            "sha256": "465f5a736072a19dfa0a0d6ce4119f1391cead32d64dafc7d64ec98993dc4fe2"
+          }
+        ],
+        "baseline": [
+          {
+            "file": "101_ai_helper.sql",
+            "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128"
+          },
+          {
+            "file": "103_ai_helper_service_role.sql",
+            "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e"
+          },
+          {
+            "file": "122_ai_helper_cap_default.sql",
+            "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a"
+          },
+          {
+            "file": "133_ai_helper_pre_enable.sql",
+            "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e"
+          },
+          {
+            "file": "134_ai_assistant.sql",
+            "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd"
+          }
+        ]
+      }
+    },
+    {
+      "profile": "candidate-150-tolra-db",
+      "command": "AI_CONTRACT_ADMIN_URL=postgresql://xero_test@127.0.0.1:54849/postgres AI_CONTRACT_SOURCE_ROOT=/workspace/work/xero-candidate-snapshot AI_CONTRACT_MODE=tolra AI_CONTRACT_SQL_FILES='[\"/workspace/work/xero-candidate-snapshot/supabase/release/146_tolra_provided_ai.release.sql\",\"/workspace/work/xero-candidate-snapshot/supabase/proposals/a150_ai_cap_key_off.sql\"]' AI_CONTRACT_RECEIPT=/tmp/ai-fixture-150-tolra-receipt.json npx vitest run -c tests/reviews/ai-independent/vitest.db.config.ts --reporter=json --outputFile=/tmp/ai-fixture-150-tolra.json",
+      "passed": 20,
+      "failed": 8,
+      "skipped": 0,
+      "total": 28,
+      "raw_sha256": "83ef9f2dfe6bc85440a658172629fe67546ed70cb00bed5bf9df5edbe1494cb8",
+      "failures": [
+        {
+          "name": "removing the selected key forces AI OFF in that same transaction",
+          "message": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        },
+        {
+          "name": "remove then save a replacement key cannot silently re-enable AI",
+          "message": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        },
+        {
+          "name": "key removal preserves every existing usage/request/audit row",
+          "message": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        },
+        {
+          "name": "changing key/mode cannot select a separate higher company allowance",
+          "message": "AssertionError: 25p already reserved under the selected 25p allowance; mode switch returned {\"ok\":true,\"request_id\":\"bd7d6a44-038f-4ba8-b430-33eed21fdeef\"}: expected true to be false // Object.is equality"
+        },
+        {
+          "name": "a company admin cannot remove the shared platform key, even with the correct impact phrase",
+          "message": "AssertionError: expected Error: No public Tolra key-removal interf\u2026 to match object { code: '42501' }"
+        },
+        {
+          "name": "a service-role caller cannot nominate a company admin as the platform key owner",
+          "message": "AssertionError: expected Error: No public Tolra key-removal interf\u2026 to match object { code: '42501' }"
+        },
+        {
+          "name": "the platform owner must supply the correct impact confirmation; refusal changes no control, usage or history",
+          "message": "AssertionError: expected Error: No public Tolra key-removal interf\u2026 to match object { code: '22023' }"
+        },
+        {
+          "name": "confirmed platform key removal deletes the key, forces OFF and appends an owner audit without rewriting old audit rows",
+          "message": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        }
+      ],
+      "receipt": {
+        "database": "ai_verify_6677746c63184cd592de18e1abf9f563",
+        "sourceRoot": "/workspace/work/xero-candidate-snapshot",
+        "mode": "tolra",
+        "version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+        "overlays": [
+          {
+            "file": "/workspace/work/xero-candidate-snapshot/supabase/release/146_tolra_provided_ai.release.sql",
+            "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd"
+          },
+          {
+            "file": "/workspace/work/xero-candidate-snapshot/supabase/proposals/a150_ai_cap_key_off.sql",
+            "sha256": "465f5a736072a19dfa0a0d6ce4119f1391cead32d64dafc7d64ec98993dc4fe2"
+          }
+        ],
+        "baseline": [
+          {
+            "file": "101_ai_helper.sql",
+            "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128"
+          },
+          {
+            "file": "103_ai_helper_service_role.sql",
+            "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e"
+          },
+          {
+            "file": "122_ai_helper_cap_default.sql",
+            "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a"
+          },
+          {
+            "file": "133_ai_helper_pre_enable.sql",
+            "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e"
+          },
+          {
+            "file": "134_ai_assistant.sql",
+            "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd"
+          }
+        ]
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "npx tsc --noEmit",
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": "npm run lint",
+      "exit": 0,
+      "output": "\n> quoteflow-jnr@0.1.0 lint\n> eslint\n\n"
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "limits": [
+    "Exact public 146 release and 150 canonical proposal loaded only into an empty synthetic PostgreSQL fixture, not a full migration-chain or hosted/browser proof",
+    "Seven Tolra failures are unfulfilled removal-interface/phrase contracts, not proof of successful removal or permission checks",
+    "Public 150 still has split funding-mode cap settings and allows own-key cap below spent plus held reservations",
+    "Actual Opus-approved removal RPC and impact phrase remain required through AI_CONTRACT_TOLRA_CLEAR_FUNCTION and AI_CONTRACT_TOLRA_CLEAR_CONFIRMATION; none was invented",
+    "The original README/evidence profiles are historical public-source checks; these profiles supersede them only for the current pinned candidate"
+  ]
+}
