@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 149.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -215,7 +215,8 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/n5_company_setup.sql', 'post-144 release 145; apply only after 144'),
     ('supabase/proposals/n2_tolra_provided_ai.sql', 'post-144 release 146; apply only after 145'),
     ('supabase/proposals/c17_job_delivery_note.sql', 'post-144 release 147; apply only after 146'),
-    ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 146 (147 and 149 may come first)'),
+    ('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147'),
+    ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 149'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'deferred: requires costing 143, absent from this candidate'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -267,6 +268,14 @@ post_release_markers(label, present) AS (
       AND NOT has_table_privilege('authenticated', to_regclass('public.dln_numbering_pending'), 'SELECT,INSERT,UPDATE,DELETE')
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
       AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 149 xero_launch_hold', coalesce((coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.xero_transfer_hold')), FALSE)
+      AND NOT has_table_privilege('authenticated', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND NOT has_table_privilege('service_role', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND (SELECT count(*) = 7 FROM pg_proc p WHERE p.oid IN (to_regprocedure('public.integration_claim_next(uuid,text,integer,text,uuid)'), to_regprocedure('public.integration_retry_send(uuid)'),
+             to_regprocedure('public.integration_xero_transfer_enabled(uuid)'), to_regprocedure('public.integration_xero_enabled_orgs()'), to_regprocedure('public.integration_xero_launch_status()'),
+             to_regprocedure('public.integration_xero_set_transfers(boolean)'), to_regprocedure('public.integration_xero_connection_reset()'))
+           AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('76483f99a74b8beddf774565a4518eb8','cbcf2c0b1019419581284b39c36885ab','3c4665d7f33d8b2b9c946ab1ebab0958','cb609c066e4341482dd9888579a3a93c','6c81192cf9b9a14166ad988a2fd8ec9a','cd9a057bac2697f29aa37eb4128697ac','88148b7e5cb7344d0887a19cd8471b17'))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.integration_connections'::regclass AND tgname = 'xero_connection_reset' AND tgenabled = 'O')), FALSE)),
     ('post-144 marker 150 ai_cap_key_off', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence' AND column_default = '1000')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a144add4b49efdc0b08fb9a3ad4657d9')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_set_key(text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '423fd435ce49775980461ee998cff63f' AND p.prosecdef)
@@ -581,7 +590,7 @@ checks(n, check_name, value, expected) AS (
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
-    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )

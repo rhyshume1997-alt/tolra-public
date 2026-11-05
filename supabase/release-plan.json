@@ -69,8 +69,17 @@
       "marker": "post-144 marker 147 job_delivery_note"
     },
     {
-      "number": 150,
+      "number": 149,
       "after": "147",
+      "source": "supabase/proposals/x149_xero_launch_hold.sql",
+      "release": "supabase/release/149_xero_launch_hold.release.sql",
+      "rollback": "supabase/release/149_xero_launch_hold.rollback.sql",
+      "verify": "supabase/verify/xero_launch_hold_149.sql",
+      "marker": "post-144 marker 149 xero_launch_hold"
+    },
+    {
+      "number": 150,
+      "after": "149",
       "source": "supabase/proposals/a150_ai_cap_key_off.sql",
       "release": "supabase/release/150_ai_cap_key_off.release.sql",
       "rollback": "supabase/release/150_ai_cap_key_off.rollback.sql",

@@ -42,6 +42,10 @@ describe("combined go-live candidate keeps both release lines and proposal proof
     const fixture = read("tests/support/post-144-release-fixture.ts");
     expect(fixture.indexOf('verifyFile: "supabase/verify/company_setup_145.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"'));
     expect(fixture.indexOf('verifyFile: "supabase/verify/tolra_provided_ai_146.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"'));
+    expect(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/xero_launch_hold_149.sql"'));
+    expect(post144ProofFiles).toContain("xero-launch-hold-149.test.ts");
+    expect(post144ProofFiles).toContain("xero-launch-paths-149.test.ts");
+    expect(ci).toContain("149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold");
     expect(ci).toContain("147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note");
     expect(fixture.indexOf('verifyFile: "supabase/verify/job_delivery_note_147.sql"')).toBeLessThan(fixture.indexOf('verifyFile: "supabase/verify/ai_cap_key_off_150.sql"'));
     expect(ci).toContain("150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off");

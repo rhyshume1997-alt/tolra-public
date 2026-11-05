@@ -2,22 +2,23 @@ import { expect, it } from "vitest";
 import { preparePost144Fixture } from "../support/post-144-release-fixture";
 import { releaseRank, post144ProofFiles } from "../support/db-release-sequencer";
 function fixture(initial=false) {
-  const calls:string[]=[];const states=[initial,initial,initial,initial];
-  const markers=["post-144 marker 145 company_setup","post-144 marker 146 tolra_provided_ai","post-144 marker 147 job_delivery_note","post-144 marker 150 ai_cap_key_off"];
+  const calls:string[]=[];const states=[initial,initial,initial,initial,initial];
+  const markers=["post-144 marker 145 company_setup","post-144 marker 146 tolra_provided_ai","post-144 marker 147 job_delivery_note","post-144 marker 149 xero_launch_hold","post-144 marker 150 ai_cap_key_off"];
   return { calls, states, verify:async()=>{calls.push("identity");},query:async(sql:string)=>{
     calls.push(sql);
     if (sql.includes("AS check_name")) return {rows:[{ok:true,passed:true}]};
     if(sql.includes("-- Post-144 release step 145")) states[0]=true;
     if(sql.includes("-- Post-144 release step 146")) {expect(states[0]).toBe(true);states[1]=true;}
     if(sql.includes("-- Post-144 release step 147")) {expect(states[1]).toBe(true);states[2]=true;}
-    if(sql.includes("-- Post-144 release step 150")) {expect(states[2]).toBe(true);states[3]=true;}
+    if(sql.includes("-- Post-144 release step 149")) {expect(states[2]).toBe(true);states[3]=true;}
+    if(sql.includes("-- Post-144 release step 150")) {expect(states[3]).toBe(true);states[4]=true;}
     return {rows:states.map((v,i)=>({check:markers[i],value:v?"applied":"not applied"}))};
   }};
 }
-it("prepares 145 before 146 before 147 only after identity, verifies each and unlocks",async()=>{
+it("prepares 145 before 146 before 147 before 149 before 150 only after identity, verifies each and unlocks",async()=>{
  const f=fixture();await preparePost144Fixture(f);expect(f.calls[0]).toBe("identity");
- const a=f.calls.findIndex(s=>s.includes("-- Post-144 release step 145")),d=f.calls.findIndex(s=>s.includes("-- Post-144 release step 150")),b=f.calls.findIndex(s=>s.includes("-- Post-144 release step 146")),c=f.calls.findIndex(s=>s.includes("-- Post-144 release step 147"));
- expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(c).toBeGreaterThan(b);expect(d).toBeGreaterThan(c);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true,true,true]);
+ const a=f.calls.findIndex(s=>s.includes("-- Post-144 release step 145")),b=f.calls.findIndex(s=>s.includes("-- Post-144 release step 146")),c=f.calls.findIndex(s=>s.includes("-- Post-144 release step 147")),d=f.calls.findIndex(s=>s.includes("-- Post-144 release step 149")),e=f.calls.findIndex(s=>s.includes("-- Post-144 release step 150"));
+ expect(a).toBeGreaterThan(0);expect(b).toBeGreaterThan(a);expect(c).toBeGreaterThan(b);expect(d).toBeGreaterThan(c);expect(e).toBeGreaterThan(d);expect(f.calls.at(-1)).toContain("pg_advisory_unlock");expect(f.states).toEqual([true,true,true,true,true]);
 });
 it("does not reapply already verified releases",async()=>{const f=fixture(true);await preparePost144Fixture(f);expect(f.calls.some(s=>s.includes("-- Post-144 release step"))).toBe(false);});
 it("does not read or write SQL if backend identity refuses",async()=>{const f=fixture();f.verify=async()=>{throw new Error("foreign company");};await expect(preparePost144Fixture(f)).rejects.toThrow("foreign company");expect(f.calls).toEqual([]);});
@@ -29,14 +30,14 @@ it("ranks every post-release proof after every baseline file without dropping an
  expect(sorted.slice(0,baseline.length)).toEqual(baseline);expect(sorted.slice(baseline.length)).toEqual(proofs);
 });
 
-it("sorts real sequencer input without dropping files, keeping 145, 146, the cap race and 147 last", async () => {
+it("sorts real sequencer input without dropping files, keeping 145, 146, the cap race, 147, 149 and 150 last", async () => {
  const { default: ReleaseSequencer } = await import("../support/db-release-sequencer");
  const ctx = {} as ConstructorParameters<typeof ReleaseSequencer>[0];
  const sequencer = new ReleaseSequencer(ctx);
  const baseline = ["catalogue", "definer-functions", "time-labour", "workshop-network-128"].map(name => ({moduleId:`/repo/tests/db/${name}.test.ts`}));
  const proofs = post144ProofFiles.map(name => ({moduleId:`/repo/tests/db/${name}`}));
- expect(post144ProofFiles.slice(-2)).toEqual(["job-delivery-note-147.test.ts", "dln-day-of-counter.test.ts"]);
- const input = [proofs[7], proofs[6], proofs[5], proofs[4], proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
+ expect(post144ProofFiles.slice(-5)).toEqual(["job-delivery-note-147.test.ts", "dln-day-of-counter.test.ts", "xero-launch-hold-149.test.ts", "xero-launch-paths-149.test.ts", "ai-cap-key-off-150.test.ts"]);
+ const input = [proofs[9], proofs[8], proofs[7], proofs[6], proofs[5], proofs[4], proofs[3], proofs[2], baseline[3], proofs[1], baseline[0], proofs[0], baseline[2], baseline[1]];
  const original = [...input];
  const sorted = await sequencer.sort(input);
  expect(sorted).toEqual([...baseline, ...proofs]);
@@ -48,11 +49,12 @@ it("sorts real sequencer input without dropping files, keeping 145, 146, the cap
 
 it("still runs every verification file when releases are already installed", async () => {
  const f=fixture(true);await preparePost144Fixture(f);
- expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(4);
+ expect(f.calls.filter(sql=>sql.includes("AS check_name"))).toHaveLength(5);
  expect(f.calls.some(sql=>sql.includes("create_job_delivery_note is security definer with a pinned search path"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("private membership helper stays private"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("original reserve is not a public bypass"))).toBe(true);
  expect(f.calls.some(sql=>sql.includes("own-key cap defaults to 1000p on new rows"))).toBe(true);
+ expect(f.calls.some(sql=>sql.includes("the claim refuses a held company BEFORE it changes any row"))).toBe(true);
 });
 it.each(["empty", "false"])("refuses %s verification rows and always unlocks", async failure => {
  const f=fixture(true),original=f.query;

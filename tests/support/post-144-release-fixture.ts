@@ -6,6 +6,7 @@ const phases = [
   { marker: "post-144 marker 145 company_setup", file: "supabase/release/145_company_setup.release.sql", verifyFile: "supabase/verify/company_setup_145.sql" },
   { marker: "post-144 marker 146 tolra_provided_ai", file: "supabase/release/146_tolra_provided_ai.release.sql", verifyFile: "supabase/verify/tolra_provided_ai_146.sql" },
   { marker: "post-144 marker 147 job_delivery_note", file: "supabase/release/147_job_delivery_note.release.sql", verifyFile: "supabase/verify/job_delivery_note_147.sql" },
+  { marker: "post-144 marker 149 xero_launch_hold", file: "supabase/release/149_xero_launch_hold.release.sql", verifyFile: "supabase/verify/xero_launch_hold_149.sql" },
   { marker: "post-144 marker 150 ai_cap_key_off", file: "supabase/release/150_ai_cap_key_off.release.sql", verifyFile: "supabase/verify/ai_cap_key_off_150.sql" },
 ];
 export async function preparePost144Fixture(deps: {
