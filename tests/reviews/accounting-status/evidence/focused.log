@@ -1,0 +1,11 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-accounting-status
+
+ ✓ tests/unit/accounting-status.test.ts (6 tests) 8ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Start at  09:43:44
+   Duration  329ms (transform 69ms, setup 0ms, collect 101ms, tests 8ms, environment 0ms, prepare 61ms)
+
