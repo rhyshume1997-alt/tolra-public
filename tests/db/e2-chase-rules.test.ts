@@ -64,7 +64,6 @@ vi.mock("@/lib/email/send-company-email", async (importOriginal) => {
   };
 });
 
-import { runChase } from "@/lib/email/chase/run";
 import { StoreError } from "@/lib/email/schedules/store";
 import { runInvoiceReminders } from "@/lib/email/schedules/reminders";
 import type { EmailScheduleRow } from "@/lib/email/schedules/store";
@@ -360,7 +359,7 @@ describe("R4 each step at most once per invoice", () => {
     const c = await customer(w, "Retry Co");
     const ids = [await invoice(w, c.name), await invoice(w, c.name), await invoice(w, c.name)];
     let n = 0;
-    const flaky = async (admin: Parameters<NonNullable<Parameters<typeof runInvoiceReminders>[4]["createDraft"]>>[0], args: Parameters<NonNullable<Parameters<typeof runInvoiceReminders>[4]["createDraft"]>>[1]) => {
+    const flaky = async (admin: Parameters<NonNullable<NonNullable<Parameters<typeof runInvoiceReminders>[4]>["createDraft"]>>[0], args: Parameters<NonNullable<NonNullable<Parameters<typeof runInvoiceReminders>[4]>["createDraft"]>>[1]) => {
       n += 1;
       if (n === 2) throw new StoreError("create chase draft", "57014");
       const { data, error } = await (admin as unknown as ReturnType<typeof pgClient>).rpc("chase_create_draft", { p_org: args.organizationId, p_invoice: args.invoiceId, p_step: args.stepId, p_to: args.to, p_to_name: args.toName, p_subject: args.subject, p_body: args.body, p_user: args.userId });

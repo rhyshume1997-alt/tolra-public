@@ -7,7 +7,7 @@
  */
 import { randomUUID } from "node:crypto";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { type MockInstance, afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ admin: null as unknown, created: 0, queries: 0, absent: false }));
 vi.mock("server-only", () => ({}));
@@ -62,7 +62,7 @@ const draftsOf = (org: string) => sql<{ invoice_ref: string; status: string; dra
 const call = async (route: "daily" | "email-schedules", headers: Record<string, string> = {}) => {
   const { GET } = route === "daily" ? await import("@/app/api/cron/daily/route") : await import("@/app/api/cron/email-schedules/route");
   const res = await GET(new Request(`https://cron.invalid/api/cron/${route}`, { headers }));
-  return { status: res.status, json: await res.json() as Record<string, any> };
+  return { status: res.status, json: await res.json() as Record<string, unknown> };
 };
 const withSecret = { authorization: `Bearer ${SECRET}` };
 
@@ -73,7 +73,7 @@ beforeAll(async () => {
   const counting = (c: ReturnType<typeof pgClient>) => ({ from: (t: string) => { h.queries += 1; return c.from(t); }, rpc: (f: string, a?: Record<string, unknown>) => { h.queries += 1; return c.rpc(f, a); } });
   h.admin = counting(pgClient({ role: "service_role" }));
 });
-let fetchSpy: ReturnType<typeof vi.spyOn>;
+let fetchSpy: MockInstance<typeof fetch>;
 beforeEach(() => {
   h.created = 0; h.queries = 0; h.absent = false;
   vi.stubEnv("CRON_SECRET", SECRET);
