@@ -3,6 +3,6 @@ test_each_task_has_required_columns (control_test.Control.test_each_task_has_req
 test_original_guidance_retained (control_test.Control.test_original_guidance_retained) ... ok
 
 ----------------------------------------------------------------------
-Ran 3 tests in 0.009s
+Ran 3 tests in 0.006s
 
 OK
