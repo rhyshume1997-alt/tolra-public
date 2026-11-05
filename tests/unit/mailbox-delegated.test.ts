@@ -562,7 +562,7 @@ describe("revoked reading: polling stops, sending goes on where the sign-in stil
     expect(JSON.stringify(reply)).not.toMatch(/AT-SEND|boss@|AADSTS/);
   });
 
-  it("the whole sign-in revoked (the one token covers both): reading stops AND Microsoft sending stops, and the mailer says so (draft, or its next provider)", async () => {
+  it("the whole sign-in revoked (the one token covers both): reading stops AND Microsoft sending stops, and the mailer refuses without switching provider", async () => {
     const db = fakeDb({ [A]: company(A, "oid-a", "AT-A", { access_enc: null, expires: null }) });
     service = db;
     const ms = fakeMicrosoft({}, () => new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }), new Set(["AT-A"]));
@@ -574,11 +574,9 @@ describe("revoked reading: polling stops, sending goes on where the sign-in stil
     const { getDelegatedAccessToken } = await import("@/lib/integrations/microsoft/token-source");
     expect(await getDelegatedAccessToken(A)).toBeNull(); // no Microsoft token for sending
     const { selectProvider } = await import("@/lib/email/send-company-email");
-    // No other provider: null = the e-mail is saved as a draft for Approvals (mode "drafted"), never reported as sent.
-    expect(await selectProvider(A, { env: {} })).toBeNull();
-    // With Resend set up it goes through Resend instead (from EMAIL_FROM, not the company's mailbox).
-    const resend = await selectProvider(A, { env: { RESEND_API_KEY: "re_test", EMAIL_FROM: "Tolra <noreply@example.test>" } });
-    expect(resend && resend !== "refused" ? resend.name : resend).toBe("resend");
+    // A revoked Microsoft sign-in never authorises a different provider, whether or not Resend is configured.
+    await expect(selectProvider(A, { env: {} })).rejects.toThrow();
+    await expect(selectProvider(A, { env: { RESEND_API_KEY: "re_test", EMAIL_FROM: "Tolra <noreply@example.test>" } })).rejects.toThrow();
     expect(ms.seen.some((x) => x.url.endsWith("/me/sendMail"))).toBe(false);
   });
 });

@@ -19,7 +19,7 @@ it('real SQL claims send exact approved text once and close uncertain attempts a
    const result=await service.from('email_history').insert({organization_id:org,to_email:'chase@example.test',subject:input.subject,body:input.text,status:'sent_via_system',related_to_type:input.recordType,related_to_id:input.recordId}).select('id').single();expect(result.error).toBeNull();
    return {ok:true as const,mode:'sent' as const,provider:'mock' as const,historyId:result.data!.id};
   });
-  const input={organizationId:org,userId:actor.id,draftId:id,expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
+  const input={organizationId:org,userId:actor.id,draftId:id,expectedTo:"chase@example.test",expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
   const deps={db,admin:service,provider:async()=>({}),send,allowlisted:()=>false};
   expect((await approveChaseDraft({...input,expectedBody:'Stale reviewed text'},deps)).status).toBe('refused');
   expect(send).not.toHaveBeenCalled();
@@ -46,7 +46,7 @@ async function buildReviewer(world:SyntheticWorld){
   const sent=await service.from('email_history').insert({organization_id:org,to_email:'named@example.test',subject:message.subject,body:message.text,status:'sent_via_system',related_to_type:message.recordType,related_to_id:message.recordId}).select('id').single();expect(sent.error).toBeNull();
   return {ok:true as const,mode:'sent' as const,provider:'mock' as const,historyId:sent.data!.id};
  });
- const input={organizationId:org,userId:actor.id,draftId:created.data.history_id as string,expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
+ const input={organizationId:org,userId:actor.id,draftId:created.data.history_id as string,expectedTo:"named@example.test",expectedSubject:subject,expectedBody:body,today:new Date().toISOString().slice(0,10)};
  return {world,org,actor,service,db,stepId:step.data!.id,invoiceId:invoice.data!.id,input,send,deps:{db,admin:service,provider:async()=>({}),send,allowlisted:()=>false}};
 }
 async function reviewerScenario(run:(context:Awaited<ReturnType<typeof buildReviewer>>)=>Promise<void>){
@@ -84,4 +84,11 @@ it('DB: cross-company chase creation approval and payment claims are blocked',as
  expect((await approveChaseDraft({...c.input,organizationId:beta.id,userId:beta.users.office.id},{...c.deps,db:other})).status).toBe('refused');expect(c.send).not.toHaveBeenCalled();
  const claim=await other.rpc('mark_payment_claimed',{p_invoice:c.invoiceId,p_source:'manual',p_evidence:'Foreign attempt',p_message_id:null});expect(claim.error?.code).toBe('P0002');
  const after=await c.service.from('email_history').select('*').eq('id',c.input.draftId).single();expect(after.error).toBeNull();expect(after.data).toEqual(before.data);
+}),120000);
+
+it('DB: changing a recipient to another allowed team address invalidates the displayed approval',async()=>reviewerScenario(async c=>{
+ const address=c.world.tenants.alpha.users.office.email;
+ const update=await c.db.from('email_history').update({to_email:address}).eq('id',c.input.draftId).eq('status','drafted').select('id');
+ expect(update.error).toBeNull();expect(update.data).toHaveLength(1);
+ expect((await approveChaseDraft(c.input,c.deps)).status).toBe('refused');expect(c.send).not.toHaveBeenCalled();
 }),120000);

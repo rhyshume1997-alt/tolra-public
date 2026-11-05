@@ -20,7 +20,7 @@ export type ChaseApprovalCardProps = {
   /** Remount with the draft ID as key when displaying another draft. */
   draft: ChaseEmailDraft;
   onEdit: (draftId: string, email: EditedEmail) => void | Promise<void>;
-  onApproveAndSend: (draftId: string, reviewed: EditedEmail) => void | Promise<void>;
+  onApproveAndSend: (draftId: string, reviewed: EditedEmail & { to: string }) => void | Promise<void>;
   onSkip: (draftId: string) => void | Promise<void>;
   onPauseCustomer: (customerId: string) => void | Promise<void>;
   disabled?: boolean;
@@ -77,7 +77,7 @@ export function ChaseApprovalCard({ draft, onEdit, onApproveAndSend, onSkip, onP
         {pending && <p role="status" className="text-sm">Please wait…</p>}
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" disabled={locked || editing} onClick={() => { setEmail(saved); setEditing(true); setResult(""); }}>Edit</Button>
-          <Button type="button" disabled={locked || editing} onClick={() => void run(() => onApproveAndSend(draft.id, { ...saved }), "Payment reminder sent.", true)}>Approve and send</Button>
+          <Button type="button" disabled={locked || editing} onClick={() => void run(() => onApproveAndSend(draft.id, { ...saved, to: draft.to }), "Payment reminder sent.", true)}>Approve and send</Button>
           <Button type="button" variant="outline" disabled={locked || editing} onClick={() => void run(() => onSkip(draft.id), "Payment reminder skipped.", true)}>Skip</Button>
           <Button type="button" variant="outline" disabled={locked || editing} onClick={() => void run(() => onPauseCustomer(draft.customerId), "Chasing paused for this customer.", true)}>Pause chasing for this customer</Button>
         </div>
