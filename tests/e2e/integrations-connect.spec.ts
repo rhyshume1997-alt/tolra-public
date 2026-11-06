@@ -19,6 +19,7 @@
  * company beta) before and after the run. The world is read inside tests and hooks, never at import.
  */
 import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 
@@ -274,8 +275,23 @@ test("4. the platform owner also saves placeholder Xero details (the accountant'
   await expect(page.getByTestId("app-credentials-microsoft-state")).toContainText(microsoftApp().clientId);
 });
 
+type MicrosoftDiagnostic = { kind: string; [key:string]: unknown };
+const microsoftDiagnostics: MicrosoftDiagnostic[] = [];
+const diagnosticUrl = (value:string) => { try { const u=new URL(value);return {origin:u.origin,path:u.pathname,hasState:u.searchParams.has("state"),challengeLength:u.searchParams.get("code_challenge")?.length??0}; }catch{return {invalid:true};} };
+test.afterEach(async ({page},info)=>{
+ if(!info.title.startsWith("5. "))return;
+ microsoftDiagnostics.push({kind:"end",status:info.status,url:diagnosticUrl(page.url()),codeDialogVisible:await page.getByRole("dialog").isVisible().catch(()=>false)});
+ mkdirSync("evidence",{recursive:true});writeFileSync("evidence/run8-microsoft-diagnostic.json",JSON.stringify(microsoftDiagnostics,null,2)+"\n");
+});
+
 test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft's sign-in with the fixed redirect URI, a state and a code challenge", async ({ page, baseURL }) => {
   const origin = originOf(baseURL);
+  // Observe the original failure before changing its waits, transport, MFA or navigation behavior.
+  page.on("request",r=>{if(r.url().includes("/api/integrations/microsoft/connect")||r.url().startsWith("https://login.microsoftonline.com/"))microsoftDiagnostics.push({kind:"request",method:r.method(),url:diagnosticUrl(r.url())});});
+  page.on("response",async r=>{if(!r.url().includes("/api/integrations/microsoft/connect"))return;const b=await r.json().catch(()=>({}));microsoftDiagnostics.push({kind:"connect-response",status:r.status(),code:b.code??null,error:b.error??null,authorize:b.url?diagnosticUrl(b.url):null});});
+  page.on("requestfailed",r=>{if(r.url().includes("/integrations/")||r.url().startsWith("https://login.microsoftonline.com/"))microsoftDiagnostics.push({kind:"request-failed",url:diagnosticUrl(r.url()),error:r.failure()?.errorText});});
+  page.on("framenavigated",f=>{if(f===page.mainFrame())microsoftDiagnostics.push({kind:"navigation",url:diagnosticUrl(f.url())});});
+
   const app = microsoftApp();
   const beta = world().tenants.beta;
   await signIn(page, beta.users.admin);
