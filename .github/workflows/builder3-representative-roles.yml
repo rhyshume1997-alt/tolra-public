@@ -152,6 +152,18 @@ jobs:
             sudo "$firewall" -F BUILDER3_BROWSER_EGRESS 2>/dev/null || true
             sudo "$firewall" -X BUILDER3_BROWSER_EGRESS 2>/dev/null || true
           done
+      - name: Record actual executed counts and blocked coverage
+        if: always()
+        run: |
+          mkdir -p evidence
+          node - <<'JS'
+          const fs=require('node:fs');
+          const read=f=>{try{return JSON.parse(fs.readFileSync(f,'utf8'))}catch{return null}};
+          const d=read('evidence/combined-db.json'), b=read('evidence/invite-browser.json');
+          const sha=require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          const r={status:'PRELIMINARY',sourceSha:sha,candidateSha:null,database:d?{passed:d.numPassedTests,failed:d.numFailedTests,skipped:d.numPendingTests,total:d.numTotalTests}:null,browser:b?.stats??null,requiredDatabase:163,requiredBrowser:47,browserCoverage:b?.stats?.expected===47?'EXECUTED':'NOT FULLY EXECUTED',physicalDevices:'NOT RUN',physicalPrinter:'NOT RUN',liveProviders:'NOT RUN'};
+          fs.writeFileSync('evidence/representative-results.json',JSON.stringify(r,null,2));console.log(r);
+          JS
       - name: Record exact subject and source-profile limits
         if: always()
         run: |
@@ -165,6 +177,7 @@ jobs:
           path: |
             evidence/invite-browser*
             evidence/combined-db.json
+            evidence/representative-results.json
             test-results/
             !test-results/e2e-state/world.json
           retention-days: 7
