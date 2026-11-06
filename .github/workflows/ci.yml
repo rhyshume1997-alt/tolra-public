@@ -391,25 +391,17 @@ jobs:
       - name: "Evidence: reviewer specs (requires exactly 10 passed, 0 failed, 0 skipped)"
         if: ${{ always() && hashFiles('evidence/reviewer.json') != '' }}
         run: node scripts/ci-evidence.mjs playwright evidence/reviewer.json 10
-      - name: "Evidence: reinstall after a 146 rollback (runs last, informational, then resets the disposable database)"
+      - name: "Evidence: reinstall after a 146 rollback (informational, never gates; prints NOT-PROVEN unless the refusal was shown; runs last, then resets the disposable database)"
         if: ${{ !cancelled() }}
         continue-on-error: true
         shell: bash
         run: |
           set -a; . ./.env.test.local; set +a
           case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not the local disposable database" >&2; exit 1 ;; esac
-          reinstall=supabase/release/146_tolra_provided_ai.release.sql
-          if psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -q -f supabase/release/146_tolra_provided_ai.rollback.sql > evidence/rollback146.log 2>&1; then
-            echo "146 rollback accepted (no outstanding reservation)"
-            if psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -q -f "$reinstall" > evidence/reinstall146.log 2>&1; then
-              echo "FAIL reinstall of 146 after rollback was ACCEPTED without a reset"
-            else
-              echo "PASS reinstall of 146 after rollback was refused: $(grep -m1 -E 'ERROR' evidence/reinstall146.log)"
-            fi
-          else
-            echo "INCONCLUSIVE 146 rollback refused: $(grep -m1 -E 'ERROR' evidence/rollback146.log)"
-          fi
+          rc=0
+          scripts/ci-146-rollback-evidence.sh evidence || rc=$?
           scripts/test-backend.sh reset
+          exit "$rc"
       - name: "Diff audit against the approved baselines (findings printed, each explained in the evidence file)"
         if: ${{ !cancelled() }}
         shell: bash
