@@ -6,7 +6,17 @@
 -- audit events (security_audit.audit_log) stay; nothing can edit that log. The Quote Builder's costing calculation then reads as off (not
 -- configured). Run the whole text as one transaction, then the release preflight (marker 143 shows "not applied") and
 -- supabase/verify/costing_rates_143.sql is no longer run.
+-- It REFUSES while any material, machine or defaults row exists, unless the runner first says, in the same session, that deleting them is accepted (export them first):
+--     SET tolra.x143_accept_deleting_rates = 'yes';
 BEGIN;
+DO $rb$ BEGIN
+ IF to_regclass('public.costing_materials') IS NOT NULL AND to_regclass('public.costing_machines') IS NOT NULL AND to_regclass('public.costing_defaults') IS NOT NULL THEN
+  IF (EXISTS (SELECT 1 FROM public.costing_materials) OR EXISTS (SELECT 1 FROM public.costing_machines) OR EXISTS (SELECT 1 FROM public.costing_defaults))
+     AND coalesce(current_setting('tolra.x143_accept_deleting_rates', TRUE), '') <> 'yes' THEN
+   RAISE EXCEPTION '143 rollback refused: costing rates exist; rolling back deletes every company''s materials, machines and defaults. Export them first, then SET tolra.x143_accept_deleting_rates = ''yes'' if that is accepted.';
+  END IF;
+ END IF;
+END $rb$;
 
 DROP FUNCTION IF EXISTS public."save_costing_settings_atomic"(uuid, jsonb, jsonb);
 DROP TABLE IF EXISTS public.costing_materials;
