@@ -51,15 +51,15 @@ No shared migration file or canonical release definition was edited here. Code o
 
 ## Reproduction
 
-For the DB suites, prefix commands with:
+For the DB suites, export this setting before running the commands:
 
 ```sh
-INTEGRATION_VERIFY_BASE=e7c4b6380964386e66e5d6a67ed37ad0aaed8da5
+export INTEGRATION_VERIFY_BASE=e7c4b6380964386e66e5d6a67ed37ad0aaed8da5
 ```
 
 Then run each `npx vitest run --config tests/reviews/<area>/vitest.db.config.ts` for `xero-invite-adversarial`, `xero-picker-adversarial`, `night-cost-profit`, `night-151-package`, `verify-old-base` and `integration`. Exact commands, loopback fixture details and AI profile variables are in `evidence/summary.json`. The fixtures create and drop nonce databases on the task's loopback PostgreSQL port54849; never substitute a hosted project or production URL.
 
-The verifier audit in #432 covers every one of109 SQL verifiers across013/083/137/144/150/151, with an explicit minimum schema/profile per file and before/after SQLSTATEs. Its two legacy reconciliation errors require the documented separate legacy source/imported-target profiles, not fabricated tables on a fresh Tolra schema.
+The verifier audit in #432 covers every one of109 SQL verifiers across013/083/137/144/150/151, with an explicit minimum schema/profile per file and before/after SQLSTATEs. Its two legacy reconciliation errors require the documented separate legacy source/imported-target profiles, not fabricated tables on a fresh Tolra schema. The integrated rerun is in `evidence/verifier-matrix.json` (source `cf52856fc03d606a5bff99839b8f95821214e124`): preflight executes178 rows on every stage; no query error occurs at a verifier’s supported minimum/profile. Final-stage legacy-profile errors remain explicit; false semantic rows remain failures, not query errors.
 
 ## Browser execution
 
@@ -67,4 +67,10 @@ Local execution remains blocked: the official isolated Supabase PostgreSQL image
 
 A targeted existing GitHub workflow was dispatched only on our #429 branch, not Code's CI branch. Run42150703006 failed before browser execution because the historical143 parser proof received2.108.0 instead of its checksum-pinned2.40.7. Run42151047156 passed that7-case proof, but browser global setup hit the newer stack's missing service-role privilege for `assert_privileged_aal`. No SQL grant or MFA guard was loosened: #429 tooling now uses Code's checksum-pinned2.40.7 baseline.
 
-The next remote run42151639198 is pending at the time this note is written. No eight-case browser pass is claimed. #429 follow-ups also restore the43-character Microsoft PKCE assertion, use the existing real-TOTP helper and check the exact connecting admin, and retain24-hour lifetime/security-header checks. Those latest spec bytes are also on #433. Exact tested SHA and observed executed/passed/skipped counts must be recorded before any browser approval. Even a #429 pass would be source-profile-specific, not proof that #433's missing shared SQL is fixed.
+Run42151639198 reached the real browser but failed a page-wide disconnected-label count. The first integrated dedicated run42152627841 (`cf52856fc03d606a5bff99839b8f95821214e124`) reproduced that failure:0 passed,1 failed,7 skipped. The scoped Xero-status fix is `d35f43594488ddec2014d7b74abcf5e0915e890d`; its integrated run42153063080 executed7 cases:6 passed,1 failed,1 skipped. Case7 incorrectly expected the full recipient in a deliberately masked UI notice. Commit `6837e2dca46c55fa44ee12222e3e1d57860001fe` corrects that expectation, adds explicit masking/API/body-id checks, and retains the exact bound address checks in database and mock mail. Unique masked recipients identify the precise cancellation row. Its run42154479194 is pending when this handover is committed. No eight-case pass is claimed in this file.
+
+The narrowly scoped `.github/workflows/builder3-invite-browser.yml` runs only this own PR/branch. It uses Code's checksum-pinned2.40.7 CLI, real disposable Supabase and intercepted provider navigation. It refuses protected-tree drift, unavailable backend, missing report, any failure/skip/flaky case, or anything other than8 passes. It does not change the candidate release gate. Tests invoke real picker routes for missing-offer and role/anonymous refusal, but do not prove positive provider consent/organisation choice. No valid provider callback or live provider call occurs. The43-character PKCE assertion and24-hour/security-header checks are retained.
+
+The final head will itself trigger the same eight-case workflow. Its exact SHA, run URL and observed result must be read from the Actions receipt and the follow-up summary on draft #433; a green #429 or an earlier integrated SHA is not final-head proof. The final output remains NOT READY while the30 overlapping DB assertion failures remain. `evidence/browser-local.json` records local and remote history.
+
+A fresh sandboxed full-unit attempt returned6867 passed/8 failed/0 skipped: process-based tests could not spawn children (`spawnSync EPERM`). The same command with authorized child-process access passed6875/0/0, followed by typecheck/lint/diff exit0. No test or security policy was changed to obtain that result. Final-head checks will be posted on #433 with their exact SHA.

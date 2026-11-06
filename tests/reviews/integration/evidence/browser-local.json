@@ -13,5 +13,29 @@
   "cli": "2.108.0 downloaded initially; integration source actually pins2.40.7 (CI uses its own pinned CLI). Larger CI target therefore preferred.",
   "playwrightCommand": "npx playwright test tests/e2e/integrations-connect.spec.ts",
   "localCommandResult": "Global setup refuses missing TEST_SUPABASE_URL; no hosted substitution",
-  "alternative": "Existing targeted workflow dispatched on own #429 codex/fix-invite-e2e at9648370; exact spec bytes equal433, runtime/source profile differs. CI result pending, not yet a pass."
+  "alternative": "PM-approved narrowly scoped own-branch Actions workflow with real disposable Supabase, provider-only interception, strict8pass/0fail/0skip/0flaky receipt",
+  "integratedHistory": [
+    {
+      "run": 42152627841,
+      "sha": "cf52856fc03d606a5bff99839b8f95821214e124",
+      "passed": 0,
+      "failed": 1,
+      "skipped": 7,
+      "failure": "Stale page-wide Not connected locator"
+    },
+    {
+      "run": 42153063080,
+      "sha": "d35f43594488ddec2014d7b74abcf5e0915e890d",
+      "passed": 6,
+      "failed": 1,
+      "skipped": 1,
+      "failure": "Case7 expected full recipient instead of intentionally masked UI notice"
+    },
+    {
+      "run": 42154479194,
+      "sha": "6837e2dca46c55fa44ee12222e3e1d57860001fe",
+      "status": "Pending at commit; no pass claimed"
+    }
+  ],
+  "finalHeadProof": "Read exact final-head Actions run and follow-up summary on draft433; not inferred from source429 or earlier integrated head."
 }

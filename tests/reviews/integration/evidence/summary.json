@@ -149,5 +149,20 @@
     "Missing guarded RPC refuses positive consent; negative refusals depending on it are not proof of complete lifecycle enforcement.",
     "Real Auth/mail/provider proof is not supplied by plain PostgreSQL fixtures.",
     "AI SQL fixture uses146/150 overlays, not a second full release-chain rehearsal."
-  ]
+  ],
+  "fullSuiteReceiptCommit": "d35f43594488ddec2014d7b74abcf5e0915e890d (browser-only6837e2d follow-up arrived during checks; final-head rerun to be posted on433)",
+  "fullSuiteReceipt": {
+    "passed": 6875,
+    "failed": 0,
+    "skipped": 0,
+    "typecheck": "exit0",
+    "lint": "exit0",
+    "diff": "exit0"
+  },
+  "sandboxAttempt": {
+    "passed": 6867,
+    "failed": 8,
+    "skipped": 0,
+    "reason": "Process-based assertions hit spawnSync EPERM; unchanged authorized child-process rerun6875pass/0fail/0skip"
+  }
 }

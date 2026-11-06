@@ -190,11 +190,27 @@
       "pr": 429,
       "sourceCommit": "844ece5",
       "change": "Isolated browser stack aligned to Code approved checksum-pinned2.40.7; integration already matches Code."
+    },
+    {
+      "pr": 429,
+      "sourceCommit": "f3421ea",
+      "integrationCommit": "d35f43594488ddec2014d7b74abcf5e0915e890d",
+      "change": "Assert exact Xero status by its existing test id, rather than counting identical labels on unrelated cards."
+    },
+    {
+      "integrationCommit": "6837e2dca46c55fa44ee12222e3e1d57860001fe",
+      "change": "Browser asserts masked UI recipient and exact API id; full address remains verified independently in actual SQL row and mock mailbox; cancellation uses unique masked address."
     }
   ],
   "additionalVerification": {
     "sourcePR": 416,
     "sourceHead": "669b1cc0d874b6617c0b6dab01b6ba2a94084ecd",
     "purpose": "AI cap/key-removal/readback tests only; no AI runtime or SQL definitions copied"
+  },
+  "integratedBrowserHarness": {
+    "commit": "cf52856fc03d606a5bff99839b8f95821214e124",
+    "workflow": ".github/workflows/builder3-invite-browser.yml",
+    "scope": "Real disposable Supabase on own PR head, pinned Code baseline SQL/verifier setup only; all eight must pass, no candidate gate edits",
+    "additionalChecks": "Actual picker route refusal for missing offer, non-admin roles and anonymous access"
   }
 }
