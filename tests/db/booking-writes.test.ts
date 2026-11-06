@@ -28,7 +28,7 @@ let betaJob: string;
 
 type SaveArgs = Record<string, unknown>;
 const base = (over: SaveArgs = {}): SaveArgs => ({
-  p_id: null, p_machine: m1, p_job: null, p_job_no: `J-BW-${world.runId}`, p_description: "Bracket", p_start: "2026-11-16T08:00:00Z", p_hours: 4, p_hours_done: 0,
+  p_id: null, p_machine: m1, p_job: null, p_job_no: `J-BW-${world.runId}`, p_description: "Bracket", p_start: "2027-12-13T08:00:00Z", p_hours: 4, p_hours_done: 0,
   p_status: "booked", p_notes: null, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null, ...over,
 });
 const save = (client: SupabaseClient, over: SaveArgs = {}) => client.rpc("save_machine_booking", base(over));
@@ -56,9 +56,9 @@ afterAll(async () => {
 describe("nothing writes machine_bookings directly", () => {
   it("insert, update and delete are refused for every role; select still works", async () => {
     const service = adminClient();
-    const id = (await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: m3, job_no: `J-DIRECT-${world.runId}`, start_at: "2026-12-01T08:00:00Z", estimated_hours: 1 }).select("id").single()).data!.id;
+    const id = (await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: m3, job_no: `J-DIRECT-${world.runId}`, start_at: "2027-12-28T08:00:00Z", estimated_hours: 1 }).select("id").single()).data!.id;
     for (const role of ["admin", "office", "workshop", "viewer"]) {
-      expect((await as[role].from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: m3, job_no: "J-NO", start_at: "2026-12-02T08:00:00Z", estimated_hours: 1 })).error?.code, role).toBe("42501");
+      expect((await as[role].from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: m3, job_no: "J-NO", start_at: "2027-12-29T08:00:00Z", estimated_hours: 1 })).error?.code, role).toBe("42501");
       expect((await as[role].from("machine_bookings").update({ estimated_hours: 9 }).eq("id", id)).error?.code, role).toBe("42501");
       expect((await as[role].from("machine_bookings").delete().eq("id", id)).error?.code, role).toBe("42501");
       if (role !== "viewer") expect((await as[role].from("machine_bookings").select("id").eq("id", id)).data).toEqual([{ id }]);
@@ -81,7 +81,7 @@ describe("booking through the database", () => {
     expect(edited.data).toMatchObject({ id, notes: "Fixture ready" });
     expect(Number(edited.data.estimated_hours)).toBe(5);
     expect((await save(as.workshop, { p_id: id, p_job: job, p_hours: 5, p_hours_done: 2, p_status: "running" })).error).toBeNull();
-    expect((await save(as.viewer, { p_machine: m3, p_start: "2026-12-03T08:00:00Z" })).error?.code).toBe("42501");
+    expect((await save(as.viewer, { p_machine: m3, p_start: "2027-12-30T08:00:00Z" })).error?.code).toBe("42501");
     expect((await save(as.viewer, { p_id: id, p_job: job, p_hours: 5 })).error?.code).toBe("42501");
     expect((await remove(as.viewer, id)).error?.code).toBe("42501");
     expect((await remove(as.workshop, id)).error).toBeNull();
@@ -91,25 +91,25 @@ describe("booking through the database", () => {
   it("a retired machine takes no new booking and nothing moved onto it; a booking already there stays editable", async () => {
     const service = adminClient();
     const retired = (await service.from("machines").insert({ organization_id: world.tenants.alpha.id, name: `Retired mill ${world.runId}`, active: false }).select("id").single()).data!.id as string;
-    expect((await save(as.office, { p_machine: retired, p_start: "2026-12-08T08:00:00Z" })).error).toMatchObject({ code: "22023", hint: "machine_inactive" });
-    const onM3 = await save(as.office, { p_machine: m3, p_start: "2026-12-09T08:00:00Z" });
+    expect((await save(as.office, { p_machine: retired, p_start: "2028-01-04T08:00:00Z" })).error).toMatchObject({ code: "22023", hint: "machine_inactive" });
+    const onM3 = await save(as.office, { p_machine: m3, p_start: "2028-01-05T08:00:00Z" });
     expect(onM3.error).toBeNull();
-    expect((await save(as.office, { p_id: onM3.data.id, p_machine: retired, p_start: "2026-12-09T08:00:00Z" })).error).toMatchObject({ code: "22023", hint: "machine_inactive" });
+    expect((await save(as.office, { p_id: onM3.data.id, p_machine: retired, p_start: "2028-01-05T08:00:00Z" })).error).toMatchObject({ code: "22023", hint: "machine_inactive" });
     expect((await service.from("machine_bookings").select("machine_id").eq("id", onM3.data.id).single()).data!.machine_id).toBe(m3);
     // A booking on a machine retired since: its notes, hours and status can still change; it can't be moved to another retired machine.
     const soon = (await service.from("machines").insert({ organization_id: world.tenants.alpha.id, name: `Soon retired ${world.runId}` }).select("id").single()).data!.id as string;
-    const onSoon = await save(as.office, { p_machine: soon, p_start: "2026-12-10T08:00:00Z" });
+    const onSoon = await save(as.office, { p_machine: soon, p_start: "2028-01-06T08:00:00Z" });
     expect(onSoon.error).toBeNull();
     expect((await service.from("machines").update({ active: false }).eq("id", soon)).error).toBeNull();
-    expect((await save(as.office, { p_id: onSoon.data.id, p_machine: soon, p_start: "2026-12-10T08:00:00Z", p_hours: 5, p_notes: "Still here" })).error).toBeNull();
-    expect((await save(as.office, { p_id: onSoon.data.id, p_machine: retired, p_start: "2026-12-10T08:00:00Z" })).error).toMatchObject({ code: "22023", hint: "machine_inactive" });
-    expect((await save(as.office, { p_id: onSoon.data.id, p_machine: m3, p_start: "2026-12-11T08:00:00Z" })).error).toBeNull();
+    expect((await save(as.office, { p_id: onSoon.data.id, p_machine: soon, p_start: "2028-01-06T08:00:00Z", p_hours: 5, p_notes: "Still here" })).error).toBeNull();
+    expect((await save(as.office, { p_id: onSoon.data.id, p_machine: retired, p_start: "2028-01-06T08:00:00Z" })).error).toMatchObject({ code: "22023", hint: "machine_inactive" });
+    expect((await save(as.office, { p_id: onSoon.data.id, p_machine: m3, p_start: "2028-01-07T08:00:00Z" })).error).toBeNull();
   });
 
   it("another company's machine, job or booking is refused", async () => {
     expect((await save(as.office, { p_machine: betaMachine })).error?.code).toBe("P0002");
     expect((await save(as.office, { p_job: betaJob })).error?.code).toBe("P0002");
-    const mine = await save(as.office, { p_machine: m3, p_start: "2026-12-04T08:00:00Z" });
+    const mine = await save(as.office, { p_machine: m3, p_start: "2027-12-31T08:00:00Z" });
     expect(mine.error).toBeNull();
     expect((await save(as.betaAdmin, { p_id: mine.data.id, p_machine: betaMachine })).error?.code).toBe("P0002");
     expect((await remove(as.betaAdmin, mine.data.id)).error?.code).toBe("P0002");
@@ -117,22 +117,22 @@ describe("booking through the database", () => {
   });
 
   it("a clash is refused for the office and the workshop; an admin needs a reason; the override is recorded with the bookings found", async () => {
-    const first = await save(as.office, { p_job_no: `J-FIRST-${world.runId}`, p_start: "2026-11-17T08:00:00Z", p_hours: 4 });
+    const first = await save(as.office, { p_job_no: `J-FIRST-${world.runId}`, p_start: "2027-12-14T08:00:00Z", p_hours: 4 });
     expect(first.error).toBeNull();
     for (const role of ["office", "workshop"]) {
-      const r = await save(as[role], { p_job_no: "J-OVER", p_start: "2026-11-17T09:00:00Z", p_hours: 1, p_clash_override: true, p_override_reason: "Please" });
+      const r = await save(as[role], { p_job_no: "J-OVER", p_start: "2027-12-14T09:00:00Z", p_hours: 1, p_clash_override: true, p_override_reason: "Please" });
       expect(r.error?.code, role).toBe("42501");
       expect(r.error?.hint, role).toBe("machine_clash");
       expect(r.error?.message, role).toContain(`J-FIRST-${world.runId}`);
     }
-    expect((await save(as.admin, { p_job_no: "J-OVER", p_start: "2026-11-17T09:00:00Z", p_hours: 1 })).error?.hint).toBe("machine_clash");
+    expect((await save(as.admin, { p_job_no: "J-OVER", p_start: "2027-12-14T09:00:00Z", p_hours: 1 })).error?.hint).toBe("machine_clash");
     for (const p_override_reason of [null, "", " ", "no"]) {
-      const r = await save(as.admin, { p_job_no: "J-OVER", p_start: "2026-11-17T09:00:00Z", p_hours: 1, p_clash_override: true, p_override_reason });
+      const r = await save(as.admin, { p_job_no: "J-OVER", p_start: "2027-12-14T09:00:00Z", p_hours: 1, p_clash_override: true, p_override_reason });
       expect(r.error?.code, String(p_override_reason)).toBe("22023");
       expect(r.error?.hint).toBe("override_reason");
     }
     const before = new Date();
-    const over = await save(as.admin, { p_job_no: `J-OVER-${world.runId}`, p_start: "2026-11-17T09:00:00Z", p_hours: 1, p_clash_override: true, p_override_reason: "Breakdown cover for the customer" });
+    const over = await save(as.admin, { p_job_no: `J-OVER-${world.runId}`, p_start: "2027-12-14T09:00:00Z", p_hours: 1, p_clash_override: true, p_override_reason: "Breakdown cover for the customer" });
     expect(over.error).toBeNull();
     const audit = await withDb((db) => db.query("select actor_user_id, metadata from security_audit.audit_log where action = 'OVERRIDE_MACHINE_CLASH' and entity_table = 'machine_bookings' and entity_id = $1", [over.data.id]));
     expect(audit.rows).toHaveLength(1);
@@ -141,15 +141,15 @@ describe("booking through the database", () => {
     expect(meta).toMatchObject({ booking_id: over.data.id, machine_id: m1, reason: "Breakdown cover for the customer", clashing_job_nos: [`J-FIRST-${world.runId}`], actor_user_id: world.tenants.alpha.users.admin.id, new: true });
     expect(new Date(meta.at).getTime()).toBeGreaterThanOrEqual(before.getTime() - 5000);
     expect(meta.conflicts).toEqual([{ booking_id: first.data.id, job_no: `J-FIRST-${world.runId}`, intervals: [[expect.any(String), expect.any(String)]] }]);
-    expect(meta.conflicts[0].intervals[0].map((t: string) => new Date(t).toISOString())).toEqual(["2026-11-17T08:00:00.000Z", "2026-11-17T12:00:00.000Z"]);
+    expect(meta.conflicts[0].intervals[0].map((t: string) => new Date(t).toISOString())).toEqual(["2027-12-14T08:00:00.000Z", "2027-12-14T12:00:00.000Z"]);
     // The same again for an edit: moving the first booking onto the override is checked (the office is refused); notes aren't.
-    expect((await save(as.office, { p_id: first.data.id, p_job_no: `J-FIRST-${world.runId}`, p_start: "2026-11-17T08:00:00Z", p_hours: 4, p_notes: "Note only" })).error).toBeNull();
-    expect((await save(as.office, { p_id: first.data.id, p_job_no: `J-FIRST-${world.runId}`, p_start: "2026-11-17T09:30:00Z", p_hours: 4 })).error?.hint).toBe("machine_clash");
-    expect((await save(as.office, { p_id: first.data.id, p_job_no: `J-FIRST-${world.runId}`, p_start: "2026-11-17T13:00:00Z", p_hours: 1 })).error).toBeNull();
+    expect((await save(as.office, { p_id: first.data.id, p_job_no: `J-FIRST-${world.runId}`, p_start: "2027-12-14T08:00:00Z", p_hours: 4, p_notes: "Note only" })).error).toBeNull();
+    expect((await save(as.office, { p_id: first.data.id, p_job_no: `J-FIRST-${world.runId}`, p_start: "2027-12-14T09:30:00Z", p_hours: 4 })).error?.hint).toBe("machine_clash");
+    expect((await save(as.office, { p_id: first.data.id, p_job_no: `J-FIRST-${world.runId}`, p_start: "2027-12-14T13:00:00Z", p_hours: 1 })).error).toBeNull();
   });
 
   it("two saves for the same machine and time at the same moment: exactly one booking and one refusal", async () => {
-    for (const [i, slot] of ["2026-11-18T08:00:00Z", "2026-11-18T13:00:00Z"].entries()) {
+    for (const [i, slot] of ["2027-12-15T08:00:00Z", "2027-12-15T13:00:00Z"].entries()) {
       const [a, b] = await Promise.all([
         save(as.office, { p_machine: m2, p_job_no: `J-RA${i}-${world.runId}`, p_start: slot, p_hours: 2 }),
         save(as.workshop, { p_machine: m2, p_job_no: `J-RB${i}-${world.runId}`, p_start: slot, p_hours: 2 }),
@@ -181,41 +181,41 @@ describe("booking through the database", () => {
   it("the job's machine plan (job_machines) follows the schedule's edits of a booking made for it; other bookings change nothing there", async () => {
     const service = adminClient();
     const made = await as.office.rpc("create_job", { p_customer: "Plan Co", p_description: "Plan follows", p_internal: false, p_related: null, p_required: null,
-      p_machines: [{ machine_id: m3, hours: 3, start_at: "2026-12-14T08:00:00Z" }, { machine_id: m1, hours: 2, start_at: "2026-12-14T08:00:00Z" }], p_clash_override: false, p_clashes: [], p_override_reason: null });
+      p_machines: [{ machine_id: m3, hours: 3, start_at: "2028-01-10T08:00:00Z" }, { machine_id: m1, hours: 2, start_at: "2028-01-10T08:00:00Z" }], p_clash_override: false, p_clashes: [], p_override_reason: null });
     expect(made.error).toBeNull();
     const jobId = made.data.job_id as string;
     const rows = async () => (await service.from("job_machines").select("id, machine_id, estimated_hours, booking_id, position").eq("job_id", jobId).order("position")).data!.map((r) => ({ ...r, estimated_hours: Number(r.estimated_hours) }));
     const first = (await rows())[0];
-    const edit = (over: Record<string, unknown>) => save(as.office, { p_id: first.booking_id, p_job: jobId, p_job_no: made.data.job_no, p_machine: m3, p_start: "2026-12-14T08:00:00Z", p_hours: 3, ...over });
+    const edit = (over: Record<string, unknown>) => save(as.office, { p_id: first.booking_id, p_job: jobId, p_job_no: made.data.job_no, p_machine: m3, p_start: "2028-01-10T08:00:00Z", p_hours: 3, ...over });
     // Hours.
     expect((await edit({ p_hours: 5 })).error).toBeNull();
     expect((await rows())[0]).toMatchObject({ id: first.id, machine_id: m3, estimated_hours: 5, booking_id: first.booking_id });
     // A split plan: the row takes the plan's total.
-    expect((await edit({ p_hours: 6, p_day_plan: [{ date: "2026-12-15", start: "08:00", end: "14:00" }] })).error).toBeNull();
+    expect((await edit({ p_hours: 6, p_day_plan: [{ date: "2028-01-11", start: "08:00", end: "14:00" }] })).error).toBeNull();
     expect((await rows())[0]).toMatchObject({ id: first.id, machine_id: m3, estimated_hours: 6 });
     // A move to a machine the job doesn't have: the row is re-pointed.
-    expect((await edit({ p_machine: m2, p_hours: 6, p_day_plan: [{ date: "2026-12-15", start: "08:00", end: "14:00" }] })).error).toBeNull();
+    expect((await edit({ p_machine: m2, p_hours: 6, p_day_plan: [{ date: "2028-01-11", start: "08:00", end: "14:00" }] })).error).toBeNull();
     expect((await rows())[0]).toMatchObject({ id: first.id, machine_id: m2, estimated_hours: 6 });
     // A move onto a machine the job already has: one row left for that machine, naming this booking.
-    expect((await edit({ p_machine: m1, p_hours: 6, p_day_plan: [{ date: "2026-12-15", start: "08:00", end: "14:00" }] })).error).toBeNull();
+    expect((await edit({ p_machine: m1, p_hours: 6, p_day_plan: [{ date: "2028-01-11", start: "08:00", end: "14:00" }] })).error).toBeNull();
     const merged = await rows();
     expect(merged).toHaveLength(1);
     expect(merged[0]).toMatchObject({ machine_id: m1, estimated_hours: 6, booking_id: first.booking_id });
     // Notes and status don't touch the plan; a delete keeps the row and clears its booking.
-    expect((await edit({ p_machine: m1, p_hours: 6, p_day_plan: [{ date: "2026-12-15", start: "08:00", end: "14:00" }], p_notes: "note", p_status: "running" })).error).toBeNull();
+    expect((await edit({ p_machine: m1, p_hours: 6, p_day_plan: [{ date: "2028-01-11", start: "08:00", end: "14:00" }], p_notes: "note", p_status: "running" })).error).toBeNull();
     expect((await rows())[0]).toMatchObject({ machine_id: m1, estimated_hours: 6, booking_id: first.booking_id });
     expect((await remove(as.office, first.booking_id)).error).toBeNull();
     expect((await rows())[0]).toMatchObject({ machine_id: m1, estimated_hours: 6, booking_id: null });
     // A booking made on the schedule for a job (before this migration, or now) has no plan row and gets none from an edit.
     const before = (await service.from("job_machines").select("id", { count: "exact", head: true }).eq("organization_id", world.tenants.alpha.id)).count;
-    const legacy = (await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: m3, job_id: job, job_no: `J-BW-${world.runId}`, start_at: "2026-12-16T08:00:00Z", estimated_hours: 2 }).select("id").single()).data!.id;
-    expect((await save(as.office, { p_id: legacy, p_job: job, p_machine: m2, p_start: "2026-12-16T08:00:00Z", p_hours: 4 })).error).toBeNull();
+    const legacy = (await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: m3, job_id: job, job_no: `J-BW-${world.runId}`, start_at: "2028-01-12T08:00:00Z", estimated_hours: 2 }).select("id").single()).data!.id;
+    expect((await save(as.office, { p_id: legacy, p_job: job, p_machine: m2, p_start: "2028-01-12T08:00:00Z", p_hours: 4 })).error).toBeNull();
     expect((await service.from("job_machines").select("id", { count: "exact", head: true }).eq("organization_id", world.tenants.alpha.id)).count).toBe(before);
   });
 
   it("no commercial value in the answer or the table", async () => {
     const money = /price|value|amount|total|cost|rate|margin|vat|discount/i;
-    const made = await save(as.workshop, { p_machine: m3, p_start: "2026-12-05T08:00:00Z" });
+    const made = await save(as.workshop, { p_machine: m3, p_start: "2028-01-01T08:00:00Z" });
     expect(made.error).toBeNull();
     expect(Object.keys(made.data).filter((k) => money.test(k))).toEqual([]);
     const columns = await withDb((db) => db.query<{ column_name: string }>("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'machine_bookings'"));

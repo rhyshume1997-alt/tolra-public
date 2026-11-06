@@ -33,7 +33,7 @@ let retired: string;
 let betaMachine: string;
 let betaJob: string;
 
-const START = "2027-11-29T08:00:00Z";
+const START = "2026-11-02T08:00:00Z";
 type Args = { p_customer?: string | null; p_description?: string; p_internal?: boolean; p_related?: string | null; p_required?: string | null; p_machines?: unknown; p_clash_override?: boolean; p_clashes?: unknown; p_override_reason?: string | null };
 const args = (over: Args = {}) => ({ p_customer: "Acme Ltd", p_description: "Brackets", p_internal: false, p_related: null, p_required: null, p_machines: [], p_clash_override: false, p_clashes: [], p_override_reason: null, ...over });
 const create = (client: SupabaseClient, over: Args = {}) => client.rpc("create_job", args(over));
@@ -168,13 +168,13 @@ describe("the J-number lock on direct connections", () => {
 
 describe("machines and bookings", () => {
   it("books each machine from its own start, in parallel, and links them to the job", async () => {
-    const { data, error } = await create(as.office, { p_machines: [{ machine_id: mill, hours: 6, start_at: START }, { machine_id: lathe, hours: 2.5, start_at: "2027-11-30T09:00:00Z" }] });
+    const { data, error } = await create(as.office, { p_machines: [{ machine_id: mill, hours: 6, start_at: START }, { machine_id: lathe, hours: 2.5, start_at: "2026-11-03T09:00:00Z" }] });
     expect(error).toBeNull();
     const { data: links } = await as.viewer.from("job_machines").select("machine_id, estimated_hours, booking_id, position").eq("job_id", data.job_id).order("position");
     expect(links!.map((l) => [l.machine_id, Number(l.estimated_hours), l.position])).toEqual([[mill, 6, 0], [lathe, 2.5, 1]]);
     const { data: bookings } = await as.viewer.from("machine_bookings").select("id, machine_id, job_id, job_no, start_at, estimated_hours, status").eq("job_id", data.job_id).order("start_at");
     expect(bookings!.map((b) => [b.machine_id, b.job_no, new Date(b.start_at).toISOString(), Number(b.estimated_hours), b.status])).toEqual([
-      [mill, data.job_no, "2027-11-29T08:00:00.000Z", 6, "booked"], [lathe, data.job_no, "2027-11-30T09:00:00.000Z", 2.5, "booked"]]);
+      [mill, data.job_no, "2026-11-02T08:00:00.000Z", 6, "booked"], [lathe, data.job_no, "2026-11-03T09:00:00.000Z", 2.5, "booked"]]);
     expect(links!.map((l) => l.booking_id).sort()).toEqual(bookings!.map((b) => b.id).sort());
     // Read by the company only, written by the function only.
     expect((await as.betaAdmin.from("job_machines").select("id").eq("job_id", data.job_id)).data).toEqual([]);
