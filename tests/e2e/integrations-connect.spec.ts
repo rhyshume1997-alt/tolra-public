@@ -26,7 +26,7 @@ import { generatePassword } from "@/lib/password";
 
 import { adminClient, signedInClient, withDb } from "../support/fixtures";
 import { enrolTotp, totpCode } from "../support/totp";
-import { asSeparateDevice, signIn, world } from "./helpers";
+import { aal2Admin, asSeparateDevice, signIn, world } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
