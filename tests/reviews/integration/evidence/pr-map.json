@@ -1,0 +1,171 @@
+{
+  "base": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5",
+  "protected": "supabase/{migrations,proposals,release}/** and release-plan.json must match base",
+  "prs": [
+    {
+      "pr": 423,
+      "sourceBase": "656a79390650fe87a6e7513679246e82df3f3a40",
+      "sourceHead": "e91da2727f5f12c70512815c133bf27d24a247f1",
+      "integrationCommit": "553ca79c96046b66e811e7ad7b2412ff4c3e5887",
+      "included": [
+        "app/(dashboard)/admin/integrations/xero-organisation/page.tsx",
+        "app/api/integrations/invite/[ref]/route.ts",
+        "app/api/integrations/xero/callback/route.ts",
+        "app/api/integrations/xero/choose/route.ts",
+        "lib/integrations/crypto.ts",
+        "lib/integrations/invite.ts",
+        "lib/integrations/post-with-code.ts",
+        "lib/integrations/server.ts",
+        "lib/integrations/xero/picker.ts",
+        "lib/server/login.ts",
+        "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+        "tests/reviews/xero-invite-adversarial/bootstrap.sql",
+        "tests/reviews/xero-invite-adversarial/evidence/database-receipt.json",
+        "tests/reviews/xero-invite-adversarial/evidence/findings.json",
+        "tests/reviews/xero-invite-adversarial/evidence/fix-full.json",
+        "tests/reviews/xero-invite-adversarial/evidence/fix-results.json",
+        "tests/reviews/xero-invite-adversarial/evidence/pm-proposal-clarification.json",
+        "tests/reviews/xero-invite-adversarial/evidence/results.json",
+        "tests/reviews/xero-invite-adversarial/fixture.ts",
+        "tests/reviews/xero-invite-adversarial/public.unit.test.ts",
+        "tests/reviews/xero-invite-adversarial/registration.unit.test.ts",
+        "tests/reviews/xero-invite-adversarial/route.setup.ts",
+        "tests/reviews/xero-invite-adversarial/vitest.db.config.ts",
+        "tests/reviews/xero-invite-adversarial/vitest.unit.config.ts",
+        "tests/reviews/xero-picker-adversarial/bootstrap.sql",
+        "tests/reviews/xero-picker-adversarial/evidence/database-receipt.json",
+        "tests/reviews/xero-picker-adversarial/evidence/findings.json",
+        "tests/reviews/xero-picker-adversarial/evidence/results.json",
+        "tests/reviews/xero-picker-adversarial/fixture.ts",
+        "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+        "tests/reviews/xero-picker-adversarial/picker.unit.test.ts",
+        "tests/reviews/xero-picker-adversarial/route.setup.ts",
+        "tests/reviews/xero-picker-adversarial/vitest.db.config.ts",
+        "tests/reviews/xero-picker-adversarial/vitest.unit.config.ts",
+        "tests/unit/integrations-connect-107-routes.test.ts",
+        "tests/unit/integrations-connect-107.test.ts",
+        "tests/unit/xero-org-picker.test.ts"
+      ],
+      "held": [
+        "supabase/proposals/p151_xero_invite_hardening.sql",
+        "supabase/release/151_xero_invite_hardening.release.sql",
+        "supabase/release/151_xero_invite_hardening.rollback.sql"
+      ]
+    },
+    {
+      "pr": 425,
+      "sourceBase": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+      "sourceHead": "78222015ef3d7e0dec60af0eea083d2bb88d9a89",
+      "integrationCommit": "4e65238fb7e84cd44a45a61dde27edb9a6e8a69e",
+      "included": [
+        "components/costing/price-this-part.tsx",
+        "lib/costing/price-part.ts",
+        "lib/job-profitability-actuals.ts",
+        "supabase/verify/job_profitability_actuals_148.sql",
+        "tests/db/job-profitability-148.test.ts",
+        "tests/reviews/night-cost-profit/bootstrap.sql",
+        "tests/reviews/night-cost-profit/db.setup.ts",
+        "tests/reviews/night-cost-profit/evidence/database-receipt.json",
+        "tests/reviews/night-cost-profit/evidence/db.json",
+        "tests/reviews/night-cost-profit/evidence/fix-full.json",
+        "tests/reviews/night-cost-profit/evidence/fix-results.json",
+        "tests/reviews/night-cost-profit/evidence/full.json",
+        "tests/reviews/night-cost-profit/evidence/unit.json",
+        "tests/reviews/night-cost-profit/fixture.ts",
+        "tests/reviews/night-cost-profit/pennies.unit.test.ts",
+        "tests/reviews/night-cost-profit/profit-fixture.ts",
+        "tests/reviews/night-cost-profit/profit-rates.db.test.ts",
+        "tests/reviews/night-cost-profit/vitest.db.config.ts",
+        "tests/reviews/night-cost-profit/vitest.unit.config.ts",
+        "tests/unit/costing-price-part.test.ts",
+        "tests/unit/job-profitability-actuals.test.ts"
+      ],
+      "held": [
+        "supabase/proposals/p148_job_profitability_actuals.sql",
+        "supabase/release/148_job_profitability_actuals.release.sql"
+      ]
+    },
+    {
+      "pr": 429,
+      "sourceBase": "dbd9841f9e5c0d651566a50bb3cefe7262a4845a",
+      "sourceHead": "9648370c5d737c0d58a346e68d3c6101480e158e",
+      "integrationCommit": "09829f05ed3dad6fe7c0d664c37f353a981614fe",
+      "included": [
+        "playwright.config.ts",
+        "tests/e2e/integrations-connect.spec.ts",
+        "tests/reviews/invite-e2e/evidence/browser.json",
+        "tests/reviews/invite-e2e/evidence/full.json",
+        "tests/unit/integrations-connect-107-routes.test.ts",
+        "tests/unit/integrations-connect-107.test.ts"
+      ],
+      "held": []
+    },
+    {
+      "pr": 430,
+      "sourceBase": "7b0499c28834eef91cdbb1786a48e5e05e3f5708",
+      "sourceHead": "2c85dda1aa4e8973c7332075d1015b3c642c36f7",
+      "integrationCommit": "aeeebfa90634db24ed87cd675cc67e4ce23413b6",
+      "included": [
+        "supabase/verify/xero_invite_hardening_151.sql",
+        "tests/reviews/night-151-package/bootstrap.sql",
+        "tests/reviews/night-151-package/db.setup.ts",
+        "tests/reviews/night-151-package/evidence/database-receipt.json",
+        "tests/reviews/night-151-package/evidence/db.json",
+        "tests/reviews/night-151-package/evidence/fix-full.json",
+        "tests/reviews/night-151-package/evidence/fix-results.json",
+        "tests/reviews/night-151-package/evidence/full.json",
+        "tests/reviews/night-151-package/evidence/unit.json",
+        "tests/reviews/night-151-package/evidence/verify-rows.json",
+        "tests/reviews/night-151-package/fixture.ts",
+        "tests/reviews/night-151-package/package.unit.test.ts",
+        "tests/reviews/night-151-package/release.db.test.ts",
+        "tests/reviews/night-151-package/vitest.db.config.ts",
+        "tests/reviews/night-151-package/vitest.unit.config.ts"
+      ],
+      "held": []
+    },
+    {
+      "pr": 431,
+      "sourceBase": "4062073af8fcab7207697db64b6863850c4a02cc",
+      "sourceHead": "150f637db2f203f224e477d3f4289cd18445a6ea",
+      "integrationCommit": "cc7fea9fdca3c7063ee04b84a432f0bab9d9e386",
+      "included": [
+        "lib/costing/app-rates.ts",
+        "tests/reviews/costing-validation/evidence/focused.json",
+        "tests/reviews/costing-validation/evidence/full.json",
+        "tests/reviews/costing-validation/evidence/handover.json",
+        "tests/unit/costing-validation-messages.test.ts"
+      ],
+      "held": []
+    },
+    {
+      "pr": 432,
+      "sourceBase": "2c85dda1aa4e8973c7332075d1015b3c642c36f7",
+      "sourceHead": "ea0f43292ef44cce7dc4419e6c38886780dd7a4d",
+      "integrationCommit": "9def3e1b8255dea5f5fde6f2ca811129ed6b0aff",
+      "included": [
+        "supabase/verify/release_preflight.sql",
+        "tests/reviews/verify-old-base/VERIFIER-SCHEMAS.md",
+        "tests/reviews/verify-old-base/audit.cjs",
+        "tests/reviews/verify-old-base/bootstrap.sql",
+        "tests/reviews/verify-old-base/evidence/after.json",
+        "tests/reviews/verify-old-base/evidence/before.json",
+        "tests/reviews/verify-old-base/evidence/changes.json",
+        "tests/reviews/verify-old-base/evidence/checks.json",
+        "tests/reviews/verify-old-base/evidence/classification.json",
+        "tests/reviews/verify-old-base/evidence/database-receipt.json",
+        "tests/reviews/verify-old-base/fixture.ts",
+        "tests/reviews/verify-old-base/minimum-schemas.json",
+        "tests/reviews/verify-old-base/regression.db.test.ts",
+        "tests/reviews/verify-old-base/vitest.db.config.ts"
+      ],
+      "held": []
+    }
+  ],
+  "conflictResolutions": [
+    "Code151registration retained; test contracts now assert exactly once after150, never numbered",
+    "Phase fixture loops stop at150 before explicitly applying151 once",
+    "Source432preflight fix applied to Code preflight, preserving151marker",
+    "All shared migration/proposal/release definitions and release-plan.json retained byte-for-byte from e7c4b63; source423/425 SQL fixes held"
+  ]
+}

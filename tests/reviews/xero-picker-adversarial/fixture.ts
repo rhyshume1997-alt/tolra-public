@@ -14,7 +14,7 @@ export async function start(){
  await db.query(sql('tests/reviews/xero-picker-adversarial/bootstrap.sql'));
  for(const f of readdirSync('supabase/migrations').filter(f=>/^\d{3}_.*\.sql$/.test(f)&&Number(f.slice(0,3))<=137).sort())await db.query(sql('supabase/migrations/'+f));
  const plan=JSON.parse(readFileSync('supabase/release-plan.json','utf8'));
- for(const phase of [...plan.jnr_cutover_numbered_order,...plan.phases]){await db.query(sql(phase.release));const rows=(await db.query(sql(phase.verify))).rows;if(!rows.length||rows.some(r=>(r.ok??r.passed)!==true))throw Error('Prerequisite verification failed '+phase.number);}
+ for(const phase of [...plan.jnr_cutover_numbered_order,...plan.phases.filter((p:{number:number})=>p.number<=150)]){await db.query(sql(phase.release));const rows=(await db.query(sql(phase.verify))).rows;if(!rows.length||rows.some(r=>(r.ok??r.passed)!==true))throw Error('Prerequisite verification failed '+phase.number);}
  await db.query(sql('supabase/release/151_xero_invite_hardening.release.sql'));
  for(const [key,value] of Object.entries({XERO_CLIENT_ID:'synthetic-client',XERO_CLIENT_SECRET:'synthetic-secret',XERO_REDIRECT_URI:'https://tolra.example.test/api/integrations/xero/callback',NEXT_PUBLIC_SITE_URL:'https://tolra.example.test',XERO_INVITE_REDIRECT_URIS:'https://tolra.example.test/api/integrations/invite/callback',INTEGRATIONS_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')}))process.env[key]=value;
 }

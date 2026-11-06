@@ -13,6 +13,6 @@ const run=async stage=>{const rows=[];for(const f of files){await db.query('begi
  result.stages.push({stage,results:rows});fs.writeFileSync(process.env.VERIFY_AUDIT_OUTPUT||'tests/reviews/verify-old-base/evidence/before.json',JSON.stringify(result,null,2)+'\n');console.log(stage,rows.filter(r=>r.status==='executed').length,'executed',rows.filter(r=>r.status==='error').length,'errors');};
 for(const f of baseFiles){await db.query(sql('supabase/migrations/'+f));if([13,83,137].includes(+f.slice(0,3)))await run(+f.slice(0,3));}
 const plan=JSON.parse(sql('supabase/release-plan.json'));for(const phase of plan.jnr_cutover_numbered_order)await db.query(sql(phase.release));await run(144);
-for(const phase of plan.phases)await db.query(sql(phase.release));await run(150);
+for(const phase of plan.phases.filter(p=>p.number<=150))await db.query(sql(phase.release));await run(150);
 await db.query(sql('supabase/release/151_xero_invite_hardening.release.sql'));await run(151);
 }finally{await db.end();await admin.query('drop database '+name+' with(force)');await admin.end();}})().catch(e=>{console.error(e.message);process.exitCode=1;});
