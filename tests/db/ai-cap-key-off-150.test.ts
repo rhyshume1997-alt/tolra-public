@@ -13,6 +13,8 @@
  *   - the platform key: replacing Tolra's key switches the platform switch off with an audit row; the first key keeps the asked switch.
  *   - one company cap across both modes: a reservation in either mode is refused unless used + reserved stays within least(own-key cap, Tolra cap),
  *     so switching between own key and Tolra-provided AI never reaches the higher cap, also under concurrency.
+ *   - existing companies at the old 500p default (122's default, also what the AI card re-saves on every switch) read 1000p after the release: raised in
+ *     the release transaction, audited (ai_cap_default_raised), every other cap (300, 2500, 0, 700) untouched, Tolra caps untouched, the rollback keeps rows.
  * All data is synthetic (slug prefix t-<run>-, e-mail <name>.<run>@example.test) and removed in afterAll; the platform control row is put back.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -83,6 +85,7 @@ const reserve = (co: Co, feature: Feature, pence = 100) =>
 const answer = (o: Outcome) => (o.ok ? (o.value.r as { ok: boolean; reason?: string; request_id?: string; key_source?: string }) : null);
 const used = (co: Co) => owned(async (db) => (await db.query("SELECT coalesce(sum(spent_pence + reserved_pence),0)::int AS n FROM public.ai_helper_usage WHERE organization_id=$1 AND month = date_trunc('month', now() AT TIME ZONE 'Europe/London')::date", [co.id])).rows[0].n as number);
 const reservedNow = (co: Co) => owned(async (db) => (await db.query("SELECT coalesce(sum(reserved_pence),0)::int AS n FROM public.ai_helper_usage WHERE organization_id=$1", [co.id])).rows[0].n as number);
+const inSequenceOf = async (co: Co, n: number, pence = 100) => { const out: Outcome[] = []; for (let i = 0; i < n; i++) out.push(await reserve(co, FEATURES[i % 3], pence)); return out; };
 const burst = (co: Co, n: number, pence = 100) => Promise.all(Array.from({ length: n }, (_, i) => reserve(co, FEATURES[i % 3], pence)));
 const oks = (outs: Outcome[]) => outs.filter((o) => answer(o)?.ok === true).length;
 const caps = (outs: Outcome[]) => outs.filter((o) => answer(o)?.ok === false && answer(o)?.reason === "cap").length;
@@ -672,7 +675,7 @@ describe("release 150: removing the shared Tolra key (platform owner, typed conf
 
 describe("release 150 on a database that already holds companies, caps, keys and AI on", () => {
   it("rolls back to exactly 101, 122 and 146, then the shipped release is applied again: no existing row changes, switches stay on until a key changes AFTER 150", async () => {
-    const { A, B, C, D, N } = companies;
+    const { A, B, C, D, N, E, F, G, H, I } = companies;
     // 1. Roll 150 back: the default is 500 again and the key functions are the old ones (a key change no longer switches anything off).
     await owned((db) => db.query(read("supabase/release/150_ai_cap_key_off.rollback.sql")));
     const pre = await owned(async (db) => (await db.query(`SELECT (SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='ai_helper_settings' AND column_name='monthly_cap_pence') AS d,
@@ -681,68 +684,110 @@ describe("release 150 on a database that already holds companies, caps, keys and
       (SELECT md5(regexp_replace(prosrc,'\\s','','g')) FROM pg_proc WHERE oid=to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)')) AS c,
       to_regprocedure('public._ai_helper_force_off(uuid,text)') IS NULL AS gone`)).rows[0]);
     expect(pre).toEqual({ d: "500", k: "a6680aba0f169e5331110ba388f05e49", s: "3ef44c838451b46ea14030164d9b1384", c: "a100254532a8b9635e0b2b0952801b60", gone: true });
-    // 2. Companies as production has them: an explicit cap (A 700), an explicit 500 (B), a row that only carries the old default (C: key save), all with a key and AI on.
-    const ids = [A.id, B.id, C.id, D.id, N.id];
-    await owned((db) => db.query("DELETE FROM public.ai_helper_settings WHERE organization_id = ANY($1)", [ids]));
-    await owned((db) => db.query("DELETE FROM public.ai_helper_secrets WHERE organization_id = ANY($1)", [ids]));
-    for (const [co, cap] of [[A, 700], [B, 500]] as const) { expect((await setKey(co, enc("u1"))).ok).toBe(true); expect((await saveSettings(co, true, true, cap)).ok).toBe(true); }
-    expect((await setKey(C, enc("u3"))).ok).toBe(true);
-    await turnAllOn(C);
+    // 2. Companies as production has them: an explicit cap (A 700), an explicit 500 (B), a row that only carries the old default (C: key save), all with a key and AI on;
+    //    E 300, F 2500 and G 0 are admin-chosen; I is a default row with one 100p reservation already spent; H is a default row (own 500) on Tolra mode with a Tolra row at its 1000 default.
+    const ids = [A.id, B.id, C.id, D.id, N.id, E.id, F.id, G.id, H.id, I.id];
+    for (const t of ["ai_helper_requests", "ai_helper_usage", "ai_helper_tolra_companies", "ai_helper_settings", "ai_helper_secrets"]) await owned((db) => db.query(`DELETE FROM public.${t} WHERE organization_id = ANY($1)`, [ids]));
+    for (const [co, cap] of [[A, 700], [B, 500], [E, 300], [F, 2500], [G, 0]] as const) { expect((await setKey(co, enc("u1"))).ok).toBe(true); expect((await saveSettings(co, true, true, cap)).ok).toBe(true); }
+    for (const co of [C, H, I]) { expect((await setKey(co, enc("u3"))).ok).toBe(true); await turnAllOn(co); }
+    for (const co of [B, E, F, G]) await turnAllOn(co);
     expect(await settingsRow(C)).toMatchObject({ monthly_cap_pence: 500 });
     expect((await status(D)).monthly_cap_pence).toBe(500);
+    await owned((db) => db.query("INSERT INTO public.ai_helper_tolra_companies(organization_id, enabled) VALUES ($1, TRUE)", [H.id]));
+    expect(await tolraRow(H)).toEqual({ enabled: true, monthly_cap_pence: 1000 });
     const aBefore = (await forcedOff(A)).length;
     expect((await setKey(A, enc("u4"))).ok).toBe(true); // old behaviour: replacing leaves AI on
     expect(await settingsRow(A)).toMatchObject({ roundup_enabled: true, rfq_enabled: true, monthly_cap_pence: 700 });
     expect(await forcedOff(A)).toHaveLength(aBefore);
+    // Before 150 a 500 row refuses the sixth 100p reservation: this is the gap the release closes.
+    expect(oks(await inSequenceOf(C, 7))).toBe(5);
     const beforeDigest = await digests();
-    const beforeRows = await Promise.all([A, B, C].map((c) => settingsRow(c)));
+    const beforeRows = await Promise.all([A, B, C, E, F, G, H, I].map((c) => settingsRow(c)));
+    const beforeTolra = await Promise.all([A, B, C, E, F, G, H, I].map((c) => tolraRow(c)));
 
     // 3. Apply the shipped release file. It checks its own before and after image of every settings row inside the transaction.
     await owned((db) => db.query(RELEASE));
-    expect(await digests()).toEqual(beforeDigest);
+    // Only ai_helper_settings changes (the 500 rows), and only their cap; every other AI table is exactly as it was.
+    const afterDigest = await digests();
+    expect({ ...afterDigest, ai_helper_settings: "x" }).toEqual({ ...beforeDigest, ai_helper_settings: "x" });
+    expect(afterDigest.ai_helper_settings).not.toBe(beforeDigest.ai_helper_settings);
     expect((await owned((db) => db.query("SELECT key_removed FROM public.ai_helper_tolra_control WHERE singleton"))).rows).toEqual([{ key_removed: false }]);
-    expect(await Promise.all([A, B, C].map((c) => settingsRow(c)))).toEqual(beforeRows);
+    const afterRows = await Promise.all([A, B, C, E, F, G, H, I].map((c) => settingsRow(c)));
+    const expectedRows = beforeRows.map((r) => (r && r.monthly_cap_pence === 500 ? { ...r, monthly_cap_pence: 1000 } : r));
+    expect(afterRows).toEqual(expectedRows);
+    expect(afterRows.map((r) => r?.monthly_cap_pence)).toEqual([700, 1000, 1000, 300, 2500, 0, 1000, 1000]); // A B C E F G H I
+    expect(await Promise.all([A, B, C, E, F, G, H, I].map((c) => tolraRow(c)))).toEqual(beforeTolra); // Tolra caps untouched
+    // One audit row per raised company, none for the others; no key, no text.
+    const raised = await owned(async (db) => (await db.query("SELECT organization_id, actor_user_id, entity_table, entity_id, metadata FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id = ANY($1) ORDER BY entity_id", [ids])).rows);
+    expect(raised.map((r) => r.organization_id).sort()).toEqual([B.id, C.id, H.id, I.id].sort());
+    for (const r of raised) expect(r).toMatchObject({ actor_user_id: null, entity_table: "ai_helper_settings", entity_id: r.organization_id, metadata: { from: 500, to: 1000, source: "release_150" } });
+    expect(Object.fromEntries(raised.map((r) => [r.organization_id, r.metadata.had_explicit_save]))).toEqual({ [B.id]: true, [C.id]: false, [H.id]: false, [I.id]: false });
+    for (const r of raised) expect(Object.keys(r.metadata).sort()).toEqual(["from", "had_explicit_save", "source", "to"]);
     const verify = await owned((db) => db.query(read("supabase/verify/ai_cap_key_off_150.sql")));
     expect(verify.rows.length).toBeGreaterThan(8);
     expect(verify.rows.filter((r) => r.ok !== true)).toEqual([]);
+    expect(verify.rows.some((r) => /^existing companies at the old 500p default were raised to 1000p/.test(String(r.check_name)))).toBe(true);
     expect(verify.rows.some((r) => /^info: \d+ existing ai_helper_settings rows carry 500/.test(String(r.check_name)))).toBe(true);
     const marker = await owned((db) => db.query(read("supabase/verify/release_preflight.sql")));
     const state = (name: string) => marker.rows.find((r) => r.check === name)?.value;
     expect(state("post-144 marker 150 ai_cap_key_off")).toBe("applied");
     expect(state("post-144 marker 146 tolra_provided_ai")).toBe("applied");
     expect(state("marker 122 ai helper cap default")).toBe("applied");
-    // A second apply is refused and changes nothing.
+    // A second apply is refused and changes nothing (no second audit row).
     await expect(owned((db) => db.query(RELEASE))).rejects.toThrow(/150/);
-    expect(await digests()).toEqual(beforeDigest);
+    expect(await digests()).toEqual(afterDigest);
+    expect((await owned((db) => db.query("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id = ANY($1)", [ids]))).rows[0].n).toBe(4);
 
-    // 4. After 150: the old rows still read what they read and AI stays on for them; new rows get 1000; a key change NOW forces AI off.
+    // 4. After 150: every existing company enforces 1000p (status says so too); admin-chosen caps still bind; new rows get 1000; a key change NOW forces AI off.
     expect((await status(D)).monthly_cap_pence).toBe(1000); // no row: the fallback moved
-    expect(await settingsRow(B)).toMatchObject({ monthly_cap_pence: 500, roundup_enabled: true });
-    expect(await settingsRow(C)).toMatchObject({ monthly_cap_pence: 500, roundup_enabled: true, assistant_enabled: true });
-    expect(answer(await reserve(A, "roundup"))?.ok).toBe(true);
+    for (const co of [B, C, I]) expect((await status(co)).monthly_cap_pence).toBe(1000);
+    expect((await status(E)).monthly_cap_pence).toBe(300);
+    expect((await status(G)).monthly_cap_pence).toBe(0);
+    expect(await settingsRow(B)).toMatchObject({ monthly_cap_pence: 1000, roundup_enabled: true });
+    expect(await settingsRow(C)).toMatchObject({ monthly_cap_pence: 1000, roundup_enabled: true, assistant_enabled: true });
+    // Own key: B and C already used 500p-worth? C holds five reservations from before the release; it now has 500p of headroom more. B starts clean: exactly ten, then cap.
+    expect(oks(await inSequenceOf(B, 12))).toBe(10);
+    expect(oks(await inSequenceOf(C, 8))).toBe(5); // 500 already reserved + five more = 1000
+    expect(await used(B)).toBe(1000);
+    expect(await used(C)).toBe(1000);
+    expect(answer(await reserve(B, "roundup", 1))).toMatchObject({ ok: false, reason: "cap" });
+    // Admin-chosen caps are the caps: 300 gives three, 2500 gives 25 of 25, 0 gives none.
+    expect(oks(await inSequenceOf(E, 5))).toBe(3);
+    expect(oks(await inSequenceOf(F, 12))).toBe(12);
+    expect(oks(await inSequenceOf(G, 3))).toBe(0);
+    // Tolra mode (H: own 1000 after the release, Tolra 1000): exactly ten of twelve, and the cap is the Tolra-and-own least().
+    await owned((db) => db.query("SELECT public.ai_helper_tolra_configure(TRUE, CASE WHEN (SELECT api_key_enc FROM public.ai_helper_tolra_control WHERE singleton) IS NULL THEN $1 END, $2)", [enc("hp"), owner.id]));
+    const viaTolra = await inSequenceOf(H, 12);
+    expect(oks(viaTolra)).toBe(10);
+    expect(await used(H)).toBe(1000);
+    expect((await owned((db) => db.query("SELECT count(*)::int AS n FROM public.ai_helper_requests WHERE organization_id=$1 AND key_source='tolra' AND status='reserved'", [H.id]))).rows[0].n).toBe(10);
+    expect(oks(await inSequenceOf(I, 11))).toBe(10); // I: default row, one more than the cap asked for
     expect((await setKey(D, enc("u5"))).ok).toBe(true);
     expect(await settingsRow(D)).toMatchObject({ monthly_cap_pence: 1000 });
     expect((await setKey(A, enc("u6"))).ok).toBe(true);
     allOff(await settingsRow(A));
     expect(await settingsRow(A)).toMatchObject({ monthly_cap_pence: 700 });
-    allOn(await settingsRow(C)); // C's key did not change: still on
+    allOn(await settingsRow(F)); // F's key did not change: still on
     expect(await forcedOff(A)).toHaveLength(aBefore + 1);
   });
 
-  it("the one statement an owner could run later to raise only rows that carry the old default: it picks C (default only) and leaves A (explicit 700) and B (explicit 500) alone; run here inside a rolled back transaction", async () => {
-    const { A, B, C } = companies;
-    const ONE_STATEMENT = `UPDATE public.ai_helper_settings s SET monthly_cap_pence = 1000
-      WHERE s.monthly_cap_pence = 500
-        AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated'
-                          AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence')
-      RETURNING s.organization_id`;
-    const picked = await withDb(async (db) => {
-      await db.query("BEGIN");
-      try { return (await db.query(ONE_STATEMENT)).rows.map((r) => r.organization_id as string); } finally { await db.query("ROLLBACK"); }
-    });
-    expect(picked).toContain(C.id);
-    expect(picked).not.toContain(A.id);
-    expect(picked).not.toContain(B.id);
-    expect(await settingsRow(C)).toMatchObject({ monthly_cap_pence: 500 }); // rolled back: nothing applied
+  it("rolling 150 back keeps every cap the release raised (a rollback never lowers or raises a cap), puts the default back to 500, keeps the audit rows; applying the release again is accepted and raises only rows at 500 made since", async () => {
+    const { B, C, D, N } = companies;
+    const caps = async () => (await Promise.all([B, C].map((c) => settingsRow(c)))).map((r) => r?.monthly_cap_pence);
+    expect(await caps()).toEqual([1000, 1000]);
+    const auditN = () => owned(async (db) => (await db.query("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised'")).rows[0].n as number);
+    const n0 = await auditN();
+    await owned((db) => db.query(read("supabase/release/150_ai_cap_key_off.rollback.sql")));
+    expect(await caps()).toEqual([1000, 1000]);
+    expect(await auditN()).toBe(n0);
+    expect(String((await owned((db) => db.query("SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='ai_helper_settings' AND column_name='monthly_cap_pence'"))).rows[0].column_default)).toBe("500");
+    // A row made at the restored 500 default is raised by the second apply, and only that one.
+    await owned((db) => db.query("DELETE FROM public.ai_helper_settings WHERE organization_id = ANY($1)", [[D.id, N.id]]));
+    expect((await setKey(N, enc("n1"))).ok).toBe(true);
+    expect(await settingsRow(N)).toMatchObject({ monthly_cap_pence: 500 });
+    await owned((db) => db.query(RELEASE));
+    expect(await settingsRow(N)).toMatchObject({ monthly_cap_pence: 1000 });
+    expect(await auditN()).toBe(n0 + 1);
+    expect(await caps()).toEqual([1000, 1000]);
   });
 });

@@ -3,7 +3,9 @@
 -- back to 146's bodies (each mode checks only its own cap again), ai_helper_save_settings back to 101's, and removes the internal force-off
 -- function, the platform key removal function (its audit rows are kept) and the control row's key_removed column (a removed shared key
 -- stays removed and the platform switch stays off; after rollback a new key follows 146's rules again). Every ai_helper_settings row, usage row, request and audit row is kept as it is, including 'ai_forced_off_key_changed' audit rows and the
--- switches 150 turned off (they stay off). Rows made while 150 was installed keep the 1000 they were made with. Nothing here switches anything on.
+-- switches 150 turned off (they stay off). Rows made while 150 was installed keep the 1000 they were made with. Caps that 150 raised from 500 to 1000 (see the 'ai_cap_default_raised' audit rows,
+-- which are kept) are NOT lowered again: a rollback must not cut a company's allowance mid-month, and the PM decision is 1000. Applying 150 again later raises
+-- only the rows that sit at 500 by then. Nothing here switches anything on.
 BEGIN;
 DO $$ BEGIN
  IF to_regprocedure('public._ai_helper_force_off(uuid,text)') IS NULL THEN

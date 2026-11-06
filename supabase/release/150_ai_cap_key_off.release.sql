@@ -1,5 +1,6 @@
 -- Post-144 release step 150. One-time, one transaction; never part of baseline replay.
 -- Canonical source: supabase/proposals/a150_ai_cap_key_off.sql. Existing objects cause refusal, never overwrite. Apply only after 149 (the guard tests 149's hold table).
+-- AI cap: 1000p per company per month in both key modes (PM decision). New rows default to 1000 (step 1); existing own-key caps at exactly 500 are raised to 1000 and audited (step 1b); other caps and the Tolra cap are left as they are.
 BEGIN;
 DO $post_release_guard$ BEGIN
  IF to_regclass('public.ai_helper_tolra_control') IS NULL OR to_regclass('public.ai_helper_tolra_companies') IS NULL
@@ -23,11 +24,31 @@ DO $post_release_guard$ BEGIN
  END IF;
 END $post_release_guard$;
 
--- 0. Before-image of every settings row, compared at the end: this release must not change one.
-SELECT set_config('a150.settings_before', coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s), 'none'), TRUE);
+-- 0. Before-images, compared at the end. Rows at exactly 500 are the ones step 1b raises: every OTHER row must come out byte-identical, and a raised row
+--    must differ only in monthly_cap_pence.
+SELECT set_config('a150.raise_ids', coalesce((SELECT string_agg(s.organization_id::TEXT, ',' ORDER BY s.organization_id) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500), ''), TRUE);
+SELECT set_config('a150.settings_before', coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence IS DISTINCT FROM 500), 'none'), TRUE);
+SELECT set_config('a150.raised_before', coalesce((SELECT md5(string_agg((to_jsonb(s) - 'monthly_cap_pence')::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500), 'none'), TRUE);
 
 -- 1. The own-key default cap: 1000p on rows made from now on.
 ALTER TABLE public.ai_helper_settings ALTER COLUMN monthly_cap_pence SET DEFAULT 1000;
+
+-- 1b. [PM decision: the AI cap is 1000p per company per month in both key modes.] Existing own-key caps at exactly 500 (122's default, and what the AI
+--     card re-saves whenever a switch is changed) become 1000. A row at 500 cannot be told apart from an admin who typed 500: it is raised either way,
+--     and its audit row records whether an explicit save of the cap was found (had_explicit_save) so the choice can be reviewed. Any other value
+--     (0, 300, 700, 2500 ...) is an admin's choice and is not touched; the Tolra cap (146's table, default 1000) is not touched; the rollback does
+--     not lower a raised row again. One audit row per raised company (no actor: the release, not a user; codes and numbers only, no key, no text).
+--     To raise only rows with no explicit save, add to the UPDATE's WHERE: AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE
+--     a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated' AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence')
+WITH raised AS (
+  UPDATE public.ai_helper_settings s SET monthly_cap_pence = 1000 WHERE s.monthly_cap_pence = 500 RETURNING s.organization_id
+)
+INSERT INTO security_audit.audit_log (organization_id, actor_user_id, actor_email, action, entity_table, entity_id, metadata)
+SELECT r.organization_id, NULL, NULL, 'ai_cap_default_raised', 'ai_helper_settings', r.organization_id::TEXT,
+  jsonb_build_object('from', 500, 'to', 1000, 'source', 'release_150',
+    'had_explicit_save', EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = r.organization_id AND a.action = 'ai_helper_settings_updated'
+                                   AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence'))
+FROM raised r;
 
 -- 2. Status for a company with no settings row reads 1000 (122's body, 500 became 1000).
 CREATE OR REPLACE FUNCTION public._ai_helper_status_own_key()
@@ -313,11 +334,21 @@ $$;
 REVOKE ALL ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ai_helper_save_settings(BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 
--- 8. Self-check before COMMIT: the settings rows are exactly as they were; the default is 1000.
+-- 8. Self-check before COMMIT: every row not at 500 before is exactly as it was; every row that was at 500 is now 1000, changed in nothing else, and has its
+--    audit row from this transaction; no row is left at 500; the default is 1000.
 DO $$
+DECLARE v_ids TEXT[] := string_to_array(nullif(current_setting('a150.raise_ids'), ''), ',');
 BEGIN
-  IF coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s), 'none') IS DISTINCT FROM current_setting('a150.settings_before') THEN
-    RAISE EXCEPTION '150: an ai_helper_settings row changed; this release must not change one';
+  IF coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s WHERE s.organization_id::TEXT <> ALL (coalesce(v_ids, ARRAY[]::TEXT[]))), 'none') IS DISTINCT FROM current_setting('a150.settings_before') THEN
+    RAISE EXCEPTION '150: an ai_helper_settings row other than a cap raised from 500 changed; this release must not change one';
+  END IF;
+  IF coalesce((SELECT md5(string_agg((to_jsonb(s) - 'monthly_cap_pence')::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s WHERE s.organization_id::TEXT = ANY (coalesce(v_ids, ARRAY[]::TEXT[]))), 'none') IS DISTINCT FROM current_setting('a150.raised_before')
+     OR EXISTS (SELECT 1 FROM public.ai_helper_settings s WHERE s.organization_id::TEXT = ANY (coalesce(v_ids, ARRAY[]::TEXT[])) AND s.monthly_cap_pence <> 1000)
+     OR EXISTS (SELECT 1 FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500) THEN
+    RAISE EXCEPTION '150: a row at the old 500p cap was not raised to 1000 (or changed in another column)';
+  END IF;
+  IF (SELECT count(*) FROM security_audit.audit_log a WHERE a.action = 'ai_cap_default_raised' AND a.created_at >= now() AND a.entity_id = ANY (coalesce(v_ids, ARRAY[]::TEXT[]))) IS DISTINCT FROM coalesce(cardinality(v_ids), 0) THEN
+    RAISE EXCEPTION '150: a raised cap has no audit row';
   END IF;
   IF (SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence') IS DISTINCT FROM '1000' THEN
     RAISE EXCEPTION '150: ai_helper_settings.monthly_cap_pence does not default to 1000';
