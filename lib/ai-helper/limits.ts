@@ -9,6 +9,9 @@
  */
 export type AiHelperFeature = "roundup" | "rfq" | "assistant";
 
+/** Existing retention-purge batch size; kept outside Next.js route exports. */
+export const AI_PURGE_BATCH = 1000;
+
 export const AI_HELPER_MODELS: Record<AiHelperFeature, string> = {
   // Reading an RFQ email into spec lines: the stronger model.
   rfq: "claude-opus-5-5",
