@@ -1,0 +1,22 @@
+{
+  "dependency": "265e603a6c1e2253c56ab22fbf639cee05b7d914",
+  "testsFirst": {
+    "passed": 3,
+    "failed": 4,
+    "skipped": 0
+  },
+  "after": {
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0
+  },
+  "units": {
+    "passed": 6861,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "exit0",
+  "lint": "exit0",
+  "diff": "exit0",
+  "limits": "Real PostgreSQL17.6; minimal Auth/Storage fixture; no hosted Auth or browser proof"
+}

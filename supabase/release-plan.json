@@ -101,6 +101,15 @@
       "rollback": "supabase/release/150_ai_cap_key_off.rollback.sql",
       "verify": "supabase/verify/ai_cap_key_off_150.sql",
       "marker": "post-144 marker 150 ai_cap_key_off"
+    },
+    {
+      "number": 151,
+      "after": "150",
+      "source": "supabase/proposals/p151_xero_invite_hardening.sql",
+      "release": "supabase/release/151_xero_invite_hardening.release.sql",
+      "rollback": "supabase/release/151_xero_invite_hardening.rollback.sql",
+      "verify": "supabase/verify/xero_invite_hardening_151.sql",
+      "marker": "post-144 marker 151 xero_invite_hardening"
     }
   ],
   "other_proposals": [
