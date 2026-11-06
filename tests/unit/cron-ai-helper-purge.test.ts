@@ -62,12 +62,12 @@ describe("GET /api/cron/ai-helper-purge", () => {
     expect(rpc).toHaveBeenCalledTimes(50);
   });
 
-  it.each([["PGRST202"], ["42883"]])("skipped, not an error, while 133 is not applied (%s): nothing deleted, no alert", async (code) => {
+  it.each([["PGRST202"], ["42883"]])("skipped, not an error, while 133 is not applied (%s): nothing deleted, one alert", async (code) => {
     rpc.mockResolvedValue({ data: null, error: { code, message: "function missing" } });
     const res = await call(withSecret);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ skipped: "not configured" });
-    expect(reportServerError).not.toHaveBeenCalled();
+    expect(reportServerError).toHaveBeenCalledTimes(1); // sm-a: alerted once, 200 kept
   });
 
   it("any other failure is a 500 and an alert, with the count so far", async () => {

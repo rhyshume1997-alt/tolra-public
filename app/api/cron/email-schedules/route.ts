@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runEmailSchedulesPass } from "@/lib/email/schedules/pass";
 import { isCronRequest } from "@/lib/server/cron-auth";
+import { alertIfMigrationSkip } from "@/lib/server/cron-skip";
 import { passFailureReason } from "@/lib/server/cron-pass";
 import { reportServerError } from "@/lib/server/error-alert";
 
@@ -24,7 +25,7 @@ const ROUTE = "/api/cron/email-schedules";
 export async function GET(request: Request) {
   if (!isCronRequest(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    return NextResponse.json(await runEmailSchedulesPass());
+    return NextResponse.json(await alertIfMigrationSkip(ROUTE, "e-mail schedules", await runEmailSchedulesPass()));
   } catch (err) {
     return failed(passFailureReason(err));
   }

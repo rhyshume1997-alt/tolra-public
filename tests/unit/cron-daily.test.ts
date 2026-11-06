@@ -151,6 +151,7 @@ describe("GET /api/cron/daily: the pass", () => {
     const res = await call(withSecret);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ emailSchedules: expect.objectContaining({ skipped: "database update 108 not applied" }), xeroSweep: { skipped: "xero not configured" } });
-    expect(reportServerError).not.toHaveBeenCalled();
+    // 108 missing is a critical skip: exactly one alert (sm-a). "xero not configured" stays quiet.
+    expect(reportServerError).toHaveBeenCalledTimes(1);
   });
 });

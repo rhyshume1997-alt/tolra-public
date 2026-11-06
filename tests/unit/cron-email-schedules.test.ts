@@ -149,7 +149,7 @@ describe("GET /api/cron/email-schedules: the run", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ skipped: "database update 108 not applied", ran: 0 });
     expect(sendCompanyEmail).not.toHaveBeenCalled();
-    expect(reportServerError).not.toHaveBeenCalled();
+    expect(reportServerError).toHaveBeenCalledTimes(1); // sm-a: a missing critical migration is alerted once, the 200 is kept
   });
 
   it("does nothing, quietly, until a schedule is enabled", async () => {
