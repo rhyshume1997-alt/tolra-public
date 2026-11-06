@@ -431,10 +431,11 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   }
   expect((await mail()).length).toBe(count);expect(await statesVia(a.id)).toEqual([]);
   const cross=await anon.post(a.path,{form:{action:'send'},headers:{Origin:'https://attacker.example.test'},maxRedirects:0});expect(cross.status()).toBe(403);expect(await statesVia(a.id)).toEqual([]);
-  for(const headers of [
+  const opaqueRequestHeaders: Record<string,string>[] = [
    {Origin:'null'},
    {Origin:'null','Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'},
-  ]){
+  ];
+  for(const headers of opaqueRequestHeaders){
    expect((await anon.post(a.path,{form:{action:'send'},headers,maxRedirects:0})).status()).toBe(403);
   }
   expect((await mail()).length).toBe(count);expect(await statesVia(a.id)).toEqual([]);
