@@ -1,0 +1,90 @@
+{
+  "base": "9b63382eababc73a314853897d447452b267c47e",
+  "files": [
+    {
+      "file": "supabase/proposals/p151_xero_invite_hardening.sql",
+      "source": "522e84752492df79a1e5504f346e359d0889e4b8",
+      "sha256": "249b0dde66af6ae8faa95599b65d991db1516f29ba916a5f848408ebfb7fc658",
+      "exact": true
+    },
+    {
+      "file": "supabase/release/151_xero_invite_hardening.release.sql",
+      "source": "522e84752492df79a1e5504f346e359d0889e4b8",
+      "sha256": "6b25a2d5c33c6cb4063ed6d9dbeab9162a01bfb2cb6de0936c9c27205d301806",
+      "exact": true
+    },
+    {
+      "file": "supabase/verify/release_preflight.sql",
+      "source": "522e84752492df79a1e5504f346e359d0889e4b8",
+      "sha256": "4f7fa35832dda8aeadae762e47af09027376e2f64286889b8f8328ee72981e17",
+      "exact": true
+    },
+    {
+      "file": "tests/db/xero-invite-late-write-151.test.ts",
+      "source": "522e84752492df79a1e5504f346e359d0889e4b8",
+      "sha256": "f736fb731369665f2ec7638299d5421a117cdf3ab582675de3dadeba114ce6f5",
+      "exact": true
+    },
+    {
+      "file": "tests/reviews/late-write-races/evidence/function-pins.json",
+      "source": "522e84752492df79a1e5504f346e359d0889e4b8",
+      "sha256": "a1b4cb0531bb96c8265e8aa09c70f553a8386e3f02648f5ddd15bcf420db4971",
+      "exact": true
+    },
+    {
+      "file": "supabase/proposals/p148_job_profitability_actuals.sql",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "d2698df35c6cea606455e91334a87c9cc61678ae89796b41461ef253102b2247",
+      "exact": true
+    },
+    {
+      "file": "supabase/release/148_job_profitability_actuals.release.sql",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "2159569c3346bb2a6bc15b433ada4bb80b67f8a80537966de87648f1077a8681",
+      "exact": true
+    },
+    {
+      "file": "supabase/verify/job_profitability_actuals_148.sql",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "9ee80c5e59bc150e7fcffb7f29415cb84167d993e4e8ca2bd8d755c1137b0061",
+      "exact": true
+    },
+    {
+      "file": "tests/db/job-profitability-148.test.ts",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "535e3c136c2db127033eb5e09fbf634146f45de9c9687e22886e1b0c4fff4395",
+      "exact": true
+    },
+    {
+      "file": "tests/support/post-144-release-fixture.ts",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "85ff3574fc7cbb63116bfce5722864111893ebe6c06aadb71787c5519db9d1c5",
+      "exact": true
+    },
+    {
+      "file": "tests/unit/post-144-release-fixture.test.ts",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "590d964ea904cf8c44579e4e00400ec070b202f35b34d654e4c3a7f2d43c77b3",
+      "exact": true
+    },
+    {
+      "file": "tests/reviews/night-cost-profit/profit-rates.db.test.ts",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "0d9c45f0386f919c3ae5665bc8a3ed8d5de06691cb446ee54225792a10cdccfa",
+      "exact": true
+    },
+    {
+      "file": "tests/reviews/night-cost-profit/legacy-half-even-round.sql",
+      "source": "ad1752919593703920757019722ca1d87b1b557f",
+      "sha256": "1c390a27480117fcf4963da4b68568805412795169093d81bb67ea68401db599",
+      "exact": true
+    }
+  ],
+  "integrationOnly": [
+    "tests/support/db-release-sequencer.ts",
+    "tests/unit/integrated-445-446-order.test.ts",
+    ".github/workflows/builder3-combined-445-446.yml",
+    "tests/reviews/integrated-445-446/*"
+  ],
+  "metadataOnly": "financial fixture receipt subject changed from e70f6633 to actual9b63382e"
+}

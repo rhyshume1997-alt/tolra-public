@@ -1,0 +1,25 @@
+{
+  "units": {
+    "passed": 6884,
+    "failed": 0,
+    "skipped": 0,
+    "command": "npx vitest run --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/integrated-9b-full-units.json",
+    "rawSha256": "8e346a94238a957d7c827d40f2a2e401e57f45c7d3a8b14b30614a948f48764a"
+  },
+  "typecheck": {
+    "command": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit",
+    "exit": 0
+  },
+  "lint": {
+    "command": "npm run lint",
+    "exit": 0
+  },
+  "diffCheck": {
+    "command": "git diff --check",
+    "exit": 0
+  },
+  "migrationFreeze": {
+    "command": "npm run check:migrations",
+    "exit": 0
+  }
+}

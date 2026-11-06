@@ -1,0 +1,23 @@
+{
+  "sha": "83f2753e7b92f6e804c67020c85367e8e0cec282",
+  "run": 42216865300,
+  "job": 127888962622,
+  "artifact": 13502410940,
+  "artifactSha256": "f410191f5bb911eb381efb8763a146108e1dfd1ac7ef3ed61c3f58e300e55691",
+  "database": {
+    "passed": 163,
+    "failed": 0,
+    "skipped": 0,
+    "failedSuites": 0,
+    "success": true
+  },
+  "failure": {
+    "step": "verify every active release after SQL suites",
+    "sqlstate": "42703",
+    "message": "column i.ref does not exist",
+    "file": "supabase/verify/xero_invite_hardening_151.sql",
+    "classification": "test workflow fixture preparation: intentional151rollback left old107schema; candidate CI already restores missing releases before browser checks"
+  },
+  "browser": "not run, not a pass",
+  "fix": "preflight marker driven restore of missing one-time releases, same pattern as candidate CI; every active check still mandatory; no skipped assertions or production changes"
+}
