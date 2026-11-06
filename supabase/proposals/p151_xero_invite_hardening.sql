@@ -496,6 +496,7 @@ DECLARE
   i RECORD;
   why TEXT;
   result JSONB;
+  current_company_status TEXT;
 BEGIN
   SELECT * INTO st FROM public.integration_oauth_states WHERE state_hash = p_state_hash AND provider = p_provider FOR UPDATE;
   IF NOT FOUND OR st.via_invite IS NULL OR st.organization_id <> p_org OR st.user_id <> p_user OR st.consumed_at IS NULL OR st.invite_completed_at IS NOT NULL THEN
@@ -511,9 +512,32 @@ BEGIN
   IF why IS NOT NULL THEN
     RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', why, i.ref, p_org));
   END IF;
-  result := public.integration_store_connection(p_org, p_user, p_provider, p_tenant_id, p_tenant_name, p_external_connection_id,
-                                                p_refresh_enc, p_access_enc, p_access_expires_at, p_key_version);
-  UPDATE public.integration_oauth_states SET invite_completed_at = clock_timestamp() WHERE id = st.id;
+  -- The ordinary store and completion mark may wait on later connection/secret/trigger locks.
+  -- Keep every side effect inside this subtransaction until those waits and final checks finish.
+  BEGIN
+    result := public.integration_store_connection(p_org, p_user, p_provider, p_tenant_id, p_tenant_name, p_external_connection_id,
+                                                  p_refresh_enc, p_access_enc, p_access_expires_at, p_key_version);
+    UPDATE public.integration_oauth_states SET invite_completed_at = clock_timestamp() WHERE id = st.id;
+    -- Lock current authority after the writes, and keep it until this transaction ends. A demotion
+    -- or company closure committed during an earlier wait is visible here and must roll us back.
+    SELECT o.status INTO current_company_status FROM public.organizations o WHERE o.id = p_org FOR SHARE;
+    PERFORM 1 FROM public.organization_members m WHERE m.organization_id = p_org AND m.user_id = p_user FOR SHARE;
+    why := CASE WHEN i.expires_at <= clock_timestamp() OR st.expires_at <= clock_timestamp() THEN 'expired'
+                WHEN current_company_status IS DISTINCT FROM 'active' OR NOT EXISTS (
+                  SELECT 1 FROM public.organization_members m WHERE m.organization_id = p_org AND m.user_id = p_user
+                    AND m.active AND NOT m.support AND 'admin' IN (m.role, coalesce(m.secondary_role, '')))
+                  THEN 'creator_not_admin' END;
+    IF why IS NOT NULL THEN
+      -- Catch only our own revalidation refusal. SQL restores connection, secrets, hold, contacts,
+      -- completion and company audit together; the outer security refusal below must survive.
+      RAISE EXCEPTION 'Invite authority changed during final storage' USING ERRCODE = 'P1510';
+    END IF;
+  EXCEPTION WHEN SQLSTATE 'P1510' THEN
+    IF why IS NULL THEN RAISE; END IF;
+  END;
+  IF why IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', why, i.ref, p_org));
+  END IF;
   RETURN result;
 END
 $$;

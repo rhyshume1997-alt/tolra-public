@@ -1,0 +1,57 @@
+[
+  {
+    "signature": "security_audit.integration_invite_refuse(text,text,text,uuid,uuid)",
+    "before": "e0038a10ab9f5c71acdd4858a4f9cdba",
+    "after": "e0038a10ab9f5c71acdd4858a4f9cdba"
+  },
+  {
+    "signature": "public.integration_invite_create(text,text,text)",
+    "before": "b86e02fdfffbb57d36d71c9c1912502f",
+    "after": "b86e02fdfffbb57d36d71c9c1912502f"
+  },
+  {
+    "signature": "public.integration_invite_peek(text)",
+    "before": "991b9f883be0e095a4da8dd710fa3f64",
+    "after": "991b9f883be0e095a4da8dd710fa3f64"
+  },
+  {
+    "signature": "public.integration_invite_code_issue(text,text)",
+    "before": "c22d01e73913b254944aab48e6f88327",
+    "after": "c22d01e73913b254944aab48e6f88327"
+  },
+  {
+    "signature": "public.integration_invite_code_verify(text,text,text,text)",
+    "before": "92e5ead59bad8ed0525dbd94c42329da",
+    "after": "92e5ead59bad8ed0525dbd94c42329da"
+  },
+  {
+    "signature": "public.integration_invites_open(text)",
+    "before": "93a964b68da646dde0df548e4b6b2ea2",
+    "after": "93a964b68da646dde0df548e4b6b2ea2"
+  },
+  {
+    "signature": "public.integration_invite_revoke(uuid)",
+    "before": "a14c66849f79459dec243bc4b5db2d1d",
+    "after": "a14c66849f79459dec243bc4b5db2d1d"
+  },
+  {
+    "signature": "public.integration_oauth_consume_invite(text,text)",
+    "before": "6f077ddac2da68539201862fe157a191",
+    "after": "6f077ddac2da68539201862fe157a191"
+  },
+  {
+    "signature": "public.integration_invite_refusal_log(text,text,text,uuid)",
+    "before": "78a1d8c5d33a8a19c0ed7f706ca297d9",
+    "after": "78a1d8c5d33a8a19c0ed7f706ca297d9"
+  },
+  {
+    "signature": "public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamp with time zone,integer)",
+    "before": "e35fe431d767afc3eae95ab5f03f9003",
+    "after": "182c2422d44a6d8d7365166407657735"
+  },
+  {
+    "signature": "public.integration_xero_picker_claim(text,text,integer,integer)",
+    "before": "10b29a99950d6f41b36f8b45433ff80d",
+    "after": "10b29a99950d6f41b36f8b45433ff80d"
+  }
+]

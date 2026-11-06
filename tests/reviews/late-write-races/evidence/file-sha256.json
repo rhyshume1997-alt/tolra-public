@@ -1,0 +1,5 @@
+{
+  "supabase/proposals/p151_xero_invite_hardening.sql": "249b0dde66af6ae8faa95599b65d991db1516f29ba916a5f848408ebfb7fc658",
+  "supabase/release/151_xero_invite_hardening.release.sql": "6b25a2d5c33c6cb4063ed6d9dbeab9162a01bfb2cb6de0936c9c27205d301806",
+  "supabase/verify/release_preflight.sql": "4f7fa35832dda8aeadae762e47af09027376e2f64286889b8f8328ee72981e17"
+}
