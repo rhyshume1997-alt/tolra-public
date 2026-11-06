@@ -16,7 +16,11 @@ let answer: (name: string, args: Record<string, unknown>) => { data: unknown; er
 
 vi.mock("@/lib/resend", () => ({ resend: { emails: { send: async (payload: { text: string }) => { sent.push({ text: payload.text }); return { error: null }; } } } }));
 vi.mock("@/lib/server/supabase-admin", () => ({
-  createSupabaseAdminClient: () => ({ rpc: async (name: string, args: Record<string, unknown>) => { rpcs.push({ name, args }); return answer(name, args); } }),
+  createSupabaseAdminClient: () => ({ rpc: (name: string, args: Record<string, unknown>) => {
+    rpcs.push({ name, args });
+    const result = Promise.resolve(answer(name, args));
+    return Object.assign(result, { abortSignal: () => result });
+  } }),
 }));
 const chain = (result: unknown) => {
   const c: unknown = new Proxy(() => undefined, { get: (_, prop) => (prop === "maybeSingle" || prop === "single" ? () => Promise.resolve({ data: result, error: null }) : () => c) });
