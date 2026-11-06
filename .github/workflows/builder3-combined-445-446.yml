@@ -79,13 +79,23 @@ jobs:
           console.log(JSON.stringify(counts));
           if (!r.success || counts.passed !== 163 || counts.total !== 163 || counts.failed !== 0 || counts.skipped !== 0 || counts.failedSuites !== 0) process.exit(1);
           DBCHECK
-      - name: Verify every active145through151check after the standard SQL fixtures
+      - name: Restore rolled-back test fixtures and verify every active release
         run: |
           set -euo pipefail
           set -a; . ./.env.test.local; set +a
           # All active release checks must pass on these exact reviewed files. No baseline verifier override.
           for phase in '145_company_setup|company_setup_145' '146_tolra_provided_ai|tolra_provided_ai_146' '147_job_delivery_note|job_delivery_note_147' '148_job_profitability_actuals|job_profitability_actuals_148' '149_xero_launch_hold|xero_launch_hold_149' '150_ai_cap_key_off|ai_cap_key_off_150' '151_xero_invite_hardening|xero_invite_hardening_151'; do
             IFS='|' read -r release verify <<< "$phase"
+            number="${release%%_*}"; label="${release#*_}"
+            marker="post-144 marker $number $label"
+            state="$(psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+            test -n "$state" || { echo "Missing release marker: $marker" >&2; exit 1; }
+            if [ "$state" != applied ]; then
+              echo "Restoring disposable test fixture release $number after rollback checks"
+              psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X --single-transaction -f "supabase/release/$release.release.sql"
+              state="$(psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+              test "$state" = applied || { echo "Release did not verify: $marker" >&2; exit 1; }
+            fi
             psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' -f "supabase/verify/$verify.sql" > "$RUNNER_TEMP/builder3-verify.rows"
             awk -F'|' 'BEGIN { n=0; bad=0 } { n++; if ($NF != "t") bad++ } END { exit(n == 0 || bad != 0) }' "$RUNNER_TEMP/builder3-verify.rows"
           done
