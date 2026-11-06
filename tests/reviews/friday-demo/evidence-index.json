@@ -120,5 +120,20 @@
     "outboundRestrictionsActive": true,
     "rejectedIPv4Packets": 1845,
     "rejectedIPv6Packets": 4
+  },
+  "run8Repair": {
+    "sha": "6bd6baabb7a9928abb6aeb0ba025108b90176e3c",
+    "sourceBase": "8e49fcb684211318a76d1cf0e3ade35acdc036e4",
+    "run": 42189581795,
+    "artifact": 13489238327,
+    "artifactSha256": "9240136b9de8ea82d387ee38237b1f279c201b3b10a95420c42f17c4968369f6",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "cases6_7_8": "executed and passed",
+    "cause": "missing real-MFA test precondition; correct403mfa_required, no Microsoft navigation",
+    "outboundRestrictionsActive": true,
+    "scope": "exact run8 source including legacy token invite; new emailed151flow is proved separately on309d1eb"
   }
 }
