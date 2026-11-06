@@ -11,6 +11,7 @@
 import { expect, test } from "@playwright/test";
 
 import { signIn, world } from "./helpers";
+import { SECRET_IN_PAGE } from "../support/secret-patterns";
 
 const CARDS = ["ai", "xero", "microsoft", "resend"] as const;
 
@@ -47,7 +48,7 @@ test("an admin sees the four setup cards in order, each Off or disabled, the e-m
   await expect(more.getByText("Xero: send now and the accountant's link")).toBeVisible();
 
   // No secret in the page.
-  expect(await page.content()).not.toMatch(/sk-ant-|client_secret|refresh_token|access_token/);
+  expect(await page.content()).not.toMatch(SECRET_IN_PAGE);
 });
 
 test("at phone width the cards stack and the page does not scroll sideways", async ({ page }) => {

@@ -11,7 +11,7 @@
 import { expect, test } from "@playwright/test";
 
 import { adminClient, signedInClient, withDb } from "../support/fixtures";
-import { signIn, world } from "./helpers";
+import { aal2Admin, signIn, world } from "./helpers";
 
 const w = world();
 test.describe.configure({ mode: "serial" });
@@ -55,7 +55,8 @@ test("switch off: no AI UI, and the routes refuse", async ({ page }) => {
 });
 
 test("an admin turns it on with the company's own key and a cap (from the AI card's routes); the old AI page only points there; the key never comes back", async ({ page }) => {
-  await signIn(page, w.tenants.alpha.users.admin);
+  // Saving the key needs a recent authenticator code (requireRecentAal2, forced): a new admin of alpha who has just entered one, so the shared world admin keeps its password-only sign-in for the other tests.
+  await aal2Admin(page, "alpha");
   // The old AI page keeps no management control: a notice and a link to Admin > Integrations (the AI card), nothing to click that the server would refuse.
   await page.goto("/ai-helper");
   await expect(page.getByTestId("ai-helper-manage-notice")).toBeVisible();

@@ -101,7 +101,7 @@ test("costing rates in Settings -> Price this part -> quote line; changing the r
     // 4. Apply: the price goes into the quote line (the empty starter line is replaced); save the quote.
     await panel.getByRole("button", { name: "Add as quote line" }).click();
     await expect(builder.getByRole("textbox", { name: "Description", exact: true })).toHaveValue("Bush 40mm");
-    await expect(builder.getByRole("spinbutton", { name: "Quantity" })).toHaveValue("10");
+    await expect(builder.getByRole("spinbutton", { name: "Quantity", exact: true })).toHaveValue("10");
     await expect(builder.getByRole("spinbutton", { name: "Unit price" })).toHaveValue("60.72");
     await builder.getByRole("button", { name: "Save Quote" }).click();
     await expect(builder).toBeHidden();

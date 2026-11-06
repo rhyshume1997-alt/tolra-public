@@ -150,7 +150,8 @@ test("1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' an
     await expect(page.getByRole("button", { name: "Connect to Xero" })).toBeEnabled();
   }
   // On the guided page the Xero tools card under More (testid xero-status) carries the "Not connected" line; integrations-send-log.spec.ts reads it by that testid.
-  await expect(page.getByText("Not connected")).toHaveCount(1);
+  // Scoped to that card: the Accounting status table on the same page also shows "Not connected" for its own rows.
+  await expect(page.getByTestId("xero-status")).toContainText("Not connected");
   expect(await betaCount("integration_oauth_states")).toBe(0);
 });
 
