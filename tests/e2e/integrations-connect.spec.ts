@@ -499,7 +499,7 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   await expect(accountant.getByText('intercepted',{exact:true})).toBeVisible();
   expect(new URL(outbound).searchParams.get('redirect_uri')).toBe(redirect);expect(new URL(outbound).searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/);expect(await statesVia(b.id)).toHaveLength(1);
  }finally{await visitor.close();}
- const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:`to ${c.masked}`});
+ const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:`to ${c.to}`});
  await expect(item).toHaveCount(1);
  await item.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('dialog',{name:'Cancel this connect link?'}).getByRole('button',{name:'Cancel link'}).click();await expect(item).toHaveCount(0);
  const cancelled=(await rows<{revoked_at:string|null;revoked_by:string}>('select revoked_at,revoked_by from integration_connect_invites where id=$1',[c.id]))[0];expect(cancelled.revoked_at).not.toBeNull();expect(cancelled.revoked_by).toBe(beta.users.admin.id);
