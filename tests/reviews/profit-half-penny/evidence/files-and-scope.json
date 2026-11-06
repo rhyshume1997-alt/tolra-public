@@ -40,6 +40,7 @@
     "tests/reviews/profit-half-penny/evidence/e70-after.json",
     "tests/reviews/profit-half-penny/evidence/e70-before-receipt.json",
     "tests/reviews/profit-half-penny/evidence/e70-before.json",
+    "tests/reviews/profit-half-penny/evidence/e70-checks.json",
     "tests/reviews/profit-half-penny/evidence/e70-focused-units.json",
     "tests/reviews/profit-half-penny/evidence/e70-stale-assertions.json",
     "tests/reviews/profit-half-penny/evidence/files-and-scope.json",
