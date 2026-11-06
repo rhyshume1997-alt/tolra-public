@@ -1,10 +1,13 @@
 -- Post-144 release step 150. One-time, one transaction; never part of baseline replay.
--- Canonical source: supabase/proposals/a150_ai_cap_key_off.sql. Existing objects cause refusal, never overwrite.
+-- Canonical source: supabase/proposals/a150_ai_cap_key_off.sql. Existing objects cause refusal, never overwrite. Apply only after 149 (the guard tests 149's hold table).
 BEGIN;
 DO $post_release_guard$ BEGIN
  IF to_regclass('public.ai_helper_tolra_control') IS NULL OR to_regclass('public.ai_helper_tolra_companies') IS NULL
     OR to_regprocedure('public._ai_helper_status_own_key()') IS NULL OR to_regclass('public.company_setup_progress') IS NULL THEN
   RAISE EXCEPTION '150: required releases 145 and 146 are missing; stop and check release preflight';
+ END IF;
+ IF to_regclass('public.xero_transfer_hold') IS NULL THEN
+  RAISE EXCEPTION '150: required release 149 (the Xero transfer switch) is missing; stop and check release preflight';
  END IF;
  IF (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()')) IS DISTINCT FROM '3ef44c838451b46ea14030164d9b1384'
     OR (SELECT md5(regexp_replace(prosrc, '\s', '', 'g')) FROM pg_proc WHERE oid = to_regprocedure('public.ai_helper_set_key(text,text)')) IS DISTINCT FROM 'a6680aba0f169e5331110ba388f05e49'

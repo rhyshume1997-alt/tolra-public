@@ -1,5 +1,5 @@
--- Post-144 release step 151 (PROPOSAL, not registered in supabase/release-plan.json or CI). One-time, one transaction; never part of baseline replay.
--- Canonical source: supabase/proposals/p151_xero_invite_hardening.sql (read its header for what it does and why). Apply only after 107 and 149.
+-- Post-144 release step 151 (registered in supabase/release-plan.json as phase 151, after 150; CI installs it). One-time, one transaction; never part of baseline replay.
+-- Canonical source: supabase/proposals/p151_xero_invite_hardening.sql (read its header for what it does and why). Apply only after 107 and 150 (150 itself follows 149; the guard tests 107's, 149's and 150's objects).
 -- Verify: supabase/verify/xero_invite_hardening_151.sql (every row t). Rollback: supabase/release/151_xero_invite_hardening.rollback.sql.
 BEGIN;
 DO $post_release_guard$ BEGIN
@@ -15,13 +15,16 @@ DO $post_release_guard$ BEGIN
  IF to_regclass('public.xero_transfer_hold') IS NULL THEN
   RAISE EXCEPTION '151: release 149 (the Xero transfer switch) is missing; apply it first so a connection made through an invite starts with transfers OFF';
  END IF;
+ IF to_regprocedure('public.ai_helper_tolra_remove_key(uuid,text)') IS NULL OR to_regprocedure('public._ai_helper_force_off(uuid,text)') IS NULL THEN
+  RAISE EXCEPTION '151: required release 150 (AI cap and key-off) is missing; stop and check release preflight';
+ END IF;
  IF to_regprocedure('public.assert_privileged_aal()') IS NULL OR to_regprocedure('public._session_membership()') IS NULL OR to_regprocedure('public.has_org_role(text[])') IS NULL
     OR to_regprocedure('public.current_user_organization_id()') IS NULL OR to_regprocedure('security_audit.log_named_event(uuid,text,text,text,jsonb)') IS NULL THEN
   RAISE EXCEPTION '151: the helper functions it builds on are not all in place; stop and check release preflight';
  END IF;
 END $post_release_guard$;
 
--- 151. Xero accountant connect link, hardened (PROPOSAL; not in supabase/migrations, not in release-plan.json, not in CI).
+-- 151. Xero accountant connect link, hardened (registered in supabase/release-plan.json as phase 151, after 150; not a numbered migration; installed by CI's post-144 step).
 --
 -- What 107 did: an admin makes a link whose URL carries a 43-character token; whoever holds the URL can connect the company's Xero.
 -- What this does, in one paragraph: the URL carries only an OPAQUE REFERENCE (22 random characters) that grants nothing on its own. The invite is
