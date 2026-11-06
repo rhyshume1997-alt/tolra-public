@@ -449,7 +449,15 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   for(const ref of ['bad','A'.repeat(43),'Z'.repeat(22)])expect((await anon.get('/api/integrations/invite/'+ref,{maxRedirects:0})).status()).toBe(404);
   // Only an invalid callback is invoked: no valid state/code is ever sent to the provider.
   expect((await anon.get('/api/integrations/invite/callback',{maxRedirects:0})).status()).toBe(400);
-  expect((await anon.get('/api/integrations/invite/callback?code=not-real&state=not-real',{maxRedirects:0})).status()).toBe(400);
+  const refusedCallback=await anon.get('/api/integrations/invite/callback?code=not-real&state=not-real',{maxRedirects:0});
+  // A malformed callback is400 above; a well-shaped but unknown state is the route's409 refusal contract.
+  expect(refusedCallback.status()).toBe(409);expect(refusedCallback.headers().location).toBeUndefined();
+  const refusalHtml=await refusedCallback.text();expect(refusalHtml).toContain('That took too long');expect(refusalHtml).not.toContain('not-real');
+  const [refusal]=await rows<{correlation_id:string;step:string;reason:string}>(
+   'select correlation_id,step,reason from security_audit.integration_invite_refusals order by id desc limit 1');
+  expect(refusal).toMatchObject({step:'callback',reason:'callback_state'});expect(refusal.correlation_id).toMatch(/^[0-9a-f-]{36}$/);
+  expect(refusalHtml).toContain(refusal.correlation_id);expect(JSON.stringify(refusal)).not.toContain('not-real');
+  expect(await statesVia(a.id)).toEqual([{state_hash:sha256(url.searchParams.get('state')!),user_id:beta.users.admin.id}]);
  }finally{await anon.dispose();}
  // Actual browser forms: code is obtained from the local mock mailbox; Xero navigation is fulfilled before any HTTP leaves the machine.
  const b=await makeLink(),visitor=await browser.newContext({baseURL,extraHTTPHeaders:address()});
