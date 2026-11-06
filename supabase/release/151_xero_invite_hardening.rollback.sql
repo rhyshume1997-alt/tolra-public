@@ -2,16 +2,23 @@
 -- Invites made under 151 (reference + recipient, no token) cannot work under 107's code: they are DELETED here (their audit rows stay). Refuses while a
 -- 151 invite is still OPEN, unless the runner first does: SET tolra.x151_accept_deleting_open_invites = 'yes'.
 BEGIN;
+-- Freeze new exchanges and completions while the rollback guard inspects pending consents.
+LOCK TABLE public.integration_connect_invites, public.integration_oauth_states IN SHARE ROW EXCLUSIVE MODE;
 DO $rollback_guard$ BEGIN
  IF to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') IS NULL THEN
   RAISE EXCEPTION '151 rollback: release 151 is not installed';
  END IF;
- IF EXISTS (SELECT 1 FROM public.integration_connect_invites i WHERE i.ref IS NOT NULL AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now())
+ IF EXISTS (SELECT 1 FROM public.integration_connect_invites i WHERE i.ref IS NOT NULL AND i.revoked_at IS NULL AND i.expires_at > clock_timestamp()
+     AND (i.used_at IS NULL OR EXISTS (SELECT 1 FROM public.integration_oauth_states s WHERE s.via_invite=i.id
+       AND s.invite_completed_at IS NULL AND s.expires_at > clock_timestamp())))
     AND coalesce(current_setting('tolra.x151_accept_deleting_open_invites', true), '') <> 'yes' THEN
   RAISE EXCEPTION '151 rollback: open connect invites exist; cancel them first, or SET tolra.x151_accept_deleting_open_invites = ''yes'' to delete them';
  END IF;
 END $rollback_guard$;
 DELETE FROM public.integration_connect_invites WHERE token_hash IS NULL;
+DROP FUNCTION IF EXISTS public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS public.integration_invite_store_connection(TEXT, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, INTEGER);
+ALTER TABLE public.integration_oauth_states DROP COLUMN IF EXISTS invite_completed_at;
 DROP FUNCTION IF EXISTS public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID);
 DROP FUNCTION IF EXISTS security_audit.integration_invite_refuse(TEXT, TEXT, TEXT, UUID, UUID);
 DROP TABLE IF EXISTS security_audit.integration_invite_refusals;

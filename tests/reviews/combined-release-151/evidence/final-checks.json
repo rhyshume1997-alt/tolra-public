@@ -1,0 +1,14 @@
+{
+  "unitCommand": "npx vitest run --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/combined-last-units.json",
+  "passed": 6894,
+  "failed": 0,
+  "skipped": 0,
+  "success": true,
+  "reportSha256": "762e9d744da4f4567fba84befd5e30af2a6d901f3818940d578e16bbf5bf0400",
+  "typecheckCommand": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit",
+  "typecheckExit": 0,
+  "lintCommand": "npm run lint",
+  "lintExit": 0,
+  "diffCommand": "git diff --check",
+  "diffExit": 0
+}

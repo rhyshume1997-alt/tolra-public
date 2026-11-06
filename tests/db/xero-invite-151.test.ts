@@ -172,7 +172,7 @@ afterAll(async () => {
 it("the verify file: every row true", async () => {
   await withDb(async (db) => {
     const checks = (await db.query(read(VERIFY))).rows;
-    expect(checks.length).toBe(11);
+    expect(checks.length).toBe(14);
     expect(checks.filter((r) => r.ok !== true)).toEqual([]);
   });
 });

@@ -1,0 +1,38 @@
+{
+  "database": "ai_verify_fd5d92dea616487f80dc03f45256401b",
+  "sourceRoot": "/workspace/work/combined-release-151",
+  "mode": "tolra",
+  "version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+  "overlays": [
+    {
+      "file": "supabase/release/146_tolra_provided_ai.release.sql",
+      "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd"
+    },
+    {
+      "file": "supabase/release/150_ai_cap_key_off.release.sql",
+      "sha256": "df1329904b3465e87f9699a73b567218b919350b1268e101daefd3f5f796ad29"
+    }
+  ],
+  "baseline": [
+    {
+      "file": "101_ai_helper.sql",
+      "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128"
+    },
+    {
+      "file": "103_ai_helper_service_role.sql",
+      "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e"
+    },
+    {
+      "file": "122_ai_helper_cap_default.sql",
+      "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a"
+    },
+    {
+      "file": "133_ai_helper_pre_enable.sql",
+      "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e"
+    },
+    {
+      "file": "134_ai_assistant.sql",
+      "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd"
+    }
+  ]
+}
