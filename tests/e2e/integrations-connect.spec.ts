@@ -1,39 +1,28 @@
 /**
- * Admin > Integrations connect (migration 107, E2/E7): the Microsoft 365 card, Platform > App connections, and the accountant's Xero link.
- *
- * Nothing here reaches Xero or Microsoft. No spec step follows an off-box redirect: the sign-in URLs are read from the browser's own
- * navigation (page.route fulfils it before it leaves the machine) or from a redirect answer fetched with maxRedirects 0; the Microsoft
- * and Xero callbacks are only called with states and codes that cannot match anything, so no token exchange is ever attempted (a valid
- * state with a made-up code would make the server call the provider). The server's no-network guard blocks anything else.
- *
- * One flow, in order (serial): (1) a company admin with no app details anywhere sees "Not set up yet" and Connect disabled; (2)(3) the
- * platform owner enters the Microsoft client id and secret (placeholders): the card shows the client id and the secret's last 4 only, the
- * API never returns the secret, a company admin is refused; (4) the owner enters placeholder Xero details (for the accountant link);
- * (5) back as the admin, Microsoft Connect is enabled and goes to login.microsoftonline.com with the fixed redirect_uri, a state and a
- * code_challenge; (6) the callback with a bogus state sends the admin back with the error and stores no connection; (7) the accountant's
- * link: made by the admin (only its hash is stored); opening it only shows a page and uses nothing up; its Continue button (a same-origin
- * POST) uses it once and goes to Xero's authorize URL (not followed); a second Continue and a bogus token are refused; the admin cancels an
- * open link from the card; (8) office cannot make a link or connect, workshop is sent away from the page.
- *
- * Stored app details are platform wide and only this spec writes them: they are removed again (with this spec's invites and states in
- * company beta) before and after the run. The world is read inside tests and hooks, never at import.
+ * Real-browser integration setup and emailed Xero invite flow, synthetic backend only.
+ * Microsoft/platform cases remain; invite links carry22-character opaque references, never bearer tokens.
+ * Codes and links come only from the local mock mailbox. Provider navigation is intercepted; no valid OAuth callback is invoked.
+ * Proposal151 is prepared only after backend identity verification, never registered in the production release plan.
  */
+import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 
 import { expect, test, type APIRequestContext, type BrowserContext, type Page } from "@playwright/test";
 
 import { generatePassword } from "@/lib/password";
 
-import { adminClient, signedInClient, withDb } from "../support/fixtures";
+import { adminClient, signedInClient, withDb, verifyBackendIdentity } from "../support/fixtures";
 import { enrolTotp, totpCode } from "../support/totp";
-import { asSeparateDevice, signIn, world } from "./helpers";
+import { preparePost144Backend } from "../support/post-144-release-fixture";
+import { E2E_MOCK_PORT } from "./paths";
+import { aal2Admin, asSeparateDevice, signIn, world } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
 const sha256 = (value: string) => createHash("sha256").update(value, "utf8").digest("hex");
 const originOf = (baseURL: string | undefined) => new URL(baseURL ?? "http://localhost:3001").origin;
 const MS_AUTHORIZE_PATH = /^\/[^/]+\/oauth2\/v2\.0\/authorize$/;
-const INVITE_URL = /^(.+)\/api\/integrations\/invite\/([A-Za-z0-9_-]{43})$/;
+const INVITE_URL = /^(.+)\/api\/integrations\/invite\/([A-Za-z0-9_-]{22})$/;
 
 /** Placeholder app details: never real, never sent anywhere. The secret's last 4 differ from every other 4 characters on the page. */
 const microsoftApp = () => ({ clientId: `e2e-ms-client-${world().runId}`, secret: `ms~${world().runId}~secret~Z9xK`, last4: "Z9xK" });
@@ -101,6 +90,17 @@ async function noFollow(request: APIRequestContext, path: string) {
 }
 
 test.beforeAll(async ({ browser }) => {
+  // Review-only151 is installed solely on the already identity-verified disposable backend, never registered as a release.
+  await verifyBackendIdentity();
+  await preparePost144Backend();
+  await withDb(async db=>{
+    const installed=(await db.query("select to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') as fn")).rows[0].fn;
+    if(!installed)await db.query(readFileSync('supabase/release/151_xero_invite_hardening.release.sql','utf8'));
+    const checks=(await db.query(readFileSync('supabase/verify/xero_invite_hardening_151.sql','utf8'))).rows;
+    expect(checks.length).toBeGreaterThan(0);expect(checks.every(row=>row.ok===true)).toBe(true);
+    await db.query("NOTIFY pgrst, 'reload schema'");
+  });
+  await expect.poll(async()=>{const r=await adminClient().rpc('integration_invite_peek',{p_ref:'Z'.repeat(22)});return r.error?.code??null;}).toBeNull();
   const w = world();
   const email = `integrations-owner.${w.runId}@example.test`;
   const password = generatePassword(14);
@@ -150,7 +150,7 @@ test("1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' an
     await expect(page.getByRole("button", { name: "Connect to Xero" })).toBeEnabled();
   }
   // On the guided page the Xero tools card under More (testid xero-status) carries the "Not connected" line; integrations-send-log.spec.ts reads it by that testid.
-  await expect(page.getByText("Not connected")).toHaveCount(1);
+  await expect(page.getByTestId("xero-status")).toHaveText("Not connected");
   expect(await betaCount("integration_oauth_states")).toBe(0);
 });
 
@@ -277,7 +277,11 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
   const origin = originOf(baseURL);
   const app = microsoftApp();
   const beta = world().tenants.beta;
-  await signIn(page, beta.users.admin);
+  const beforeAdmins = new Set((await rows<{user_id:string}>("select user_id from organization_members where organization_id=$1",[beta.id])).map(r=>r.user_id));
+  await aal2Admin(page, 'beta');
+  const createdAdmins = (await rows<{user_id:string}>("select user_id from organization_members where organization_id=$1 and role='admin'",[beta.id])).filter(r=>!beforeAdmins.has(r.user_id));
+  expect(createdAdmins).toHaveLength(1);
+  const connectingAdminId=createdAdmins[0].user_id;
 
   // Anything bound for Microsoft or Xero is answered here, in the browser: nothing leaves the machine.
   const offBox: string[] = [];
@@ -316,7 +320,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
     "select state_hash, user_id, verifier_enc, consumed_at, extract(epoch from (expires_at - created_at))::int as ttl_s from public.integration_oauth_states where organization_id = $1 and provider = 'microsoft'",
     [beta.id]);
   expect(states).toHaveLength(1);
-  expect(states[0]).toMatchObject({ state_hash: sha256(state), user_id: beta.users.admin.id, consumed_at: null });
+  expect(states[0]).toMatchObject({ state_hash: sha256(state), user_id: connectingAdminId, consumed_at: null });
   expect(states[0].ttl_s).toBeGreaterThanOrEqual(590);
   expect(states[0].ttl_s).toBeLessThanOrEqual(610);
   expect(states[0].verifier_enc).toMatch(/^v\d+\./);
@@ -378,171 +382,91 @@ test("6. the Microsoft callback with a bogus state sends the admin back with the
   await expect(card.getByRole("button", { name: "Connect Microsoft 365" })).toBeEnabled();
 });
 
-test("7. the accountant's link: the page only shows, Continue uses it once and goes to Xero, a bogus token is refused, the admin can cancel an open link", async ({ page, browser, playwright, baseURL }) => {
-  const origin = originOf(baseURL);
-  const app = xeroApp();
-  const beta = world().tenants.beta;
-  await signIn(page, beta.users.admin);
-  await page.goto("/admin/integrations");
-  const panel = page.getByTestId("xero-invite");
-  const makeLink = async () => {
-    // The card keeps showing the previous link until the new one arrives, so wait for the shown link to CHANGE: reading it straight
-    // after the click would hand back the last link (already used up) as the new one.
-    const field = panel.getByTestId("xero-invite-url");
-    const before = (await field.count()) ? await field.inputValue() : null;
-    await panel.getByRole("button", { name: "Send the accountant a connect link" }).click();
-    await expect.poll(async () => ((await field.count()) ? await field.inputValue() : null), { message: "the card shows the new link" }).not.toBe(before);
-    const url = await field.inputValue();
-    const parsed = INVITE_URL.exec(url);
-    expect(parsed, url).not.toBeNull();
-    expect(parsed![1]).toBe(origin); // built on the site address, not on a request header
-    return { path: `/api/integrations/invite/${parsed![2]}`, token: parsed![2] };
-  };
-  const inviteRow = async (token: string) => (await rows<{ id: string; token_hash: string; created_by: string; used_at: string | null; revoked_at: string | null; revoked_by: string | null; provider: string }>(
-    "select id, token_hash, created_by, used_at, revoked_at, revoked_by, provider from public.integration_connect_invites where token_hash = $1", [sha256(token)]))[0];
-  const statesVia = async (inviteId: string) => rows<{ state_hash: string; user_id: string; provider: string }>(
-    "select state_hash, user_id, provider from public.integration_oauth_states where via_invite = $1", [inviteId]);
-  // Each signed-out visitor has its own client address (the public link routes are limited to 20 in 15 minutes per address).
-  const anonAddress = () => ({ "x-real-ip": `10.${240 + Math.floor(Math.random() * 15)}.${Math.floor(Math.random() * 250)}.${1 + Math.floor(Math.random() * 250)}` });
-
-  // --- Link A: made by the admin; the token is in the link only, the database keeps its SHA-256 for 24 hours, unused.
-  const a = await makeLink();
-  await expect(panel).toContainText("Works once");
-  const invites = await rows<Record<string, unknown> & { hours: number }>(
-    "select i.*, extract(epoch from (expires_at - created_at))::numeric / 3600 as hours from public.integration_connect_invites i where organization_id = $1", [beta.id]);
-  expect(invites).toHaveLength(1);
-  expect(invites[0]).toMatchObject({ token_hash: sha256(a.token), created_by: beta.users.admin.id, used_at: null, revoked_at: null, provider: "xero" });
-  expect(Number(invites[0].hours)).toBeGreaterThan(23.9);
-  expect(Number(invites[0].hours)).toBeLessThanOrEqual(24);
-  expect(JSON.stringify(invites[0])).not.toContain(a.token);
-  const inviteA = await inviteRow(a.token);
-  // The open link is listed on the card.
-  await expect(page.getByTestId("xero-open-invites").getByRole("listitem")).toHaveCount(1);
-
-  const anonymous = await playwright.request.newContext({ baseURL, extraHTTPHeaders: anonAddress() });
-  try {
-    // GET shows a page and uses nothing up (a mail scanner or chat preview fetching the link must not burn it); twice, same answer.
-    for (const attempt of [1, 2]) {
-      const shown = await anonymous.get(a.path, { maxRedirects: 0 });
-      expect(shown.status(), `GET ${attempt}`).toBe(200);
-      expect(shown.headers()["location"]).toBeUndefined();
-      const html = await shown.text();
-      expect(html, `GET ${attempt}`).toContain(`Connect ${beta.name} to Xero`);
-      expect(html, `GET ${attempt}`).toContain("Continue to Xero");
-      expect(html).not.toContain(a.token);
-      expect((await inviteRow(a.token)).used_at, `GET ${attempt}`).toBeNull();
-      expect(await statesVia(inviteA.id), `GET ${attempt}`).toHaveLength(0);
-    }
-
-    // A page from another site cannot press Continue: refused, nothing used up.
-    const foreign = await anonymous.post(a.path, { maxRedirects: 0, headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" } });
-    expect(foreign.status()).toBe(403);
-    expect((await inviteRow(a.token)).used_at).toBeNull();
-
-    // Continue (a same-origin POST): used up, straight to Xero's authorize URL (read, not followed).
-    const go = await anonymous.post(a.path, { maxRedirects: 0, headers: { Origin: origin } });
-    expect(go.status()).toBe(303);
-    const xero = new URL(go.headers()["location"]);
-    expect(xero.origin + xero.pathname).toBe("https://login.xero.com/identity/connect/authorize");
-    expect(xero.searchParams.get("client_id")).toBe(app.clientId);
-    expect(xero.searchParams.get("response_type")).toBe("code");
-    expect(xero.searchParams.get("redirect_uri")).toBe(`${origin}/api/integrations/invite/callback`); // the accountant's own callback
-    const state = xero.searchParams.get("state") ?? "";
-    expect(state.length).toBeGreaterThanOrEqual(20);
-    expect(xero.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(xero.searchParams.get("code_challenge_method")).toBe("S256");
-    expect(go.headers()["location"]).not.toContain(app.secret);
-    expect(go.headers()["location"]).not.toContain(a.token);
-    expect((await inviteRow(a.token)).used_at).not.toBeNull();
-    // One state kept for it, bound to the company's admin who made the link.
-    expect(await statesVia(inviteA.id)).toEqual([{ state_hash: sha256(state), user_id: beta.users.admin.id, provider: "xero" }]);
-
-    // The link is spent: a second Continue is refused (404), no redirect, no second state; the page itself no longer opens.
-    const again = await anonymous.post(a.path, { maxRedirects: 0, headers: { Origin: origin } });
-    expect(again.status()).toBe(404);
-    expect(again.headers()["location"]).toBeUndefined();
-    expect(await again.text()).toContain("This link can't be used");
-    expect((await anonymous.get(a.path, { maxRedirects: 0 })).status()).toBe(404);
-    expect(await statesVia(inviteA.id)).toHaveLength(1);
-
-    // Bogus tokens: the wrong shape, and the right shape that no one made. Both 404, and neither starts anything.
-    for (const bogus of ["not-a-token", "A".repeat(43), "A".repeat(44), `${a.token.slice(0, -1)}${a.token.endsWith("A") ? "B" : "A"}`]) {
-      for (const method of ["get", "post"] as const) {
-        const res = await anonymous[method](`/api/integrations/invite/${bogus}`, { maxRedirects: 0, headers: { Origin: origin } });
-        expect(res.status(), `${method} ${bogus}`).toBe(404);
-        expect(res.headers()["location"], `${method} ${bogus}`).toBeUndefined();
-      }
-    }
-    expect(Number((await rows<{ n: string }>("select count(*)::text as n from public.integration_oauth_states where via_invite is not null and organization_id = $1", [beta.id]))[0].n)).toBe(1);
-
-    // The accountant's callback with nothing it can match: a fixed page, nothing connected (no code exchange is attempted).
-    expect((await anonymous.get("/api/integrations/invite/callback", { maxRedirects: 0 })).status()).toBe(400);
-    const stale = await anonymous.get("/api/integrations/invite/callback?code=not-a-real-code&state=not-a-real-state", { maxRedirects: 0 });
-    expect(stale.status()).toBe(409);
-    expect(await stale.text()).toContain("That took too long");
-    expect(await betaCount("integration_connections")).toBe(0);
-    expect(await betaCount("integration_secrets")).toBe(0);
-  } finally {
-    await anonymous.dispose();
+test("7. emailed opaque reference, bound one-time code, scanner safety, replay, expiry and cancellation", async ({page,browser,playwright,baseURL})=>{
+ const origin=originOf(baseURL),beta=world().tenants.beta;
+ const redirect='https://tolra.example.test/api/integrations/invite/callback';
+ // The browser app uses loopback HTTP, while the provider redirect remains exactly HTTPS-allowlisted. It is inspected, never followed.
+ await withDb(db=>db.query("update integration_app_credentials set redirect_uri=$1 where provider='xero'",[redirect.replace('/invite/','/xero/')]));
+ await signIn(page,beta.users.admin);await page.goto('/admin/integrations');
+ const panel=page.getByTestId('xero-invite');let serial=0;
+ type Mail={to:string[]|string;subject:string;text:string};
+ const mail=async():Promise<Mail[]>=>{
+  const response=await fetch(`http://127.0.0.1:${E2E_MOCK_PORT}/__emails`);expect(response.ok).toBe(true);
+  return (await response.json() as Array<{body:Mail}>).map(m=>m.body);
+ };
+ const addressed=(m:Mail,to:string)=>[m.to].flat().includes(to);
+ const makeLink=async()=>{
+  const to=`accountant-${++serial}.${world().runId}@example.test`;
+  await panel.getByLabel("Accountant's e-mail address").fill(to);
+  const response=page.waitForResponse(r=>r.url().endsWith('/api/integrations/invite')&&r.request().method()==='POST');
+  await panel.getByRole('button',{name:'E-mail the accountant a connect link'}).click();
+  const answer=await response;expect(answer.status()).toBe(200);const body=await answer.json();
+  await expect(panel.getByTestId('xero-invite-sent')).toContainText(to);
+  await expect(panel.getByTestId('xero-invite-url')).toHaveCount(0);
+  await expect.poll(async()=>(await mail()).filter(m=>addressed(m,to)&&m.text.includes('/api/integrations/invite/')).length).toBe(1);
+  const message=(await mail()).find(m=>addressed(m,to)&&m.text.includes('/api/integrations/invite/'))!;
+  const link=message.text.split(/\s+/).find(word=>INVITE_URL.test(word))!;expect(link).toBeTruthy();
+  const parsed=INVITE_URL.exec(link)!;expect(parsed[1]).toBe(origin);const ref=parsed[2];
+  expect(new URL(link).search).toBe('');expect(JSON.stringify(body)).not.toContain(ref);
+  const [row]=await rows<{id:string;ref:string;recipient_email:string;token_hash:string|null;code_hash:string|null;used_at:string|null;created_at:string;expires_at:string}>(
+   'select id,ref,recipient_email,token_hash,code_hash,used_at,created_at,expires_at from integration_connect_invites where ref=$1',[ref]);
+  expect(row).toMatchObject({ref,recipient_email:to,token_hash:null,code_hash:null,used_at:null});
+  const ttlHours=(Date.parse(row.expires_at)-Date.parse(row.created_at))/3600000;expect(ttlHours).toBeGreaterThan(23.9);expect(ttlHours).toBeLessThanOrEqual(24);
+  return {to,ref,path:new URL(link).pathname,id:row.id};
+ };
+ const statesVia=(id:string)=>rows<{state_hash:string;user_id:string}>('select state_hash,user_id from integration_oauth_states where via_invite=$1',[id]);
+ const address=()=>({'x-real-ip':`10.244.${serial}.${20+serial}`});
+ const anon=await playwright.request.newContext({baseURL,extraHTTPHeaders:address()});
+ try{
+  const a=await makeLink();const count=(await mail()).length;
+  for(let n=0;n<3;n++){
+   const response=await anon.get(a.path,{maxRedirects:0});expect(response.status()).toBe(200);
+   expect(response.headers()['cache-control']).toBe('no-store');expect(response.headers()['referrer-policy']).toBe('no-referrer');expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");expect(response.headers()['content-security-policy']).toContain("default-src 'none'");
+   const html=await response.text();expect(html).toContain('E-mail me a code');expect(html).toContain('Code from the e-mail');expect(html).not.toContain(a.to);
   }
-
-  // --- Link B, in a real signed-out browser: the page, then the real Continue button (the form and the page's security policy let it
-  // reach Xero). Xero's address is answered here, so nothing leaves the machine.
-  const b = await makeLink();
-  const visitor = await browser.newContext({ extraHTTPHeaders: anonAddress() });
-  try {
-    const visit = await visitor.newPage();
-    // Xero's address is answered here, so nothing leaves the machine. What the browser does with that answer is not asserted (the
-    // suite's headless shell does not reliably render a cross-origin redirect that follows a form POST); the request it issued is.
-    await visitor.route("https://login.xero.com/**", (r) => r.fulfill({ status: 200, contentType: "text/html", body: "<p>intercepted</p>" }));
-    await visit.goto(b.path);
-    await expect(visit.getByRole("heading", { name: `Connect ${beta.name} to Xero` })).toBeVisible();
-    expect((await inviteRow(b.token)).used_at).toBeNull();
-    const [toXero] = await Promise.all([
-      visit.waitForRequest((r) => r.url().startsWith("https://login.xero.com/")),
-      visit.getByRole("button", { name: "Continue to Xero" }).click(),
-    ]);
-    const u = new URL(toXero.url());
-    expect(u.pathname).toBe("/identity/connect/authorize");
-    expect(u.searchParams.get("redirect_uri")).toBe(`${origin}/api/integrations/invite/callback`);
-    expect(u.searchParams.get("client_id")).toBe(app.clientId);
-    await expect.poll(async () => (await inviteRow(b.token)).used_at, { timeout: 15_000 }).not.toBeNull();
-  } finally {
-    await visitor.close();
-  }
-
-  // --- Link C: the admin cancels an open link on the card. Cancel -> confirm -> DELETE: revoked in the database, gone from the card,
-  // and the link no longer opens or continues.
-  await page.reload();
-  const c = await makeLink();
-  const inviteC = await inviteRow(c.token);
-  const list = page.getByTestId("xero-open-invites");
-  await expect(list.getByRole("listitem")).toHaveCount(1); // A and B were used; only C is open
-  await list.getByRole("button", { name: "Cancel", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Cancel this connect link?" });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Cancel link" }).click();
-  await expect(page.getByText("Link cancelled: it no longer works.")).toBeVisible();
-  await expect(page.getByTestId("xero-open-invites")).toHaveCount(0);
-  const revoked = await inviteRow(c.token);
-  expect(revoked.revoked_at).not.toBeNull();
-  expect(revoked.revoked_by).toBe(beta.users.admin.id);
-  expect(revoked.used_at).toBeNull();
-  const after = await playwright.request.newContext({ baseURL, extraHTTPHeaders: anonAddress() });
-  try {
-    expect((await after.get(c.path, { maxRedirects: 0 })).status()).toBe(404);
-    const post = await after.post(c.path, { maxRedirects: 0, headers: { Origin: origin } });
-    expect(post.status()).toBe(404);
-    expect(post.headers()["location"]).toBeUndefined();
-    expect(await statesVia(inviteC.id)).toHaveLength(0);
-  } finally {
-    await after.dispose();
-  }
-  // Cancelling a link that is already spent or cancelled is refused and changes nothing.
-  const twice = await page.request.delete(`/api/integrations/invite?id=${inviteC.id}`);
-  expect(twice.status()).toBe(404);
-  expect((await page.request.delete("/api/integrations/invite?id=not-a-uuid")).status()).toBe(400);
-  // (Disconnect also cancels open links; that needs a connected company, which no spec here may create: covered by tests/db and the proof SQL.)
+  expect((await mail()).length).toBe(count);expect(await statesVia(a.id)).toEqual([]);
+  const cross=await anon.post(a.path,{form:{action:'send'},headers:{Origin:'https://attacker.example.test'},maxRedirects:0});expect(cross.status()).toBe(403);expect(await statesVia(a.id)).toEqual([]);
+  expect((await anon.post(a.path,{form:{action:'unexpected'},headers:{Origin:origin},maxRedirects:0})).status()).toBe(400);
+  expect((await anon.post(a.path,{form:{action:'verify',code:'not-a-code'},headers:{Origin:origin},maxRedirects:0})).status()).toBe(400);
+  // A forwarded link cannot choose another recipient or start OAuth without the code delivered to its bound mailbox.
+  const sent=await anon.post(a.path,{form:{action:'send',email:'attacker@example.test'},headers:{Origin:origin},maxRedirects:0});expect(sent.status()).toBe(200);
+  const delivered=(await mail()).filter(m=>addressed(m,a.to)&&m.subject==='Your Tolra connect code');expect(delivered).toHaveLength(1);
+  const digits=/\n\s*(\d{4}) (\d{4})\s*\n/.exec(delivered[0].text)!;expect(digits).not.toBeNull();const code=digits[1]+digits[2];
+  expect(await sent.text()).not.toContain(code);expect(await statesVia(a.id)).toEqual([]);
+  const stored=(await rows<{code_hash:string}>('select code_hash from integration_connect_invites where id=$1',[a.id]))[0];expect(stored.code_hash).toMatch(/^[0-9a-f]{64}$/);expect(stored.code_hash).not.toContain(code);
+  const wrong=(code[0]==='0'?'1':'0')+code.slice(1);
+  const refused=await anon.post(a.path,{form:{action:'verify',code:wrong},headers:{Origin:origin},maxRedirects:0});expect(refused.status()).toBe(400);expect(refused.headers().location).toBeUndefined();expect(await statesVia(a.id)).toEqual([]);
+  const verified=await anon.post(a.path,{form:{action:'verify',code},headers:{Origin:origin},maxRedirects:0});expect(verified.status()).toBe(303);
+  const url=new URL(verified.headers().location);expect(url.origin).toBe('https://login.xero.com');expect(url.searchParams.get('redirect_uri')).toBe(redirect);expect(url.searchParams.get('code_challenge_method')).toBe('S256');expect(url.searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  for(const secret of [code,a.ref,xeroApp().secret])expect(url.href).not.toContain(secret);
+  expect(await statesVia(a.id)).toEqual([{state_hash:sha256(url.searchParams.get('state')!),user_id:beta.users.admin.id}]);
+  const replay=await anon.post(a.path,{form:{action:'verify',code},headers:{Origin:origin},maxRedirects:0});expect(replay.status()).toBe(404);expect(await statesVia(a.id)).toHaveLength(1);
+  for(const ref of ['bad','A'.repeat(43),'Z'.repeat(22)])expect((await anon.get('/api/integrations/invite/'+ref,{maxRedirects:0})).status()).toBe(404);
+  // Only an invalid callback is invoked: no valid state/code is ever sent to the provider.
+  expect((await anon.get('/api/integrations/invite/callback',{maxRedirects:0})).status()).toBe(400);
+  expect((await anon.get('/api/integrations/invite/callback?code=not-real&state=not-real',{maxRedirects:0})).status()).toBe(400);
+ }finally{await anon.dispose();}
+ // Actual browser forms: code is obtained from the local mock mailbox; Xero navigation is fulfilled before any HTTP leaves the machine.
+ const b=await makeLink(),visitor=await browser.newContext({baseURL,extraHTTPHeaders:address()});
+ try{
+  const accountant=await visitor.newPage();await accountant.goto(b.path);
+  await accountant.getByRole('button',{name:'E-mail me a code'}).click();
+  await expect(accountant.getByRole('status')).toContainText("We've e-mailed a code");
+  const message=(await mail()).find(m=>addressed(m,b.to)&&m.subject==='Your Tolra connect code')!;const code=/\n\s*(\d{4}) (\d{4})\s*\n/.exec(message.text)!;
+  await accountant.getByLabel('Code from the e-mail').fill(code[1]+code[2]);
+  let outbound='';await accountant.route('https://login.xero.com/**',async route=>{outbound=route.request().url();await route.fulfill({status:200,contentType:'text/plain',body:'intercepted'});});
+  await accountant.getByRole('button',{name:'Continue to Xero'}).click();await expect(accountant.getByText('intercepted',{exact:true})).toBeVisible();
+  expect(new URL(outbound).searchParams.get('redirect_uri')).toBe(redirect);expect(await statesVia(b.id)).toHaveLength(1);
+ }finally{await visitor.close();}
+ const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:c.to});
+ await item.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('dialog',{name:'Cancel this connect link?'}).getByRole('button',{name:'Cancel link'}).click();await expect(item).toHaveCount(0);
+ const cancelled=(await rows<{revoked_at:string|null;revoked_by:string}>('select revoked_at,revoked_by from integration_connect_invites where id=$1',[c.id]))[0];expect(cancelled.revoked_at).not.toBeNull();expect(cancelled.revoked_by).toBe(beta.users.admin.id);
+ expect((await page.request.delete('/api/integrations/invite?id='+c.id)).status()).toBe(404);expect((await page.request.delete('/api/integrations/invite?id=not-a-uuid')).status()).toBe(400);
+ const expired=await makeLink();await withDb(db=>db.query("update integration_connect_invites set created_at=now()-interval '24 hours',expires_at=now()-interval '1 second' where id=$1",[expired.id]));
+ const check=await playwright.request.newContext({baseURL,extraHTTPHeaders:address()});try{for(const i of [c,expired]){
+  expect((await check.get(i.path,{maxRedirects:0})).status()).toBe(404);expect((await check.post(i.path,{form:{action:'send'},headers:{Origin:origin},maxRedirects:0})).status()).toBe(404);expect(await statesVia(i.id)).toEqual([]);
+ }}finally{await check.dispose();}
+ expect(await betaCount('integration_connections')).toBe(0);expect(await betaCount('integration_secrets')).toBe(0);
 });
 
 test("8. office cannot make a link or connect (403); workshop is sent away from the page; nobody signed in gets 401", async ({ page, browser, playwright, baseURL }) => {

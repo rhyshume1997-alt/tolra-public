@@ -169,11 +169,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # 2.40.7 misreads names ending in _atomic as BEGIN ATOMIC and joins SQL statements (42601).
-      # 2.108.0 fixes the parser boundary; numbered migrations stay unchanged.
-      - uses: supabase/setup-cli@v1
-        with:
-          version: 2.108.0
+      # Match the approved Code integration baseline; no service-role grant is added to hide stack differences.
+      - name: Install Supabase CLI 2.40.7 (checksum-verified)
+        run: |
+          set -euo pipefail
+          cli_home="$RUNNER_TEMP/supabase-cli-main"
+          mkdir -p "$cli_home/bin"
+          curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+          tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+          test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+          echo "$cli_home/bin" >> "$GITHUB_PATH"
       # Signed-in pulls from ghcr.io (see `permissions` above): the job's own token, read-only, passed on stdin, never printed.
       - name: Sign in to ghcr.io for the Supabase image pulls
         run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
@@ -202,7 +208,14 @@ jobs:
         run: |
           git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
           docker pull postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
-          B5_SUPABASE_CLI="$(command -v supabase)" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
+          # The historical parser proof retains its own exact 2.40.7 binary; the local-stack CLI is independently checksum-verified.
+          cli_dir="$RUNNER_TEMP/supabase-cli-2.40.7"
+          mkdir -p "$cli_dir"
+          curl -fsSL -o "$cli_dir/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_dir/cli.tar.gz" | sha256sum -c -
+          tar -xzf "$cli_dir/cli.tar.gz" -C "$cli_dir" supabase
+          test "$("$cli_dir/supabase" --version)" = "2.40.7"
+          B5_SUPABASE_CLI="$cli_dir/supabase" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
       - name: Start disposable Supabase (applies supabase/migrations to an empty database)
         run: npm run test:backend
       - name: Export this job's disposable test environment
