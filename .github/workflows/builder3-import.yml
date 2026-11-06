@@ -1,0 +1,75 @@
+name: Builder 3 synthetic import rehearsal
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [codex/review-base-9b63382e]
+    paths:
+      - tests/import/**
+      - .github/workflows/builder3-import.yml
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: builder3-import-${{ github.head_ref }}
+  cancel-in-progress: false
+jobs:
+  import-rehearsal:
+    if: github.head_ref == 'codex/sliq-disposable-rehearsal' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Keep disposable ports separate
+        run: |
+          reserved=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${reserved:+$reserved,}54320-54329"
+      - name: Install Code's exact checksum-pinned Supabase CLI
+        run: |
+          set -euo pipefail
+          cli_dir="$RUNNER_TEMP/builder3-import-cli"
+          mkdir -p "$cli_dir"
+          curl -fsSL -o "$cli_dir/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_dir/cli.tar.gz" | sha256sum -c -
+          tar -xzf "$cli_dir/cli.tar.gz" -C "$cli_dir" supabase
+          echo "568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c  $cli_dir/supabase" | sha256sum -c -
+          test "$("$cli_dir/supabase" --version)" = '2.40.7'
+          echo "$cli_dir" >> "$GITHUB_PATH"
+      - name: Registry read access for test images only
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start a real disposable Supabase
+        run: npm run test:backend
+      - name: Rehearse the existing importer and read-only reconciliation
+        run: |
+          set -a; . ./.env.test.local; set +a
+          npx vitest run -c tests/import/vitest.config.ts --reporter=verbose --reporter=json --outputFile=tests/import/results/tests.json
+      - name: Require all nine actual cases
+        if: always()
+        run: |
+          node - <<'JS'
+          const r = JSON.parse(require('node:fs').readFileSync('tests/import/results/tests.json','utf8'));
+          console.log({passed:r.numPassedTests,failed:r.numFailedTests,skipped:r.numPendingTests,total:r.numTotalTests});
+          if(!r.success || r.numPassedTests!==9 || r.numTotalTests!==9 || r.numFailedTests!==0 || r.numPendingTests!==0) process.exit(1);
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-import-${{ github.run_id }}
+          path: tests/import/results/
+          retention-days: 7
+      - name: Delete this runner's disposable test backend
+        if: always()
+        run: npm run test:backend:stop

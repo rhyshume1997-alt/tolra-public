@@ -1,0 +1,3 @@
+Invoice No,Received,Amount,Method,Reference
+S-FAKE-1001,13/10/2026,150.00,BACS,FAKE-BANK-001
+INV-9002,13/10/2026,24.00,Card,FAKE-CARD-002
