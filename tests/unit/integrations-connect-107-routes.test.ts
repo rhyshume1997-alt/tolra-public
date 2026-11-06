@@ -94,6 +94,15 @@ const adminRoutes = [
 ] as const;
 
 describe("admin routes: support sessions and non-admins are refused first", () => {
+  it.each(adminRoutes)("%s: the public invite navigation exception never permits an admin route's null origin", async (_n, load) => {
+    origin = false;
+    const response = await (await load()).POST(post("https://app.example.test/x", {
+      Origin: "null", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document",
+    }));
+    expect(response.status).toBe(403);expect(requireProfile).not.toHaveBeenCalled();
+    expect(userRpc).not.toHaveBeenCalled();expect(createSupabaseAdminClient).not.toHaveBeenCalled();
+  });
+
   it.each(adminRoutes)("%s: read-only and elevated support get 403, before any service-role client, provider or database call", async (_n, load, words) => {
     for (const s of [{ read_only: true, support: true }, { read_only: false, support: true }]) {
       session = s;
@@ -199,8 +208,8 @@ describe("opening a link (public)", () => {
   const url = (ref: string) => `https://app.example.test/api/integrations/invite/${ref}`;
   const route = () => import("@/app/api/integrations/invite/[ref]/route");
   const get = async (ref: string) => (await route()).GET(new Request(url(ref)), { params: Promise.resolve({ ref }) });
-  const press = async (ref: string, fields: Record<string, string> = { action: "verify", code: "1234 5678" }) =>
-    (await route()).POST(new Request(url(ref), { method: "POST", body: new URLSearchParams(fields), headers: { "content-type": "application/x-www-form-urlencoded" } }), { params: Promise.resolve({ ref }) });
+  const press = async (ref: string, fields: Record<string, string> = { action: "verify", code: "1234 5678" }, headers: Record<string, string> = {}) =>
+    (await route()).POST(new Request(url(ref), { method: "POST", body: new URLSearchParams(fields), headers: { "content-type": "application/x-www-form-urlencoded", ...headers } }), { params: Promise.resolve({ ref }) });
   const fns = () => svcRpc.mock.calls.map((c) => c[0]);
   const good = () => randomBytes(16).toString("base64url");
 
@@ -303,9 +312,43 @@ describe("opening a link (public)", () => {
     }
   });
 
-  it("an unknown action does nothing", async () => {
+  it("an unknown action only records a correlated security refusal", async () => {
     expect((await press(good(), { action: "peek" })).status).toBe(400);
-    expect(fns()).toEqual(["auth_rate_hit"]);
+    expect(fns()).toEqual(["auth_rate_hit", "integration_invite_refusal_log"]);
+    expect(svcRpc.mock.calls.at(-1)?.[1]).toMatchObject({ p_step: "request", p_reason: "invalid_request" });
+  });
+
+  it.each(["send", "verify"])("the no-referrer browser's same-origin document POST can %s through the existing code checks", async action => {
+    origin = false; // The ordinary guard rejects Chromium's literal Origin:null.
+    const res = await press(good(), { action, code: "1234 5678" }, {
+      Origin: "null", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document",
+    });
+    expect(res.status).toBe(action === "send" ? 200 : 303);
+    expect(fns()).toContain(action === "send" ? "integration_invite_code_issue" : "integration_invite_code_verify");
+    if (action === "send") expect(mail.code.mock.calls[0]?.[0]).toMatchObject({ to: "acct@firm.example", organizationId: "org-1" });
+    else {
+      expect(res.headers.get("location")).toMatch(/^https:\/\/login\.xero\.com\//);
+      verify = { ok: false, reason: "wrong_code", attempts_left: 3 };
+      const refused = await press(good(), { action: "verify", code: "1234 5678" }, {
+        Origin: "null", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document",
+      });
+      expect(refused.status).toBe(400);expect(refused.headers.get("location")).toBeNull();
+    }
+  });
+
+  it.each([
+    { Origin: "null" },
+    { Origin: "null", "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" },
+    { Origin: "null", "Sec-Fetch-Site": "same-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" },
+    { Origin: "null", "Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" },
+    { Origin: "null", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "document" },
+    { Origin: "null", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "iframe" },
+    { Origin: "https://attacker.example.test", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document" },
+  ])("opaque or contradictory origins without exact browser navigation metadata are refused: %j", async headers => {
+    origin = false;
+    const res = await press(good(), { action: "send" }, headers as Record<string,string>);
+    expect(res.status).toBe(403);expect(mail.code).not.toHaveBeenCalled();
+    expect(fns()).toEqual(["integration_invite_refusal_log"]);
   });
 
   it("POST from another site is refused before anything but the security log", async () => {

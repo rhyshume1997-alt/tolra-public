@@ -1,0 +1,70 @@
+{
+  "sourceSHA": "6837e2dca46c55fa44ee12222e3e1d57860001fe",
+  "run": 42154479194,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42154479194",
+  "results": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 1
+  },
+  "failingTest": "7. emailed opaque reference, bound one-time code, scanner safety, replay, expiry and cancellation",
+  "assertion": "tests/e2e/integrations-connect.spec.ts:429",
+  "expected": "Referrer-Policy: no-referrer",
+  "actual": "Referrer-Policy: strict-origin-when-cross-origin",
+  "reproduction": [
+    "Start the own-branch workflow against real disposable Supabase",
+    "Create an emailed synthetic accountant invitation through the admin UI",
+    "GET the22-character reference page and inspect Referrer-Policy"
+  ],
+  "affectedFiles": [
+    "next.config.mjs:58",
+    "next.config.mjs:66",
+    "lib/integrations/invite.ts:236",
+    "tests/unit/security-headers.test.ts:52"
+  ],
+  "recommendedFix": "Preserve no-referrer and the route restrictive no-script/default-src none CSP in the existing invite-only config rule; retain form-action self and https://login.xero.com; keep all global headers unchanged and strengthen config expectations.",
+  "cspEvidence": "Source-backed configuration override; browser stops at referrer assertion before checking CSP.",
+  "scope": "PM approved builder3 invite-only config fix; global config rules remain unchanged",
+  "followup": {
+    "files": [
+      "next.config.mjs",
+      "tests/unit/security-headers.test.ts"
+    ],
+    "before": {
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0
+    },
+    "after": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "command": "npx vitest run tests/unit/security-headers.test.ts --maxWorkers=1 --minWorkers=1",
+    "browser": "Pending actual integrated-head rerun; no pass inferred"
+  },
+  "browserFormOrigin": {
+    "run": 42158680510,
+    "sha": "39ae641a0ff70cb5d46bedc7d8a20fb163385874",
+    "observedRequest": {
+      "Origin": "null",
+      "Sec-Fetch-Site": "same-origin",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Dest": "document"
+    },
+    "observedStatus": 403,
+    "fix": "Only public OTP-bound invite POST accepts this exact browser navigation metadata; global/admin origin guards remain unchanged",
+    "beforeRouteSuite": {
+      "passed": 60,
+      "failed": 2,
+      "skipped": 0
+    },
+    "expandedRouteAndHeaderSuites": {
+      "passed": 87,
+      "failed": 0,
+      "skipped": 0
+    },
+    "negativeControls": "Seven invalid/contradictory metadata variants; wrong OTP; five authenticated/admin routes remain refused",
+    "browser": "Pending follow-up integrated SHA actual8-case rerun"
+  }
+}

@@ -34,6 +34,19 @@ export function newInviteToken(): { token: string; tokenHash: string } {
 
 /** The opaque reference in the link: 16 random bytes, base64url: 22 characters. It is not a secret that grants anything; the e-mailed code is. */
 export const INVITE_REF = /^[A-Za-z0-9_-]{22}$/;
+
+/** Chromium omits the origin on no-referrer form navigations. Only the public OTP-bound invite route uses
+ * this exact same-origin Fetch Metadata exception; it does not apply to authenticated/admin routes. Browser
+ * scripts cannot set these Sec-Fetch headers. Cross-site, opaque and incomplete navigation metadata refuses.
+ */
+export function isSameOriginInviteFormNavigation(request: Request): boolean {
+  return request.method === "POST"
+    && request.headers.get("origin") === "null"
+    && request.headers.get("sec-fetch-site") === "same-origin"
+    && request.headers.get("sec-fetch-mode") === "navigate"
+    && request.headers.get("sec-fetch-dest") === "document";
+}
+
 export const INVITE_HOURS = 24;
 export const INVITE_CODE = /^[0-9]{8}$/;
 
@@ -121,7 +134,7 @@ export async function inviteRateOk(service: SupabaseClient, request: Request): P
 export const refHash = (ref: string) => createHash("sha256").update(ref.slice(0, 200), "utf8").digest("hex").slice(0, 16);
 
 export type RefusalStep = "page" | "code" | "verify" | "callback" | "request";
-export type RefusalReason = "not_open" | "unknown_ref" | "malformed_ref" | "rate_limited" | "callback_state" | "callback_error" | "redirect_not_allowed" | "mail_failed" | "bad_origin" | "wrong_code";
+export type RefusalReason = "invalid_request" | "not_open" | "unknown_ref" | "malformed_ref" | "rate_limited" | "callback_state" | "callback_error" | "redirect_not_allowed" | "mail_failed" | "bad_origin" | "wrong_code";
 
 /**
  * A refusal the app itself meets (a malformed or unknown reference, a page for an invite that isn't open, a rate limit, a callback with an unknown
@@ -202,7 +215,7 @@ export async function finishInviteConnect(service: SupabaseClient, state: string
   // The database re-checked the INVITE at this moment (not expired, not cancelled, its admin still an admin): nothing is exchanged or stored otherwise.
   if (consumed.ok === false || typeof consumed.organization_id !== "string") return { ok: false, reason: "expired", correlationId: safeId(consumed.correlation_id) };
   const verifier = decryptSecret(consumed.verifier_enc, inviteVerifierContext(stateHash), ready.key);
-  return completeConnect(service, consumed.organization_id, consumed.user_id, verifier, code, { config: { ...ready.config, redirectUri: redirect }, key: ready.key }, deps);
+  return completeConnect(service, consumed.organization_id, consumed.user_id, verifier, code, { config: { ...ready.config, redirectUri: redirect }, key: ready.key }, { ...deps, inviteStateHash: stateHash });
 }
 
 const PAGE: Record<string, { title: string; body: string }> = {

@@ -146,7 +146,7 @@ export type ConnectOutcome = { ok: true; tenantName: string } | { ok: false; rea
  * connection another company relies on, or one that existed before, is never touched.
  */
 export async function finishConnect(service: SupabaseClient, org: string, userId: string, state: string, code: string, ready: { config: XeroConfig; key: Buffer },
-                                    deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean } = {}): Promise<ConnectOutcome> {
+                                    deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean; inviteStateHash?: string } = {}): Promise<ConnectOutcome> {
   const db = serviceDb(service);
   const consumed = await db.rpc<{ verifier_enc: string }>("integration_oauth_consume", { p_org: org, p_user: userId, p_provider: "xero", p_state_hash: hashState(state) });
   const verifier = decryptSecret(consumed.verifier_enc, { organizationId: org, provider: "xero", purpose: "pkce" }, ready.key);
@@ -159,7 +159,7 @@ export async function finishConnect(service: SupabaseClient, org: string, userId
  * organisation chosen, the tokens stored for `org` as `userId` (the database checks that person is still an active admin of it).
  */
 export async function completeConnect(service: SupabaseClient, org: string, userId: string, verifier: string, code: string, ready: { config: XeroConfig; key: Buffer },
-                                      deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean } = {}): Promise<ConnectOutcome> {
+                                      deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean; inviteStateHash?: string } = {}): Promise<ConnectOutcome> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const tokens = await exchangeCode(ready.config, code, verifier, fetchImpl);
   const chosen = chooseConnection(await listConnections(tokens.accessToken, fetchImpl), tokens.authEventId);
@@ -205,16 +205,18 @@ export async function finishPick(service: SupabaseClient, org: string, userId: s
 
 /** Stores the chosen organisation's tokens for `org` as `userId`, then removes the rest of `touched` at Xero (best effort, only what removableConnections allows). */
 async function storeChosen(service: SupabaseClient, org: string, userId: string, tokens: Awaited<ReturnType<typeof exchangeCode>>, connection: XeroConnection, touched: XeroConnection[],
-                           ready: { config: XeroConfig; key: Buffer }, deps: { fetchImpl?: typeof fetch; now?: () => number }): Promise<ConnectOutcome> {
+                           ready: { config: XeroConfig; key: Buffer }, deps: { fetchImpl?: typeof fetch; now?: () => number; inviteStateHash?: string }): Promise<ConnectOutcome> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   try {
-    await serviceDb(service).rpc("integration_store_connection", {
+    const stored = await serviceDb(service).rpc<{ok?: boolean}>(deps.inviteStateHash ? "integration_invite_store_connection" : "integration_store_connection", {
+      ...(deps.inviteStateHash ? {p_state_hash: deps.inviteStateHash} : {}),
       p_org: org, p_user: userId, p_provider: "xero", p_tenant_id: connection.tenantId, p_tenant_name: connection.tenantName,
       p_external_connection_id: connection.id,
       p_refresh_enc: encryptSecret(tokens.refreshToken, { organizationId: org, provider: "xero", purpose: "refresh" }, ready.key),
       p_access_enc: encryptSecret(tokens.accessToken, { organizationId: org, provider: "xero", purpose: "access" }, ready.key),
       p_access_expires_at: tokens.expiresAt.toISOString(), p_key_version: KEY_VERSION,
     });
+    if (stored?.ok === false) throw new DbError("Invite cannot complete", "42501", "invite_invalid");
   } catch (err) {
     await cleanUpConnections(service, tokens.accessToken, touched, fetchImpl, deps.now);
     const hint = err instanceof DbError ? err.hint : undefined;

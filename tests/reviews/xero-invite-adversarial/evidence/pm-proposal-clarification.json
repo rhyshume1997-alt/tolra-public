@@ -1,0 +1,42 @@
+{
+  "subject_sha": "656a79390650fe87a6e7513679246e82df3f3a40",
+  "pr": 421,
+  "clarification": "151 is a proposal only; unregistered/unapplied is required, not a new defect",
+  "unchanged_database_profile": "Existing evidence/results.json real-DB profile remains valid against the identical immutable subject: 30 passed/6 failed/0 skipped; it was not rerun or relabelled as a new run",
+  "profiles": [
+    {
+      "profile": "independent_unit",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "1d5a9ae01e24bd9b1852acc1f0741728336175cb45abe61c1f2037a3138c01d1"
+    },
+    {
+      "profile": "full_unit",
+      "passed": 6834,
+      "failed": 2,
+      "skipped": 0,
+      "raw_sha256": "4cb33d3798f83e11639574ac3a871e689efca552993e13a26d71eb146a1fee82"
+    }
+  ],
+  "checks": {
+    "npx tsc --noEmit": {
+      "output": "",
+      "exit": 0
+    },
+    "npm run lint": {
+      "output": "\n> quoteflow-jnr@0.1.0 lint\n> eslint\n\n",
+      "exit": 0
+    },
+    "git diff --check": {
+      "exit": 0
+    }
+  },
+  "commands": [
+    "npx vitest run -c tests/reviews/xero-invite-adversarial/vitest.unit.config.ts --reporter=json --outputFile=/tmp/invite-421-clarified-unit.json",
+    "npx vitest run --reporter=json --outputFile=/tmp/invite-421-clarified-full.json",
+    "npx tsc --noEmit",
+    "npm run lint",
+    "git diff --check"
+  ]
+}

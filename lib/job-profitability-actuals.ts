@@ -1,7 +1,6 @@
 /**
  * Optional actual job costing (release 148). Additional cost accounting only, never payroll. Every rate comes from release 143
- * (Settings > Costing rates); the database works out the costs (in whole pence, one rounding rule: half to even, as lib/costing's
- * pyRound) and this file only combines them with the job's issued net revenue and says which basis a figure is on:
+ * (Settings > Costing rates); the database works out the costs (in whole pence, money halves up; the quotation engine retains its separate half-even rule) and this file only combines them with the job's issued net revenue and says which basis a figure is on:
  *   - "recorded": the job's cost record, taken when it finished or was first invoiced, at the rates of that moment (later rate edits never
  *     change it);
  *   - "todays_rates": an OPEN job only, costs so far at today's rates (labelled; it is recorded when the job finishes or is invoiced).
@@ -39,7 +38,7 @@ export const NO_RECORD_REASON = "No cost record was taken when this job closed, 
 export const NOT_INVOICED_REASON = "No issued invoice yet, so there is no actual profit";
 const isPence = (n: unknown): n is number => typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
 
-/** The one rounding rule (lib/costing pyRound's): half to even on the exact ratio n / d (d > 0). */
+/** Hours and margin DISPLAY rounding only: half to even on n/d. Money is rounded in SQL, halves up. */
 export function roundHalfEven(n: bigint, d: bigint): bigint {
   if (d <= BigInt(0)) throw new RangeError("Invalid ratio");
   const neg = n < BigInt(0), m = neg ? -n : n;

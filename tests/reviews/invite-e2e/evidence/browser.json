@@ -1,0 +1,16 @@
+{
+  "base": "dbd9841f9e5c0d651566a50bb3cefe7262a4845a",
+  "listCommand": "npx playwright test tests/e2e/integrations-connect.spec.ts --list",
+  "discovered": 8,
+  "runCommand": "npx playwright test tests/e2e/integrations-connect.spec.ts",
+  "exit": 1,
+  "executed": 0,
+  "passed": 0,
+  "blocked": "Global setup IsolationError: TEST_SUPABASE_URL is not set. Docker socket access denied; Supabase CLI unavailable. Isolation guard kept, no hosted project used.",
+  "testFixture": "Proposal151 preparation only after actual backend identity verification; exact HTTPS callback allowlist retained; local mock mailbox only; provider navigation intercepted before HTTP; no valid provider callback invoked.",
+  "unchecked": [
+    "All8browsercases: discovered, not run",
+    "Mock mail delivery + UI/browser OTP proof requires disposable Supabase Auth/PostgREST backend",
+    "Real mailboxes/providers intentionally unused"
+  ]
+}

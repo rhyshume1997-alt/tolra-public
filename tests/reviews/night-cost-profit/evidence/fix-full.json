@@ -1,0 +1,8 @@
+{
+  "command": "npx vitest run --maxWorkers=2 --minWorkers=1",
+  "passed": 6799,
+  "failed": 0,
+  "skipped": 0,
+  "success": true,
+  "note": "Existing React preview/engine-estimate assertion retained and passes. 60costing golden tests unchanged."
+}

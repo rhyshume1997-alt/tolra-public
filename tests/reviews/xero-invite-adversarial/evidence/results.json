@@ -1,0 +1,393 @@
+{
+  "recorded_at": "2026-11-05T21:37:16.889901+00:00",
+  "subject_sha": "656a79390650fe87a6e7513679246e82df3f3a40",
+  "branch": "codex/xero-invite-adversarial",
+  "test_code_sha": "6bcaf7b949b58b180bf88b673fcf35fd68005702",
+  "profiles": [
+    {
+      "profile": "independent-public-interface-units",
+      "command": "npx vitest run -c tests/reviews/xero-invite-adversarial/vitest.unit.config.ts --reporter=json --outputFile=/tmp/invite-151-unit.json",
+      "passed": 18,
+      "failed": 1,
+      "skipped": 0,
+      "total": 19,
+      "raw_sha256": "810812f3ef7e29b6050380e068bf0f943369482645f82baaa16ab3454b576a97",
+      "cases": [
+        {
+          "name": "tokens are fresh 32-byte URL-safe values; only their SHA-256 enters the existing SQL interface",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "malformed link \"\" never reaches a privileged RPC",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "malformed link \"../token\" never reaches a privileged RPC",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "malformed link \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\" never reaches a privileged RPC",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "malformed link \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\" never reaches a privileged RPC",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "malformed link \"<script>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\" never reaches a privileged RPC",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "PKCE uses S256 and fresh state; the real encrypted verifier is bound to that state only",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "a refused or expired SQL redemption cannot produce an OAuth redirect",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "an unknown/consumed callback state never reaches token exchange or connection storage",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "swapping another state's ciphertext is rejected before connection completion",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "callback completion uses the consumed company/admin, never request-supplied identities",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "redirect config rejects non-exact callback path/query /api/integrations/xero/callback/extra",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "redirect config rejects non-exact callback path/query /prefix/api/integrations/xero/callback",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "redirect config rejects non-exact callback path/query /api/integrations/xero/callback?next=https://attacker.example.test",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "redirect config rejects non-exact callback path/query /api/integrations/xero/callback#fragment",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "the configured callback and PKCE inputs are preserved exactly in the authorization request",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "the exact invite redirect allow list rejects lookalikes, userinfo, non-normal forms, query/fragment and wildcard entries",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "one-time code hashes are bound to both the invitation reference and server key",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "151 is registered after 150 with real release, verification and rollback files and a preflight marker",
+          "status": "failed",
+          "messages": [
+            "AssertionError: 151 has no release-plan entry; publishing SQL alone is not registration: expected undefined to be defined\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/registration.unit.test.ts:8:138\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11"
+          ]
+        }
+      ]
+    },
+    {
+      "profile": "independent-real-db-and-routes",
+      "command": "npx vitest run -c tests/reviews/xero-invite-adversarial/vitest.db.config.ts --reporter=json --outputFile=/tmp/invite-151-db.json",
+      "passed": 30,
+      "failed": 6,
+      "skipped": 0,
+      "total": 36,
+      "raw_sha256": "508b6310106f4d9d11c7939705c0aeea282848c76408bc6c7b60af3141a2d400",
+      "cases": [
+        {
+          "name": "1 recipient identity and forwarded invitations a forwarded reference without its bound-address code cannot start OAuth",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "1 recipient identity and forwarded invitations the code only goes to the bound address even when the forwarded-link visitor supplies another address",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "1 recipient identity and forwarded invitations another person's code cannot redeem a different invitation",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "1 recipient identity and forwarded invitations a wrong code is refused; the valid bound code remains a positive control",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "1 recipient identity and forwarded invitations five wrong codes lock the invite even if the correct code is subsequently supplied",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation recipient code and invitation redemption are single use",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation two actual route requests concurrently redeeming the same code yield exactly one OAuth redirect",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation two independent PostgreSQL sessions cannot both redeem the same bound code",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation replaying the OAuth callback repeats neither token exchange nor connection storage",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation expired invite is refused at page, code request and verification",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation a code expiring after delivery is refused at verification",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation parent invite expiry is enforced again after OAuth begins",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation invite expiry during the provider token exchange is enforced again before connection storage",
+          "status": "failed",
+          "messages": [
+            "AssertionError: the callback consumed state before expiry, but the invite expired before storage: expected [ { \u2026(3) } ] to deeply equal []\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:70:324\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)"
+          ]
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation OAuth state expiry is enforced at callback",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation revoking a delivered code before redemption prevents OAuth",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "2 replay, actual concurrent redemption, expiry and revocation revocation remains possible during OAuth and prevents the final connection",
+          "status": "failed",
+          "messages": [
+            "AssertionError: a pending OAuth consent must remain revocable: expected 404 to be 200 // Object.is equality\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:73:348\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+            "AssertionError: a refused revoke must not leave a usable callback: expected [ { \u2026(3) } ] to deeply equal []\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:73:443\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)"
+          ]
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings the signed-in creator cannot move an invite into a request-supplied company",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings company B cannot revoke company A's invitation",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings changing a hidden company/admin form value cannot change the binding",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings a demoted creating admin cannot complete a previously-started OAuth flow",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings demoting the creator during token exchange is enforced at final connection storage",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings a Xero organisation already bound to company B cannot be stored for company A",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings selecting 0 Xero organisations is refused without storing a connection",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings selecting 2 Xero organisations is refused without storing a connection",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "3 company, creating-admin and selected-Xero-organisation bindings consent for one unbound but incorrect Xero organisation requires an explicit company identity decision before storing",
+          "status": "failed",
+          "messages": [
+            "AssertionError: single result is not proof it belongs to the invited company: expected [ { \u2026(3) } ] to deeply equal []\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:84:353\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)"
+          ]
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log unknown state never reaches the token endpoint and has a traceable security refusal",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log another state's PKCE ciphertext cannot be substituted",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log request-supplied redirect destinations do not change the exact approved callback",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log missing exact redirect allow list fails closed before consuming the invitation",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log every malformed-code refusal has a security-log correlation id without keeping the code or reference",
+          "status": "failed",
+          "messages": [
+            "AssertionError: expected 26 to be greater than 26\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:92:294\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)"
+          ]
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log unknown-action refusals are security logged, not silent responses",
+          "status": "failed",
+          "messages": [
+            "AssertionError: expected 26 to be greater than 26\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:93:221\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)"
+          ]
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log missing redirect-allow-list refusal is security logged with a correlation id",
+          "status": "failed",
+          "messages": [
+            "AssertionError: expected 26 to be greater than 26\n    at /workspace/work/xero-invite-adversarial/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:94:298\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)"
+          ]
+        },
+        {
+          "name": "4 OAuth state, PKCE, exact redirects and refusal security log wrong-code logging keeps only reference hash, correlation and reason, never OTP/full recipient/state",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "5 successful consent keeps transfers OFF and held documents held consent alone neither activates transfers nor releases held pending sends, including a subsequent sweep",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "6 migration 151 actual verification and rollback the actual verification file returns true on every row",
+          "status": "passed",
+          "messages": []
+        },
+        {
+          "name": "6 migration 151 actual verification and rollback rollback refuses open invitations, then succeeds after they are cancelled; reapplying restores verified 151",
+          "status": "passed",
+          "messages": []
+        }
+      ]
+    },
+    {
+      "profile": "full-existing-unit-suite",
+      "command": "npx vitest run --reporter=json --outputFile=/tmp/invite-151-final-full-unit.json",
+      "passed": 6834,
+      "failed": 2,
+      "skipped": 0,
+      "total": 6836,
+      "raw_sha256": "578b63f6ea2d96ea679491bca082a71452b46dbc208aa2b29058b5445a6ca3c4",
+      "cases": [
+        {
+          "name": "this repository passes: nothing applied has changed and every new migration has its file set",
+          "status": "failed",
+          "messages": [
+            "AssertionError: expected [ \u2026(2) ] to deeply equal []\n    at /workspace/work/xero-invite-adversarial/tests/unit/check-migrations.test.ts:228:24\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "name": "no proposal silently disappears from release preflight covers every proposal, both ordered post-144 packages and every preflight marker",
+          "status": "failed",
+          "messages": [
+            "AssertionError: expected [ \u2026(2) ] to deeply equal []\n    at /workspace/work/xero-invite-adversarial/tests/unit/release-plan-preflight.test.ts:17:36\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:146:14\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:11\n    at runWithTimeout (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:39:7)\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:17)\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "command": "npx tsc --noEmit",
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": "npm run lint",
+      "exit": 0,
+      "output": "\n> quoteflow-jnr@0.1.0 lint\n> eslint\n\n"
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/check-migrations.mjs",
+      "exit": 1,
+      "output": "FAIL Proposal missing from release plan: supabase/proposals/p151_xero_invite_hardening.sql\nFAIL Proposal missing from release preflight: supabase/proposals/p151_xero_invite_hardening.sql\n"
+    },
+    {
+      "command": "node scripts/check-release-plan.mjs",
+      "exit": 1,
+      "output": "FAIL Proposal missing from release plan: supabase/proposals/p151_xero_invite_hardening.sql\nFAIL Proposal missing from release preflight: supabase/proposals/p151_xero_invite_hardening.sql\n"
+    }
+  ],
+  "scope": [
+    "Only tests/reviews/xero-invite-adversarial/** changed relative to the pinned feature commit",
+    "Actual route modules, invite helper, crypto, shared connection engine and exact SQL files run in-process against real PostgreSQL 17.6",
+    "Mail delivery and Xero HTTP are capture stubs; Xero token stub asserts actual PKCE verifier and exact callback before replying",
+    "Auth identity projection and rate-limit transport are fixtures, not a proof of real Supabase login, global limiter, browser or PostgREST behaviour",
+    "Distinct pg_backend_pid values assert the redemption race uses two real database sessions",
+    "151 is absent from the release plan. The explicit reviewed 151 file is applied only in the nonce disposable database for adversarial testing, not silently represented as a registered release",
+    "The expiry setup initially violated the 24-hour check; it was corrected. Those initial fixture errors are not product defects",
+    "Wrong unbound-tenant case is an intended-company identity/policy gap, not evidence of a cross-company RLS or unique-tenant-claim bypass",
+    "Rollback deliberately drops its refusal-security-log table under the reviewed rollback SQL; its own comment requires export first if needed. Company audit rows are preserved by the tested rollback",
+    "No CI run was cancelled or modified; no candidate branch writes, merge, production SQL, real mailbox, real data or live provider call"
+  ],
+  "test_files_sha256": {
+    "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts": "acd06e5200a25af6d25461b9891de12cb64d208f43310b7cef65d4af3876a062",
+    "tests/reviews/xero-invite-adversarial/bootstrap.sql": "d2550754d1aea0f04aa23b9452a41da14e62c6ae9edc74b0c241c2ed5009d1bd",
+    "tests/reviews/xero-invite-adversarial/fixture.ts": "b2aad301ad9c20a655f5f4ee2c8059293b164f69932c9aa08ac18543c0a2dbbf",
+    "tests/reviews/xero-invite-adversarial/public.unit.test.ts": "eae5b5323d9e7e52400f1eb318928af03d0b9c0851401770f015cfaa0b6d6218",
+    "tests/reviews/xero-invite-adversarial/registration.unit.test.ts": "0a5fad18f5b1278ea78c3d4593582de9fd51ed4f8cfe5071e44eaca8dc3f2850",
+    "tests/reviews/xero-invite-adversarial/route.setup.ts": "a362ef7c4915da9c6d7f52b963e51b38038b773dfdffa24ebae70fb35b6128aa",
+    "tests/reviews/xero-invite-adversarial/vitest.db.config.ts": "68cbe5491551f3e1aab744caf80505310559097c40f1ae6c91b4f5b574c3f879",
+    "tests/reviews/xero-invite-adversarial/vitest.unit.config.ts": "ac7e06991f6094bc8857d7fbd1917598ce607d52a820789697392fb3622e662d"
+  }
+}

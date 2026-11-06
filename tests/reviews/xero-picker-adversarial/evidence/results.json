@@ -1,0 +1,217 @@
+{
+  "recorded_at": "2026-11-05T21:58:28.167113+00:00",
+  "subject_sha": "cab1bbe19a16b6575c6680a35fe25820631e5f20",
+  "source_pr": 422,
+  "branch": "codex/xero-picker-adversarial",
+  "test_code_sha": "8c3e4e60c0a77fb1b1b19a55bd2befbb2345ed38",
+  "profiles": [
+    {
+      "profile": "independent_units",
+      "command": "npx vitest run -c tests/reviews/xero-picker-adversarial/vitest.unit.config.ts --reporter=json --outputFile=/tmp/picker-422-unit.json",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "caac1bac5f59a720a4aab4c9066868b2294c320239c501c34934440d44583fb3",
+      "cases": [
+        {
+          "name": "sealed offers cannot move between companies or survive ciphertext tampering",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "expiry has no grace interval at the exact ten-minute boundary",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "CSRF is bound to company, initiating admin and nonce",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "eight legitimate maximum-length Unicode organisation names fit the cookie budget and reopen",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "normal cookie material never exposes the refresh token in plaintext",
+          "status": "passed",
+          "failure_messages": []
+        }
+      ]
+    },
+    {
+      "profile": "actual_routes_real_db",
+      "command": "npx vitest run -c tests/reviews/xero-picker-adversarial/vitest.db.config.ts --reporter=json --outputFile=/tmp/picker-422-db.json",
+      "total": 20,
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0,
+      "raw_sha256": "62b1e0f6174cb7333d18f34562194e6c6757a23fa565825c8465371a50dd55eb",
+      "cases": [
+        {
+          "name": "callback offers only this consent, stores nothing, and sets a private path-limited ten-minute cookie",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "GET returns offered names and CSRF, never the token, connection secret or an implicit selected tenant",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "an omitted or unoffered tenant is refused before claiming the nonce or contacting Xero",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "wrong and missing CSRF are refused without consuming the valid choice",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "foreign company and other initiating admin cannot read or use the offer",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "support access and non-admin roles are refused before provider work",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "actual forced recent-MFA policy rejects aal1 and a stale authenticator code without consuming the nonce",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "actual same-origin policy rejects a cross-origin submission before nonce or provider work",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "expired and tampered cookies fail closed",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "sequential replay is refused by the REAL database limiter after the first successful choice",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "two independent SQL transactions cannot both claim a single-use picker nonce",
+          "status": "failed",
+          "failure_messages": [
+            "AssertionError: single-use cannot be implemented by a non-atomic rate counter: expected [ \u2026(2) ] to have a length of 1 but got 2\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/xero-picker-adversarial/tests/reviews/xero-picker-adversarial/picker.db.test.ts:58:111\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "name": "two concurrent actual picker POSTs cannot both pass a single-use claim before either RPC transaction commits",
+          "status": "failed",
+          "failure_messages": [
+            "AssertionError: both actual routes must not accept the same sealed choice: expected [ \u2026(2) ] to have a length of 1 but got 2\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/xero-picker-adversarial/tests/reviews/xero-picker-adversarial/picker.db.test.ts:65:130\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)"
+          ]
+        },
+        {
+          "name": "limiter outage refuses without contacting Xero and permits a later explicit retry",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "successful selection keeps transfers OFF, held documents unchanged, and the sweep sends nothing",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "actual choice and connection audit rows are recorded under the correct company/admin",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "changed or disappeared offered connection IDs are refused after the live re-list",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "an offered tenant owned by another company cannot be claimed or deleted",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "creator demotion during token refresh is refused by the final SQL write",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "provider refresh failure cannot store anything or expose provider error text",
+          "status": "passed",
+          "failure_messages": []
+        },
+        {
+          "name": "unselected consent connections are removed even when the admin chooses after six minutes within the ten-minute offer",
+          "status": "passed",
+          "failure_messages": []
+        }
+      ]
+    },
+    {
+      "profile": "full_units",
+      "command": "npx vitest run --reporter=json --outputFile=/tmp/picker-422-final-full.json",
+      "total": 6799,
+      "passed": 6799,
+      "failed": 0,
+      "skipped": 0,
+      "raw_sha256": "7a916d3903410ef3fa47ac8d16177ad5ba8210ba5cfba09c5fd6dedb1cc7e638",
+      "cases": []
+    }
+  ],
+  "checks": [
+    {
+      "command": "npx tsc --noEmit",
+      "exit": 134,
+      "outcome": "Default 2-GiB heap exhausted; not a TypeScript diagnostic or pass"
+    },
+    {
+      "command": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit --extendedDiagnostics",
+      "exit": 0,
+      "output": "Files:                         2907\nLines of Library:             53142\nLines of Definitions:        343993\nLines of TypeScript:         216271\nLines of JavaScript:            477\nLines of JSON:                    0\nLines of Other:                   0\nIdentifiers:                1082790\nSymbols:                    3110634\nTypes:                       749237\nInstantiations:             3093408\nMemory used:               2651351K\nAssignability cache size:    272745\nIdentity cache size:          30532\nSubtype cache size:           32179\nStrict subtype cache size:    16525\nI/O Read time:                0.30s\nParse time:                  10.62s\nResolveModule time:           1.19s\nResolveTypeReference time:    0.01s\nResolveLibrary time:          0.01s\nProgram time:                13.51s\nBind time:                    5.45s\nCheck time:                 139.57s\nI/O Write time:               0.00s\nprintTime time:               0.08s\nEmit time:                    0.08s\nTotal time:                 158.61s\n"
+    },
+    {
+      "command": "NODE_OPTIONS=--max-old-space-size=3072 npx tsc --noEmit",
+      "subject": "clean read-only archive of the pinned source, without new tests",
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "command": "npm run lint",
+      "exit": 0,
+      "output": "\n> quoteflow-jnr@0.1.0 lint\n> eslint\n\n"
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0
+    }
+  ],
+  "scope": [
+    "Actual callback/choose routes, service helpers, MFA decision policy, same-origin/CSRF, nonce limiter, audit and store SQL run unchanged",
+    "Authenticated identity/assurance projection is synthetic, not hosted Supabase Auth proof",
+    "Xero HTTP is a recording stub; no live providers, real mailboxes, production data or SQL",
+    "The route-race test changes RPC transport timing only: actual auth_rate_hit runs in two real service-role PostgreSQL transactions; both results exist before either commits, a legal interleaving. Permissions are never fabricated",
+    "Initial audit assertion incorrectly required a service-owned connection event actor column; corrected to accept its explicit metadata.by attribution. That setup expectation is not a product finding",
+    "Default typecheck exceeded its 2-GiB heap. Enlarged-heap test branch and clean pinned-source typechecks pass",
+    "No proposal 151 SQL is loaded by this picker fixture",
+    "No hosted browser/cookie persistence, real PostgREST or live-Xero acceptance is claimed",
+    "Only declared test files changed. No candidate/main/#415 edits or CI run 5 interruption"
+  ],
+  "test_files_sha256": {
+    "tests/reviews/xero-picker-adversarial/bootstrap.sql": "d2550754d1aea0f04aa23b9452a41da14e62c6ae9edc74b0c241c2ed5009d1bd",
+    "tests/reviews/xero-picker-adversarial/fixture.ts": "6826921a938b7e2347b6f75d3caea61b568f2ff371333e7eb21707bf030c40ce",
+    "tests/reviews/xero-picker-adversarial/picker.db.test.ts": "893c12335d5c4b4e66aa7d36d2cf540b38a91504689fac4d6c52e17b9bdc02e9",
+    "tests/reviews/xero-picker-adversarial/picker.unit.test.ts": "cfee305f539162e91ede474901c088f3326543bc6812cbeb9ac34437ff23ae33",
+    "tests/reviews/xero-picker-adversarial/route.setup.ts": "cfc08ea1a691ef221511351fd88cbe87e299ac07411477955b0da3ca6ba1643c",
+    "tests/reviews/xero-picker-adversarial/vitest.db.config.ts": "4303cab2c0a79b609729ee5cffcc7c6b3a7dbab9c8786ee02387100d01bcdfbc",
+    "tests/reviews/xero-picker-adversarial/vitest.unit.config.ts": "a955a941146e11860acd7358aec18d2512d47e1c6ee32b4c7f0f5648ee7b7c01"
+  }
+}

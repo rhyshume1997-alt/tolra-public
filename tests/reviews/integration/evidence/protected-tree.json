@@ -1,0 +1,14 @@
+{
+  "base": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5",
+  "paths": [
+    "supabase/migrations",
+    "supabase/proposals",
+    "supabase/release",
+    "supabase/release-plan.json"
+  ],
+  "files": 297,
+  "baseSha256": "0953b9e134bd6345632ec038d53b875b5874f22c5001ecf53d6aa275c654d330",
+  "workingSha256": "0953b9e134bd6345632ec038d53b875b5874f22c5001ecf53d6aa275c654d330",
+  "same": true,
+  "command": "git diff --exit-code e7c4b6380964386e66e5d6a67ed37ad0aaed8da5 -- supabase/migrations supabase/proposals supabase/release supabase/release-plan.json"
+}

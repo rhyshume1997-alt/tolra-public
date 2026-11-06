@@ -73,7 +73,7 @@ export function PriceThisPart({ rates, onAdd, onCostNote, today }: PricePartProp
       <div>Cost per part: {gbp(figures.unitCost)}</div>
       <div>Price per part: {gbp(figures.unitPrice)}</div>
       <div>Total quote: {gbp(fromPence(linePence(figures.quantity, figures.unitPrice)))}</div>
-      {linePence(figures.quantity, figures.unitPrice) !== toPence(figures.extendedPrice) ? <p className="text-xs text-slate-500">The quote uses the rounded price per part. The costing batch estimate is {gbp(figures.extendedPrice)} before each part is rounded.</p> : null}
+      {linePence(figures.quantity, figures.unitPrice) !== toPence(figures.engineExtendedPrice ?? figures.extendedPrice) ? <p className="text-xs text-slate-500">The quote uses the rounded price per part. The costing batch estimate is {gbp(figures.engineExtendedPrice ?? figures.extendedPrice)} before each part is rounded.</p> : null}
     </div> : null}
     <div className="flex flex-wrap gap-2">
       <Button type="button" disabled={!ready} onClick={() => { if (figures && description.trim()) onAdd(appliedLine(description, figures)); }} className="bg-brand text-brand-ink hover:bg-brand-hover">Add as quote line</Button>
