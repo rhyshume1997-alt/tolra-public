@@ -368,7 +368,10 @@ BEGIN
   RETURN (SELECT coalesce(jsonb_agg(jsonb_build_object('id', i.id, 'created_at', i.created_at, 'expires_at', i.expires_at, 'recipient', i.recipient_email,
                                                        'created_by_name', coalesce(nullif(btrim(p.full_name), ''), p.email)) ORDER BY i.created_at), '[]'::JSONB)
           FROM public.integration_connect_invites i LEFT JOIN public.user_profiles p ON p.id = i.created_by
-          WHERE i.organization_id = v_org AND i.provider = p_provider AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.locked_at IS NULL AND i.expires_at > now());
+          WHERE i.organization_id = v_org AND i.provider = p_provider AND i.revoked_at IS NULL AND i.locked_at IS NULL AND i.expires_at > now()
+            AND NOT EXISTS (SELECT 1 FROM public.integration_oauth_states st WHERE st.via_invite=i.id AND st.invite_completed_at IS NOT NULL)
+            AND (i.used_at IS NULL OR EXISTS (SELECT 1 FROM public.integration_oauth_states st
+                 WHERE st.via_invite=i.id AND st.invite_completed_at IS NULL AND st.expires_at>now())));
 END
 $$;
 REVOKE ALL ON FUNCTION public.integration_invites_open(TEXT) FROM PUBLIC, anon;
@@ -385,19 +388,32 @@ AS $$
 DECLARE
   v_org UUID := public.current_user_organization_id();
   v_uid UUID := auth.uid();
+  i RECORD;
 BEGIN
   PERFORM public.assert_privileged_aal();
   IF v_org IS NULL OR v_uid IS NULL OR NOT public.has_org_role(ARRAY['admin'])
      OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
     RAISE EXCEPTION 'Only the company''s own admins can cancel a connect link.' USING ERRCODE = '42501';
   END IF;
-  UPDATE public.integration_connect_invites i SET revoked_at = now(), revoked_by = v_uid, revoke_reason = 'cancelled', code_hash = NULL
-  WHERE i.id = p_invite AND i.organization_id = v_org AND i.used_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > now();
-  IF NOT FOUND THEN
-    RETURN FALSE;
+  -- The final store also locks this invite. Inspect completion only AFTER acquiring that lock.
+  SELECT * INTO i FROM public.integration_connect_invites
+  WHERE id=p_invite AND organization_id=v_org FOR UPDATE;
+  IF NOT FOUND THEN RETURN FALSE; END IF;
+  PERFORM 1 FROM public.organization_members m WHERE m.organization_id=v_org AND m.user_id=v_uid FOR SHARE;
+  PERFORM public.assert_privileged_aal();
+  IF NOT public.has_org_role(ARRAY['admin'])
+     OR coalesce((SELECT s.is_support FROM public._session_membership() s), TRUE) THEN
+    RAISE EXCEPTION 'Only the company''s own admins can cancel a connect link.' USING ERRCODE = '42501';
   END IF;
-  PERFORM security_audit.log_named_event(v_org, 'INTEGRATION_INVITE_REVOKED', 'integration_connect_invites', p_invite::TEXT,
-    jsonb_build_object('by', v_uid, 'reason', 'cancelled'));
+  IF i.revoked_at IS NOT NULL OR i.expires_at<=clock_timestamp() THEN RETURN FALSE; END IF;
+  IF EXISTS (SELECT 1 FROM public.integration_oauth_states st WHERE st.via_invite=i.id AND st.invite_completed_at IS NOT NULL) THEN RETURN FALSE; END IF;
+  IF i.used_at IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM public.integration_oauth_states st WHERE st.via_invite=i.id
+      AND st.invite_completed_at IS NULL AND st.expires_at>clock_timestamp()) THEN RETURN FALSE; END IF;
+  UPDATE public.integration_connect_invites
+  SET revoked_at=clock_timestamp(),revoked_by=v_uid,revoke_reason='cancelled',code_hash=NULL WHERE id=i.id;
+  PERFORM security_audit.log_named_event(v_org,'INTEGRATION_INVITE_REVOKED','integration_connect_invites',i.id::TEXT,
+    jsonb_build_object('by',v_uid,'reason','cancelled'));
   RETURN TRUE;
 END
 $$;
