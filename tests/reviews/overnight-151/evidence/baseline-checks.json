@@ -1,0 +1,11 @@
+{
+  "headBeforeEvidenceCommit": "147ac28e0b9343ba5b041fdb9956767c180671ce",
+  "units": {
+    "passed": 6889,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": "exit0",
+  "lint": "exit0",
+  "diff": "exit0"
+}
