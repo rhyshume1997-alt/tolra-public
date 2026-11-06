@@ -1,0 +1,101 @@
+name: Builder 3 PRELIMINARY PQ execution
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [codex/integrate-445-446-run10]
+    paths:
+      - tests/pq/**
+      - .github/workflows/builder3-preliminary-pq.yml
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: builder3-preliminary-${{ github.head_ref }}
+  cancel-in-progress: false
+jobs:
+  synthetic-pq:
+    if: github.head_ref == 'codex/preliminary-pq-run' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Keep disposable ports separate
+        run: |
+          reserved=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+          sudo sysctl -w net.ipv4.ip_local_reserved_ports="${reserved:+$reserved,}55320-55329"
+      - name: Install Code's exact checksum-pinned Supabase CLI
+        run: |
+          set -euo pipefail
+          cli_dir="$RUNNER_TEMP/builder3-pq-cli"
+          mkdir -p "$cli_dir"
+          curl -fsSL -o "$cli_dir/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+          echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_dir/cli.tar.gz" | sha256sum -c -
+          tar -xzf "$cli_dir/cli.tar.gz" -C "$cli_dir" supabase
+          echo "568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c  $cli_dir/supabase" | sha256sum -c -
+          test "$("$cli_dir/supabase" --version)" = '2.40.7'
+          echo "$cli_dir" >> "$GITHUB_PATH"
+      - name: Registry read access for test images only
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test reset and endpoint isolation guards
+        run: node --test tests/pq/safety.test.mjs
+      - name: Start and seed the owned real Supabase through 151
+        run: |
+          node tests/pq/pq.mjs prepare
+          mkdir -p tests/pq/results
+          node -e "require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/pq-runid', JSON.parse(require('node:fs').readFileSync('tests/pq/.runtime/accounts.json')).world.runId)"
+      - name: Install screenshot browser
+        run: npx playwright install --with-deps chromium
+      - name: Open real PQ pages in Chrome
+        run: npx playwright test -c tests/pq/preliminary.config.ts --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/tests/pq/results/browser.json
+      - name: Require executed screenshot proof
+        if: always()
+        run: |
+          mkdir -p tests/pq/results
+          cp tests/pq/.runtime/receipt.json tests/pq/results/receipt.json
+          node scripts/ci-evidence.mjs playwright tests/pq/results/browser.json 1
+      - name: Require twelve actual PQ results with exact SHA
+        if: always()
+        run: |
+          node - <<'JS'
+          const r=JSON.parse(require('node:fs').readFileSync('tests/pq/results/preliminary.json','utf8'));
+          const sha=require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          console.log({status:r.status,sha:r.sourceSha,rows:r.rows.map(x=>({step:x.step,status:x.status}))});
+          if(r.status!=='PRELIMINARY'||r.sourceSha!==sha||r.candidateSha!==null||r.rows.length!==12||r.rows.some(x=>x.status!=='PASS')||!r.financialRowsUnchanged)process.exit(1);
+          JS
+      - name: Require no blocked outbound app attempt
+        run: test ! -s tests/pq/.runtime/blocked-network.log
+      - name: Reset, reseed and reuse the owned project without duplicates
+        run: |
+          node tests/pq/pq.mjs reset
+          node -e "const fs=require('node:fs'); if(JSON.parse(fs.readFileSync('tests/pq/.runtime/accounts.json')).world.runId===fs.readFileSync(process.env.RUNNER_TEMP+'/pq-runid','utf8')) process.exit(1)"
+          node tests/pq/pq.mjs prepare
+          cp tests/pq/.runtime/receipt.json tests/pq/results/reset-receipt.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetic-pq-${{ github.run_id }}
+          path: |
+            tests/pq/screenshots/preliminary/*.png
+            tests/pq/results/*.json
+            tests/pq/results/*.pdf
+            tests/pq/.runtime/blocked-network.log
+          retention-days: 7
+      - name: Delete only this job's disposable PQ stack
+        if: always()
+        run: node tests/pq/pq.mjs stop
