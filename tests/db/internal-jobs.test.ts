@@ -383,21 +383,23 @@ describe("the schedule's own rule decides a clash (working days, hours per day, 
     wk = await machine("Weekday mill");
     bst = await machine("Summer mill");
     split = await machine("Split mill");
-    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: split, job_no: `J-SPL-${world.runId}`, description: "Saturday only", start_at: "2026-11-14T08:00:00Z", estimated_hours: 4,
-      day_plan: [{ date: "2026-11-14", start: "08:00", end: "12:00" }] })).error).toBeNull();
+    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: split, job_no: `J-SPL-${world.runId}`, description: "Saturday only", start_at: "2027-12-11T08:00:00Z", estimated_hours: 4,
+      day_plan: [{ date: "2027-12-11", start: "08:00", end: "12:00" }] })).error).toBeNull();
   });
   const one = (machine_id: string, hours: number, start_at: string) => [{ machine_id, hours, start_at }];
 
   it("GMT: 16 hours from Friday 08:00 run Friday and Monday, so Monday morning is taken and Monday 16:00 is free", async () => {
-    const fri = await create(as.office, { p_description: "Friday job", p_machines: one(wk, 16, "2026-11-06T08:00:00Z") });
+    // Dates are ahead of today on purpose (a Friday in December 2027, GMT, like the July 2027 case below): a booking whose start has passed and isn't
+    // complete is drawn from now, so a fixed date that becomes "today" changes the answer (this test failed on Friday 2026-11-06 after 08:00 UTC).
+    const fri = await create(as.office, { p_description: "Friday job", p_machines: one(wk, 16, "2027-12-03T08:00:00Z") });
     expect(fri.error).toBeNull();
-    const mon = await create(as.office, { p_description: "Monday job", p_machines: one(wk, 2, "2026-11-09T09:00:00Z") });
+    const mon = await create(as.office, { p_description: "Monday job", p_machines: one(wk, 2, "2027-12-06T09:00:00Z") });
     expect(mon.error?.hint).toBe("machine_clash");
     expect(mon.error?.message).toContain(fri.data.job_no);
     // The schedule draws a booking as one stretch from its start to its finish, so the weekend inside the Friday job is taken too
     // (a free day between two planned days is only free for a booking split by day).
-    expect((await create(as.office, { p_description: "Saturday job", p_machines: one(wk, 2, "2026-11-07T08:00:00Z") })).error?.hint).toBe("machine_clash");
-    expect((await create(as.office, { p_description: "Monday late", p_machines: one(wk, 1, "2026-11-09T16:00:00Z") })).error).toBeNull();
+    expect((await create(as.office, { p_description: "Saturday job", p_machines: one(wk, 2, "2027-12-04T08:00:00Z") })).error?.hint).toBe("machine_clash");
+    expect((await create(as.office, { p_description: "Monday late", p_machines: one(wk, 1, "2027-12-06T16:00:00Z") })).error).toBeNull();
   });
 
   it("BST: the machine's day is 08:00 to 16:00 London time (07:00 to 15:00 UTC)", async () => {
@@ -409,8 +411,8 @@ describe("the schedule's own rule decides a clash (working days, hours per day, 
   });
 
   it("a booking split by day takes exactly its days", async () => {
-    expect((await create(as.office, { p_description: "Saturday clash", p_machines: one(split, 1, "2026-11-14T09:00:00Z") })).error?.hint).toBe("machine_clash");
-    expect((await create(as.office, { p_description: "Saturday after", p_machines: one(split, 1, "2026-11-14T12:00:00Z") })).error).toBeNull();
+    expect((await create(as.office, { p_description: "Saturday clash", p_machines: one(split, 1, "2027-12-11T09:00:00Z") })).error?.hint).toBe("machine_clash");
+    expect((await create(as.office, { p_description: "Saturday after", p_machines: one(split, 1, "2027-12-11T12:00:00Z") })).error).toBeNull();
   });
 });
 
