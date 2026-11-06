@@ -66,7 +66,10 @@ test("PRELIMINARY: execute the twelve fake PQ run-sheet checks on the exact sour
       await page.screenshot({ path: screenshot, fullPage: true });
       rows[step - 1] = { step, status: "PASS", screenshot, failure: "" };
     } catch (e) {
-      rows[step - 1] = { step, status: "FAIL", screenshot: "", failure: e instanceof Error ? e.name : "Error" };
+      // Never photograph a failed sign-in/MFA screen. Later fixture pages contain synthetic business data only.
+      const screenshot = step > 1 ? `tests/pq/screenshots/preliminary/${String(step).padStart(2,"0")}-failed.png` : "";
+      if (screenshot) await page.screenshot({ path: screenshot, fullPage: true }).catch(() => {});
+      rows[step - 1] = { step, status: "FAIL", screenshot, failure: e instanceof Error ? e.name : "Error" };
       throw e;
     } finally { save(); }
   }
@@ -86,7 +89,7 @@ test("PRELIMINARY: execute the twelve fake PQ run-sheet checks on the exact sour
       const dialog = page.getByRole("dialog"); await expect(dialog).toContainText("FAKE-PART-BRACKET"); await expect(dialog).toContainText("£150.00");
     }); await close();
     await check(5, "customer PO and linked job", async () => {
-      await page.goto("/sales-orders"); await page.getByRole("row").filter({ hasText: "SO-PQ-0001" }).getByRole("button", { name: "View", exact: true }).click();
+      await page.goto("/sales-orders"); await page.getByRole("row").filter({ hasText: "FAKE-CUSTOMER-PO-0001" }).getByRole("button", { name: "View", exact: true }).click();
       await expect(page.getByRole("dialog")).toContainText("FAKE-CUSTOMER-PO-0001"); await expect(page.getByRole("dialog")).toContainText("J-PQ-0001");
     }); await close();
     await check(6, "actual costs and no invented profit", async () => {
