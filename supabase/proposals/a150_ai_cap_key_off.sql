@@ -33,8 +33,8 @@ BEGIN;
 -- 0. Before-images, compared at the end. Step 1b raises only rows at exactly 500 with NO recorded save of the cap (provenance: still the 122 default); a row at 500
 --    WITH a recorded save (the AI card re-saves the cap whenever a switch changes, so it cannot be told from a typed 500) is kept and flagged. Every OTHER row
 --    must come out byte-identical, and a raised row must differ only in monthly_cap_pence.
-SELECT set_config('a150.raise_ids', coalesce((SELECT string_agg(s.organization_id::TEXT, ',' ORDER BY s.organization_id) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500 AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated' AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence')), ''), TRUE);
-SELECT set_config('a150.flag_ids', coalesce((SELECT string_agg(s.organization_id::TEXT, ',' ORDER BY s.organization_id) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500 AND EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated' AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence')), ''), TRUE);
+SELECT set_config('a150.raise_ids', coalesce((SELECT string_agg(s.organization_id::TEXT, ',' ORDER BY s.organization_id) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500 AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated' AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence') AND EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.metadata ->> 'source' = 'ai_helper')), ''), TRUE);
+SELECT set_config('a150.flag_ids', coalesce((SELECT string_agg(s.organization_id::TEXT, ',' ORDER BY s.organization_id) FROM public.ai_helper_settings s WHERE s.monthly_cap_pence = 500 AND (EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated' AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence') OR NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.metadata ->> 'source' = 'ai_helper'))), ''), TRUE);
 SELECT set_config('a150.flag_audit_before', (SELECT count(*) FROM security_audit.audit_log a WHERE a.action = 'ai_cap_review_flagged' AND a.entity_id = ANY (coalesce(string_to_array(nullif(current_setting('a150.flag_ids'), ''), ','), ARRAY[]::TEXT[])))::TEXT, TRUE);
 SELECT set_config('a150.settings_before', coalesce((SELECT md5(string_agg(to_jsonb(s)::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s WHERE s.organization_id::TEXT <> ALL (coalesce(string_to_array(nullif(current_setting('a150.raise_ids'), ''), ','), ARRAY[]::TEXT[]))), 'none'), TRUE);
 SELECT set_config('a150.raised_before', coalesce((SELECT md5(string_agg((to_jsonb(s) - 'monthly_cap_pence')::TEXT, ',' ORDER BY s.organization_id)) FROM public.ai_helper_settings s WHERE s.organization_id::TEXT = ANY (coalesce(string_to_array(nullif(current_setting('a150.raise_ids'), ''), ','), ARRAY[]::TEXT[]))), 'none'), TRUE);
@@ -44,7 +44,8 @@ ALTER TABLE public.ai_helper_settings ALTER COLUMN monthly_cap_pence SET DEFAULT
 
 -- 1b. [PM decision: the AI cap is 1000p per company per month in both key modes; an explicitly saved 500p must stay.] Only a row at exactly 500 with no recorded
 --     save of the cap (no ai_helper_settings_updated audit row carrying monthly_cap_pence) still holds 122's default and becomes 1000, with an audit row.
---     A row at 500 WITH such a record stays at 500 and gets an ai_cap_review_flagged audit row so an admin can review it: its provenance cannot be established.
+--     A row at 500 WITH such a record, or with NO audit record of any kind from the AI helper (the log may have been purged, or the row made outside the app: it cannot be shown to be a
+--     default), stays at 500 and gets an ai_cap_review_flagged audit row so an admin can review it: its provenance cannot be established.
 --     Any other value (0, 300, 700, 2500 ...) is an admin's choice and is not touched (a cap of 0 stays 0: AI stays off); the Tolra cap (146's table, default 1000)
 --     is not touched; the rollback does not lower a raised row again. One audit row per company touched or flagged (no actor: the release, not a user; codes and numbers only).
 WITH raised AS (
@@ -57,7 +58,7 @@ SELECT r.organization_id, NULL, NULL, 'ai_cap_default_raised', 'ai_helper_settin
 FROM raised r;
 INSERT INTO security_audit.audit_log (organization_id, actor_user_id, actor_email, action, entity_table, entity_id, metadata)
 SELECT s.organization_id, NULL, NULL, 'ai_cap_review_flagged', 'ai_helper_settings', s.organization_id::TEXT,
-  jsonb_build_object('cap', 500, 'source', 'release_150', 'reason', 'cap_saved_explicitly_provenance_unknown')
+  jsonb_build_object('cap', 500, 'source', 'release_150', 'reason', CASE WHEN EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.organization_id = s.organization_id AND a.action = 'ai_helper_settings_updated' AND a.entity_table = 'ai_helper_settings' AND a.metadata ? 'monthly_cap_pence') THEN 'cap_saved_explicitly_provenance_unknown' ELSE 'no_audit_record_provenance_unknown' END)
 FROM public.ai_helper_settings s
 WHERE s.organization_id::TEXT = ANY (coalesce(string_to_array(nullif(current_setting('a150.flag_ids'), ''), ','), ARRAY[]::TEXT[]));
 

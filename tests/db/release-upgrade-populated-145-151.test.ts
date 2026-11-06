@@ -197,15 +197,17 @@ async function populate() {
   const stateUsedB = await oauthState(B, b.admin.id, usedB, { consumed: false });
   await db.query("INSERT INTO public.integration_connections(organization_id,provider,status,tenant_id,tenant_name,connected_by,connected_at) VALUES($1,'xero','connected',$2,'Synthetic B Ltd',$3,now())", [B, `tenant-b-${run}`, b.admin.id]);
   // ---- AI helper settings rows made BEFORE 150: 122's default (500) with and without a key, and two admin-chosen caps
-  const mkAi = async (label: string, cap: number | null, key: boolean) => {
+  const mkAi = async (label: string, cap: number | null, key: boolean, trail = true) => {
     const id = await org(label), admin = await actor(id, "admin");
     await db.query(`INSERT INTO public.ai_helper_settings(organization_id,roundup_enabled,rfq_enabled${cap === null ? "" : ",monthly_cap_pence"},api_key_last4) VALUES($1,true,false${cap === null ? "" : `,${cap}`},${key ? "'abcd'" : "NULL"})`, [id]);
     if (key) await db.query("INSERT INTO public.ai_helper_secrets(organization_id,api_key_enc) VALUES($1,$2)", [id, cipher()]);
+    // A company made through the app leaves an AI-helper audit record (a switch change, no cap in it); `trail = false` is a row with none (made outside the app, or its log purged).
+    if (trail) await db.query("INSERT INTO security_audit.audit_log(organization_id,actor_user_id,actor_email,action,entity_table,entity_id,metadata) VALUES($1::uuid,$2::uuid,NULL,'ai_helper_settings_updated','ai_helper_settings',$3::text,$4::jsonb)", [id, admin.id, id, JSON.stringify({ assistant_enabled: false, source: "ai_helper" })]);
     return { id, admin };
   };
-  const ai = { key: await mkAi("ai-key", null, true), noKey: await mkAi("ai-nokey", null, false), c300: await mkAi("ai-300", 300, false), c2500: await mkAi("ai-2500", 2500, true), tolraOwn: await mkAi("ai-tolra-own", null, true), saved500: await mkAi("ai-saved-500", 500, true) };
+  const ai = { key: await mkAi("ai-key", null, true), noKey: await mkAi("ai-nokey", null, false), c300: await mkAi("ai-300", 300, false), c2500: await mkAi("ai-2500", 2500, true), tolraOwn: await mkAi("ai-tolra-own", null, true), saved500: await mkAi("ai-saved-500", 500, true), noTrail: await mkAi("ai-no-trail", 500, false, false) };
   // saved500: an admin saved 500 on purpose (the cap is on record in the audit log), so release 150 must keep it and flag it.
-  await db.query("INSERT INTO security_audit.audit_log(organization_id,actor_user_id,actor_email,action,entity_table,entity_id,metadata) VALUES($1::uuid,$2::uuid,NULL,'ai_helper_settings_updated','ai_helper_settings',$4::text,$3::jsonb)", [ai.saved500.id, ai.saved500.admin.id, JSON.stringify({ roundup_enabled: true, rfq_enabled: false, monthly_cap_pence: 500 }), ai.saved500.id]);
+  await db.query("INSERT INTO security_audit.audit_log(organization_id,actor_user_id,actor_email,action,entity_table,entity_id,metadata) VALUES($1::uuid,$2::uuid,NULL,'ai_helper_settings_updated','ai_helper_settings',$4::text,$3::jsonb)", [ai.saved500.id, ai.saved500.admin.id, JSON.stringify({ roundup_enabled: true, rfq_enabled: false, monthly_cap_pence: 500, source: "ai_helper" }), ai.saved500.id]);
   Object.assign(S, { A, B, a, b, aFin, aOpen, bLegacy, bNew, bMill, bHaas, aMill, aHaas, open1, open2, usedA, expiredA, revokedA, usedB, revokedB, stateOpen2, stateUsedA, stateUsedB, ai });
 }
 
@@ -451,12 +453,13 @@ describe("AI monthly cap after 145..151: 1000p per company per month in both key
   it("(b2) a company whose settings row was made BEFORE 150 by 122's default (500), WITHOUT a key, reads 1000", async () => {
     expect((await status(S.ai.noKey.admin)).monthly_cap_pence).toBe(1000);
   });
-  it("(c0) a company whose admin saved 500 on purpose keeps 500 and is flagged for review; a 500 with no recorded save was raised and audited", async () => {
+  it("(c0) a saved 500 and a 500 with no AI audit record at all both keep 500 and are flagged for review (different reasons); a 500 with an AI audit trail but no cap save was raised and audited", async () => {
     expect((await status(S.ai.saved500.admin)).monthly_cap_pence).toBe(500);
-    const flagged = await q("SELECT organization_id, metadata FROM security_audit.audit_log WHERE action='ai_cap_review_flagged' AND organization_id=ANY($1)", [[S.ai.saved500.id, S.ai.key.id, S.ai.noKey.id]]);
-    expect(flagged).toHaveLength(1);
-    expect(flagged[0]).toMatchObject({ organization_id: S.ai.saved500.id, metadata: { cap: 500, source: "release_150" } });
+    expect((await status(S.ai.noTrail.admin)).monthly_cap_pence).toBe(500);
+    const flagged = await q("SELECT organization_id, metadata FROM security_audit.audit_log WHERE action='ai_cap_review_flagged' AND organization_id=ANY($1) ORDER BY metadata->>'reason'", [[S.ai.saved500.id, S.ai.noTrail.id, S.ai.key.id, S.ai.noKey.id]]);
+    expect(flagged.map(f => [f.organization_id, f.metadata.reason])).toEqual([[S.ai.saved500.id, "cap_saved_explicitly_provenance_unknown"], [S.ai.noTrail.id, "no_audit_record_provenance_unknown"]].sort((x, y) => x[1].localeCompare(y[1])));
     expect((await q("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id=ANY($1)", [[S.ai.key.id, S.ai.noKey.id]]))[0].n).toBe(2);
+    expect((await q("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id=ANY($1)", [[S.ai.saved500.id, S.ai.noTrail.id]]))[0].n).toBe(0);
   });
   it("(c) an admin-chosen cap stands (release 150 promises every settings row stays exactly as it was): 300 reads 300, 2500 reads 2500", async () => {
     expect((await status(S.ai.c300.admin)).monthly_cap_pence).toBe(300);
