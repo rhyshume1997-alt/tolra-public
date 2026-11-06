@@ -264,6 +264,8 @@ it("a double submit from two connections makes one note; rollback keeps every no
     const before = await rows();
     expect(before).toHaveLength(2);
     // Rollback: the function, guard, index and key column go; every note (147's and the legacy one) stays as it was.
+    // 147 now refuses while a company is still held; the fixture held the companies that existed when it was installed, so the runner accepts releasing the hold.
+    await db.query("SELECT set_config('tolra.x147_accept_releasing_hold', 'yes', false)");
     await db.query(read("supabase/release/147_job_delivery_note.rollback.sql"));
     let marker = (await db.query(read("supabase/verify/release_preflight.sql"))).rows.find(r => r.check === MARKER);
     expect(marker?.value).toBe("not applied");
