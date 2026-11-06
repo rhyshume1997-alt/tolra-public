@@ -74,7 +74,7 @@ describe("A150: the limit shown comes from the server", () => {
   it("an explicit limit the company set is shown as it is (the card does not round it up to the default)", async () => {
     await draw({ status: base({ monthly_cap_pence: 500, key_set: true }) });
     expect(q('[data-testid="ai-cap-line"]')!.textContent).toContain("£5.00 a month");
-    await draw({ status: base({ monthly_cap_pence: 12345, key_set: true }) });
+    await draw({ status: base({ monthly_cap_pence: 12345, tolra_cap_pence: 100000, key_set: true }) });
     expect(q('[data-testid="ai-cap-line"]')!.textContent).toContain("£123.45 a month");
   });
 

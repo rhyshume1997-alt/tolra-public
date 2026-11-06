@@ -142,9 +142,9 @@ describe("AI card: setup states", () => {
 
 describe("AI card: Tolra-provided mode and the monthly cap (the number comes from the server)", () => {
   it("shows the server's allowance as pounds and pence: 1000p is £10.00, and a different server number is shown as it is", async () => {
-    await draw({ status: base({ tolra_enabled: true, roundup_enabled: true, tolra_cap_pence: 1000 }) });
+    await draw({ status: base({ tolra_enabled: true, roundup_enabled: true, monthly_cap_pence: 5000, tolra_cap_pence: 1000 }) });
     expect(q('[data-testid="ai-cap-line"]')!.textContent).toContain("£10.00 a month");
-    await draw({ status: base({ tolra_enabled: true, roundup_enabled: true, tolra_cap_pence: 1234 }) });
+    await draw({ status: base({ tolra_enabled: true, roundup_enabled: true, monthly_cap_pence: 5000, tolra_cap_pence: 1234 }) });
     expect(q('[data-testid="ai-cap-line"]')!.textContent).toContain("£12.34 a month");
     expect(q('[data-testid="ai-cap-line"]')!.textContent).not.toContain("£10.00");
     await draw({ status: base({ tolra_enabled: true, roundup_enabled: true, tolra_cap_pence: 0 }) });

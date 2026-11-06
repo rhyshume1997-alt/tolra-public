@@ -82,14 +82,16 @@ UNION ALL SELECT 'every force-off audit row carries only codes and booleans (rea
   NOT EXISTS (SELECT 1 FROM security_audit.audit_log a, jsonb_object_keys(a.metadata) k
               WHERE a.action = 'ai_forced_off_key_changed'
                 AND k NOT IN ('reason', 'scope', 'roundup_was_on', 'rfq_was_on', 'assistant_was_on', 'finance_check_was_on', 'tolra_was_on', 'source'))
-UNION ALL SELECT 'existing companies at the old 500p default were raised to 1000p: each raise has one audit row from the release with only from 500, to 1000, had_explicit_save and source (no key, no text)',
+UNION ALL SELECT 'existing companies still on the old 500p default (no recorded cap save) were raised to 1000p: each raise has one audit row from the release with only from 500, to 1000, had_explicit_save and source (no key, no text)',
   NOT EXISTS (SELECT 1 FROM security_audit.audit_log a, jsonb_object_keys(a.metadata) k
               WHERE a.action = 'ai_cap_default_raised' AND k NOT IN ('from', 'to', 'had_explicit_save', 'source'))
   AND NOT EXISTS (SELECT 1 FROM security_audit.audit_log a WHERE a.action = 'ai_cap_default_raised'
                   AND (a.entity_table IS DISTINCT FROM 'ai_helper_settings' OR a.metadata ->> 'from' IS DISTINCT FROM '500' OR a.metadata ->> 'to' IS DISTINCT FROM '1000'
                        OR a.metadata ->> 'source' IS DISTINCT FROM 'release_150' OR a.organization_id IS NULL))
--- Information, always true. 150 raised every cap that was exactly 500; a 500 now is an admin's later choice (0, 300, 2500 and so on are choices too). Either way the cap in force is that number.
-UNION ALL SELECT 'info: ' || count(*) || ' existing ai_helper_settings rows carry 500 (set by an admin after 150, which raised every 500 it found)', true
+-- Information, always true. 150 raised a cap at exactly 500 only when no save of the cap was on record; a 500 that remains was saved explicitly (flagged ai_cap_review_flagged for admin review) or set after 150 (0, 300, 2500 and so on are choices too). Either way the cap in force is that number.
+UNION ALL SELECT 'info: ' || count(*) || ' existing ai_helper_settings rows carry 500 (saved explicitly and kept, or set after 150)', true
   FROM public.ai_helper_settings WHERE monthly_cap_pence = 500
 UNION ALL SELECT 'info: ' || count(*) || ' companies were raised from 500p to 1000p by release 150 (' || count(*) FILTER (WHERE (a.metadata ->> 'had_explicit_save')::BOOLEAN) || ' of them had an explicit cap save in the audit log)', true
-  FROM security_audit.audit_log a WHERE a.action = 'ai_cap_default_raised';
+  FROM security_audit.audit_log a WHERE a.action = 'ai_cap_default_raised'
+UNION ALL SELECT 'info: ' || count(DISTINCT a.entity_id) || ' companies at 500p were kept and flagged for admin review (ai_cap_review_flagged)', true
+  FROM security_audit.audit_log a WHERE a.action = 'ai_cap_review_flagged';

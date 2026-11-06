@@ -81,6 +81,11 @@ export function aiIsOn(status: AiHelperStatus): boolean {
   return Boolean(status.tolra_enabled || status.roundup_enabled || status.rfq_enabled || (status.assistant_available && status.assistant_enabled));
 }
 
+/** The cap the database enforces (release 150): the lower of the company's own cap and the Tolra cap, in both key modes. The card must show this number. */
+export function effectiveCapPence(status: { monthly_cap_pence: number; tolra_cap_pence?: number | null }): number {
+  return typeof status.tolra_cap_pence === "number" ? Math.min(status.monthly_cap_pence, status.tolra_cap_pence) : status.monthly_cap_pence;
+}
+
 export function buildAiSetup(input: AiSetupInput): AiSetupModel {
   const { serverOn, loaded, status } = input;
   const provider = effectiveProvider(status, input.chosen);
@@ -110,7 +115,7 @@ export function buildAiSetup(input: AiSetupInput): AiSetupModel {
   }
 
   if (provider === "tolra") {
-    const cap = typeof status.tolra_cap_pence === "number" ? poundsAndPence(status.tolra_cap_pence) : null;
+    const cap = typeof status.tolra_cap_pence === "number" ? poundsAndPence(effectiveCapPence(status)) : null;
     return {
       ...base, serverOff: false, assistant, on, disabledReason, keySaved: status.key_set,
       connection: status.tolra_available ? { tone: "ok", label: "Tolra-provided AI is available" } : { tone: "attention", label: "Tolra has switched provided AI off" },
@@ -134,7 +139,7 @@ export function buildAiSetup(input: AiSetupInput): AiSetupModel {
       { label: "Paste and save the key", state: status.key_set ? "done" : "later" },
       { label: "Turn on AI", state: on ? "done" : disabledReason ? "later" : "next", hint: "A separate step. Saving a key never turns AI on." },
     ],
-    capLine: `Monthly limit (your own key): ${poundsAndPence(status.monthly_cap_pence)} a month. Used this month: ${poundsAndPence(status.month_spent_pence)}.`,
+    capLine: `Monthly limit (your own key): ${poundsAndPence(effectiveCapPence(status))} a month. Used this month: ${poundsAndPence(status.month_spent_pence)}.`,
     help: "Uses your company's own Anthropic account and key. Everything it does counts towards your monthly limit, and it stops when that is reached.",
   };
 }

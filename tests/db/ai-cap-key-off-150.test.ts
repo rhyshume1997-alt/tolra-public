@@ -13,8 +13,8 @@
  *   - the platform key: replacing Tolra's key switches the platform switch off with an audit row; the first key keeps the asked switch.
  *   - one company cap across both modes: a reservation in either mode is refused unless used + reserved stays within least(own-key cap, Tolra cap),
  *     so switching between own key and Tolra-provided AI never reaches the higher cap, also under concurrency.
- *   - existing companies at the old 500p default (122's default, also what the AI card re-saves on every switch) read 1000p after the release: raised in
- *     the release transaction, audited (ai_cap_default_raised), every other cap (300, 2500, 0, 700) untouched, Tolra caps untouched, the rollback keeps rows.
+ *   - existing companies still on the old 500p default (no recorded cap save) read 1000p after the release: raised in the release transaction, audited
+ *     (ai_cap_default_raised); a 500 with a recorded save stays 500 and is flagged (ai_cap_review_flagged); every other cap (300, 2500, 0, 700) untouched, Tolra caps untouched, the rollback keeps rows.
  * All data is synthetic (slug prefix t-<run>-, e-mail <name>.<run>@example.test) and removed in afterAll; the platform control row is put back.
  */
 import { randomBytes, randomUUID } from "node:crypto";
@@ -713,20 +713,26 @@ describe("release 150 on a database that already holds companies, caps, keys and
     expect(afterDigest.ai_helper_settings).not.toBe(beforeDigest.ai_helper_settings);
     expect((await owned((db) => db.query("SELECT key_removed FROM public.ai_helper_tolra_control WHERE singleton"))).rows).toEqual([{ key_removed: false }]);
     const afterRows = await Promise.all([A, B, C, E, F, G, H, I].map((c) => settingsRow(c)));
-    const expectedRows = beforeRows.map((r) => (r && r.monthly_cap_pence === 500 ? { ...r, monthly_cap_pence: 1000 } : r));
+    // PM decision: only rows at 500 with NO recorded cap save are raised (C, H, I); B saved 500 explicitly, so it stays 500 and is flagged.
+    const rawIds = [C.id, H.id, I.id];
+    const expectedRows = beforeRows.map((r, i) => (r && r.monthly_cap_pence === 500 && [A, B, C, E, F, G, H, I][i] !== B ? { ...r, monthly_cap_pence: 1000 } : r));
     expect(afterRows).toEqual(expectedRows);
-    expect(afterRows.map((r) => r?.monthly_cap_pence)).toEqual([700, 1000, 1000, 300, 2500, 0, 1000, 1000]); // A B C E F G H I
+    expect(afterRows.map((r) => r?.monthly_cap_pence)).toEqual([700, 500, 1000, 300, 2500, 0, 1000, 1000]); // A B C E F G H I
     expect(await Promise.all([A, B, C, E, F, G, H, I].map((c) => tolraRow(c)))).toEqual(beforeTolra); // Tolra caps untouched
     // One audit row per raised company, none for the others; no key, no text.
     const raised = await owned(async (db) => (await db.query("SELECT organization_id, actor_user_id, entity_table, entity_id, metadata FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id = ANY($1) ORDER BY entity_id", [ids])).rows);
-    expect(raised.map((r) => r.organization_id).sort()).toEqual([B.id, C.id, H.id, I.id].sort());
+    expect(raised.map((r) => r.organization_id).sort()).toEqual(rawIds.slice().sort());
     for (const r of raised) expect(r).toMatchObject({ actor_user_id: null, entity_table: "ai_helper_settings", entity_id: r.organization_id, metadata: { from: 500, to: 1000, source: "release_150" } });
-    expect(Object.fromEntries(raised.map((r) => [r.organization_id, r.metadata.had_explicit_save]))).toEqual({ [B.id]: true, [C.id]: false, [H.id]: false, [I.id]: false });
+    expect(Object.fromEntries(raised.map((r) => [r.organization_id, r.metadata.had_explicit_save]))).toEqual({ [C.id]: false, [H.id]: false, [I.id]: false });
     for (const r of raised) expect(Object.keys(r.metadata).sort()).toEqual(["from", "had_explicit_save", "source", "to"]);
+    // B (explicit 500) is flagged for admin review, once, with codes only; nobody else is.
+    const flagged = await owned(async (db) => (await db.query("SELECT organization_id, actor_user_id, entity_table, metadata FROM security_audit.audit_log WHERE action='ai_cap_review_flagged' AND organization_id = ANY($1)", [ids])).rows);
+    expect(flagged).toHaveLength(1);
+    expect(flagged[0]).toMatchObject({ organization_id: B.id, actor_user_id: null, entity_table: "ai_helper_settings", metadata: { cap: 500, source: "release_150", reason: "cap_saved_explicitly_provenance_unknown" } });
     const verify = await owned((db) => db.query(read("supabase/verify/ai_cap_key_off_150.sql")));
     expect(verify.rows.length).toBeGreaterThan(8);
     expect(verify.rows.filter((r) => r.ok !== true)).toEqual([]);
-    expect(verify.rows.some((r) => /^existing companies at the old 500p default were raised to 1000p/.test(String(r.check_name)))).toBe(true);
+    expect(verify.rows.some((r) => /^existing companies still on the old 500p default \(no recorded cap save\) were raised to 1000p/.test(String(r.check_name)))).toBe(true);
     expect(verify.rows.some((r) => /^info: \d+ existing ai_helper_settings rows carry 500/.test(String(r.check_name)))).toBe(true);
     const marker = await owned((db) => db.query(read("supabase/verify/release_preflight.sql")));
     const state = (name: string) => marker.rows.find((r) => r.check === name)?.value;
@@ -736,19 +742,20 @@ describe("release 150 on a database that already holds companies, caps, keys and
     // A second apply is refused and changes nothing (no second audit row).
     await expect(owned((db) => db.query(RELEASE))).rejects.toThrow(/150/);
     expect(await digests()).toEqual(afterDigest);
-    expect((await owned((db) => db.query("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id = ANY($1)", [ids]))).rows[0].n).toBe(4);
+    expect((await owned((db) => db.query("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised' AND organization_id = ANY($1)", [ids]))).rows[0].n).toBe(3);
 
     // 4. After 150: every existing company enforces 1000p (status says so too); admin-chosen caps still bind; new rows get 1000; a key change NOW forces AI off.
     expect((await status(D)).monthly_cap_pence).toBe(1000); // no row: the fallback moved
-    for (const co of [B, C, I]) expect((await status(co)).monthly_cap_pence).toBe(1000);
+    for (const co of [C, I]) expect((await status(co)).monthly_cap_pence).toBe(1000);
+    expect((await status(B)).monthly_cap_pence).toBe(500); // saved explicitly: kept
     expect((await status(E)).monthly_cap_pence).toBe(300);
     expect((await status(G)).monthly_cap_pence).toBe(0);
-    expect(await settingsRow(B)).toMatchObject({ monthly_cap_pence: 1000, roundup_enabled: true });
+    expect(await settingsRow(B)).toMatchObject({ monthly_cap_pence: 500, roundup_enabled: true });
     expect(await settingsRow(C)).toMatchObject({ monthly_cap_pence: 1000, roundup_enabled: true, assistant_enabled: true });
-    // Own key: B and C already used 500p-worth? C holds five reservations from before the release; it now has 500p of headroom more. B starts clean: exactly ten, then cap.
-    expect(oks(await inSequenceOf(B, 12))).toBe(10);
+    // Own key: B and C already used 500p-worth? C holds five reservations from before the release; it now has 500p of headroom more. B keeps its saved 500: exactly five, then cap.
+    expect(oks(await inSequenceOf(B, 12))).toBe(5);
     expect(oks(await inSequenceOf(C, 8))).toBe(5); // 500 already reserved + five more = 1000
-    expect(await used(B)).toBe(1000);
+    expect(await used(B)).toBe(500);
     expect(await used(C)).toBe(1000);
     expect(answer(await reserve(B, "roundup", 1))).toMatchObject({ ok: false, reason: "cap" });
     // Admin-chosen caps are the caps: 300 gives three, 2500 gives 25 of 25, 0 gives none.
@@ -774,11 +781,11 @@ describe("release 150 on a database that already holds companies, caps, keys and
   it("rolling 150 back keeps every cap the release raised (a rollback never lowers or raises a cap), puts the default back to 500, keeps the audit rows; applying the release again is accepted and raises only rows at 500 made since", async () => {
     const { B, C, D, N } = companies;
     const caps = async () => (await Promise.all([B, C].map((c) => settingsRow(c)))).map((r) => r?.monthly_cap_pence);
-    expect(await caps()).toEqual([1000, 1000]);
+    expect(await caps()).toEqual([500, 1000]);
     const auditN = () => owned(async (db) => (await db.query("SELECT count(*)::int AS n FROM security_audit.audit_log WHERE action='ai_cap_default_raised'")).rows[0].n as number);
     const n0 = await auditN();
     await owned((db) => db.query(read("supabase/release/150_ai_cap_key_off.rollback.sql")));
-    expect(await caps()).toEqual([1000, 1000]);
+    expect(await caps()).toEqual([500, 1000]);
     expect(await auditN()).toBe(n0);
     expect(String((await owned((db) => db.query("SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='ai_helper_settings' AND column_name='monthly_cap_pence'"))).rows[0].column_default)).toBe("500");
     // A row made at the restored 500 default is raised by the second apply, and only that one.
@@ -788,6 +795,6 @@ describe("release 150 on a database that already holds companies, caps, keys and
     await owned((db) => db.query(RELEASE));
     expect(await settingsRow(N)).toMatchObject({ monthly_cap_pence: 1000 });
     expect(await auditN()).toBe(n0 + 1);
-    expect(await caps()).toEqual([1000, 1000]);
+    expect(await caps()).toEqual([500, 1000]); // B's explicit 500 is still kept on the second apply
   });
 });
