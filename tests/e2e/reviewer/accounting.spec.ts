@@ -11,13 +11,19 @@ function decryptSecret(stored: string, context: { organizationId: string; provid
 }
 import { adminClient, createSoloTenant } from "../../support/fixtures";
 import { browserDatabaseConfigured, NO_BROWSER_DATABASE } from "../../support/optional-browser-database";
-import { signIn, world } from "../helpers";
+import { signIn, stepUpWithAuthenticator, world } from "../helpers";
 test.skip(!browserDatabaseConfigured(), NO_BROWSER_DATABASE);
 
 test("V-ACCOUNTING: real callbacks encrypt tokens, providers stay separate and another company cannot read the connection", async ({ page, browser }) => {
   const a = await createSoloTenant(world().runId, "v-accounting-a");
   const b = await createSoloTenant(world().runId, "v-accounting-b");
   await signIn(page, a.admin);
+  // Connecting needs a recent authenticator code (requireRecentAal2): a password-only session is refused, for both providers, and nothing starts.
+  for (const provider of ["sage", "quickbooks"]) {
+    const refused = await page.request.post(`/api/accounting/${provider}/connect`);
+    expect(refused.status()).toBe(403); expect((await refused.json()).code).toBe("mfa_required");
+  }
+  await stepUpWithAuthenticator(page, a.admin);
   for (const provider of ["sage", "quickbooks"]) {
     const start = await page.request.post(`/api/accounting/${provider}/connect`); expect(start.status()).toBe(200);
     const authorization = new URL((await start.json()).url);
