@@ -13,6 +13,7 @@ import { generatePassword } from "@/lib/password";
 
 import { adminClient, signedInClient, withDb, verifyBackendIdentity } from "../support/fixtures";
 import { enrolTotp, totpCode } from "../support/totp";
+import { bootstrapVerifier } from "../reviews/integration/bootstrap-verifier";
 import { preparePost144Backend } from "../support/post-144-release-fixture";
 import { E2E_MOCK_PORT } from "./paths";
 import { aal2Admin, asSeparateDevice, signIn, world } from "./helpers";
@@ -96,7 +97,7 @@ test.beforeAll(async ({ browser }) => {
   await withDb(async db=>{
     const installed=(await db.query("select to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') as fn")).rows[0].fn;
     if(!installed)await db.query(readFileSync('supabase/release/151_xero_invite_hardening.release.sql','utf8'));
-    const checks=(await db.query(readFileSync('supabase/verify/xero_invite_hardening_151.sql','utf8'))).rows;
+    const checks=(await db.query(bootstrapVerifier('supabase/verify/xero_invite_hardening_151.sql'))).rows;
     expect(checks.length).toBeGreaterThan(0);expect(checks.every(row=>row.ok===true)).toBe(true);
     await db.query("NOTIFY pgrst, 'reload schema'");
   });
@@ -466,6 +467,7 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
  const check=await playwright.request.newContext({baseURL,extraHTTPHeaders:address()});try{for(const i of [c,expired]){
   expect((await check.get(i.path,{maxRedirects:0})).status()).toBe(404);expect((await check.post(i.path,{form:{action:'send'},headers:{Origin:origin},maxRedirects:0})).status()).toBe(404);expect(await statesVia(i.id)).toEqual([]);
  }}finally{await check.dispose();}
+ expect((await page.request.get('/api/integrations/xero/choose')).status()).toBe(410);
  expect(await betaCount('integration_connections')).toBe(0);expect(await betaCount('integration_secrets')).toBe(0);
 });
 
@@ -474,7 +476,7 @@ test("8. office cannot make a link or connect (403); workshop is sent away from 
   const before = { invites: await betaCount("integration_connect_invites"), states: await betaCount("integration_oauth_states") };
 
   await signIn(page, beta.users.office);
-  for (const path of ["/api/integrations/invite", "/api/integrations/microsoft/connect", "/api/integrations/xero/connect", "/api/integrations/microsoft/disconnect", "/api/integrations/xero/test"]) {
+  for (const path of ["/api/integrations/invite", "/api/integrations/microsoft/connect", "/api/integrations/xero/connect", "/api/integrations/microsoft/disconnect", "/api/integrations/xero/test", "/api/integrations/xero/choose"]) {
     expect((await page.request.post(path)).status(), `office ${path}`).toBe(403);
   }
   expect((await page.request.get("/api/integrations/status")).status()).toBe(403);
@@ -485,7 +487,7 @@ test("8. office cannot make a link or connect (403); workshop is sent away from 
   const workshop = await browser.newPage();
   try {
     await signIn(workshop, beta.users.workshop);
-    for (const path of ["/api/integrations/invite", "/api/integrations/microsoft/connect"]) {
+    for (const path of ["/api/integrations/invite", "/api/integrations/microsoft/connect", "/api/integrations/xero/choose"]) {
       expect((await workshop.request.post(path)).status(), `workshop ${path}`).toBe(403);
     }
     await workshop.goto("/admin/integrations");
@@ -497,7 +499,7 @@ test("8. office cannot make a link or connect (403); workshop is sent away from 
 
   const anonymous = await playwright.request.newContext({ baseURL });
   try {
-    for (const path of ["/api/integrations/invite", "/api/integrations/microsoft/connect"]) {
+    for (const path of ["/api/integrations/invite", "/api/integrations/microsoft/connect", "/api/integrations/xero/choose"]) {
       expect((await anonymous.post(path)).status(), `signed out ${path}`).toBe(401);
     }
   } finally {
