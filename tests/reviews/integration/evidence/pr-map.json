@@ -167,5 +167,34 @@
     "Phase fixture loops stop at150 before explicitly applying151 once",
     "Source432preflight fix applied to Code preflight, preserving151marker",
     "All shared migration/proposal/release definitions and release-plan.json retained byte-for-byte from e7c4b63; source423/425 SQL fixes held"
-  ]
+  ],
+  "followups": [
+    {
+      "pr": 429,
+      "sourceCommit": "7749b2d",
+      "integrationCommit": "44d876d08a1cd75a52cc1ba8980a2fa8f7fb29f5",
+      "change": "Correct43-character OAuthPKCE assertion and use actual fresh-MFA browser helper, checking exact new admin identity."
+    },
+    {
+      "pr": 429,
+      "sourceCommit": "ac20dae",
+      "integrationCommit": "2a57bc6",
+      "change": "Retain24hour TTL and no-cache/referrer/CSP assertions."
+    },
+    {
+      "pr": 429,
+      "sourceCommit": "ee93dce",
+      "change": "Historical143 CLI proof receives separately checksum-pinned2.40.7; integration already has this Code-authored setup."
+    },
+    {
+      "pr": 429,
+      "sourceCommit": "844ece5",
+      "change": "Isolated browser stack aligned to Code approved checksum-pinned2.40.7; integration already matches Code."
+    }
+  ],
+  "additionalVerification": {
+    "sourcePR": 416,
+    "sourceHead": "669b1cc0d874b6617c0b6dab01b6ba2a94084ecd",
+    "purpose": "AI cap/key-removal/readback tests only; no AI runtime or SQL definitions copied"
+  }
 }

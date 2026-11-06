@@ -1,0 +1,153 @@
+{
+  "approvedBase": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5",
+  "testedCodeCommit": "5a4afa32ccbbc852d068ba5c248ae7fd3a91fe71",
+  "branch": "codex/integrated-final-fixes",
+  "pr": 433,
+  "results": [
+    {
+      "suite": "units",
+      "command": "npx vitest run --maxWorkers=2 --minWorkers=1",
+      "passed": 6875,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "invite DB",
+      "command": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts",
+      "passed": 32,
+      "failed": 6,
+      "skipped": 0,
+      "success": false,
+      "failedSuites": 5
+    },
+    {
+      "suite": "picker DB",
+      "command": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts",
+      "passed": 8,
+      "failed": 12,
+      "skipped": 0,
+      "success": false,
+      "failedSuites": 1
+    },
+    {
+      "suite": "financial DB",
+      "command": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts",
+      "passed": 32,
+      "failed": 5,
+      "skipped": 0,
+      "success": false,
+      "failedSuites": 2
+    },
+    {
+      "suite": "151 DB",
+      "command": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts",
+      "passed": 11,
+      "failed": 4,
+      "skipped": 0,
+      "success": false,
+      "failedSuites": 1
+    },
+    {
+      "suite": "old-base DB",
+      "command": "npx vitest run --config tests/reviews/verify-old-base/vitest.db.config.ts",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "lifecycle SQL DB",
+      "command": "npx vitest run --config tests/reviews/integration/vitest.db.config.ts",
+      "passed": 5,
+      "failed": 3,
+      "skipped": 0,
+      "success": false,
+      "failedSuites": 1
+    },
+    {
+      "suite": "AI own-key DB",
+      "command": "AI_CONTRACT_MODE=own npx vitest run --config tests/reviews/ai-independent/vitest.db.config.ts",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "AI Tolra DB",
+      "command": "AI_CONTRACT_MODE=tolra npx vitest run --config tests/reviews/ai-independent/vitest.db.config.ts",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "AI/readback units",
+      "command": "npx vitest run --config tests/reviews/ai-independent/vitest.unit.config.ts",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "financial units",
+      "command": "npx vitest run --config tests/reviews/night-cost-profit/vitest.unit.config.ts",
+      "passed": 566,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "151 hash/ordering units",
+      "command": "npx vitest run --config tests/reviews/night-151-package/vitest.unit.config.ts",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    },
+    {
+      "suite": "migration units",
+      "command": "npx vitest run tests/unit/check-migrations.test.ts tests/unit/release-plan-preflight.test.ts",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "success": true,
+      "failedSuites": 0
+    }
+  ],
+  "databaseEnvironment": {
+    "INTEGRATION_VERIFY_BASE": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5",
+    "port": 54849,
+    "database": "fresh nonce per fixture, dropped on teardown",
+    "server": "PostgreSQL17.6",
+    "bootstrap": "Exact immutable Code verifier text used only in setup; active semantic assertions remain as tests and fail. Shared definitions must match base or bootstrap refuses."
+  },
+  "aiEnvironment": {
+    "AI_CONTRACT_SOURCE_ROOT": "/workspace/work/integrated-final-fixes",
+    "AI_CONTRACT_ADMIN_URL": "postgresql://xero_test@127.0.0.1:54849/postgres",
+    "AI_CONTRACT_SQL_FILES": [
+      "supabase/release/146_tolra_provided_ai.release.sql",
+      "supabase/proposals/a150_ai_cap_key_off.sql"
+    ],
+    "AI_CONTRACT_TOLRA_CLEAR_FUNCTION": "public.ai_helper_tolra_remove_key",
+    "AI_CONTRACT_TOLRA_CLEAR_CONFIRMATION": "REMOVE SHARED TOLRA KEY"
+  },
+  "checks": {
+    "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit0",
+    "lint": "npm run lint: exit0",
+    "diff": "git diff --check: passed"
+  },
+  "limitations": [
+    "Groups overlap; do not sum as unique coverage.",
+    "Missing guarded RPC refuses positive consent; negative refusals depending on it are not proof of complete lifecycle enforcement.",
+    "Real Auth/mail/provider proof is not supplied by plain PostgreSQL fixtures.",
+    "AI SQL fixture uses146/150 overlays, not a second full release-chain rehearsal."
+  ]
+}

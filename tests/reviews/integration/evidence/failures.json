@@ -1,0 +1,212 @@
+[
+  {
+    "suite": "invite DB",
+    "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+    "test": "2 replay, actual concurrent redemption, expiry and revocation replaying the OAuth callback repeats neither token exchange nor connection storage",
+    "failure": "AssertionError: expected [] to have a length of 1 but got +0\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:66:194\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "invite DB",
+    "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+    "test": "2 replay, actual concurrent redemption, expiry and revocation revocation remains possible during OAuth and prevents the final connection",
+    "failure": "AssertionError: a pending OAuth consent must remain revocable: expected 404 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:75:348\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "invite DB",
+    "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+    "test": "3 company, creating-admin and selected-Xero-organisation bindings changing a hidden company/admin form value cannot change the binding",
+    "failure": "AssertionError: expected [] to have a length of 1 but got +0\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:81:360\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "invite DB",
+    "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+    "test": "5 successful consent keeps transfers OFF and held documents held consent alone neither activates transfers nor releases held pending sends, including a subsequent sweep",
+    "failure": "AssertionError: expected [] to have a length of 1 but got +0\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1339:22)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:101:413\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "invite DB",
+    "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+    "test": "6 migration 151 actual verification and rollback the actual verification file returns true on every row",
+    "failure": "AssertionError: expected false to be true // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:105:195\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "invite DB",
+    "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+    "test": "6 migration 151 actual verification and rollback rollback refuses open invitations, then succeeds after they are cancelled; reapplying restores verified 151",
+    "failure": "AssertionError: expected false to be true // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-invite-adversarial/adversarial.db.test.ts:106:878\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "wrong and missing CSRF are refused without consuming the valid choice",
+    "failure": "AssertionError: expected 503 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:45:386\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "sequential replay is refused by the REAL database limiter after the first successful choice",
+    "failure": "AssertionError: expected 503 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:51:194\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "two independent SQL transactions cannot both claim a single-use picker nonce",
+    "failure": "error: function integration_xero_picker_claim(unknown, unknown, integer, integer) does not exist\n    at /workspace/tolra-public/node_modules/pg/lib/client.js:535:17\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Promise.all (index 1)\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:57:16\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "two concurrent actual picker POSTs cannot both pass a single-use claim before either RPC transaction commits",
+    "failure": "AssertionError: expected +0 to be 2 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:65:20\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "limiter outage refuses without contacting Xero and permits a later explicit retry",
+    "failure": "AssertionError: expected 503 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:68:318\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "successful selection keeps transfers OFF, held documents unchanged, and the sweep sends nothing",
+    "failure": "AssertionError: expected 503 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:69:411\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "actual choice and connection audit rows are recorded under the correct company/admin",
+    "failure": "AssertionError: expected 503 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:70:187\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "changed or disappeared offered connection IDs are refused after the live re-list",
+    "failure": "AssertionError: expected 503 to be 409 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:71:226\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "an offered tenant owned by another company cannot be claimed or deleted",
+    "failure": "AssertionError: expected 503 to be 409 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:72:395\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "creator demotion during token refresh is refused by the final SQL write",
+    "failure": "AssertionError: expected 503 to be 409 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:73:313\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "provider refresh failure cannot store anything or expose provider error text",
+    "failure": "AssertionError: expected 503 to be 409 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:74:205\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "picker DB",
+    "file": "tests/reviews/xero-picker-adversarial/picker.db.test.ts",
+    "test": "unselected consent connections are removed even when the admin chooses after six minutes within the ten-minute offer",
+    "failure": "AssertionError: expected 503 to be 200 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/xero-picker-adversarial/picker.db.test.ts:75:339\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts"
+  },
+  {
+    "suite": "financial DB",
+    "file": "tests/db/job-profitability-148.test.ts",
+    "test": "148 is installed: preflight marker applied, every 148 verify row true and 143's verify still true",
+    "failure": "AssertionError: expected { \u2026(2) } to match object { ok: true }\n(1 matching property omitted from actual)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1134:13)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/integrated-final-fixes/tests/db/job-profitability-148.test.ts:130:76\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at Module.withDb (/workspace/work/integrated-final-fixes/tests/support/fixtures.ts:75:12)\n    at /workspace/work/integrated-final-fixes/tests/db/job-profitability-148.test.ts:125:3\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)",
+    "reproduce": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts"
+  },
+  {
+    "suite": "financial DB",
+    "file": "tests/db/job-profitability-148.test.ts",
+    "test": "reuses 143's rates only: labour (machine override), machine hourly, overhead_pct; an edit through 143's save moves an OPEN job's live figure",
+    "failure": "AssertionError: expected { Object (state, reasons, ...) } to match object { state: 'complete', \u2026(3) }\n(4 matching properties omitted from actual)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:1134:13)\n    at Proxy.<anonymous> (file:///workspace/tolra-public/node_modules/@vitest/expect/dist/index.js:972:17)\n    at Proxy.methodWrapper (file:///workspace/tolra-public/node_modules/chai/index.js:1686:25)\n    at /workspace/work/integrated-final-fixes/tests/db/job-profitability-148.test.ts:156:52\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at Module.withDb (/workspace/work/integrated-final-fixes/tests/support/fixtures.ts:75:12)\n    at /workspace/work/integrated-final-fixes/tests/db/job-profitability-148.test.ts:138:3\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)",
+    "reproduce": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts"
+  },
+  {
+    "suite": "financial DB",
+    "file": "tests/db/job-profitability-148.test.ts",
+    "test": "rollback drops only 148 (143's rates and save function untouched), the release applies again, verify true, a second install refuses",
+    "failure": "AssertionError: expected [ { \u2026(2) } ] to deeply equal []\n    at /workspace/work/integrated-final-fixes/tests/db/job-profitability-148.test.ts:322:121\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at Module.withDb (/workspace/work/integrated-final-fixes/tests/support/fixtures.ts:75:12)\n    at /workspace/work/integrated-final-fixes/tests/db/job-profitability-148.test.ts:303:3\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11",
+    "reproduce": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts"
+  },
+  {
+    "suite": "financial DB",
+    "file": "tests/reviews/night-cost-profit/profit-rates.db.test.ts",
+    "test": "148 actual-cost rounding follows the money half-up rule outside the frozen quotation-engine exception",
+    "failure": "AssertionError: 0.5p business actual cost must not disappear: expected +0 to be 1 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/night-cost-profit/profit-rates.db.test.ts:8:243\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts"
+  },
+  {
+    "suite": "financial DB",
+    "file": "tests/reviews/night-cost-profit/profit-rates.db.test.ts",
+    "test": "a half-penny actual machine cost from 143 rates is retained as one penny in 148 business money",
+    "failure": "AssertionError: 30 minutes at 1p/hour is 0.5p, a money-rule boundary: expected +0 to be 1 // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/night-cost-profit/profit-rates.db.test.ts:18:383\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts"
+  },
+  {
+    "suite": "151 DB",
+    "file": "tests/reviews/night-151-package/release.db.test.ts",
+    "test": "integrated151 must satisfy every active verifier row, including required final-store and picker helpers",
+    "failure": "AssertionError: expected false to be true // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/night-151-package/release.db.test.ts:26:240\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts"
+  },
+  {
+    "suite": "151 DB",
+    "file": "tests/reviews/night-151-package/release.db.test.ts",
+    "test": "verifier refuses a temp-schema-first path on public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)",
+    "failure": "error: function public.integration_invite_store_connection(text, uuid, uuid, text, text, text, text, text, text, timestamp with time zone, integer) does not exist\n    at /workspace/tolra-public/node_modules/pg/lib/client.js:535:17\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at /workspace/work/integrated-final-fixes/tests/reviews/night-151-package/release.db.test.ts:46:30\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+    "reproduce": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts"
+  },
+  {
+    "suite": "151 DB",
+    "file": "tests/reviews/night-151-package/release.db.test.ts",
+    "test": "verifier refuses a temp-schema-first path on public.integration_xero_picker_claim(text,text,integer,integer)",
+    "failure": "error: function public.integration_xero_picker_claim(text, text, integer, integer) does not exist\n    at /workspace/tolra-public/node_modules/pg/lib/client.js:535:17\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at /workspace/work/integrated-final-fixes/tests/reviews/night-151-package/release.db.test.ts:46:30\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+    "reproduce": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts"
+  },
+  {
+    "suite": "151 DB",
+    "file": "tests/reviews/night-151-package/release.db.test.ts",
+    "test": "verifier refuses a missing final-write helper and an authenticated grant on picker claims",
+    "failure": "error: function public.integration_invite_store_connection(text, uuid, uuid, text, text, text, text, text, text, timestamp with time zone, integer) does not exist\n    at /workspace/tolra-public/node_modules/pg/lib/client.js:535:17\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at /workspace/work/integrated-final-fixes/tests/reviews/night-151-package/release.db.test.ts:51:30\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)",
+    "reproduce": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts"
+  },
+  {
+    "suite": "lifecycle SQL DB",
+    "file": "tests/reviews/integration/security.db.test.ts",
+    "test": "revocation must remain available between exchange and callback",
+    "failure": "AssertionError: expected false to be true // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/integration/security.db.test.ts:17:200\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/integration/vitest.db.config.ts"
+  },
+  {
+    "suite": "lifecycle SQL DB",
+    "file": "tests/reviews/integration/security.db.test.ts",
+    "test": "guarded final invite write must reject expiry during provider exchange; a missing RPC is not security proof",
+    "failure": "AssertionError: missing guarded RPC is not expiry enforcement: expected '42883' not to be '42883' // Object.is equality\n    at /workspace/work/integrated-final-fixes/tests/reviews/integration/security.db.test.ts:18:363\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11\n    at withEnv (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:90:5)\n    at run (file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:112:3)",
+    "reproduce": "npx vitest run --config tests/reviews/integration/vitest.db.config.ts"
+  },
+  {
+    "suite": "lifecycle SQL DB",
+    "file": "tests/reviews/integration/security.db.test.ts",
+    "test": "positive control: the guarded final invite write must complete a fresh valid consent",
+    "failure": "error: function integration_invite_store_connection(unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown, unknown) does not exist\n    at /workspace/tolra-public/node_modules/pg/lib/client.js:535:17\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at service (/workspace/work/integrated-final-fixes/tests/reviews/integration/security.db.test.ts:7:107)\n    at /workspace/work/integrated-final-fixes/tests/reviews/integration/security.db.test.ts:21:203\n    at file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:533:5\n    at runTest (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1056:11)\n    at runSuite (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1205:15)\n    at runFiles (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1262:5)\n    at startTests (file:///workspace/tolra-public/node_modules/@vitest/runner/dist/index.js:1271:3)\n    at file:///workspace/tolra-public/node_modules/vitest/dist/chunks/runBaseTests.3qpJUEJM.js:126:11",
+    "reproduce": "npx vitest run --config tests/reviews/integration/vitest.db.config.ts"
+  }
+]

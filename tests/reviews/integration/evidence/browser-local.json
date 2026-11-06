@@ -1,0 +1,17 @@
+{
+  "branch": "codex/integrated-final-fixes",
+  "spec": "tests/e2e/integrations-connect.spec.ts",
+  "executed": 0,
+  "status": "BLOCKED locally",
+  "reason": "Official Supabase postgres:17.6.1.139 image extraction failed ENOSPC on7.9GiB filesystem. Correct Storage-excluded retry stopped at98% disk; drivervfs retained. No project containers remained.",
+  "Docker": "Managed local daemon access recovered via approved command; no daemon restart/storage-driver change",
+  "project": "builder3-browser-20261106",
+  "ports": [
+    58421,
+    58422
+  ],
+  "cli": "2.108.0 downloaded initially; integration source actually pins2.40.7 (CI uses its own pinned CLI). Larger CI target therefore preferred.",
+  "playwrightCommand": "npx playwright test tests/e2e/integrations-connect.spec.ts",
+  "localCommandResult": "Global setup refuses missing TEST_SUPABASE_URL; no hosted substitution",
+  "alternative": "Existing targeted workflow dispatched on own #429 codex/fix-invite-e2e at9648370; exact spec bytes equal433, runtime/source profile differs. CI result pending, not yet a pass."
+}
