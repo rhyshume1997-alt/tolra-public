@@ -261,6 +261,9 @@ it("a double submit from two connections makes one note; rollback keeps every no
   }
   await withDb(async db => {
     const rows = async () => (await db.query("SELECT id, to_jsonb(d) - 'request_id' - 'request_hash' AS j FROM public.delivery_notes d WHERE organization_id=$1 ORDER BY id", [setup.alpha])).rows;
+    // The verified fixture installs 147 before this company exists, so the company is not held yet (the release holds only companies that exist when it is
+    // installed). Put it in the state the release leaves an existing company in: exactly the row the release inserts for each company (committed, autocommit connection).
+    await db.query("INSERT INTO public.dln_numbering_pending (organization_id) VALUES ($1) ON CONFLICT DO NOTHING", [setup.alpha]);
     const before = await rows();
     expect(before).toHaveLength(2);
     // Rollback: the function, guard, index and key column go; every note (147's and the legacy one) stays as it was.
