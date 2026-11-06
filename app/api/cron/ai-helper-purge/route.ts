@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const ROUTE = "/api/cron/ai-helper-purge";
 /** Rows deleted per call, and the most calls in one run (the next run carries on). */
-export const AI_PURGE_BATCH = 1000;
+const AI_PURGE_BATCH = 1000;
 const MAX_BATCHES = 50;
 
 /** True when the database says migration 133's function does not exist (yet): PostgREST PGRST202 or Postgres 42883. */
