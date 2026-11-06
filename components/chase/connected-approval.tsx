@@ -38,7 +38,7 @@ export function ConnectedChaseApproval({ id, onDone, manualActions }: { id: stri
   }
   return <div className="space-y-3">
     {error && <p role="alert">{error}</p>}
-    {draft ? <ChaseApprovalCard key={JSON.stringify([org, id, draft.subject, draft.body])} draft={draft} disabled={!canEdit} onEdit={(draftId, email) => checked(async () => {
+    {draft ? <ChaseApprovalCard key={JSON.stringify([org, id, draft.to, draft.subject, draft.body])} draft={draft} disabled={!canEdit} onEdit={(draftId, email) => checked(async () => {
       if (!supabase || !canEdit) throw new Error("Changes are not available.");
       if (email.subject.length > 200 || email.body.length > 100000) throw new Error("Use a subject of up to 200 characters and a shorter message.");
       const { data, error } = await supabase.from("email_history").update(email).eq("organization_id", org!).eq("id", draftId).eq("status", "drafted").select("id");

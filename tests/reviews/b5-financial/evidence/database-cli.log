@@ -1,0 +1,86 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+stdout | tests/reviews/b5-financial/migration.db.test.ts
+Disposable proof: /tmp/tolra-b5-financial-1ad79424-ebab-4106-a0ce-c2ad4ac6be2e
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts (3 tests | 3 failed) 32856ms
+   × original143 reproduces exact CLI prepared-statement error; whole migration writes nothing 474ms
+     → expected '\nConnecting to remote database...\nf…' to contain 'cannot insert multiple commands into …'
+   × quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true 494ms
+     → 
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=127.0.0.1 user=postgres database=postgres`: tls error (server refused TLS connection)
+Try rerunning the command with --debug to troubleshoot the error.
+: expected 1 to be +0 // Object.is equality
+   × existing company isolation, roles, whole-pence constraints and audit SQL proof all hold 214ms
+     → ERROR:  relation "public.costing_materials" does not exist
+LINE 1: INSERT INTO public.costing_materials (id, organization_id, n...
+                    ^
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > original143 reproduces exact CLI prepared-statement error; whole migration writes nothing
+AssertionError: expected '\nConnecting to remote database...\nf…' to contain 'cannot insert multiple commands into …'
+
+- Expected
++ Received
+
+- cannot insert multiple commands into a prepared statement
++
++ Connecting to remote database...
++ failed to connect to postgres: failed to connect to `host=127.0.0.1 user=postgres database=postgres`: tls error (server refused TLS connection)
++ Try rerunning the command with --debug to troubleshoot the error.
++
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:23:43
+     21|  writeFileSync(path.join(workspace,'supabase','migrations','143_costin…
+     22|  const r=db.cli(cli!,workspace);writeFileSync(`${db.evidence}/original…
+     23|  expect(r.code).not.toBe(0);expect(r.log).toContain('cannot insert mul…
+       |                                           ^
+     24|  expect(db.ok("SELECT to_regclass('public.costing_defaults') IS NULL")…
+     25| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true
+AssertionError: 
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=127.0.0.1 user=postgres database=postgres`: tls error (server refused TLS connection)
+Try rerunning the command with --debug to troubleshoot the error.
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:28:106
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > existing company isolation, roles, whole-pence constraints and audit SQL proof all hold
+Error: ERROR:  relation "public.costing_materials" does not exist
+LINE 1: INSERT INTO public.costing_materials (id, organization_id, n...
+                    ^
+
+ ❯ Disposable.ok tests/reviews/b5-financial/disposable.ts:58:72
+     56|     return { code: r.status, output: r.stdout.trim(), error: r.stderr …
+     57|   }
+     58|   ok(text: string) { const r = this.sql(text); if (r.code !== 0) throw…
+       |                                                                        ^
+     59|   async parallelSql(text: string) {
+     60|     const environment = this.identity(), time = new Date().toISOString…
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:34:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  15:00:04
+   Duration  33.17s (transform 76ms, setup 0ms, collect 115ms, tests 32.86s, environment 0ms, prepare 66ms)
+

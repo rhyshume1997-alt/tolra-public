@@ -70,11 +70,22 @@ const KNOWN_HINTS: Record<string, string> = {
   company_changed: COMPANY_CHANGED_MESSAGE,
 };
 
+/**
+ * Hints whose wording is fixed: the database's own sentence is never shown for them (DEV-001, release 147: delivery notes are held
+ * until the go-live numbering step). Staff are told what to do, that nothing was saved, and are not told to keep retrying.
+ */
+const FIXED_HINTS: Record<string, string> = {
+  dln_numbering_not_set: "Delivery notes are paused while the next number is checked. Ask the office for help. Your note has not been saved.",
+  // Wording only: no database function emits this hint yet (a whole-company hold needs its own server signal). It never shows for other errors.
+  company_on_hold: "Work for this company is paused. Ask your supervisor or the office before trying again. Your changes have not been saved.",
+};
+
 export function friendlyError(err: unknown, fallback = "Something went wrong. Try again.") {
   if (typeof console !== "undefined") console.error(err);
   const code = typeof err === "object" && err && "code" in err ? String((err as { code: unknown }).code) : "";
   const message = err instanceof Error ? err.message : typeof err === "object" && err && "message" in err ? String((err as { message: unknown }).message) : "";
   const hint = typeof err === "object" && err && "hint" in err ? String((err as { hint: unknown }).hint) : "";
+  if (Object.prototype.hasOwnProperty.call(FIXED_HINTS, hint)) return FIXED_HINTS[hint];
   if (Object.prototype.hasOwnProperty.call(KNOWN_HINTS, hint)) return message && message.length <= 300 && !RAW_DB_TEXT.test(message) ? message : KNOWN_HINTS[hint];
   if (OWN_MESSAGE_CODES.has(code) && message && message.length <= 300 && !RAW_DB_TEXT.test(message)) return message;
   if (code && KNOWN[code]) return KNOWN[code];

@@ -1,0 +1,45 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+stdout | tests/reviews/b5-financial/migration.db.test.ts
+Disposable proof: /tmp/tolra-b5-financial-7b0acc28-1802-4d6f-bd4b-adcde37ad979
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts (6 tests | 1 failed) 44599ms
+   ✓ original143 reproduces exact CLI prepared-statement error; whole migration writes nothing 651ms
+   ✓ quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true 972ms
+   ✓ Settings to panel uses the real company RLS rates; changing rates does not rewrite a saved quote line 4155ms
+   ✓ financial export source rows are company-scoped under RLS; foreign and workshop rows cannot be read 2039ms
+   × candidate accounting state uses actual DB hold/mapping/company rows and refuses reconnect/error states 951ms
+     → ERROR:  function integration_xero_launch_status() does not exist
+LINE 1: SELECT integration_xero_launch_status();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > candidate accounting state uses actual DB hold/mapping/company rows and refuses reconnect/error states
+Error: ERROR:  function integration_xero_launch_status() does not exist
+LINE 1: SELECT integration_xero_launch_status();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+
+ ❯ Disposable.ok tests/reviews/b5-financial/disposable.ts:58:72
+     56|     return { code: r.status, output: r.stdout.trim(), error: r.stderr …
+     57|   }
+     58|   ok(text: string) { const r = this.sql(text); if (r.code !== 0) throw…
+       |                                                                        ^
+     59|   async parallelSql(text: string) {
+     60|     const environment = this.identity(), time = new Date().toISOString…
+ ❯ json tests/reviews/b5-financial/migration.db.test.ts:41:47
+ ❯ current tests/reviews/b5-financial/migration.db.test.ts:94:14
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:97:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  15:10:33
+   Duration  44.98s (transform 132ms, setup 0ms, collect 176ms, tests 44.60s, environment 0ms, prepare 59ms)
+

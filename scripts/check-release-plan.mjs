@@ -31,7 +31,7 @@ export function checkReleasePlan(root) {
     for (const field of ['migration','release','rollback','verify']) if (!existsSync(path.join(root,entry[field]))) problems.push(`Missing cutover ${field}: ${entry[field]}`);
     if (!numbers.includes(entry.number)) problems.push(`Cutover number has no migration: ${entry.number}`);
   }
-  for (const required of [138, 140, 141, 144]) if (!cutover.some(entry => entry.number === required)) problems.push(`Required JNR cutover release missing from the plan: ${required}`);
+  for (const required of [138, 140, 141, 143, 144]) if (!cutover.some(entry => entry.number === required)) problems.push(`Required JNR cutover release missing from the plan: ${required}`);
   let after = plan.numbered_through;
   for (const phase of plan.phases) {
     if (phase.number <= after || Number(phase.after) !== after) problems.push(`Wrong release order: ${phase.number} after ${phase.after}`);
@@ -52,5 +52,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const problems = checkReleasePlan(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   problems.forEach(p => console.error(`FAIL ${p}`));
   if (problems.length) process.exitCode = 1;
-  else console.log('release-plan: every proposal accounted for; 144 → 145 N5 → 146 N2/cap, no number collisions');
+  else console.log('release-plan: every proposal accounted for; 143 costing rates → 144 → 145 N5 → 146 N2/cap → 147 C17 → 148 job costing → 149 Xero switch → 150 AI cap/key-off → 151 Xero invite hardening, no number collisions');
 }

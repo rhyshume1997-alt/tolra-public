@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
+import { CostingRatesCard } from "@/components/costing/costing-rates-card";
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
 import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
 import { EmailTemplatesCard } from "@/components/email/email-templates-card";
@@ -661,6 +662,7 @@ export default function SettingsPage() {
         <PrintLayoutCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
+        <CostingRatesCard />
         <EmailSchedulesCard />
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><LayoutList className="size-5 text-brand-accent" /> Menu Sections</CardTitle></CardHeader>

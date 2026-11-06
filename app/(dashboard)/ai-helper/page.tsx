@@ -1,23 +1,25 @@
 "use client";
 
+import Link from "next/link";
+
 import { AiAssistantPanel } from "@/components/ai-helper/assistant-panel";
-import { AiCustomisedCard } from "@/components/ai-helper/customised-card";
-import { AiMasterCard } from "@/components/ai-helper/master-card";
 import { AiRfqPanel } from "@/components/ai-helper/rfq-panel";
 import { AiRoundupPanel } from "@/components/ai-helper/roundup-panel";
 import { anyFeatureOn, useAiHelperStatus } from "@/components/ai-helper/use-ai-helper-status";
 import { AiWhatItShows } from "@/components/ai-helper/what-it-shows";
-import { TolraAiConnectionCard } from "@/components/integrations/tolra-ai-card";
 import { RoleGate } from "@/components/role-gate";
 
+/** Where AI is set up: the AI card on Admin > Integrations (the page's #ai anchor). */
+const AI_SETUP_HREF = "/admin/integrations#ai";
+
 /**
- * The AI section (office and admin; anyone else gets the role gate's message): the one place for the company's AI. The master on/off
- * switch with one switch per feature, what each feature shows, how it is customised (the company's own key, monthly limit, who can use
- * it), and the working panels for whichever features are on. Hidden entirely when this server has the AI helper off. Online only:
- * nothing here is queued offline.
+ * The AI section (office and admin; anyone else gets the role gate's message): what each feature shows and the working panels for whichever
+ * features are on. Setting AI up (the company's own key, the on/off switch, Tolra-provided AI, the monthly limit) is NOT done here any more: those
+ * actions need a fresh authenticator code, which only the AI card on Admin > Integrations asks for. This page says so and links there, so there is no
+ * button here that the server would refuse. Hidden entirely when this server has the AI helper off. Online only: nothing here is queued offline.
  */
 export default function AiHelperPage() {
-  const { status, loaded, allowed, reload, setStatus } = useAiHelperStatus();
+  const { status, loaded, allowed, reload } = useAiHelperStatus();
   return (
     <RoleGate allowed={["admin", "office"]}>
       <div className="space-y-6">
@@ -32,12 +34,19 @@ export default function AiHelperPage() {
         ) : (
           <>
             {!anyFeatureOn(status) ? (
-              <p className="rounded-lg border p-3 text-sm text-slate-600" data-testid="ai-helper-off">AI is off for this company.{status.can_manage ? " Turn it on below." : " An admin can turn it on in this section."}</p>
+              <p className="rounded-lg border p-3 text-sm text-slate-600" data-testid="ai-helper-off">AI is off for this company.{status.can_manage ? " Turn it on in Admin > Integrations." : " An admin can turn it on in Admin > Integrations."}</p>
             ) : null}
-            <TolraAiConnectionCard onChanged={reload} />
-            {!status.tolra_enabled && <AiMasterCard status={status} onStatus={setStatus} />}
+            <div className="rounded-lg border p-3 text-sm text-slate-700" data-testid="ai-helper-manage-notice">
+              {status.can_manage ? (
+                <p>
+                  AI is set up in one place now, the AI card on Admin &gt; Integrations: your key, the on/off switch, Tolra-provided AI and the monthly limit.{" "}
+                  <Link href={AI_SETUP_HREF} className="font-medium underline" data-testid="ai-helper-manage-link">Open Admin &gt; Integrations</Link>
+                </p>
+              ) : (
+                <p>Only an admin sets up AI or turns it on or off. They do it in the AI card on Admin &gt; Integrations.</p>
+              )}
+            </div>
             <AiWhatItShows />
-            {!status.tolra_enabled && <AiCustomisedCard status={status} onStatus={setStatus} />}
             {status.roundup_enabled ? <AiRoundupPanel onUsed={() => void reload()} /> : null}
             {status.rfq_enabled ? <AiRfqPanel onUsed={() => void reload()} /> : null}
             {status.assistant_available && status.assistant_enabled ? <AiAssistantPanel onUsed={() => void reload()} /> : null}

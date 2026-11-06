@@ -9,6 +9,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SUPABASE="${SUPABASE_BIN:-supabase}"
+# Match supabase/setup-cli@v1 in CI (CLI 2.40.7): use the official GHCR images.
+# A plain local CLI otherwise defaults to public.ecr.aws, which can be unavailable
+# even when CI's registry works. Honour an explicit registry; never retry via another.
+export SUPABASE_INTERNAL_IMAGE_REGISTRY="${SUPABASE_INTERNAL_IMAGE_REGISTRY:-ghcr.io}"
 EXCLUDE="studio,realtime,edge-runtime,logflare,vector,imgproxy,supavisor,postgres-meta"
 
 write_env() {
@@ -30,12 +34,23 @@ ENV
   echo "Wrote .env.test.local ($API_URL, database ${DB_URL##*@})"
 }
 
+require_cli_version() {
+  local version
+  version="$("$SUPABASE" --version)"
+  if [ "$version" != "2.40.7" ]; then
+    echo "Supabase CLI 2.40.7 is required for these tests (found $version). Newer stacks do not give service_role the default grants the suite relies on. Use the version pinned in .github/workflows/ci.yml." >&2
+    exit 1
+  fi
+}
+
 case "${1:-start}" in
   start)
+    require_cli_version
     "$SUPABASE" start -x "$EXCLUDE"
     write_env
     ;;
   reset)
+    require_cli_version
     "$SUPABASE" db reset --local --no-seed
     write_env
     ;;

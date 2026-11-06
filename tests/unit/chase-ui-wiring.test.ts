@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { approveDraft, resolveClaim, saveChaseSteps } from "@/lib/chase/ui-store";
 import { FakeDb } from "../support/fake-db";
 
-const reviewed = { subject: "Reviewed invoice subject", body: "Hello\n\nExactly this approved message.\n" };
+const reviewed = { to: "pay@acme.test", subject: "Reviewed invoice subject", body: "Hello\n\nExactly this approved message.\n" };
 
 describe("chase screen connections", () => {
   it("preserves existing step IDs and scopes edits to the company", async () => {
@@ -31,7 +31,7 @@ describe("chase screen connections", () => {
   it("passes the exact reviewed subject and body to the approval route", async () => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "sent", recorded: true })));
     await expect(approveDraft("draft", reviewed, request)).resolves.toMatchObject({ status: "sent" });
-    expect(request).toHaveBeenCalledWith("/api/chase/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ history_id: "draft", expected_subject: reviewed.subject, expected_body: reviewed.body }) }));
+    expect(request).toHaveBeenCalledWith("/api/chase/approve", expect.objectContaining({ method: "POST", body: JSON.stringify({ history_id: "draft", expected_to: reviewed.to, expected_subject: reviewed.subject, expected_body: reviewed.body }) }));
   });
   it.each([409, 403, 500])("retains errors instead of treating HTTP %s as sent", async (status) => {
     const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "no_provider", error: "Sending is not set up." }), { status }));

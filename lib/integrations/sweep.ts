@@ -4,7 +4,7 @@
 // company names, no document numbers, no tokens).
 
 import type { RunSummary } from "@/lib/integrations/engine";
-import type { ProviderId } from "@/lib/integrations/types";
+import { type ProviderId, TransfersHeldError } from "@/lib/integrations/types";
 
 export type SweepDeps = {
   /** Companies with a live connection (connected), per provider. */
@@ -30,8 +30,9 @@ export async function runIntegrationSweep(deps: SweepDeps): Promise<SweepSummary
       out.sent += run.sent;
       out.failed += run.failed;
       out.needsCheck += run.needsCheck;
-    } catch {
-      out.errors += 1;
+    } catch (err) {
+      // Switched off after the list was read (release 149): left alone, neither renewed nor an error.
+      if (!(err instanceof TransfersHeldError)) out.errors += 1;
     }
   }
   return out;

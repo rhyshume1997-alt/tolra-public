@@ -33,7 +33,7 @@ vi.mock("@/lib/server/auth", () => ({
   requireProfile: vi.fn(async (r: string[]) => {
     auth.roles.push(r);
     if (!auth.allow) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    return { supabase: { rpc }, profile: { organization_id: "o-1" }, session: { support: auth.support } };
+    return { supabase: { rpc, auth: freshMfaAuth() }, profile: { organization_id: "o-1" }, session: { support: auth.support } };
   }),
 }));
 
@@ -58,6 +58,7 @@ vi.mock("@/lib/integrations/server", () => ({
 vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({}) }));
 
 import AdminIntegrationsPage from "@/app/(dashboard)/admin/integrations/page";
+import { freshMfaAuth } from "../support/fresh-mfa";
 
 const post = (body: unknown) => new Request("http://localhost/api/integrations/xero/mappings", { method: "POST", body: JSON.stringify(body) });
 

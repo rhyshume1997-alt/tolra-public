@@ -1,0 +1,131 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ❯ tests/unit/b5-financial-boundaries.test.ts (11 tests | 11 failed) 16ms
+   × panel refuses quantity above engine limit with a usable message rather than throwing 5ms
+     → Invalid quantity
+   × panel refuses non-finite material with a usable message rather than throwing 1ms
+     → Costs and times must be finite and nonnegative
+   × panel refuses non-finite cycle with a usable message rather than throwing 1ms
+     → Costs and times must be finite and nonnegative
+   × panel refuses negative setup with a usable message rather than throwing 0ms
+     → Costs and times must be finite and nonnegative
+   × panel refuses non-finite setup with a usable message rather than throwing 0ms
+     → Costs and times must be finite and nonnegative
+   × panel refuses negative programming with a usable message rather than throwing 0ms
+     → Invalid detailed costing parameters
+   × panel refuses non-finite programming with a usable message rather than throwing 0ms
+     → Invalid detailed costing parameters
+   × panel refuses overflowing finite cycle with a usable message rather than throwing 1ms
+     → Invalid rounding input
+   × refuses stale explicit material ID rather than pricing the first different row 4ms
+     → expected 'ok' to be 'need_input' // Object.is equality
+   × refuses stale explicit machine ID rather than pricing the first different row 1ms
+     → expected 'ok' to be 'need_input' // Object.is equality
+   × invalid rate input stays unconfigured, never crashes or substitutes a rate 0ms
+     → Costs and times must be finite and nonnegative
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses quantity above engine limit with a usable message rather than throwing
+RangeError: Invalid quantity
+ ❯ validate lib/costing/engine.ts:56:92
+     54| function validate(p: QuoteInputs) {
+     55|   requireRate('margin', p.margin_pct);
+     56|   if (!Number.isSafeInteger(p.quantity) || p.quantity < 1 || p.quantit…
+       |                                                                                            ^
+     57|   const nums = [p.stock_weight_lb, p.cost_per_lb, p.scrap_factor, p.ma…
+     58|     ...p.ops.flatMap(x => [x.setup_time_hr, x.cycle_time_hr, x.allowan…
+ ❯ Module.calcDetailedQuote lib/costing/engine.ts:81:3
+ ❯ Module.priceThisPart lib/costing/price-part.ts:43:18
+ ❯ tests/unit/b5-financial-boundaries.test.ts:9:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses non-finite material with a usable message rather than throwing
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses non-finite cycle with a usable message rather than throwing
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses negative setup with a usable message rather than throwing
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses non-finite setup with a usable message rather than throwing
+RangeError: Costs and times must be finite and nonnegative
+ ❯ validate lib/costing/engine.ts:60:59
+     58|     ...p.ops.flatMap(x => [x.setup_time_hr, x.cycle_time_hr, x.allowan…
+     59|       x.tool_change_time_min ?? 0, x.inspection_time_min ?? 0, x.tool_…
+     60|   if (nums.some(x => !Number.isFinite(x) || x < 0)) throw new RangeErr…
+       |                                                           ^
+     61| }
+     62| export function calcUnitCost(p: QuoteInputs) {
+ ❯ Module.calcDetailedQuote lib/costing/engine.ts:81:3
+ ❯ Module.priceThisPart lib/costing/price-part.ts:43:18
+ ❯ tests/unit/b5-financial-boundaries.test.ts:9:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses negative programming with a usable message rather than throwing
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses non-finite programming with a usable message rather than throwing
+RangeError: Invalid detailed costing parameters
+ ❯ Module.calcDetailedQuote lib/costing/engine.ts:86:117
+     84|   const firstArticle = p.first_article_inspection_hr ?? 0;
+     85|   const overheadRate = requireRate('overhead', p.overhead_rate_pct);
+     86|   if ([programmingTime, programmingRate, firstArticle, overheadRate].s…
+       |                                                                                                                     ^
+     87|   const materialBase = p.stock_weight_lb * p.cost_per_lb;
+     88|   const materialScrap = materialBase * p.scrap_factor;
+ ❯ Module.priceThisPart lib/costing/price-part.ts:43:18
+ ❯ tests/unit/b5-financial-boundaries.test.ts:9:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > panel refuses overflowing finite cycle with a usable message rather than throwing
+RangeError: Invalid rounding input
+ ❯ pyRound lib/costing/engine.ts:21:34
+     19| };
+     20| export function pyRound(n: number, places: number): number {
+     21|   if (!Number.isFinite(n)) throw new RangeError('Invalid rounding inpu…
+       |                                  ^
+     22|   if (!Number.isInteger(places) || places < 0 || places > 10) throw ne…
+     23|   // Match Python pyRound(binary64, digits): inspect the original IEEE…
+ ❯ lib/costing/engine.ts:106:24
+ ❯ Module.calcDetailedQuote lib/costing/engine.ts:92:28
+ ❯ Module.priceThisPart lib/costing/price-part.ts:43:18
+ ❯ tests/unit/b5-financial-boundaries.test.ts:9:10
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > refuses stale explicit material ID rather than pricing the first different row
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > refuses stale explicit machine ID rather than pricing the first different row
+AssertionError: expected 'ok' to be 'need_input' // Object.is equality
+
+Expected: "need_input"
+Received: "ok"
+
+ ❯ tests/unit/b5-financial-boundaries.test.ts:12:132
+     10| });
+     11| it.each(['material','machine'] as const)('refuses stale explicit %s ID…
+     12|  const r=priceThisPart(CONFIGURED,{...ENTRY,[kind==='material'?'materi…
+       |                                                                                                                                    ^
+     13| });
+     14| it('invalid rate input stays unconfigured, never crashes or substitute…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  tests/unit/b5-financial-boundaries.test.ts > invalid rate input stays unconfigured, never crashes or substitutes a rate
+RangeError: Costs and times must be finite and nonnegative
+ ❯ validate lib/costing/engine.ts:60:59
+     58|     ...p.ops.flatMap(x => [x.setup_time_hr, x.cycle_time_hr, x.allowan…
+     59|       x.tool_change_time_min ?? 0, x.inspection_time_min ?? 0, x.tool_…
+     60|   if (nums.some(x => !Number.isFinite(x) || x < 0)) throw new RangeErr…
+       |                                                           ^
+     61| }
+     62| export function calcUnitCost(p: QuoteInputs) {
+ ❯ Module.calcDetailedQuote lib/costing/engine.ts:81:3
+ ❯ Module.priceThisPart lib/costing/price-part.ts:43:18
+ ❯ tests/unit/b5-financial-boundaries.test.ts:15:81
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ Test Files  1 failed (1)
+      Tests  11 failed (11)
+   Start at  15:01:16
+   Duration  379ms (transform 113ms, setup 0ms, collect 131ms, tests 16ms, environment 0ms, prepare 72ms)
+

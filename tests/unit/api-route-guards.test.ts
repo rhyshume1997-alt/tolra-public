@@ -21,6 +21,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { freshMfaAuth } from "../support/fresh-mfa";
 
 /** Each guard and the module it must be imported from. */
 const GUARD_IMPORTS: Record<string, string> = {
@@ -51,8 +52,8 @@ const PUBLIC_ROUTES: Record<string, string> = {
   "auth/change-password:POST": "Self-authenticates inline (auth.getUser() before any write); every write is to the caller's own login (user.id).",
   "my-company-logos:GET": "Self-authenticates inline (auth.getUser()); the service role reads only the companies my_organizations() returns AS THE CALLER.",
   // 107 (E2): the accountant's Xero connect link, opened signed out. Each grants exactly one company's Xero Connect and nothing else.
-  "integrations/invite/[token]:GET": "The accountant's one-use Xero connect link's page: rate limited; only an open link's company name (integration_invite_peek, service role) and a Continue button. Nothing is used up; a bad link gets a fixed page.",
-  "integrations/invite/[token]:POST": "The connect link's Continue button: same origin, rate limited; only an open link (integration_invite_redeem, service role, used up at once, its admin still an admin) starts that one company's Xero Connect.",
+  "integrations/invite/[ref]:GET": "The accountant's one-use Xero connect link's page (an opaque reference, no secret): rate limited; only an open invite's company name and masked recipient (integration_invite_peek, service role) and two forms. Nothing is used up or sent; a bad link gets a fixed page.",
+  "integrations/invite/[ref]:POST": "The connect link's two buttons: same origin, rate limited. E-mail me a code: only to the address the invite was bound to (integration_invite_code_issue, service role, limited). Continue: the typed code is checked and the invite used up at once (integration_invite_code_verify, service role, its admin still an admin, five wrong codes lock it) and starts that one company's Xero Connect.",
   // 129 (C3): the accountant's invite, opened signed out. It grants one company's VIEWER membership to the invite's own e-mail, once.
   "integrations/accountant-invite/[token]:GET": "The accountant's invite page: rate limited; only an open invite's company name and masked e-mail (accountant_invite_peek, service role), and the Xero offer only for an open 107 link. Nothing is used up; a bad link gets a fixed page.",
   "integrations/accountant-invite/[token]:POST": "The invite page's buttons: same origin, rate limited, an open invite only. Join: the browser's OWN Tolra session calls redeem_accountant_invite (the invite's e-mail, once, viewer only). New: Supabase Auth e-mails the invite's own address a set-password link; nothing else is done with the service role.",
@@ -424,7 +425,7 @@ vi.mock("@/lib/server/auth", () => ({
   isErrorResponse: (v: unknown) => v instanceof NextResponse,
   jsonError: (m: string, s: number) => NextResponse.json({ error: m }, { status: s }),
   readJson: async (r: Request) => ({ ok: true, data: await r.json() }),
-  requireProfile: vi.fn(async () => ({ supabase: {}, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session })),
+  requireProfile: vi.fn(async () => ({ supabase: { auth: freshMfaAuth() }, user: { id: "u1" }, profile: { organization_id: "org-1", role: "admin" }, session })),
 }));
 
 describe("Xero service-role routes refuse every support session", () => {

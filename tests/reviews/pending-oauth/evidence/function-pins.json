@@ -1,0 +1,12 @@
+[
+  {
+    "function": "integration_invites_open",
+    "before": "31e9b5e7dce61c5a7b2fded859f0c1cd",
+    "after": "93a964b68da646dde0df548e4b6b2ea2"
+  },
+  {
+    "function": "integration_invite_revoke",
+    "before": "cd849d83e071123677e15308d342871e",
+    "after": "a14c66849f79459dec243bc4b5db2d1d"
+  }
+]

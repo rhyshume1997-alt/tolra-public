@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { XeroConfig } from "@/lib/integrations/xero/oauth";
+import { requireXeroTransfers } from "@/lib/integrations/xero/launch-hold";
 import { sendQueued } from "@/lib/integrations/server";
 import { type ChunkDeps, SEND_COLUMNS, toBatchSend } from "@/lib/integrations/xero/batch-server";
 import { CREDIT_COLUMNS, INVOICE_COLUMNS, type BatchDoc, type BatchDocType, creditDocument, invoiceDocument } from "@/lib/integrations/xero/batch";
@@ -38,6 +39,8 @@ export function batchDeps(opts: { user: SupabaseClient; service: SupabaseClient;
       return (data ?? []).length > 0;
     },
     async enqueue(doc) {
+      // Release 149: a company whose Xero transfer switch is off queues nothing from a batch either.
+      await requireXeroTransfers(service, org);
       // The same row 084's issue trigger adds, and nothing else: the unique key (company, provider, type, id, action) means a second
       // insert (a double click, two tabs) changes nothing. Only while the company is connected.
       const { data: conn, error: connError } = await service.from("integration_connections").select("status").eq("organization_id", org).eq("provider", "xero").maybeSingle();
@@ -49,6 +52,7 @@ export function batchDeps(opts: { user: SupabaseClient; service: SupabaseClient;
       if (error) throw new Error(error.message);
     },
     async retry(sendId) {
+      await requireXeroTransfers(service, org);
       const { error } = await user.rpc("integration_retry_send", { p_send: sendId });
       if (error) throw new Error(error.message);
     },

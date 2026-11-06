@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { type CompanyEmailResult, EMAIL_SEND_ROLES, IDEMPOTENCY_KEY, cleanAddress, onRecipientAllowlist, sendCompanyEmail } from "@/lib/email/send-company-email";
+import { type CompanyEmailResult, EMAIL_SEND_ROLES, IDEMPOTENCY_KEY, cleanAddress, onRecipientAllowlist, sendCompanyEmail, stripHeader } from "@/lib/email/send-company-email";
+import { recordSendAudit } from "@/lib/email/chase/send-audit";
 import { MAX_PDF_BYTES, fileNameMatches } from "@/lib/email/attachment-check";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 
@@ -29,7 +30,7 @@ const schema = z.object({
   record_id: z.string().uuid(),
   to: z.array(z.string().trim().max(254)).min(1).max(5),
   cc: z.array(z.string().trim().max(254)).max(5).optional(),
-  subject: z.string().trim().min(1).max(200),
+  subject: z.string().min(1).max(200).refine(value => value === stripHeader(value), "Review a subject without extra spaces or line breaks."),
   text: z.string().min(1).max(20_000),
   attachment: z.object({ filename: z.string().trim().min(1).max(120).regex(/\.pdf$/i), content_base64: z.string().min(8).max(7_000_000) }).optional(),
   idempotency_key: z.string().regex(IDEMPOTENCY_KEY).optional(),
@@ -80,9 +81,12 @@ export async function POST(request: Request) {
   const partyTable = spec.party === "customer" ? "customers" : "suppliers";
   const party = row.customer_id
     ? supabase.from(partyTable).select("email").eq("organization_id", profile.organization_id).eq("id", String(row.customer_id)).limit(1)
-    : supabase.from(partyTable).select("email").eq("organization_id", profile.organization_id).eq("name", partyName || "\u0000none").limit(5);
+    : supabase.from(partyTable).select("email").eq("organization_id", profile.organization_id).eq("name", partyName || "\u0000none").limit(2);
   const { data: parties } = await party;
-  for (const p of (parties ?? []) as Array<{ email?: unknown }>) if (lower(p.email)) allowed.add(lower(p.email));
+  // By name only (quotes and invoices hold no customer id): two records with this name are ambiguous, so neither address is trusted
+  // (the same rule as statements and chasing). The person can still use the document's own address, the team or the allowlist.
+  const matched = (parties ?? []) as Array<{ email?: unknown }>;
+  if (row.customer_id || matched.length <= 1) for (const p of matched) if (lower(p.email)) allowed.add(lower(p.email));
   const outside = () => recipients.filter((address) => !allowed.has(address) && !onRecipientAllowlist(address, process.env.EMAIL_RECIPIENT_DOMAINS));
   if (outside().length) {
     const { data: people } = await supabase.from("user_profiles").select("email, workshop_email").eq("organization_id", profile.organization_id);
@@ -112,6 +116,10 @@ export async function POST(request: Request) {
     },
     { db: supabase },
   );
-  if (!result.ok) return NextResponse.json({ status: "failed", error: result.error, code: result.code }, { status: STATUS[result.code] });
+  if (!result.ok) {
+    // A failed or uncertain send leaves an audit row (document id and codes only); a lost audit write changes nothing.
+    await recordSendAudit(supabase, { outcome: result.uncertain ? "unknown" : "failed", historyId: input.record_id, entityTable: spec.table, channel: "email-send", code: result.code });
+    return NextResponse.json({ status: "failed", error: result.error, code: result.code, ...(result.uncertain ? { held: true } : {}) }, { status: STATUS[result.code] });
+  }
   return NextResponse.json({ status: result.mode, provider: result.provider, history_id: result.historyId ?? null });
 }

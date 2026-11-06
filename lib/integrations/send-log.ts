@@ -89,6 +89,7 @@ export function issuedByMap(invoices: unknown, creditNotes: unknown): Record<str
 export function retryErrorMessage(error: { code?: string | null; hint?: string | null; message?: string | null }): string {
   if (error.code === "42501") return error.hint === "mfa_required" ? "Confirm your authenticator code first." : "Only an admin can send a document again.";
   if (error.hint === "not_retryable") return "It is already waiting to send or has been sent. Reload the page.";
+  if (error.hint === "xero_held_for_review") return "It is held for review: approve it under Held for review in Xero settings first.";
   if (error.code === "P0002") return "That send is no longer in the log. Reload the page.";
   return "Couldn't queue it again. Try again.";
 }

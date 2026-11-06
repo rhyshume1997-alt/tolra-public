@@ -27,6 +27,14 @@
       "marker": "141 opening wip"
     },
     {
+      "number": 143,
+      "migration": "supabase/migrations/143_costing_rates.sql",
+      "release": "supabase/release/143_costing_rates.release.sql",
+      "rollback": "supabase/release/143_costing_rates.rollback.sql",
+      "verify": "supabase/verify/costing_rates_143.sql",
+      "marker": "143 costing rates"
+    },
+    {
       "number": 144,
       "migration": "supabase/migrations/144_accounting_connections.sql",
       "release": "supabase/release/144_accounting_connections.release.sql",
@@ -36,8 +44,7 @@
     }
   ],
   "numbers_not_in_this_candidate": {
-    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover",
-    "143": "costing_rates: deferred, unapplied proposal builder2_costing_settings_atomic.sql"
+    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover"
   },
   "mode": "post-numbered-one-time",
   "phases": [
@@ -58,6 +65,51 @@
       "rollback": "supabase/release/146_tolra_provided_ai.rollback.sql",
       "verify": "supabase/verify/tolra_provided_ai_146.sql",
       "marker": "post-144 marker 146 tolra_provided_ai"
+    },
+    {
+      "number": 147,
+      "after": "146",
+      "source": "supabase/proposals/c17_job_delivery_note.sql",
+      "release": "supabase/release/147_job_delivery_note.release.sql",
+      "rollback": "supabase/release/147_job_delivery_note.rollback.sql",
+      "verify": "supabase/verify/job_delivery_note_147.sql",
+      "marker": "post-144 marker 147 job_delivery_note"
+    },
+    {
+      "number": 148,
+      "after": "147",
+      "source": "supabase/proposals/p148_job_profitability_actuals.sql",
+      "release": "supabase/release/148_job_profitability_actuals.release.sql",
+      "rollback": "supabase/release/148_job_profitability_actuals.rollback.sql",
+      "verify": "supabase/verify/job_profitability_actuals_148.sql",
+      "marker": "post-144 marker 148 job_profitability_actuals"
+    },
+    {
+      "number": 149,
+      "after": "148",
+      "source": "supabase/proposals/x149_xero_launch_hold.sql",
+      "release": "supabase/release/149_xero_launch_hold.release.sql",
+      "rollback": "supabase/release/149_xero_launch_hold.rollback.sql",
+      "verify": "supabase/verify/xero_launch_hold_149.sql",
+      "marker": "post-144 marker 149 xero_launch_hold"
+    },
+    {
+      "number": 150,
+      "after": "149",
+      "source": "supabase/proposals/a150_ai_cap_key_off.sql",
+      "release": "supabase/release/150_ai_cap_key_off.release.sql",
+      "rollback": "supabase/release/150_ai_cap_key_off.rollback.sql",
+      "verify": "supabase/verify/ai_cap_key_off_150.sql",
+      "marker": "post-144 marker 150 ai_cap_key_off"
+    },
+    {
+      "number": 151,
+      "after": "150",
+      "source": "supabase/proposals/p151_xero_invite_hardening.sql",
+      "release": "supabase/release/151_xero_invite_hardening.release.sql",
+      "rollback": "supabase/release/151_xero_invite_hardening.rollback.sql",
+      "verify": "supabase/verify/xero_invite_hardening_151.sql",
+      "marker": "post-144 marker 151 xero_invite_hardening"
     }
   ],
   "other_proposals": [
@@ -67,7 +119,7 @@
     },
     {
       "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
-      "disposition": "deferred: requires costing 143, absent from this candidate"
+      "disposition": "superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied"
     },
     {
       "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",

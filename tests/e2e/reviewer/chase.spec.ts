@@ -22,7 +22,7 @@ async function draft(page: Page, label: string) {
   await signIn(page, tenant.admin);
   return { tenant, address, subject, body, invoiceId: invoice.data!.id, historyId: history.data!.id };
 }
-const approve = (page: Page, data: { historyId: string; subject: string; body: string }) => page.request.post("/api/chase/approve", { data: { history_id: data.historyId, expected_subject: data.subject, expected_body: data.body } });
+const approve = (page: Page, data: { historyId: string; address: string; subject: string; body: string }) => page.request.post("/api/chase/approve", { data: { history_id: data.historyId, expected_to: data.address, expected_subject: data.subject, expected_body: data.body } });
 
 test("V-CHASE-EDIT: editing after review cancels approval and the new exact text is sent", async ({ page }) => {
   const data = await draft(page, "edit");

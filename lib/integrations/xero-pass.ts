@@ -18,6 +18,8 @@ export async function runXeroSweepPass(): Promise<SweepSummary | { skipped: stri
     summary = await runIntegrationSweep(sweepDeps(admin, ready));
   } catch (err) {
     if (err instanceof DbError && /^(PGRST205|42P01)$/.test(err.code ?? "")) return { skipped: "database update 084 not applied" };
+    // Release 149 rolled back (or not applied) while this code is live: no transfer switch exists, so nothing is sent (fail closed), and the cron does not throw.
+    if (err instanceof DbError && /^(PGRST202|42883)$/.test(err.code ?? "")) return { skipped: "xero transfer switch (release 149) not in the database: nothing sent" };
     throw err;
   }
   console.log(`[cron/xero-sweep] companies=${summary.companies} renewed=${summary.renewed} needReconnect=${summary.needReconnect} sent=${summary.sent} failed=${summary.failed} needsCheck=${summary.needsCheck} errors=${summary.errors}`);
