@@ -431,6 +431,13 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   }
   expect((await mail()).length).toBe(count);expect(await statesVia(a.id)).toEqual([]);
   const cross=await anon.post(a.path,{form:{action:'send'},headers:{Origin:'https://attacker.example.test'},maxRedirects:0});expect(cross.status()).toBe(403);expect(await statesVia(a.id)).toEqual([]);
+  for(const headers of [
+   {Origin:'null'},
+   {Origin:'null','Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate','Sec-Fetch-Dest':'document'},
+  ]){
+   expect((await anon.post(a.path,{form:{action:'send'},headers,maxRedirects:0})).status()).toBe(403);
+  }
+  expect((await mail()).length).toBe(count);expect(await statesVia(a.id)).toEqual([]);
   expect((await anon.post(a.path,{form:{action:'unexpected'},headers:{Origin:origin},maxRedirects:0})).status()).toBe(400);
   expect((await anon.post(a.path,{form:{action:'verify',code:'not-a-code'},headers:{Origin:origin},maxRedirects:0})).status()).toBe(400);
   // A forwarded link cannot choose another recipient or start OAuth without the code delivered to its bound mailbox.

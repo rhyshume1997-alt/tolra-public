@@ -34,6 +34,19 @@ export function newInviteToken(): { token: string; tokenHash: string } {
 
 /** The opaque reference in the link: 16 random bytes, base64url: 22 characters. It is not a secret that grants anything; the e-mailed code is. */
 export const INVITE_REF = /^[A-Za-z0-9_-]{22}$/;
+
+/** Chromium omits the origin on no-referrer form navigations. Only the public OTP-bound invite route uses
+ * this exact same-origin Fetch Metadata exception; it does not apply to authenticated/admin routes. Browser
+ * scripts cannot set these Sec-Fetch headers. Cross-site, opaque and incomplete navigation metadata refuses.
+ */
+export function isSameOriginInviteFormNavigation(request: Request): boolean {
+  return request.method === "POST"
+    && request.headers.get("origin") === "null"
+    && request.headers.get("sec-fetch-site") === "same-origin"
+    && request.headers.get("sec-fetch-mode") === "navigate"
+    && request.headers.get("sec-fetch-dest") === "document";
+}
+
 export const INVITE_HOURS = 24;
 export const INVITE_CODE = /^[0-9]{8}$/;
 

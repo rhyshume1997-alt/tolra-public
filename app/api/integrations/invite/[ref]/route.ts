@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { sendInviteCodeEmail } from "@/lib/integrations/invite-mail";
-import { INVITE_REF, allowedInviteRedirect, cleanInviteCode, inviteConfirmPage, invitePage, inviteRateOk, issueInviteCode, logInviteRefusal, maskRecipient, peekInvite, redeemInvite, type InviteNotice } from "@/lib/integrations/invite";
+import { INVITE_REF, allowedInviteRedirect, cleanInviteCode, inviteConfirmPage, invitePage, inviteRateOk, issueInviteCode, isSameOriginInviteFormNavigation, logInviteRefusal, maskRecipient, peekInvite, redeemInvite, type InviteNotice } from "@/lib/integrations/invite";
 import { xeroReady } from "@/lib/integrations/server";
 import { sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -38,7 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ ref:
 export async function POST(request: Request, { params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
   const service = createSupabaseAdminClient();
-  if (!sameOrigin(request)) return invitePage("invalid", 403, await logInviteRefusal(service, "request", "bad_origin", ref));
+  if (!sameOrigin(request) && !isSameOriginInviteFormNavigation(request)) return invitePage("invalid", 403, await logInviteRefusal(service, "request", "bad_origin", ref));
   if (!service) return invitePage("not_configured", 503);
   if (!(await inviteRateOk(service, request))) return invitePage("busy", 429, await logInviteRefusal(service, "request", "rate_limited", ref));
   if (!INVITE_REF.test(ref)) return invitePage("invalid", 404, await logInviteRefusal(service, "request", "malformed_ref", ref));
