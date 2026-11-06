@@ -1,0 +1,11 @@
+Chain BUILDER3_BROWSER_EGRESS (1 references)
+ pkts bytes target     prot opt in     out     source               destination         
+11216 8718K RETURN     all  --  *      lo      0.0.0.0/0            0.0.0.0/0           
+ 3397 1744K RETURN     all  --  *      *       0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+   98  5880 RETURN     all  --  *      *       0.0.0.0/0            172.18.0.0/16       
+ 2029  197K REJECT     all  --  *      *       0.0.0.0/0            0.0.0.0/0            reject-with icmp-port-unreachable
+Chain BUILDER3_BROWSER_EGRESS (1 references)
+ pkts bytes target     prot opt in     out     source               destination         
+   78  5460 RETURN     all  --  *      lo      ::/0                 ::/0                
+    0     0 RETURN     all  --  *      *       ::/0                 ::/0                 ctstate RELATED,ESTABLISHED
+    6   336 REJECT     all  --  *      *       ::/0                 ::/0                 reject-with icmp6-port-unreachable

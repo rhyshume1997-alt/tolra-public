@@ -294,7 +294,12 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
 
   const app = microsoftApp();
   const beta = world().tenants.beta;
-  await signIn(page, beta.users.admin);
+  // Real Auth step-up, not an injected token or a relaxed server MFA check.
+  const beforeAdmins = new Set((await rows<{user_id:string}>("select user_id from organization_members where organization_id=$1",[beta.id])).map(r=>r.user_id));
+  await aal2Admin(page, "beta");
+  const createdAdmins = (await rows<{user_id:string}>("select user_id from organization_members where organization_id=$1 and role='admin'",[beta.id])).filter(r=>!beforeAdmins.has(r.user_id));
+  expect(createdAdmins).toHaveLength(1);
+  const connectingAdminId=createdAdmins[0].user_id;
 
   // Anything bound for Microsoft or Xero is answered here, in the browser: nothing leaves the machine.
   const offBox: string[] = [];
@@ -333,7 +338,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
     "select state_hash, user_id, verifier_enc, consumed_at, extract(epoch from (expires_at - created_at))::int as ttl_s from public.integration_oauth_states where organization_id = $1 and provider = 'microsoft'",
     [beta.id]);
   expect(states).toHaveLength(1);
-  expect(states[0]).toMatchObject({ state_hash: sha256(state), user_id: beta.users.admin.id, consumed_at: null });
+  expect(states[0]).toMatchObject({ state_hash: sha256(state), user_id: connectingAdminId, consumed_at: null });
   expect(states[0].ttl_s).toBeGreaterThanOrEqual(590);
   expect(states[0].ttl_s).toBeLessThanOrEqual(610);
   expect(states[0].verifier_enc).toMatch(/^v\d+\./);

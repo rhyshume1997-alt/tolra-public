@@ -1,0 +1,93 @@
+[
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/login",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/login",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/select-role",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/dashboard",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/dashboard",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/admin/integrations",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "navigation",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/admin/integrations",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "request",
+    "method": "POST",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/api/integrations/microsoft/connect",
+      "hasState": false,
+      "challengeLength": 0
+    }
+  },
+  {
+    "kind": "connect-response",
+    "status": 403,
+    "code": "mfa_required",
+    "error": "Confirm your authenticator code first.",
+    "authorize": null
+  },
+  {
+    "kind": "end",
+    "status": "timedOut",
+    "url": {
+      "origin": "http://localhost:3001",
+      "path": "/admin/integrations",
+      "hasState": false,
+      "challengeLength": 0
+    },
+    "codeDialogVisible": false
+  }
+]
