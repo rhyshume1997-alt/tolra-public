@@ -116,7 +116,7 @@ describe("failed and uncertain direct sends leave an audit row", () => {
     S.rows = [{ id: DOC, organization_id: "o1", customer: "X", invoice_ref: "I-1", customer_email: "a@b.test" }];
     for (const uncertain of [false, true]) {
       S.rpc = []; S.mail = { ok: false, code: "provider_error", error: "x", uncertain };
-      const res = await POST(post("/api/email/send", { kind: "invoice", record_id: DOC, to: ["a@b.test"], subject: "S", text: "T" }));
+      const res = await POST(post("/api/email/send", { kind: "invoice", record_id: DOC, to: ["a@b.test"], subject: "S", text: "T", idempotency_key: "fixture-key-0001" }));
       expect(res.status).toBe(502);
       expect(S.rpc).toHaveLength(1);
       expect(S.rpc[0].a).toMatchObject({ p_action: "UPDATE", p_entity_table: "invoices", p_entity_id: DOC, p_new: { outcome: uncertain ? "unknown" : "failed" }, p_metadata: { channel: "email-send", code: "provider_error" } });

@@ -25,7 +25,7 @@ describe("direct-send routes: two customers with one name are ambiguous", () => 
   it("/api/email/send refuses both same-name addresses", async () => {
     const { POST } = await import("@/app/api/email/send/route");
     for (const to of ["first@customer.test", "second@customer.test"]) {
-      const res = await POST(new Request("http://x/api/email/send", { method: "POST", body: JSON.stringify({ kind: "invoice", record_id: DOC, to: [to], subject: "S", text: "T" }) }));
+      const res = await POST(new Request("http://x/api/email/send", { method: "POST", body: JSON.stringify({ kind: "invoice", record_id: DOC, to: [to], subject: "S", text: "T", idempotency_key: "fixture-key-0001" }) }));
       expect(res.status).toBe(403);
     }
     expect(T.mailerCalls).toEqual([]);
@@ -33,7 +33,7 @@ describe("direct-send routes: two customers with one name are ambiguous", () => 
   it("/api/email/send still accepts a name that is unique", async () => {
     T.tables.customers = [{ organization_id: ORG, name: "Customer Ltd", email: "first@customer.test" }];
     const { POST } = await import("@/app/api/email/send/route");
-    const res = await POST(new Request("http://x/api/email/send", { method: "POST", body: JSON.stringify({ kind: "invoice", record_id: DOC, to: ["first@customer.test"], subject: "S", text: "T" }) }));
+    const res = await POST(new Request("http://x/api/email/send", { method: "POST", body: JSON.stringify({ kind: "invoice", record_id: DOC, to: ["first@customer.test"], subject: "S", text: "T", idempotency_key: "fixture-key-0001" }) }));
     expect(res.status).toBe(200);
   });
   it("/api/send-job refuses both same-name addresses (the base trusted whichever row came first)", async () => {
