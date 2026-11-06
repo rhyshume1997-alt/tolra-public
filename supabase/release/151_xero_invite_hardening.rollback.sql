@@ -12,6 +12,9 @@ DO $rollback_guard$ BEGIN
  END IF;
 END $rollback_guard$;
 DELETE FROM public.integration_connect_invites WHERE token_hash IS NULL;
+DROP FUNCTION IF EXISTS public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER);
+DROP FUNCTION IF EXISTS public.integration_invite_store_connection(TEXT, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, INTEGER);
+ALTER TABLE public.integration_oauth_states DROP COLUMN IF EXISTS invite_completed_at;
 DROP FUNCTION IF EXISTS public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID);
 DROP FUNCTION IF EXISTS security_audit.integration_invite_refuse(TEXT, TEXT, TEXT, UUID, UUID);
 DROP TABLE IF EXISTS security_audit.integration_invite_refusals;
