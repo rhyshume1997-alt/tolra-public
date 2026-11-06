@@ -10,7 +10,7 @@ import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Client } from "pg";
 
-import { generatePassword } from "@/lib/password";
+import { generatePassword } from "../../lib/password";
 
 import { type IsolatedBackend, IsolationError, SYNTHETIC_SLUG_PREFIX, gitSha, isolatedBackend } from "./isolation";
 
