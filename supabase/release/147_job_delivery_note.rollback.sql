@@ -4,7 +4,17 @@
 -- repeat. With the hold table gone, a company whose cutover counter step has not run is no longer held, and browser-made notes may again
 -- carry a typed number: a rollback before the counter step needs Rhys's decision on numbering first. Existing triggers, policies and
 -- functions from before 147 are untouched.
+-- It REFUSES while any company is still held (a row in the hold table: its cutover counter step has not run), because dropping the table releases the hold,
+-- unless the runner first says, in the same session, that releasing the hold is accepted:
+--     SET tolra.x147_accept_releasing_hold = 'yes';
 BEGIN;
+DO $rb$ BEGIN
+ IF to_regclass('public.dln_numbering_pending') IS NOT NULL THEN
+  IF EXISTS (SELECT 1 FROM public.dln_numbering_pending) AND coalesce(current_setting('tolra.x147_accept_releasing_hold', TRUE), '') <> 'yes' THEN
+   RAISE EXCEPTION '147 rollback refused: a company is still held (its delivery note numbering step has not run); rolling back releases the hold. SET tolra.x147_accept_releasing_hold = ''yes'' first if that is accepted.';
+  END IF;
+ END IF;
+END $rb$;
 DROP FUNCTION public.create_job_delivery_note(uuid, uuid, uuid, date, date, text, text, jsonb);
 DROP TRIGGER delivery_notes_numbering_guard ON public.delivery_notes;
 DROP FUNCTION public.delivery_notes_numbering_guard();

@@ -1,4 +1,4 @@
--- Read only: after a separately approved release 151 (PROPOSAL, not registered in the release plan), every row must say true.
+-- Read only: after a separately approved release 151 (registered in supabase/release-plan.json as phase 151, after 150), every row must say true.
 -- What it proves, in words: the accountant's Xero connect link is an opaque reference bound to one company, the creating admin and one recipient address;
 -- the old token functions are gone; the code functions are for the service role only; the invite table is unreadable through the API; no 107 token link
 -- is still open; a code is only ever stored as a 64-hex keyed hash; nothing in the audit log carries a reference, code or hash.

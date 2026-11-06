@@ -3,7 +3,19 @@
 -- if the recorded costs are needed: after a rollback and re-release, jobs closed in between have no record (they are never re-costed at
 -- today's rates). 143's rates (costing_defaults, costing_machines, costing_materials, save_costing_settings_atomic), jobs, invoices, timers,
 -- purchase orders and the legacy bought-in profit are untouched. Deploy a UI without the panel first, or leave it reading "unavailable".
+-- It REFUSES while any of those four tables holds a row, unless the runner first says, in the same session, that deleting them is accepted (export them first):
+--     SET tolra.x148_accept_deleting_job_costs = 'yes';
 BEGIN;
+DO $rb$ BEGIN
+ IF to_regclass('public.job_cost_snapshots') IS NOT NULL AND to_regclass('public.job_cost_declarations') IS NOT NULL
+    AND to_regclass('public.job_costing_machine_links') IS NOT NULL AND to_regclass('public.job_costing_settings') IS NOT NULL THEN
+  IF (EXISTS (SELECT 1 FROM public.job_cost_snapshots) OR EXISTS (SELECT 1 FROM public.job_cost_declarations)
+      OR EXISTS (SELECT 1 FROM public.job_costing_machine_links) OR EXISTS (SELECT 1 FROM public.job_costing_settings))
+     AND coalesce(current_setting('tolra.x148_accept_deleting_job_costs', TRUE), '') <> 'yes' THEN
+   RAISE EXCEPTION '148 rollback refused: job costing data exists (job cost records, declarations, machine links or the switch); rolling back deletes it. Export job_cost_snapshots first, then SET tolra.x148_accept_deleting_job_costs = ''yes'' if that is accepted.';
+  END IF;
+ END IF;
+END $rb$;
 DROP TRIGGER zz_job_cost_snapshot ON public.jobs;
 DROP TRIGGER zz_job_cost_snapshot ON public.invoices;
 DROP FUNCTION public.job_profitability_actual_inputs(uuid);

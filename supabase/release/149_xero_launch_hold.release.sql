@@ -1,12 +1,15 @@
 -- Post-144 release step 149. One-time, one transaction; never part of baseline replay.
 -- Canonical source: supabase/proposals/x149_xero_launch_hold.sql (read its header for what it does and why). Existing objects cause refusal, never overwrite.
--- Apply only after 147 (and 144, whose connections table this guards). Verify: supabase/verify/xero_launch_hold_149.sql (every row t).
+-- Apply only after 148 (which follows 147; the guard tests 147's and 148's objects) and after 144, whose connections table this guards. Verify: supabase/verify/xero_launch_hold_149.sql (every row t).
 -- Rollback: supabase/release/149_xero_launch_hold.rollback.sql (refuses while a connected company is still held, or while any queued Xero document is
 -- still held for review, unless told that old sending is accepted).
 BEGIN;
 DO $post_release_guard$ BEGIN
  IF to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)') IS NULL OR to_regclass('public.company_setup_progress') IS NULL THEN
   RAISE EXCEPTION '149: required releases 145, 146 and 147 are missing; stop and check release preflight';
+ END IF;
+ IF to_regclass('public.job_costing_settings') IS NULL OR to_regclass('public.job_cost_snapshots') IS NULL THEN
+  RAISE EXCEPTION '149: required release 148 (job costing) is missing; stop and check release preflight';
  END IF;
  IF to_regclass('public.integration_connections') IS NULL OR to_regclass('public.integration_sends') IS NULL OR to_regclass('public.organizations') IS NULL
     OR to_regprocedure('public.integration_unmapped(uuid,text)') IS NULL OR to_regprocedure('public.integration_record_result(uuid,uuid,text,text,text,text,timestamptz)') IS NULL

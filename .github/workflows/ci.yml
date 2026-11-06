@@ -255,9 +255,9 @@ jobs:
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         # Full command, no exclusions. The sequencer runs every baseline file first,
-        # then all release proofs prepare/verify 145 and 146 on this disposable backend.
+        # then all release proofs prepare/verify 145 to 151 on this disposable backend.
         # The baseline and upgrade rehearsal still test only numbered migrations first.
-        # Post-144 release plan: 145 N5 then 146 N2/cap; proofs remain mandatory.
+        # Post-144 release plan (supabase/release-plan.json): 145 N5, 146 N2/cap, 147 delivery note, 148 job costing, 149 Xero switch, 150 AI cap/key-off, 151 Xero invite hardening; proofs remain mandatory.
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
         run: npm run test:db

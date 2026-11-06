@@ -1,5 +1,8 @@
 # Post-144 release packaging — AB
 
+
+> **Update, 6 November 2026.** This note was written when the post-144 plan had two steps (145 and 146). It now has seven: 145 company setup, 146 Tolra AI, 147 job delivery note, 148 job costing, 149 Xero transfer switch, 150 AI cap and key-off, 151 Xero invite hardening, in that order (`supabase/release-plan.json`, "after" chain 144, 145, 146, 147, 148, 149, 150). Each release's guard refuses to run unless the release before it is in place, and a rollback of 145 or 147 or 148 (like 141 and 143) refuses while the feature holds data. Statements below that name only 145 and 146 describe those two steps and remain true of them; for the rest see `supabase/release-plan.json`.
+
 Review only. No SQL was applied here. This is part of candidate #247.
 
 ## Assumption and order
