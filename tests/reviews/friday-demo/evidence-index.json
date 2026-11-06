@@ -107,5 +107,18 @@
   "humanDecision": "",
   "humanName": "",
   "humanDate": "",
-  "humanSignature": ""
+  "humanSignature": "",
+  "combinedBrowser": {
+    "sha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+    "run": 42188546930,
+    "artifact": 13489091069,
+    "artifactSha256": "1862c1d17cf14192218540b1c1365057ccdf1f752c2846c09d918c5194d00a4a",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "outboundRestrictionsActive": true,
+    "rejectedIPv4Packets": 1845,
+    "rejectedIPv6Packets": 4
+  }
 }
