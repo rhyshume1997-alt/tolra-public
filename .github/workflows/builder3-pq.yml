@@ -50,6 +50,8 @@ jobs:
         env:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test reset and endpoint isolation guards
+        run: node --test tests/pq/safety.test.mjs
       - name: Start and seed the owned real Supabase through 151
         run: node tests/pq/pq.mjs prepare
       - name: Install screenshot browser
