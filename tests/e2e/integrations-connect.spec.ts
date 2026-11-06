@@ -2,7 +2,7 @@
  * Real-browser integration setup and emailed Xero invite flow, synthetic backend only.
  * Microsoft/platform cases remain; invite links carry22-character opaque references, never bearer tokens.
  * Codes and links come only from the local mock mailbox. Provider navigation is intercepted; no valid OAuth callback is invoked.
- * Proposal151 is prepared only after backend identity verification, never registered in the production release plan.
+ * Release151 is prepared only after disposable-backend identity verification; this spec never changes release registration.
  */
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -91,7 +91,7 @@ async function noFollow(request: APIRequestContext, path: string) {
 }
 
 test.beforeAll(async ({ browser }) => {
-  // Review-only151 is installed solely on the already identity-verified disposable backend, never registered as a release.
+  // Install151 only on the already identity-verified disposable backend; preserve Code's existing release registration.
   await verifyBackendIdentity();
   await preparePost144Backend();
   await withDb(async db=>{
@@ -397,12 +397,15 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
  };
  const addressed=(m:Mail,to:string)=>[m.to].flat().includes(to);
  const makeLink=async()=>{
-  const to=`accountant-${++serial}.${world().runId}@example.test`;
+  const to=`${String.fromCharCode(96 + ++serial)}-accountant-${serial}.${world().runId}@example.test`;
+  const masked=`${to[0]}***@example.test`;
   await panel.getByLabel("Accountant's e-mail address").fill(to);
   const response=page.waitForResponse(r=>r.url().endsWith('/api/integrations/invite')&&r.request().method()==='POST');
   await panel.getByRole('button',{name:'E-mail the accountant a connect link'}).click();
   const answer=await response;expect(answer.status()).toBe(200);const body=await answer.json();
-  await expect(panel.getByTestId('xero-invite-sent')).toContainText(to);
+  expect(body).toMatchObject({sent:true,recipient:masked});
+  await expect(panel.getByTestId('xero-invite-sent')).toContainText(`Sent to ${masked}`);
+  await expect(panel.getByTestId('xero-invite-sent')).not.toContainText(to);
   await expect(panel.getByTestId('xero-invite-url')).toHaveCount(0);
   await expect.poll(async()=>(await mail()).filter(m=>addressed(m,to)&&m.text.includes('/api/integrations/invite/')).length).toBe(1);
   const message=(await mail()).find(m=>addressed(m,to)&&m.text.includes('/api/integrations/invite/'))!;
@@ -413,7 +416,8 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
    'select id,ref,recipient_email,token_hash,code_hash,used_at,created_at,expires_at from integration_connect_invites where ref=$1',[ref]);
   expect(row).toMatchObject({ref,recipient_email:to,token_hash:null,code_hash:null,used_at:null});
   const ttlHours=(Date.parse(row.expires_at)-Date.parse(row.created_at))/3600000;expect(ttlHours).toBeGreaterThan(23.9);expect(ttlHours).toBeLessThanOrEqual(24);
-  return {to,ref,path:new URL(link).pathname,id:row.id};
+  expect(body.id).toBe(row.id);
+  return {to,masked,ref,path:new URL(link).pathname,id:row.id};
  };
  const statesVia=(id:string)=>rows<{state_hash:string;user_id:string}>('select state_hash,user_id from integration_oauth_states where via_invite=$1',[id]);
  const address=()=>({'x-real-ip':`10.244.${serial}.${20+serial}`});
@@ -459,7 +463,8 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   await accountant.getByRole('button',{name:'Continue to Xero'}).click();await expect(accountant.getByText('intercepted',{exact:true})).toBeVisible();
   expect(new URL(outbound).searchParams.get('redirect_uri')).toBe(redirect);expect(await statesVia(b.id)).toHaveLength(1);
  }finally{await visitor.close();}
- const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:c.to});
+ const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:`to ${c.masked}`});
+ await expect(item).toHaveCount(1);
  await item.getByRole('button',{name:'Cancel',exact:true}).click();await page.getByRole('dialog',{name:'Cancel this connect link?'}).getByRole('button',{name:'Cancel link'}).click();await expect(item).toHaveCount(0);
  const cancelled=(await rows<{revoked_at:string|null;revoked_by:string}>('select revoked_at,revoked_by from integration_connect_invites where id=$1',[c.id]))[0];expect(cancelled.revoked_at).not.toBeNull();expect(cancelled.revoked_by).toBe(beta.users.admin.id);
  expect((await page.request.delete('/api/integrations/invite?id='+c.id)).status()).toBe(404);expect((await page.request.delete('/api/integrations/invite?id=not-a-uuid')).status()).toBe(400);
