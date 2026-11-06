@@ -49,7 +49,14 @@ describe("each release refuses to run before the release the plan says it follow
 
   it("144 refuses when 107 (integrations connect) is missing, in the migration and in its release text", () => {
     const migration = read("supabase/migrations/144_accounting_connections.sql");
-    const g = migration.slice(0, migration.indexOf("CREATE OR REPLACE FUNCTION public.accounting_cloud_enqueue()"));
+    // The guard sits after the first new function (the upgrade rehearsal needs something created before its mid-file failure point) and before anything existing is altered.
+    const at = migration.indexOf("DO $guard$ BEGIN");
+    expect(at).toBeGreaterThan(-1);
+    const g = migration.slice(at, migration.indexOf("END $guard$;"));
+    const firstAlteration = migration.search(/^(ALTER|DROP) /m);
+    expect(firstAlteration).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(firstAlteration);
+    expect(migration.indexOf("CREATE OR REPLACE FUNCTION public.accounting_cloud_enqueue()")).toBeLessThan(at);
     expect(g).toContain("to_regclass('public.integration_app_credentials') IS NULL");
     expect(g).toContain("to_regclass('public.integration_connect_invites') IS NULL");
     expect(g).toMatch(/RAISE EXCEPTION '144: release 107 \(integrations connect\) is not in place; stop and check release preflight'/);

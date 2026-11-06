@@ -2,11 +2,6 @@
 -- Reuse the existing company-bound OAuth state, tenant uniqueness, encrypted secrets and refresh leases.
 -- Only connections/secrets/states accept the new providers. Mapping/contact/send tables remain Xero-only.
 -- Prerequisite: 107 (checked below: the guard refuses when 107's tables are missing). New app credentials are environment-only. No provider subscription is purchased.
-DO $guard$ BEGIN
- IF to_regclass('public.integration_app_credentials') IS NULL OR to_regclass('public.integration_connect_invites') IS NULL THEN
-  RAISE EXCEPTION '144: release 107 (integrations connect) is not in place; stop and check release preflight';
- END IF;
-END $guard$;
 -- Define new functions before altering existing objects (upgrade rehearsal ordering).
 -- Read-only connections must never enqueue an outbound accounting send.
 -- Keep 084 integration_enqueue byte-for-byte intact: its replay guard checks that body.
@@ -48,6 +43,12 @@ BEGIN
   RETURN NULL;
 END
 $$;
+-- Guard (after the first new function so the upgrade rehearsal's mid-file failure point still follows something this file creates; it still runs before any existing object is altered).
+DO $guard$ BEGIN
+ IF to_regclass('public.integration_app_credentials') IS NULL OR to_regclass('public.integration_connect_invites') IS NULL THEN
+  RAISE EXCEPTION '144: release 107 (integrations connect) is not in place; stop and check release preflight';
+ END IF;
+END $guard$;
 REVOKE ALL ON FUNCTION public.accounting_cloud_enqueue() FROM PUBLIC, anon, authenticated;
 CREATE OR REPLACE FUNCTION public.accounting_cloud_connections_ready()
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, public
