@@ -1,6 +1,6 @@
 {
-  "subject": "e70f6633b0f02f0e1dd38391ade87330d38a6a1c",
-  "database": "cost_adv_11e399fae0dd4f8a8c29be0c40ee237c",
+  "subject": "9b63382eababc73a314853897d447452b267c47e",
+  "database": "cost_adv_e9f2415e7ff5492ab228c05aa20fc5c5",
   "files": [
     {
       "file": "tests/reviews/night-cost-profit/bootstrap.sql",
