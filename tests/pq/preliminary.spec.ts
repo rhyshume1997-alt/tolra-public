@@ -122,7 +122,10 @@ test("PRELIMINARY: execute the twelve fake PQ run-sheet checks on the exact sour
     await check(12, "workshop login, schedule and financial restrictions", async () => {
       await page.context().clearCookies(); await signIn(page, "workshop"); await page.setViewportSize({ width: 1024, height: 768 });
       await page.goto("/jobs"); await expect(page.getByText("J-PQ-0001", { exact: true }).first()).toBeVisible();
-      await page.getByRole("row").filter({ hasText: "J-PQ-0001" }).getByRole("button", { name: "Worksheet", exact: true }).click();
+      // At the workshop's 1024px viewport Jobs uses cards, not the desktop table.
+      const job = page.getByTestId("job-card").filter({ has: page.getByText("J-PQ-0001", { exact: true }) });
+      await expect(job).toBeVisible();
+      await job.getByRole("button", { name: "Worksheet", exact: true }).click();
       await expect(page.getByTestId("actual-job-costing")).toHaveCount(0); await close();
       expect((await page.request.get("/api/integrations/app-credentials")).status()).toBe(403);
       await page.goto("/schedule"); await expect(page.getByText("FAKE CNC Mill", { exact: false }).first()).toBeVisible();
