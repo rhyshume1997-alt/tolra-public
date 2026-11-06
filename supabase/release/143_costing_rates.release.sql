@@ -3,7 +3,7 @@ BEGIN;
 
 -- =====================================================================================================
 -- 143: costing rates inside Tolra (the Quote Builder's costing calculation without a separate service). JNR cutover release, applied after
--- 141 and before 144 (order 138, 140, 141, 143, 144, 145, 146, 147, 149, 150). Needs 000 (organizations), 031/033 (current_user_organization_id,
+-- 141 and before 144 (order 138, 140, 141, 143, 144, 145, 146, 147, 148, 149, 150, 151). Needs 000 (organizations), 031/033 (current_user_organization_id,
 -- has_org_role, assert_privileged_aal, require_admin_mfa_guard), 036 (support_readonly_guard, my_session) and the row audit trigger
 -- (security_audit.log_row_change). Nothing in 144 to 150 reads or changes these objects. Touches no existing table, row, policy, grant or
 -- function. Safe to run again.
