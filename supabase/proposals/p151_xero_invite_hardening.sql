@@ -461,8 +461,9 @@ GRANT EXECUTE ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT
 -- 3i. The invite's FINAL write (server only, after the Xero hand-back and the provider round trips). The callback consumed the state (3g); this is the only way an
 -- invite-started state becomes a connection. In ONE transaction it locks the state and then the invite, re-checks everything that can have changed during the
 -- provider round trips (revoked, expired by clock_timestamp(), creator still an active non-support admin of an active company, the state still inside its own
--- window), refuses a Xero organisation whose name is not the company's (an emailed link offers no tenant picker; this is a name match, not proof of legal
--- ownership), then calls the ordinary store (084/149: admin check, tenant ownership, transfers OFF, queued documents stay held) and marks the state completed.
+-- window), then calls the ordinary store (084/149: admin check, tenant ownership, transfers OFF, queued documents stay held) and marks the state completed.
+-- The Xero organisation's NAME is not compared with the company's (legitimate organisations trade under other names); the immutable Xero tenant id passed (p_tenant_id)
+-- is the one stored, a tenant already connected to another company is refused by the ordinary store, and a completed state can never be used again.
 -- Every refusal is a row of the security log; the answer carries only ok:false and a correlation id (never which check failed). p_org / p_user are not trusted:
 -- they must equal what the consumed state holds.
 ALTER TABLE public.integration_oauth_states ADD COLUMN invite_completed_at timestamptz;
@@ -484,7 +485,7 @@ BEGIN
   IF NOT FOUND OR st.via_invite IS NULL OR st.organization_id <> p_org OR st.user_id <> p_user OR st.consumed_at IS NULL OR st.invite_completed_at IS NOT NULL THEN
     RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', 'callback_state', NULL, NULL));
   END IF;
-  SELECT inv.*, o.status AS company_status, o.name AS company_name INTO i
+  SELECT inv.*, o.status AS company_status INTO i
   FROM public.integration_connect_invites inv JOIN public.organizations o ON o.id = inv.organization_id WHERE inv.id = st.via_invite FOR UPDATE OF inv;
   why := CASE WHEN NOT FOUND THEN 'unknown_ref' WHEN i.revoked_at IS NOT NULL THEN 'revoked'
               WHEN i.expires_at <= clock_timestamp() OR st.expires_at <= clock_timestamp() THEN 'expired'
@@ -493,9 +494,6 @@ BEGIN
                                   AND m.active AND NOT m.support AND 'admin' IN (m.role, coalesce(m.secondary_role, ''))) THEN 'creator_not_admin' END;
   IF why IS NOT NULL THEN
     RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', why, i.ref, p_org));
-  END IF;
-  IF lower(btrim(coalesce(p_tenant_name, ''))) IS DISTINCT FROM lower(btrim(i.company_name)) THEN
-    RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', 'callback_error', i.ref, p_org));
   END IF;
   result := public.integration_store_connection(p_org, p_user, p_provider, p_tenant_id, p_tenant_name, p_external_connection_id,
                                                 p_refresh_enc, p_access_enc, p_access_expires_at, p_key_version);

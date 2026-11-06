@@ -6,6 +6,8 @@
  * Every case calls the function exactly as the application does (named argument order of the app's rpc payload, positional here).
  */
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -14,6 +16,7 @@ import { isolatedBackend } from "../support/isolation";
 import { verifyBackendIdentity, withDb } from "../support/fixtures";
 import { preparePost144Fixture } from "../support/post-144-release-fixture";
 
+const read = (file: string) => readFileSync(path.resolve(__dirname, "../..", file), "utf8");
 type Db = Pick<Client, "query">;
 type Err = { code?: string; message: string };
 type Json = Record<string, unknown>;
@@ -197,15 +200,46 @@ describe("integration_invite_store_connection (11 arguments -> jsonb), service r
     });
   });
 
-  it("a Xero organisation with a different name from the company is refused, not silently bound", async () => {
+  it("a Xero organisation whose name differs from the company's CAN connect: the tenant id and name passed are the ones stored", async () => {
     await inTx(async (db) => {
       const org = await makeOrg(db, "name", `Delta Engineering ${run}`);
       const admin = await makeAdmin(db, org);
       const s = await consumedState(db, org, admin.id);
-      expect(ok(await svc<{ r: Json }>(db, STORE, storeArgs(s.state, org, admin.id, "Unrelated Company Ltd")))[0].r).toMatchObject({ ok: false });
-      expect(await connections(db, org)).toEqual([]);
+      const tenant = randomUUID();
+      const out = ok(await svc<{ r: Json }>(db, STORE, storeArgs(s.state, org, admin.id, "Delta Trading (Trading Name)", tenant)))[0].r;
+      expect(out).toMatchObject({ provider: "xero", status: "connected", tenant_name: "Delta Trading (Trading Name)" });
+      const stored = (await db.query("SELECT tenant_id, tenant_name, status FROM public.integration_connections WHERE organization_id=$1 AND provider='xero'", [org])).rows;
+      expect(stored).toEqual([{ tenant_id: tenant, tenant_name: "Delta Trading (Trading Name)", status: "connected" }]);
+      expect(await completed(db, s.state)).not.toBeNull();
+    });
+  });
+
+  it("a state belonging to another company is refused and stores nothing, whatever name or tenant is offered", async () => {
+    await inTx(async (db) => {
+      const a = await makeOrg(db, "xa", `Zeta ${run}`), b = await makeOrg(db, "xb", `Eta ${run}`);
+      const adminA = await makeAdmin(db, a), adminB = await makeAdmin(db, b);
+      const s = await consumedState(db, a, adminA.id);
+      for (const [org, user, name] of [[b, adminB.id, `Eta ${run}`], [b, adminA.id, `Zeta ${run}`], [a, adminB.id, `Zeta ${run}`], [b, adminB.id, `Zeta ${run}`]] as const) {
+        expect(ok(await svc<{ r: Json }>(db, STORE, storeArgs(s.state, org, user, name)))[0].r).toMatchObject({ ok: false });
+      }
+      expect(await connections(db, a)).toEqual([]);
+      expect(await connections(db, b)).toEqual([]);
       expect(await completed(db, s.state)).toBeNull();
-      expect((await refusalReasons(db, org)).some((r) => r.reason === "callback_error")).toBe(true);
+    });
+  });
+
+  it("the tenant id stored is the one passed; a second call for the completed state (same or another tenant) is refused and changes nothing", async () => {
+    await inTx(async (db) => {
+      const org = await makeOrg(db, "once", `Theta ${run}`);
+      const admin = await makeAdmin(db, org);
+      const s = await consumedState(db, org, admin.id);
+      const first = randomUUID(), other = randomUUID();
+      ok(await svc(db, STORE, storeArgs(s.state, org, admin.id, "Whatever Ltd", first)));
+      for (const t of [first, other]) expect(ok(await svc<{ r: Json }>(db, STORE, storeArgs(s.state, org, admin.id, "Whatever Ltd", t)))[0].r).toMatchObject({ ok: false });
+      expect((await db.query("SELECT tenant_id FROM public.integration_connections WHERE organization_id=$1", [org])).rows).toEqual([{ tenant_id: first }]);
+      // an empty tenant id is never accepted (the ordinary store refuses it)
+      const s2 = await consumedState(db, org, admin.id);
+      expect((await svc(db, STORE, storeArgs(s2.state, org, admin.id, "Whatever Ltd", " " as never))).error).toMatchObject({ code: "22023" });
     });
   });
 
@@ -276,5 +310,28 @@ describe("integration_xero_picker_claim (4 arguments -> boolean), service role o
       const rows = (await withDb((db) => db.query("SELECT count(*)::int AS n FROM public.auth_rate_limits WHERE bucket='xero_picker_use' AND key_hash=$1", [key]))).rows[0].n;
       expect(rows).toBe(1);
     } finally { await a.end().catch(() => undefined); await b.end().catch(() => undefined); }
+  });
+});
+
+describe("rolling release 151 back removes both functions and the column; applying again restores them", () => {
+  const FNS = ["public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)", "public.integration_xero_picker_claim(text,text,integer,integer)"];
+  const state = async (db: Db) => ({
+    fns: (await db.query("SELECT f, to_regprocedure(f) IS NOT NULL AS here FROM unnest($1::text[]) f", [FNS])).rows.map((r) => r.here as boolean),
+    column: (await db.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='public' AND table_name='integration_oauth_states' AND column_name='invite_completed_at'")).rows[0].n as number,
+    marker: (await db.query(read("supabase/verify/release_preflight.sql"))).rows.find((r) => r.check === "post-144 marker 151 xero_invite_hardening")?.value as string,
+  });
+  it("(ii) with 145..151 applied they exist and the marker says applied; rollback removes them; (i) the 145..150 state has none and says not applied; the release restores them and refuses a second apply", async () => {
+    await withDb(async (db) => {
+      expect(await state(db)).toEqual({ fns: [true, true], column: 1, marker: "applied" });
+      await db.query("SET tolra.x151_accept_deleting_open_invites = 'yes'");
+      await db.query(read("supabase/release/151_xero_invite_hardening.rollback.sql"));
+      expect(await state(db)).toEqual({ fns: [false, false], column: 0, marker: "not applied" });
+      await expect(db.query("SELECT public.integration_xero_picker_claim('xero_picker_use',$1,600,1)", [newHash()])).rejects.toMatchObject({ code: "42883" });
+      await db.query(read("supabase/release/151_xero_invite_hardening.release.sql"));
+      expect(await state(db)).toEqual({ fns: [true, true], column: 1, marker: "applied" });
+      await expect(db.query(read("supabase/release/151_xero_invite_hardening.release.sql"))).rejects.toThrow(/already exists|applied before/);
+      await db.query("ROLLBACK").catch(() => undefined);
+      expect(await state(db)).toEqual({ fns: [true, true], column: 1, marker: "applied" });
+    });
   });
 });
