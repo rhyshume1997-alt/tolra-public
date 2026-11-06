@@ -27,7 +27,7 @@ type Inputs = { configured: boolean; open: boolean; config: { enabled: boolean; 
 
 beforeAll(async () => {
   await verifyBackendIdentity();
-  await withDb(db => preparePost144Fixture({ verify: verifyBackendIdentity, query: sql => db.query(sql) }));
+  await withDb(db => preparePost144Fixture({ through: 148, verify: verifyBackendIdentity, query: sql => db.query(sql) }));
 });
 
 async function org(db: Db, label: string) {
