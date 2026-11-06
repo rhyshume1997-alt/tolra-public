@@ -1,0 +1,13 @@
+# Integrate445+446 on run10 base
+
+Own branch codex/integrate-445-446-run10 from exact9b63382eababc73a314853897d447452b267c47e. No candidate/#444/main changes, merge/deploy/production SQL/provider activation or calls. Previous date-only audit is paused by PM's replacement instruction; /tmp/date-inventory.json and search extracts remain local, no source edits were made for it.
+
+Run10 completed green before this work: https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42203506413 at9b63382e.1969DBpassed/0failed/7skipped;23rehearsalpassed/0failed/2skipped;609main browser passed;10reviewer passed;146reinstall refused after rollback. This proves the base, not this new integration. Artifact13500442518 digest7538ae77c64badbb6b4dfce5a465306c86faf84774aacc65e9763be606639f9f. No run10 failure requires repair; no cancel/rerun/edit of that run.
+
+Source fixes: #445522e847 (atomic Xero late-write refusal) and #446ad17529 (half-up actual profitability pennies; engine half-even exception, frozen snapshots). Only required code/fixtures/pin manifest imported, not their old archived reports. Exact source provenance and complete file list will be recorded. New financial fixture receipt metadata identifies9b63382e instead of its prior e70base; no logic change.
+
+Tests first while every supabase file still equals9b63382e: races4passed/7failed/0skipped (six unsafe writes plus the intentionally new store pin); financial40passed/9failed/0skipped (seven new penny contracts plus two updated exact expectations); sequencing0passed/1failed. Raw reports in evidence. First race attempt happened before the local disposable server started and failed connection-refused with11not-run; retained solely as environment failure and rerun, never called security proof.
+
+Integration-only defect found: new xero-invite-late-write-151.test.ts was not in the existing post144ExtraProofFiles list, so full CI could install145..151 among frozen baseline tests. New unit regression first proves rank0; integration must register it without changing the frozen13ordered proofs or dropping any file. No application or security-gate change is involved.
+
+In progress: apply the two reviewed SQL fixes and exact11pins, register the new proof, run full required checks and combined real SQL/browser proof on the final own SHA. Production files limited to draft148/151 proposal/release and their relevant verifiers/preflight. Applied migrations/143rates/149OFF/150AI/release plan and Code's date-shifted files stay byte-identical. INV-03 decision preserved: different organisation names allowed, cross-company/replay refused. No blanket release approval; Code owns integration and review.

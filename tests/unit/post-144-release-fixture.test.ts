@@ -77,3 +77,15 @@ it("CI has one release owner and retains the full database command and upgrade r
  expect(ci).not.toContain("-f supabase/release/145_company_setup.release.sql");
  expect(ci).not.toContain("-f supabase/release/146_tolra_provided_ai.release.sql");
 });
+
+it("an explicit148 financial target verifies all four dependencies without claiming149/150/151 proof",async()=>{
+ const f=fixture();await preparePost144Fixture({...f,through:148});
+ expect(f.states).toEqual([true,true,true,true,false,false,false]);
+ expect(f.calls.filter(sql=>sql.includes('AS check_name'))).toHaveLength(4);
+ expect(f.calls.some(sql=>sql.includes('-- Post-144 release step 149'))).toBe(false);
+ expect(f.calls.at(-1)).toContain('pg_advisory_unlock');
+});
+
+it.each([144,152,148.5,Number.NaN])("invalid focused fixture target %s refuses before SQL",async through=>{
+ const f=fixture();await expect(preparePost144Fixture({...f,through:through as 148})).rejects.toThrow('Invalid release fixture target');expect(f.calls).toEqual([]);
+});
