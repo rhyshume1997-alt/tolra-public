@@ -96,15 +96,15 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'invoices' AND column_name = 'sent_by_name')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'import_company_data_run' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '0a2fec5746b0b1262cb2af6fe792bd7c')),
     ('088 converted sales order guard',  EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'sales_orders_converted_money_guard')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_converted_order_money' AND tgrelid = 'public.sales_orders'::regclass)
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_converted_order_money' AND tgrelid = to_regclass('public.sales_orders'))
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'jobs_converted_order_link_guard')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_converted_order_link' AND tgrelid = 'public.jobs'::regclass)),
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_converted_order_link' AND tgrelid = to_regclass('public.jobs'))),
     ('089 invoice receipt guard',         EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'invoice_receipts_guard')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_invoice_receipts' AND tgrelid = 'public.invoices'::regclass)),
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_invoice_receipts' AND tgrelid = to_regclass('public.invoices'))),
     ('090 clock action in its own company', EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.record_attendance_event_in_company(uuid,text,timestamp with time zone,text,uuid)')
                                           AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'b27723bfaaf334678d8d23bb1c1f0756')),
     ('091 invoice issue guard',           EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'invoice_issue_guard')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_invoice_via_issue' AND tgrelid = 'public.invoices'::regclass)),
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'zz_invoice_via_issue' AND tgrelid = to_regclass('public.invoices'))),
     ('092 release ends job time',         EXISTS (SELECT 1 FROM col WHERE table_name = 'operator_sessions' AND column_name = 'end_reason')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'machine_runs_labour' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '48f0b169d1beb1de9976f542ac182b3e')),
     ('093 platform owner login protected', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'admin_login_is_protected')
@@ -124,7 +124,7 @@ markers(migration, present) AS (
     ('103 ai helper service role',        EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('ca5166191666584107491f95ccce4702', '7e04d0ab645ec24dc0f0acb78c222702'))),
     ('105 invoice write-off',             EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'write_off_invoice' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'c7449f4564711533d43a1aa252eddfdf')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reverse_write_off' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4750ac042335694164b634edca559f23')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = 'public.invoices'::regclass)),
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'invoices_write_off_guard' AND tgrelid = to_regclass('public.invoices'))),
     ('106 email templates',               to_regclass('public.email_templates') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'finance_check_enabled')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_set_finance_check')
@@ -154,7 +154,7 @@ markers(migration, present) AS (
     ('119 ban ends session',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'session_is_active' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = 'af6457cae4d8b89cd34b5963574fbe58')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) IN ('dd70574344856582b9819431b45e6c5c', '4fa415c7b3222def6c37e93353e804c2'))),
     ('120 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass)),
+                                          AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = to_regclass('public.email_history'))),
     ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2')),
     ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_status_own_key()'), to_regprocedure('public.ai_helper_status()')) AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('3ef44c838451b46ea14030164d9b1384', 'a144add4b49efdc0b08fb9a3ad4657d9'))),
     ('123 quote customer po',             EXISTS (SELECT 1 FROM col WHERE table_name = 'quotes' AND column_name = 'customer_po')
@@ -191,11 +191,11 @@ markers(migration, present) AS (
                                           AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL),
     ('135 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bde44b5ddf519640f1053bcf747c26d')),
     ('136 recent second step',            EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.organization_members_recent_second_step()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2af8bea37c6c34ccaffb8188a199054c')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'public.organization_members'::regclass AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O')),
+                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.organization_members') AND t.tgname = 'organization_members_recent_second_step' AND t.tgenabled = 'O')),
     ('137 password change ticket',        EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.auth_users_password_change_ticket()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5fa1d17f4950cdf4e41c8a6fea67b2c5')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.issue_password_change_ticket(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a2936196b138dd7dee76db6be3b8ed82')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.revoke_password_change_ticket(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '42f77209ec079fa354f54ef78784a4b4')
-                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
+                                          AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = to_regclass('auth.users') AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
                                                       AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19)),
     ('138 chase steps',                  to_regclass('public.chase_steps') IS NOT NULL AND to_regclass('public.chase_pauses') IS NOT NULL AND to_regclass('public.chase_sends') IS NOT NULL
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.chase_create_draft(uuid,uuid,uuid,text,text,text,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5452f25d1f364e3915e01db2cfed2fee')
@@ -267,12 +267,12 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)')
                   AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '0eff98a39b4b111651ca81b1876ae21f' AND p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'])
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_notes_request_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3f0446deb43e1e7eb177aceef58c69e0')
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_request_guard' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.delivery_notes') AND tgname = 'delivery_notes_request_guard' AND tgenabled = 'O')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_notes_numbering_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '61619d558fad51f5689048011f90dd19' AND p.prosecdef)
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_numbering_guard' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.delivery_notes') AND tgname = 'delivery_notes_numbering_guard' AND tgenabled = 'O')
       AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.dln_numbering_pending')), FALSE)
       AND NOT has_table_privilege('authenticated', to_regclass('public.dln_numbering_pending'), 'SELECT,INSERT,UPDATE,DELETE')
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.delivery_notes') AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
       AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE)),
     ('post-144 marker 148 job_profitability_actuals', coalesce(((SELECT count(*) = 4 FROM pg_class WHERE relrowsecurity AND oid IN (to_regclass('public.job_costing_settings'),
              to_regclass('public.job_costing_machine_links'), to_regclass('public.job_cost_declarations'), to_regclass('public.job_cost_snapshots')))
@@ -282,7 +282,7 @@ post_release_markers(label, present) AS (
              to_regprocedure('public.job_cost_rates(uuid)'), to_regprocedure('public.job_cost_take_snapshot(uuid,uuid,text)'), to_regprocedure('public.job_cost_snapshot_on_close()'),
              to_regprocedure('public.job_profitability_actual_inputs(uuid)'), to_regprocedure('public.set_job_costing_enabled(uuid,integer,boolean)'))
            AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('c4e45bd28ccd5d5c9a9d691ec552fefc','c98f3e9d11e056a5bd83058f16fa36f4','4b00c032583a02d3c353561f03403ba3','bdeed22a214965caf88909bddbf31a42','8e5d7b65d788791ec9e6f298b084e595','3519a71abd8691238c3815d93e8c51bd'))
-      AND (SELECT count(*) = 2 FROM pg_trigger WHERE tgname = 'zz_job_cost_snapshot' AND tgenabled = 'O' AND tginitdeferred AND tgrelid IN ('public.jobs'::regclass, 'public.invoices'::regclass))
+      AND (SELECT count(*) = 2 FROM pg_trigger WHERE tgname = 'zz_job_cost_snapshot' AND tgenabled = 'O' AND tginitdeferred AND tgrelid IN (to_regclass('public.jobs'), to_regclass('public.invoices')))
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.job_cost_snapshots') AND tgname = 'job_cost_snapshot_frozen' AND tgenabled = 'O')), FALSE)),
     ('post-144 marker 149 xero_launch_hold', coalesce((coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.xero_transfer_hold')), FALSE)
       AND NOT has_table_privilege('authenticated', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
@@ -292,8 +292,8 @@ post_release_markers(label, present) AS (
       AND NOT has_table_privilege('service_role', to_regclass('public.xero_send_release'), 'SELECT,INSERT,UPDATE,DELETE')
       AND (SELECT count(*) = 11 FROM pg_proc p WHERE p.oid IN (to_regprocedure('public.integration_claim_next(uuid,text,integer,text,uuid)'), to_regprocedure('public.integration_retry_send(uuid)'), to_regprocedure('public.integration_xero_transfer_enabled(uuid)'), to_regprocedure('public.integration_xero_enabled_orgs()'), to_regprocedure('public.integration_xero_launch_status()'), to_regprocedure('public.integration_xero_set_transfers(boolean)'), to_regprocedure('public.integration_xero_connection_reset()'), to_regprocedure('public.integration_xero_held_sends()'), to_regprocedure('public.integration_xero_approve_held(uuid[])'), to_regprocedure('public.integration_xero_send_queued()'), to_regprocedure('public.integration_xero_send_released(uuid,uuid)'))
            AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('0e9eff4841aae59b2fce206cf498030e','3c4665d7f33d8b2b9c946ab1ebab0958','5522484bf0b08beb6da75aade2083106','57e9d29bf39d82eb2138abf02da84290','c2739b09eb75c5afc20f4ba3db07c758','c3d2ca18c42fbc3ca1b287dca6816961','cb609c066e4341482dd9888579a3a93c','d8aa93c5072ad4b811bb397f11653b76','dd988ce9a311a5c8524de985311eb1a9','e46ac87c559077b16643f0287a0fc08a','ff1f8f33b7d4f7163c98557bb06f4a5b'))
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.integration_connections'::regclass AND tgname = 'xero_connection_reset' AND tgenabled = 'O')
-      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.integration_sends'::regclass AND tgname = 'xero_send_queued' AND tgenabled = 'O')), FALSE)),
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.integration_connections') AND tgname = 'xero_connection_reset' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.integration_sends') AND tgname = 'xero_send_queued' AND tgenabled = 'O')), FALSE)),
     ('post-144 marker 150 ai_cap_key_off', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence' AND column_default = '1000')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a144add4b49efdc0b08fb9a3ad4657d9')
       AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_set_key(text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '423fd435ce49775980461ee998cff63f' AND p.prosecdef)
@@ -624,7 +624,7 @@ checks(n, check_name, value, expected) AS (
                                                                                          WHEN '9a9b6d9beba469441f646d038720863d' THEN 'no-op' ELSE 'other' END
                                   ELSE 'other' END
                           FROM pg_trigger t LEFT JOIN pg_proc p ON p.oid = t.tgfoid
-                          WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket'), 'none'),
+                          WHERE t.tgrelid = to_regclass('auth.users') AND t.tgname = 'password_change_ticket'), 'none'),
     'true / 5 / 0 / any number / none before 137, 137 after it, no-op after its rollback (false, not 5, encrypted above 0 or other: stop, 137 refuses to apply)'
   UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
