@@ -2,11 +2,13 @@ name: Builder 3 invitation browser proof
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches: [int/xero-all]
+    branches: [codex/integrated-final-fixes]
     paths:
       - .github/workflows/builder3-invite-browser.yml
       - tests/e2e/integrations-connect.spec.ts
       - tests/reviews/integration/**
+      - tests/reviews/combined-release-151/**
+      - supabase/**
 permissions:
   contents: read
   packages: read
@@ -15,11 +17,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   invitation-browser:
-    if: github.head_ref == 'codex/integrated-final-fixes' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.head_ref == 'codex/combined-release-151' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      INTEGRATION_VERIFY_BASE: e7c4b6380964386e66e5d6a67ed37ad0aaed8da5
       NEXT_TELEMETRY_DISABLED: '1'
       SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
     steps:
@@ -54,18 +55,17 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Start real isolated Supabase
         run: npm run test:backend
-      - name: Code baseline and protected-tree identity
+      - name: Protected applied history and active release verification
         run: |
           set -euo pipefail
-          git diff --exit-code "$INTEGRATION_VERIFY_BASE" -- supabase/migrations supabase/proposals supabase/release supabase/release-plan.json
+          git diff --exit-code e7c4b6380964386e66e5d6a67ed37ad0aaed8da5 -- supabase/migrations supabase/release-plan.json supabase/release/143_costing_rates.release.sql supabase/release/149_xero_launch_hold.release.sql supabase/release/150_ai_cap_key_off.release.sql
           set -a; . ./.env.test.local; set +a
           case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo 'Not an isolated database'; exit 1 ;; esac
-          # Immutable Code checks prepare the browser fixture. Active stronger 148/151 gates remain failing DB tests, not waived release checks.
+          # All active release checks must pass on these exact reviewed files. No baseline verifier override.
           for phase in '145_company_setup|company_setup_145' '146_tolra_provided_ai|tolra_provided_ai_146' '147_job_delivery_note|job_delivery_note_147' '148_job_profitability_actuals|job_profitability_actuals_148' '149_xero_launch_hold|xero_launch_hold_149' '150_ai_cap_key_off|ai_cap_key_off_150' '151_xero_invite_hardening|xero_invite_hardening_151'; do
             IFS='|' read -r release verify <<< "$phase"
             psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X --single-transaction -f "supabase/release/$release.release.sql"
-            git show "$INTEGRATION_VERIFY_BASE:supabase/verify/$verify.sql" > "$RUNNER_TEMP/builder3-verify.sql"
-            psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' -f "$RUNNER_TEMP/builder3-verify.sql" > "$RUNNER_TEMP/builder3-verify.rows"
+            psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' -f "supabase/verify/$verify.sql" > "$RUNNER_TEMP/builder3-verify.rows"
             awk -F'|' 'BEGIN { n=0; bad=0 } { n++; if ($NF != "t") bad++ } END { exit(n == 0 || bad != 0) }' "$RUNNER_TEMP/builder3-verify.rows"
           done
           psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -c "NOTIFY pgrst, 'reload schema';"

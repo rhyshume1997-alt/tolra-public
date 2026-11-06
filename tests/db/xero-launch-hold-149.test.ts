@@ -676,7 +676,8 @@ describe("rollback", () => {
       await db.query("SET tolra.x149_accept_old_sending = 'yes'");
       await db.query(read("supabase/release/149_xero_launch_hold.rollback.sql"));
       expect(await md5()).toEqual({ integration_claim_next: "1e926cf7051cc6614f0cfc6b2124b470", integration_retry_send: "1e8e2136759e43952aa406f8a6bcac88" });
-      expect((await db.query("SELECT count(*)::int AS n FROM pg_proc WHERE proname LIKE 'integration_xero_%'")).rows[0].n).toBe(0);
+      // integration_xero_picker_claim belongs to release 151, not 149, and stays
+      expect((await db.query("SELECT count(*)::int AS n FROM pg_proc WHERE proname LIKE 'integration_xero_%' AND proname <> 'integration_xero_picker_claim'")).rows[0].n).toBe(0);
       expect((await db.query("SELECT count(*)::int AS n FROM pg_trigger WHERE tgname IN ('xero_connection_reset','xero_send_queued')")).rows[0].n).toBe(0);
       expect((await db.query("SELECT to_regclass('public.xero_send_release') AS t")).rows[0].t).toBeNull();
       // Old behaviour in SQL: the company that was held is claimable again (this is why the rollback is gated).

@@ -1,0 +1,52 @@
+[
+  {
+    "test": "expiry-during-inner-store-lock",
+    "result": {
+      "status": "connected",
+      "provider": "xero",
+      "tenant_name": "Synthetic Pending OAuth"
+    },
+    "connections": [
+      {
+        "status": "connected",
+        "tenant_id": "133e2556-74f8-4d43-880d-806b13bb7ff6",
+        "tenant_name": "Synthetic Pending OAuth"
+      }
+    ],
+    "sqlstate": "00000"
+  },
+  {
+    "test": "demotion-during-inner-store-lock",
+    "result": {
+      "status": "connected",
+      "provider": "xero",
+      "tenant_name": "Synthetic Pending OAuth"
+    },
+    "connections": [
+      {
+        "status": "connected",
+        "tenant_id": "e23033e2-7fa8-400f-ae05-a3a10d4db400",
+        "tenant_name": "Synthetic Pending OAuth"
+      }
+    ],
+    "sqlstate": "00000"
+  },
+  {
+    "test": "exchange-expiry-lock",
+    "result": {
+      "ok": false,
+      "reason": "invalid",
+      "correlation_id": "b119b04e-2f18-4f99-9529-d6c111723203"
+    },
+    "sqlstate": "00000"
+  },
+  {
+    "test": "consume-expiry-lock",
+    "result": {
+      "ok": false,
+      "reason": "expired",
+      "correlation_id": "5dcba0b8-c68c-4a80-8901-6dbea27f84b1"
+    },
+    "sqlstate": "00000"
+  }
+]

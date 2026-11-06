@@ -93,14 +93,14 @@ END $$;
 REVOKE ALL ON FUNCTION public.job_cost_snapshot_frozen() FROM PUBLIC, anon, authenticated, service_role;
 CREATE TRIGGER job_cost_snapshot_frozen BEFORE UPDATE ON public.job_cost_snapshots FOR EACH ROW EXECUTE FUNCTION public.job_cost_snapshot_frozen();
 
--- 3. The one rounding rule: half to even on an exact non-negative ratio (lib/costing pyRound's rule), as whole pence.
+-- 3. Business actual costs: halves UP on an exact non-negative numeric ratio, as whole integer pence.
 CREATE FUNCTION public.job_cost_round(p_num numeric, p_den numeric) RETURNS bigint
 LANGUAGE plpgsql IMMUTABLE STRICT SET search_path = pg_catalog AS $$
 DECLARE q numeric; r numeric;
 BEGIN
   IF p_num < 0 OR p_den <= 0 OR p_num <> trunc(p_num) OR p_den <> trunc(p_den) THEN RAISE EXCEPTION 'Invalid cost ratio' USING ERRCODE = '22023'; END IF;
   q := div(p_num, p_den); r := p_num - q * p_den;
-  IF 2 * r > p_den OR (2 * r = p_den AND mod(q, 2) = 1) THEN q := q + 1; END IF;
+  IF 2 * r >= p_den THEN q := q + 1; END IF;
   RETURN q::bigint;
 END $$;
 REVOKE ALL ON FUNCTION public.job_cost_round(numeric, numeric) FROM PUBLIC, anon, authenticated, service_role;

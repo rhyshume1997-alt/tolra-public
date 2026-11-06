@@ -1,0 +1,2 @@
+import path from 'node:path';import {defineConfig} from 'vitest/config';
+export default defineConfig({resolve:{alias:{'@':path.resolve('.')}},test:{include:['tests/db/xero-invite-151.test.ts','tests/db/xero-invite-store-picker-151.test.ts','tests/db/xero-151-permissions.test.ts','tests/db/xero-launch-hold-149.test.ts','tests/db/ai-cap-key-off-150.test.ts'],setupFiles:['tests/reviews/combined-release-151/standard.setup.ts'],fileParallelism:false,maxWorkers:1,minWorkers:1,testTimeout:60000,hookTimeout:180000}});

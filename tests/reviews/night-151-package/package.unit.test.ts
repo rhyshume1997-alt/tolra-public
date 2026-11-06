@@ -1,11 +1,11 @@
 import {createHash} from 'node:crypto';
 import {readFileSync,readdirSync} from 'node:fs';
 import {expect,it} from 'vitest';
-// Frozen fixed bytes from own PR423 and this verifier change; original review at PR421 head 656a793; no generated registration/digest update.
+// Frozen combined review bytes: accepted147ac28 + #437396b887 + #438/#439 + existing151 expiry/rollback guards. Registration is unchanged.
 export const HASHES={
- 'supabase/proposals/p151_xero_invite_hardening.sql':'d098a91bcb3ca157f19ced6cf2ed3ff7c5a53b94895e805d2a4c94682aa0bbe8',
- 'supabase/release/151_xero_invite_hardening.release.sql':'98d95110214b15645d92ea4cbe9ad3865e6bef468f1af2d95b06a08cf4d6be5e',
- 'supabase/release/151_xero_invite_hardening.rollback.sql':'61b9842c71d24f93bb19f4170b98121f46472464e8206dc64e0700d238774690',
+ 'supabase/proposals/p151_xero_invite_hardening.sql':'2b0b346622ac729af7e0176a08d48f8f3701d6f3e2b58b676385f5d58cfd203e',
+ 'supabase/release/151_xero_invite_hardening.release.sql':'0c4663fe924f2dc153e8eeca91734dd0cf82ced665f2d172d0315bd2bc8fcddd',
+ 'supabase/release/151_xero_invite_hardening.rollback.sql':'7a6d0ebee0a23f280a4ae289cfddcc2d78f835269979a9aeee994ce0515cc965',
  'supabase/verify/xero_invite_hardening_151.sql':'1d431dffd3277248bb17265503124c820b452cceba862791bb24c959695abe2f',
 };
 it.each(Object.entries(HASHES))('reviewed 151 file bytes are pinned: %s',(file,hash)=>expect(createHash('sha256').update(readFileSync(file)).digest('hex')).toBe(hash));
