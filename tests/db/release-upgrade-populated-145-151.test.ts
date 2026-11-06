@@ -279,6 +279,8 @@ beforeAll(async () => {
     preCols[t.table_name] = (await q<{ column_name: string }>("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1", [t.table_name])).map(c => c.column_name);
   // the invitation table is compared on every column except revoked_at, which 151 is promised to set on open token links (asserted separately)
   preCols["integration_connect_invites"] = preCols["integration_connect_invites"].filter(c => c !== "revoked_at");
+  // Release 150 intentionally raises ai_helper_settings rows at 500p to 1000p, so that column is asserted separately (AI-cap block).
+  preCols["ai_helper_settings"] = preCols["ai_helper_settings"].filter(c => c !== "monthly_cap_pence");
   auditIds = (await q<{ id: string }>("SELECT id FROM security_audit.audit_log")).map(r => r.id);
   userIds = (await q<{ id: string }>("SELECT id FROM auth.users")).map(r => r.id);
   pre = await fingerprint();
