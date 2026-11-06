@@ -101,7 +101,7 @@ export function ratesProblem(rates: CostingRates): string | null {
   for (const m of rates.materials) {
     if (!nameOk(m.name)) return `Give every material a name (up to ${NAME_MAX} characters, one line).`;
     if (!wholePence(m.price)) return `Enter the price of ${m.name.trim()} in pounds and pence, from £0 to £100,000.`;
-    if (!percent(m.scrapPct, 0, 100)) return `Enter the scrap % of ${m.name.trim()}: 0 to 100 (0 if none).`;
+    if (!percent(m.scrapPct, 0, 100)) return `Enter the scrap % of ${m.name.trim()}: 0 to 100 (0 if none), with up to 2 decimal places.`;
   }
   for (const m of rates.machines) {
     if (!nameOk(m.name)) return `Give every machine a name (up to ${NAME_MAX} characters, one line).`;
@@ -111,9 +111,9 @@ export function ratesProblem(rates: CostingRates): string | null {
   const d = rates.defaults;
   if (!wholePence(d.labourPerHour)) return "Enter the labour rate per hour in pounds and pence, from £0 to £100,000.";
   if (!wholePence(d.programmingPerHour)) return "Enter the programming rate per hour in pounds and pence, from £0 to £100,000.";
-  if (!percent(d.overheadPct, 100, 500)) return "Enter the overhead %: 100 means none, 150 means half as much again, up to 500.";
-  if (!percent(d.marginPct, 0, 95)) return "Enter the margin %: 0 to 95.";
-  const repeated = (names: string[]) => new Set(names.map((n) => n.trim())).size !== names.length;
+  if (!percent(d.overheadPct, 100, 500)) return "Enter the overhead %: 100 means none, 150 means half as much again, up to 500, with up to 2 decimal places.";
+  if (!percent(d.marginPct, 0, 95)) return "Enter the margin %: 0 to 95, with up to 2 decimal places.";
+  const repeated = (names: string[]) => new Set(names.map((n) => n.trim().toLowerCase())).size !== names.length;
   if (repeated(rates.materials.map((m) => m.name))) return "Two materials have the same name.";
   if (repeated(rates.machines.map((m) => m.name))) return "Two machines have the same name.";
   return null;
