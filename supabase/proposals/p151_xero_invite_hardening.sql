@@ -457,3 +457,81 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.integration_invite_refusal_log(TEXT, TEXT, TEXT, UUID) TO service_role;
+
+-- 3i. The invite's FINAL write (server only, after the Xero hand-back and the provider round trips). The callback consumed the state (3g); this is the only way an
+-- invite-started state becomes a connection. In ONE transaction it locks the state and then the invite, re-checks everything that can have changed during the
+-- provider round trips (revoked, expired by clock_timestamp(), creator still an active non-support admin of an active company, the state still inside its own
+-- window), refuses a Xero organisation whose name is not the company's (an emailed link offers no tenant picker; this is a name match, not proof of legal
+-- ownership), then calls the ordinary store (084/149: admin check, tenant ownership, transfers OFF, queued documents stay held) and marks the state completed.
+-- Every refusal is a row of the security log; the answer carries only ok:false and a correlation id (never which check failed). p_org / p_user are not trusted:
+-- they must equal what the consumed state holds.
+ALTER TABLE public.integration_oauth_states ADD COLUMN invite_completed_at timestamptz;
+CREATE FUNCTION public.integration_invite_store_connection(p_state_hash TEXT, p_org UUID, p_user UUID, p_provider TEXT, p_tenant_id TEXT, p_tenant_name TEXT,
+  p_external_connection_id TEXT, p_refresh_enc TEXT, p_access_enc TEXT, p_access_expires_at TIMESTAMPTZ, p_key_version INTEGER)
+RETURNS JSONB
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, security_audit
+AS $$
+DECLARE
+  st RECORD;
+  i RECORD;
+  why TEXT;
+  result JSONB;
+BEGIN
+  SELECT * INTO st FROM public.integration_oauth_states WHERE state_hash = p_state_hash AND provider = p_provider FOR UPDATE;
+  IF NOT FOUND OR st.via_invite IS NULL OR st.organization_id <> p_org OR st.user_id <> p_user OR st.consumed_at IS NULL OR st.invite_completed_at IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', 'callback_state', NULL, NULL));
+  END IF;
+  SELECT inv.*, o.status AS company_status, o.name AS company_name INTO i
+  FROM public.integration_connect_invites inv JOIN public.organizations o ON o.id = inv.organization_id WHERE inv.id = st.via_invite FOR UPDATE OF inv;
+  why := CASE WHEN NOT FOUND THEN 'unknown_ref' WHEN i.revoked_at IS NOT NULL THEN 'revoked'
+              WHEN i.expires_at <= clock_timestamp() OR st.expires_at <= clock_timestamp() THEN 'expired'
+              WHEN i.organization_id <> p_org OR i.created_by <> p_user OR i.company_status <> 'active'
+                   OR NOT EXISTS (SELECT 1 FROM public.organization_members m WHERE m.organization_id = i.organization_id AND m.user_id = i.created_by
+                                  AND m.active AND NOT m.support AND 'admin' IN (m.role, coalesce(m.secondary_role, ''))) THEN 'creator_not_admin' END;
+  IF why IS NOT NULL THEN
+    RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', why, i.ref, p_org));
+  END IF;
+  IF lower(btrim(coalesce(p_tenant_name, ''))) IS DISTINCT FROM lower(btrim(i.company_name)) THEN
+    RETURN jsonb_build_object('ok', FALSE, 'correlation_id', security_audit.integration_invite_refuse('callback', 'callback_error', i.ref, p_org));
+  END IF;
+  result := public.integration_store_connection(p_org, p_user, p_provider, p_tenant_id, p_tenant_name, p_external_connection_id,
+                                                p_refresh_enc, p_access_enc, p_access_expires_at, p_key_version);
+  UPDATE public.integration_oauth_states SET invite_completed_at = clock_timestamp() WHERE id = st.id;
+  RETURN result;
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_invite_store_connection(TEXT, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_invite_store_connection(TEXT, UUID, UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, INTEGER) TO service_role;
+
+-- 3j. The Xero organisation picker's single-use claim (server only, bucket xero_picker_use; every other limiter bucket keeps public.auth_rate_hit untouched).
+-- Same counter table and arguments as auth_rate_hit, plus a NON-BLOCKING transaction advisory lock on the nonce: while another transaction is claiming the same
+-- nonce this call answers FALSE at once instead of waiting, so two simultaneous uses can never both pass. TRUE = this use is counted and within the limit.
+CREATE FUNCTION public.integration_xero_picker_claim(p_bucket TEXT, p_key_hash TEXT, p_window_seconds INTEGER, p_max INTEGER)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  n INTEGER;
+BEGIN
+  IF p_bucket !~ '^[a-z_:]{1,40}$' OR p_key_hash !~ '^[0-9a-f]{64}$' OR p_window_seconds NOT BETWEEN 1 AND 86400 OR p_max NOT BETWEEN 1 AND 10000 THEN
+    RAISE EXCEPTION 'integration_xero_picker_claim: bad arguments' USING ERRCODE = '22023';
+  END IF;
+  IF p_bucket = 'xero_picker_use' AND NOT pg_try_advisory_xact_lock(hashtextextended(p_bucket || ':' || p_key_hash, 151)) THEN
+    RETURN FALSE;
+  END IF;
+  DELETE FROM public.auth_rate_limits WHERE created_at < now() - INTERVAL '1 day' AND id IN (
+    SELECT id FROM public.auth_rate_limits WHERE created_at < now() - INTERVAL '1 day' LIMIT 500);
+  INSERT INTO public.auth_rate_limits (bucket, key_hash) VALUES (p_bucket, p_key_hash);
+  SELECT count(*) INTO n FROM public.auth_rate_limits
+  WHERE bucket = p_bucket AND key_hash = p_key_hash AND created_at > now() - make_interval(secs => p_window_seconds);
+  RETURN n <= p_max;
+END
+$$;
+REVOKE ALL ON FUNCTION public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.integration_xero_picker_claim(TEXT, TEXT, INTEGER, INTEGER) TO service_role;
