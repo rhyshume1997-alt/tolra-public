@@ -15,7 +15,7 @@ const supabase = supabaseOrigins();
 // Next injects inline bootstrap scripts and styles and this app doesn't use nonces, so 'unsafe-inline' is required.
 // 'wasm-unsafe-eval' lets @react-pdf/renderer compile its layout engine (WebAssembly) without allowing JS eval.
 // 'unsafe-eval' is only added for the dev server (React Refresh).
-/** The policy for every page; `formAction` is the one directive a route may widen (see the accountant's link below). */
+/** The policy for app pages. Static invitation responses use the restrictive policy below. */
 const policy = (formAction) => [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${isProd ? "" : " 'unsafe-eval'"}`,
@@ -33,9 +33,10 @@ const policy = (formAction) => [
 ].join("; ");
 const csp = policy("'self'");
 // The accountant's connect link (/api/integrations/invite/<22-character reference>): its Continue button is a form POST answered with a
-// redirect to Xero, and a browser checks form-action against the redirect target too. Same policy, plus Xero's sign-in address in
-// form-action and nowhere else. (The callback path is shorter than a token, so it keeps the plain policy.)
-const inviteCsp = policy("'self' https://login.xero.com");
+// redirect to Xero, and a browser checks form-action against the redirect target too. These self-contained pages have no scripts or
+// external resources: preserve the route's restrictive CSP and referrer policy when Next applies configured headers.
+// The callback path is shorter than a reference, so it keeps the global rule.
+const inviteCsp = "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'self' https://login.xero.com";
 
 // Stamped into the service worker so browsers notice each deploy (Vercel sets the commit SHA; local builds use the time).
 const appVersion = (process.env.VERCEL_GIT_COMMIT_SHA || `local-${Date.now()}`).slice(0, 12);
@@ -64,7 +65,10 @@ const nextConfig = {
       // Later rule wins for the same key (Next documents this): every other header above still applies to this path.
       {
         source: "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})",
-        headers: [{ key: "Content-Security-Policy", value: inviteCsp }],
+        headers: [
+          { key: "Content-Security-Policy", value: inviteCsp },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
       },
     ];
   },

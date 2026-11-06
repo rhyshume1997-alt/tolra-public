@@ -24,5 +24,23 @@
   ],
   "recommendedFix": "Preserve no-referrer and the route restrictive no-script/default-src none CSP in the existing invite-only config rule; retain form-action self and https://login.xero.com; keep all global headers unchanged and strengthen config expectations.",
   "cspEvidence": "Source-backed configuration override; browser stops at referrer assertion before checking CSP.",
-  "scope": "Config edit awaits PM/Opus ownership transfer; unchanged assertions retained; no8pass claim"
+  "scope": "PM approved builder3 invite-only config fix; global config rules remain unchanged",
+  "followup": {
+    "files": [
+      "next.config.mjs",
+      "tests/unit/security-headers.test.ts"
+    ],
+    "before": {
+      "passed": 18,
+      "failed": 2,
+      "skipped": 0
+    },
+    "after": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "command": "npx vitest run tests/unit/security-headers.test.ts --maxWorkers=1 --minWorkers=1",
+    "browser": "Pending actual integrated-head rerun; no pass inferred"
+  }
 }
