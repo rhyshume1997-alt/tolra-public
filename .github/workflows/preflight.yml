@@ -1,0 +1,914 @@
+# Throwaway preflight (claude/preflight-* only). Each job builds its own disposable stack and runs the ORIGINAL steps copied from ci.yml. Never merged.
+name: Preflight (all stages, separate jobs)
+'on':
+  push:
+    branches:
+    - claude/preflight-*
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: preflight-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  A_chain_rehearsal_146:
+    name: A chain 143-151, upgrade rehearsal, 146 rollback and reinstall
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: Keep the Supabase ports out of the outgoing-connection range
+      run: |
+        current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+        python3 - <<'PY'
+        import sys
+        s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+        reserved = set()
+        for part in filter(None, s.split(",")):
+            lo, _, hi = part.partition("-")
+            reserved.update(range(int(lo), int(hi or lo) + 1))
+        missing = [p for p in range(54320, 54330) if p not in reserved]
+        print("reserved ports now:", s)
+        sys.exit(f"not reserved: {missing}" if missing else 0)
+        PY
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Install Supabase CLI 2.40.7 (checksum-verified)
+      run: |
+        set -euo pipefail
+        cli_home="$RUNNER_TEMP/supabase-cli-main"
+        mkdir -p "$cli_home/bin"
+        curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+        test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+        echo "$cli_home/bin" >> "$GITHUB_PATH"
+    - name: Sign in to ghcr.io for the Supabase image pulls
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Supabase ports are free
+      run: |
+        python3 - <<'PY'
+        import socket, sys
+        busy = []
+        for port in (54321, 54322, 54324):
+            s = socket.socket()
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError as e:
+                busy.append(f"{port}: {e}")
+            finally:
+                s.close()
+        print("busy:", busy or "none")
+        sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+        PY
+    - name: Financial143 CLI, rate snapshots and company isolation (own disposable database)
+      run: |
+        git fetch --no-tags --depth=1 origin e42d927383513d1b98ce9cfca444884475622e2f
+        docker pull postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+        # This proof needs the OLD parser (CLI 2.40.7); the job's own `supabase` is the same release. The test itself refuses any binary whose
+        # sha256 is not 568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c (2.40.7, linux amd64).
+        cli_dir="$RUNNER_TEMP/supabase-cli-2.40.7"
+        mkdir -p "$cli_dir"
+        curl -fsSL -o "$cli_dir/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        tar -xzf "$cli_dir/cli.tar.gz" -C "$cli_dir" supabase
+        B5_SUPABASE_CLI="$cli_dir/supabase" npx vitest run -c tests/reviews/b5-financial/vitest.config.ts
+    - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+      run: npm run test:backend
+    - name: Export this job's disposable test environment
+      run: |
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: 'Upgrade rehearsal: 013 with imported data -> latest, twice, same catalogue as fresh (audit B10, SEC13)'
+      if: ${{ true }}
+      env:
+        REHEARSAL_VITEST_ARGS: --reporter=verbose --reporter=json --outputFile.json=evidence/rehearsal.json
+      run: scripts/upgrade-rehearsal.sh 013
+    - name: 'Evidence: upgrade rehearsal 013 (catalogue compare, frozen security checks), real lines'
+      if: ${{ always() && hashFiles('evidence/rehearsal.json') != '' }}
+      shell: bash
+      run: |
+        node scripts/ci-evidence.mjs list-all evidence/rehearsal.json REHEARSAL '^D2'
+        node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
+    - name: 'Install one-time releases 145, 146, 147, 148, 149, 150 and 151 on the disposable database '
+      run: |
+        set -euo pipefail
+        set -a; . ./.env.test.local; set +a
+        case "$TEST_DATABASE_URL" in
+          postgresql://*@127.0.0.1:*) ;;
+          *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
+        esac
+        psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
+        for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening"; do
+          IFS='|' read -r release verify marker <<< "$phase"
+          state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+          [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
+          if [ "$state" != "applied" ]; then
+            psql_q -f "supabase/release/${release}.release.sql"
+            state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+            [ "$state" = "applied" ] || { echo "Release did not verify: $marker" >&2; exit 1; }
+          fi
+          rows="$(psql_q -f "supabase/verify/${verify}.sql")"
+          [ -n "$rows" ] || { echo "Release verification returned no rows: $marker" >&2; exit 1; }
+          if printf '%s\n' "$rows" | awk -F'|' '$NF != "t" {bad=1} END {exit !bad}'; then
+            echo "Release verification failed: $marker" >&2; printf '%s\n' "$rows" >&2; exit 1
+          fi
+        done
+        psql_q -c "NOTIFY pgrst, 'reload schema'"
+        sleep 3
+    - name: 'Evidence: reinstall after a 146 rollback (runs last, informational, then resets the disposable database)'
+      if: ${{ always() }}
+      continue-on-error: true
+      shell: bash
+      run: |
+        set -a; . ./.env.test.local; set +a
+        case "$TEST_DATABASE_URL" in postgresql://*@127.0.0.1:*) ;; *) echo "Refusing: not the local disposable database" >&2; exit 1 ;; esac
+        reinstall=supabase/release/146_tolra_provided_ai.release.sql
+        if psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -q -f supabase/release/146_tolra_provided_ai.rollback.sql > evidence/rollback146.log 2>&1; then
+          echo "146 rollback accepted (no outstanding reservation)"
+          if psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -q -f "$reinstall" > evidence/reinstall146.log 2>&1; then
+            echo "FAIL reinstall of 146 after rollback was ACCEPTED without a reset"
+          else
+            echo "PASS reinstall of 146 after rollback was refused: $(grep -m1 -E 'ERROR' evidence/reinstall146.log)"
+          fi
+        else
+          echo "INCONCLUSIVE 146 rollback refused: $(grep -m1 -E 'ERROR' evidence/rollback146.log)"
+        fi
+        scripts/test-backend.sh reset
+    - name: 'Preflight summary: A'
+      if: ${{ always() }}
+      shell: bash
+      run: |-
+        echo "### A" >> "$GITHUB_STEP_SUMMARY"
+        [ -f evidence/db.json ] && node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+        cat evidence/rollback146.log evidence/reinstall146.log 2>/dev/null | head -40 >> "$GITHUB_STEP_SUMMARY" || true
+        node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+    - name: Keep run evidence (backend identity, failures)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight-A-evidence
+        path: |
+          test-results/
+          playwright-report/
+          evidence/
+          !test-results/e2e-state/world.json
+        if-no-files-found: ignore
+    - name: Stop disposable Supabase
+      if: always()
+      run: npm run test:backend:stop
+  B_db_suite:
+    name: B fresh Supabase, full DB suite, schema markers
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: Keep the Supabase ports out of the outgoing-connection range
+      run: |
+        current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+        python3 - <<'PY'
+        import sys
+        s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+        reserved = set()
+        for part in filter(None, s.split(",")):
+            lo, _, hi = part.partition("-")
+            reserved.update(range(int(lo), int(hi or lo) + 1))
+        missing = [p for p in range(54320, 54330) if p not in reserved]
+        print("reserved ports now:", s)
+        sys.exit(f"not reserved: {missing}" if missing else 0)
+        PY
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Install Supabase CLI 2.40.7 (checksum-verified)
+      run: |
+        set -euo pipefail
+        cli_home="$RUNNER_TEMP/supabase-cli-main"
+        mkdir -p "$cli_home/bin"
+        curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+        test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+        echo "$cli_home/bin" >> "$GITHUB_PATH"
+    - name: Sign in to ghcr.io for the Supabase image pulls
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Supabase ports are free
+      run: |
+        python3 - <<'PY'
+        import socket, sys
+        busy = []
+        for port in (54321, 54322, 54324):
+            s = socket.socket()
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError as e:
+                busy.append(f"{port}: {e}")
+            finally:
+                s.close()
+        print("busy:", busy or "none")
+        sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+        PY
+    - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+      run: npm run test:backend
+    - name: Export this job's disposable test environment
+      run: |
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: Permission diagnostic (read-only, informational, who may run the privileged-aal check on this stack)
+      continue-on-error: true
+      run: |
+        psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=0 -X <<'SQL'
+        select version();
+        select rolname, rolsuper, rolbypassrls, rolcanlogin from pg_roles where rolname in ('postgres','supabase_admin','authenticator','anon','authenticated','service_role') order by 1;
+        select p.oid::regprocedure as fn, pg_get_userbyid(p.proowner) as owner, p.proacl::text as acl,
+               has_function_privilege('service_role', p.oid, 'execute') as service_role_can,
+               has_function_privilege('authenticated', p.oid, 'execute') as authenticated_can
+          from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('assert_privileged_aal','site_network_ip_purge','require_admin_mfa_guard') order by 1;
+        select pg_get_userbyid(d.defaclrole) as for_role, d.defaclnamespace::regnamespace as in_schema, d.defaclobjtype as kind, d.defaclacl::text as acl from pg_default_acl d order by 1,2,3;
+        select current_user, (select rolsuper from pg_roles where rolname = current_user) as is_superuser;
+        show session_preload_libraries;
+        show shared_preload_libraries;
+        show dynamic_library_path;
+        select r.rolname, s.setconfig::text from pg_db_role_setting s join pg_roles r on r.oid = s.setrole where r.rolname in ('authenticator','postgres','service_role','authenticated','anon');
+        select grantee, privilege_type from information_schema.role_table_grants where table_schema = 'public' and table_name = 'organization_members' and grantee in ('service_role','authenticated','anon') order by 1,2;
+        SQL
+    - name: Database suite (catalogue, migration chain, two-tenant RLS and role matrix)
+      if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
+      env:
+        CI_EVIDENCE_DB_JSON: evidence/db.json
+      run: npm run test:db
+    - name: 'Evidence: stand-in sessions that could not LOAD pg-safeupdate (those sessions did NOT verify safeupdate enforcement)'
+      if: ${{ always() }}
+      run: |
+        f=evidence/safeupdate-sessions.log
+        n=0; [ -f "$f" ] && n=$(wc -l < "$f")
+        echo "SAFEUPDATE-NOT-LOADABLE affected stand-in sessions: $n"
+        if [ "$n" -gt 0 ]; then
+          echo "NOTE: in those e2/wa sessions the bare UPDATE/DELETE refusal was not exercised. Enforcement is proven only through the real API path by tests/db/safeupdate-api-path.test.ts (and the safeupdate-gated import suites where loadable)."
+        fi
+    - name: 'Evidence: database suite, skips, named cases, release refusals, rehearsal (labels computed from the real reports)'
+      if: ${{ always() && hashFiles('evidence/db.json') != '' }}
+      shell: bash
+      run: |
+        rc=0
+        echo "== test:db, no exclusions =="
+        node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE || rc=1
+        node scripts/ci-evidence.mjs db-skips evidence/db.json || rc=1
+        echo "== company setup isolation (release 145) =="
+        node scripts/ci-evidence.mjs source-tokens tests/db/company-setup-isolation.test.ts admin beta office workshop viewer "support" elevated outsider anon "toEqual(before" || true
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/company-setup-isolation.test.ts || rc=1
+        echo "== Tolra-provided AI (release 146): key isolation, no fallback, owner controls, two-connection race, rollback refusal, second install =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts || rc=1
+        echo "== no-order delivery note (release 147): role matrix, two companies, release gate, double submit race, rollback and re-release =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/job-delivery-note-147.test.ts tests/db/dln-day-of-counter.test.ts || rc=1
+        echo "== Actual job costing (release 148): 143's rates only, record kept when rates change, incomplete never zero, isolation, roles, rollback =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/job-profitability-148.test.ts || rc=1
+        echo "== Xero transfer switch (release 149): off by default, every send path refuses, reconnect resets, concurrency, isolation, rollback =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/xero-launch-hold-149.test.ts tests/db/xero-launch-paths-149.test.ts || rc=1
+        echo "== AI cap 1000p and key change forces AI off (release 150): default, force-off, audit, in-flight, isolation, platform key, rollback and re-release on a populated database =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/ai-cap-key-off-150.test.ts || rc=1
+        echo "== Xero accountant invite hardening (release 151): opaque reference, e-mailed code bound to the recipient, lockout, single use, expiry on every use, refusal log, rollback and re-release; the store and picker functions, their grants across release states, and cancelling a connect link during callback completion =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/xero-invite-151.test.ts tests/db/xero-invite-store-picker-151.test.ts tests/db/xero-151-permissions.test.ts tests/db/xero-invite-cancel-during-callback-151.test.ts tests/db/xero-invite-late-write-151.test.ts tests/db/release-order-guards.test.ts tests/db/rollback-data-refusal.test.ts tests/db/release-upgrade-populated-145-151.test.ts || rc=1
+        echo "== SliQ releases 140 and 141: isolation and preflight proofs =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/opening-wip-141-isolation.test.ts tests/db/sliq-import-preflight-140-141.test.ts || rc=1
+        echo "== Costing rates (release 143, after 141 and before 144): no built-in rate, company scoping, roles, second step, stale refusal, serialised saves, all-or-nothing, past records unchanged =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/costing-rates-143.test.ts tests/db/costing-save-143.test.ts || rc=1
+        echo "== #253 and #255 proofs =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/reviewer-inbound-conditions.test.ts tests/db/reviewer-chase-conditions.test.ts || rc=1
+        exit $rc
+    - name: SCHEMA MARKER after the DB suite (no reset since the fixture installed 145-151)
+      run: scripts/ci-schema-markers.sh
+      if: ${{ always() }}
+    - name: 'Preflight summary: B'
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        echo "### B" >> "$GITHUB_STEP_SUMMARY"
+        [ -f evidence/db.json ] && node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+    - name: Keep run evidence (backend identity, failures)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight-B-evidence
+        path: |
+          test-results/
+          playwright-report/
+          evidence/
+          !test-results/e2e-state/world.json
+        if-no-files-found: ignore
+    - name: Stop disposable Supabase
+      if: always()
+      run: npm run test:backend:stop
+  C_build_install:
+    name: C backend build, release install and verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: Keep the Supabase ports out of the outgoing-connection range
+      run: |
+        current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+        python3 - <<'PY'
+        import sys
+        s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+        reserved = set()
+        for part in filter(None, s.split(",")):
+            lo, _, hi = part.partition("-")
+            reserved.update(range(int(lo), int(hi or lo) + 1))
+        missing = [p for p in range(54320, 54330) if p not in reserved]
+        print("reserved ports now:", s)
+        sys.exit(f"not reserved: {missing}" if missing else 0)
+        PY
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Install Supabase CLI 2.40.7 (checksum-verified)
+      run: |
+        set -euo pipefail
+        cli_home="$RUNNER_TEMP/supabase-cli-main"
+        mkdir -p "$cli_home/bin"
+        curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+        test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+        echo "$cli_home/bin" >> "$GITHUB_PATH"
+    - name: Sign in to ghcr.io for the Supabase image pulls
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Supabase ports are free
+      run: |
+        python3 - <<'PY'
+        import socket, sys
+        busy = []
+        for port in (54321, 54322, 54324):
+            s = socket.socket()
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError as e:
+                busy.append(f"{port}: {e}")
+            finally:
+                s.close()
+        print("busy:", busy or "none")
+        sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+        PY
+    - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+      run: npm run test:backend
+    - name: Export this job's disposable test environment
+      run: |
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: Build against the disposable backend
+      run: |
+        set -a; . ./.env.test.local; set +a
+        NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
+    - name: 'Install one-time releases 145, 146, 147, 148, 149, 150 and 151 on the disposable database '
+      run: |
+        set -euo pipefail
+        set -a; . ./.env.test.local; set +a
+        case "$TEST_DATABASE_URL" in
+          postgresql://*@127.0.0.1:*) ;;
+          *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
+        esac
+        psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
+        for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening"; do
+          IFS='|' read -r release verify marker <<< "$phase"
+          state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+          [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
+          if [ "$state" != "applied" ]; then
+            psql_q -f "supabase/release/${release}.release.sql"
+            state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+            [ "$state" = "applied" ] || { echo "Release did not verify: $marker" >&2; exit 1; }
+          fi
+          rows="$(psql_q -f "supabase/verify/${verify}.sql")"
+          [ -n "$rows" ] || { echo "Release verification returned no rows: $marker" >&2; exit 1; }
+          if printf '%s\n' "$rows" | awk -F'|' '$NF != "t" {bad=1} END {exit !bad}'; then
+            echo "Release verification failed: $marker" >&2; printf '%s\n' "$rows" >&2; exit 1
+          fi
+        done
+        psql_q -c "NOTIFY pgrst, 'reload schema'"
+        sleep 3
+    - name: SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151 install step)
+      run: scripts/ci-schema-markers.sh
+    - name: 'Preflight summary: C'
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        echo "### C" >> "$GITHUB_STEP_SUMMARY"
+        [ -f evidence/db.json ] && node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+    - name: Keep run evidence (backend identity, failures)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight-C-evidence
+        path: |
+          test-results/
+          playwright-report/
+          evidence/
+          !test-results/e2e-state/world.json
+        if-no-files-found: ignore
+    - name: Stop disposable Supabase
+      if: always()
+      run: npm run test:backend:stop
+  D_browser_suite:
+    name: D main Playwright browser suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: Keep the Supabase ports out of the outgoing-connection range
+      run: |
+        current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+        python3 - <<'PY'
+        import sys
+        s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+        reserved = set()
+        for part in filter(None, s.split(",")):
+            lo, _, hi = part.partition("-")
+            reserved.update(range(int(lo), int(hi or lo) + 1))
+        missing = [p for p in range(54320, 54330) if p not in reserved]
+        print("reserved ports now:", s)
+        sys.exit(f"not reserved: {missing}" if missing else 0)
+        PY
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Install Supabase CLI 2.40.7 (checksum-verified)
+      run: |
+        set -euo pipefail
+        cli_home="$RUNNER_TEMP/supabase-cli-main"
+        mkdir -p "$cli_home/bin"
+        curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+        test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+        echo "$cli_home/bin" >> "$GITHUB_PATH"
+    - name: Sign in to ghcr.io for the Supabase image pulls
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Supabase ports are free
+      run: |
+        python3 - <<'PY'
+        import socket, sys
+        busy = []
+        for port in (54321, 54322, 54324):
+            s = socket.socket()
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError as e:
+                busy.append(f"{port}: {e}")
+            finally:
+                s.close()
+        print("busy:", busy or "none")
+        sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+        PY
+    - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+      run: npm run test:backend
+    - name: Export this job's disposable test environment
+      run: |
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: Build against the disposable backend
+      run: |
+        set -a; . ./.env.test.local; set +a
+        NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
+    - name: 'Install one-time releases 145, 146, 147, 148, 149, 150 and 151 on the disposable database '
+      run: |
+        set -euo pipefail
+        set -a; . ./.env.test.local; set +a
+        case "$TEST_DATABASE_URL" in
+          postgresql://*@127.0.0.1:*) ;;
+          *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
+        esac
+        psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
+        for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening"; do
+          IFS='|' read -r release verify marker <<< "$phase"
+          state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+          [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
+          if [ "$state" != "applied" ]; then
+            psql_q -f "supabase/release/${release}.release.sql"
+            state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+            [ "$state" = "applied" ] || { echo "Release did not verify: $marker" >&2; exit 1; }
+          fi
+          rows="$(psql_q -f "supabase/verify/${verify}.sql")"
+          [ -n "$rows" ] || { echo "Release verification returned no rows: $marker" >&2; exit 1; }
+          if printf '%s\n' "$rows" | awk -F'|' '$NF != "t" {bad=1} END {exit !bad}'; then
+            echo "Release verification failed: $marker" >&2; printf '%s\n' "$rows" >&2; exit 1
+          fi
+        done
+        psql_q -c "NOTIFY pgrst, 'reload schema'"
+        sleep 3
+    - name: Install Chromium
+      run: npx playwright install --with-deps chromium
+    - name: SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151 install step)
+      run: scripts/ci-schema-markers.sh
+    - name: Browser suite
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$SPECS" ]; then
+          read -r -a spec_files <<< "$SPECS"
+          for spec in "${spec_files[@]}"; do
+            case "$spec" in -*) echo "specs: list spec files only, not options" >&2; exit 1 ;; esac
+          done
+          npx playwright test "${spec_files[@]}"
+        else
+          npm run test:e2e
+        fi
+      env:
+        E2E_SKIP_BUILD: '1'
+        SPECS: ${{ inputs.specs }}
+    - name: 'Preflight summary: D'
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        echo "### D" >> "$GITHUB_STEP_SUMMARY"
+        [ -f evidence/db.json ] && node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+    - name: Keep run evidence (backend identity, failures)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight-D-evidence
+        path: |
+          test-results/
+          playwright-report/
+          evidence/
+          !test-results/e2e-state/world.json
+        if-no-files-found: ignore
+    - name: Stop disposable Supabase
+      if: always()
+      run: npm run test:backend:stop
+  E_reviewer_specs:
+    name: E ten reviewer browser specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: Keep the Supabase ports out of the outgoing-connection range
+      run: |
+        current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+        python3 - <<'PY'
+        import sys
+        s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+        reserved = set()
+        for part in filter(None, s.split(",")):
+            lo, _, hi = part.partition("-")
+            reserved.update(range(int(lo), int(hi or lo) + 1))
+        missing = [p for p in range(54320, 54330) if p not in reserved]
+        print("reserved ports now:", s)
+        sys.exit(f"not reserved: {missing}" if missing else 0)
+        PY
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Install Supabase CLI 2.40.7 (checksum-verified)
+      run: |
+        set -euo pipefail
+        cli_home="$RUNNER_TEMP/supabase-cli-main"
+        mkdir -p "$cli_home/bin"
+        curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+        test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+        echo "$cli_home/bin" >> "$GITHUB_PATH"
+    - name: Sign in to ghcr.io for the Supabase image pulls
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Supabase ports are free
+      run: |
+        python3 - <<'PY'
+        import socket, sys
+        busy = []
+        for port in (54321, 54322, 54324):
+            s = socket.socket()
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError as e:
+                busy.append(f"{port}: {e}")
+            finally:
+                s.close()
+        print("busy:", busy or "none")
+        sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+        PY
+    - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+      run: npm run test:backend
+    - name: Export this job's disposable test environment
+      run: |
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: Build against the disposable backend
+      run: |
+        set -a; . ./.env.test.local; set +a
+        NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
+    - name: 'Install one-time releases 145, 146, 147, 148, 149, 150 and 151 on the disposable database '
+      run: |
+        set -euo pipefail
+        set -a; . ./.env.test.local; set +a
+        case "$TEST_DATABASE_URL" in
+          postgresql://*@127.0.0.1:*) ;;
+          *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
+        esac
+        psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
+        for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening"; do
+          IFS='|' read -r release verify marker <<< "$phase"
+          state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+          [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
+          if [ "$state" != "applied" ]; then
+            psql_q -f "supabase/release/${release}.release.sql"
+            state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
+            [ "$state" = "applied" ] || { echo "Release did not verify: $marker" >&2; exit 1; }
+          fi
+          rows="$(psql_q -f "supabase/verify/${verify}.sql")"
+          [ -n "$rows" ] || { echo "Release verification returned no rows: $marker" >&2; exit 1; }
+          if printf '%s\n' "$rows" | awk -F'|' '$NF != "t" {bad=1} END {exit !bad}'; then
+            echo "Release verification failed: $marker" >&2; printf '%s\n' "$rows" >&2; exit 1
+          fi
+        done
+        psql_q -c "NOTIFY pgrst, 'reload schema'"
+        sleep 3
+    - name: Install Chromium
+      run: npx playwright install --with-deps chromium
+    - name: SCHEMA MARKER immediately before the reviewer specs
+      if: ${{ always() }}
+      run: scripts/ci-schema-markers.sh
+    - name: Reviewer browser conditions (all ten, database required)
+      if: ${{ always() }}
+      env:
+        PLAYWRIGHT_JSON_OUTPUT_NAME: evidence/reviewer.json
+      run: REVIEWER_REQUIRE_DATABASE=1 E2E_SKIP_BUILD=1 npx playwright test -c playwright.reviewer.config.ts --reporter=list,json
+    - name: Keep run evidence (backend identity, failures)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight-E-evidence
+        path: |
+          test-results/
+          playwright-report/
+          evidence/
+          !test-results/e2e-state/world.json
+        if-no-files-found: ignore
+    - name: 'Evidence: reviewer specs (requires exactly 10 passed, 0 failed, 0 skipped)'
+      if: ${{ always() && hashFiles('evidence/reviewer.json') != '' }}
+      run: node scripts/ci-evidence.mjs playwright evidence/reviewer.json 10
+    - name: Stop disposable Supabase
+      if: always()
+      run: npm run test:backend:stop
+  F_xero_security:
+    name: F Xero 149/151, AI 150, security, readback and order guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: Keep the Supabase ports out of the outgoing-connection range
+      run: |
+        current=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${current:+$current,}54320-54329"
+        python3 - <<'PY'
+        import sys
+        s = open("/proc/sys/net/ipv4/ip_local_reserved_ports").read().strip()
+        reserved = set()
+        for part in filter(None, s.split(",")):
+            lo, _, hi = part.partition("-")
+            reserved.update(range(int(lo), int(hi or lo) + 1))
+        missing = [p for p in range(54320, 54330) if p not in reserved]
+        print("reserved ports now:", s)
+        sys.exit(f"not reserved: {missing}" if missing else 0)
+        PY
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Install Supabase CLI 2.40.7 (checksum-verified)
+      run: |
+        set -euo pipefail
+        cli_home="$RUNNER_TEMP/supabase-cli-main"
+        mkdir -p "$cli_home/bin"
+        curl -fsSL -o "$cli_home/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_home/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_home/cli.tar.gz" -C "$cli_home/bin" supabase
+        test "$("$cli_home/bin/supabase" --version)" = "2.40.7"
+        echo "$cli_home/bin" >> "$GITHUB_PATH"
+    - name: Sign in to ghcr.io for the Supabase image pulls
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Supabase ports are free
+      run: |
+        python3 - <<'PY'
+        import socket, sys
+        busy = []
+        for port in (54321, 54322, 54324):
+            s = socket.socket()
+            try:
+                s.bind(("0.0.0.0", port))
+            except OSError as e:
+                busy.append(f"{port}: {e}")
+            finally:
+                s.close()
+        print("busy:", busy or "none")
+        sys.exit("Supabase ports already in use: " + "; ".join(busy) if busy else 0)
+        PY
+    - name: Start disposable Supabase (applies supabase/migrations to an empty database)
+      run: npm run test:backend
+    - name: Export this job's disposable test environment
+      run: |
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: Named DB files (same vitest.db.config.ts, no exclusions, no skips allowed beyond the expected groups)
+      env:
+        CI_EVIDENCE_DB_JSON: evidence/db.json
+      run: npx vitest run -c vitest.db.config.ts tests/db/xero-launch-hold-149.test.ts tests/db/xero-launch-paths-149.test.ts tests/db/xero-held-backlog-approval.test.ts tests/db/xero-invite-151.test.ts tests/db/xero-invite-store-picker-151.test.ts tests/db/xero-151-permissions.test.ts tests/db/xero-invite-cancel-during-callback-151.test.ts tests/db/xero-invite-late-write-151.test.ts tests/db/release-order-guards.test.ts tests/db/rollback-data-refusal.test.ts tests/db/release-upgrade-populated-145-151.test.ts tests/db/ai-cap-key-off-150.test.ts tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts tests/db/company-setup-isolation.test.ts tests/db/job-delivery-note-147.test.ts tests/db/job-profitability-148.test.ts tests/db/dln-day-of-counter.test.ts tests/db/security-guards-102.test.ts tests/db/safeupdate-api-path.test.ts tests/db/session-revocation.test.ts tests/db/f2-xero-setup.test.ts tests/db/wc-ai-cap-paths.test.ts tests/db/integrations-084.test.ts tests/db/integrations-connect-107.test.ts
+    - name: 'Preflight summary: F'
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        echo "### F" >> "$GITHUB_STEP_SUMMARY"
+        [ -f evidence/db.json ] && node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE >> "$GITHUB_STEP_SUMMARY" 2>&1 || true
+    - name: Keep run evidence (backend identity, failures)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight-F-evidence
+        path: |
+          test-results/
+          playwright-report/
+          evidence/
+          !test-results/e2e-state/world.json
+        if-no-files-found: ignore
+    - name: Stop disposable Supabase
+      if: always()
+      run: npm run test:backend:stop
+  G_audit_sequencing:
+    name: G diff audit, release sequencing, version checks, verification SQL files
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Release plan and migrations checks
+      run: |-
+        node scripts/check-release-plan.mjs
+        node scripts/check-migrations.mjs
+    - name: 'Phase lists agree: release-plan.json vs tests/support/post-144-release-fixture.ts vs the CI install loop'
+      shell: bash
+      run: |
+        python3 - <<'PY'
+        import json, re, sys
+        plan = json.load(open('supabase/release-plan.json'))
+        phases = [p for p in plan['phases'] if p.get('number', 0) >= 145] if 'phases' in plan and isinstance(plan['phases'], list) and plan['phases'] and 'number' in plan['phases'][0] else None
+        txt = open('tests/support/post-144-release-fixture.ts').read()
+        fixture = re.findall(r'number: (\d+), marker: "([^"]+)", file: "([^"]+)"', txt)
+        ci = open('.github/workflows/ci.yml').read()
+        loop = re.findall(r'"(\d{3}_[a-z_]+)\|([a-z_]+_\d{3})\|(post-144 marker \d{3} [a-z_]+)"', ci)
+        print('fixture', [n for n, *_ in fixture]); print('ci loop', [r[0][:3] for r in loop])
+        bad = []
+        if [n for n, *_ in fixture] != [r[0][:3] for r in loop]: bad.append('fixture vs CI loop order differs')
+        for (n, marker, f), (rel, ver, m) in zip(fixture, loop):
+            if marker != m or not f.endswith(rel + '.release.sql'): bad.append(f'{n}: fixture {marker} {f} vs loop {m} {rel}')
+            import os
+            for p in (f, f'supabase/verify/{ver}.sql', f'supabase/release/{rel}.rollback.sql'):
+                if not os.path.exists(p): bad.append(f'missing {p}')
+        plan_txt = json.dumps(plan)
+        for n, marker, f in fixture:
+            if f not in plan_txt or marker not in plan_txt: bad.append(f'{n}: not in release-plan.json')
+        print('MISMATCHES:', bad or 'none'); sys.exit(1 if bad else 0)
+        PY
+    - name: Pinned versions (node, supabase CLI, postgres digest) are the ones the release CI uses
+      shell: bash
+      run: |-
+        grep -c "v2.40.7" .github/workflows/ci.yml
+        grep -c "postgres@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1" .github/workflows/ci.yml
+        node --version
+    - name: Diff audit against the approved baselines (findings printed, each explained in the evidence file)
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        git fetch --no-tags origin 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
+        node scripts/ci-evidence.mjs diff-audit HEAD 41c685c416305637d86b580324fff9e6cda037ff 97811d301479d4e409b8eb89f0e7ff2bc61db7e6 f96087a58bf7dd9030e447e71a10b52ba54671d9 2b4bd18390efc468a01b449dae70c844ee204a05
+  H_aggregate:
+    name: 'H aggregate: one failure report'
+    runs-on: ubuntu-latest
+    needs:
+    - A_chain_rehearsal_146
+    - B_db_suite
+    - C_build_install
+    - D_browser_suite
+    - E_reviewer_specs
+    - F_xero_security
+    - G_audit_sequencing
+    if: ${{ always() }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+    - name: Job results and failed steps
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        NEEDS: ${{ toJSON(needs) }}
+        RUN_ID: ${{ github.run_id }}
+        REPO: ${{ github.repository }}
+      run: |-
+        echo "## Preflight aggregate for ${GITHUB_SHA}" | tee -a "$GITHUB_STEP_SUMMARY"
+        echo "$NEEDS" | jq -r 'to_entries[] | "| \(.key) | \(.value.result) |"' | tee -a "$GITHUB_STEP_SUMMARY"
+        gh api "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" --jq '.jobs[] | select(.conclusion=="failure" or .conclusion=="skipped" or .conclusion=="cancelled") | .name as $j | (.steps[]? | select(.conclusion=="failure" or .conclusion=="skipped") | "\($j) :: \(.name) :: \(.conclusion)")' | tee -a "$GITHUB_STEP_SUMMARY" || true
