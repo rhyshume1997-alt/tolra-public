@@ -49,7 +49,19 @@ test("synthetic desktop PQ pages and workshop board can be opened and photograph
   }
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: /Settings/ }).first()).toBeVisible();
+  await expect(page.getByRole("region", { name: "Costing rates", exact: true }).getByLabel("Labour £ per hour", { exact: true })).toHaveValue("20");
   await page.screenshot({ path: "tests/pq/screenshots/settings.png", fullPage: true });
+  await page.goto("/jobs");
+  await page.getByRole("row").filter({ hasText: "J-PQ-0001" }).getByRole("button", { name: "Worksheet", exact: true }).click();
+  const costs = page.getByTestId("actual-job-costing");
+  await expect(costs).toContainText("£30.00");
+  await expect(costs).toContainText("£20.00");
+  await page.screenshot({ path: "tests/pq/screenshots/job-cost.png", fullPage: true });
+  await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).first().click();
+  await page.getByRole("row").filter({ hasText: "J-PQ-NO-COST" }).getByRole("button", { name: "Worksheet", exact: true }).click();
+  await expect(page.getByTestId("actual-costing-incomplete")).toContainText("Incomplete");
+  await expect(page.getByTestId("actual-job-costing")).toContainText("Not available");
+  await page.screenshot({ path: "tests/pq/screenshots/missing-cost.png", fullPage: true });
   await page.context().clearCookies();
   await login(page, "workshop");
   await page.setViewportSize({ width: 1024, height: 768 });

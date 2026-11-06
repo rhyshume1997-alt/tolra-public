@@ -37,6 +37,7 @@ To erase this PQ project and rebuild the fake data (destructive to this project'
 
 ```sh
 node tests/pq/pq.mjs reset
+node tests/pq/pq.mjs start
 ```
 
 To stop and delete only this PQ project's containers, volumes and local accounts:

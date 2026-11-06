@@ -72,7 +72,7 @@ if (action !== 'serve') {
   Object.assign(env, status());
   if (!existsSync(path.join(local, 'accounts.json'))) run('npx', ['vitest', 'run', '-c', 'tests/pq/vitest.config.ts']);
 }
-if (action === 'prepare') process.exit(0);
+if (action === 'prepare' || action === 'reset') process.exit(0);
 Object.assign(env, status());
 Object.assign(env, {
   NEXT_PUBLIC_SUPABASE_URL: env.TEST_SUPABASE_URL,
