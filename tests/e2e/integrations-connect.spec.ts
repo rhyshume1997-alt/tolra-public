@@ -15,7 +15,7 @@ import { adminClient, signedInClient, withDb, verifyBackendIdentity } from "../s
 import { enrolTotp, totpCode } from "../support/totp";
 import { preparePost144Backend } from "../support/post-144-release-fixture";
 import { E2E_MOCK_PORT } from "./paths";
-import { asSeparateDevice, signIn, world } from "./helpers";
+import { aal2Admin, asSeparateDevice, signIn, world } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -277,7 +277,11 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
   const origin = originOf(baseURL);
   const app = microsoftApp();
   const beta = world().tenants.beta;
-  await signIn(page, beta.users.admin);
+  const beforeAdmins = new Set((await rows<{user_id:string}>("select user_id from organization_members where organization_id=$1",[beta.id])).map(r=>r.user_id));
+  await aal2Admin(page, 'beta');
+  const createdAdmins = (await rows<{user_id:string}>("select user_id from organization_members where organization_id=$1 and role='admin'",[beta.id])).filter(r=>!beforeAdmins.has(r.user_id));
+  expect(createdAdmins).toHaveLength(1);
+  const connectingAdminId=createdAdmins[0].user_id;
 
   // Anything bound for Microsoft or Xero is answered here, in the browser: nothing leaves the machine.
   const offBox: string[] = [];
@@ -304,7 +308,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
   expect(url.searchParams.get("scope")).toBe("offline_access User.Read Mail.Send Mail.Read"); // C1 (127): read-only inbox access too
   const state = url.searchParams.get("state") ?? "";
   expect(state.length).toBeGreaterThanOrEqual(20);
-  expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{22}$/);
+  expect(url.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
   expect(url.searchParams.get("code_challenge_method")).toBe("S256");
   expect(request.url()).not.toContain(app.secret); // the client secret never goes through the browser
   expect(url.searchParams.has("client_secret")).toBe(false);
@@ -316,7 +320,7 @@ test("5. the company admin's Microsoft Connect is enabled and goes to Microsoft'
     "select state_hash, user_id, verifier_enc, consumed_at, extract(epoch from (expires_at - created_at))::int as ttl_s from public.integration_oauth_states where organization_id = $1 and provider = 'microsoft'",
     [beta.id]);
   expect(states).toHaveLength(1);
-  expect(states[0]).toMatchObject({ state_hash: sha256(state), user_id: beta.users.admin.id, consumed_at: null });
+  expect(states[0]).toMatchObject({ state_hash: sha256(state), user_id: connectingAdminId, consumed_at: null });
   expect(states[0].ttl_s).toBeGreaterThanOrEqual(590);
   expect(states[0].ttl_s).toBeLessThanOrEqual(610);
   expect(states[0].verifier_enc).toMatch(/^v\d+\./);
