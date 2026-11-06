@@ -1,0 +1,4840 @@
+{
+  "source": "2c85dda1aa4e8973c7332075d1015b3c642c36f7",
+  "files": [
+    {
+      "file": "072_customer_signoff.sql",
+      "sha256": "df5e170cc37bb3a18e1258698753dd88bbc2c151f4868639cb82653c5d5c523d",
+      "literalRegclass": 5,
+      "literalRegprocedure": 2,
+      "queryToXml": false
+    },
+    {
+      "file": "accountant_invite_129.sql",
+      "sha256": "713dd9a75d3798c198d6c074fa55fd6a794e5e82f48bba33c62fed85b5a3f17f",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "accounting_connections_144.sql",
+      "sha256": "2f18baf81290e0b5de22b983dfb7b5c15a8cd058e0ace43261298c581a8e7593",
+      "literalRegclass": 2,
+      "literalRegprocedure": 3,
+      "queryToXml": false
+    },
+    {
+      "file": "activity_labels_080.sql",
+      "sha256": "f85522d9240ad94619bc5556b9f4bfca6ead89f58e5a3876a1140df6c5a03502",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "activity_one_row_per_change_094.sql",
+      "sha256": "606e79b3b6ac306aa3121fe98bd42342a1586bbb3d9d82b7df47fbc60ad49813",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "admin_mfa_onboarding_065.sql",
+      "sha256": "796eb250f62365b7539b979a512793d14f8f76a19d0131607f1569d8cf70adf2",
+      "literalRegclass": 2,
+      "literalRegprocedure": 1,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_assistant_134.sql",
+      "sha256": "7a39043b89d218d48226e02153e3ba82600619e1e0c1a07f2575f9d3a8647e03",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_assistant_134_prod_off_check.sql",
+      "sha256": "e34b3cd56eeab82891e952fc3ee61069d860869f231287d454bd9bbeb8aeb3de",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": true
+    },
+    {
+      "file": "ai_cap_key_off_150.sql",
+      "sha256": "3d57f270bb95ceec85d157e74ad81ce8c5ab59fc28935b373fce147403e122d6",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_finance_check_audit_events_095.sql",
+      "sha256": "4ec1aaf7f55c14233d865183789cf5147ffa91b8ec77033822fc881c42b8fda3",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_helper_101.sql",
+      "sha256": "117c500d46229f358eae278dc4417cff62a5b524c956e8cb457522c42a53dc85",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_helper_cap_default_122.sql",
+      "sha256": "6fc5f3520338324952d1f41c4cf3111cd49e68f9ca06d3844877888aedaea4a1",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_helper_pre_enable_133.sql",
+      "sha256": "031d966d7405d1c4d181b332bd6d8a2364fb8b117a3597fa79c59748cd94d0dd",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ai_helper_service_role_103.sql",
+      "sha256": "96b2ab7773c0c7b1b83d5f23f75643f35e6ea8a641f17e69565e60ee25502ae4",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "attendance_050.sql",
+      "sha256": "18b948232cc2b2fb17219510d7ff77eb0f9cc83ea88578325478cdc22170bba5",
+      "literalRegclass": 3,
+      "literalRegprocedure": 3,
+      "queryToXml": false
+    },
+    {
+      "file": "attendance_expected_company_090.sql",
+      "sha256": "c54b589d1381f1b44b10c6de2513b919a180e4e487807a8812c3b7b34e9feba6",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "audit_hash_077.sql",
+      "sha256": "1117fb42c0744adbe28e74605b331815372dc683cf6a1296d12ab6c981048735",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "authorised_inspectors_083.sql",
+      "sha256": "3eb8a818f1ed55f94a96a3c33cd5e40f709d094ad119d3b1bd434ea4a1533fc1",
+      "literalRegclass": 4,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "auto_book_next_free.sql",
+      "sha256": "edc645b3edd660b08c6e071b0708a9c7dd05b5f782bdeb4ea32da1bbc2c5af6a",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ban_ends_session_119.sql",
+      "sha256": "d160ffaeaa9201e1662d55dab166a83b15a4a4656c422a1c3a8891d30830fe01",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "bench_pause.sql",
+      "sha256": "f5f38b3779d4bfb3f2506f194935ceb13076b5260540e0c190764d585a9675d0",
+      "literalRegclass": 6,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "booking_day_plan.sql",
+      "sha256": "3c1337c5894504a95345cf266b8a5812319639e0385cd360b666bbbb5155c5e6",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "booking_run_identity.sql",
+      "sha256": "31494ca2344645e28a2fce6faaba60c8a3a5b742d3964868cf81d145b76a17fe",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "booking_time_zero_quote_126.sql",
+      "sha256": "0469986e625f5ad64c426cefbf3f10b43cdddb74b0910cecbd23b10511fe7ea8",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "browser_error_alert_115.sql",
+      "sha256": "a3b25aefc82a50844fb1481fe70cd246f336084084da59ac04f51f5b10e86e9a",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "catalogue.sql",
+      "sha256": "034395b64ed5b5ee739bd42a898a2c3201e5f04d8c2d97b8a8e9e9331ba68364",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "chase_steps_138.sql",
+      "sha256": "3ca0475b3b7d6673ce9ed29f2dc4613799cfe53e57c0b36c4d84f7349e88c95d",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "clock_in_network_lock_114.sql",
+      "sha256": "3b0b1427b16dae58505e2f7123f7ec857af82f5fdd3f6618aa32d2bc19b3605e",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "company_access_066.sql",
+      "sha256": "a81a491f3563284efd9c72e9220baa3eb4236f883093ed325bc94d27c3e0957d",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "company_setup_145.sql",
+      "sha256": "1694fb6d41ee6c85c086f3600922179247e8fc966e461fbf799ee2314adc1a83",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "converted_sales_order_088.sql",
+      "sha256": "41923882afe9c114da46119b4679f4dfc3498ee2d696e8346e9a18ec3aa7375d",
+      "literalRegclass": 5,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "costing_rates_143.sql",
+      "sha256": "5c5ec46c3f3fabbe1a17b2bf7ef4ddbc8d1bc26c08950174acfa14013cba0838",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "cross_org_links.sql",
+      "sha256": "ab9bee0efb23c68d47f30040522ace4db73efc66a383bf38710140ff60335c11",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "customer_archive_100.sql",
+      "sha256": "4aced1776848f85230400a3d2bd992a15738756a070df642f4f7aaf31c04383f",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "dashboard_tiles_132.sql",
+      "sha256": "fa293546d05c69ad24c6e590bff9349e6289ee31685d825ffb0902db04e3b452",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "data_import_076.sql",
+      "sha256": "8d6deabd79d7aef1110f20f7555d10f8b10379c7f7197a77c0665bab5ab623a4",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "data_import_credit_delivery_085.sql",
+      "sha256": "f78723a6dbed69ebb8e6fb90886f19c85ef9baf446d1083aa0dcd306d349d7f3",
+      "literalRegclass": 9,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "delivery_note_auto_invoice.sql",
+      "sha256": "99ddb80d6a1a2ed63b9afac4e8b52ea97c9620dbb8f63bf51c728892d1f24088",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "document_attachments_067.sql",
+      "sha256": "1d65dcb97932391bbf438f52b12047fd5c21aa99b4d4a4a43be47d53e4804555",
+      "literalRegclass": 9,
+      "literalRegprocedure": 3,
+      "queryToXml": false
+    },
+    {
+      "file": "document_totals.sql",
+      "sha256": "118f56710ba86074b9119fe59dd877d7fd4f0a722d999d3e294de818a541183d",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "duplicate_conversions.sql",
+      "sha256": "24df3f74dce20362360b5b20ef2e8159b588d04b0a977da0120926da57b17396",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "email_history_drafted_by_120.sql",
+      "sha256": "115ba01329cf94a393ecc6c18b4ffd903419bdc068b03af2f5f31dcc4ab25757",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "email_schedules_108.sql",
+      "sha256": "c5f26123b3ea938954dce11abd4c25cadb603bc92fefa4afe6236a766ec3072a",
+      "literalRegclass": 10,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "email_templates_106.sql",
+      "sha256": "4a459b80a2ed63eea887fce2d6f85fae0285b46b08b29c58268422cc1a963026",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "import_safeupdate_079.sql",
+      "sha256": "8c38cb9b36855d515b913a03b492035e7c22d788a7ce863abed5df023eda9440",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "import_source_ref_140.sql",
+      "sha256": "fbe2570ebfcde3cd3856652b61e0449179b840f2a631efd7cfd832881a78d439",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "inbound_email_links_125.sql",
+      "sha256": "c6aed95ffe09829c523d933e4bf659e1979acd6f65abae310f1c6ce6565bf576",
+      "literalRegclass": 7,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "integrations_084.sql",
+      "sha256": "e8defd7637b0db5f92df5c4fe9be77920acdf9488905c60214b1e716b70b33cc",
+      "literalRegclass": 2,
+      "literalRegprocedure": 3,
+      "queryToXml": false
+    },
+    {
+      "file": "integrations_connect_107.sql",
+      "sha256": "a62ed3eea3d8a92df2f8c36e3c0da71d9569f5367074972a282492c3baf7a168",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "internal_jobs_and_machines.sql",
+      "sha256": "3119e57286a9ae7bf6d6826e35652e2b4e1e10a3f50a5db7ee18fa0b8ed66696",
+      "literalRegclass": 6,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "invoice_issue_guard_091.sql",
+      "sha256": "378fb76b624f4129c4810a2a8cb40d68b0d4d04741e3aa7dfb9ccd1bbf75d999",
+      "literalRegclass": 4,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "invoice_payments_032.sql",
+      "sha256": "5cc439db9e1250e36e942c4d453e2868235e112e10fec76adad5bef5187f54a2",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "invoice_receipt_guard_089.sql",
+      "sha256": "a203530fd3f83ac96dfd6914d7af86f0474e4ecbd3b6b1880ea6e659d24cff8b",
+      "literalRegclass": 4,
+      "literalRegprocedure": 1,
+      "queryToXml": false
+    },
+    {
+      "file": "invoice_screen_073.sql",
+      "sha256": "a8c534791f18429cb05fa53a250ef6ff57ddf4a79b6107c0093ebf0691409720",
+      "literalRegclass": 10,
+      "literalRegprocedure": 4,
+      "queryToXml": false
+    },
+    {
+      "file": "invoice_write_off_105.sql",
+      "sha256": "599e3156c3f65225b179fb0188b6d3fc5aae1e99f686b65f4012b36bc10323fe",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "ip_retention_crd_078.sql",
+      "sha256": "789e9c7bbf6b4fe6da8fa069a0ad435c97794cf7e086831b5c1228f8b77cc6c5",
+      "literalRegclass": 5,
+      "literalRegprocedure": 2,
+      "queryToXml": false
+    },
+    {
+      "file": "job_delivery_note_147.sql",
+      "sha256": "e8866233169863a61cd88cf42d6cb59114685da6942d85943106f9b05288877b",
+      "literalRegclass": 11,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_flow_081.sql",
+      "sha256": "af05d6f9169896d9ba3688ae2d74c15d5ba98ee8700def4c88d030cc693d2ab6",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_labour_051.sql",
+      "sha256": "c7cf11cab67494e677107520e758b1fe363255e1ee9f2748d6b2676d2f773580",
+      "literalRegclass": 4,
+      "literalRegprocedure": 7,
+      "queryToXml": false
+    },
+    {
+      "file": "job_part_logs_118.sql",
+      "sha256": "19954848781d137a1f8276f88cdcaf665aa1a0cc512f3265b552be863242d443",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_photos_040.sql",
+      "sha256": "75622aa54e270e0474e3903b9ef76c703c9c93dea5a7d530fa71b1aad020a1fa",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_problems_117.sql",
+      "sha256": "8bd1c15cfc62a96bced43aac9b94c8df8c491a0cac82f50e050cbfeba4311c62",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_profitability_actuals_148.sql",
+      "sha256": "e306109442cb027d244267899b41709fe77f0c07f1683d87d0d7a127cc9ba412",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_signoff.sql",
+      "sha256": "9bf99c3c84e2c18dfebfb49a190fddaf77ef98a106c97d335a368d64e0f60358",
+      "literalRegclass": 8,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_spec_customer_po_135.sql",
+      "sha256": "5bb14bdfa7811fc6de2c26497e07a26190c962e472848866b3da94f677b16ca5",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "job_spec_customer_po_135_precheck.sql",
+      "sha256": "f7b4e57831cda8fff60d7ef45d6a6c6396229d363d0cc8ea015f80a513b3b794",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "machine_runs.sql",
+      "sha256": "67964e7899567bdca528c5b259f512f08da00c574cc9d65411f56902a58bbf9e",
+      "literalRegclass": 8,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "mailbox_read_127.sql",
+      "sha256": "1509ca93b71a003b70a3db4fae07f1bb611a04e31790003134be51597ddee797",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "n2_tolra_provided_ai.sql",
+      "sha256": "67a85b0fc64775a0fab1469588dd1aaa90d12cd65da8490b8f4e60662d564f3d",
+      "literalRegclass": 2,
+      "literalRegprocedure": 2,
+      "queryToXml": false
+    },
+    {
+      "file": "n5_company_setup.sql",
+      "sha256": "0c192f5374cd3421c9ea47c9a7956ed69188104b2d19ed1e76b87eb3c8264d2b",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "opening_wip_141.sql",
+      "sha256": "7125c1714ffc3c909dc2542281c66d25d1d526f41e88194c2615c29ae7eff949",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "overview_owed_snapshots_116.sql",
+      "sha256": "cbe0a32b1ebf98db02132f5e61913ee0b0108bb813addb0bef62b662181d5cef",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "part_despatch_invoice_quantity_099.sql",
+      "sha256": "f55068d8c82636a31c3b692efca51ed72727b6c0c00d8ceb06506d7619607c88",
+      "literalRegclass": 5,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "password_change_ticket_137.sql",
+      "sha256": "6b852b899b66e6e0dc8da94973d8754ba6d8c7357d66daf8abd105499574cf77",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "paused_machine_ack.sql",
+      "sha256": "8ae7e9cf93800eead0b5830fc9e258d2bed50ebda1bcabeb246fa497defe67ac",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "platform_create_organization.sql",
+      "sha256": "6c7a8c5082b206b01d5304d8341b78613394808e0022d9d0b06d4805a490d4a0",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "prelaunch_033.sql",
+      "sha256": "cad318ff3ce08f2b514e0d3b78517b531431cd5095f0ea9a02c355a8864901df",
+      "literalRegclass": 16,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "protect_platform_owner_login_093.sql",
+      "sha256": "db6893e267dd931342ec4dfc6728b3e900eb5b28f47bfd4c666ebe83a977b1ce",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": true
+    },
+    {
+      "file": "purchase_order_link_124.sql",
+      "sha256": "bc776d2d9913b1d7d6ec05ed46d4882b655eda4721c985481cca98c1a856db4a",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "quote_customer_po_123.sql",
+      "sha256": "2c2aaab331b20cd2b781a065635be13054c6f541243f24acaa070112ad3ab3d2",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "quote_to_job.sql",
+      "sha256": "66aa5989c203e0f57b3d3b7d46ef5420d946c7361d6d43f8b46226f723a4bf81",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "quote_versions_068.sql",
+      "sha256": "843cc60f0dc2d5c03cc20cc6d0e9c965e24b812c25907189db2a154658e23b47",
+      "literalRegclass": 6,
+      "literalRegprocedure": 5,
+      "queryToXml": false
+    },
+    {
+      "file": "recent_second_step_136.sql",
+      "sha256": "2db17b4f02975572c31ffc4daf38e68e91c4a1d61146a39904d42dc3655f9fd8",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "reconcile_legacy_source.sql",
+      "sha256": "12598b91419ee73ddedb5b1c278ee85601306b27f4144af244f468fd3d7c6576",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "reconcile_legacy_target.sql",
+      "sha256": "b8d2619cad734af8f6aec72f96a8481a8aaf226a7812cd6d6ce65822f0f564a7",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "release_ends_session_092.sql",
+      "sha256": "cf15a1b9804ece95f999ab81f0e6a8da21809e2a444e0a8f0dd98c1e7669a68d",
+      "literalRegclass": 5,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "release_preflight.sql",
+      "sha256": "7012b31ec6936b006e5a37c01221a9ada3685fcbf1ad638d25b3c11e7eb37270",
+      "literalRegclass": 16,
+      "literalRegprocedure": 0,
+      "queryToXml": true
+    },
+    {
+      "file": "reopen_requests_113.sql",
+      "sha256": "dccaed2358d2a58e405bc6145aef5d6358e2bc0f894ab42777d2eb2b2569e299",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "rework_037.sql",
+      "sha256": "1cf8137a456cf64f465ff646d250e3f5c80c2d7a5c70597b62ef057471d96020",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "rfq_clarification_110.sql",
+      "sha256": "7a46c37c7045cb1da9dede34a8aac6473516528cd78d18665022b43ca4ae86df",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "rls_helper_speed_121.sql",
+      "sha256": "13f69738aa9472db8e30f6244b5e175ccb531b605ec6ec46de5fd3c385f85b5f",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "rls_select_wrap_131.sql",
+      "sha256": "f99e7257b2fe716cb0c9785d38c1d874ddb880330448194f018cd22d20658f28",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "rls_select_wrap_131_precheck.sql",
+      "sha256": "b5b152c48b4c45b0d5f2e60672ab550a0e90762fe3adf4b8d0855df47250aeeb",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "sales_order_machines.sql",
+      "sha256": "308f088db80c7017e54e24a41c43aba32c49977b23dd7480df3d077ae0acb787",
+      "literalRegclass": 4,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "security_guards_102.sql",
+      "sha256": "b2f5913d15e1ba85dbe6bf4e28a154b61aca702dfadca85c44cb8b1046b5a989",
+      "literalRegclass": 2,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "site_network_075.sql",
+      "sha256": "f0ee65c0e85c9c04b7d15af621321e009ff7710e14b3cd55fba040057bfdbb36",
+      "literalRegclass": 5,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "time_day_flags_074.sql",
+      "sha256": "59136c3da6323d4a9c08fddccb5ae8255564afc72f590821fe4ba8b3459ea604",
+      "literalRegclass": 4,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "time_week_review_052.sql",
+      "sha256": "752d28b4c4e07935e24186a0a8d2f56754e1bf19679dc2e305c8ad6abd95c036",
+      "literalRegclass": 2,
+      "literalRegprocedure": 3,
+      "queryToXml": false
+    },
+    {
+      "file": "tolra_provided_ai_146.sql",
+      "sha256": "67a85b0fc64775a0fab1469588dd1aaa90d12cd65da8490b8f4e60662d564f3d",
+      "literalRegclass": 2,
+      "literalRegprocedure": 2,
+      "queryToXml": false
+    },
+    {
+      "file": "traceability_082.sql",
+      "sha256": "5e5891abb61f90fe0bb67575fa3f76a8d9f6c4251068df5215d3cdc59ed6d10b",
+      "literalRegclass": 6,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "two_level_access_036.sql",
+      "sha256": "4edee0c1a5e5b2177c17ccd132c4324019b6f56408d912f57a5ce77f6631a0bc",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "unmarked_bans.sql",
+      "sha256": "da37754ce600c69efd4babad2ad22239c6c9cc8f69451282176362030d98ab86",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "user_date_format_109.sql",
+      "sha256": "38cfab3166b285737e60440f6727816d9a9f8fa608563c0cce1f13e6a49d46a1",
+      "literalRegclass": 1,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "vat_registration_030.sql",
+      "sha256": "00d77a62a8d083ced85379f5461da0795ccbf43732759bf706d1a1f5af2354c3",
+      "literalRegclass": 0,
+      "literalRegprocedure": 1,
+      "queryToXml": false
+    },
+    {
+      "file": "who_did_what_035.sql",
+      "sha256": "73327037953a99a8ff5172147283d980016a50454f1c49324f97d99607c93904",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "workflow_034.sql",
+      "sha256": "97ce23b3bb6939cc4e9bac0221a76450daab0677adfda14ea85be368af24c6eb",
+      "literalRegclass": 8,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "workshop_network_128.sql",
+      "sha256": "bf53284490cd9c2b1109066307edbefa2734dc173db2528d79ffcc39271abfe6",
+      "literalRegclass": 0,
+      "literalRegprocedure": 1,
+      "queryToXml": false
+    },
+    {
+      "file": "xero_invite_hardening_151.sql",
+      "sha256": "1d431dffd3277248bb17265503124c820b452cceba862791bb24c959695abe2f",
+      "literalRegclass": 0,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    },
+    {
+      "file": "xero_launch_hold_149.sql",
+      "sha256": "6b1e10da92821900eb356679d7f4ef5ecd40804955eee34fa4c28ff0fcf348f9",
+      "literalRegclass": 3,
+      "literalRegprocedure": 0,
+      "queryToXml": false
+    }
+  ],
+  "stages": [
+    {
+      "stage": 13,
+      "results": [
+        {
+          "file": "072_customer_signoff.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.job_signoffs\" does not exist",
+          "position": "1219"
+        },
+        {
+          "file": "accountant_invite_129.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"token_hash\" does not exist",
+          "position": "1173"
+        },
+        {
+          "file": "accounting_connections_144.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.accounting_cloud_enqueue()\" does not exist",
+          "position": "499"
+        },
+        {
+          "file": "activity_labels_080.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column l.declined does not exist",
+          "position": "1830"
+        },
+        {
+          "file": "activity_one_row_per_change_094.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 3
+        },
+        {
+          "file": "admin_mfa_onboarding_065.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.member_has_verified_totp(uuid)\" does not exist",
+          "position": "1242"
+        },
+        {
+          "file": "ai_assistant_134.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_requests\" does not exist",
+          "position": "1273"
+        },
+        {
+          "file": "ai_assistant_134_prod_off_check.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_cap_key_off_150.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_settings\" does not exist",
+          "position": "1528"
+        },
+        {
+          "file": "ai_finance_check_audit_events_095.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 5
+        },
+        {
+          "file": "ai_helper_101.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_usage\" does not exist",
+          "position": "3013"
+        },
+        {
+          "file": "ai_helper_cap_default_122.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 3
+        },
+        {
+          "file": "ai_helper_pre_enable_133.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_requests\" does not exist",
+          "position": "2995"
+        },
+        {
+          "file": "ai_helper_service_role_103.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_secrets\" does not exist"
+        },
+        {
+          "file": "attendance_050.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.attendance_events\" does not exist",
+          "position": "2311"
+        },
+        {
+          "file": "attendance_expected_company_090.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 4
+        },
+        {
+          "file": "audit_hash_077.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 2
+        },
+        {
+          "file": "authorised_inspectors_083.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.job_inspections\" does not exist",
+          "position": "1319"
+        },
+        {
+          "file": "auto_book_next_free.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.job_machines\" does not exist",
+          "position": "7414"
+        },
+        {
+          "file": "ban_ends_session_119.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 5
+        },
+        {
+          "file": "bench_pause.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.machine_runs\" does not exist",
+          "position": "1308"
+        },
+        {
+          "file": "booking_day_plan.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"day_plan\" does not exist",
+          "position": "1933"
+        },
+        {
+          "file": "booking_run_identity.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.machine_runs\" does not exist",
+          "position": "386"
+        },
+        {
+          "file": "booking_time_zero_quote_126.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 4
+        },
+        {
+          "file": "browser_error_alert_115.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 5
+        },
+        {
+          "file": "catalogue.sql",
+          "status": "executed",
+          "rows": 276,
+          "notTrue": 0
+        },
+        {
+          "file": "chase_steps_138.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.email_templates\" does not exist",
+          "position": "3526"
+        },
+        {
+          "file": "clock_in_network_lock_114.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.attendance_events\" does not exist",
+          "position": "2861"
+        },
+        {
+          "file": "company_access_066.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function public.audit_event_allowed(unknown, unknown) does not exist",
+          "position": "3756"
+        },
+        {
+          "file": "company_setup_145.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "converted_sales_order_088.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 9
+        },
+        {
+          "file": "costing_rates_143.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.costing_materials\" does not exist"
+        },
+        {
+          "file": "cross_org_links.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "customer_archive_100.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.record_archive_state\" does not exist",
+          "position": "1348"
+        },
+        {
+          "file": "dashboard_tiles_132.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "data_import_076.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function public.import_norm_name(unknown) does not exist",
+          "position": "5454"
+        },
+        {
+          "file": "data_import_credit_delivery_085.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.credit_notes\" does not exist",
+          "position": "6868"
+        },
+        {
+          "file": "delivery_note_auto_invoice.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column d.invoice_id does not exist",
+          "position": "7535"
+        },
+        {
+          "file": "document_attachments_067.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"kind\" does not exist",
+          "position": "944"
+        },
+        {
+          "file": "document_totals.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "duplicate_conversions.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "email_history_drafted_by_120.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 3
+        },
+        {
+          "file": "email_schedules_108.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.email_schedules\" does not exist",
+          "position": "138"
+        },
+        {
+          "file": "email_templates_106.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_settings\" does not exist"
+        },
+        {
+          "file": "import_safeupdate_079.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "import_source_ref_140.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"source_ref\" does not exist",
+          "position": "2041"
+        },
+        {
+          "file": "inbound_email_links_125.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.inbound_emails\" does not exist",
+          "position": "1100"
+        },
+        {
+          "file": "integrations_084.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.integration_enqueue()\" does not exist",
+          "position": "8921"
+        },
+        {
+          "file": "integrations_connect_107.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 10
+        },
+        {
+          "file": "internal_jobs_and_machines.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"is_internal\" does not exist",
+          "position": "1888"
+        },
+        {
+          "file": "invoice_issue_guard_091.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 7
+        },
+        {
+          "file": "invoice_payments_032.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column i.payment_unverified does not exist",
+          "position": "1396"
+        },
+        {
+          "file": "invoice_receipt_guard_089.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.invoice_issue_lock()\" does not exist",
+          "position": "2269"
+        },
+        {
+          "file": "invoice_screen_073.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.replace_draft_invoice(uuid, timestamptz, jsonb, jsonb)\" does not exist",
+          "position": "3535"
+        },
+        {
+          "file": "invoice_write_off_105.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 6
+        },
+        {
+          "file": "ip_retention_crd_078.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.attendance_event_network_ips\" does not exist",
+          "position": "854"
+        },
+        {
+          "file": "job_delivery_note_147.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.dln_numbering_pending\" does not exist",
+          "position": "4580"
+        },
+        {
+          "file": "job_flow_081.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function public.flow_status(jobs) does not exist",
+          "position": "6042"
+        },
+        {
+          "file": "job_labour_051.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.operator_sessions\" does not exist",
+          "position": "1079"
+        },
+        {
+          "file": "job_part_logs_118.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 9
+        },
+        {
+          "file": "job_photos_040.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.job_files\" does not exist",
+          "position": "639"
+        },
+        {
+          "file": "job_problems_117.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 8
+        },
+        {
+          "file": "job_profitability_actuals_148.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 12
+        },
+        {
+          "file": "job_signoff.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function public.canonical_jsonb(jsonb) does not exist",
+          "position": "2041"
+        },
+        {
+          "file": "job_spec_customer_po_135.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 3
+        },
+        {
+          "file": "job_spec_customer_po_135_precheck.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "machine_runs.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.machine_runs\" does not exist",
+          "position": "1845"
+        },
+        {
+          "file": "mailbox_read_127.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 7
+        },
+        {
+          "file": "n2_tolra_provided_ai.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "n5_company_setup.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "opening_wip_141.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.opening_wip\" does not exist"
+        },
+        {
+          "file": "overview_owed_snapshots_116.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 6
+        },
+        {
+          "file": "part_despatch_invoice_quantity_099.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.sales_order_lines\" does not exist",
+          "position": "3468"
+        },
+        {
+          "file": "password_change_ticket_137.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "paused_machine_ack.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.paused_ack_ops\" does not exist",
+          "position": "4120"
+        },
+        {
+          "file": "platform_create_organization.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "prelaunch_033.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"require_admin_mfa\" does not exist",
+          "position": "1744"
+        },
+        {
+          "file": "protect_platform_owner_login_093.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 8
+        },
+        {
+          "file": "purchase_order_link_124.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 6
+        },
+        {
+          "file": "quote_customer_po_123.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"customer_po\" does not exist",
+          "position": "3501"
+        },
+        {
+          "file": "quote_to_job.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_versions_068.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.sales_order_lines\" does not exist",
+          "position": "1186"
+        },
+        {
+          "file": "recent_second_step_136.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "reconcile_legacy_source.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column q.quantity does not exist",
+          "position": "489"
+        },
+        {
+          "file": "reconcile_legacy_target.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column i.payment_unverified does not exist",
+          "position": "1954"
+        },
+        {
+          "file": "release_ends_session_092.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.machine_runs\" does not exist",
+          "position": "936"
+        },
+        {
+          "file": "release_preflight.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.integration_connections\" does not exist",
+          "position": "45145"
+        },
+        {
+          "file": "reopen_requests_113.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 8
+        },
+        {
+          "file": "rework_037.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.job_rework\" does not exist",
+          "position": "3894"
+        },
+        {
+          "file": "rfq_clarification_110.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 4
+        },
+        {
+          "file": "rls_helper_speed_121.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 3
+        },
+        {
+          "file": "rls_select_wrap_131.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 3
+        },
+        {
+          "file": "rls_select_wrap_131_precheck.sql",
+          "status": "executed",
+          "rows": 187,
+          "notTrue": 101
+        },
+        {
+          "file": "sales_order_machines.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.sales_order_line_machines\" does not exist",
+          "position": "1169"
+        },
+        {
+          "file": "security_guards_102.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 6
+        },
+        {
+          "file": "site_network_075.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.attendance_events\" does not exist",
+          "position": "4911"
+        },
+        {
+          "file": "time_day_flags_074.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.time_day_flags\" does not exist",
+          "position": "390"
+        },
+        {
+          "file": "time_week_review_052.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.time_week_approvals\" does not exist",
+          "position": "279"
+        },
+        {
+          "file": "tolra_provided_ai_146.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "traceability_082.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"supplier_status\" does not exist",
+          "position": "3073"
+        },
+        {
+          "file": "two_level_access_036.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"support\" does not exist",
+          "position": "4583"
+        },
+        {
+          "file": "unmarked_bans.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "user_date_format_109.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 9
+        },
+        {
+          "file": "vat_registration_030.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.check_document_totals(text, uuid, uuid)\" does not exist",
+          "position": "2609"
+        },
+        {
+          "file": "who_did_what_035.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"started_by\" does not exist",
+          "position": "1080"
+        },
+        {
+          "file": "workflow_034.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.invoice_credit_allocations\" does not exist",
+          "position": "592"
+        },
+        {
+          "file": "workshop_network_128.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.site_network_ip_purge(uuid,integer)\" does not exist",
+          "position": "4541"
+        },
+        {
+          "file": "xero_invite_hardening_151.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.integration_connect_invites\" does not exist",
+          "position": "2205"
+        },
+        {
+          "file": "xero_launch_hold_149.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.xero_transfer_hold\" does not exist",
+          "position": "2050"
+        }
+      ]
+    },
+    {
+      "stage": 83,
+      "results": [
+        {
+          "file": "072_customer_signoff.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "accountant_invite_129.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"token_hash\" does not exist",
+          "position": "1173"
+        },
+        {
+          "file": "accounting_connections_144.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.accounting_cloud_enqueue()\" does not exist",
+          "position": "499"
+        },
+        {
+          "file": "activity_labels_080.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "activity_one_row_per_change_094.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 2
+        },
+        {
+          "file": "admin_mfa_onboarding_065.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_requests\" does not exist",
+          "position": "1273"
+        },
+        {
+          "file": "ai_assistant_134_prod_off_check.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_cap_key_off_150.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_settings\" does not exist",
+          "position": "1528"
+        },
+        {
+          "file": "ai_finance_check_audit_events_095.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 4
+        },
+        {
+          "file": "ai_helper_101.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_usage\" does not exist",
+          "position": "3013"
+        },
+        {
+          "file": "ai_helper_cap_default_122.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 3
+        },
+        {
+          "file": "ai_helper_pre_enable_133.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_requests\" does not exist",
+          "position": "2995"
+        },
+        {
+          "file": "ai_helper_service_role_103.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_secrets\" does not exist"
+        },
+        {
+          "file": "attendance_050.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "attendance_expected_company_090.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 3
+        },
+        {
+          "file": "audit_hash_077.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "authorised_inspectors_083.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "auto_book_next_free.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "ban_ends_session_119.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 2
+        },
+        {
+          "file": "bench_pause.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_day_plan.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_run_identity.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_time_zero_quote_126.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 2
+        },
+        {
+          "file": "browser_error_alert_115.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 4
+        },
+        {
+          "file": "catalogue.sql",
+          "status": "executed",
+          "rows": 1364,
+          "notTrue": 0
+        },
+        {
+          "file": "chase_steps_138.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.email_templates\" does not exist",
+          "position": "3526"
+        },
+        {
+          "file": "clock_in_network_lock_114.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.clock_in_network_locks\" does not exist",
+          "position": "3158"
+        },
+        {
+          "file": "company_access_066.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_setup_145.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "converted_sales_order_088.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 8
+        },
+        {
+          "file": "costing_rates_143.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.costing_materials\" does not exist"
+        },
+        {
+          "file": "cross_org_links.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "customer_archive_100.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 2
+        },
+        {
+          "file": "dashboard_tiles_132.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "data_import_076.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_credit_delivery_085.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 7
+        },
+        {
+          "file": "delivery_note_auto_invoice.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "document_attachments_067.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "document_totals.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "duplicate_conversions.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "email_history_drafted_by_120.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 3
+        },
+        {
+          "file": "email_schedules_108.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.email_schedules\" does not exist",
+          "position": "138"
+        },
+        {
+          "file": "email_templates_106.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_settings\" does not exist"
+        },
+        {
+          "file": "import_safeupdate_079.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "import_source_ref_140.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"source_ref\" does not exist",
+          "position": "2041"
+        },
+        {
+          "file": "inbound_email_links_125.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"link_status\" does not exist",
+          "position": "4519"
+        },
+        {
+          "file": "integrations_084.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.integration_enqueue()\" does not exist",
+          "position": "8921"
+        },
+        {
+          "file": "integrations_connect_107.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 10
+        },
+        {
+          "file": "internal_jobs_and_machines.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_issue_guard_091.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 5
+        },
+        {
+          "file": "invoice_payments_032.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_receipt_guard_089.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 4
+        },
+        {
+          "file": "invoice_screen_073.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_write_off_105.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "ip_retention_crd_078.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_delivery_note_147.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.dln_numbering_pending\" does not exist",
+          "position": "4580"
+        },
+        {
+          "file": "job_flow_081.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "job_labour_051.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_part_logs_118.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 9
+        },
+        {
+          "file": "job_photos_040.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_problems_117.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 8
+        },
+        {
+          "file": "job_profitability_actuals_148.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 12
+        },
+        {
+          "file": "job_signoff.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 1
+        },
+        {
+          "file": "job_spec_customer_po_135_precheck.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "machine_runs.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "mailbox_read_127.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 7
+        },
+        {
+          "file": "n2_tolra_provided_ai.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "n5_company_setup.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "opening_wip_141.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.opening_wip\" does not exist"
+        },
+        {
+          "file": "overview_owed_snapshots_116.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 6
+        },
+        {
+          "file": "part_despatch_invoice_quantity_099.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column l.sales_order_line_id does not exist",
+          "position": "5426"
+        },
+        {
+          "file": "password_change_ticket_137.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 5
+        },
+        {
+          "file": "paused_machine_ack.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "platform_create_organization.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "prelaunch_033.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "protect_platform_owner_login_093.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 7
+        },
+        {
+          "file": "purchase_order_link_124.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 6
+        },
+        {
+          "file": "quote_customer_po_123.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"customer_po\" does not exist",
+          "position": "3501"
+        },
+        {
+          "file": "quote_to_job.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_versions_068.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "recent_second_step_136.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 4
+        },
+        {
+          "file": "reconcile_legacy_source.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column q.quantity does not exist",
+          "position": "489"
+        },
+        {
+          "file": "reconcile_legacy_target.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.legacy_audit_log\" does not exist",
+          "position": "3512"
+        },
+        {
+          "file": "release_ends_session_092.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 5
+        },
+        {
+          "file": "release_preflight.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.integration_connections\" does not exist",
+          "position": "45145"
+        },
+        {
+          "file": "reopen_requests_113.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 8
+        },
+        {
+          "file": "rework_037.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "rfq_clarification_110.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 4
+        },
+        {
+          "file": "rls_helper_speed_121.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 1
+        },
+        {
+          "file": "rls_select_wrap_131.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 2
+        },
+        {
+          "file": "rls_select_wrap_131_precheck.sql",
+          "status": "executed",
+          "rows": 187,
+          "notTrue": 29
+        },
+        {
+          "file": "sales_order_machines.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "security_guards_102.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 6
+        },
+        {
+          "file": "site_network_075.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "time_day_flags_074.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "time_week_review_052.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "tolra_provided_ai_146.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "traceability_082.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "two_level_access_036.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "unmarked_bans.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "user_date_format_109.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 9
+        },
+        {
+          "file": "vat_registration_030.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "who_did_what_035.sql",
+          "status": "executed",
+          "rows": 22,
+          "notTrue": 0
+        },
+        {
+          "file": "workflow_034.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "workshop_network_128.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.clock_in_network_refusals\" does not exist",
+          "position": "7099"
+        },
+        {
+          "file": "xero_invite_hardening_151.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.integration_connect_invites\" does not exist",
+          "position": "2205"
+        },
+        {
+          "file": "xero_launch_hold_149.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.xero_transfer_hold\" does not exist",
+          "position": "2050"
+        }
+      ]
+    },
+    {
+      "stage": 137,
+      "results": [
+        {
+          "file": "072_customer_signoff.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "accountant_invite_129.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "accounting_connections_144.sql",
+          "status": "error",
+          "code": "42883",
+          "message": "function \"public.accounting_cloud_enqueue()\" does not exist",
+          "position": "499"
+        },
+        {
+          "file": "activity_labels_080.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 3
+        },
+        {
+          "file": "activity_one_row_per_change_094.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "admin_mfa_onboarding_065.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134_prod_off_check.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_cap_key_off_150.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "8029"
+        },
+        {
+          "file": "ai_finance_check_audit_events_095.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_101.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 1
+        },
+        {
+          "file": "ai_helper_cap_default_122.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_pre_enable_133.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_service_role_103.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 2
+        },
+        {
+          "file": "attendance_050.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "attendance_expected_company_090.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "audit_hash_077.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "authorised_inspectors_083.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "auto_book_next_free.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "ban_ends_session_119.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 1
+        },
+        {
+          "file": "bench_pause.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_day_plan.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_run_identity.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_time_zero_quote_126.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "browser_error_alert_115.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "catalogue.sql",
+          "status": "executed",
+          "rows": 1790,
+          "notTrue": 0
+        },
+        {
+          "file": "chase_steps_138.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.chase_sends\" does not exist"
+        },
+        {
+          "file": "clock_in_network_lock_114.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_access_066.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_setup_145.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "converted_sales_order_088.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "costing_rates_143.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.costing_materials\" does not exist"
+        },
+        {
+          "file": "cross_org_links.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "customer_archive_100.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "dashboard_tiles_132.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_076.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_credit_delivery_085.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "delivery_note_auto_invoice.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "document_attachments_067.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "document_totals.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "duplicate_conversions.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "email_history_drafted_by_120.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "email_schedules_108.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "email_templates_106.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "import_safeupdate_079.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 2
+        },
+        {
+          "file": "import_source_ref_140.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column \"source_ref\" does not exist",
+          "position": "2041"
+        },
+        {
+          "file": "inbound_email_links_125.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "integrations_084.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "integrations_connect_107.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "internal_jobs_and_machines.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_issue_guard_091.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_payments_032.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_receipt_guard_089.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_screen_073.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_write_off_105.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "ip_retention_crd_078.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_delivery_note_147.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.dln_numbering_pending\" does not exist",
+          "position": "4580"
+        },
+        {
+          "file": "job_flow_081.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 2
+        },
+        {
+          "file": "job_labour_051.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_part_logs_118.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "job_photos_040.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_problems_117.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "job_profitability_actuals_148.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 12
+        },
+        {
+          "file": "job_signoff.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135_precheck.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "machine_runs.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "mailbox_read_127.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "n2_tolra_provided_ai.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "n5_company_setup.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "opening_wip_141.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.opening_wip\" does not exist"
+        },
+        {
+          "file": "overview_owed_snapshots_116.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "part_despatch_invoice_quantity_099.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "password_change_ticket_137.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "paused_machine_ack.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "platform_create_organization.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "prelaunch_033.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "protect_platform_owner_login_093.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "purchase_order_link_124.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_customer_po_123.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_to_job.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_versions_068.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "recent_second_step_136.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "reconcile_legacy_source.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column q.quantity does not exist",
+          "position": "489"
+        },
+        {
+          "file": "reconcile_legacy_target.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.legacy_audit_log\" does not exist",
+          "position": "3512"
+        },
+        {
+          "file": "release_ends_session_092.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "release_preflight.sql",
+          "status": "executed",
+          "rows": 176,
+          "notTrue": 0
+        },
+        {
+          "file": "reopen_requests_113.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "rework_037.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "rfq_clarification_110.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_helper_speed_121.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_select_wrap_131.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_select_wrap_131_precheck.sql",
+          "status": "executed",
+          "rows": 187,
+          "notTrue": 0
+        },
+        {
+          "file": "sales_order_machines.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "security_guards_102.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "site_network_075.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "time_day_flags_074.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "time_week_review_052.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "tolra_provided_ai_146.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "traceability_082.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "two_level_access_036.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "unmarked_bans.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "user_date_format_109.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "vat_registration_030.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "who_did_what_035.sql",
+          "status": "executed",
+          "rows": 22,
+          "notTrue": 0
+        },
+        {
+          "file": "workflow_034.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "workshop_network_128.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "xero_invite_hardening_151.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column i.ref does not exist",
+          "position": "2248"
+        },
+        {
+          "file": "xero_launch_hold_149.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.xero_transfer_hold\" does not exist",
+          "position": "2050"
+        }
+      ]
+    },
+    {
+      "stage": 144,
+      "results": [
+        {
+          "file": "072_customer_signoff.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "accountant_invite_129.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "accounting_connections_144.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "activity_labels_080.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 3
+        },
+        {
+          "file": "activity_one_row_per_change_094.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "admin_mfa_onboarding_065.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134_prod_off_check.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_cap_key_off_150.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "8029"
+        },
+        {
+          "file": "ai_finance_check_audit_events_095.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_101.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 1
+        },
+        {
+          "file": "ai_helper_cap_default_122.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_pre_enable_133.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_service_role_103.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 2
+        },
+        {
+          "file": "attendance_050.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "attendance_expected_company_090.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "audit_hash_077.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "authorised_inspectors_083.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "auto_book_next_free.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "ban_ends_session_119.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 1
+        },
+        {
+          "file": "bench_pause.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_day_plan.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_run_identity.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_time_zero_quote_126.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "browser_error_alert_115.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "catalogue.sql",
+          "status": "executed",
+          "rows": 1888,
+          "notTrue": 0
+        },
+        {
+          "file": "chase_steps_138.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "clock_in_network_lock_114.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_access_066.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_setup_145.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "converted_sales_order_088.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "costing_rates_143.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "cross_org_links.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "customer_archive_100.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "dashboard_tiles_132.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_076.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_credit_delivery_085.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "delivery_note_auto_invoice.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "document_attachments_067.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "document_totals.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "duplicate_conversions.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "email_history_drafted_by_120.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "email_schedules_108.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "email_templates_106.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "import_safeupdate_079.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 2
+        },
+        {
+          "file": "import_source_ref_140.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "inbound_email_links_125.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "integrations_084.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 1
+        },
+        {
+          "file": "integrations_connect_107.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "internal_jobs_and_machines.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_issue_guard_091.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_payments_032.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_receipt_guard_089.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_screen_073.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_write_off_105.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "ip_retention_crd_078.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_delivery_note_147.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.dln_numbering_pending\" does not exist",
+          "position": "4580"
+        },
+        {
+          "file": "job_flow_081.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 2
+        },
+        {
+          "file": "job_labour_051.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_part_logs_118.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "job_photos_040.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_problems_117.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "job_profitability_actuals_148.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 11
+        },
+        {
+          "file": "job_signoff.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135_precheck.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "machine_runs.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "mailbox_read_127.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "n2_tolra_provided_ai.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "n5_company_setup.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.company_setup_progress\" does not exist",
+          "position": "158"
+        },
+        {
+          "file": "opening_wip_141.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "overview_owed_snapshots_116.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "part_despatch_invoice_quantity_099.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "password_change_ticket_137.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "paused_machine_ack.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "platform_create_organization.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "prelaunch_033.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "protect_platform_owner_login_093.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "purchase_order_link_124.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_customer_po_123.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_to_job.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_versions_068.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "recent_second_step_136.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "reconcile_legacy_source.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column q.quantity does not exist",
+          "position": "489"
+        },
+        {
+          "file": "reconcile_legacy_target.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.legacy_audit_log\" does not exist",
+          "position": "3512"
+        },
+        {
+          "file": "release_ends_session_092.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "release_preflight.sql",
+          "status": "executed",
+          "rows": 176,
+          "notTrue": 0
+        },
+        {
+          "file": "reopen_requests_113.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "rework_037.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "rfq_clarification_110.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_helper_speed_121.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_select_wrap_131.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_select_wrap_131_precheck.sql",
+          "status": "executed",
+          "rows": 187,
+          "notTrue": 0
+        },
+        {
+          "file": "sales_order_machines.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "security_guards_102.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "site_network_075.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "time_day_flags_074.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "time_week_review_052.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "tolra_provided_ai_146.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+          "position": "239"
+        },
+        {
+          "file": "traceability_082.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "two_level_access_036.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "unmarked_bans.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "user_date_format_109.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "vat_registration_030.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "who_did_what_035.sql",
+          "status": "executed",
+          "rows": 22,
+          "notTrue": 0
+        },
+        {
+          "file": "workflow_034.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "workshop_network_128.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "xero_invite_hardening_151.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column i.ref does not exist",
+          "position": "2248"
+        },
+        {
+          "file": "xero_launch_hold_149.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.xero_transfer_hold\" does not exist",
+          "position": "2050"
+        }
+      ]
+    },
+    {
+      "stage": 150,
+      "results": [
+        {
+          "file": "072_customer_signoff.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "accountant_invite_129.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "accounting_connections_144.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "activity_labels_080.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 3
+        },
+        {
+          "file": "activity_one_row_per_change_094.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "admin_mfa_onboarding_065.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 2
+        },
+        {
+          "file": "ai_assistant_134_prod_off_check.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_cap_key_off_150.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_finance_check_audit_events_095.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_101.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 2
+        },
+        {
+          "file": "ai_helper_cap_default_122.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 2
+        },
+        {
+          "file": "ai_helper_pre_enable_133.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 1
+        },
+        {
+          "file": "ai_helper_service_role_103.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 2
+        },
+        {
+          "file": "attendance_050.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "attendance_expected_company_090.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "audit_hash_077.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "authorised_inspectors_083.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "auto_book_next_free.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "ban_ends_session_119.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 1
+        },
+        {
+          "file": "bench_pause.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_day_plan.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_run_identity.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_time_zero_quote_126.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "browser_error_alert_115.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "catalogue.sql",
+          "status": "executed",
+          "rows": 2001,
+          "notTrue": 0
+        },
+        {
+          "file": "chase_steps_138.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "clock_in_network_lock_114.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_access_066.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_setup_145.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "converted_sales_order_088.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "costing_rates_143.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "cross_org_links.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "customer_archive_100.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "dashboard_tiles_132.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_076.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_credit_delivery_085.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "delivery_note_auto_invoice.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "document_attachments_067.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "document_totals.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "duplicate_conversions.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "email_history_drafted_by_120.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "email_schedules_108.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "email_templates_106.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "import_safeupdate_079.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 2
+        },
+        {
+          "file": "import_source_ref_140.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "inbound_email_links_125.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "integrations_084.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 2
+        },
+        {
+          "file": "integrations_connect_107.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "internal_jobs_and_machines.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_issue_guard_091.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_payments_032.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_receipt_guard_089.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_screen_073.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_write_off_105.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "ip_retention_crd_078.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_delivery_note_147.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "job_flow_081.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 2
+        },
+        {
+          "file": "job_labour_051.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_part_logs_118.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "job_photos_040.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_problems_117.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "job_profitability_actuals_148.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_signoff.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135_precheck.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "machine_runs.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "mailbox_read_127.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "n2_tolra_provided_ai.sql",
+          "status": "executed",
+          "rows": 19,
+          "notTrue": 0
+        },
+        {
+          "file": "n5_company_setup.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "opening_wip_141.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "overview_owed_snapshots_116.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "part_despatch_invoice_quantity_099.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "password_change_ticket_137.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "paused_machine_ack.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "platform_create_organization.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "prelaunch_033.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "protect_platform_owner_login_093.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "purchase_order_link_124.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_customer_po_123.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_to_job.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_versions_068.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "recent_second_step_136.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "reconcile_legacy_source.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column q.quantity does not exist",
+          "position": "489"
+        },
+        {
+          "file": "reconcile_legacy_target.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.legacy_audit_log\" does not exist",
+          "position": "3512"
+        },
+        {
+          "file": "release_ends_session_092.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "release_preflight.sql",
+          "status": "executed",
+          "rows": 176,
+          "notTrue": 0
+        },
+        {
+          "file": "reopen_requests_113.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "rework_037.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "rfq_clarification_110.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_helper_speed_121.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_select_wrap_131.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 1
+        },
+        {
+          "file": "rls_select_wrap_131_precheck.sql",
+          "status": "executed",
+          "rows": 187,
+          "notTrue": 1
+        },
+        {
+          "file": "sales_order_machines.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "security_guards_102.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "site_network_075.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "time_day_flags_074.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "time_week_review_052.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "tolra_provided_ai_146.sql",
+          "status": "executed",
+          "rows": 19,
+          "notTrue": 0
+        },
+        {
+          "file": "traceability_082.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "two_level_access_036.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "unmarked_bans.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "user_date_format_109.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "vat_registration_030.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "who_did_what_035.sql",
+          "status": "executed",
+          "rows": 22,
+          "notTrue": 0
+        },
+        {
+          "file": "workflow_034.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "workshop_network_128.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "xero_invite_hardening_151.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column i.ref does not exist",
+          "position": "2248"
+        },
+        {
+          "file": "xero_launch_hold_149.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        }
+      ]
+    },
+    {
+      "stage": 151,
+      "results": [
+        {
+          "file": "072_customer_signoff.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "accountant_invite_129.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "accounting_connections_144.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "activity_labels_080.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 3
+        },
+        {
+          "file": "activity_one_row_per_change_094.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "admin_mfa_onboarding_065.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_assistant_134.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 2
+        },
+        {
+          "file": "ai_assistant_134_prod_off_check.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_cap_key_off_150.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_finance_check_audit_events_095.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "ai_helper_101.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 2
+        },
+        {
+          "file": "ai_helper_cap_default_122.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 2
+        },
+        {
+          "file": "ai_helper_pre_enable_133.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 1
+        },
+        {
+          "file": "ai_helper_service_role_103.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 2
+        },
+        {
+          "file": "attendance_050.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "attendance_expected_company_090.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "audit_hash_077.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "authorised_inspectors_083.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "auto_book_next_free.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "ban_ends_session_119.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 1
+        },
+        {
+          "file": "bench_pause.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_day_plan.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_run_identity.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "booking_time_zero_quote_126.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "browser_error_alert_115.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "catalogue.sql",
+          "status": "executed",
+          "rows": 2013,
+          "notTrue": 0
+        },
+        {
+          "file": "chase_steps_138.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "clock_in_network_lock_114.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_access_066.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "company_setup_145.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "converted_sales_order_088.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "costing_rates_143.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "cross_org_links.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "customer_archive_100.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "dashboard_tiles_132.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_076.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "data_import_credit_delivery_085.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "delivery_note_auto_invoice.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "document_attachments_067.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "document_totals.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "duplicate_conversions.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "email_history_drafted_by_120.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "email_schedules_108.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "email_templates_106.sql",
+          "status": "executed",
+          "rows": 10,
+          "notTrue": 0
+        },
+        {
+          "file": "import_safeupdate_079.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 2
+        },
+        {
+          "file": "import_source_ref_140.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "inbound_email_links_125.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "integrations_084.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 2
+        },
+        {
+          "file": "integrations_connect_107.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 2
+        },
+        {
+          "file": "internal_jobs_and_machines.sql",
+          "status": "executed",
+          "rows": 18,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_issue_guard_091.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_payments_032.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_receipt_guard_089.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_screen_073.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "invoice_write_off_105.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "ip_retention_crd_078.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_delivery_note_147.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "job_flow_081.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 2
+        },
+        {
+          "file": "job_labour_051.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "job_part_logs_118.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "job_photos_040.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_problems_117.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "job_profitability_actuals_148.sql",
+          "status": "executed",
+          "rows": 12,
+          "notTrue": 0
+        },
+        {
+          "file": "job_signoff.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "job_spec_customer_po_135_precheck.sql",
+          "status": "executed",
+          "rows": 1,
+          "notTrue": 0
+        },
+        {
+          "file": "machine_runs.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        },
+        {
+          "file": "mailbox_read_127.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "n2_tolra_provided_ai.sql",
+          "status": "executed",
+          "rows": 19,
+          "notTrue": 0
+        },
+        {
+          "file": "n5_company_setup.sql",
+          "status": "executed",
+          "rows": 5,
+          "notTrue": 0
+        },
+        {
+          "file": "opening_wip_141.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "overview_owed_snapshots_116.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "part_despatch_invoice_quantity_099.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "password_change_ticket_137.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "paused_machine_ack.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "platform_create_organization.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "prelaunch_033.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "protect_platform_owner_login_093.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "purchase_order_link_124.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_customer_po_123.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_to_job.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "quote_versions_068.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "recent_second_step_136.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "reconcile_legacy_source.sql",
+          "status": "error",
+          "code": "42703",
+          "message": "column q.quantity does not exist",
+          "position": "489"
+        },
+        {
+          "file": "reconcile_legacy_target.sql",
+          "status": "error",
+          "code": "42P01",
+          "message": "relation \"public.legacy_audit_log\" does not exist",
+          "position": "3512"
+        },
+        {
+          "file": "release_ends_session_092.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "release_preflight.sql",
+          "status": "executed",
+          "rows": 176,
+          "notTrue": 0
+        },
+        {
+          "file": "reopen_requests_113.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "rework_037.sql",
+          "status": "executed",
+          "rows": 16,
+          "notTrue": 0
+        },
+        {
+          "file": "rfq_clarification_110.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_helper_speed_121.sql",
+          "status": "executed",
+          "rows": 3,
+          "notTrue": 0
+        },
+        {
+          "file": "rls_select_wrap_131.sql",
+          "status": "executed",
+          "rows": 4,
+          "notTrue": 1
+        },
+        {
+          "file": "rls_select_wrap_131_precheck.sql",
+          "status": "executed",
+          "rows": 187,
+          "notTrue": 1
+        },
+        {
+          "file": "sales_order_machines.sql",
+          "status": "executed",
+          "rows": 11,
+          "notTrue": 0
+        },
+        {
+          "file": "security_guards_102.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "site_network_075.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "time_day_flags_074.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "time_week_review_052.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "tolra_provided_ai_146.sql",
+          "status": "executed",
+          "rows": 19,
+          "notTrue": 0
+        },
+        {
+          "file": "traceability_082.sql",
+          "status": "executed",
+          "rows": 7,
+          "notTrue": 0
+        },
+        {
+          "file": "two_level_access_036.sql",
+          "status": "executed",
+          "rows": 13,
+          "notTrue": 0
+        },
+        {
+          "file": "unmarked_bans.sql",
+          "status": "executed",
+          "rows": 0,
+          "notTrue": 0
+        },
+        {
+          "file": "user_date_format_109.sql",
+          "status": "executed",
+          "rows": 9,
+          "notTrue": 0
+        },
+        {
+          "file": "vat_registration_030.sql",
+          "status": "executed",
+          "rows": 6,
+          "notTrue": 0
+        },
+        {
+          "file": "who_did_what_035.sql",
+          "status": "executed",
+          "rows": 22,
+          "notTrue": 0
+        },
+        {
+          "file": "workflow_034.sql",
+          "status": "executed",
+          "rows": 15,
+          "notTrue": 0
+        },
+        {
+          "file": "workshop_network_128.sql",
+          "status": "executed",
+          "rows": 8,
+          "notTrue": 0
+        },
+        {
+          "file": "xero_invite_hardening_151.sql",
+          "status": "executed",
+          "rows": 14,
+          "notTrue": 0
+        },
+        {
+          "file": "xero_launch_hold_149.sql",
+          "status": "executed",
+          "rows": 17,
+          "notTrue": 0
+        }
+      ]
+    }
+  ]
+}

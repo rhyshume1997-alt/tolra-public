@@ -1,0 +1,872 @@
+[
+  {
+    "file": "072_customer_signoff.sql",
+    "profile": "tolra",
+    "minimumSchema": 72,
+    "minimumRequirement": "072 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "accountant_invite_129.sql",
+    "profile": "tolra",
+    "minimumSchema": 129,
+    "minimumRequirement": "129 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "accounting_connections_144.sql",
+    "profile": "tolra",
+    "minimumSchema": 144,
+    "minimumRequirement": "144 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "activity_labels_080.sql",
+    "profile": "tolra",
+    "minimumSchema": 80,
+    "minimumRequirement": "080 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "activity_one_row_per_change_094.sql",
+    "profile": "tolra",
+    "minimumSchema": 94,
+    "minimumRequirement": "094 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "admin_mfa_onboarding_065.sql",
+    "profile": "tolra",
+    "minimumSchema": 65,
+    "minimumRequirement": "065 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_assistant_134.sql",
+    "profile": "tolra",
+    "minimumSchema": 134,
+    "minimumRequirement": "134 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_assistant_134_prod_off_check.sql",
+    "profile": "tolra",
+    "minimumSchema": 134,
+    "minimumRequirement": "134 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_cap_key_off_150.sql",
+    "profile": "tolra",
+    "minimumSchema": 150,
+    "minimumRequirement": "150 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_finance_check_audit_events_095.sql",
+    "profile": "tolra",
+    "minimumSchema": 95,
+    "minimumRequirement": "095 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_helper_101.sql",
+    "profile": "tolra",
+    "minimumSchema": 101,
+    "minimumRequirement": "101 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_helper_cap_default_122.sql",
+    "profile": "tolra",
+    "minimumSchema": 122,
+    "minimumRequirement": "122 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_helper_pre_enable_133.sql",
+    "profile": "tolra",
+    "minimumSchema": 133,
+    "minimumRequirement": "133 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ai_helper_service_role_103.sql",
+    "profile": "tolra",
+    "minimumSchema": 103,
+    "minimumRequirement": "103 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "attendance_050.sql",
+    "profile": "tolra",
+    "minimumSchema": 50,
+    "minimumRequirement": "050 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "attendance_expected_company_090.sql",
+    "profile": "tolra",
+    "minimumSchema": 90,
+    "minimumRequirement": "090 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "audit_hash_077.sql",
+    "profile": "tolra",
+    "minimumSchema": 77,
+    "minimumRequirement": "077 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "authorised_inspectors_083.sql",
+    "profile": "tolra",
+    "minimumSchema": 83,
+    "minimumRequirement": "083 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "auto_book_next_free.sql",
+    "profile": "tolra",
+    "minimumSchema": 61,
+    "minimumRequirement": "061 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "ban_ends_session_119.sql",
+    "profile": "tolra",
+    "minimumSchema": 119,
+    "minimumRequirement": "119 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "bench_pause.sql",
+    "profile": "tolra",
+    "minimumSchema": 46,
+    "minimumRequirement": "046 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "booking_day_plan.sql",
+    "profile": "tolra",
+    "minimumSchema": 38,
+    "minimumRequirement": "038 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "booking_run_identity.sql",
+    "profile": "tolra",
+    "minimumSchema": 64,
+    "minimumRequirement": "064 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "booking_time_zero_quote_126.sql",
+    "profile": "tolra",
+    "minimumSchema": 126,
+    "minimumRequirement": "126 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "browser_error_alert_115.sql",
+    "profile": "tolra",
+    "minimumSchema": 115,
+    "minimumRequirement": "115 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "catalogue.sql",
+    "profile": "tolra",
+    "minimumSchema": 13,
+    "minimumRequirement": "013 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "chase_steps_138.sql",
+    "profile": "tolra",
+    "minimumSchema": 138,
+    "minimumRequirement": "138 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "clock_in_network_lock_114.sql",
+    "profile": "tolra",
+    "minimumSchema": 114,
+    "minimumRequirement": "114 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "company_access_066.sql",
+    "profile": "tolra",
+    "minimumSchema": 66,
+    "minimumRequirement": "066 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "company_setup_145.sql",
+    "profile": "tolra",
+    "minimumSchema": 145,
+    "minimumRequirement": "145 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "converted_sales_order_088.sql",
+    "profile": "tolra",
+    "minimumSchema": 88,
+    "minimumRequirement": "088 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "costing_rates_143.sql",
+    "profile": "tolra",
+    "minimumSchema": 143,
+    "minimumRequirement": "143 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "cross_org_links.sql",
+    "profile": "tolra",
+    "minimumSchema": 13,
+    "minimumRequirement": "013 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "customer_archive_100.sql",
+    "profile": "tolra",
+    "minimumSchema": 100,
+    "minimumRequirement": "100 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "dashboard_tiles_132.sql",
+    "profile": "tolra",
+    "minimumSchema": 132,
+    "minimumRequirement": "132 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "data_import_076.sql",
+    "profile": "tolra",
+    "minimumSchema": 76,
+    "minimumRequirement": "076 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "data_import_credit_delivery_085.sql",
+    "profile": "tolra",
+    "minimumSchema": 85,
+    "minimumRequirement": "085 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "delivery_note_auto_invoice.sql",
+    "profile": "tolra",
+    "minimumSchema": 59,
+    "minimumRequirement": "059 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "document_attachments_067.sql",
+    "profile": "tolra",
+    "minimumSchema": 67,
+    "minimumRequirement": "067 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "document_totals.sql",
+    "profile": "tolra",
+    "minimumSchema": 13,
+    "minimumRequirement": "013 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "duplicate_conversions.sql",
+    "profile": "tolra",
+    "minimumSchema": 18,
+    "minimumRequirement": "018 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "email_history_drafted_by_120.sql",
+    "profile": "tolra",
+    "minimumSchema": 120,
+    "minimumRequirement": "120 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "email_schedules_108.sql",
+    "profile": "tolra",
+    "minimumSchema": 108,
+    "minimumRequirement": "108 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "email_templates_106.sql",
+    "profile": "tolra",
+    "minimumSchema": 106,
+    "minimumRequirement": "106 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "import_safeupdate_079.sql",
+    "profile": "tolra",
+    "minimumSchema": 79,
+    "minimumRequirement": "079 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "import_source_ref_140.sql",
+    "profile": "tolra",
+    "minimumSchema": 140,
+    "minimumRequirement": "140 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "inbound_email_links_125.sql",
+    "profile": "tolra",
+    "minimumSchema": 125,
+    "minimumRequirement": "125 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "integrations_084.sql",
+    "profile": "tolra",
+    "minimumSchema": 84,
+    "minimumRequirement": "084 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "integrations_connect_107.sql",
+    "profile": "tolra",
+    "minimumSchema": 107,
+    "minimumRequirement": "107 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "internal_jobs_and_machines.sql",
+    "profile": "tolra",
+    "minimumSchema": 42,
+    "minimumRequirement": "042 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "invoice_issue_guard_091.sql",
+    "profile": "tolra",
+    "minimumSchema": 91,
+    "minimumRequirement": "091 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "invoice_payments_032.sql",
+    "profile": "tolra",
+    "minimumSchema": 32,
+    "minimumRequirement": "032 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "invoice_receipt_guard_089.sql",
+    "profile": "tolra",
+    "minimumSchema": 89,
+    "minimumRequirement": "089 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "invoice_screen_073.sql",
+    "profile": "tolra",
+    "minimumSchema": 73,
+    "minimumRequirement": "073 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "invoice_write_off_105.sql",
+    "profile": "tolra",
+    "minimumSchema": 105,
+    "minimumRequirement": "105 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "ip_retention_crd_078.sql",
+    "profile": "tolra",
+    "minimumSchema": 78,
+    "minimumRequirement": "078 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_delivery_note_147.sql",
+    "profile": "tolra",
+    "minimumSchema": 147,
+    "minimumRequirement": "147 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_flow_081.sql",
+    "profile": "tolra",
+    "minimumSchema": 81,
+    "minimumRequirement": "081 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_labour_051.sql",
+    "profile": "tolra",
+    "minimumSchema": 51,
+    "minimumRequirement": "051 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_part_logs_118.sql",
+    "profile": "tolra",
+    "minimumSchema": 118,
+    "minimumRequirement": "118 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_photos_040.sql",
+    "profile": "tolra",
+    "minimumSchema": 40,
+    "minimumRequirement": "040 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_problems_117.sql",
+    "profile": "tolra",
+    "minimumSchema": 117,
+    "minimumRequirement": "117 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_profitability_actuals_148.sql",
+    "profile": "tolra",
+    "minimumSchema": 148,
+    "minimumRequirement": "148 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_signoff.sql",
+    "profile": "tolra",
+    "minimumSchema": 45,
+    "minimumRequirement": "045 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_spec_customer_po_135.sql",
+    "profile": "tolra",
+    "minimumSchema": 135,
+    "minimumRequirement": "135 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "job_spec_customer_po_135_precheck.sql",
+    "profile": "tolra",
+    "minimumSchema": 80,
+    "minimumRequirement": "080 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": "080\u2013134 expected conversion body;135 already applied must refuse"
+  },
+  {
+    "file": "machine_runs.sql",
+    "profile": "tolra",
+    "minimumSchema": 44,
+    "minimumRequirement": "044 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "mailbox_read_127.sql",
+    "profile": "tolra",
+    "minimumSchema": 127,
+    "minimumRequirement": "127 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "n2_tolra_provided_ai.sql",
+    "profile": "tolra",
+    "minimumSchema": 146,
+    "minimumRequirement": "146 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "n5_company_setup.sql",
+    "profile": "tolra",
+    "minimumSchema": 145,
+    "minimumRequirement": "145 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "opening_wip_141.sql",
+    "profile": "tolra",
+    "minimumSchema": 141,
+    "minimumRequirement": "141 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "overview_owed_snapshots_116.sql",
+    "profile": "tolra",
+    "minimumSchema": 116,
+    "minimumRequirement": "116 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "part_despatch_invoice_quantity_099.sql",
+    "profile": "tolra",
+    "minimumSchema": 99,
+    "minimumRequirement": "099 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "password_change_ticket_137.sql",
+    "profile": "tolra",
+    "minimumSchema": 137,
+    "minimumRequirement": "137 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "paused_machine_ack.sql",
+    "profile": "tolra",
+    "minimumSchema": 49,
+    "minimumRequirement": "049 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "platform_create_organization.sql",
+    "profile": "tolra",
+    "minimumSchema": 39,
+    "minimumRequirement": "039 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "prelaunch_033.sql",
+    "profile": "tolra",
+    "minimumSchema": 33,
+    "minimumRequirement": "033 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "protect_platform_owner_login_093.sql",
+    "profile": "tolra",
+    "minimumSchema": 93,
+    "minimumRequirement": "093 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "purchase_order_link_124.sql",
+    "profile": "tolra",
+    "minimumSchema": 124,
+    "minimumRequirement": "124 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "quote_customer_po_123.sql",
+    "profile": "tolra",
+    "minimumSchema": 123,
+    "minimumRequirement": "123 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "quote_to_job.sql",
+    "profile": "tolra",
+    "minimumSchema": 58,
+    "minimumRequirement": "058 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "quote_versions_068.sql",
+    "profile": "tolra",
+    "minimumSchema": 68,
+    "minimumRequirement": "068 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "recent_second_step_136.sql",
+    "profile": "tolra",
+    "minimumSchema": 136,
+    "minimumRequirement": "136 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "reconcile_legacy_source.sql",
+    "profile": "legacy-source",
+    "minimumSchema": null,
+    "minimumRequirement": "Legacy JNREng quote quantity/unit_price columns",
+    "basis": "-- READ ONLY. Run on the OLD project (JNREng) in the SQL editor. Legacy side of the import reconciliation"
+  },
+  {
+    "file": "reconcile_legacy_target.sql",
+    "profile": "imported-target",
+    "minimumSchema": null,
+    "minimumRequirement": "Tolra target after supabase/import/import_legacy_tenant.sql creates legacy_audit_log",
+    "basis": "-- READ ONLY. Target side of the import reconciliation (docs/RELEASE-CHECKLIST.md section 5). Run on the database"
+  },
+  {
+    "file": "release_ends_session_092.sql",
+    "profile": "tolra",
+    "minimumSchema": 92,
+    "minimumRequirement": "092 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "release_preflight.sql",
+    "profile": "tolra",
+    "minimumSchema": 13,
+    "minimumRequirement": "013 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "reopen_requests_113.sql",
+    "profile": "tolra",
+    "minimumSchema": 113,
+    "minimumRequirement": "113 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "rework_037.sql",
+    "profile": "tolra",
+    "minimumSchema": 37,
+    "minimumRequirement": "037 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "rfq_clarification_110.sql",
+    "profile": "tolra",
+    "minimumSchema": 110,
+    "minimumRequirement": "110 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "rls_helper_speed_121.sql",
+    "profile": "tolra",
+    "minimumSchema": 121,
+    "minimumRequirement": "121 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "rls_select_wrap_131.sql",
+    "profile": "tolra",
+    "minimumSchema": 131,
+    "minimumRequirement": "131 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "rls_select_wrap_131_precheck.sql",
+    "profile": "tolra",
+    "minimumSchema": 130,
+    "minimumRequirement": "130 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": "130 before131 or131 already-applied policy text"
+  },
+  {
+    "file": "sales_order_machines.sql",
+    "profile": "tolra",
+    "minimumSchema": 43,
+    "minimumRequirement": "043 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "security_guards_102.sql",
+    "profile": "tolra",
+    "minimumSchema": 102,
+    "minimumRequirement": "102 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "site_network_075.sql",
+    "profile": "tolra",
+    "minimumSchema": 75,
+    "minimumRequirement": "075 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "time_day_flags_074.sql",
+    "profile": "tolra",
+    "minimumSchema": 74,
+    "minimumRequirement": "074 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "time_week_review_052.sql",
+    "profile": "tolra",
+    "minimumSchema": 52,
+    "minimumRequirement": "052 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "tolra_provided_ai_146.sql",
+    "profile": "tolra",
+    "minimumSchema": 146,
+    "minimumRequirement": "146 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "traceability_082.sql",
+    "profile": "tolra",
+    "minimumSchema": 82,
+    "minimumRequirement": "082 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "two_level_access_036.sql",
+    "profile": "tolra",
+    "minimumSchema": 36,
+    "minimumRequirement": "036 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "unmarked_bans.sql",
+    "profile": "tolra",
+    "minimumSchema": 13,
+    "minimumRequirement": "013 applied (later-schema readiness is not claimed below this version)",
+    "basis": "Header/contract or conservative first supported test baseline013 for generic catalogue/data checks",
+    "supportedWindow": null
+  },
+  {
+    "file": "user_date_format_109.sql",
+    "profile": "tolra",
+    "minimumSchema": 109,
+    "minimumRequirement": "109 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "vat_registration_030.sql",
+    "profile": "tolra",
+    "minimumSchema": 30,
+    "minimumRequirement": "030 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "who_did_what_035.sql",
+    "profile": "tolra",
+    "minimumSchema": 35,
+    "minimumRequirement": "035 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "workflow_034.sql",
+    "profile": "tolra",
+    "minimumSchema": 34,
+    "minimumRequirement": "034 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "workshop_network_128.sql",
+    "profile": "tolra",
+    "minimumSchema": 128,
+    "minimumRequirement": "128 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "xero_invite_hardening_151.sql",
+    "profile": "tolra",
+    "minimumSchema": 151,
+    "minimumRequirement": "151 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  },
+  {
+    "file": "xero_launch_hold_149.sql",
+    "profile": "tolra",
+    "minimumSchema": 149,
+    "minimumRequirement": "149 applied (later-schema readiness is not claimed below this version)",
+    "basis": "File migration identifier/header",
+    "supportedWindow": null
+  }
+]

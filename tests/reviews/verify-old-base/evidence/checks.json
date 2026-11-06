@@ -1,0 +1,14 @@
+{
+  "command": "npx vitest run --maxWorkers=2 --minWorkers=1",
+  "passed": 6845,
+  "failed": 2,
+  "skipped": 0,
+  "failures": [
+    "this repository passes: nothing applied has changed and every new migration has its file set",
+    "no proposal silently disappears from release preflight covers every proposal, both ordered post-144 packages and every preflight marker"
+  ],
+  "database": "7 passed /0 failed /0 skipped; actual old013/083 and missing-required-final-table tests",
+  "typecheck": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit: exit0",
+  "lint": "npm run lint: exit0",
+  "diff": "git diff --check: passed"
+}
