@@ -1,0 +1,461 @@
+{
+  "config": {
+    "argv": [
+      "/opt/hostedtoolcache/node/22.23.4/x64/bin/node",
+      "/home/runner/work/tolra-public/tolra-public/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/integrations-connect.spec.ts",
+      "--reporter=list,json"
+    ],
+    "configFile": "/home/runner/work/tolra-public/tolra-public/playwright.config.ts",
+    "rootDir": "/home/runner/work/tolra-public/tolra-public/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": false,
+    "globalSetup": "/home/runner/work/tolra-public/tolra-public/tests/e2e/global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "ci": {
+        "commitHref": "https://github.com/rhyshume1997-alt/tolra-public/commit/00d8521a36090318df07b0c97373e6debf44efb2",
+        "commitHash": "00d8521a36090318df07b0c97373e6debf44efb2",
+        "prHref": "https://github.com/rhyshume1997-alt/tolra-public/pull/442",
+        "prTitle": "test: diagnose run8 Microsoft Connect with retained trace",
+        "prBaseHash": "8e49fcb684211318a76d1cf0e3ade35acdc036e4",
+        "buildHref": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42187806859"
+      },
+      "gitCommit": {
+        "shortHash": "294bc468",
+        "hash": "294bc46812a03981ef6d87c57ad98fcd42d184af",
+        "subject": "test: retain run8 Microsoft navigation diagnosis without changing assertions",
+        "body": "test: retain run8 Microsoft navigation diagnosis without changing assertions\n",
+        "author": {
+          "name": "Rhys Hume",
+          "email": "rhumecoaching@gmail.com",
+          "time": 1793953588000
+        },
+        "committer": {
+          "name": "Rhys Hume",
+          "email": "rhumecoaching@gmail.com",
+          "time": 1793953588000
+        },
+        "branch": "HEAD"
+      },
+      "gitDiff": "diff --git a/.github/workflows/builder3-run8-diagnosis.yml b/.github/workflows/builder3-run8-diagnosis.yml\nnew file mode 100644\nindex 00000000..92a45e56\n--- /dev/null\n+++ b/.github/workflows/builder3-run8-diagnosis.yml\n@@ -0,0 +1,146 @@\n+name: Builder 3 run8 Microsoft diagnosis\n+on:\n+  pull_request:\n+    types: [opened, synchronize, reopened]\n+    branches: [codex/run8-base-8e49fcb]\n+    paths:\n+      - .github/workflows/builder3-run8-diagnosis.yml\n+      - tests/e2e/integrations-connect.spec.ts\n+      - tests/reviews/run8-microsoft/**\n+      - supabase/**\n+permissions:\n+  contents: read\n+  packages: read\n+concurrency:\n+  group: builder3-run8-diagnosis-${{ github.head_ref }}\n+  cancel-in-progress: false\n+jobs:\n+  invitation-browser:\n+    if: github.head_ref == 'codex/run8-microsoft-diagnosis' && github.event.pull_request.head.repo.full_name == github.repository\n+    runs-on: ubuntu-latest\n+    timeout-minutes: 35\n+    env:\n+      NEXT_TELEMETRY_DISABLED: '1'\n+      SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io\n+    steps:\n+      - uses: actions/checkout@v4\n+        with:\n+          ref: ${{ github.event.pull_request.head.sha }}\n+          fetch-depth: 0\n+      - uses: actions/setup-node@v4\n+        with:\n+          node-version: 22\n+          cache: npm\n+      - run: npm ci\n+      - name: Keep disposable ports separate\n+        run: |\n+          reserved=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)\n+          sudo sysctl -w net.ipv4.ip_local_reserved_ports=\"${reserved:+$reserved,}54320-54329\"\n+      - name: Install Code's exact checksum-pinned Supabase CLI\n+        run: |\n+          set -euo pipefail\n+          cli_dir=\"$RUNNER_TEMP/builder3-supabase-cli\"\n+          mkdir -p \"$cli_dir\"\n+          curl -fsSL -o \"$cli_dir/cli.tar.gz\" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz\n+          echo \"21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_dir/cli.tar.gz\" | sha256sum -c -\n+          tar -xzf \"$cli_dir/cli.tar.gz\" -C \"$cli_dir\" supabase\n+          echo \"568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c  $cli_dir/supabase\" | sha256sum -c -\n+          test \"$(\"$cli_dir/supabase\" --version)\" = '2.40.7'\n+          echo \"$cli_dir\" >> \"$GITHUB_PATH\"\n+      - name: Registry read access for test images only\n+        run: echo \"$GHCR_TOKEN\" | docker login ghcr.io --username \"$GHCR_USER\" --password-stdin\n+        env:\n+          GHCR_USER: ${{ github.actor }}\n+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n+      - name: Start real isolated Supabase\n+        run: npm run test:backend\n+      - name: Protected applied history and active release verification\n+        run: |\n+          set -euo pipefail\n+          git diff --exit-code 8e49fcb684211318a76d1cf0e3ade35acdc036e4 -- supabase/migrations supabase/proposals supabase/release supabase/verify supabase/release-plan.json\n+          set -a; . ./.env.test.local; set +a\n+          case \"$TEST_DATABASE_URL\" in postgresql://*@127.0.0.1:*) ;; *) echo 'Not an isolated database'; exit 1 ;; esac\n+          # All active release checks must pass on these exact reviewed files. No baseline verifier override.\n+          for phase in '145_company_setup|company_setup_145' '146_tolra_provided_ai|tolra_provided_ai_146' '147_job_delivery_note|job_delivery_note_147' '148_job_profitability_actuals|job_profitability_actuals_148' '149_xero_launch_hold|xero_launch_hold_149' '150_ai_cap_key_off|ai_cap_key_off_150'; do\n+            IFS='|' read -r release verify <<< \"$phase\"\n+            psql \"$TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -X --single-transaction -f \"supabase/release/$release.release.sql\"\n+            psql \"$TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -X -At -F '|' -f \"supabase/verify/$verify.sql\" > \"$RUNNER_TEMP/builder3-verify.rows\"\n+            awk -F'|' 'BEGIN { n=0; bad=0 } { n++; if ($NF != \"t\") bad++ } END { exit(n == 0 || bad != 0) }' \"$RUNNER_TEMP/builder3-verify.rows\"\n+          done\n+          psql \"$TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -X -c \"NOTIFY pgrst, 'reload schema';\"\n+      - name: Build against only the disposable backend\n+        run: |\n+          set -a; . ./.env.test.local; set +a\n+          NEXT_PUBLIC_SUPABASE_URL=\"$TEST_SUPABASE_URL\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$TEST_SUPABASE_ANON_KEY\" npm run build\n+      - run: npx playwright install --with-deps chromium\n+      - name: Block new connections outside disposable services during browser proof\n+        run: |\n+          set -euo pipefail\n+          for firewall in iptables ip6tables; do\n+            sudo \"$firewall\" -N BUILDER3_BROWSER_EGRESS\n+            sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -o lo -j RETURN\n+            sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN\n+          done\n+          # Published loopback ports can be DNATed onto this job's Supabase bridge.\n+          networks=$(docker inspect supabase_db_tolra-local-test --format '{{range $name, $config := .NetworkSettings.Networks}}{{$name}} {{end}}')\n+          test -n \"$networks\"\n+          for network in $networks; do\n+            while read -r subnet; do\n+              test -n \"$subnet\" || continue\n+              case \"$subnet\" in *:*) firewall=ip6tables ;; *) firewall=iptables ;; esac\n+              sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -d \"$subnet\" -j RETURN\n+            done < <(docker network inspect \"$network\" --format '{{range .IPAM.Config}}{{println .Subnet}}{{end}}')\n+          done\n+          for firewall in iptables ip6tables; do\n+            sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -j REJECT\n+            sudo \"$firewall\" -I OUTPUT 1 -j BUILDER3_BROWSER_EGRESS\n+          done\n+          # Reserved documentation address, never a provider. Kernel rejection must prevent a connection.\n+          python3 - <<'PYBLOCK'\n+          import socket\n+          try:\n+              socket.create_connection((\"198.51.100.1\", 443), timeout=2)\n+          except OSError:\n+              print(\"New external connections blocked for browser/backend proof\")\n+          else:\n+              raise SystemExit(\"External egress unexpectedly available\")\n+          PYBLOCK\n+      - name: Execute all eight actual browser cases\n+        run: |\n+          mkdir -p evidence\n+          npx playwright test tests/e2e/integrations-connect.spec.ts --reporter=list,json\n+        env:\n+          E2E_SKIP_BUILD: '1'\n+          PLAYWRIGHT_JSON_OUTPUT_NAME: evidence/invite-browser.json\n+      - name: Fail unless all eight actually passed\n+        if: always()\n+        run: node scripts/ci-evidence.mjs playwright evidence/invite-browser.json 8\n+      - name: Record and remove only this job's test egress rules\n+        if: always()\n+        run: |\n+          mkdir -p evidence\n+          for firewall in iptables ip6tables; do\n+            sudo \"$firewall\" -L BUILDER3_BROWSER_EGRESS -v -n >> evidence/invite-browser-egress.txt 2>&1 || true\n+            sudo \"$firewall\" -D OUTPUT -j BUILDER3_BROWSER_EGRESS 2>/dev/null || true\n+            sudo \"$firewall\" -F BUILDER3_BROWSER_EGRESS 2>/dev/null || true\n+            sudo \"$firewall\" -X BUILDER3_BROWSER_EGRESS 2>/dev/null || true\n+          done\n+      - name: Record exact subject and source-profile limits\n+        if: always()\n+        run: |\n+          mkdir -p evidence\n+          git rev-parse HEAD > evidence/invite-browser-sha.txt\n+          printf '%s\\n' 'Browser-only diagnostic. Stronger financial/151 contracts remain separate red DB gates; this does not approve a release.' > evidence/invite-browser-scope.txt\n+      - uses: actions/upload-artifact@v4\n+        if: always()\n+        with:\n+          name: builder3-invite-browser-${{ github.run_id }}\n+          path: |\n+            evidence/invite-browser*\n+            test-results/\n+            evidence/run8-microsoft*\n+            !test-results/e2e-state/world.json\n+          retention-days: 7\n+      - name: Stop only this job's disposable Supabase\n+        if: always()\n+        run: npm run test:backend:stop\ndiff --git a/tests/e2e/integrations-connect.spec.ts b/tests/e2e/integrations-connect.spec.ts\nindex 06491a3e..0da394a2 100644\n--- a/tests/e2e/integrations-connect.spec.ts\n+++ b/tests/e2e/integrations-connect.spec.ts\n@@ -19,6 +19,7 @@\n  * company beta) before and after the run. The world is read inside tests and hooks, never at import.\n  */\n import { createHash } from \"node:crypto\";\n+import { mkdirSync, writeFileSync } from \"node:fs\";\n \n import { expect, test, type APIRequestContext, type BrowserContext, type Page } from \"@playwright/test\";\n \n@@ -274,8 +275,23 @@ test(\"4. the platform owner also saves placeholder Xero details (the accountant'\n   await expect(page.getByTestId(\"app-credentials-microsoft-state\")).toContainText(microsoftApp().clientId);\n });\n \n+type MicrosoftDiagnostic = { kind: string; [key:string]: unknown };\n+const microsoftDiagnostics: MicrosoftDiagnostic[] = [];\n+const diagnosticUrl = (value:string) => { try { const u=new URL(value);return {origin:u.origin,path:u.pathname,hasState:u.searchParams.has(\"state\"),challengeLength:u.searchParams.get(\"code_challenge\")?.length??0}; }catch{return {invalid:true};} };\n+test.afterEach(async ({page},info)=>{\n+ if(!info.title.startsWith(\"5. \"))return;\n+ microsoftDiagnostics.push({kind:\"end\",status:info.status,url:diagnosticUrl(page.url()),codeDialogVisible:await page.getByRole(\"dialog\").isVisible().catch(()=>false)});\n+ mkdirSync(\"evidence\",{recursive:true});writeFileSync(\"evidence/run8-microsoft-diagnostic.json\",JSON.stringify(microsoftDiagnostics,null,2)+\"\\n\");\n+});\n+\n test(\"5. the company admin's Microsoft Connect is enabled and goes to Microsoft's sign-in with the fixed redirect URI, a state and a code challenge\", async ({ page, baseURL }) => {\n   const origin = originOf(baseURL);\n+  // Observe the original failure before changing its waits, transport, MFA or navigation behavior.\n+  page.on(\"request\",r=>{if(r.url().includes(\"/api/integrations/microsoft/connect\")||r.url().startsWith(\"https://login.microsoftonline.com/\"))microsoftDiagnostics.push({kind:\"request\",method:r.method(),url:diagnosticUrl(r.url())});});\n+  page.on(\"response\",async r=>{if(!r.url().includes(\"/api/integrations/microsoft/connect\"))return;const b=await r.json().catch(()=>({}));microsoftDiagnostics.push({kind:\"connect-response\",status:r.status(),code:b.code??null,error:b.error??null,authorize:b.url?diagnosticUrl(b.url):null});});\n+  page.on(\"requestfailed\",r=>{if(r.url().includes(\"/integrations/\")||r.url().startsWith(\"https://login.microsoftonline.com/\"))microsoftDiagnostics.push({kind:\"request-failed\",url:diagnosticUrl(r.url()),error:r.failure()?.errorText});});\n+  page.on(\"framenavigated\",f=>{if(f===page.mainFrame())microsoftDiagnostics.push({kind:\"navigation\",url:diagnosticUrl(f.url())});});\n+\n   const app = microsoftApp();\n   const beta = world().tenants.beta;\n   await signIn(page, beta.users.admin);\ndiff --git a/tests/reviews/run8-microsoft/HANDOVER.md b/tests/reviews/run8-microsoft/HANDOVER.md\nnew file mode 100644\nindex 00000000..57d87315\n--- /dev/null\n+++ b/tests/reviews/run8-microsoft/HANDOVER.md\n@@ -0,0 +1,9 @@\n+# Run8 Microsoft Connect diagnosis, not a fix\n+\n+Exact observed source: `8e49fcb684211318a76d1cf0e3ade35acdc036e4`. Run https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42172753204 , integration job127744195322. Main browser605 passed,1 failed,3 did not run; failure is `page.waitForRequest`90s at tests/e2e/integrations-connect.spec.ts:298. Serial tests6/7/8 did not execute. A timeout alone does not classify navigation/listener/app/network failure.\n+\n+Read-only artifact13484354018 contains only db.json, rehearsal.json, reviewer.json, safeupdate-sessions.log and e2e-state/{identity.json,blocked-network.log}. NO trace.zip, screenshot or error-context.md was uploaded. The server's blocked-network log is empty; it does not observe browser egress. Main trace filenames appear in the log but are absent from the artifact. Reviewer config shares default test-results output and is run after the main suite before the only upload. This explains the lost failure trace, not the Microsoft failure itself.\n+\n+DIAGNOSIS PENDING: cannot honestly choose(a),(b) or(c) from the surviving evidence. New own-branch workflow preserves the exact source app and database, original Microsoft wait/click/assertions, adds only redacted browser request/response/navigation observations and retains trace before any second runner. No app repair, timeout extension, MFA bypass, listener replacement or weakened assertion. All8cases still required; missing backend/skips fail. Synthetic Supabase only, IPv4/IPv6 new external connections refused before browsers, no credentials/providers/deploy. Existing mocks remain. Run7 uses legacy token invites on this exact source; do not replace it with151 tests without also changing the application under review.\n+\n+Code/PM review required before any fix. Draft branch `codex/run8-microsoft-diagnosis`, frozen own base `codex/run8-base-8e49fcb`. No candidate/main/#415 edits. Next: inspect this fresh trace, classify, write smallest regression/fix, prove all8including6/7/8 and report exact SHA. This targeted diagnostic does not replace full CI or candidate review.",
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/runner/work/tolra-public/tolra-public/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/rhyshume1997-alt/tolra-public/commit/00d8521a36090318df07b0c97373e6debf44efb2",
+            "commitHash": "00d8521a36090318df07b0c97373e6debf44efb2",
+            "prHref": "https://github.com/rhyshume1997-alt/tolra-public/pull/442",
+            "prTitle": "test: diagnose run8 Microsoft Connect with retained trace",
+            "prBaseHash": "8e49fcb684211318a76d1cf0e3ade35acdc036e4",
+            "buildHref": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42187806859"
+          },
+          "gitCommit": {
+            "shortHash": "294bc468",
+            "hash": "294bc46812a03981ef6d87c57ad98fcd42d184af",
+            "subject": "test: retain run8 Microsoft navigation diagnosis without changing assertions",
+            "body": "test: retain run8 Microsoft navigation diagnosis without changing assertions\n",
+            "author": {
+              "name": "Rhys Hume",
+              "email": "rhumecoaching@gmail.com",
+              "time": 1793953588000
+            },
+            "committer": {
+              "name": "Rhys Hume",
+              "email": "rhumecoaching@gmail.com",
+              "time": 1793953588000
+            },
+            "branch": "HEAD"
+          },
+          "gitDiff": "diff --git a/.github/workflows/builder3-run8-diagnosis.yml b/.github/workflows/builder3-run8-diagnosis.yml\nnew file mode 100644\nindex 00000000..92a45e56\n--- /dev/null\n+++ b/.github/workflows/builder3-run8-diagnosis.yml\n@@ -0,0 +1,146 @@\n+name: Builder 3 run8 Microsoft diagnosis\n+on:\n+  pull_request:\n+    types: [opened, synchronize, reopened]\n+    branches: [codex/run8-base-8e49fcb]\n+    paths:\n+      - .github/workflows/builder3-run8-diagnosis.yml\n+      - tests/e2e/integrations-connect.spec.ts\n+      - tests/reviews/run8-microsoft/**\n+      - supabase/**\n+permissions:\n+  contents: read\n+  packages: read\n+concurrency:\n+  group: builder3-run8-diagnosis-${{ github.head_ref }}\n+  cancel-in-progress: false\n+jobs:\n+  invitation-browser:\n+    if: github.head_ref == 'codex/run8-microsoft-diagnosis' && github.event.pull_request.head.repo.full_name == github.repository\n+    runs-on: ubuntu-latest\n+    timeout-minutes: 35\n+    env:\n+      NEXT_TELEMETRY_DISABLED: '1'\n+      SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io\n+    steps:\n+      - uses: actions/checkout@v4\n+        with:\n+          ref: ${{ github.event.pull_request.head.sha }}\n+          fetch-depth: 0\n+      - uses: actions/setup-node@v4\n+        with:\n+          node-version: 22\n+          cache: npm\n+      - run: npm ci\n+      - name: Keep disposable ports separate\n+        run: |\n+          reserved=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)\n+          sudo sysctl -w net.ipv4.ip_local_reserved_ports=\"${reserved:+$reserved,}54320-54329\"\n+      - name: Install Code's exact checksum-pinned Supabase CLI\n+        run: |\n+          set -euo pipefail\n+          cli_dir=\"$RUNNER_TEMP/builder3-supabase-cli\"\n+          mkdir -p \"$cli_dir\"\n+          curl -fsSL -o \"$cli_dir/cli.tar.gz\" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz\n+          echo \"21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_dir/cli.tar.gz\" | sha256sum -c -\n+          tar -xzf \"$cli_dir/cli.tar.gz\" -C \"$cli_dir\" supabase\n+          echo \"568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c  $cli_dir/supabase\" | sha256sum -c -\n+          test \"$(\"$cli_dir/supabase\" --version)\" = '2.40.7'\n+          echo \"$cli_dir\" >> \"$GITHUB_PATH\"\n+      - name: Registry read access for test images only\n+        run: echo \"$GHCR_TOKEN\" | docker login ghcr.io --username \"$GHCR_USER\" --password-stdin\n+        env:\n+          GHCR_USER: ${{ github.actor }}\n+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n+      - name: Start real isolated Supabase\n+        run: npm run test:backend\n+      - name: Protected applied history and active release verification\n+        run: |\n+          set -euo pipefail\n+          git diff --exit-code 8e49fcb684211318a76d1cf0e3ade35acdc036e4 -- supabase/migrations supabase/proposals supabase/release supabase/verify supabase/release-plan.json\n+          set -a; . ./.env.test.local; set +a\n+          case \"$TEST_DATABASE_URL\" in postgresql://*@127.0.0.1:*) ;; *) echo 'Not an isolated database'; exit 1 ;; esac\n+          # All active release checks must pass on these exact reviewed files. No baseline verifier override.\n+          for phase in '145_company_setup|company_setup_145' '146_tolra_provided_ai|tolra_provided_ai_146' '147_job_delivery_note|job_delivery_note_147' '148_job_profitability_actuals|job_profitability_actuals_148' '149_xero_launch_hold|xero_launch_hold_149' '150_ai_cap_key_off|ai_cap_key_off_150'; do\n+            IFS='|' read -r release verify <<< \"$phase\"\n+            psql \"$TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -X --single-transaction -f \"supabase/release/$release.release.sql\"\n+            psql \"$TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -X -At -F '|' -f \"supabase/verify/$verify.sql\" > \"$RUNNER_TEMP/builder3-verify.rows\"\n+            awk -F'|' 'BEGIN { n=0; bad=0 } { n++; if ($NF != \"t\") bad++ } END { exit(n == 0 || bad != 0) }' \"$RUNNER_TEMP/builder3-verify.rows\"\n+          done\n+          psql \"$TEST_DATABASE_URL\" -v ON_ERROR_STOP=1 -X -c \"NOTIFY pgrst, 'reload schema';\"\n+      - name: Build against only the disposable backend\n+        run: |\n+          set -a; . ./.env.test.local; set +a\n+          NEXT_PUBLIC_SUPABASE_URL=\"$TEST_SUPABASE_URL\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"$TEST_SUPABASE_ANON_KEY\" npm run build\n+      - run: npx playwright install --with-deps chromium\n+      - name: Block new connections outside disposable services during browser proof\n+        run: |\n+          set -euo pipefail\n+          for firewall in iptables ip6tables; do\n+            sudo \"$firewall\" -N BUILDER3_BROWSER_EGRESS\n+            sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -o lo -j RETURN\n+            sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN\n+          done\n+          # Published loopback ports can be DNATed onto this job's Supabase bridge.\n+          networks=$(docker inspect supabase_db_tolra-local-test --format '{{range $name, $config := .NetworkSettings.Networks}}{{$name}} {{end}}')\n+          test -n \"$networks\"\n+          for network in $networks; do\n+            while read -r subnet; do\n+              test -n \"$subnet\" || continue\n+              case \"$subnet\" in *:*) firewall=ip6tables ;; *) firewall=iptables ;; esac\n+              sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -d \"$subnet\" -j RETURN\n+            done < <(docker network inspect \"$network\" --format '{{range .IPAM.Config}}{{println .Subnet}}{{end}}')\n+          done\n+          for firewall in iptables ip6tables; do\n+            sudo \"$firewall\" -A BUILDER3_BROWSER_EGRESS -j REJECT\n+            sudo \"$firewall\" -I OUTPUT 1 -j BUILDER3_BROWSER_EGRESS\n+          done\n+          # Reserved documentation address, never a provider. Kernel rejection must prevent a connection.\n+          python3 - <<'PYBLOCK'\n+          import socket\n+          try:\n+              socket.create_connection((\"198.51.100.1\", 443), timeout=2)\n+          except OSError:\n+              print(\"New external connections blocked for browser/backend proof\")\n+          else:\n+              raise SystemExit(\"External egress unexpectedly available\")\n+          PYBLOCK\n+      - name: Execute all eight actual browser cases\n+        run: |\n+          mkdir -p evidence\n+          npx playwright test tests/e2e/integrations-connect.spec.ts --reporter=list,json\n+        env:\n+          E2E_SKIP_BUILD: '1'\n+          PLAYWRIGHT_JSON_OUTPUT_NAME: evidence/invite-browser.json\n+      - name: Fail unless all eight actually passed\n+        if: always()\n+        run: node scripts/ci-evidence.mjs playwright evidence/invite-browser.json 8\n+      - name: Record and remove only this job's test egress rules\n+        if: always()\n+        run: |\n+          mkdir -p evidence\n+          for firewall in iptables ip6tables; do\n+            sudo \"$firewall\" -L BUILDER3_BROWSER_EGRESS -v -n >> evidence/invite-browser-egress.txt 2>&1 || true\n+            sudo \"$firewall\" -D OUTPUT -j BUILDER3_BROWSER_EGRESS 2>/dev/null || true\n+            sudo \"$firewall\" -F BUILDER3_BROWSER_EGRESS 2>/dev/null || true\n+            sudo \"$firewall\" -X BUILDER3_BROWSER_EGRESS 2>/dev/null || true\n+          done\n+      - name: Record exact subject and source-profile limits\n+        if: always()\n+        run: |\n+          mkdir -p evidence\n+          git rev-parse HEAD > evidence/invite-browser-sha.txt\n+          printf '%s\\n' 'Browser-only diagnostic. Stronger financial/151 contracts remain separate red DB gates; this does not approve a release.' > evidence/invite-browser-scope.txt\n+      - uses: actions/upload-artifact@v4\n+        if: always()\n+        with:\n+          name: builder3-invite-browser-${{ github.run_id }}\n+          path: |\n+            evidence/invite-browser*\n+            test-results/\n+            evidence/run8-microsoft*\n+            !test-results/e2e-state/world.json\n+          retention-days: 7\n+      - name: Stop only this job's disposable Supabase\n+        if: always()\n+        run: npm run test:backend:stop\ndiff --git a/tests/e2e/integrations-connect.spec.ts b/tests/e2e/integrations-connect.spec.ts\nindex 06491a3e..0da394a2 100644\n--- a/tests/e2e/integrations-connect.spec.ts\n+++ b/tests/e2e/integrations-connect.spec.ts\n@@ -19,6 +19,7 @@\n  * company beta) before and after the run. The world is read inside tests and hooks, never at import.\n  */\n import { createHash } from \"node:crypto\";\n+import { mkdirSync, writeFileSync } from \"node:fs\";\n \n import { expect, test, type APIRequestContext, type BrowserContext, type Page } from \"@playwright/test\";\n \n@@ -274,8 +275,23 @@ test(\"4. the platform owner also saves placeholder Xero details (the accountant'\n   await expect(page.getByTestId(\"app-credentials-microsoft-state\")).toContainText(microsoftApp().clientId);\n });\n \n+type MicrosoftDiagnostic = { kind: string; [key:string]: unknown };\n+const microsoftDiagnostics: MicrosoftDiagnostic[] = [];\n+const diagnosticUrl = (value:string) => { try { const u=new URL(value);return {origin:u.origin,path:u.pathname,hasState:u.searchParams.has(\"state\"),challengeLength:u.searchParams.get(\"code_challenge\")?.length??0}; }catch{return {invalid:true};} };\n+test.afterEach(async ({page},info)=>{\n+ if(!info.title.startsWith(\"5. \"))return;\n+ microsoftDiagnostics.push({kind:\"end\",status:info.status,url:diagnosticUrl(page.url()),codeDialogVisible:await page.getByRole(\"dialog\").isVisible().catch(()=>false)});\n+ mkdirSync(\"evidence\",{recursive:true});writeFileSync(\"evidence/run8-microsoft-diagnostic.json\",JSON.stringify(microsoftDiagnostics,null,2)+\"\\n\");\n+});\n+\n test(\"5. the company admin's Microsoft Connect is enabled and goes to Microsoft's sign-in with the fixed redirect URI, a state and a code challenge\", async ({ page, baseURL }) => {\n   const origin = originOf(baseURL);\n+  // Observe the original failure before changing its waits, transport, MFA or navigation behavior.\n+  page.on(\"request\",r=>{if(r.url().includes(\"/api/integrations/microsoft/connect\")||r.url().startsWith(\"https://login.microsoftonline.com/\"))microsoftDiagnostics.push({kind:\"request\",method:r.method(),url:diagnosticUrl(r.url())});});\n+  page.on(\"response\",async r=>{if(!r.url().includes(\"/api/integrations/microsoft/connect\"))return;const b=await r.json().catch(()=>({}));microsoftDiagnostics.push({kind:\"connect-response\",status:r.status(),code:b.code??null,error:b.error??null,authorize:b.url?diagnosticUrl(b.url):null});});\n+  page.on(\"requestfailed\",r=>{if(r.url().includes(\"/integrations/\")||r.url().startsWith(\"https://login.microsoftonline.com/\"))microsoftDiagnostics.push({kind:\"request-failed\",url:diagnosticUrl(r.url()),error:r.failure()?.errorText});});\n+  page.on(\"framenavigated\",f=>{if(f===page.mainFrame())microsoftDiagnostics.push({kind:\"navigation\",url:diagnosticUrl(f.url())});});\n+\n   const app = microsoftApp();\n   const beta = world().tenants.beta;\n   await signIn(page, beta.users.admin);\ndiff --git a/tests/reviews/run8-microsoft/HANDOVER.md b/tests/reviews/run8-microsoft/HANDOVER.md\nnew file mode 100644\nindex 00000000..57d87315\n--- /dev/null\n+++ b/tests/reviews/run8-microsoft/HANDOVER.md\n@@ -0,0 +1,9 @@\n+# Run8 Microsoft Connect diagnosis, not a fix\n+\n+Exact observed source: `8e49fcb684211318a76d1cf0e3ade35acdc036e4`. Run https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42172753204 , integration job127744195322. Main browser605 passed,1 failed,3 did not run; failure is `page.waitForRequest`90s at tests/e2e/integrations-connect.spec.ts:298. Serial tests6/7/8 did not execute. A timeout alone does not classify navigation/listener/app/network failure.\n+\n+Read-only artifact13484354018 contains only db.json, rehearsal.json, reviewer.json, safeupdate-sessions.log and e2e-state/{identity.json,blocked-network.log}. NO trace.zip, screenshot or error-context.md was uploaded. The server's blocked-network log is empty; it does not observe browser egress. Main trace filenames appear in the log but are absent from the artifact. Reviewer config shares default test-results output and is run after the main suite before the only upload. This explains the lost failure trace, not the Microsoft failure itself.\n+\n+DIAGNOSIS PENDING: cannot honestly choose(a),(b) or(c) from the surviving evidence. New own-branch workflow preserves the exact source app and database, original Microsoft wait/click/assertions, adds only redacted browser request/response/navigation observations and retains trace before any second runner. No app repair, timeout extension, MFA bypass, listener replacement or weakened assertion. All8cases still required; missing backend/skips fail. Synthetic Supabase only, IPv4/IPv6 new external connections refused before browsers, no credentials/providers/deploy. Existing mocks remain. Run7 uses legacy token invites on this exact source; do not replace it with151 tests without also changing the application under review.\n+\n+Code/PM review required before any fix. Draft branch `codex/run8-microsoft-diagnosis`, frozen own base `codex/run8-base-8e49fcb`. No candidate/main/#415 edits. Next: inspect this fresh trace, classify, write smallest regression/fix, prove all8including6/7/8 and report exact SHA. This targeted diagnostic does not replace full CI or candidate review.",
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/runner/work/tolra-public/tolra-public/tests/e2e",
+        "testIgnore": [
+          "**/reviewer/**"
+        ],
+        "testMatch": [
+          "/.*\\.spec\\.ts/"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list"
+      ],
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "integrations-connect.spec.ts",
+      "file": "integrations-connect.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "1. no app details anywhere: Xero and Microsoft 365 say 'Not set up yet' and Connect is disabled",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "note",
+                  "description": "Xero is set up from the server environment: only the Microsoft half of 'Not set up yet' is checked."
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4047,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:32:34.336Z",
+                  "annotations": [
+                    {
+                      "type": "note",
+                      "description": "Xero is set up from the server environment: only the Microsoft half of 'Not set up yet' is checked."
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-e66fd850e8973c5ec7f4",
+          "file": "integrations-connect.spec.ts",
+          "line": 127,
+          "column": 5
+        },
+        {
+          "title": "2. the platform owner saves the Microsoft client id and secret: the card shows the client id and the secret's last 4 only",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 966,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:33:05.589Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-ea63d5736d96912a53f4",
+          "file": "integrations-connect.spec.ts",
+          "line": 159,
+          "column": 5
+        },
+        {
+          "title": "3. the app-credentials API never returns the secret; a company admin, office and nobody signed in are refused",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5058,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:33:06.575Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-ca6e800d2b35dc3a24c7",
+          "file": "integrations-connect.spec.ts",
+          "line": 201,
+          "column": 5
+        },
+        {
+          "title": "4. the platform owner also saves placeholder Xero details (the accountant's link needs them): both redirect URIs are shown",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 537,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:33:11.652Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-9f051bf660157ac6a3ef",
+          "file": "integrations-connect.spec.ts",
+          "line": 255,
+          "column": 5
+        },
+        {
+          "title": "5. the company admin's Microsoft Connect is enabled and goes to Microsoft's sign-in with the fixed redirect URI, a state and a code challenge",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 90496,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/runner/work/tolra-public/tolra-public/tests/e2e/integrations-connect.spec.ts",
+                        "column": 45,
+                        "line": 314
+                      },
+                      "message": "Error: page.waitForRequest: Test timeout of 90000ms exceeded.\n\n  312 |   await expect(connect).toBeEnabled();\n  313 |\n> 314 |   const [request] = await Promise.all([page.waitForRequest((r) => r.url().startsWith(\"https://login.microsoftonline.com/\")), connect.click()]);\n      |                                             ^\n  315 |   const url = new URL(request.url());\n  316 |   expect(url.origin).toBe(\"https://login.microsoftonline.com\");\n  317 |   expect(url.pathname).toMatch(MS_AUTHORIZE_PATH);\n    at /home/runner/work/tolra-public/tolra-public/tests/e2e/integrations-connect.spec.ts:314:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:33:12.206Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/tolra-public/tolra-public/test-results/integrations-connect-5-the-aecd3--state-and-a-code-challenge/test-failed-1.png"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/tolra-public/tolra-public/test-results/integrations-connect-5-the-aecd3--state-and-a-code-challenge/test-failed-2.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/tolra-public/tolra-public/test-results/integrations-connect-5-the-aecd3--state-and-a-code-challenge/error-context.md"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/tolra-public/tolra-public/test-results/integrations-connect-5-the-aecd3--state-and-a-code-challenge/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/runner/work/tolra-public/tolra-public/test-results/integrations-connect-5-the-aecd3--state-and-a-code-challenge/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-8961495ac2e8808af2f0",
+          "file": "integrations-connect.spec.ts",
+          "line": 287,
+          "column": 5
+        },
+        {
+          "title": "6. the Microsoft callback with a bogus state sends the admin back with the error and stores no connection",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:34:43.397Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-31053968e771bdd12297",
+          "file": "integrations-connect.spec.ts",
+          "line": 354,
+          "column": 5
+        },
+        {
+          "title": "7. the accountant's link: the page only shows, Continue uses it once and goes to Xero, a bogus token is refused, the admin can cancel an open link",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:34:43.397Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-0977dd9732356466a29b",
+          "file": "integrations-connect.spec.ts",
+          "line": 398,
+          "column": 5
+        },
+        {
+          "title": "8. office cannot make a link or connect (403); workshop is sent away from the page; nobody signed in gets 401",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": -1,
+                  "parallelIndex": -1,
+                  "status": "skipped",
+                  "duration": 0,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-06T08:34:43.397Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "225688e50d5e79c36d5c-0bb42a78fe097892bd46",
+          "file": "integrations-connect.spec.ts",
+          "line": 565,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-06T08:32:03.976Z",
+    "duration": 159823.007,
+    "expected": 4,
+    "skipped": 3,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
