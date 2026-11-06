@@ -384,6 +384,7 @@ jobs:
           name: integration-evidence
           path: |
             test-results/
+            playwright-report/
             evidence/
             !test-results/e2e-state/world.json
           if-no-files-found: ignore
