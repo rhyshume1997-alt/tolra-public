@@ -164,3 +164,24 @@ if(mode==='tolra'){
   expect(JSON.stringify(added)).not.toContain(cipher());
  });
 }
+
+if(mode==='tolra'){
+ it('shared key removal without the exact confirmation phrase is refused by SQL',async()=>{
+  await enable(w);await db.query('reset role');await db.query('set role service_role');
+  await expect(db.query('select public.ai_helper_tolra_remove_key($1,NULL)',[w.owner])).rejects.toMatchObject({code:'22023',hint:'confirmation_required'});
+  await db.query('reset role');expect((await db.query('select enabled,api_key_enc is not null as key_set from ai_helper_tolra_control')).rows[0]).toEqual({enabled:true,key_set:true});
+ });
+ it('remove, purge platform audit, configure a new key: persistent removal marker keeps AI OFF until explicit enable',async()=>{
+  await enable(w);await seedHistory();const before=await snapshot(w);await remove(w);await db.query('reset role');
+  expect((await db.query('select enabled,api_key_enc,key_removed from ai_helper_tolra_control')).rows[0]).toEqual({enabled:false,api_key_enc:null,key_removed:true});
+  // Maintenance simulation in this nonce test DB only. Company history/usage are preserved.
+  await db.query("delete from security_audit.audit_log where organization_id is null and entity_table='ai_helper_tolra_control'");
+  expect((await db.query('select enabled,key_removed from ai_helper_tolra_control')).rows[0]).toEqual({enabled:false,key_removed:true});
+  await db.query('set role service_role');await db.query('select ai_helper_tolra_configure(true,$1,$2)',[cipher(9),w.owner]);
+  await db.query('reset role');expect((await db.query('select enabled,api_key_enc,key_removed from ai_helper_tolra_control')).rows[0]).toEqual({enabled:false,api_key_enc:cipher(9),key_removed:true});
+  await actor(db,w.admin);for(const f of paid)await expect(reserve(db,f)).rejects.toMatchObject({code:'42501'});
+  await db.query('reset role');await db.query('set role service_role');await db.query('select ai_helper_tolra_configure(true,NULL,$1)',[w.owner]);
+  await db.query('reset role');expect((await db.query('select enabled,key_removed from ai_helper_tolra_control')).rows[0]).toEqual({enabled:true,key_removed:false});
+  await assertOldRowsKept(before);await actor(db,w.admin);expect((await reserve(db,'rfq',1)).ok).toBe(true);
+ });
+}

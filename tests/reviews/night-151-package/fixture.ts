@@ -1,3 +1,4 @@
+import {bootstrapVerifier,INTEGRATION_BASE} from '../integration/bootstrap-verifier';
 import {randomUUID,createHash} from 'node:crypto';
 import {readFileSync,readdirSync,writeFileSync,mkdirSync} from 'node:fs';
 import path from 'node:path';
@@ -13,7 +14,7 @@ export async function start(){
  await db.query(sql('tests/reviews/night-151-package/bootstrap.sql'));
  for(const f of readdirSync('supabase/migrations').filter(f=>/^\d{3}_.*\.sql$/.test(f)&&Number(f.slice(0,3))<=137).sort())await db.query(sql('supabase/migrations/'+f));
  const plan=JSON.parse(readFileSync('supabase/release-plan.json','utf8'));
- for(const phase of [...plan.jnr_cutover_numbered_order,...plan.phases.filter((p:{number:number})=>p.number<=150)]){await db.query(sql(phase.release));const rows=(await db.query(sql(phase.verify))).rows;if(!rows.length||rows.some(r=>(r.ok??r.passed)!==true))throw Error('Prerequisite verification failed '+phase.number);}
+ for(const phase of [...plan.jnr_cutover_numbered_order,...plan.phases.filter((p:{number:number})=>p.number<=150)]){await db.query(sql(phase.release));const rows=(await db.query(prerequisite(phase.verify))).rows;if(!rows.length||rows.some(r=>(r.ok??r.passed)!==true))throw Error('Prerequisite verification failed '+phase.number);}
  await db.query('create schema supabase_migrations; create table supabase_migrations.schema_migrations(version text primary key)');
  for(const [key,value] of Object.entries({XERO_CLIENT_ID:'synthetic-client',XERO_CLIENT_SECRET:'synthetic-secret',XERO_REDIRECT_URI:'https://tolra.example.test/api/integrations/xero/callback',NEXT_PUBLIC_SITE_URL:'https://tolra.example.test',XERO_INVITE_REDIRECT_URIS:'https://tolra.example.test/api/integrations/invite/callback',INTEGRATIONS_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')}))process.env[key]=value;
 }
@@ -21,3 +22,5 @@ export async function stop(){
  mkdirSync('tests/reviews/night-151-package/evidence',{recursive:true});writeFileSync('tests/reviews/night-151-package/evidence/database-receipt.json',JSON.stringify(receipt,null,2)+'\n');
  await db.end().catch(()=>undefined);await admin.query(`drop database if exists ${nonce} with (force)`);await admin.end();
 }
+
+function prerequisite(file:string){const text=bootstrapVerifier(file);receipt.files.push({file:(process.env.INTEGRATION_VERIFY_BASE===INTEGRATION_BASE?INTEGRATION_BASE+':':'')+file,sha256:createHash('sha256').update(text).digest('hex')});return text;}

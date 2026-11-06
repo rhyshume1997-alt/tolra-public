@@ -1,3 +1,4 @@
+import {bootstrapVerifier,INTEGRATION_BASE} from '../integration/bootstrap-verifier';
 import {randomUUID,createHash} from 'node:crypto';
 import {readFileSync,readdirSync,writeFileSync,mkdirSync} from 'node:fs';
 import path from 'node:path';
@@ -17,7 +18,7 @@ export async function start(){
  await db.query(sql('tests/reviews/xero-invite-adversarial/bootstrap.sql'));
  for(const f of readdirSync('supabase/migrations').filter(f=>/^\d{3}_.*\.sql$/.test(f)&&Number(f.slice(0,3))<=137).sort())await db.query(sql('supabase/migrations/'+f));
  const plan=JSON.parse(readFileSync('supabase/release-plan.json','utf8'));
- for(const phase of [...plan.jnr_cutover_numbered_order,...plan.phases.filter((p:{number:number})=>p.number<=150)]){await db.query(sql(phase.release));const rows=(await db.query(sql(phase.verify))).rows;if(!rows.length||rows.some(r=>(r.ok??r.passed)!==true))throw Error('Prerequisite verification failed '+phase.number);}
+ for(const phase of [...plan.jnr_cutover_numbered_order,...plan.phases.filter((p:{number:number})=>p.number<=150)]){await db.query(sql(phase.release));const rows=(await db.query(prerequisite(phase.verify))).rows;if(!rows.length||rows.some(r=>(r.ok??r.passed)!==true))throw Error('Prerequisite verification failed '+phase.number);}
  // 151 is deliberately loaded as its reviewed proposal/release, not silently treated as registered in the plan.
  await db.query(sql(release151));
  for(const [key,value] of Object.entries({XERO_CLIENT_ID:'synthetic-client',XERO_CLIENT_SECRET:'synthetic-secret',XERO_REDIRECT_URI:'https://tolra.example.test/api/integrations/xero/callback',NEXT_PUBLIC_SITE_URL:'https://tolra.example.test',XERO_INVITE_REDIRECT_URIS:'https://tolra.example.test/api/integrations/invite/callback',INTEGRATIONS_ENCRYPTION_KEY:Buffer.alloc(32,7).toString('base64')}))process.env[key]=value;
@@ -38,3 +39,5 @@ export async function company(label:string):Promise<Actor>{
 export async function as(who:Actor,query:string,args:unknown[]=[]){
  const client=new Client({connectionString:ctx.url});await client.connect();try{await client.query('begin');await client.query('set local role authenticated');await client.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:who.id,session_id:who.session,role:'authenticated',aal:'aal2',amr:[{method:'totp',timestamp:Math.floor(Date.now()/1000)}]})]);const result=await client.query(query,args);await client.query('commit');return result;}finally{await client.end();}
 }
+
+function prerequisite(file:string){const text=bootstrapVerifier(file);receipt.files.push({file:(process.env.INTEGRATION_VERIFY_BASE===INTEGRATION_BASE?INTEGRATION_BASE+':':'')+file,sha256:createHash('sha256').update(text).digest('hex')});return text;}

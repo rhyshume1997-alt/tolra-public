@@ -1,3 +1,4 @@
+import {bootstrapVerifier} from '../reviews/integration/bootstrap-verifier';
 /** Test-only. All baseline files run first; only these release proofs prepare the reviewed phases. */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -28,7 +29,7 @@ export async function preparePost144Fixture(deps: {
         if (after?.value !== "applied") throw new Error(`Release fixture did not verify: ${phase.marker}`);
       }
       // Verify every row even when already installed. Missing/false checks are failures.
-      const checks = (await deps.query(read(phase.verifyFile))).rows;
+      const checks = (await deps.query(bootstrapVerifier(phase.verifyFile))).rows;
       if (!checks.length || checks.some(row => (row.ok ?? row.passed) !== true)) throw new Error(`Release verification failed: ${phase.marker}`);
     }
     await deps.query("NOTIFY pgrst, 'reload schema'");

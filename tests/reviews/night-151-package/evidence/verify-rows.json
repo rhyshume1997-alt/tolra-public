@@ -42,17 +42,5 @@
   {
     "check_name": "the company audit no longer carries refusals: no INTEGRATION_INVITE_REFUSED row is written by 151",
     "ok": true
-  },
-  {
-    "check_name": "every151definer has its exact approved search path",
-    "ok": true
-  },
-  {
-    "check_name": "final invite write and atomic picker claim are service-only",
-    "ok": true
-  },
-  {
-    "check_name": "invite completion is recorded on its OAuth state",
-    "ok": true
   }
 ]

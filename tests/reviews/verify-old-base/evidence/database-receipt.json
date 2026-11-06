@@ -1,6 +1,6 @@
 {
   "subject": "656a79390650fe87a6e7513679246e82df3f3a40",
-  "database": "verify_reg_3ab5379d751f4330b8065866e0d36922",
+  "database": "verify_reg_80c4111c165d4d82833e388e48fc32c1",
   "files": [
     {
       "file": "tests/reviews/verify-old-base/bootstrap.sql",
@@ -471,7 +471,7 @@
       "sha256": "beb4ee14c052829ab36d1d460e97747f16c4fd1eac92ec6f02b667e0b0f72d99"
     },
     {
-      "file": "supabase/verify/chase_steps_138.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/chase_steps_138.sql",
       "sha256": "3ca0475b3b7d6673ce9ed29f2dc4613799cfe53e57c0b36c4d84f7349e88c95d"
     },
     {
@@ -479,7 +479,7 @@
       "sha256": "d424a2fbcdc97d42189b897a06265f0fb1b443958a1a9837570b3cbed01b4af1"
     },
     {
-      "file": "supabase/verify/import_source_ref_140.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/import_source_ref_140.sql",
       "sha256": "fbe2570ebfcde3cd3856652b61e0449179b840f2a631efd7cfd832881a78d439"
     },
     {
@@ -487,7 +487,7 @@
       "sha256": "ae9f353bd85a7eefd56ae3fc0c89b6fc8ca532cf5fbda0df550171aec9bc2549"
     },
     {
-      "file": "supabase/verify/opening_wip_141.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/opening_wip_141.sql",
       "sha256": "7125c1714ffc3c909dc2542281c66d25d1d526f41e88194c2615c29ae7eff949"
     },
     {
@@ -495,7 +495,7 @@
       "sha256": "d1dc0e93c507b0c12d7d40028af0aa16aeb4cde5b1b54e3935aa88659e642ad8"
     },
     {
-      "file": "supabase/verify/costing_rates_143.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/costing_rates_143.sql",
       "sha256": "5c5ec46c3f3fabbe1a17b2bf7ef4ddbc8d1bc26c08950174acfa14013cba0838"
     },
     {
@@ -503,7 +503,7 @@
       "sha256": "d11cb063e367038fc76374e172770c08499ebd6cd541b10490eee8096410711b"
     },
     {
-      "file": "supabase/verify/accounting_connections_144.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/accounting_connections_144.sql",
       "sha256": "2f18baf81290e0b5de22b983dfb7b5c15a8cd058e0ace43261298c581a8e7593"
     },
     {
@@ -511,7 +511,7 @@
       "sha256": "58a0560736b9a443952ee222796de030a39c439ee5c2ce47877b88ef07d59d6e"
     },
     {
-      "file": "supabase/verify/company_setup_145.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/company_setup_145.sql",
       "sha256": "1694fb6d41ee6c85c086f3600922179247e8fc966e461fbf799ee2314adc1a83"
     },
     {
@@ -519,7 +519,7 @@
       "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd"
     },
     {
-      "file": "supabase/verify/tolra_provided_ai_146.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/tolra_provided_ai_146.sql",
       "sha256": "67a85b0fc64775a0fab1469588dd1aaa90d12cd65da8490b8f4e60662d564f3d"
     },
     {
@@ -527,7 +527,7 @@
       "sha256": "795040328c6be99952076a0b320c9a8d2f2be7211a2b6898e0cb0b8d64bea5b3"
     },
     {
-      "file": "supabase/verify/job_delivery_note_147.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/job_delivery_note_147.sql",
       "sha256": "e8866233169863a61cd88cf42d6cb59114685da6942d85943106f9b05288877b"
     },
     {
@@ -535,7 +535,7 @@
       "sha256": "9576723ba27510906217d90d766bf0e8af7091e29af90fdd8f015b1f1674c903"
     },
     {
-      "file": "supabase/verify/job_profitability_actuals_148.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/job_profitability_actuals_148.sql",
       "sha256": "e306109442cb027d244267899b41709fe77f0c07f1683d87d0d7a127cc9ba412"
     },
     {
@@ -543,7 +543,7 @@
       "sha256": "1883f511ab4fe34ef9f029b1e1d7accb34764499e5746cbb45cc1f59ad1d3226"
     },
     {
-      "file": "supabase/verify/xero_launch_hold_149.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/xero_launch_hold_149.sql",
       "sha256": "6b1e10da92821900eb356679d7f4ef5ecd40804955eee34fa4c28ff0fcf348f9"
     },
     {
@@ -551,7 +551,7 @@
       "sha256": "df1329904b3465e87f9699a73b567218b919350b1268e101daefd3f5f796ad29"
     },
     {
-      "file": "supabase/verify/ai_cap_key_off_150.sql",
+      "file": "e7c4b6380964386e66e5d6a67ed37ad0aaed8da5:supabase/verify/ai_cap_key_off_150.sql",
       "sha256": "3d57f270bb95ceec85d157e74ad81ce8c5ab59fc28935b373fce147403e122d6"
     }
   ],
