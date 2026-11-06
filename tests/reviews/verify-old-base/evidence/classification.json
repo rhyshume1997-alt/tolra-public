@@ -1,0 +1,6034 @@
+[
+  {
+    "stage": 13,
+    "results": [
+      {
+        "file": "072_customer_signoff.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.job_signoffs\" does not exist",
+        "position": "1219",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 72,
+        "profile": "tolra"
+      },
+      {
+        "file": "accountant_invite_129.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"token_hash\" does not exist",
+        "position": "1173",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 129,
+        "profile": "tolra"
+      },
+      {
+        "file": "accounting_connections_144.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.accounting_cloud_enqueue()\" does not exist",
+        "position": "499",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 144,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_labels_080.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column l.declined does not exist",
+        "position": "1830",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_one_row_per_change_094.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 94,
+        "profile": "tolra"
+      },
+      {
+        "file": "admin_mfa_onboarding_065.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.member_has_verified_totp(uuid)\" does not exist",
+        "position": "1242",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 65,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_requests\" does not exist",
+        "position": "1273",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134_prod_off_check.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_cap_key_off_150.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_settings\" does not exist",
+        "position": "1528",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 150,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_finance_check_audit_events_095.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 95,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_101.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_usage\" does not exist",
+        "position": "3013",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 101,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_cap_default_122.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 122,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_pre_enable_133.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_requests\" does not exist",
+        "position": "2995",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 133,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_service_role_103.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_secrets\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 103,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_050.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.attendance_events\" does not exist",
+        "position": "2311",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 50,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_expected_company_090.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 90,
+        "profile": "tolra"
+      },
+      {
+        "file": "audit_hash_077.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 77,
+        "profile": "tolra"
+      },
+      {
+        "file": "authorised_inspectors_083.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.job_inspections\" does not exist",
+        "position": "1319",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 83,
+        "profile": "tolra"
+      },
+      {
+        "file": "auto_book_next_free.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.job_machines\" does not exist",
+        "position": "7414",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 61,
+        "profile": "tolra"
+      },
+      {
+        "file": "ban_ends_session_119.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 119,
+        "profile": "tolra"
+      },
+      {
+        "file": "bench_pause.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.machine_runs\" does not exist",
+        "position": "1308",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 46,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_day_plan.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"day_plan\" does not exist",
+        "position": "1933",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 38,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_run_identity.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.machine_runs\" does not exist",
+        "position": "386",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 64,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_time_zero_quote_126.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 126,
+        "profile": "tolra"
+      },
+      {
+        "file": "browser_error_alert_115.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 115,
+        "profile": "tolra"
+      },
+      {
+        "file": "catalogue.sql",
+        "status": "executed",
+        "rows": 276,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "chase_steps_138.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.email_templates\" does not exist",
+        "position": "3526",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 138,
+        "profile": "tolra"
+      },
+      {
+        "file": "clock_in_network_lock_114.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.attendance_events\" does not exist",
+        "position": "2861",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 114,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_access_066.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function public.audit_event_allowed(unknown, unknown) does not exist",
+        "position": "3756",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 66,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_setup_145.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "converted_sales_order_088.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 9,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 88,
+        "profile": "tolra"
+      },
+      {
+        "file": "costing_rates_143.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.costing_materials\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 143,
+        "profile": "tolra"
+      },
+      {
+        "file": "cross_org_links.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "customer_archive_100.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.record_archive_state\" does not exist",
+        "position": "1348",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 100,
+        "profile": "tolra"
+      },
+      {
+        "file": "dashboard_tiles_132.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 132,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_076.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function public.import_norm_name(unknown) does not exist",
+        "position": "5454",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 76,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_credit_delivery_085.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.credit_notes\" does not exist",
+        "position": "6868",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 85,
+        "profile": "tolra"
+      },
+      {
+        "file": "delivery_note_auto_invoice.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column d.invoice_id does not exist",
+        "position": "7535",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 59,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_attachments_067.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"kind\" does not exist",
+        "position": "944",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 67,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_totals.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "duplicate_conversions.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 18,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_history_drafted_by_120.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 120,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_schedules_108.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.email_schedules\" does not exist",
+        "position": "138",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 108,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_templates_106.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_settings\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 106,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_safeupdate_079.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 79,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_source_ref_140.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"source_ref\" does not exist",
+        "position": "2041",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 140,
+        "profile": "tolra"
+      },
+      {
+        "file": "inbound_email_links_125.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.inbound_emails\" does not exist",
+        "position": "1100",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 125,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_084.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.integration_enqueue()\" does not exist",
+        "position": "8921",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 84,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_connect_107.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 10,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 107,
+        "profile": "tolra"
+      },
+      {
+        "file": "internal_jobs_and_machines.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"is_internal\" does not exist",
+        "position": "1888",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 42,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_issue_guard_091.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 7,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 91,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_payments_032.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column i.payment_unverified does not exist",
+        "position": "1396",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 32,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_receipt_guard_089.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.invoice_issue_lock()\" does not exist",
+        "position": "2269",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 89,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_screen_073.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.replace_draft_invoice(uuid, timestamptz, jsonb, jsonb)\" does not exist",
+        "position": "3535",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 73,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_write_off_105.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 105,
+        "profile": "tolra"
+      },
+      {
+        "file": "ip_retention_crd_078.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.attendance_event_network_ips\" does not exist",
+        "position": "854",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 78,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_delivery_note_147.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.dln_numbering_pending\" does not exist",
+        "position": "4580",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 147,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_flow_081.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function public.flow_status(jobs) does not exist",
+        "position": "6042",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 81,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_labour_051.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.operator_sessions\" does not exist",
+        "position": "1079",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 51,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_part_logs_118.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 9,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 118,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_photos_040.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.job_files\" does not exist",
+        "position": "639",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 40,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_problems_117.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 8,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 117,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_profitability_actuals_148.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 12,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 148,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_signoff.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function public.canonical_jsonb(jsonb) does not exist",
+        "position": "2041",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 45,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 135,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135_precheck.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "machine_runs.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.machine_runs\" does not exist",
+        "position": "1845",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 44,
+        "profile": "tolra"
+      },
+      {
+        "file": "mailbox_read_127.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 7,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 127,
+        "profile": "tolra"
+      },
+      {
+        "file": "n2_tolra_provided_ai.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "n5_company_setup.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "opening_wip_141.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.opening_wip\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 141,
+        "profile": "tolra"
+      },
+      {
+        "file": "overview_owed_snapshots_116.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 116,
+        "profile": "tolra"
+      },
+      {
+        "file": "part_despatch_invoice_quantity_099.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.sales_order_lines\" does not exist",
+        "position": "3468",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 99,
+        "profile": "tolra"
+      },
+      {
+        "file": "password_change_ticket_137.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 137,
+        "profile": "tolra"
+      },
+      {
+        "file": "paused_machine_ack.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.paused_ack_ops\" does not exist",
+        "position": "4120",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 49,
+        "profile": "tolra"
+      },
+      {
+        "file": "platform_create_organization.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 39,
+        "profile": "tolra"
+      },
+      {
+        "file": "prelaunch_033.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"require_admin_mfa\" does not exist",
+        "position": "1744",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 33,
+        "profile": "tolra"
+      },
+      {
+        "file": "protect_platform_owner_login_093.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 8,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 93,
+        "profile": "tolra"
+      },
+      {
+        "file": "purchase_order_link_124.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 124,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_customer_po_123.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"customer_po\" does not exist",
+        "position": "3501",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 123,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_to_job.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 58,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_versions_068.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.sales_order_lines\" does not exist",
+        "position": "1186",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 68,
+        "profile": "tolra"
+      },
+      {
+        "file": "recent_second_step_136.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 136,
+        "profile": "tolra"
+      },
+      {
+        "file": "reconcile_legacy_source.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column q.quantity does not exist",
+        "position": "489",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "legacy-source"
+      },
+      {
+        "file": "reconcile_legacy_target.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column i.payment_unverified does not exist",
+        "position": "1954",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "imported-target"
+      },
+      {
+        "file": "release_ends_session_092.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.machine_runs\" does not exist",
+        "position": "936",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 92,
+        "profile": "tolra"
+      },
+      {
+        "file": "release_preflight.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.integration_connections\" does not exist",
+        "position": "45145",
+        "classification": "genuine defect",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "reopen_requests_113.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 8,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 113,
+        "profile": "tolra"
+      },
+      {
+        "file": "rework_037.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.job_rework\" does not exist",
+        "position": "3894",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 37,
+        "profile": "tolra"
+      },
+      {
+        "file": "rfq_clarification_110.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 110,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_helper_speed_121.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 121,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 131,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131_precheck.sql",
+        "status": "executed",
+        "rows": 187,
+        "notTrue": 101,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 130,
+        "profile": "tolra"
+      },
+      {
+        "file": "sales_order_machines.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.sales_order_line_machines\" does not exist",
+        "position": "1169",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 43,
+        "profile": "tolra"
+      },
+      {
+        "file": "security_guards_102.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 102,
+        "profile": "tolra"
+      },
+      {
+        "file": "site_network_075.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.attendance_events\" does not exist",
+        "position": "4911",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 75,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_day_flags_074.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.time_day_flags\" does not exist",
+        "position": "390",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 74,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_week_review_052.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.time_week_approvals\" does not exist",
+        "position": "279",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 52,
+        "profile": "tolra"
+      },
+      {
+        "file": "tolra_provided_ai_146.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "traceability_082.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"supplier_status\" does not exist",
+        "position": "3073",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 82,
+        "profile": "tolra"
+      },
+      {
+        "file": "two_level_access_036.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"support\" does not exist",
+        "position": "4583",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 36,
+        "profile": "tolra"
+      },
+      {
+        "file": "unmarked_bans.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "user_date_format_109.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 9,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 109,
+        "profile": "tolra"
+      },
+      {
+        "file": "vat_registration_030.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.check_document_totals(text, uuid, uuid)\" does not exist",
+        "position": "2609",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 30,
+        "profile": "tolra"
+      },
+      {
+        "file": "who_did_what_035.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"started_by\" does not exist",
+        "position": "1080",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 35,
+        "profile": "tolra"
+      },
+      {
+        "file": "workflow_034.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.invoice_credit_allocations\" does not exist",
+        "position": "592",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 34,
+        "profile": "tolra"
+      },
+      {
+        "file": "workshop_network_128.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.site_network_ip_purge(uuid,integer)\" does not exist",
+        "position": "4541",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 128,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_invite_hardening_151.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.integration_connect_invites\" does not exist",
+        "position": "2205",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 151,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_launch_hold_149.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.xero_transfer_hold\" does not exist",
+        "position": "2050",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 149,
+        "profile": "tolra"
+      }
+    ]
+  },
+  {
+    "stage": 83,
+    "results": [
+      {
+        "file": "072_customer_signoff.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 72,
+        "profile": "tolra"
+      },
+      {
+        "file": "accountant_invite_129.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"token_hash\" does not exist",
+        "position": "1173",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 129,
+        "profile": "tolra"
+      },
+      {
+        "file": "accounting_connections_144.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.accounting_cloud_enqueue()\" does not exist",
+        "position": "499",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 144,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_labels_080.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_one_row_per_change_094.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 94,
+        "profile": "tolra"
+      },
+      {
+        "file": "admin_mfa_onboarding_065.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 65,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_requests\" does not exist",
+        "position": "1273",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134_prod_off_check.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_cap_key_off_150.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_settings\" does not exist",
+        "position": "1528",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 150,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_finance_check_audit_events_095.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 95,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_101.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_usage\" does not exist",
+        "position": "3013",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 101,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_cap_default_122.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 122,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_pre_enable_133.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_requests\" does not exist",
+        "position": "2995",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 133,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_service_role_103.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_secrets\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 103,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_050.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 50,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_expected_company_090.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 90,
+        "profile": "tolra"
+      },
+      {
+        "file": "audit_hash_077.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 77,
+        "profile": "tolra"
+      },
+      {
+        "file": "authorised_inspectors_083.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 83,
+        "profile": "tolra"
+      },
+      {
+        "file": "auto_book_next_free.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 61,
+        "profile": "tolra"
+      },
+      {
+        "file": "ban_ends_session_119.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 119,
+        "profile": "tolra"
+      },
+      {
+        "file": "bench_pause.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 46,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_day_plan.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 38,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_run_identity.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 64,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_time_zero_quote_126.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 126,
+        "profile": "tolra"
+      },
+      {
+        "file": "browser_error_alert_115.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 115,
+        "profile": "tolra"
+      },
+      {
+        "file": "catalogue.sql",
+        "status": "executed",
+        "rows": 1364,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "chase_steps_138.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.email_templates\" does not exist",
+        "position": "3526",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 138,
+        "profile": "tolra"
+      },
+      {
+        "file": "clock_in_network_lock_114.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.clock_in_network_locks\" does not exist",
+        "position": "3158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 114,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_access_066.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 66,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_setup_145.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "converted_sales_order_088.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 8,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 88,
+        "profile": "tolra"
+      },
+      {
+        "file": "costing_rates_143.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.costing_materials\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 143,
+        "profile": "tolra"
+      },
+      {
+        "file": "cross_org_links.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "customer_archive_100.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 100,
+        "profile": "tolra"
+      },
+      {
+        "file": "dashboard_tiles_132.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 132,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_076.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 76,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_credit_delivery_085.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 7,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 85,
+        "profile": "tolra"
+      },
+      {
+        "file": "delivery_note_auto_invoice.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 59,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_attachments_067.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 67,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_totals.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "duplicate_conversions.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 18,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_history_drafted_by_120.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 120,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_schedules_108.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.email_schedules\" does not exist",
+        "position": "138",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 108,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_templates_106.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_settings\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 106,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_safeupdate_079.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 79,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_source_ref_140.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"source_ref\" does not exist",
+        "position": "2041",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 140,
+        "profile": "tolra"
+      },
+      {
+        "file": "inbound_email_links_125.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"link_status\" does not exist",
+        "position": "4519",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 125,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_084.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.integration_enqueue()\" does not exist",
+        "position": "8921",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 84,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_connect_107.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 10,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 107,
+        "profile": "tolra"
+      },
+      {
+        "file": "internal_jobs_and_machines.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 42,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_issue_guard_091.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 91,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_payments_032.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 32,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_receipt_guard_089.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 89,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_screen_073.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 73,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_write_off_105.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 105,
+        "profile": "tolra"
+      },
+      {
+        "file": "ip_retention_crd_078.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 78,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_delivery_note_147.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.dln_numbering_pending\" does not exist",
+        "position": "4580",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 147,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_flow_081.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 81,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_labour_051.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 51,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_part_logs_118.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 9,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 118,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_photos_040.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 40,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_problems_117.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 8,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 117,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_profitability_actuals_148.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 12,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 148,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_signoff.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 45,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 135,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135_precheck.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "machine_runs.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 44,
+        "profile": "tolra"
+      },
+      {
+        "file": "mailbox_read_127.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 7,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 127,
+        "profile": "tolra"
+      },
+      {
+        "file": "n2_tolra_provided_ai.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "n5_company_setup.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "opening_wip_141.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.opening_wip\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 141,
+        "profile": "tolra"
+      },
+      {
+        "file": "overview_owed_snapshots_116.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 116,
+        "profile": "tolra"
+      },
+      {
+        "file": "part_despatch_invoice_quantity_099.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column l.sales_order_line_id does not exist",
+        "position": "5426",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 99,
+        "profile": "tolra"
+      },
+      {
+        "file": "password_change_ticket_137.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 137,
+        "profile": "tolra"
+      },
+      {
+        "file": "paused_machine_ack.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 49,
+        "profile": "tolra"
+      },
+      {
+        "file": "platform_create_organization.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 39,
+        "profile": "tolra"
+      },
+      {
+        "file": "prelaunch_033.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 33,
+        "profile": "tolra"
+      },
+      {
+        "file": "protect_platform_owner_login_093.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 7,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 93,
+        "profile": "tolra"
+      },
+      {
+        "file": "purchase_order_link_124.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 124,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_customer_po_123.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"customer_po\" does not exist",
+        "position": "3501",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 123,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_to_job.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 58,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_versions_068.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 68,
+        "profile": "tolra"
+      },
+      {
+        "file": "recent_second_step_136.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 136,
+        "profile": "tolra"
+      },
+      {
+        "file": "reconcile_legacy_source.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column q.quantity does not exist",
+        "position": "489",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "legacy-source"
+      },
+      {
+        "file": "reconcile_legacy_target.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.legacy_audit_log\" does not exist",
+        "position": "3512",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "imported-target"
+      },
+      {
+        "file": "release_ends_session_092.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 5,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 92,
+        "profile": "tolra"
+      },
+      {
+        "file": "release_preflight.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.integration_connections\" does not exist",
+        "position": "45145",
+        "classification": "genuine defect",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "reopen_requests_113.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 8,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 113,
+        "profile": "tolra"
+      },
+      {
+        "file": "rework_037.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 37,
+        "profile": "tolra"
+      },
+      {
+        "file": "rfq_clarification_110.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 4,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 110,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_helper_speed_121.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 121,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 131,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131_precheck.sql",
+        "status": "executed",
+        "rows": 187,
+        "notTrue": 29,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 130,
+        "profile": "tolra"
+      },
+      {
+        "file": "sales_order_machines.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 43,
+        "profile": "tolra"
+      },
+      {
+        "file": "security_guards_102.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 6,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 102,
+        "profile": "tolra"
+      },
+      {
+        "file": "site_network_075.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 75,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_day_flags_074.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 74,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_week_review_052.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 52,
+        "profile": "tolra"
+      },
+      {
+        "file": "tolra_provided_ai_146.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "traceability_082.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 82,
+        "profile": "tolra"
+      },
+      {
+        "file": "two_level_access_036.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 36,
+        "profile": "tolra"
+      },
+      {
+        "file": "unmarked_bans.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "user_date_format_109.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 9,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 109,
+        "profile": "tolra"
+      },
+      {
+        "file": "vat_registration_030.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 30,
+        "profile": "tolra"
+      },
+      {
+        "file": "who_did_what_035.sql",
+        "status": "executed",
+        "rows": 22,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 35,
+        "profile": "tolra"
+      },
+      {
+        "file": "workflow_034.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 34,
+        "profile": "tolra"
+      },
+      {
+        "file": "workshop_network_128.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.clock_in_network_refusals\" does not exist",
+        "position": "7099",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 128,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_invite_hardening_151.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.integration_connect_invites\" does not exist",
+        "position": "2205",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 151,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_launch_hold_149.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.xero_transfer_hold\" does not exist",
+        "position": "2050",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 149,
+        "profile": "tolra"
+      }
+    ]
+  },
+  {
+    "stage": 137,
+    "results": [
+      {
+        "file": "072_customer_signoff.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 72,
+        "profile": "tolra"
+      },
+      {
+        "file": "accountant_invite_129.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 129,
+        "profile": "tolra"
+      },
+      {
+        "file": "accounting_connections_144.sql",
+        "status": "error",
+        "code": "42883",
+        "message": "function \"public.accounting_cloud_enqueue()\" does not exist",
+        "position": "499",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 144,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_labels_080.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_one_row_per_change_094.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 94,
+        "profile": "tolra"
+      },
+      {
+        "file": "admin_mfa_onboarding_065.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 65,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134_prod_off_check.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_cap_key_off_150.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "8029",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 150,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_finance_check_audit_events_095.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 95,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_101.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 101,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_cap_default_122.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 122,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_pre_enable_133.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 133,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_service_role_103.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 103,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_050.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 50,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_expected_company_090.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 90,
+        "profile": "tolra"
+      },
+      {
+        "file": "audit_hash_077.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 77,
+        "profile": "tolra"
+      },
+      {
+        "file": "authorised_inspectors_083.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 83,
+        "profile": "tolra"
+      },
+      {
+        "file": "auto_book_next_free.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 61,
+        "profile": "tolra"
+      },
+      {
+        "file": "ban_ends_session_119.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 119,
+        "profile": "tolra"
+      },
+      {
+        "file": "bench_pause.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 46,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_day_plan.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 38,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_run_identity.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 64,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_time_zero_quote_126.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 126,
+        "profile": "tolra"
+      },
+      {
+        "file": "browser_error_alert_115.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 115,
+        "profile": "tolra"
+      },
+      {
+        "file": "catalogue.sql",
+        "status": "executed",
+        "rows": 1790,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "chase_steps_138.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.chase_sends\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 138,
+        "profile": "tolra"
+      },
+      {
+        "file": "clock_in_network_lock_114.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 114,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_access_066.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 66,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_setup_145.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "converted_sales_order_088.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 88,
+        "profile": "tolra"
+      },
+      {
+        "file": "costing_rates_143.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.costing_materials\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 143,
+        "profile": "tolra"
+      },
+      {
+        "file": "cross_org_links.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "customer_archive_100.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 100,
+        "profile": "tolra"
+      },
+      {
+        "file": "dashboard_tiles_132.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 132,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_076.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 76,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_credit_delivery_085.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 85,
+        "profile": "tolra"
+      },
+      {
+        "file": "delivery_note_auto_invoice.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 59,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_attachments_067.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 67,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_totals.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "duplicate_conversions.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 18,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_history_drafted_by_120.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 120,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_schedules_108.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 108,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_templates_106.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 106,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_safeupdate_079.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 79,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_source_ref_140.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column \"source_ref\" does not exist",
+        "position": "2041",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 140,
+        "profile": "tolra"
+      },
+      {
+        "file": "inbound_email_links_125.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 125,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_084.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 84,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_connect_107.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 107,
+        "profile": "tolra"
+      },
+      {
+        "file": "internal_jobs_and_machines.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 42,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_issue_guard_091.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 91,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_payments_032.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 32,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_receipt_guard_089.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 89,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_screen_073.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 73,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_write_off_105.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 105,
+        "profile": "tolra"
+      },
+      {
+        "file": "ip_retention_crd_078.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 78,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_delivery_note_147.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.dln_numbering_pending\" does not exist",
+        "position": "4580",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 147,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_flow_081.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 81,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_labour_051.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 51,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_part_logs_118.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 118,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_photos_040.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 40,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_problems_117.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 117,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_profitability_actuals_148.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 12,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 148,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_signoff.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 45,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 135,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135_precheck.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "machine_runs.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 44,
+        "profile": "tolra"
+      },
+      {
+        "file": "mailbox_read_127.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 127,
+        "profile": "tolra"
+      },
+      {
+        "file": "n2_tolra_provided_ai.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "n5_company_setup.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "opening_wip_141.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.opening_wip\" does not exist",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 141,
+        "profile": "tolra"
+      },
+      {
+        "file": "overview_owed_snapshots_116.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 116,
+        "profile": "tolra"
+      },
+      {
+        "file": "part_despatch_invoice_quantity_099.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 99,
+        "profile": "tolra"
+      },
+      {
+        "file": "password_change_ticket_137.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 137,
+        "profile": "tolra"
+      },
+      {
+        "file": "paused_machine_ack.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 49,
+        "profile": "tolra"
+      },
+      {
+        "file": "platform_create_organization.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 39,
+        "profile": "tolra"
+      },
+      {
+        "file": "prelaunch_033.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 33,
+        "profile": "tolra"
+      },
+      {
+        "file": "protect_platform_owner_login_093.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 93,
+        "profile": "tolra"
+      },
+      {
+        "file": "purchase_order_link_124.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 124,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_customer_po_123.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 123,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_to_job.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 58,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_versions_068.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 68,
+        "profile": "tolra"
+      },
+      {
+        "file": "recent_second_step_136.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 136,
+        "profile": "tolra"
+      },
+      {
+        "file": "reconcile_legacy_source.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column q.quantity does not exist",
+        "position": "489",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "legacy-source"
+      },
+      {
+        "file": "reconcile_legacy_target.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.legacy_audit_log\" does not exist",
+        "position": "3512",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "imported-target"
+      },
+      {
+        "file": "release_ends_session_092.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 92,
+        "profile": "tolra"
+      },
+      {
+        "file": "release_preflight.sql",
+        "status": "executed",
+        "rows": 176,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "reopen_requests_113.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 113,
+        "profile": "tolra"
+      },
+      {
+        "file": "rework_037.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 37,
+        "profile": "tolra"
+      },
+      {
+        "file": "rfq_clarification_110.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 110,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_helper_speed_121.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 121,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 131,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131_precheck.sql",
+        "status": "executed",
+        "rows": 187,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 130,
+        "profile": "tolra"
+      },
+      {
+        "file": "sales_order_machines.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 43,
+        "profile": "tolra"
+      },
+      {
+        "file": "security_guards_102.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 102,
+        "profile": "tolra"
+      },
+      {
+        "file": "site_network_075.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 75,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_day_flags_074.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 74,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_week_review_052.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 52,
+        "profile": "tolra"
+      },
+      {
+        "file": "tolra_provided_ai_146.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "traceability_082.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 82,
+        "profile": "tolra"
+      },
+      {
+        "file": "two_level_access_036.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 36,
+        "profile": "tolra"
+      },
+      {
+        "file": "unmarked_bans.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "user_date_format_109.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 109,
+        "profile": "tolra"
+      },
+      {
+        "file": "vat_registration_030.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 30,
+        "profile": "tolra"
+      },
+      {
+        "file": "who_did_what_035.sql",
+        "status": "executed",
+        "rows": 22,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 35,
+        "profile": "tolra"
+      },
+      {
+        "file": "workflow_034.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 34,
+        "profile": "tolra"
+      },
+      {
+        "file": "workshop_network_128.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 128,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_invite_hardening_151.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column i.ref does not exist",
+        "position": "2248",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 151,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_launch_hold_149.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.xero_transfer_hold\" does not exist",
+        "position": "2050",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 149,
+        "profile": "tolra"
+      }
+    ]
+  },
+  {
+    "stage": 144,
+    "results": [
+      {
+        "file": "072_customer_signoff.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 72,
+        "profile": "tolra"
+      },
+      {
+        "file": "accountant_invite_129.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 129,
+        "profile": "tolra"
+      },
+      {
+        "file": "accounting_connections_144.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 144,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_labels_080.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_one_row_per_change_094.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 94,
+        "profile": "tolra"
+      },
+      {
+        "file": "admin_mfa_onboarding_065.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 65,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134_prod_off_check.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_cap_key_off_150.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "8029",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 150,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_finance_check_audit_events_095.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 95,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_101.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 101,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_cap_default_122.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 122,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_pre_enable_133.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 133,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_service_role_103.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 103,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_050.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 50,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_expected_company_090.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 90,
+        "profile": "tolra"
+      },
+      {
+        "file": "audit_hash_077.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 77,
+        "profile": "tolra"
+      },
+      {
+        "file": "authorised_inspectors_083.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 83,
+        "profile": "tolra"
+      },
+      {
+        "file": "auto_book_next_free.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 61,
+        "profile": "tolra"
+      },
+      {
+        "file": "ban_ends_session_119.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 119,
+        "profile": "tolra"
+      },
+      {
+        "file": "bench_pause.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 46,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_day_plan.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 38,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_run_identity.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 64,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_time_zero_quote_126.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 126,
+        "profile": "tolra"
+      },
+      {
+        "file": "browser_error_alert_115.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 115,
+        "profile": "tolra"
+      },
+      {
+        "file": "catalogue.sql",
+        "status": "executed",
+        "rows": 1888,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "chase_steps_138.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 138,
+        "profile": "tolra"
+      },
+      {
+        "file": "clock_in_network_lock_114.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 114,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_access_066.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 66,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_setup_145.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "converted_sales_order_088.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 88,
+        "profile": "tolra"
+      },
+      {
+        "file": "costing_rates_143.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 143,
+        "profile": "tolra"
+      },
+      {
+        "file": "cross_org_links.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "customer_archive_100.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 100,
+        "profile": "tolra"
+      },
+      {
+        "file": "dashboard_tiles_132.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 132,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_076.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 76,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_credit_delivery_085.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 85,
+        "profile": "tolra"
+      },
+      {
+        "file": "delivery_note_auto_invoice.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 59,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_attachments_067.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 67,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_totals.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "duplicate_conversions.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 18,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_history_drafted_by_120.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 120,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_schedules_108.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 108,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_templates_106.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 106,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_safeupdate_079.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 79,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_source_ref_140.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 140,
+        "profile": "tolra"
+      },
+      {
+        "file": "inbound_email_links_125.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 125,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_084.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 84,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_connect_107.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 107,
+        "profile": "tolra"
+      },
+      {
+        "file": "internal_jobs_and_machines.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 42,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_issue_guard_091.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 91,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_payments_032.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 32,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_receipt_guard_089.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 89,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_screen_073.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 73,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_write_off_105.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 105,
+        "profile": "tolra"
+      },
+      {
+        "file": "ip_retention_crd_078.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 78,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_delivery_note_147.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.dln_numbering_pending\" does not exist",
+        "position": "4580",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 147,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_flow_081.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 81,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_labour_051.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 51,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_part_logs_118.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 118,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_photos_040.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 40,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_problems_117.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 117,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_profitability_actuals_148.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 11,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 148,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_signoff.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 45,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 135,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135_precheck.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "machine_runs.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 44,
+        "profile": "tolra"
+      },
+      {
+        "file": "mailbox_read_127.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 127,
+        "profile": "tolra"
+      },
+      {
+        "file": "n2_tolra_provided_ai.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "n5_company_setup.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.company_setup_progress\" does not exist",
+        "position": "158",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "opening_wip_141.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 141,
+        "profile": "tolra"
+      },
+      {
+        "file": "overview_owed_snapshots_116.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 116,
+        "profile": "tolra"
+      },
+      {
+        "file": "part_despatch_invoice_quantity_099.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 99,
+        "profile": "tolra"
+      },
+      {
+        "file": "password_change_ticket_137.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 137,
+        "profile": "tolra"
+      },
+      {
+        "file": "paused_machine_ack.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 49,
+        "profile": "tolra"
+      },
+      {
+        "file": "platform_create_organization.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 39,
+        "profile": "tolra"
+      },
+      {
+        "file": "prelaunch_033.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 33,
+        "profile": "tolra"
+      },
+      {
+        "file": "protect_platform_owner_login_093.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 93,
+        "profile": "tolra"
+      },
+      {
+        "file": "purchase_order_link_124.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 124,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_customer_po_123.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 123,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_to_job.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 58,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_versions_068.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 68,
+        "profile": "tolra"
+      },
+      {
+        "file": "recent_second_step_136.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 136,
+        "profile": "tolra"
+      },
+      {
+        "file": "reconcile_legacy_source.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column q.quantity does not exist",
+        "position": "489",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "legacy-source"
+      },
+      {
+        "file": "reconcile_legacy_target.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.legacy_audit_log\" does not exist",
+        "position": "3512",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "imported-target"
+      },
+      {
+        "file": "release_ends_session_092.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 92,
+        "profile": "tolra"
+      },
+      {
+        "file": "release_preflight.sql",
+        "status": "executed",
+        "rows": 176,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "reopen_requests_113.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 113,
+        "profile": "tolra"
+      },
+      {
+        "file": "rework_037.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 37,
+        "profile": "tolra"
+      },
+      {
+        "file": "rfq_clarification_110.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 110,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_helper_speed_121.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 121,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 131,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131_precheck.sql",
+        "status": "executed",
+        "rows": 187,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 130,
+        "profile": "tolra"
+      },
+      {
+        "file": "sales_order_machines.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 43,
+        "profile": "tolra"
+      },
+      {
+        "file": "security_guards_102.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 102,
+        "profile": "tolra"
+      },
+      {
+        "file": "site_network_075.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 75,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_day_flags_074.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 74,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_week_review_052.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 52,
+        "profile": "tolra"
+      },
+      {
+        "file": "tolra_provided_ai_146.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.ai_helper_tolra_control\" does not exist",
+        "position": "239",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "traceability_082.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 82,
+        "profile": "tolra"
+      },
+      {
+        "file": "two_level_access_036.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 36,
+        "profile": "tolra"
+      },
+      {
+        "file": "unmarked_bans.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "user_date_format_109.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 109,
+        "profile": "tolra"
+      },
+      {
+        "file": "vat_registration_030.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 30,
+        "profile": "tolra"
+      },
+      {
+        "file": "who_did_what_035.sql",
+        "status": "executed",
+        "rows": 22,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 35,
+        "profile": "tolra"
+      },
+      {
+        "file": "workflow_034.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 34,
+        "profile": "tolra"
+      },
+      {
+        "file": "workshop_network_128.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 128,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_invite_hardening_151.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column i.ref does not exist",
+        "position": "2248",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 151,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_launch_hold_149.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.xero_transfer_hold\" does not exist",
+        "position": "2050",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 149,
+        "profile": "tolra"
+      }
+    ]
+  },
+  {
+    "stage": 150,
+    "results": [
+      {
+        "file": "072_customer_signoff.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 72,
+        "profile": "tolra"
+      },
+      {
+        "file": "accountant_invite_129.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 129,
+        "profile": "tolra"
+      },
+      {
+        "file": "accounting_connections_144.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 144,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_labels_080.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_one_row_per_change_094.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 94,
+        "profile": "tolra"
+      },
+      {
+        "file": "admin_mfa_onboarding_065.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 65,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134_prod_off_check.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_cap_key_off_150.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 150,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_finance_check_audit_events_095.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 95,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_101.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 101,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_cap_default_122.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 122,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_pre_enable_133.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 133,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_service_role_103.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 103,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_050.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 50,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_expected_company_090.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 90,
+        "profile": "tolra"
+      },
+      {
+        "file": "audit_hash_077.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 77,
+        "profile": "tolra"
+      },
+      {
+        "file": "authorised_inspectors_083.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 83,
+        "profile": "tolra"
+      },
+      {
+        "file": "auto_book_next_free.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 61,
+        "profile": "tolra"
+      },
+      {
+        "file": "ban_ends_session_119.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 119,
+        "profile": "tolra"
+      },
+      {
+        "file": "bench_pause.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 46,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_day_plan.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 38,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_run_identity.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 64,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_time_zero_quote_126.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 126,
+        "profile": "tolra"
+      },
+      {
+        "file": "browser_error_alert_115.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 115,
+        "profile": "tolra"
+      },
+      {
+        "file": "catalogue.sql",
+        "status": "executed",
+        "rows": 2001,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "chase_steps_138.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 138,
+        "profile": "tolra"
+      },
+      {
+        "file": "clock_in_network_lock_114.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 114,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_access_066.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 66,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_setup_145.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "converted_sales_order_088.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 88,
+        "profile": "tolra"
+      },
+      {
+        "file": "costing_rates_143.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 143,
+        "profile": "tolra"
+      },
+      {
+        "file": "cross_org_links.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "customer_archive_100.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 100,
+        "profile": "tolra"
+      },
+      {
+        "file": "dashboard_tiles_132.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 132,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_076.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 76,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_credit_delivery_085.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 85,
+        "profile": "tolra"
+      },
+      {
+        "file": "delivery_note_auto_invoice.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 59,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_attachments_067.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 67,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_totals.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "duplicate_conversions.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 18,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_history_drafted_by_120.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 120,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_schedules_108.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 108,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_templates_106.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 106,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_safeupdate_079.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 79,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_source_ref_140.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 140,
+        "profile": "tolra"
+      },
+      {
+        "file": "inbound_email_links_125.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 125,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_084.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 84,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_connect_107.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 107,
+        "profile": "tolra"
+      },
+      {
+        "file": "internal_jobs_and_machines.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 42,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_issue_guard_091.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 91,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_payments_032.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 32,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_receipt_guard_089.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 89,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_screen_073.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 73,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_write_off_105.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 105,
+        "profile": "tolra"
+      },
+      {
+        "file": "ip_retention_crd_078.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 78,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_delivery_note_147.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 147,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_flow_081.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 81,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_labour_051.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 51,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_part_logs_118.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 118,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_photos_040.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 40,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_problems_117.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 117,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_profitability_actuals_148.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 148,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_signoff.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 45,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 135,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135_precheck.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "machine_runs.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 44,
+        "profile": "tolra"
+      },
+      {
+        "file": "mailbox_read_127.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 127,
+        "profile": "tolra"
+      },
+      {
+        "file": "n2_tolra_provided_ai.sql",
+        "status": "executed",
+        "rows": 19,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "n5_company_setup.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "opening_wip_141.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 141,
+        "profile": "tolra"
+      },
+      {
+        "file": "overview_owed_snapshots_116.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 116,
+        "profile": "tolra"
+      },
+      {
+        "file": "part_despatch_invoice_quantity_099.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 99,
+        "profile": "tolra"
+      },
+      {
+        "file": "password_change_ticket_137.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 137,
+        "profile": "tolra"
+      },
+      {
+        "file": "paused_machine_ack.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 49,
+        "profile": "tolra"
+      },
+      {
+        "file": "platform_create_organization.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 39,
+        "profile": "tolra"
+      },
+      {
+        "file": "prelaunch_033.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 33,
+        "profile": "tolra"
+      },
+      {
+        "file": "protect_platform_owner_login_093.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 93,
+        "profile": "tolra"
+      },
+      {
+        "file": "purchase_order_link_124.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 124,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_customer_po_123.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 123,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_to_job.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 58,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_versions_068.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 68,
+        "profile": "tolra"
+      },
+      {
+        "file": "recent_second_step_136.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 136,
+        "profile": "tolra"
+      },
+      {
+        "file": "reconcile_legacy_source.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column q.quantity does not exist",
+        "position": "489",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "legacy-source"
+      },
+      {
+        "file": "reconcile_legacy_target.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.legacy_audit_log\" does not exist",
+        "position": "3512",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "imported-target"
+      },
+      {
+        "file": "release_ends_session_092.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 92,
+        "profile": "tolra"
+      },
+      {
+        "file": "release_preflight.sql",
+        "status": "executed",
+        "rows": 176,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "reopen_requests_113.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 113,
+        "profile": "tolra"
+      },
+      {
+        "file": "rework_037.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 37,
+        "profile": "tolra"
+      },
+      {
+        "file": "rfq_clarification_110.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 110,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_helper_speed_121.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 121,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 131,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131_precheck.sql",
+        "status": "executed",
+        "rows": 187,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 130,
+        "profile": "tolra"
+      },
+      {
+        "file": "sales_order_machines.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 43,
+        "profile": "tolra"
+      },
+      {
+        "file": "security_guards_102.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 102,
+        "profile": "tolra"
+      },
+      {
+        "file": "site_network_075.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 75,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_day_flags_074.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 74,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_week_review_052.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 52,
+        "profile": "tolra"
+      },
+      {
+        "file": "tolra_provided_ai_146.sql",
+        "status": "executed",
+        "rows": 19,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "traceability_082.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 82,
+        "profile": "tolra"
+      },
+      {
+        "file": "two_level_access_036.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 36,
+        "profile": "tolra"
+      },
+      {
+        "file": "unmarked_bans.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "user_date_format_109.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 109,
+        "profile": "tolra"
+      },
+      {
+        "file": "vat_registration_030.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 30,
+        "profile": "tolra"
+      },
+      {
+        "file": "who_did_what_035.sql",
+        "status": "executed",
+        "rows": 22,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 35,
+        "profile": "tolra"
+      },
+      {
+        "file": "workflow_034.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 34,
+        "profile": "tolra"
+      },
+      {
+        "file": "workshop_network_128.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 128,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_invite_hardening_151.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column i.ref does not exist",
+        "position": "2248",
+        "classification": "expected missing object below declared minimum",
+        "minimumSchema": 151,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_launch_hold_149.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 149,
+        "profile": "tolra"
+      }
+    ]
+  },
+  {
+    "stage": 151,
+    "results": [
+      {
+        "file": "072_customer_signoff.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 72,
+        "profile": "tolra"
+      },
+      {
+        "file": "accountant_invite_129.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 129,
+        "profile": "tolra"
+      },
+      {
+        "file": "accounting_connections_144.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 144,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_labels_080.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 3,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "activity_one_row_per_change_094.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 94,
+        "profile": "tolra"
+      },
+      {
+        "file": "admin_mfa_onboarding_065.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 65,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_assistant_134_prod_off_check.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 134,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_cap_key_off_150.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 150,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_finance_check_audit_events_095.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 95,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_101.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 101,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_cap_default_122.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 122,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_pre_enable_133.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 133,
+        "profile": "tolra"
+      },
+      {
+        "file": "ai_helper_service_role_103.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 103,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_050.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 50,
+        "profile": "tolra"
+      },
+      {
+        "file": "attendance_expected_company_090.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 90,
+        "profile": "tolra"
+      },
+      {
+        "file": "audit_hash_077.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 77,
+        "profile": "tolra"
+      },
+      {
+        "file": "authorised_inspectors_083.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 83,
+        "profile": "tolra"
+      },
+      {
+        "file": "auto_book_next_free.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 61,
+        "profile": "tolra"
+      },
+      {
+        "file": "ban_ends_session_119.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 119,
+        "profile": "tolra"
+      },
+      {
+        "file": "bench_pause.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 46,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_day_plan.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 38,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_run_identity.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 64,
+        "profile": "tolra"
+      },
+      {
+        "file": "booking_time_zero_quote_126.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 126,
+        "profile": "tolra"
+      },
+      {
+        "file": "browser_error_alert_115.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 115,
+        "profile": "tolra"
+      },
+      {
+        "file": "catalogue.sql",
+        "status": "executed",
+        "rows": 2013,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "chase_steps_138.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 138,
+        "profile": "tolra"
+      },
+      {
+        "file": "clock_in_network_lock_114.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 114,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_access_066.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 66,
+        "profile": "tolra"
+      },
+      {
+        "file": "company_setup_145.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "converted_sales_order_088.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 88,
+        "profile": "tolra"
+      },
+      {
+        "file": "costing_rates_143.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 143,
+        "profile": "tolra"
+      },
+      {
+        "file": "cross_org_links.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "customer_archive_100.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 100,
+        "profile": "tolra"
+      },
+      {
+        "file": "dashboard_tiles_132.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 132,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_076.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 76,
+        "profile": "tolra"
+      },
+      {
+        "file": "data_import_credit_delivery_085.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 85,
+        "profile": "tolra"
+      },
+      {
+        "file": "delivery_note_auto_invoice.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 59,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_attachments_067.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 67,
+        "profile": "tolra"
+      },
+      {
+        "file": "document_totals.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "duplicate_conversions.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 18,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_history_drafted_by_120.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 120,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_schedules_108.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 108,
+        "profile": "tolra"
+      },
+      {
+        "file": "email_templates_106.sql",
+        "status": "executed",
+        "rows": 10,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 106,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_safeupdate_079.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 79,
+        "profile": "tolra"
+      },
+      {
+        "file": "import_source_ref_140.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 140,
+        "profile": "tolra"
+      },
+      {
+        "file": "inbound_email_links_125.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 125,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_084.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 84,
+        "profile": "tolra"
+      },
+      {
+        "file": "integrations_connect_107.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 107,
+        "profile": "tolra"
+      },
+      {
+        "file": "internal_jobs_and_machines.sql",
+        "status": "executed",
+        "rows": 18,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 42,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_issue_guard_091.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 91,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_payments_032.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 32,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_receipt_guard_089.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 89,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_screen_073.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 73,
+        "profile": "tolra"
+      },
+      {
+        "file": "invoice_write_off_105.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 105,
+        "profile": "tolra"
+      },
+      {
+        "file": "ip_retention_crd_078.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 78,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_delivery_note_147.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 147,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_flow_081.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 2,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 81,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_labour_051.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 51,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_part_logs_118.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 118,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_photos_040.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 40,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_problems_117.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 117,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_profitability_actuals_148.sql",
+        "status": "executed",
+        "rows": 12,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 148,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_signoff.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 45,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 135,
+        "profile": "tolra"
+      },
+      {
+        "file": "job_spec_customer_po_135_precheck.sql",
+        "status": "executed",
+        "rows": 1,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 80,
+        "profile": "tolra"
+      },
+      {
+        "file": "machine_runs.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 44,
+        "profile": "tolra"
+      },
+      {
+        "file": "mailbox_read_127.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 127,
+        "profile": "tolra"
+      },
+      {
+        "file": "n2_tolra_provided_ai.sql",
+        "status": "executed",
+        "rows": 19,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "n5_company_setup.sql",
+        "status": "executed",
+        "rows": 5,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 145,
+        "profile": "tolra"
+      },
+      {
+        "file": "opening_wip_141.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 141,
+        "profile": "tolra"
+      },
+      {
+        "file": "overview_owed_snapshots_116.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 116,
+        "profile": "tolra"
+      },
+      {
+        "file": "part_despatch_invoice_quantity_099.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 99,
+        "profile": "tolra"
+      },
+      {
+        "file": "password_change_ticket_137.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 137,
+        "profile": "tolra"
+      },
+      {
+        "file": "paused_machine_ack.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 49,
+        "profile": "tolra"
+      },
+      {
+        "file": "platform_create_organization.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 39,
+        "profile": "tolra"
+      },
+      {
+        "file": "prelaunch_033.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 33,
+        "profile": "tolra"
+      },
+      {
+        "file": "protect_platform_owner_login_093.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 93,
+        "profile": "tolra"
+      },
+      {
+        "file": "purchase_order_link_124.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 124,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_customer_po_123.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 123,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_to_job.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 58,
+        "profile": "tolra"
+      },
+      {
+        "file": "quote_versions_068.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 68,
+        "profile": "tolra"
+      },
+      {
+        "file": "recent_second_step_136.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 136,
+        "profile": "tolra"
+      },
+      {
+        "file": "reconcile_legacy_source.sql",
+        "status": "error",
+        "code": "42703",
+        "message": "column q.quantity does not exist",
+        "position": "489",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "legacy-source"
+      },
+      {
+        "file": "reconcile_legacy_target.sql",
+        "status": "error",
+        "code": "42P01",
+        "message": "relation \"public.legacy_audit_log\" does not exist",
+        "position": "3512",
+        "classification": "expected external-profile mismatch",
+        "minimumSchema": null,
+        "profile": "imported-target"
+      },
+      {
+        "file": "release_ends_session_092.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 92,
+        "profile": "tolra"
+      },
+      {
+        "file": "release_preflight.sql",
+        "status": "executed",
+        "rows": 176,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "reopen_requests_113.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 113,
+        "profile": "tolra"
+      },
+      {
+        "file": "rework_037.sql",
+        "status": "executed",
+        "rows": 16,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 37,
+        "profile": "tolra"
+      },
+      {
+        "file": "rfq_clarification_110.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 110,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_helper_speed_121.sql",
+        "status": "executed",
+        "rows": 3,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 121,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131.sql",
+        "status": "executed",
+        "rows": 4,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 131,
+        "profile": "tolra"
+      },
+      {
+        "file": "rls_select_wrap_131_precheck.sql",
+        "status": "executed",
+        "rows": 187,
+        "notTrue": 1,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 130,
+        "profile": "tolra"
+      },
+      {
+        "file": "sales_order_machines.sql",
+        "status": "executed",
+        "rows": 11,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 43,
+        "profile": "tolra"
+      },
+      {
+        "file": "security_guards_102.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 102,
+        "profile": "tolra"
+      },
+      {
+        "file": "site_network_075.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 75,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_day_flags_074.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 74,
+        "profile": "tolra"
+      },
+      {
+        "file": "time_week_review_052.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 52,
+        "profile": "tolra"
+      },
+      {
+        "file": "tolra_provided_ai_146.sql",
+        "status": "executed",
+        "rows": 19,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 146,
+        "profile": "tolra"
+      },
+      {
+        "file": "traceability_082.sql",
+        "status": "executed",
+        "rows": 7,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 82,
+        "profile": "tolra"
+      },
+      {
+        "file": "two_level_access_036.sql",
+        "status": "executed",
+        "rows": 13,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 36,
+        "profile": "tolra"
+      },
+      {
+        "file": "unmarked_bans.sql",
+        "status": "executed",
+        "rows": 0,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 13,
+        "profile": "tolra"
+      },
+      {
+        "file": "user_date_format_109.sql",
+        "status": "executed",
+        "rows": 9,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 109,
+        "profile": "tolra"
+      },
+      {
+        "file": "vat_registration_030.sql",
+        "status": "executed",
+        "rows": 6,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 30,
+        "profile": "tolra"
+      },
+      {
+        "file": "who_did_what_035.sql",
+        "status": "executed",
+        "rows": 22,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 35,
+        "profile": "tolra"
+      },
+      {
+        "file": "workflow_034.sql",
+        "status": "executed",
+        "rows": 15,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 34,
+        "profile": "tolra"
+      },
+      {
+        "file": "workshop_network_128.sql",
+        "status": "executed",
+        "rows": 8,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 128,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_invite_hardening_151.sql",
+        "status": "executed",
+        "rows": 14,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 151,
+        "profile": "tolra"
+      },
+      {
+        "file": "xero_launch_hold_149.sql",
+        "status": "executed",
+        "rows": 17,
+        "notTrue": 0,
+        "classification": "executed; readiness/data outcome must be read separately",
+        "minimumSchema": 149,
+        "profile": "tolra"
+      }
+    ]
+  }
+]

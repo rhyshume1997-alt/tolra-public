@@ -1,0 +1,6 @@
+{
+  "supabase/verify/release_preflight.sql": {
+    "literalLookupsReplaced": 16,
+    "reason": "Version-spanning preflight must report later migrations absent, not fail parsing before084. Dedicated post-migration verifier definitions left unchanged."
+  }
+}
