@@ -1,0 +1,13 @@
+{
+  "unitCommand": "npx vitest run --maxWorkers=2 --minWorkers=1 --reporter=json --outputFile=/tmp/penny-e70-full-units.json",
+  "passed": 6883,
+  "failed": 0,
+  "skipped": 0,
+  "rawReportSha256": "1e16a1c8680f1f741f275bed7f00a0eb58a550cf804d6af5fa3482ae3a86b925",
+  "typecheckCommand": "NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit",
+  "typecheckExit": 0,
+  "lintCommand": "npm run lint",
+  "lintExit": 0,
+  "diffCommand": "git diff --check",
+  "diffExit": 0
+}
