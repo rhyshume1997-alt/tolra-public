@@ -475,16 +475,28 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   await expect(accountant.getByRole('status')).toContainText("We've e-mailed a code");
   const message=(await mail()).find(m=>addressed(m,b.to)&&m.subject==='Your Tolra connect code')!;const code=/\n\s*(\d{4}) (\d{4})\s*\n/.exec(message.text)!;
   await accountant.getByLabel('Code from the e-mail').fill(code[1]+code[2]);
-  let outbound='';
-  // Playwright does not re-route a navigation after a server redirect. Intercept the original form request,
-  // execute it against the real local app once, and never follow the returned provider Location.
-  await accountant.route(`**${b.path}`,async route=>{
-   expect(route.request().method()).toBe('POST');expect(new URLSearchParams(route.request().postData()??'').get('action')).toBe('verify');
-   const response=await route.fetch({maxRedirects:0});expect(response.status()).toBe(303);
-   outbound=response.headers().location??'';expect(new URL(outbound).origin).toBe('https://login.xero.com');
-   await route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Mock Xero</title><p>intercepted</p>'});
+  // Pause the actual native POST response, after the real app has checked browser metadata and OTP.
+  // Request replay drops Chromium metadata; response-stage interception preserves it and never follows303.
+  const cdp=await visitor.newCDPSession(accountant);
+  await cdp.send('Fetch.enable',{patterns:[{urlPattern:new URL(b.path,baseURL).href,requestStage:'Response'}]});
+  const capturedRedirect=new Promise<string>((resolve,reject)=>{
+   cdp.once('Fetch.requestPaused',event=>{
+    void (async()=>{
+     expect(event.request.method).toBe('POST');expect(event.responseStatusCode).toBe(303);
+     const location=(event.responseHeaders??[]).find(header=>header.name.toLowerCase()==='location')?.value??'';
+     expect(new URL(location).origin).toBe('https://login.xero.com');
+     await cdp.send('Fetch.fulfillRequest',{requestId:event.requestId,responseCode:200,
+      responseHeaders:[{name:'Content-Type',value:'text/html'}],
+      body:Buffer.from('<!doctype html><title>Mock Xero</title><p>intercepted</p>').toString('base64')});
+     resolve(location);
+    })().catch(async error=>{
+     await cdp.send('Fetch.failRequest',{requestId:event.requestId,errorReason:'Aborted'}).catch(()=>{});
+     reject(error);
+    });
+   });
   });
-  await accountant.getByRole('button',{name:'Continue to Xero'}).click();await expect(accountant.getByText('intercepted',{exact:true})).toBeVisible();
+  const [outbound]=await Promise.all([capturedRedirect,accountant.getByRole('button',{name:'Continue to Xero'}).click()]);
+  await expect(accountant.getByText('intercepted',{exact:true})).toBeVisible();
   expect(new URL(outbound).searchParams.get('redirect_uri')).toBe(redirect);expect(new URL(outbound).searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/);expect(await statesVia(b.id)).toHaveLength(1);
  }finally{await visitor.close();}
  const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:`to ${c.masked}`});
