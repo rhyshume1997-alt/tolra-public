@@ -43,18 +43,21 @@ beforeEach(() => vi.unstubAllEnvs());
 afterEach(() => vi.unstubAllEnvs());
 
 describe("next.config.mjs security headers (production)", () => {
-  it("applies one rule to every path, plus one narrower rule that carries only the accountant's-link CSP", async () => {
-    const { rules } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
+  it("keeps global headers and scopes the accountant's restrictive headers to22-character invite references", async () => {
+    const { rules, get } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
     expect(rules.map((rule) => rule.source)).toEqual(["/(.*)", "/api/integrations/invite/:ref([A-Za-z0-9_-]{22})"]);
-    expect(rules[1].headers.map((header) => header.key)).toEqual(["Content-Security-Policy"]);
+    expect(rules[1].headers.map((header) => header.key)).toEqual(["Content-Security-Policy", "Referrer-Policy"]);
+    expect(rules[1].headers.find(header => header.key === "Referrer-Policy")?.value).toBe("no-referrer");
+    expect(get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
   });
 
-  it("the accountant's link CSP is the global CSP with https://login.xero.com added to form-action and nothing else", async () => {
+  it("the accountant's static invite page forbids scripts and other resources but permits its inline style and Xero form redirect", async () => {
     const { rules, get } = await loadHeaders({ NODE_ENV: "production", supabaseUrl: SUPABASE_URL });
-    const global = get("Content-Security-Policy") ?? "";
-    const invite = rules[1].headers[0].value;
-    expect(invite).not.toBe(global);
-    expect(invite).toBe(global.replace("form-action 'self'", "form-action 'self' https://login.xero.com"));
+    const invite = rules[1].headers.find(header => header.key === "Content-Security-Policy")?.value;
+    expect(invite).not.toBe(get("Content-Security-Policy"));
+    expect(invite).toBe("default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'self' https://login.xero.com");
+    expect(invite).not.toContain("script-src");
+    expect(invite).not.toContain("unsafe-eval");
   });
 
   it("HSTS: includeSubDomains and at least 180 days", async () => {
