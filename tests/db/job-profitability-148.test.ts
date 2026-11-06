@@ -301,8 +301,26 @@ it("company isolation and roles: other companies, workshop and viewer see nothin
 it("rollback drops only 148 (143's rates and save function untouched), the release applies again, verify true, a second install refuses", async () => {
   await withDb(async db => {
     const before143 = (await db.query(read("supabase/verify/costing_rates_143.sql"))).rows;
-    // 148 now refuses to drop job costing data; this test's own earlier cases committed some, so the runner accepts the deletion, as the rollback says.
-    await db.query("SELECT set_config('tolra.x148_accept_deleting_job_costs', 'yes', false)");
+    // This file's earlier cases committed job costing rows, so the rollback must REFUSE here, change nothing, and need no override: it is run
+    // without tolra.x148_accept_deleting_job_costs. The file is one transaction, so the failed run leaves this connection aborted.
+    const fingerprint = async () => (await db.query(
+      `SELECT (SELECT count(*)::int FROM public.job_cost_snapshots) AS snapshots,
+              (SELECT count(*)::int FROM public.job_cost_declarations) AS declarations,
+              (SELECT count(*)::int FROM public.job_costing_machine_links) AS machine_links,
+              (SELECT count(*)::int FROM public.job_costing_settings) AS settings,
+              (SELECT md5(string_agg(pg_get_functiondef(p.oid), E'\\n' ORDER BY p.oid::regprocedure::text)) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+                 AND (p.proname LIKE 'job\\_cost%' OR p.proname IN ('job_profitability_actual_inputs', 'set_job_costing_enabled', 'save_job_costing_machine_links', 'save_job_cost_declarations', 'refresh_job_cost_snapshot'))) AS functions,
+              (SELECT count(*)::int FROM pg_trigger WHERE tgname = 'zz_job_cost_snapshot') AS triggers`)).rows[0];
+    const populated = await fingerprint();
+    expect(populated.snapshots + populated.declarations + populated.machine_links + populated.settings).toBeGreaterThan(0);
+    expect(populated.functions).not.toBeNull();
+    expect(populated.triggers).toBe(2);
+    await expect(db.query(read("supabase/release/148_job_profitability_actuals.rollback.sql"))).rejects.toMatchObject({ code: "P0001", message: expect.stringMatching(/^148 rollback refused: job costing data exists/) });
+    await db.query("ROLLBACK");
+    expect(await fingerprint()).toEqual(populated);
+    // Eligible state: the four tables emptied in dependency order (what the rollback would otherwise drop). Snapshots reference jobs and invoices, not the others.
+    for (const t of ["job_cost_snapshots", "job_cost_declarations", "job_costing_machine_links", "job_costing_settings"]) await db.query(`DELETE FROM public.${t}`);
+    expect(await fingerprint()).toMatchObject({ snapshots: 0, declarations: 0, machine_links: 0, settings: 0, functions: populated.functions, triggers: 2 });
     await db.query(read("supabase/release/148_job_profitability_actuals.rollback.sql"));
     try {
       expect((await db.query("SELECT count(*)::int AS n FROM pg_class WHERE relname IN ('job_costing_settings','job_costing_machine_links','job_cost_declarations','job_cost_snapshots')")).rows[0].n).toBe(0);

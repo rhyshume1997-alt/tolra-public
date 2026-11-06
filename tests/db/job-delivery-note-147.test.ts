@@ -264,8 +264,29 @@ it("a double submit from two connections makes one note; rollback keeps every no
     const before = await rows();
     expect(before).toHaveLength(2);
     // Rollback: the function, guard, index and key column go; every note (147's and the legacy one) stays as it was.
-    // 147 now refuses while a company is still held; the fixture held the companies that existed when it was installed, so the runner accepts releasing the hold.
-    await db.query("SELECT set_config('tolra.x147_accept_releasing_hold', 'yes', false)");
+    // The release holds every company that existed when it was installed (dln_numbering_pending), so the rollback must REFUSE here, change nothing,
+    // and need no override: it is run without tolra.x147_accept_releasing_hold. The file is one transaction, so the failed run leaves this connection aborted.
+    const fingerprint = async () => (await db.query(
+      `SELECT (SELECT count(*)::int FROM public.dln_numbering_pending) AS held,
+              (SELECT count(*)::int FROM public.delivery_notes) AS notes,
+              (SELECT md5(string_agg(pg_get_functiondef(p.oid), E'\\n' ORDER BY p.oid::regprocedure::text)) FROM pg_proc p WHERE p.pronamespace = 'public'::regnamespace
+                 AND p.proname IN ('create_job_delivery_note', 'delivery_notes_numbering_guard', 'delivery_notes_request_guard')) AS functions,
+              (SELECT count(*)::int FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname IN ('delivery_notes_numbering_guard', 'delivery_notes_request_guard')) AS triggers,
+              (SELECT count(*)::int FROM pg_class WHERE oid IN ('public.delivery_notes_org_request_uniq'::regclass)) AS indexes,
+              (SELECT count(*)::int FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'delivery_notes' AND column_name IN ('request_id', 'request_hash')) AS columns`)).rows[0];
+    const populated = await fingerprint();
+    expect(populated.held).toBeGreaterThan(0);
+    expect(populated.functions).not.toBeNull();
+    expect(populated.triggers).toBe(2);
+    expect(populated.columns).toBe(2);
+    await expect(db.query(read("supabase/release/147_job_delivery_note.rollback.sql"))).rejects.toMatchObject({ code: "P0001", message: expect.stringMatching(/^147 rollback refused: a company is still held/) });
+    await db.query("ROLLBACK");
+    expect(await fingerprint()).toEqual(populated);
+    expect(await rows()).toEqual(before);
+    // Eligible state: the cutover counter step (supabase/cutover/set_dln_next_number.sql or keep_dln_numbering.sql, psql scripts run per company by the database
+    // owner) is what deletes a company's hold row. They need psql variables, so the proof does what they do to the hold table: it deletes the rows, and nothing else.
+    await db.query("DELETE FROM public.dln_numbering_pending");
+    expect((await fingerprint()).held).toBe(0);
     await db.query(read("supabase/release/147_job_delivery_note.rollback.sql"));
     let marker = (await db.query(read("supabase/verify/release_preflight.sql"))).rows.find(r => r.check === MARKER);
     expect(marker?.value).toBe("not applied");
