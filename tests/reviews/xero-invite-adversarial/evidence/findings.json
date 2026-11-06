@@ -1,0 +1,156 @@
+{
+  "subject_sha": "656a79390650fe87a6e7513679246e82df3f3a40",
+  "findings": [
+    {
+      "id": "INV-01",
+      "issue": "An invite can expire during provider token exchange and still be stored as a connection",
+      "tests": [
+        {
+          "exact_name": "2 replay, actual concurrent redemption, expiry and revocation invite expiry during the provider token exchange is enforced again before connection storage",
+          "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+          "line": 70,
+          "actual_failure": "AssertionError: the callback consumed state before expiry, but the invite expired before storage: expected [ { \u2026(3) } ] to deeply equal []"
+        }
+      ],
+      "reproduction": [
+        "Create an invite, deliver its bound-address code and verify it to obtain state",
+        "Start the real callback; at the recording token-endpoint stub, update the synthetic invite to a valid past expiry",
+        "Return a valid synthetic token response and one Xero organisation",
+        "Observe an integration_connections row despite the expired invite"
+      ],
+      "affected": [
+        "lib/integrations/invite.ts:200",
+        "lib/integrations/invite.ts:205",
+        "lib/integrations/server.ts:178",
+        "supabase/proposals/p151_xero_invite_hardening.sql:391"
+      ],
+      "recommended_fix": "Carry the invitation/state identity into the service-only final connection write; recheck expiry, revocation, company and creator atomically in the same SQL transaction that stores the connection, after provider I/O. Log the refusal safely."
+    },
+    {
+      "id": "INV-02",
+      "issue": "Code verification marks an invite used, after which its admin cannot revoke the pending OAuth consent",
+      "tests": [
+        {
+          "exact_name": "2 replay, actual concurrent redemption, expiry and revocation revocation remains possible during OAuth and prevents the final connection",
+          "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+          "line": 73,
+          "actual_failure": "AssertionError: a pending OAuth consent must remain revocable: expected 404 to be 200 // Object.is equality"
+        }
+      ],
+      "reproduction": [
+        "Create an invite and verify the correct delivered code",
+        "Before following the callback, DELETE the invite as its own company admin",
+        "DELETE returns 404 because the SQL revoke predicate requires used_at IS NULL",
+        "Complete the still-valid callback and observe the company connection is stored"
+      ],
+      "affected": [
+        "supabase/proposals/p151_xero_invite_hardening.sql:372",
+        "app/api/integrations/invite/route.ts:108",
+        "lib/integrations/invite.ts:200"
+      ],
+      "recommended_fix": "Keep pending OAuth invitations cancellable after code verification; update the open/pending controls and enforce revocation again in the final connection write, including revoke-versus-callback races."
+    },
+    {
+      "id": "INV-03",
+      "issue": "A sole unrelated, unbound Xero organisation is accepted without an explicit intended-company identity decision",
+      "classification": "Policy/identity gap; existing duplicate-tenant ownership protection passes",
+      "tests": [
+        {
+          "exact_name": "3 company, creating-admin and selected-Xero-organisation bindings consent for one unbound but incorrect Xero organisation requires an explicit company identity decision before storing",
+          "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+          "line": 84,
+          "actual_failure": "AssertionError: single result is not proof it belongs to the invited company: expected [ { \u2026(3) } ] to deeply equal []"
+        }
+      ],
+      "reproduction": [
+        "Create an invitation for Synthetic A and verify its bound recipient",
+        "Return exactly one realistic Xero connection with a valid fresh UUID tenant ID and name Unrelated Company Ltd",
+        "Complete the callback",
+        "Observe that unrelated tenant is stored for Synthetic A. Zero/multiple selections and a tenant already claimed by company B are correctly refused in separate passing controls"
+      ],
+      "affected": [
+        "lib/integrations/server.ts:160",
+        "lib/integrations/server.ts:178",
+        "app/api/integrations/invite/route.ts:15"
+      ],
+      "recommended_fix": "Make the identity decision explicit: bind an administrator-approved expected Xero tenant ID, or require a clear admin review of the returned tenant ID/name before connection approval. If selection is deliberately delegated entirely to the recipient, PM must explicitly accept and document that policy; current code cannot detect this mistake."
+    },
+    {
+      "id": "INV-04",
+      "issue": "Some public refusal paths return without the promised security-log entry or correlation ID",
+      "tests": [
+        {
+          "exact_name": "4 OAuth state, PKCE, exact redirects and refusal security log every malformed-code refusal has a security-log correlation id without keeping the code or reference",
+          "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+          "line": 92,
+          "actual_failure": "AssertionError: expected 26 to be greater than 26"
+        },
+        {
+          "exact_name": "4 OAuth state, PKCE, exact redirects and refusal security log unknown-action refusals are security logged, not silent responses",
+          "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+          "line": 93,
+          "actual_failure": "AssertionError: expected 26 to be greater than 26"
+        },
+        {
+          "exact_name": "4 OAuth state, PKCE, exact redirects and refusal security log missing redirect-allow-list refusal is security logged with a correlation id",
+          "file": "tests/reviews/xero-invite-adversarial/adversarial.db.test.ts",
+          "line": 94,
+          "actual_failure": "AssertionError: expected 26 to be greater than 26"
+        }
+      ],
+      "reproduction": [
+        "For an open synthetic invitation POST action=verify with code=not-a-code; receive 400",
+        "POST an unknown action; receive 400",
+        "Remove only the synthetic allow-list configuration and submit the valid delivered code; receive 503",
+        "Compare security_audit.integration_invite_refusals before/after each request: no row appended. Wrong numeric-code logging is a separate passing control"
+      ],
+      "affected": [
+        "app/api/integrations/invite/[ref]/route.ts:46",
+        "app/api/integrations/invite/[ref]/route.ts:63",
+        "app/api/integrations/invite/[ref]/route.ts:72"
+      ],
+      "recommended_fix": "Call the existing logInviteRefusal helper on each early refusal, use fixed supported step/reason codes, and include its safe correlation ID in the response. Never log submitted code, raw reference, address, state or provider text."
+    },
+    {
+      "id": "INV-05",
+      "issue": "151 proposal/release is unregistered in release-plan and preflight; repository packaging checks fail",
+      "tests": [
+        {
+          "exact_name": "151 is registered after 150 with real release, verification and rollback files and a preflight marker",
+          "file": "tests/reviews/xero-invite-adversarial/registration.unit.test.ts",
+          "line": 8,
+          "actual_failure": "AssertionError: 151 has no release-plan entry; publishing SQL alone is not registration: expected undefined to be defined"
+        }
+      ],
+      "additional_existing_failures": [
+        "tests/unit/check-migrations.test.ts: this repository passes: nothing applied has changed and every new migration has its file set",
+        "tests/unit/release-plan-preflight.test.ts: covers every proposal, both ordered post-144 packages and every preflight marker"
+      ],
+      "reproduction": [
+        "Run node scripts/check-migrations.mjs or node scripts/check-release-plan.mjs",
+        "Both exit 1: proposal missing from release plan and release preflight",
+        "Read the release plan: post-144 phases end at 150. Direct disposable application, companion verify, guarded rollback and reapply of 151 nevertheless pass"
+      ],
+      "affected": [
+        "supabase/release-plan.json",
+        "supabase/verify/release_preflight.sql"
+      ],
+      "recommended_fix": "Do not register or apply 151 as part of this review. The independent test now asserts it stays outside the production plan and numbered migrations. Existing repository packaging failures are reported as known proposal-state failures.",
+      "status": "withdrawn_after_explicit_PM_clarification",
+      "reason": "151 is deliberately a proposal only, unregistered and unapplied. Registration is not required or authorised by this job."
+    }
+  ],
+  "handover": {
+    "done": [
+      "Six-area independent tests executed",
+      "Pin, real DB identity, SQL/test hashes and exact failures committed",
+      "Guarded 151 rollback/reapply tested"
+    ],
+    "in_progress": [],
+    "not_started": [
+      "Opus-owned application/SQL fixes and integration",
+      "Retest any replacement commit",
+      "Hosted browser/Auth/PostgREST or live-provider acceptance"
+    ]
+  }
+}
