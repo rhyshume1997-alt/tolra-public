@@ -47,7 +47,7 @@ export async function withinLimit(admin: SupabaseClient | null, bucket: string, 
   }
   let result: { data: unknown; error: { code?: string } | null };
   try {
-    result = await admin.rpc("auth_rate_hit", { p_bucket: bucket, p_key_hash: hashKey(bucket, key), p_window_seconds: windowSeconds, p_max: max });
+    result = await admin.rpc(bucket === "xero_picker_use" ? "integration_xero_picker_claim" : "auth_rate_hit", { p_bucket: bucket, p_key_hash: hashKey(bucket, key), p_window_seconds: windowSeconds, p_max: max });
   } catch (err) {
     console.error("[login] rate limiter unavailable", err instanceof Error ? err.name : "threw");
     throw new LimiterUnavailableError("request failed");
