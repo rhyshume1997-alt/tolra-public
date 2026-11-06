@@ -1,0 +1,101 @@
+[
+  {
+    "suite": "adversarial",
+    "command": "npx vitest run --config tests/reviews/review437/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/adversarial.json",
+    "exit": 1,
+    "passed": 14,
+    "failed": 2,
+    "skipped": 0,
+    "success": false
+  },
+  {
+    "suite": "standard",
+    "command": "npx vitest run --config tests/reviews/combined-release-151/vitest.standard.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/standard.json",
+    "exit": 0,
+    "passed": 111,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "rollback",
+    "command": "npx vitest run --config tests/reviews/combined-release-151/vitest.rollback.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/rollback.json",
+    "exit": 0,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "financial",
+    "command": "npx vitest run --config tests/reviews/combined-release-151/vitest.financial.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/financial.json",
+    "exit": 0,
+    "passed": 34,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "snapshots",
+    "command": "npx vitest run --config tests/reviews/night-cost-profit/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/snapshots.json",
+    "exit": 0,
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "pending",
+    "command": "npx vitest run --config tests/reviews/pending-oauth/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/pending.json",
+    "exit": 0,
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "invite",
+    "command": "npx vitest run --config tests/reviews/xero-invite-adversarial/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/invite.json",
+    "exit": 1,
+    "passed": 37,
+    "failed": 1,
+    "skipped": 0,
+    "success": false
+  },
+  {
+    "suite": "picker",
+    "command": "npx vitest run --config tests/reviews/xero-picker-adversarial/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/picker.json",
+    "exit": 0,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "package",
+    "command": "npx vitest run --config tests/reviews/night-151-package/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/package.json",
+    "exit": 0,
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "lifecycle",
+    "command": "npx vitest run --config tests/reviews/integration/vitest.db.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/lifecycle.json",
+    "exit": 0,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  },
+  {
+    "suite": "pins",
+    "command": "npx vitest run --config tests/reviews/night-151-package/vitest.unit.config.ts --reporter=json --outputFile=/tmp/builder3-release151-final/pins.json",
+    "exit": 0,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "success": true
+  }
+]

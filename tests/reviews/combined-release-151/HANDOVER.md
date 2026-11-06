@@ -15,3 +15,37 @@ In progress: full unit/type/lint and combined143/148/149/150/151 SQL regressions
 Accepted prior branch-only browser evidence: #433 SHA147ac28, https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42162456124 :8 passed,0 failed,0 skipped; outbound restrictions active, reserved external probe rejected,1263 IPv4/3 IPv6 new external connections blocked. This does not prove this combined SHA. Earlier unsafe synthetic provider-redirect incident and correction are disclosed in #433 and its handover; no blanket provider/browser approval.
 
 Not started: Friday read-only demonstration pack. Remaining source helper races and INV-03 decision prevent release approval regardless of passing browser/unit counts. Human approval/tester/signature fields must remain blank.
+
+## Final local regression result
+
+All commands run at this branch's final SQL/test source profile, with no baseline verifier override. Exact commands, exit statuses and raw JSON are in `evidence/suite-results.json` and `evidence/*-final.json`. Command pattern is `npx vitest run --config <config from that file> --reporter=json --outputFile=<recorded path>`.
+
+| Suite | Passed | Failed | Skipped |
+|---|---:|---:|---:|
+| Independent437 adversarial |14|2|0|
+| Standard149/150/151 + Sonnet helper tests + extended436 permissions |111|0|0|
+| Reverse/reapply151/150/149 and missing150 stop |4|0|0|
+|143/148 financial tests on full151 schema |34|0|0|
+| Penny precision and nonempty old snapshots |49|0|0|
+| Pending OAuth revocation, concurrency, company/MFA/support guards |11|0|0|
+| Invitation identity/refusal/binding |37|1|0|
+| Organisation picker |20|0|0|
+|151 package permissions/rollback/verifier attacks |15|0|0|
+| Direct lifecycle positive controls/OFF/held |8|0|0|
+|151 file hashes and unique ordered registration |5|0|0|
+| Independent own-key cap/key-off |24|0|0|
+| Independent Tolra-provided cap/key-off |30|0|0|
+
+Do not total these as unique scenarios: some test files are deliberately rerun on different schema profiles. Two implementation defects remain (inner-store expiry and creator-demotion races, SQLSTATE00000), plus one unchanged INV-03 policy assertion (different organisation name accepted versus older test requiring an explicit identity decision). No tests skipped or precision assertions weakened. These are **BLOCKERS**, not release approval.
+
+The151 SQL guard also proved missing150 was incorrectly accepted (3 passed/1 failed before) and now refuses until150 is installed (4/4 after); comments now accurately distinguish plan registration from application. No registration/digest/history is silently changed. All four final151 bytes are pinned, and file-sha256.json records148/151/preflight bytes.
+
+One existing test expected11 verifier rows; it now requires all14 rows and every row true. During the complete rerun,111 standard and34 financial assertions passed but their teardown failed because the minimal Auth stand-in lacked `auth.sessions -> auth.users ON DELETE CASCADE`. This was a test environment defect, not a passing run. The own `standard.setup.ts` now supplies that real Auth cleanup contract after creating its nonce database. Both reruns exited0 and every suite/teardown passed. No deployed Auth schema, grants or RLS was edited.
+
+AI commands: `AI_CONTRACT_ADMIN_URL=postgresql://xero_test@127.0.0.1:54849/postgres AI_CONTRACT_MODE=own` (then `tolra`), `AI_CONTRACT_SQL_FILES='["supabase/release/146_tolra_provided_ai.release.sql","supabase/release/150_ai_cap_key_off.release.sql"]'`, `AI_CONTRACT_TOLRA_CLEAR_FUNCTION=public.ai_helper_tolra_remove_key`, `AI_CONTRACT_TOLRA_CLEAR_CONFIRMATION='REMOVE SHARED TOLRA KEY'`, `npx vitest run --config tests/reviews/ai-independent/vitest.db.config.ts`. These independent fixtures use minimal Auth stand-ins; the standard150 suite additionally runs on the full151 schema. No provider is called.
+
+The required full unit suite passed6894/6894,0 skipped; `NODE_OPTIONS=--max-old-space-size=6144 npx tsc --noEmit`, `npm run lint`, `git diff --check` passed. A final check after the fixture/doc edits is recorded in the PR before handover. Unchecked: hosted Auth expiry/MFA lifecycle beyond explicit cases, full repository database/browser suite, production/deployed configuration, real provider consent and financial business sign-off.
+
+Intermediate combined browser run42186212433 atc379a0170054c2be859dff80a4e86a209604454a succeeded; the final SQL guard/test profile must have its own rerun. Normal CI42186212634 web passed but required ci-gate failed because integration was intentionally not run on this draft without ready label; do not call that full CI green. No candidate gate is weakened or label added to imply integration approval.
+
+At08:12 PM reprioritised CI run8 Microsoft diagnosis before the Friday pack: own draft #442 codex/run8-microsoft-diagnosis, original8e49fcb source app unchanged. The original main trace was not uploaded; surviving artifact/logs alone cannot classify listener/app/network failure. A new narrow workflow retains it and all assertions. This does not delay recording the remaining441 security blockers.

@@ -35,3 +35,13 @@ it('reverse151/150/149 retains 143 rates and existing cost snapshot rows; 149 re
 it('151 release cannot be applied a second time and the verifier still passes after transaction rollback',async()=>{
  await expect(db.query(release(151,'xero_invite_hardening'))).rejects.toThrow();await db.query('rollback');await verify('supabase/verify/xero_invite_hardening_151.sql');
 });
+it('151 refuses an upgrade on149 when required150 is absent, then applies after150',async()=>{
+ await db.query(rollback(151,'xero_invite_hardening'));await db.query(rollback(150,'ai_cap_key_off'));
+ try{await expect(db.query(release(151,'xero_invite_hardening'))).rejects.toThrow(/150/);await db.query('rollback');}
+ finally{
+  await db.query('rollback');
+  const applied=(await db.query("select to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') is not null as yes")).rows[0].yes;
+  if(applied)await db.query(rollback(151,'xero_invite_hardening'));
+  await db.query(release(150,'ai_cap_key_off'));await db.query(release(151,'xero_invite_hardening'));await verify('supabase/verify/xero_invite_hardening_151.sql');
+ }
+});

@@ -1,4 +1,4 @@
--- 151. Xero accountant connect link, hardened (PROPOSAL; not in supabase/migrations, not in release-plan.json, not in CI).
+-- 151. Xero accountant connect link, hardened (DRAFT; listed after150 in the reviewed release plan; not a numbered migration or production application).
 --
 -- What 107 did: an admin makes a link whose URL carries a 43-character token; whoever holds the URL can connect the company's Xero.
 -- What this does, in one paragraph: the URL carries only an OPAQUE REFERENCE (22 random characters) that grants nothing on its own. The invite is
