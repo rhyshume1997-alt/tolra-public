@@ -1,0 +1,61 @@
+{
+  "head": "6d147b990a4e44ec252c9bace2535fc49e7f376d",
+  "failures": [
+    {
+      "test": "expiry while the ordinary store waits on a connection lock must roll back the final connection",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: a connection must not be committed after invite expiry during a later store lock wait: expected 'connected' to be 'disconnected' // Object.is equality"
+    },
+    {
+      "test": "creator demotion during the ordinary store lock wait must prevent connection storage",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected 'connected' to be 'disconnected' // Object.is equality"
+    },
+    {
+      "test": "preexisting151 gap: OTP exchange must refuse an invite expiring while it waits for its row lock",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected true to be false // Object.is equality"
+    },
+    {
+      "test": "preexisting151 gap: callback consumption must refuse state expiry while it waits for a state lock",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected '7be3ed3e-516c-4eb3-88f5-d44a8621cbad' to be null"
+    },
+    {
+      "test": "151 verifier must reject a temp-first path on new helper public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected false to be true // Object.is equality"
+    },
+    {
+      "test": "151 verifier must reject a temp-first path on new helper public.integration_xero_picker_claim(text,text,integer,integer)",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected false to be true // Object.is equality"
+    },
+    {
+      "test": "the eleven-function preflight marker must reject a temp-first path on public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected 'applied' to be 'not applied' // Object.is equality"
+    },
+    {
+      "test": "the eleven-function preflight marker must reject a temp-first path on public.integration_xero_picker_claim(text,text,integer,integer)",
+      "file": "tests/reviews/review437/adversarial.db.test.ts",
+      "sqlstate": "00000",
+      "meaning": "SQL completed; wrong accepted result or false-negative verification, not a SQL exception",
+      "assertion": "AssertionError: expected 'applied' to be 'not applied' // Object.is equality"
+    }
+  ]
+}
