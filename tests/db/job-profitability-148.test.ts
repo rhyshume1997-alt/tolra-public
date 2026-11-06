@@ -301,6 +301,8 @@ it("company isolation and roles: other companies, workshop and viewer see nothin
 it("rollback drops only 148 (143's rates and save function untouched), the release applies again, verify true, a second install refuses", async () => {
   await withDb(async db => {
     const before143 = (await db.query(read("supabase/verify/costing_rates_143.sql"))).rows;
+    // 148 now refuses to drop job costing data; this test's own earlier cases committed some, so the runner accepts the deletion, as the rollback says.
+    await db.query("SELECT set_config('tolra.x148_accept_deleting_job_costs', 'yes', false)");
     await db.query(read("supabase/release/148_job_profitability_actuals.rollback.sql"));
     try {
       expect((await db.query("SELECT count(*)::int AS n FROM pg_class WHERE relname IN ('job_costing_settings','job_costing_machine_links','job_cost_declarations','job_cost_snapshots')")).rows[0].n).toBe(0);
