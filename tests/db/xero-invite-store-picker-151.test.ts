@@ -243,6 +243,44 @@ describe("integration_invite_store_connection (11 arguments -> jsonb), service r
     });
   });
 
+  it("atomic: when the ordinary store fails inside the call (tenant in use by another company; a failing write after the connection row; a failing completion mark) nothing is left behind and the state stays usable", async () => {
+    await inTx(async (db) => {
+      const a = await makeOrg(db, "at-a", `Iota ${run}`), b = await makeOrg(db, "at-b", `Kappa ${run}`);
+      const adminA = await makeAdmin(db, a), adminB = await makeAdmin(db, b);
+      const noHalfState = async (state: string) => {
+        expect(await connections(db, a)).toEqual([]);
+        expect((await db.query("SELECT count(*)::int AS n FROM public.integration_secrets WHERE organization_id=$1", [a])).rows[0].n).toBe(0);
+        expect(await completed(db, state)).toBeNull();
+        expect((await db.query("SELECT consumed_at IS NOT NULL AS used FROM public.integration_oauth_states WHERE state_hash=$1", [state])).rows[0].used).toBe(true);
+      };
+      // (1) the tenant belongs to another company: the ordinary store raises 23505 / tenant_in_use
+      const taken = randomUUID();
+      const sb = await consumedState(db, b, adminB.id);
+      ok(await svc(db, STORE, storeArgs(sb.state, b, adminB.id, "Anything", taken)));
+      const s = await consumedState(db, a, adminA.id);
+      const refused = await svc(db, STORE, storeArgs(s.state, a, adminA.id, "Anything", taken));
+      expect(refused.error).toMatchObject({ code: "23505" });
+      await noHalfState(s.state);
+      // (2) a write AFTER the connection row fails (the secrets insert): the connection row must go with it
+      await db.query("CREATE FUNCTION public.x151_boom() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'x151 forced failure' USING ERRCODE = 'P0001'; END $$");
+      await db.query("CREATE TRIGGER x151_boom_secrets BEFORE INSERT ON public.integration_secrets FOR EACH ROW EXECUTE FUNCTION public.x151_boom()");
+      expect((await svc(db, STORE, storeArgs(s.state, a, adminA.id, "Anything"))).error).toMatchObject({ code: "P0001" });
+      await noHalfState(s.state);
+      await db.query("DROP TRIGGER x151_boom_secrets ON public.integration_secrets");
+      // (3) the completion mark itself fails: the connection and secrets written just before must go too
+      await db.query("CREATE TRIGGER x151_boom_state BEFORE UPDATE OF invite_completed_at ON public.integration_oauth_states FOR EACH ROW EXECUTE FUNCTION public.x151_boom()");
+      expect((await svc(db, STORE, storeArgs(s.state, a, adminA.id, "Anything"))).error).toMatchObject({ code: "P0001" });
+      await noHalfState(s.state);
+      await db.query("DROP TRIGGER x151_boom_state ON public.integration_oauth_states");
+      await db.query("DROP FUNCTION public.x151_boom()");
+      // the state was never completed, so with the cause gone the same state still connects exactly once
+      const mine = randomUUID();
+      expect(ok(await svc<{ r: Json }>(db, STORE, storeArgs(s.state, a, adminA.id, "Anything", mine)))[0].r).toMatchObject({ status: "connected" });
+      expect((await db.query("SELECT tenant_id FROM public.integration_connections WHERE organization_id=$1", [a])).rows).toEqual([{ tenant_id: mine }]);
+      expect(ok(await svc<{ r: Json }>(db, STORE, storeArgs(s.state, a, adminA.id, "Anything", randomUUID())))[0].r).toMatchObject({ ok: false });
+    });
+  });
+
   it("anon and signed-in users are refused (42501); the secrets are never in the audit rows", async () => {
     await inTx(async (db) => {
       const org = await makeOrg(db, "acl", `Eps ${run}`);
