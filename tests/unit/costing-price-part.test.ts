@@ -21,7 +21,7 @@ describe("worked example (also the browser spec's figures)", () => {
     const r = priceThisPart(CONFIGURED, ENTRY);
     expect(r.status).toBe("ok");
     if (r.status !== "ok") return;
-    expect(r.figures).toEqual({ materialCost: 2.1, machineCost: 19.5, labourCost: 7.5, programmingCost: 8, overheadCost: 13.5, unitCost: 50.6, unitPrice: 60.72, extendedPrice: 607.2, marginPct: 20, quantity: 10 });
+    expect(r.figures).toEqual({ materialCost: 2.1, machineCost: 19.5, labourCost: 7.5, programmingCost: 8, overheadCost: 13.5, unitCost: 50.6, unitPrice: 60.72, extendedPrice: 607.2, engineExtendedPrice: 607.2, marginPct: 20, quantity: 10 });
   });
   it("is exactly the engine's (golden-checked) answer for the same inputs", () => {
     const direct = calcDetailedQuote({ quantity: 10, stock_weight_lb: 0.5, cost_per_lb: 4, scrap_factor: 0.05, margin_pct: 0.2, programming_time_hr: 2,

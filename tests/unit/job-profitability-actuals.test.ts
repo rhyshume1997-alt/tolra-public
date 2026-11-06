@@ -12,7 +12,7 @@ const base = (over: Partial<ActualCostInputs> = {}): ActualCostInputs => ({ orga
   declarations: { labour_not_required: false, machines_not_required: false }, snapshot: null, live: costs(),
   invoices: [{ id: "i", status: "sent", subtotal: "200.00" }], credits: [{ invoice_id: "i", status: "issued", subtotal: "10.00" }], quoteLines: [{ quantity: 1, unit_price: 200 }], ...over });
 
-it("the one rounding rule is lib/costing's half to even, on exact ratios", () => {
+it("hours and margin display retain half-even on exact ratios; money has its own SQL half-up rule", () => {
   for (const [n, d] of [[5, 2], [7, 2], [1, 2], [3, 2], [10, 4], [-5, 2], [1001 * 1800, 3600], [1001 * 1200, 3600]] as const) {
     expect(Number(roundHalfEven(BigInt(n), BigInt(d)))).toBe(pyRound(n / d, 0));
   }

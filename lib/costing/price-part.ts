@@ -7,6 +7,7 @@
  * kg and a weight in kg go straight in (no conversion, so no float noise). A material priced "each" uses pieces per part the same way.
  * Money out is pounds to 2 decimal places (the engine's own rounding). The result is plain numbers: nothing links it back to the rates.
  */
+import { fromPence, linePence } from "@/lib/money";
 import { calcDetailedQuote } from "@/lib/costing/engine";
 import { ratesGaps, ratesProblem } from "@/lib/costing/app-rates";
 import type { CostingRates } from "@/components/costing/types";
@@ -20,7 +21,7 @@ export type PartEntry = {
 
 export type PartFigures = {
   materialCost: number; machineCost: number; labourCost: number; programmingCost: number; overheadCost: number;
-  unitCost: number; unitPrice: number; extendedPrice: number; marginPct: number; quantity: number;
+  unitCost: number; unitPrice: number; extendedPrice: number; engineExtendedPrice?: number; marginPct: number; quantity: number;
 };
 
 export type PartPricing =
@@ -60,7 +61,7 @@ export function priceThisPart(rates: CostingRates, entry: PartEntry): PartPricin
   const c = result.cost_breakdown;
   return { status: "ok", figures: {
     materialCost: c.material.total, machineCost: c.machine_cost, labourCost: c.labor_cost, programmingCost: c.programming_cost, overheadCost: c.overhead_cost,
-    unitCost: result.summary.unit_cost, unitPrice: result.summary.unit_price, extendedPrice: result.summary.extended_price,
+    unitCost: result.summary.unit_cost, unitPrice: result.summary.unit_price, extendedPrice: fromPence(linePence(entry.quantity, result.summary.unit_price)), engineExtendedPrice: result.summary.extended_price,
     marginPct: result.summary.margin_pct, quantity: entry.quantity,
   } };
 }
