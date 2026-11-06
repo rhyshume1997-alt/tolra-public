@@ -1,0 +1,156 @@
+name: Builder3 PRELIMINARY db3c2aa5 SQL socket diagnostic
+'on':
+  pull_request:
+    types:
+    - opened
+    - synchronize
+    - reopened
+    branches:
+    - claude/final-candidate
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: builder3-sql-diagnostic-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+jobs:
+  sql:
+    if: ${{ !cancelled() && github.head_ref == 'codex/candidate-db3-preflight' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      SUPABASE_INTERNAL_IMAGE_REGISTRY: ghcr.io
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+    - name: Exact candidate inputs unchanged
+      run: |-
+        git merge-base --is-ancestor db3c2aa5415570e4a3c755e1452d2c94bdc52c9b HEAD
+        git diff --exit-code db3c2aa5415570e4a3c755e1452d2c94bdc52c9b -- app components lib supabase scripts tests/db tests/support tests/e2e tests/rehearsal '*.config.ts'
+        mkdir -p evidence/builder3
+        git rev-parse HEAD > evidence/builder3/source-sha.txt
+        printf '%s\n' 'db3c2aa5415570e4a3c755e1452d2c94bdc52c9b' > evidence/builder3/candidate-sha.txt
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - run: npm ci
+    - name: Keep disposable ports separate
+      run: |
+        reserved=$(cat /proc/sys/net/ipv4/ip_local_reserved_ports)
+        sudo sysctl -w net.ipv4.ip_local_reserved_ports="${reserved:+$reserved,}54320-54329"
+    - name: Install Code's exact checksum-pinned Supabase CLI
+      run: |
+        set -euo pipefail
+        cli_dir="$RUNNER_TEMP/builder3-supabase-cli"
+        mkdir -p "$cli_dir"
+        curl -fsSL -o "$cli_dir/cli.tar.gz" https://github.com/supabase/cli/releases/download/v2.40.7/supabase_linux_amd64.tar.gz
+        echo "21dccbcecb9d2ffff4e48ed953539fe223b23becf13e0213a30c2d9a4054d258  $cli_dir/cli.tar.gz" | sha256sum -c -
+        tar -xzf "$cli_dir/cli.tar.gz" -C "$cli_dir" supabase
+        echo "568db201105cf8c261226fc16ab412ecc3b7bd03f25ea657852127a638b1601c  $cli_dir/supabase" | sha256sum -c -
+        test "$("$cli_dir/supabase" --version)" = '2.40.7'
+        echo "$cli_dir" >> "$GITHUB_PATH"
+    - name: Registry read access for test images only
+      run: echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GHCR_USER" --password-stdin
+      env:
+        GHCR_USER: ${{ github.actor }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Start real isolated Supabase
+      run: npm run test:backend
+    - name: Export this job disposable test environment exactly as candidate CI
+      run: |-
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
+    - name: Full unchanged candidate DB suite with immediate socket refusal, not live providers
+      id: database
+      if: ${{ !cancelled() }}
+      continue-on-error: true
+      timeout-minutes: 30
+      run: |-
+        mkdir -p evidence/builder3
+        CI_EVIDENCE_DB_JSON=evidence/db.json NODE_OPTIONS="--require $GITHUB_WORKSPACE/tests/support/no-network.cjs" E2E_BLOCKED_LOG="$GITHUB_WORKSPACE/evidence/builder3/db-outbound-attempts.log" npm run test:db
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: sql-database-checkpoint-${{ github.run_id }}
+        path: evidence/
+        retention-days: 7
+    - name: Exact013 populated upgrade rehearsal, unchanged candidate tests
+      id: rehearsal
+      if: ${{ !cancelled() }}
+      continue-on-error: true
+      timeout-minutes: 15
+      run: REHEARSAL_VITEST_ARGS="--reporter=verbose --reporter=json --outputFile.json=evidence/rehearsal.json" NODE_OPTIONS="--require $GITHUB_WORKSPACE/tests/support/no-network.cjs"
+        E2E_BLOCKED_LOG="$GITHUB_WORKSPACE/evidence/builder3/db-outbound-attempts.log" scripts/upgrade-rehearsal.sh 013
+    - name: Exact candidate CI step16 evidence commands, including skip classification and every named group
+      id: named
+      if: ${{ !cancelled() }}
+      continue-on-error: true
+      timeout-minutes: 5
+      run: |
+        rc=0
+        echo "== test:db, no exclusions =="
+        node scripts/ci-evidence.mjs vitest-summary evidence/db.json DB-SUITE || rc=1
+        node scripts/ci-evidence.mjs db-skips evidence/db.json || rc=1
+        echo "== company setup isolation (release 145) =="
+        node scripts/ci-evidence.mjs source-tokens tests/db/company-setup-isolation.test.ts admin beta office workshop viewer "support" elevated outsider anon "toEqual(before" || true
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/company-setup-isolation.test.ts || rc=1
+        echo "== Tolra-provided AI (release 146): key isolation, no fallback, owner controls, two-connection race, rollback refusal, second install =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/tolra-provided-ai.test.ts tests/db/tolra-ai-cap-concurrency.test.ts || rc=1
+        echo "== no-order delivery note (release 147): role matrix, two companies, release gate, double submit race, rollback and re-release =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/job-delivery-note-147.test.ts tests/db/dln-day-of-counter.test.ts || rc=1
+        echo "== Actual job costing (release 148): 143's rates only, record kept when rates change, incomplete never zero, isolation, roles, rollback =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/job-profitability-148.test.ts || rc=1
+        echo "== Xero transfer switch (release 149): off by default, every send path refuses, reconnect resets, concurrency, isolation, rollback =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/xero-launch-hold-149.test.ts tests/db/xero-launch-paths-149.test.ts || rc=1
+        echo "== AI cap 1000p and key change forces AI off (release 150): default, force-off, audit, in-flight, isolation, platform key, rollback and re-release on a populated database =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/ai-cap-key-off-150.test.ts || rc=1
+        echo "== Xero accountant invite hardening (release 151): opaque reference, e-mailed code bound to the recipient, lockout, single use, expiry on every use, refusal log, rollback and re-release; the store and picker functions, their grants across release states, and cancelling a connect link during callback completion =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/xero-invite-151.test.ts tests/db/xero-invite-store-picker-151.test.ts tests/db/xero-151-permissions.test.ts tests/db/xero-invite-cancel-during-callback-151.test.ts tests/db/xero-invite-late-write-151.test.ts tests/db/release-order-guards.test.ts tests/db/rollback-data-refusal.test.ts tests/db/release-upgrade-populated-145-151.test.ts || rc=1
+        echo "== SliQ releases 140 and 141: isolation and preflight proofs =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/opening-wip-141-isolation.test.ts tests/db/sliq-import-preflight-140-141.test.ts || rc=1
+        echo "== Costing rates (release 143, after 141 and before 144): no built-in rate, company scoping, roles, second step, stale refusal, serialised saves, all-or-nothing, past records unchanged =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/costing-rates-143.test.ts tests/db/costing-save-143.test.ts || rc=1
+        echo "== #253 and #255 proofs =="
+        node scripts/ci-evidence.mjs named evidence/db.json CASES tests/db/reviewer-inbound-conditions.test.ts tests/db/reviewer-chase-conditions.test.ts || rc=1
+        exit $rc
+    - name: Restore145..151 on the disposable backend and record exact verification/hashes
+      id: install
+      if: ${{ !cancelled() }}
+      continue-on-error: true
+      timeout-minutes: 5
+      run: |-
+        set -a; . ./.env.test.local; set +a
+        node tests/reviews/builder3-candidate/install.mjs
+    - name: Record complete SQL outcomes without concealing failures
+      if: always()
+      env:
+        OUTCOMES: ${{ toJSON(steps) }}
+      run: |-
+        node - <<'JS'
+        const fs=require('node:fs'),cp=require('node:child_process');const steps=JSON.parse(process.env.OUTCOMES);const r={status:'PRELIMINARY',candidateSha:'db3c2aa5415570e4a3c755e1452d2c94bdc52c9b',sourceSha:cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),steps:{},reports:{}};
+        for(const k of ['database','rehearsal','named','install'])r.steps[k]=steps[k]?.outcome??'NOT RUN';
+        for(const k of ['db','rehearsal']){try{const j=JSON.parse(fs.readFileSync(`evidence/${k}.json`));r.reports[k]={passed:j.numPassedTests,failed:j.numFailedTests,skipped:j.numPendingTests,total:j.numTotalTests};}catch{r.reports[k]='NOT RUN';}}
+        fs.mkdirSync('evidence/builder3',{recursive:true});fs.writeFileSync('evidence/builder3/sql-diagnostic.json',JSON.stringify(r,null,2));console.log(r);
+        if(Object.values(r.steps).some(x=>x!=='success'))process.exitCode=1;
+        JS
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: sql-complete-${{ github.run_id }}
+        path: evidence/
+        retention-days: 7
+    - name: Stop only the disposable backend
+      if: always()
+      run: npm run test:backend:stop
