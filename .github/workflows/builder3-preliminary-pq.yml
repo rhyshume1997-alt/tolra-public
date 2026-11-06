@@ -73,8 +73,11 @@ jobs:
         if: always()
         run: |
           node - <<'JS'
-          const r=JSON.parse(require('node:fs').readFileSync('tests/pq/results/preliminary.json','utf8'));
+          const fs=require('node:fs');
           const sha=require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+          const file='tests/pq/results/preliminary.json';
+          if(!fs.existsSync(file)) fs.writeFileSync(file,JSON.stringify({status:'PRELIMINARY',sourceSha:sha,candidateSha:null,execution:'BLOCKED_BEFORE_TEST_ENTRY',reason:'App/server preparation failed before browser execution; see this run logs',financialRowsUnchanged:null,rows:Array.from({length:12},(_,i)=>({step:i+1,status:'NOT RUN'}))},null,2));
+          const r=JSON.parse(fs.readFileSync(file,'utf8'));
           console.log({status:r.status,sha:r.sourceSha,rows:r.rows.map(x=>({step:x.step,status:x.status}))});
           if(r.status!=='PRELIMINARY'||r.sourceSha!==sha||r.candidateSha!==null||r.rows.length!==12||r.rows.some(x=>x.status!=='PASS')||!r.financialRowsUnchanged)process.exit(1);
           JS
