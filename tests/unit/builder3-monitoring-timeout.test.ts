@@ -53,7 +53,9 @@ describe("monitoring failure deadlines without live providers", () => {
       expect(await result).toEqual({ sent: true, reason: "sent" });
       expect(h.signals.at(-1)?.aborted).toBe(true);
       // A later denial from the transport cannot trigger another send; repeated timeouts still use the existing budget.
+      const calls = h.rpc.mock.calls.length;
       const again = reportServerError(input);
+      await vi.waitFor(() => expect(h.rpc).toHaveBeenCalledTimes(calls + (kind === "browser-fallback" ? 2 : 1)));
       await vi.advanceTimersByTimeAsync(2000);
       expect(await again).toEqual({ sent: false, reason: "rate-limited" });
       expect(h.send).toHaveBeenCalledTimes(1);
