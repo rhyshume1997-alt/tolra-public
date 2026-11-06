@@ -408,9 +408,10 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   const link=message.text.split(/\s+/).find(word=>INVITE_URL.test(word))!;expect(link).toBeTruthy();
   const parsed=INVITE_URL.exec(link)!;expect(parsed[1]).toBe(origin);const ref=parsed[2];
   expect(new URL(link).search).toBe('');expect(JSON.stringify(body)).not.toContain(ref);
-  const [row]=await rows<{id:string;ref:string;recipient_email:string;token_hash:string|null;code_hash:string|null;used_at:string|null}>(
-   'select id,ref,recipient_email,token_hash,code_hash,used_at from integration_connect_invites where ref=$1',[ref]);
+  const [row]=await rows<{id:string;ref:string;recipient_email:string;token_hash:string|null;code_hash:string|null;used_at:string|null;created_at:string;expires_at:string}>(
+   'select id,ref,recipient_email,token_hash,code_hash,used_at,created_at,expires_at from integration_connect_invites where ref=$1',[ref]);
   expect(row).toMatchObject({ref,recipient_email:to,token_hash:null,code_hash:null,used_at:null});
+  const ttlHours=(Date.parse(row.expires_at)-Date.parse(row.created_at))/3600000;expect(ttlHours).toBeGreaterThan(23.9);expect(ttlHours).toBeLessThanOrEqual(24);
   return {to,ref,path:new URL(link).pathname,id:row.id};
  };
  const statesVia=(id:string)=>rows<{state_hash:string;user_id:string}>('select state_hash,user_id from integration_oauth_states where via_invite=$1',[id]);
@@ -420,6 +421,7 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   const a=await makeLink();const count=(await mail()).length;
   for(let n=0;n<3;n++){
    const response=await anon.get(a.path,{maxRedirects:0});expect(response.status()).toBe(200);
+   expect(response.headers()['cache-control']).toBe('no-store');expect(response.headers()['referrer-policy']).toBe('no-referrer');expect(response.headers()['content-security-policy']).toContain("frame-ancestors 'none'");expect(response.headers()['content-security-policy']).toContain("default-src 'none'");
    const html=await response.text();expect(html).toContain('E-mail me a code');expect(html).toContain('Code from the e-mail');expect(html).not.toContain(a.to);
   }
   expect((await mail()).length).toBe(count);expect(await statesVia(a.id)).toEqual([]);
