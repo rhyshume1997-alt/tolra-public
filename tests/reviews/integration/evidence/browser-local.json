@@ -34,7 +34,16 @@
     {
       "run": 42154479194,
       "sha": "6837e2dca46c55fa44ee12222e3e1d57860001fe",
-      "status": "Pending at commit; no pass claimed"
+      "status": "completed failure",
+      "passed": 6,
+      "failed": 1,
+      "skipped": 1,
+      "failure": "Actual invite Referrer-Policy overridden by global next.config.mjs header rule"
+    },
+    {
+      "run": 42154718627,
+      "sha": "f447d1f5722dd18fd0edee0ff73a1acaf15f4fec",
+      "status": "Pending at commit; unchanged header defect; no pass claimed"
     }
   ],
   "finalHeadProof": "Read exact final-head Actions run and follow-up summary on draft433; not inferred from source429 or earlier integrated head."

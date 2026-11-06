@@ -1,0 +1,28 @@
+{
+  "sourceSHA": "6837e2dca46c55fa44ee12222e3e1d57860001fe",
+  "run": 42154479194,
+  "url": "https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42154479194",
+  "results": {
+    "passed": 6,
+    "failed": 1,
+    "skipped": 1
+  },
+  "failingTest": "7. emailed opaque reference, bound one-time code, scanner safety, replay, expiry and cancellation",
+  "assertion": "tests/e2e/integrations-connect.spec.ts:429",
+  "expected": "Referrer-Policy: no-referrer",
+  "actual": "Referrer-Policy: strict-origin-when-cross-origin",
+  "reproduction": [
+    "Start the own-branch workflow against real disposable Supabase",
+    "Create an emailed synthetic accountant invitation through the admin UI",
+    "GET the22-character reference page and inspect Referrer-Policy"
+  ],
+  "affectedFiles": [
+    "next.config.mjs:58",
+    "next.config.mjs:66",
+    "lib/integrations/invite.ts:236",
+    "tests/unit/security-headers.test.ts:52"
+  ],
+  "recommendedFix": "Preserve no-referrer and the route restrictive no-script/default-src none CSP in the existing invite-only config rule; retain form-action self and https://login.xero.com; keep all global headers unchanged and strengthen config expectations.",
+  "cspEvidence": "Source-backed configuration override; browser stops at referrer assertion before checking CSP.",
+  "scope": "Config edit awaits PM/Opus ownership transfer; unchanged assertions retained; no8pass claim"
+}

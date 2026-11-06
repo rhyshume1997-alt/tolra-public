@@ -49,6 +49,8 @@ The Code-baseline 151 apply/verify/open-invite rollback refusal/cancel/rollback/
 
 No shared migration file or canonical release definition was edited here. Code owns the held SQL changes. The existing fixes are reviewable in #423/#425; the smallest safe route is to integrate those reviewed hunks with Code's registration/digests retained, then rerun the same assertions.
 
+6. **Real invite headers are overridden.** Integrated Actions run42154479194 at `6837e2dca46c55fa44ee12222e3e1d57860001fe` reports6 passed/1 failed/1 skipped. Case7 at `tests/e2e/integrations-connect.spec.ts:429` observes `Referrer-Policy: strict-origin-when-cross-origin`, while the route helper correctly returns `no-referrer`. `next.config.mjs:58` sets the global policy; its invite-only rule at66 overrides only CSP. Source inspection also shows that rule replacing the route's restrictive `default-src 'none'` policy with the global script-enabled policy. The browser stops at the referrer assertion, so the CSP discrepancy is source-backed, not a second observed browser assertion. Code must preserve the restrictive headers in the existing22-character invite-only rule and strengthen the existing config test expectations. Other paths must keep their current global policy. The existing browser assertions remain unchanged. This global config file is outside our declared integration files: PM/Opus scope ownership was requested; no unauthorized edit was made. Exact reproduction and recommended fix are in `evidence/browser-header-finding.json`.
+
 ## Reproduction
 
 For the DB suites, export this setting before running the commands:
@@ -74,3 +76,15 @@ The narrowly scoped `.github/workflows/builder3-invite-browser.yml` runs only th
 The final head will itself trigger the same eight-case workflow. Its exact SHA, run URL and observed result must be read from the Actions receipt and the follow-up summary on draft #433; a green #429 or an earlier integrated SHA is not final-head proof. The final output remains NOT READY while the30 overlapping DB assertion failures remain. `evidence/browser-local.json` records local and remote history.
 
 A fresh sandboxed full-unit attempt returned6867 passed/8 failed/0 skipped: process-based tests could not spawn children (`spawnSync EPERM`). The same command with authorized child-process access passed6875/0/0, followed by typecheck/lint/diff exit0. No test or security policy was changed to obtain that result. Final-head checks will be posted on #433 with their exact SHA.
+
+## Final-head receipts and handoff boundary
+
+At `f447d1f5722dd18fd0edee0ff73a1acaf15f4fec`, all six DB suite counts above reproduced with0 skips; both AI SQL profiles again passed24/0 and30/0. The complete unit suite passed6875/0/0, followed by typecheck, lint, diff check and protected-tree comparison, all exit0. A preceding attempt could not write its JSON because old synthetic `/tmp/sliq-*` fixture directories exhausted the executor's inodes; only stale synthetic temp directories older than10minutes were removed, then the unchanged checks passed. No data fixture assertion or application code was changed. Fresh ephemeral DB receipts were preserved outside the checkout and generated tracked receipt files restored to their committed bytes; the protected SQL comparison still passes.
+
+Run https://github.com/rhyshume1997-alt/tolra-public/actions/runs/42154718627 tests that exact integrated SHA and is pending when this note is updated. The known header defect is unchanged, so no8/8 pass is claimed. The final metadata-only handover commit will also trigger a head-specific run; its exact SHA/run/result belongs in the PR summary after completion. No earlier branch green substitutes for it.
+
+Done: minimum-schema classification and old-base/final-table regressions; six independently traceable PR integrations; actual integrated SQL/security/financial/AI checks; real remote Supabase/browser execution and strict eight-pass receipt; exact failing assertions and minimum safe fixes.
+
+In progress: final own-head Actions browser receipt; PM/Opus ownership resolution for the invite-only config header fix.
+
+Still unchecked/blocked:8/8 browser pass; final invitation write and picker positive/concurrent completion until Code supplies the guarded SQL; post-exchange revocation; financial DB half-up contract; full real-provider/accountant consent and legal organisation ownership. No real provider calls were authorized or attempted. Hand Code #433, its current head SHA, `evidence/failures.json`, the new header finding and the observed CI links. Shared SQL fixes remain Code-owned in reviewed #423/#425; do not weaken the tests or fall back to unguarded calls.
