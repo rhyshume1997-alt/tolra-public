@@ -1,0 +1,139 @@
+{
+  "mode": "READ_ONLY",
+  "releaseStatus": "HOLD",
+  "evidenceType": "synthetic PostgreSQL17.6 SQL with minimal Auth/Storage stand-ins; provider transport mocked where present",
+  "rows": [
+    {
+      "area": "invitation",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/pending-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/pending-final.json",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    },
+    {
+      "area": "standard Xero / AI",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/standard-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/standard-final.json",
+      "passed": 111,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    },
+    {
+      "area": "adversarial blockers",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/adversarial-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/adversarial-final.json",
+      "passed": 14,
+      "failed": 2,
+      "skipped": 0,
+      "failedTests": [
+        "expiry while the ordinary store waits on a connection lock must roll back the final connection",
+        "creator demotion during the ordinary store lock wait must prevent connection storage"
+      ]
+    },
+    {
+      "area": "INV-03 policy conflict",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/invite-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/invite-final.json",
+      "passed": 37,
+      "failed": 1,
+      "skipped": 0,
+      "failedTests": [
+        "3 company, creating-admin and selected-Xero-organisation bindings consent for one unbound but incorrect Xero organisation requires an explicit company identity decision before storing"
+      ]
+    },
+    {
+      "area": "organisation picker",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/picker-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/picker-final.json",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    },
+    {
+      "area": "costing on full151",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/financial-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/financial-final.json",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    },
+    {
+      "area": "profitability and snapshots",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/snapshots-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/snapshots-final.json",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    },
+    {
+      "area": "AI own key",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/ai-own-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/ai-own-final.json",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    },
+    {
+      "area": "AI Tolra provided",
+      "sourceSha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+      "file": "tests/reviews/combined-release-151/evidence/ai-tolra-final.json",
+      "url": "https://github.com/rhyshume1997-alt/tolra-public/blob/309d1ebdb7cbcb115b49417d54e194890774f2a8/tests/reviews/combined-release-151/evidence/ai-tolra-final.json",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "failedTests": []
+    }
+  ],
+  "limits": [
+    "Not unique test totals: some suites repeat scenarios on a different schema profile",
+    "No production, real data, provider consent or activation proof",
+    "Browser receipts require their own exact SHA and are separate from SQL results"
+  ],
+  "humanDecision": "",
+  "humanName": "",
+  "humanDate": "",
+  "humanSignature": "",
+  "combinedBrowser": {
+    "sha": "309d1ebdb7cbcb115b49417d54e194890774f2a8",
+    "run": 42188546930,
+    "artifact": 13489091069,
+    "artifactSha256": "1862c1d17cf14192218540b1c1365057ccdf1f752c2846c09d918c5194d00a4a",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "outboundRestrictionsActive": true,
+    "rejectedIPv4Packets": 1845,
+    "rejectedIPv6Packets": 4
+  },
+  "run8Repair": {
+    "sha": "6bd6baabb7a9928abb6aeb0ba025108b90176e3c",
+    "sourceBase": "8e49fcb684211318a76d1cf0e3ade35acdc036e4",
+    "run": 42189581795,
+    "artifact": 13489238327,
+    "artifactSha256": "9240136b9de8ea82d387ee38237b1f279c201b3b10a95420c42f17c4968369f6",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "cases6_7_8": "executed and passed",
+    "cause": "missing real-MFA test precondition; correct403mfa_required, no Microsoft navigation",
+    "outboundRestrictionsActive": true,
+    "scope": "exact run8 source including legacy token invite; new emailed151flow is proved separately on309d1eb"
+  }
+}
