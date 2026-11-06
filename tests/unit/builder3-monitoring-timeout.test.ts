@@ -1,10 +1,13 @@
 /** Independent supplement to #448: real alert/cron code, fake provider/budget only; never a live delivery proof. */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const h = vi.hoisted(() => ({ rpc: vi.fn(), send: vi.fn(), emailPass: vi.fn(), xeroPass: vi.fn() }));
+const h = vi.hoisted(() => ({ rpc: vi.fn(), send: vi.fn(), emailPass: vi.fn(), xeroPass: vi.fn(), signals: [] as AbortSignal[] }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/resend", () => ({ resend: { emails: { send: h.send } } }));
-vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({ rpc: h.rpc }) }));
+vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({ rpc: (...args: unknown[]) => {
+  const result = h.rpc(...args) as Promise<unknown>;
+  return Object.assign(result, { abortSignal: (signal: AbortSignal) => { h.signals.push(signal); return result; } });
+} }) }));
 vi.mock("@/lib/email/schedules/pass", () => ({ runEmailSchedulesPass: h.emailPass }));
 vi.mock("@/lib/integrations/xero-pass", () => ({ runXeroSweepPass: h.xeroPass }));
 
@@ -15,6 +18,7 @@ const passResult = { companies: 0, sent: 0, failed: 0, needsCheck: 0, errors: 0 
 beforeEach(() => {
   vi.resetModules();
   vi.resetAllMocks();
+  h.signals.length = 0;
   vi.useFakeTimers({ now: Date.now() });
   vi.stubEnv("ALERT_EMAIL_TO", "owner@example.test");
   vi.stubEnv("EMAIL_FROM", "Synthetic Alerts <alerts@example.test>");
@@ -32,6 +36,39 @@ afterEach(() => {
 });
 
 describe("monitoring failure deadlines without live providers", () => {
+  it.each(["server", "browser", "browser-fallback"] as const)("%s budget lookup aborts after two seconds and retains fallback rate limiting", async kind => {
+    let release: (value: { data: boolean; error: null }) => void = () => {};
+    const pending = new Promise(resolve => { release = resolve; });
+    h.rpc.mockImplementation((name: string) => kind === "browser-fallback" && name === "claim_browser_error_alert"
+      ? Promise.resolve({ data: null, error: { code: "PGRST202" } }) : pending);
+    const { reportServerError } = await import("@/lib/server/error-alert");
+    const input = { route: "GET /synthetic-budget-timeout", error: new Error("synthetic failure"), source: kind === "server" ? "server" : "browser",
+      ...(kind === "server" ? {} : { reporter: { userId: "fake-user", companyId: "fake-company" } }) };
+    let settled = false;
+    const result = reportServerError(input).then(r => { settled = true; return r; });
+    await vi.waitFor(() => expect(h.rpc).toHaveBeenCalledWith(kind === "browser" ? "claim_browser_error_alert" : "claim_error_alert", expect.any(Object)));
+    await vi.advanceTimersByTimeAsync(2000);
+    try {
+      expect(settled, "A budget lookup must finish independently of an unresponsive transport").toBe(true);
+      expect(await result).toEqual({ sent: true, reason: "sent" });
+      expect(h.signals.at(-1)?.aborted).toBe(true);
+      // A later denial from the transport cannot trigger another send; repeated timeouts still use the existing budget.
+      const again = reportServerError(input);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(await again).toEqual({ sent: false, reason: "rate-limited" });
+      expect(h.send).toHaveBeenCalledTimes(1);
+    } finally { release({ data: false, error: null }); await result; }
+    expect(fetch).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("an explicit database budget denial remains authoritative and never sends", async () => {
+    h.rpc.mockResolvedValue({ data: false, error: null });
+    const { reportServerError } = await import("@/lib/server/error-alert");
+    expect(await reportServerError({ route: "GET /synthetic-denied", error: new Error("fake") })).toEqual({ sent: false, reason: "rate-limited" });
+    expect(h.send).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it("a stalled alert provider returns send-failed at eight seconds without throwing or leaking the message", async () => {
     let started = 0;
     h.send.mockImplementation(() => { started = Date.now(); return new Promise(() => {}); });
