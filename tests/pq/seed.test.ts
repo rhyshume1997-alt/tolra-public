@@ -59,6 +59,7 @@ it("prepares a guarded, fake JNR company through 151 with linked paperwork and O
   });
   expect((await client.rpc("save_job_costing_machine_links", { p_organization: a.id, p_links: [{ machine_id: records.mill, costing_machine_id: machine }] })).error).toBeNull();
   expect((await client.rpc("save_job_cost_declarations", { p_job: records.job, p_no_labour: false, p_no_machines: true })).error).toBeNull();
+  a.name = "FAKE JNR Engineering PQ";
   const actual = await client.rpc("job_profitability_actual_inputs", { p_job: records.job });
   expect(actual.error).toBeNull();
   expect(actual.data.live).toMatchObject({ state: "complete", labour_pence: 2000, machine_pence: 0, overhead_pence: 1000, supplier_pence: 0 });

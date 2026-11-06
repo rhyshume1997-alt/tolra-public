@@ -53,24 +53,37 @@ jobs:
       - name: Test reset and endpoint isolation guards
         run: node --test tests/pq/safety.test.mjs
       - name: Start and seed the owned real Supabase through 151
-        run: node tests/pq/pq.mjs prepare
+        run: |
+          node tests/pq/pq.mjs prepare
+          mkdir -p tests/pq/results
+          node -e "require('node:fs').writeFileSync(process.env.RUNNER_TEMP+'/pq-runid', JSON.parse(require('node:fs').readFileSync('tests/pq/.runtime/accounts.json')).world.runId)"
       - name: Install screenshot browser
         run: npx playwright install --with-deps chromium
       - name: Open real PQ pages in Chrome
         run: npx playwright test -c tests/pq/playwright.config.ts --reporter=list,json
         env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: tests/pq/results/browser.json
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/tests/pq/results/browser.json
       - name: Require executed screenshot proof
         if: always()
-        run: node scripts/ci-evidence.mjs playwright tests/pq/results/browser.json 1
+        run: |
+          mkdir -p tests/pq/results
+          cp tests/pq/.runtime/receipt.json tests/pq/results/receipt.json
+          node scripts/ci-evidence.mjs playwright tests/pq/results/browser.json 1
+      - name: Require no blocked outbound app attempt
+        run: test ! -s tests/pq/.runtime/blocked-network.log
+      - name: Reset, reseed and reuse the owned project without duplicates
+        run: |
+          node tests/pq/pq.mjs reset
+          node -e "const fs=require('node:fs'); if(JSON.parse(fs.readFileSync('tests/pq/.runtime/accounts.json')).world.runId===fs.readFileSync(process.env.RUNNER_TEMP+'/pq-runid','utf8')) process.exit(1)"
+          node tests/pq/pq.mjs prepare
+          cp tests/pq/.runtime/receipt.json tests/pq/results/reset-receipt.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: synthetic-pq-${{ github.run_id }}
           path: |
             tests/pq/screenshots/*.png
-            tests/pq/results/browser.json
-            tests/pq/.runtime/receipt.json
+            tests/pq/results/*.json
             tests/pq/.runtime/blocked-network.log
           retention-days: 7
       - name: Delete only this job's disposable PQ stack
