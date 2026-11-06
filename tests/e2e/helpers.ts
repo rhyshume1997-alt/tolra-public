@@ -67,7 +67,7 @@ let aal2Count = 0;
 export async function aal2Admin(page: Page, tenant: "alpha" | "beta" = "alpha") {
   const { adminClient, signedInClient } = await import("../support/fixtures");
   const { enrolTotp, totpCode } = await import("../support/totp");
-  const { generatePassword } = await import("@/lib/password");
+  const { generatePassword } = await import("../../lib/password");
   aal2Count += 1;
   // The worker index keeps e-mails unique when a test runs again in a new worker (a retry), where the count restarts at 0.
   const email = `aal2admin${aal2Count}-${test.info().workerIndex}.${world().runId}@example.test`;
