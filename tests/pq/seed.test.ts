@@ -33,7 +33,7 @@ it("prepares a guarded, fake JNR company through 151 with linked paperwork and O
     try {
       // Fixture load only, not a claim these records went through a real human's approval.
       await db.query("UPDATE public.organizations SET name='FAKE JNR Engineering PQ' WHERE id=$1", [a.id]);
-      await db.query("UPDATE public.organization_settings SET company_profile=company_profile || $2::jsonb WHERE organization_id=$1", [a.id, JSON.stringify({ documentName: "FAKE JNR Engineering PQ — NOT REAL", loginTagline: "SYNTHETIC PQ ONLY", email: "office@fake-jnr.example.test" })]);
+      await db.query("UPDATE public.organization_settings SET company_profile=company_profile || $2::jsonb WHERE organization_id=$1", [a.id, JSON.stringify({ name: "FAKE JNR Engineering PQ", documentName: "FAKE JNR Engineering PQ — NOT REAL", loginTagline: "SYNTHETIC PQ ONLY", email: "office@fake-jnr.example.test" })]);
       const customer = (await db.query("INSERT INTO public.customers(organization_id,name,email,address,notes) VALUES($1,'FAKE Pump Customer Ltd','accounts@fake-pumps.example.test','1 Imaginary Lane, Testtown','SYNTHETIC PQ ONLY') RETURNING id", [a.id])).rows[0].id;
       await db.query("INSERT INTO public.customers(organization_id,name,email) VALUES($1,'FAKE Shaft Customer Ltd','orders@fake-shafts.example.test')", [a.id]);
       await db.query("INSERT INTO public.stock(organization_id,sku,material,current_stock,min_level,unit_price,auto_purchase) VALUES($1,'FAKE-PART-BRACKET','FAKE 6082 aluminium bracket',100,10,12.50,false),($1,'FAKE-PART-SPACER','FAKE steel spacer',50,5,5.00,false)", [a.id]);

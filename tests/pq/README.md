@@ -17,7 +17,7 @@ node tests/pq/pq.mjs code
 
 After initial setup, wait until the next 30-second code window before signing in. Do not publish the account file or screenshots of passwords/codes. Workshop sign-in has no admin privileges. A second synthetic company is present for isolation practice.
 
-First startup estimate: **10–20 minutes**, mainly downloading Docker images and installing dependencies; first page compilation adds 10–60 seconds. With images/dependencies cached, expect **2–5 minutes**. These are estimates, not a timing guarantee; see the PR for the measured Actions run. No paid service is required locally. This executor cannot hold the full images, so its local Docker run is blocked by disk capacity; real stack proof runs on a disposable Actions runner.
+First startup estimate: **10–20 minutes**, including Docker image downloads, dependencies and a production app build. With images/dependencies cached, expect **2–5 minutes**. Every app start rebuilds against this local backend; it never reuses a possibly hosted build. These are estimates, not a timing guarantee; see the PR for the measured Actions run. No paid service is required locally. This executor cannot hold the full images, so its local Docker run is blocked by disk capacity; real stack proof runs on a disposable Actions runner.
 
 ## What startup does
 

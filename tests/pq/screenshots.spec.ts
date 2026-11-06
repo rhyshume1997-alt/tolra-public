@@ -33,6 +33,7 @@ test("synthetic desktop PQ pages and workshop board can be opened and photograph
   });
   mkdirSync("tests/pq/screenshots", { recursive: true });
   await login(page, "admin");
+  await expect(page.getByText("FAKE JNR Engineering PQ", { exact: true }).first()).toBeVisible();
   const screens = [
     ["customers", "FAKE Pump Customer Ltd"],
     ["quotes", "QUO-PQ-0001"],

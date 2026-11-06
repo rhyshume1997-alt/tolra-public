@@ -80,7 +80,7 @@ Object.assign(env, {
   SUPABASE_SERVICE_ROLE_KEY: env.TEST_SUPABASE_SERVICE_ROLE_KEY,
   NEXT_PUBLIC_SITE_URL: 'http://localhost:3007', NEXT_TELEMETRY_DISABLED: '1',
   AI_HELPER_ENABLED: 'false', REQUIRE_ADMIN_MFA: 'true',
-  NODE_OPTIONS: '--require ./tests/support/no-network.cjs',
+  NODE_OPTIONS: '--max-old-space-size=4096 --require ./tests/support/no-network.cjs',
   E2E_BLOCKED_LOG: path.join(local, 'blocked-network.log'),
 });
 // Next loads root .env files itself; refuse rather than accidentally inherit provider keys.
@@ -88,6 +88,10 @@ for (const f of ['.env', '.env.local', '.env.development', '.env.development.loc
   if (existsSync(f)) throw new Error(`Remove/rename ${f} in this dedicated checkout before starting PQ`);
 }
 console.log('SYNTHETIC PQ ONLY: http://localhost:3007 — accounts: tests/pq/.runtime/accounts.json');
-const child = spawn('npx', ['next', 'dev', '--hostname', '127.0.0.1', '--port', '3007'], { cwd: root, env, stdio: 'inherit' });
+// Build each time against these exact local public keys; never reuse a hosted/stale build.
+// Production mode also avoids Next dev's unsolicited npm version lookup.
+const next = path.join(root, 'node_modules/next/dist/bin/next');
+run(process.execPath, [next, 'build']);
+const child = spawn(process.execPath, [next, 'start', '--hostname', '127.0.0.1', '--port', '3007'], { cwd: root, env, stdio: 'inherit' });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));
 child.on('exit', code => process.exit(code ?? 1));
