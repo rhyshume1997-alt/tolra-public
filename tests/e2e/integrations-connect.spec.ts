@@ -467,7 +467,7 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   expect(refusalHtml).toContain(refusal.correlation_id);expect(JSON.stringify(refusal)).not.toContain('not-real');
   expect(await statesVia(a.id)).toEqual([{state_hash:sha256(url.searchParams.get('state')!),user_id:beta.users.admin.id}]);
  }finally{await anon.dispose();}
- // Actual browser forms: code is obtained from the local mock mailbox; Xero navigation is fulfilled before any HTTP leaves the machine.
+ // Actual browser forms and backend POST; capture its303 without following it, then supply only the provider page locally.
  const b=await makeLink(),visitor=await browser.newContext({baseURL,extraHTTPHeaders:address()});
  try{
   const accountant=await visitor.newPage();await accountant.goto(b.path);
@@ -475,9 +475,17 @@ test("7. emailed opaque reference, bound one-time code, scanner safety, replay, 
   await expect(accountant.getByRole('status')).toContainText("We've e-mailed a code");
   const message=(await mail()).find(m=>addressed(m,b.to)&&m.subject==='Your Tolra connect code')!;const code=/\n\s*(\d{4}) (\d{4})\s*\n/.exec(message.text)!;
   await accountant.getByLabel('Code from the e-mail').fill(code[1]+code[2]);
-  let outbound='';await accountant.route('https://login.xero.com/**',async route=>{outbound=route.request().url();await route.fulfill({status:200,contentType:'text/plain',body:'intercepted'});});
+  let outbound='';
+  // Playwright does not re-route a navigation after a server redirect. Intercept the original form request,
+  // execute it against the real local app once, and never follow the returned provider Location.
+  await accountant.route(`**${b.path}`,async route=>{
+   expect(route.request().method()).toBe('POST');expect(new URLSearchParams(route.request().postData()??'').get('action')).toBe('verify');
+   const response=await route.fetch({maxRedirects:0});expect(response.status()).toBe(303);
+   outbound=response.headers().location??'';expect(new URL(outbound).origin).toBe('https://login.xero.com');
+   await route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Mock Xero</title><p>intercepted</p>'});
+  });
   await accountant.getByRole('button',{name:'Continue to Xero'}).click();await expect(accountant.getByText('intercepted',{exact:true})).toBeVisible();
-  expect(new URL(outbound).searchParams.get('redirect_uri')).toBe(redirect);expect(await statesVia(b.id)).toHaveLength(1);
+  expect(new URL(outbound).searchParams.get('redirect_uri')).toBe(redirect);expect(new URL(outbound).searchParams.get('code_challenge')).toMatch(/^[A-Za-z0-9_-]{43}$/);expect(await statesVia(b.id)).toHaveLength(1);
  }finally{await visitor.close();}
  const c=await makeLink();await page.reload();const item=page.getByTestId('xero-open-invites').getByRole('listitem').filter({hasText:`to ${c.masked}`});
  await expect(item).toHaveCount(1);

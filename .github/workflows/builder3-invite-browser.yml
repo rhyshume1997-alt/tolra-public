@@ -74,6 +74,38 @@ jobs:
           set -a; . ./.env.test.local; set +a
           NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Block new connections outside disposable services during browser proof
+        run: |
+          set -euo pipefail
+          for firewall in iptables ip6tables; do
+            sudo "$firewall" -N BUILDER3_BROWSER_EGRESS
+            sudo "$firewall" -A BUILDER3_BROWSER_EGRESS -o lo -j RETURN
+            sudo "$firewall" -A BUILDER3_BROWSER_EGRESS -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
+          done
+          # Published loopback ports can be DNATed onto this job's Supabase bridge.
+          networks=$(docker inspect supabase_db_tolra-local-test --format '{{range $name, $config := .NetworkSettings.Networks}}{{$name}} {{end}}')
+          test -n "$networks"
+          for network in $networks; do
+            while read -r subnet; do
+              test -n "$subnet" || continue
+              case "$subnet" in *:*) firewall=ip6tables ;; *) firewall=iptables ;; esac
+              sudo "$firewall" -A BUILDER3_BROWSER_EGRESS -d "$subnet" -j RETURN
+            done < <(docker network inspect "$network" --format '{{range .IPAM.Config}}{{println .Subnet}}{{end}}')
+          done
+          for firewall in iptables ip6tables; do
+            sudo "$firewall" -A BUILDER3_BROWSER_EGRESS -j REJECT
+            sudo "$firewall" -I OUTPUT 1 -j BUILDER3_BROWSER_EGRESS
+          done
+          # Reserved documentation address, never a provider. Kernel rejection must prevent a connection.
+          python3 - <<'PYBLOCK'
+          import socket
+          try:
+              socket.create_connection(("198.51.100.1", 443), timeout=2)
+          except OSError:
+              print("New external connections blocked for browser/backend proof")
+          else:
+              raise SystemExit("External egress unexpectedly available")
+          PYBLOCK
       - name: Execute all eight actual browser cases
         run: |
           mkdir -p evidence
@@ -84,6 +116,16 @@ jobs:
       - name: Fail unless all eight actually passed
         if: always()
         run: node scripts/ci-evidence.mjs playwright evidence/invite-browser.json 8
+      - name: Record and remove only this job's test egress rules
+        if: always()
+        run: |
+          mkdir -p evidence
+          for firewall in iptables ip6tables; do
+            sudo "$firewall" -L BUILDER3_BROWSER_EGRESS -v -n >> evidence/invite-browser-egress.txt 2>&1 || true
+            sudo "$firewall" -D OUTPUT -j BUILDER3_BROWSER_EGRESS 2>/dev/null || true
+            sudo "$firewall" -F BUILDER3_BROWSER_EGRESS 2>/dev/null || true
+            sudo "$firewall" -X BUILDER3_BROWSER_EGRESS 2>/dev/null || true
+          done
       - name: Record exact subject and source-profile limits
         if: always()
         run: |
