@@ -65,6 +65,18 @@ jobs:
         GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Start real isolated Supabase
       run: npm run test:backend
+    - name: Export this job disposable test environment exactly as candidate CI
+      run: |-
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
     - name: Run the exact original or corrected 147 file against an empty install
       run: |-
         set -a; . ./.env.test.local; set +a
@@ -135,6 +147,18 @@ jobs:
         GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Start real isolated Supabase
       run: npm run test:backend
+    - name: Export this job disposable test environment exactly as candidate CI
+      run: |-
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
     - name: Execute 145..151, verify, refuse duplicates, rollback, refuse146 reinstall, reset and compare reinstall hashes
       run: |-
         set -a; . ./.env.test.local; set +a
@@ -200,6 +224,18 @@ jobs:
         GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Start real isolated Supabase
       run: npm run test:backend
+    - name: Export this job disposable test environment exactly as candidate CI
+      run: |-
+        python3 - <<'PY_ENV'
+        import os
+        from pathlib import Path
+        allowed = {"TEST_SUPABASE_URL", "TEST_SUPABASE_ANON_KEY", "TEST_SUPABASE_SERVICE_ROLE_KEY", "TEST_DATABASE_URL"}
+        rows = [line for line in Path(".env.test.local").read_text().splitlines() if line.partition("=")[0] in allowed]
+        if {line.partition("=")[0] for line in rows} != allowed:
+            raise SystemExit("Disposable backend environment is incomplete; stop.")
+        with open(os.environ["GITHUB_ENV"], "a") as target:
+            target.write("\n".join(rows) + "\n")
+        PY_ENV
     - run: npx playwright install --with-deps chromium
     - name: Block new connections outside disposable services during browser proof
       run: |
@@ -324,8 +360,8 @@ jobs:
         for(const id of ["collection", "database", "rehearsal", "named", "build", "install", "markers", "browser", "reviewer_markers", "reviewer", "reviewer_evidence"]) result.steps[id]=outcomes[id]?.outcome??'NOT RUN';
         for(const name of ['db','rehearsal','browser','reviewer']) {try {const r=JSON.parse(fs.readFileSync(`evidence/${name}.json`));result.reports[name]=r.stats??{passed:r.numPassedTests,failed:r.numFailedTests,skipped:r.numPendingTests,total:r.numTotalTests};} catch {result.reports[name]='NOT RUN';}}
         fs.mkdirSync('evidence/builder3',{recursive:true}); fs.writeFileSync('evidence/builder3/preflight.json',JSON.stringify(result,null,2)); console.log(result);
-        const b=result.reports.browser; const collected=JSON.parse(fs.readFileSync('evidence/browser-collected.json')); const count=ss=>ss.reduce((n,s)=>n+(s.specs??[]).reduce((m,p)=>m+p.tests.length,0)+count(s.suites??[]),0);result.requiredBrowser=count(collected.suites);
-        if(!b||typeof b!=='object'||b.expected!==result.requiredBrowser||b.unexpected||b.skipped||b.flaky)process.exitCode=1;
+        const b=result.reports.browser; const count=ss=>ss.reduce((n,s)=>n+(s.specs??[]).reduce((m,p)=>m+p.tests.length,0)+count(s.suites??[]),0);result.requiredBrowser=null; try {result.requiredBrowser=count(JSON.parse(fs.readFileSync('evidence/browser-collected.json')).suites)} catch {}
+        if(!Number.isInteger(result.requiredBrowser)||result.requiredBrowser<1||!b||typeof b!=='object'||b.expected!==result.requiredBrowser||b.unexpected||b.skipped||b.flaky)process.exitCode=1;
         fs.writeFileSync('evidence/builder3/preflight.json',JSON.stringify(result,null,2));
         if(Object.values(result.steps).some(x=>x!=='success'))process.exitCode=1;
         JS
