@@ -4,6 +4,7 @@
  * newer rows kept, one audit row per company) is proved on the database: tests/db/ai-helper-pre-enable-133.test.ts.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AI_PURGE_BATCH } from "@/lib/ai-helper/limits";
 
 vi.mock("server-only", () => ({}));
 
@@ -47,7 +48,7 @@ describe("GET /api/cron/ai-helper-purge", () => {
   });
 
   it("calls the purge in batches of 1,000 until a short batch, and answers the count only", async () => {
-    rpc.mockResolvedValueOnce({ data: 1000, error: null }).mockResolvedValueOnce({ data: 1000, error: null }).mockResolvedValueOnce({ data: 7, error: null });
+    rpc.mockResolvedValueOnce({ data: AI_PURGE_BATCH, error: null }).mockResolvedValueOnce({ data: AI_PURGE_BATCH, error: null }).mockResolvedValueOnce({ data: 7, error: null });
     const res = await call(withSecret);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ removed: 2007, capped: false });
@@ -56,7 +57,7 @@ describe("GET /api/cron/ai-helper-purge", () => {
   });
 
   it("stops after 50 full batches (the next run carries on)", async () => {
-    rpc.mockResolvedValue({ data: 1000, error: null });
+    rpc.mockResolvedValue({ data: AI_PURGE_BATCH, error: null });
     const res = await call(withSecret);
     expect(await res.json()).toEqual({ removed: 50_000, capped: true });
     expect(rpc).toHaveBeenCalledTimes(50);
