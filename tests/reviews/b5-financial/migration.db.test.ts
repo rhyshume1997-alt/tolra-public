@@ -87,8 +87,8 @@ import type {IntegrationOverview} from '@/lib/integrations/overview';
 it('candidate accounting state uses actual DB hold/mapping/company rows and refuses reconnect/error states',()=>{
  const files=execFileSync('git',['ls-tree','--name-only','e42d927:supabase/migrations'],{encoding:'utf8'}).trim().split('\n').filter(f=>/^\d{3}.*sql$/.test(f)&&Number(f.slice(0,3))>143).sort();
  for(const f of files)db.ok(execFileSync('git',['show',`e42d927:supabase/migrations/${f}`],{encoding:'utf8',maxBuffer:8*1024*1024}));
- // Rehearsal-only release prerequisites. Never amend an approved production manifest.
- for(const f of ['145_company_setup','146_tolra_provided_ai','147_job_delivery_note','149_xero_launch_hold'])db.ok(readFileSync(`supabase/release/${f}.release.sql`,'utf8'));
+ // Rehearsal-only release prerequisites, in release order (149's guard requires 148 installed). Never amend an approved production manifest.
+ for(const f of ['145_company_setup','146_tolra_provided_ai','147_job_delivery_note','148_job_profitability_actuals','149_xero_launch_hold'])db.ok(readFileSync(`supabase/release/${f}.release.sql`,'utf8'));
  db.ok(`INSERT INTO integration_connections(organization_id,provider,status,tenant_id,tenant_name) VALUES('${A}','xero','connected','synthetic-xero-A','Synthetic A'),('${B}','xero','connected','synthetic-xero-B','Synthetic B'),('${A}','sage','connected','synthetic-sage-A','Synthetic Sage A'),('${B}','sage','connected','synthetic-sage-B','Synthetic Sage B');
  INSERT INTO integration_mappings(organization_id,provider,kind,tolra_key,external_code) VALUES('${A}','xero','sales_account','','200'),('${A}','xero','credit_account','','260');`);
  const current=()=>{
