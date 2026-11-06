@@ -16,6 +16,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
  *  - Errors reported by a signed-in browser (source "browser") have their own, smaller budget so they can never use up the day's
  *    server and cron alerts: claim_browser_error_alert (migration 115), 5 a day per person, 10 per company, 20 in all. Until 115 is
  *    applied the old shared claim_error_alert is used.
+ *  - The database claim has one 3 s deadline (BUDGET_DEADLINE_MS), aborted where supported, then the in-memory budget is used.
  *  - Never throws and never waits long: a failing alert must not make the failure worse.
  */
 
@@ -40,28 +41,64 @@ function functionMissing(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST202" || error?.code === "42883";
 }
 
+/**
+ * ONE total deadline for the whole budget claim (up to three RPCs), not one per RPC. 3 s because the claim runs before the 8 s send
+ * timeout starts: worst case an alert costs 3 s + 8 s = 11 s, which leaves the daily cron (maxDuration 60 s) ample time for the passes
+ * that follow its catch blocks. A healthy claim answers in milliseconds, so 3 s only ever cuts off a hung database.
+ */
+export const BUDGET_DEADLINE_MS = 3000;
+
+type RpcBuilder = PromiseLike<{ data: unknown; error: { code?: string } | null }> & { abortSignal?: (signal: AbortSignal) => RpcBuilder };
+
+/** The database claim. Resolves true/false for a database answer, undefined when it could not answer. Never rejects. */
+async function databaseClaim(admin: { rpc: (name: string, args: Record<string, unknown>) => unknown }, fp: string, browser: boolean, reporter: AlertReporter | undefined, signal: AbortSignal): Promise<boolean | undefined> {
+  // A real abort where the client supports it (supabase-js .abortSignal); plain call otherwise.
+  const call = (name: string, args: Record<string, unknown>) => {
+    const builder = admin.rpc(name, args) as RpcBuilder;
+    return Promise.resolve(typeof builder.abortSignal === "function" ? builder.abortSignal(signal) : builder);
+  };
+  // After the deadline the result is ignored, and so are its errors (an aborted request is expected, not a fault).
+  const quiet = () => signal.aborted;
+  try {
+    if (browser && reporter) {
+      const { data, error } = await call("claim_browser_error_alert", { p_fingerprint: fp, p_user_id: reporter.userId, p_company_id: reporter.companyId });
+      if (!error && typeof data === "boolean") return data;
+      // 115 not applied yet: the old shared budget, so alerts keep working while the release is pending.
+      if (!functionMissing(error)) { if (!quiet()) console.error("[error-alert] browser budget check failed", error?.code); }
+      else {
+        const old = await call("claim_error_alert", { p_fingerprint: fp });
+        if (!old.error && typeof old.data === "boolean") return old.data;
+        if (!quiet()) console.error("[error-alert] budget check failed", old.error?.code);
+      }
+    } else {
+      const { data, error } = await call("claim_error_alert", { p_fingerprint: fp });
+      if (!error && typeof data === "boolean") return data;
+      if (!quiet()) console.error("[error-alert] budget check failed", error?.code);
+    }
+  } catch (err) {
+    if (!quiet()) console.error("[error-alert] budget check failed", err instanceof Error ? err.name : "threw");
+  }
+  return undefined;
+}
+
 async function claim(fp: string, source: string, reporter?: AlertReporter): Promise<boolean> {
   const browser = source === "browser";
   const admin = createSupabaseAdminClient();
   if (admin) {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      if (browser && reporter) {
-        const { data, error } = await admin.rpc("claim_browser_error_alert", { p_fingerprint: fp, p_user_id: reporter.userId, p_company_id: reporter.companyId });
-        if (!error && typeof data === "boolean") return data;
-        // 115 not applied yet: the old shared budget, so alerts keep working while the release is pending.
-        if (!functionMissing(error)) console.error("[error-alert] browser budget check failed", error?.code);
-        else {
-          const old = await admin.rpc("claim_error_alert", { p_fingerprint: fp });
-          if (!old.error && typeof old.data === "boolean") return old.data;
-          console.error("[error-alert] budget check failed", old.error?.code);
-        }
-      } else {
-        const { data, error } = await admin.rpc("claim_error_alert", { p_fingerprint: fp });
-        if (!error && typeof data === "boolean") return data;
-        console.error("[error-alert] budget check failed", error?.code);
-      }
-    } catch (err) {
-      console.error("[error-alert] budget check failed", err instanceof Error ? err.name : "threw");
+      // databaseClaim never rejects, so if the deadline wins, its late result or failure has nowhere to become an unhandled rejection.
+      const outcome = await Promise.race([
+        databaseClaim(admin, fp, browser, reporter, controller.signal),
+        new Promise<"timeout">((resolve) => { timer = setTimeout(() => resolve("timeout"), BUDGET_DEADLINE_MS); }),
+      ]);
+      if (outcome === "timeout") {
+        controller.abort();
+        console.error("[error-alert] budget lookup timed out");
+      } else if (typeof outcome === "boolean") return outcome;
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
   return browser ? memoryBrowserBudget.claim(fp) : memoryBudget.claim(fp);
