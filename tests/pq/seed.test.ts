@@ -39,9 +39,10 @@ it("prepares a guarded, fake JNR company through 151 with linked paperwork and O
       await db.query("INSERT INTO public.stock(organization_id,sku,material,current_stock,min_level,unit_price,auto_purchase) VALUES($1,'FAKE-PART-BRACKET','FAKE 6082 aluminium bracket',100,10,12.50,false),($1,'FAKE-PART-SPACER','FAKE steel spacer',50,5,5.00,false)", [a.id]);
       const mill = (await db.query("INSERT INTO public.machines(organization_id,name,type) VALUES($1,'FAKE CNC Mill','Milling') RETURNING id", [a.id])).rows[0].id;
       await db.query("INSERT INTO public.machines(organization_id,name,type) VALUES($1,'FAKE Manual Lathe','Turning')", [a.id]);
-      const quote = (await db.query("INSERT INTO public.quotes(organization_id,quote_ref,customer,description,total_value,status,valid_until) VALUES($1,'QUO-PQ-0001','FAKE Pump Customer Ltd','FAKE-PART-BRACKET x10 — SYNTHETIC',125.00,'draft',current_date+14) RETURNING id", [a.id])).rows[0].id;
+      const quote = (await db.query("INSERT INTO public.quotes(organization_id,quote_ref,customer,description,total_value,status,valid_until) VALUES($1,'QUO-PQ-0001','FAKE Pump Customer Ltd','FAKE-PART-BRACKET x10 — SYNTHETIC',150.00,'draft',current_date+14) RETURNING id", [a.id])).rows[0].id;
       await db.query("INSERT INTO public.quote_line_items(organization_id,quote_id,position,description,quantity,unit_price,source) VALUES($1,$2,0,'FAKE-PART-BRACKET',10,12.50,'manual')", [a.id, quote]);
       const order = (await db.query("INSERT INTO public.sales_orders(organization_id,so_number,customer,customer_id,customer_po,quote_id,quote_ref,total_value,delivery_date) VALUES($1,'SO-PQ-0001','FAKE Pump Customer Ltd',$2,'FAKE-CUSTOMER-PO-0001',$3,'QUO-PQ-0001',125.00,current_date+7) RETURNING id", [a.id, customer, quote])).rows[0].id;
+      await db.query("INSERT INTO public.sales_order_lines(organization_id,sales_order_id,position,description,quantity,unit_price,vat_pct) VALUES($1,$2,0,'FAKE-PART-BRACKET',10,12.50,20)", [a.id, order]);
       const job = (await db.query("INSERT INTO public.jobs(organization_id,job_no,quote_id,customer,description,stage,due_date,converted_from_sales_order_id,started_at) VALUES($1,'J-PQ-0001',$2,'FAKE Pump Customer Ltd','FAKE-PART-BRACKET x10 — SYNTHETIC','machining',current_date+7,$3,now()-interval '2 hours') RETURNING id", [a.id, quote, order])).rows[0].id;
       await db.query("UPDATE public.sales_orders SET converted_to_job_id=$2,converted_at=now(),status='in_production' WHERE id=$1", [order, job]);
       await db.query("INSERT INTO public.jobs(organization_id,job_no,customer,description,due_date) VALUES($1,'J-PQ-NO-COST','FAKE Shaft Customer Ltd','SYNTHETIC missing time/cost inputs',current_date+7)", [a.id]);
@@ -62,6 +63,9 @@ it("prepares a guarded, fake JNR company through 151 with linked paperwork and O
   expect(actual.error).toBeNull();
   expect(actual.data.live).toMatchObject({ state: "complete", labour_pence: 2000, machine_pence: 0, overhead_pence: 1000, supplier_pence: 0 });
   await withDb(async db => {
+    const sums = (await db.query("SELECT (subtotal*100)::int net, (vat*100)::int vat, (total*100)::int gross FROM public.invoices WHERE id=$1", [records.invoice])).rows[0];
+    expect(sums).toEqual({ net: 12500, vat: 2500, gross: 15000 });
+    expect((await db.query("SELECT (total_value*100)::int gross FROM public.quotes WHERE id=$1", [records.quote])).rows[0].gross).toBe(15000);
     expect((await db.query("SELECT count(*)::int n FROM public.integration_connections")).rows[0].n).toBe(0);
     expect((await db.query("SELECT count(*)::int n FROM public.integration_sends")).rows[0].n).toBe(0);
   });
