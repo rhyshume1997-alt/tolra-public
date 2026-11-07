@@ -211,7 +211,7 @@ describe("release 152 SliQ import route", () => {
   it("refuses: anonymous, a non-admin, an admin without the second step when the company asks for it, a source key that is not the files'", async () => {
     expect((await sliqPreflight(rpcAs(null, "aal2", "anon"), payload).catch((e) => e)).code).toBe("42501");
     expect((await sliqPreflight(rpcAs(officeUid), payload).catch((e) => e)).code).toBe("42501");
-    await q("insert into auth.mfa_factors (user_id, factor_type, status) values ($1, 'totp', 'verified')", [uid]);
+    await q("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'test', 'totp', 'verified', now(), now())", [uid]);
     await q("update organizations set require_admin_mfa = true where id = $1", [org]);
     expect((await sliqPreflight(rpcAs(uid, "aal1"), payload).catch((e) => e)).hint).toBe("mfa_required");
     await q("update organizations set require_admin_mfa = false where id = $1", [org]);
@@ -551,7 +551,7 @@ describe("release 152 SliQ import route", () => {
     await q("insert into organization_members (organization_id, user_id, role, active, support, expires_at, support_grant) values ($1, $2, 'admin', true, true, now() + interval '1 hour', $3)", [c.o, support, grant]);
     await q("insert into auth.sessions (id, user_id, aal) values ($1, $2, 'aal2')", [sessionId, support]);
     await q("insert into security_audit.session_company (session_id, user_id, organization_id, grant_id) values ($1, $2, $3, $4)", [sessionId, support, c.o, grant]);
-    await q("insert into auth.mfa_factors (user_id, factor_type, status) values ($1, 'totp', 'verified')", [c.u]);
+    await q("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'test', 'totp', 'verified', now(), now())", [c.u]);
 
     const callAs = async (role: string, claim: Record<string, unknown> | null, fn: string, args: Record<string, unknown>) => {
       const db = await pool.connect();
