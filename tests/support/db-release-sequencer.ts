@@ -10,7 +10,7 @@ export const post144ProofFiles = ["company-setup-isolation.test.ts", "tolra-prov
  * the ordered list: tests/unit (go-live-candidate-order, post-144-release-fixture) pin post144ProofFiles as exactly its 13 entries ending in xero-invite-151,
  * so these are a separate list rather than extra entries in it. Any of them installs 145..151 itself, as the first ordered proof does.
  */
-export const post144ExtraProofFiles = ["xero-151-permissions.test.ts", "xero-invite-store-picker-151.test.ts", "xero-invite-cancel-during-callback-151.test.ts", "xero-invite-late-write-151.test.ts", "release-order-guards.test.ts", "rollback-data-refusal.test.ts", "release-upgrade-populated-145-151.test.ts"];
+export const post144ExtraProofFiles = ["xero-151-permissions.test.ts", "xero-invite-store-picker-151.test.ts", "xero-invite-cancel-during-callback-151.test.ts", "xero-invite-late-write-151.test.ts", "release-order-guards.test.ts", "rollback-data-refusal.test.ts", "release-upgrade-populated-145-151.test.ts", "sliq-import-route-152.test.ts"];
 const norm = (file: string) => file.replaceAll("\\", "/");
 function extraIndex(file: string) { return post144ExtraProofFiles.findIndex(name => norm(file).endsWith(`/tests/db/${name}`)); }
 // Extras sort first among the proofs (negative key), in list order; ordered proofs keep their index.

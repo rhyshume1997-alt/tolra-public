@@ -11,16 +11,21 @@
  * different export and an oversized preflight are refused; the company comes from the session only; MFA, role and support rules
  * hold; the definer census of 152.
  *
- * Runs only where SLIQ152_ADMIN_URL (a loopback superuser URL) and SLIQ152_TEMPLATE (a database with 145..152 applied, no
- * connections) are set: it makes and drops its own databases from the template, which CI's Supabase stack does not allow, so CI
- * skips this file. In CI, 152 is installed by the post-144 step and checked by its release guard, verify file and preflight marker.
+ * Runs in CI like every tests/db file (TEST_DATABASE_URL, the disposable Supabase stack; isolation-checked): the post-144 release
+ * fixture installs 145..152 (152 freshly applied onto 151 where it is not yet), then everything here runs in companies of its own
+ * (slug t-<run>-...), removed afterwards by destroySyntheticWorld. Ranked with the post-144 proofs (tests/support/db-release-sequencer.ts).
+ * The two proofs that need whole-database copies (restore before / after the import, and the rollback on an installed clone) are
+ * in tests/local/sliq-import-152-clones.test.ts, run by hand with vitest.local.config.ts; they are not part of CI.
  * Not PostgREST: request size limits, the 8 s statement_timeout of the hosted API and its error mapping are not proved here.
  */
-import { randomUUID } from "node:crypto";
-import { Client, Pool } from "pg";
+import { randomBytes, randomUUID } from "node:crypto";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { assertLoopbackUrl } from "../support/isolation";
+import { isolatedBackend } from "../support/isolation";
+import { EMAIL_DOMAIN, destroySyntheticWorld, verifyBackendIdentity, withDb } from "../support/fixtures";
+import { preparePost144Fixture } from "../support/post-144-release-fixture";
+import { MAPPING, N_CRD, N_INV, syntheticFiles } from "../support/sliq-152";
 import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-build";
 import type { ValidationReport } from "@/lib/sliq-validate";
 import { type DbRow, reconcile } from "@/lib/sliq-reconcile/reconcile";
@@ -28,55 +33,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { type Rpc, type SliqBatchResult, type SliqPayload, planSliqBatches, sliqPreflight, sliqRunBatches } from "@/lib/sliq-import-route";
 
-const ADMIN_URL = process.env.SLIQ152_ADMIN_URL;
-const TEMPLATE = process.env.SLIQ152_TEMPLATE;
-const enabled = Boolean(ADMIN_URL && TEMPLATE);
+const runId = randomBytes(4).toString("hex");
+let seq = 0;
+const slug = (label: string) => `t-${runId}-sliq-${label}-${++seq}`;
+const email = (label: string) => `${label}-${++seq}.${runId}@${EMAIL_DOMAIN}`;
 
-const enc = new TextEncoder();
-const MAPPING = {
-  version: 1, confirmed: true, dateFormat: "DD/MM/YYYY",
-  entities: {
-    customers: { file: "customers.csv", columns: { key: "Account", name: "Name" } },
-    suppliers: { file: "suppliers.csv", columns: { key: "Account", name: "Name" } },
-    invoices: { file: "invoices.csv", columns: { ref: "Invoice No", customerKey: "Account", date: "Date", gross: "Gross", net: "Net", vat: "VAT" } },
-    payments: { file: "payments.csv", columns: { key: "Receipt", invoiceRef: "Invoice No", date: "Date", amount: "Amount" } },
-    creditNotes: { file: "credits.csv", columns: { ref: "Credit No", invoiceRef: "Invoice No", date: "Date", gross: "Gross", reason: "Reason" } },
-  },
-};
-const N_CRD = 5;
-const N_INV = 60;
-/** Synthetic SliQ export: 12 customers, 3 suppliers, 60 invoices INV-1001..1060, payments: full, part, two-part, none. */
-function syntheticFiles() {
-  const cust = ["Account,Name", ...Array.from({ length: 12 }, (_, i) => `ACC${String(i + 1).padStart(3, "0")},Synthetic Customer ${i + 1} Ltd`)].join("\r\n");
-  const supp = ["Account,Name", "SUP001,Synthetic Steel Ltd", "SUP002,Synthetic Tools Ltd", "SUP003,Synthetic Carriers Ltd"].join("\r\n");
-  const inv: string[] = ["Invoice No,Account,Date,Net,VAT,Gross"];
-  const pay: string[] = ["Receipt,Invoice No,Date,Amount"];
-  let receipt = 0;
-  for (let i = 0; i < N_INV; i += 1) {
-    const ref = `INV-${1001 + i}`;
-    const net = 100 * (i + 1) + 0.5;
-    const vat = Math.round(net * 20) / 100;
-    const gross = Math.round((net + vat) * 100) / 100;
-    inv.push(`${ref},ACC${String((i % 12) + 1).padStart(3, "0")},${String((i % 28) + 1).padStart(2, "0")}/0${(i % 9) + 1}/2026,${net.toFixed(2)},${vat.toFixed(2)},${gross.toFixed(2)}`);
-    const date = `${String((i % 28) + 1).padStart(2, "0")}/10/2026`;
-    if (i % 4 === 0) pay.push(`R${++receipt},${ref},${date},${gross.toFixed(2)}`);
-    else if (i % 4 === 1) pay.push(`R${++receipt},${ref},${date},${(Math.round(gross * 50) / 100).toFixed(2)}`);
-    else if (i % 4 === 2) {
-      const half = Math.round(gross * 50) / 100;
-      // Two receipts the same day; for an even total the two halves are the same amount: a legitimate split (different receipt keys).
-      pay.push(`R${++receipt},${ref},${date},${half.toFixed(2)}`, `R${++receipt},${ref},${date},${(Math.round((gross - half) * 100) / 100).toFixed(2)}`);
-    }
-  }
-  // Credit notes against five unpaid invoices (i % 4 === 3), 10.00 each, after the invoice.
-  const crd = ["Credit No,Invoice No,Date,Gross,Reason", ...Array.from({ length: N_CRD }, (_, k) => `CRD-${2001 + k},INV-${1001 + 3 + 4 * k},20/10/2026,10.00,Synthetic credit ${k + 1}`)];
-  const f = (name: string, text: string) => ({ name, bytes: enc.encode(text + "\r\n") });
-  return { customers: f("customers.csv", cust), suppliers: f("suppliers.csv", supp), invoices: f("invoices.csv", inv.join("\r\n")), payments: f("payments.csv", pay.join("\r\n")),
-    creditNotes: f("credits.csv", crd.join("\r\n")) };
-}
 
-let admin: Client;
-let work = "";
-const base = `sliq152_t_${Date.now()}`;
 let pool: Pool;
 let payload: SliqPayload;
 let report: ValidationReport;
@@ -85,18 +47,15 @@ const otherOrg = randomUUID();
 const uid = randomUUID();
 const otherUid = randomUUID();
 const officeUid = randomUUID();
-const dbUrl = (name: string) => { const u = new URL(ADMIN_URL!); u.pathname = `/${name}`; return u.toString(); };
 const claims = (sub: string, aal = "aal2") => ({ sub, role: "authenticated", aal, email: `${sub.slice(0, 8)}@example.test` });
 
-async function openWork(name: string) {
-  work = name;
-  pool = new Pool({ connectionString: dbUrl(name), max: 4 });
+function openPool() {
+  pool = new Pool({ connectionString: isolatedBackend().databaseUrl, max: 4 });
   // The killed-connection test ends a backend on purpose; an idle pooled client then reports it here (not an unhandled error).
   const killed = (e: Error) => { if (!/terminat/i.test(e.message)) throw e; };
   pool.on("error", killed);
   pool.on("connect", (client) => { client.on("error", killed); });
 }
-async function closeWork() { await pool.end(); }
 
 /** rpc(fn, namedArgs) as PostgREST would run it: one transaction, role authenticated, the caller's claims. */
 function rpcAs(sub: string | null, aal = "aal2", role = "authenticated"): Rpc {
@@ -128,7 +87,7 @@ async function q<T = Record<string, unknown>>(sql: string, params: unknown[] = [
 }
 
 /** Everything the import can change for the company, as text: counts, money, counters, map, audit rows. */
-async function state(o = org) {
+async function state(o: string = org) {
   const [r] = await q(`select
     (select count(*) from customers where organization_id = $1)::int as customers,
     (select count(*) from suppliers where organization_id = $1)::int as suppliers,
@@ -148,7 +107,7 @@ async function state(o = org) {
   return r;
 }
 
-async function sqlFileRows(o = org): Promise<DbRow[]> {
+async function sqlFileRows(o: string = org): Promise<DbRow[]> {
   const sql = readFileSync(path.resolve(__dirname, "../../supabase/verify/sliq_reconcile.sql"), "utf8").replace("00000000-0000-0000-0000-000000000000", o);
   const db = await pool.connect();
   try {
@@ -158,24 +117,32 @@ async function sqlFileRows(o = org): Promise<DbRow[]> {
 }
 let countersBefore: Record<string, number> = {};
 /** The import's identifiers: each map row's (entity, source row id) with the record's own name or number, and the record id. */
-async function identity(o = org) {
+async function identity(o: string = org) {
   return q<{ k: string; id: string }>(`select m.entity || '|' || m.source_row_id || '|' || coalesce(c.name, s.name, v.invoice_ref || '|' || v.customer, y.amount::text, n.credit_ref) as k,
       coalesce(m.customer_id, m.supplier_id, m.invoice_id, m.payment_id, m.credit_note_id)::text as id
     from import_source_rows m left join customers c on c.id = m.customer_id left join suppliers s on s.id = m.supplier_id
     left join invoices v on v.id = m.invoice_id left join invoice_payments y on y.id = m.payment_id left join credit_notes n on n.id = m.credit_note_id
     where m.organization_id = $1 order by 1`, [o]);
 }
-async function auditHashes(o = org) {
+async function auditHashes(o: string = org) {
   const rows = await q<{ m: { source_sha256: string; source_files: { name: string; sha256: string }[] } }>(`select metadata as m from security_audit.audit_log where organization_id = $1 and action = 'IMPORT_SOURCE_BATCH'`, [o]);
   return [...new Set(rows.map((r) => `${r.m.source_sha256}|${r.m.source_files.map((f) => `${f.name}:${f.sha256}`).sort().join(",")}`))];
 }
+/** A synthetic company (slug t-<run>-...) and a person in it; destroySyntheticWorld(runId) removes both. */
+async function makeCompany(o: string = randomUUID() as string) {
+  await q("insert into organizations (id, name, slug, status) values ($1, $2, $3, 'active')", [o, `Synthetic SliQ ${o.slice(0, 8)}`, slug("co")]);
+  return o;
+}
+async function makePerson(o: string, role: string, u: string = randomUUID() as string) {
+  const e = email(role);
+  await q("insert into auth.users (id, email) values ($1, $2)", [u, e]);
+  await q("insert into user_profiles (id, email, full_name, role, organization_id, active, must_change_password) values ($1, $2, 'Synthetic', $3, $4, true, false)", [u, e, role, o]);
+  await q("insert into organization_members (organization_id, user_id, role, active) values ($1, $2, $3, true)", [o, u, role]);
+  return u;
+}
 async function newCompany() {
-  const o = randomUUID();
-  const u = randomUUID();
-  await q("insert into organizations (id, name, slug) values ($1, $2, $3)", [o, `Synthetic ${o.slice(0, 8)}`, `syn-${o.slice(0, 8)}`]);
-  await q("insert into auth.users (id, email) values ($1, $2)", [u, `${u.slice(0, 8)}@example.test`]);
-  await q("insert into user_profiles (id, email, organization_id) values ($1, $2, $3)", [u, `${u.slice(0, 8)}@example.test`, o]);
-  await q("insert into organization_members (organization_id, user_id, role, active) values ($1, $2, 'admin', true)", [o, u]);
+  const o = await makeCompany();
+  const u = await makePerson(o, "admin");
   return { o, u };
 }
 let firstIdentity: { k: string; id: string }[] = [];
@@ -187,7 +154,7 @@ async function reconcileNow(sub = uid, o = org) {
   return reconcile(sourceTotalsFromValidated(report, payload), viaRpc, { countersBefore });
 }
 
-async function wipeData(o = org) {
+async function wipeData(o: string = org) {
   // As the owner, the way a wipe runbook would: payments, invoices, customers, suppliers (their map rows go with them, ON DELETE CASCADE).
   await q(`begin; select set_config('quoteflow.data_import_undo', '${o}', true);
     delete from invoice_credit_allocations where organization_id = '${o}'; delete from credit_note_lines where organization_id = '${o}';
@@ -196,22 +163,17 @@ async function wipeData(o = org) {
     delete from invoices where organization_id = '${o}'; delete from customers where organization_id = '${o}'; delete from suppliers where organization_id = '${o}'; commit;`);
 }
 
-describe.skipIf(!enabled)("p152 SliQ import route", () => {
+describe("release 152 SliQ import route", () => {
   beforeAll(async () => {
-    assertLoopbackUrl("SLIQ152_ADMIN_URL", ADMIN_URL);
-    admin = new Client({ connectionString: ADMIN_URL });
-    await admin.connect();
-    await admin.query(`create database ${base} template ${TEMPLATE}`);
-    await openWork(base);
-    for (const [o, u, role] of [[org, uid, "admin"], [otherOrg, otherUid, "admin"]] as const) {
-      await q("insert into organizations (id, name, slug) values ($1, $2, $3)", [o, `Synthetic ${o.slice(0, 8)}`, `syn-${o.slice(0, 8)}`]);
-      await q("insert into auth.users (id, email) values ($1, $2)", [u, `${u.slice(0, 8)}@example.test`]);
-      await q("insert into user_profiles (id, email, organization_id) values ($1, $2, $3)", [u, `${u.slice(0, 8)}@example.test`, o]);
-      await q("insert into organization_members (organization_id, user_id, role, active) values ($1, $2, $3, true)", [o, u, role]);
+    await verifyBackendIdentity();
+    // 145..152 on this disposable database (152 applied fresh onto 151 when it is not there yet), each verify file all true.
+    await withDb((db) => preparePost144Fixture({ verify: verifyBackendIdentity, query: (sql) => db.query(sql) }));
+    openPool();
+    for (const [o, u] of [[org, uid], [otherOrg, otherUid]] as const) {
+      await makeCompany(o);
+      await makePerson(o, "admin", u);
     }
-    await q("insert into auth.users (id, email) values ($1, $2)", [officeUid, "office@example.test"]);
-    await q("insert into user_profiles (id, email, organization_id) values ($1, $2, $3)", [officeUid, "office@example.test", org]);
-    await q("insert into organization_members (organization_id, user_id, role, active) values ($1, $2, 'office', true)", [org, officeUid]);
+    await makePerson(org, "office", officeUid);
 
     // Every file check (lib/sliq-validate, Web Crypto, as the browser card runs it), then the payload.
     const built = await validateAndBuild(syntheticFiles(), MAPPING);
@@ -221,20 +183,16 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
     payload = built.payload!;
     // Counters the route must never move (staged-import assessment item d): DLN before Rhys's G17 sign-off, and QUO.
     await q("insert into doc_counters (organization_id, prefix, last) values ($1, 'DLN', 12), ($1, 'QUO', 3)", [org]);
-    // The "backup taken before the import": a copy of the database as it is now (the companies, nothing imported).
-    await closeWork();
-    await admin.query(`create database ${base}_pre template ${base}`);
-    await openWork(base);
   });
 
   afterAll(async () => {
-    if (pool) await closeWork();
-    if (admin) {
-      for (const { datname } of (await admin.query("select datname from pg_database where datname like $1", [`${base}%`])).rows) {
-        await admin.query(`drop database if exists ${datname}`);
-      }
-      await admin.end();
+    if (pool) {
+      // The support test's platform-owner rows are not company rows: removed here, then everything of the run's companies.
+      await q("delete from security_audit.session_company where user_id in (select id from auth.users where email like $1)", [`%.${runId}@${EMAIL_DOMAIN}`]).catch(() => undefined);
+      await q("delete from security_audit.platform_admins where user_id in (select id from auth.users where email like $1)", [`%.${runId}@${EMAIL_DOMAIN}`]).catch(() => undefined);
+      await pool.end();
     }
+    await destroySyntheticWorld(runId);
   });
 
   it("census: only the preflight, the batch and the reconciliation are callable, all SECURITY DEFINER, by signed-in users only", async () => {
@@ -328,6 +286,7 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
     expect(await q("select prefix, last::int as last from doc_counters where organization_id = $1 and prefix in ('DLN', 'QUO') order by 1", [org])).toEqual([{ prefix: "DLN", last: 12 }, { prefix: "QUO", last: 3 }]);
     firstIdentity = await identity();
     expect(firstIdentity.length).toBe(first.map_rows);
+    expect(await auditHashes()).toEqual([`${payload.source_sha256}|${payload.source_files.map((f) => `${f.name}:${f.sha256}`).sort().join(",")}`]);
     // Numbering continues after the highest imported number (the app's own next_doc_number).
     const next = await rpc()("next_doc_number", { p_prefix: "INV" });
     expect(next.data).toBe(`INV-${1001 + N_INV}`);
@@ -374,45 +333,6 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
     expect(pf.counts.invoices.problems).toBe(N_INV);
     expect(await state()).toEqual(before);
     expect((await state()).dup_customers).toBe(0);
-  });
-
-  it("restore of a backup taken BEFORE the import, then the import again: identical counts, balances, counters, numbering", async () => {
-    // The whole database restored from the copy taken before the import (beforeAll): data, map, batches and counters as they were.
-    await closeWork();
-    await admin.query(`create database ${base}_r template ${base}_pre`);
-    await openWork(`${base}_r`);
-    expect(await state()).toMatchObject({ customers: 0, invoices: 0, payments: 0, map_rows: 0, batches: 0 });
-    const run = await sliqRunBatches(rpc(), payload, "live", undefined, 0, 60);
-    expect(run.failedAt).toBeNull();
-    const s = await state();
-    expect({ ...s, batches: 0 }).toMatchObject({ customers: first.customers, suppliers: first.suppliers, invoices: first.invoices, payments: first.payments,
-      invoiced: first.invoiced, paid: first.paid, payments_sum: first.payments_sum, paid_mismatch: 0, dup_customers: 0, dup_invoices: 0, inv_counter: 1000 + N_INV });
-    const next = await rpc()("next_doc_number", { p_prefix: "INV" });
-    expect(next.data).toBe(`INV-${1001 + N_INV}`);
-    // Stable identifiers: every customer, supplier, invoice, payment and credit note is under the same source key with the same name or
-    // number as the first import (record ids are new: the restore removed them); the audit rows carry the same original file hashes.
-    expect((await identity()).map((r) => r.k)).toEqual(firstIdentity.map((r) => r.k));
-    expect(await auditHashes()).toEqual([`${payload.source_sha256}|${payload.source_files.map((f) => `${f.name}:${f.sha256}`).sort().join(",")}`]);
-    expect((await reconcileNow()).pass).toBe(true);
-    // And again on the restored copy: already imported, no change.
-    const before = await state();
-    const again = await sliqRunBatches(rpc(), payload, "live", undefined, 0, 60);
-    expect(again.results.every((r) => r.already_imported)).toBe(true);
-    expect(await state()).toEqual(before);
-  });
-
-  it("restore of a backup taken AFTER the import, then the import again: nothing added", async () => {
-    await closeWork();
-    const after = `${base}_after`;
-    await admin.query(`create database ${after} template ${work}`);
-    await openWork(after);
-    const before = await state();
-    const ids = await identity();
-    const run = await sliqRunBatches(rpc(), payload, "live", undefined, 0, 60);
-    expect(run.results.every((r) => r.already_imported)).toBe(true);
-    expect(await state()).toEqual(before);
-    // Same records, same ids, same keys after the restore and the re-run.
-    expect(await identity()).toEqual(ids);
   });
 
   it("map kept, data wiped: the map goes with the data; the old run refuses loudly (records_removed); a new run imports once", async () => {
@@ -619,13 +539,13 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
 
   it("permissions: every 152 function, as anon, service_role, a non-admin, an admin without the second step, a support session and an admin", async () => {
     const c = await newCompany();
-    const office = randomUUID();
+    const office = await makePerson(c.o, "office");
     const support = randomUUID();
     const grant = randomUUID();
     const sessionId = randomUUID();
-    await q("insert into auth.users (id, email) values ($1, 'o152@example.test'), ($2, 's152@example.test')", [office, support]);
-    await q("insert into user_profiles (id, email, organization_id) values ($1, 'o152@example.test', $3), ($2, 's152@example.test', $3)", [office, support, c.o]);
-    await q("insert into organization_members (organization_id, user_id, role, active) values ($1, $2, 'office', true)", [c.o, office]);
+    const se = email("support");
+    await q("insert into auth.users (id, email) values ($1, $2)", [support, se]);
+    await q("insert into user_profiles (id, email, full_name, role, organization_id, active, must_change_password) values ($1, $2, 'Synthetic', 'admin', $3, true, false)", [support, se, c.o]);
     // A platform owner in a support session for this company (036/066): a support membership under a grant, the session's chosen company.
     await q("insert into security_audit.platform_admins (user_id) values ($1)", [support]);
     await q("insert into organization_members (organization_id, user_id, role, active, support, expires_at, support_grant) values ($1, $2, 'admin', true, true, now() + interval '1 hour', $3)", [c.o, support, grant]);
@@ -718,59 +638,3 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
   });
 });
 
-describe.skipIf(!enabled)("release 152 rollback on an installed clone", () => {
-  const rb = `sliq152_rb_${Date.now()}`;
-  let a: Client;
-  const run = async (db: string, file: string) => {
-    const c = new Client({ connectionString: dbUrl(db) });
-    await c.connect();
-    try { await c.query(readFileSync(path.resolve(__dirname, "../..", file), "utf8")); return "ok"; } catch (e) { return (e as Error).message; } finally { await c.end(); }
-  };
-  const one = async <T,>(db: string, sql: string, params: unknown[] = []) => {
-    const c = new Client({ connectionString: dbUrl(db) });
-    await c.connect();
-    try { return (await c.query(sql, params)).rows as T[]; } finally { await c.end(); }
-  };
-  const objects = (db: string) => one<{ t: number; f: number }>(db, `select (select count(*) from pg_class where relname in ('import_source_rows', 'import_source_batches'))::int as t,
-    (select count(*) from pg_proc where proname like 'import_sliq%' or proname like 'import_source%')::int as f`).then((r) => r[0]);
-  const verify = async (db: string) => (await one<{ ok: boolean }>(db, readFileSync(path.resolve(__dirname, "../../supabase/verify/sliq_import_route_152.sql"), "utf8"))).map((r) => r.ok);
-
-  beforeAll(async () => {
-    a = new Client({ connectionString: ADMIN_URL });
-    await a.connect();
-    await a.query(`create database ${rb}_empty template ${TEMPLATE}`);
-    await a.query(`create database ${rb}_data template ${TEMPLATE}`);
-  });
-  afterAll(async () => {
-    if (!a) return;
-    for (const { datname } of (await a.query("select datname from pg_database where datname like $1", [`${rb}%`])).rows) await a.query(`drop database if exists ${datname}`);
-    await a.end();
-  });
-
-  it("(a) empty map: everything 152 made is removed; (c) a second rollback refuses; (d) reinstalling works and verifies", async () => {
-    expect(await objects(`${rb}_empty`)).toEqual({ t: 2, f: 12 });
-    expect(await run(`${rb}_empty`, "supabase/release/152_sliq_import_route.rollback.sql")).toBe("ok");
-    expect(await objects(`${rb}_empty`)).toEqual({ t: 0, f: 0 });
-    expect(await run(`${rb}_empty`, "supabase/release/152_sliq_import_route.rollback.sql")).toBe("152 rollback: release 152 is not installed");
-    expect(await run(`${rb}_empty`, "supabase/release/152_sliq_import_route.release.sql")).toBe("ok");
-    expect(await verify(`${rb}_empty`)).toEqual([true, true, true, true, true, true, true, true]);
-    expect(await objects(`${rb}_empty`)).toEqual({ t: 2, f: 12 });
-  });
-
-  it("(b) with map rows: refuses with the operator's instruction, and leaves every object and row as it was", async () => {
-    const o = (await one<{ id: string }>(`${rb}_data`, "insert into organizations (name, slug) values ('RB', 'rb-152') returning id"))[0].id;
-    const cust = (await one<{ id: string }>(`${rb}_data`, "insert into customers (organization_id, name) values ($1, 'Mapped Ltd') returning id", [o]))[0].id;
-    // A committed batch and its map row, written as the batch would (the guard trigger checks the record's company).
-    await one(`${rb}_data`, `insert into import_source_batches (organization_id, source_sha256, run_label, entity, batch_no, request_sha256, import_batch_id, rows_in, rows_created, rows_already, result)
-      values ($1, repeat('a', 64), 'live', 'customers', 1, repeat('b', 64), null, 1, 0, 1, '{}')`, [o]);
-    await one(`${rb}_data`, `insert into import_source_rows (organization_id, entity, source_row_id, source_sha256, run_label, batch_entity, batch_no, customer_id)
-      values ($1, 'customer', 'C:M1', repeat('a', 64), 'live', 'customers', 1, $2)`, [o, cust]);
-    const before = await objects(`${rb}_data`);
-    const message = await run(`${rb}_data`, "supabase/release/152_sliq_import_route.rollback.sql");
-    expect(message).toBe("152 rollback: SliQ import map rows exist; dropping them would separate the map from the data. Nothing was changed. Keep 152, or restore the backup taken before the SliQ import and run this rollback again; never delete map rows by hand.");
-    expect(await objects(`${rb}_data`)).toEqual(before);
-    expect((await one<{ n: number }>(`${rb}_data`, "select count(*)::int as n from import_source_rows"))[0].n).toBe(1);
-    expect((await one<{ n: number }>(`${rb}_data`, "select count(*)::int as n from customers where id = $1", [cust]))[0].n).toBe(1);
-    expect(await verify(`${rb}_data`)).toEqual([true, true, true, true, true, true, true, true]);
-  });
-});
