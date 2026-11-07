@@ -130,7 +130,7 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_set_finance_check')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reserve_company_email')),
     ('107 integrations connect',          to_regclass('public.integration_app_credentials') IS NOT NULL AND to_regclass('public.integration_connect_invites') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'integration_invite_redeem')),
+                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname IN ('integration_invite_redeem', 'integration_invite_store_connection'))),
     ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
                                           AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
     ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
