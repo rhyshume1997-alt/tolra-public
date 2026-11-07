@@ -33,7 +33,8 @@ const schema = z.object({
   subject: z.string().min(1).max(200).refine(value => value === stripHeader(value), "Review a subject without extra spaces or line breaks."),
   text: z.string().min(1).max(20_000),
   attachment: z.object({ filename: z.string().trim().min(1).max(120).regex(/\.pdf$/i), content_base64: z.string().min(8).max(7_000_000) }).optional(),
-  idempotency_key: z.string().regex(IDEMPOTENCY_KEY).optional(),
+  // Required: without a key a retry would be a new e-mail. The send dialog always sends one (kept across an unclear answer).
+  idempotency_key: z.string().regex(IDEMPOTENCY_KEY),
 });
 
 type Kind = z.infer<typeof schema>["kind"];

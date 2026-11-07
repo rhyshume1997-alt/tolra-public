@@ -47,7 +47,7 @@ import { POST } from "@/app/api/email/send/route";
 import { EMAIL_SEND_ROLES as SEND_ROLES } from "@/lib/email/send-company-email";
 
 const post = (body: Record<string, unknown>) => POST(new Request("http://localhost/api/email/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
-const valid = { kind: "invoice", record_id: DOC, to: ["acc@customer.test"], subject: "Invoice I-1", text: "Hello" };
+const valid = { kind: "invoice", record_id: DOC, to: ["acc@customer.test"], subject: "Invoice I-1", text: "Hello", idempotency_key: "fixture-key-0001" };
 
 describe("POST /api/email/send", () => {
   beforeEach(() => {
