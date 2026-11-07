@@ -87,6 +87,34 @@ describe("sliq reconcile", () => {
     expect(r.rows.find((x) => x.check === "INV counter above highest ref")?.status).toBe("FAIL");
   });
 
+  it("none is not zero: no INV refs shows none on both sides (not-INV count 0 vs 0 is a number); an INV ref of 0 is a number; none against a number fails", () => {
+    const refRows = (min: number | null, max: number | null, notInv: number) => clean().map((x) => (x.metric === "invoice_ref" && x.key === "min_number" ? { ...x, value: min }
+      : x.metric === "invoice_ref" && x.key === "max_number" ? { ...x, value: max } : x.metric === "invoice_ref" ? { ...x, value: notInv } : x));
+    const find = (rep: ReturnType<typeof reconcile>, check: string) => rep.rows.find((x) => x.check === check);
+    // Source has no INV refs (range left out), database has none: none on both sides, so no range row and no FAIL; the not-INV count is 0 vs 0, a different row.
+    const noInv: SourceTotals = { ...source, invoiceRefMin: undefined, invoiceRefMax: undefined, invoiceRefsNotInvFormat: 0 };
+    const rNone = reconcile(noInv, refRows(null, null, 0), { countersBefore: { INV: 2, QUO: 5 } });
+    expect(find(rNone, "invoice ref min")).toBeUndefined();
+    expect(find(rNone, "invoice ref max")).toBeUndefined();
+    expect(rNone.rows.filter((x) => x.status === "FAIL")).toEqual([]);
+    expect(find(rNone, "invoice refs not in INV-number format")).toMatchObject({ source: "0", database: "0", difference: "0", status: "PASS" });
+    // An INV ref of 0 (INV-0) is a number, not none: 0 vs 0 shows "0" and passes.
+    const zero: SourceTotals = { ...source, invoiceRefMin: 0, invoiceRefMax: 0, invoiceRefsNotInvFormat: 0 };
+    const rZero = reconcile(zero, refRows(0, 0, 0), opts);
+    expect(find(rZero, "invoice ref min")).toMatchObject({ source: "0", database: "0", difference: "0", status: "PASS" });
+    expect(find(rZero, "invoice ref max")).toMatchObject({ source: "0", database: "0", status: "PASS" });
+    // none against a zero fails, in both directions (they are different things).
+    const srcNoneDbZero = reconcile(noInv, refRows(0, 0, 0), { countersBefore: { INV: 2, QUO: 5 } });
+    expect(find(srcNoneDbZero, "invoice ref min")).toMatchObject({ source: "none", database: "0", status: "FAIL" });
+    expect(find(srcNoneDbZero, "invoice ref max")).toMatchObject({ source: "none", database: "0", status: "FAIL" });
+    const srcZeroDbNone = reconcile(zero, refRows(null, null, 0), opts);
+    expect(find(srcZeroDbNone, "invoice ref min")).toMatchObject({ source: "0", database: "none", status: "FAIL" });
+    expect(find(srcZeroDbNone, "invoice ref max")).toMatchObject({ source: "0", database: "none", status: "FAIL" });
+    // none against a real number fails too.
+    expect(find(reconcile(noInv, refRows(1, 2, 0), { countersBefore: { INV: 2, QUO: 5 } }), "invoice ref min")).toMatchObject({ source: "none", database: "1", status: "FAIL" });
+    expect(find(reconcile(source, refRows(null, null, 0), opts), "invoice ref min")).toMatchObject({ source: "1", database: "none", status: "FAIL" });
+  });
+
   it("fails when counts differ and when a customer is missing from the database", () => {
     const rows = clean().map((x) => (x.metric === "count" && x.key === "customers" ? { ...x, value: 3 } : x)).filter((x) => x.key !== "brook co" || x.metric !== "customer_outstanding_pence");
     expect(failed(rows)).toContain("count: customers");

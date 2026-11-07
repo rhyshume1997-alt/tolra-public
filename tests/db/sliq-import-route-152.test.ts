@@ -670,6 +670,100 @@ describe("release 152 SliQ import route", () => {
       expect(await state(o)).toEqual(s);
     });
   }
+
+  // Regression table (the e2e spec's own money): invoices 120.00 + 600.00, payments 120.00 + 100.00 -> invoiced 72000p, paid 22000p, owed 50000p.
+  // Refs are stored byte for byte. Only "INV-<1..9 digits>" is an INV number (the SQL tests it case-sensitively: '^INV-\d{1,9}$'),
+  // so inv-1234 is NOT INV-1234 and, like S1234, 1234 and INV1234, never moves the INV counter; INV-1234 / INV-1235 does.
+  for (const [r1, r2, isInv] of [["S1234", "S1235", false], ["1234", "1235", false], ["INV1234", "INV1235", false], ["inv-1234", "inv-1235", false], ["INV-1234", "INV-1235", true]] as const) {
+    it(`ref ${r1}: stored as written, reconcile has no FAIL row, exact pence, INV counter ${isInv ? "above the highest ref" : "unchanged"}`, async () => {
+      const { o, u } = await newCompany();
+      const built = await validateAndBuild(smallFiles(r1, r2), SMALL_MAPPING);
+      expect(built.report.errors).toEqual([]);
+      const p = built.payload!;
+      const call = rpcAs(u);
+      const reconRows = async () => ((await call("import_sliq_reconcile", {})).data as { rows: DbRow[] }).rows;
+      const before: Record<string, number> = {};
+      for (const r of await reconRows()) if (r.metric === "counter_last") before[r.key] = Number(r.value);
+      expect(before.INV).toBeUndefined();
+      expect((await sliqRunBatches(call, p, "live", undefined, 0, 60)).failedAt).toBeNull();
+      // Byte for byte: no upper-casing, no INV- prefix added.
+      expect((await q<{ r: string }>("select invoice_ref as r from invoices where organization_id = $1 order by 1", [o])).map((x) => x.r)).toEqual([r1, r2].sort());
+      expect((await q("select 1 from invoices where organization_id = $1 and invoice_ref = 'INV-1234'", [o])).length).toBe(isInv ? 1 : 0);
+      // Exact pence.
+      const dbRows = await reconRows();
+      const pence = (metric: string, key: string) => Number(dbRows.find((r) => r.metric === metric && r.key === key)!.value);
+      expect([pence("total_pence", "invoiced"), pence("total_pence", "paid"), pence("total_pence", "outstanding")]).toEqual([72000, 22000, 50000]);
+      const s = await state(o);
+      expect([s.invoiced, s.payments_sum]).toEqual(["720.00", "220.00"]);
+      // The reconcile: no FAIL row, and the INV-number rule is the same on both sides.
+      const rec = reconcile(sourceTotalsFromValidated(built.report, p), dbRows, { countersBefore: before });
+      expect(rec.rows.filter((r) => r.status === "FAIL")).toEqual([]);
+      expect(rec.pass).toBe(true);
+      expect(pence("invoice_ref", "not_INV_format")).toBe(isInv ? 0 : 2);
+      // The INV counter: untouched for the four non-INV refs; for INV-1234 / INV-1235 it is at the highest ref, so the next number is above it.
+      if (isInv) {
+        expect(Number(s.inv_counter)).toBe(1235);
+        expect(String((await call("next_doc_number", { p_prefix: "INV" })).data)).toBe("INV-1236");
+      } else {
+        expect(s.inv_counter ?? null).toBeNull();
+        expect(await q("select 1 from doc_counters where organization_id = $1 and prefix = 'INV'", [o])).toEqual([]);
+      }
+    });
+  }
+
+  it("the INV numbering contract is case-sensitive: inv-1234 is a plain ref, not INV-1234 (the SQL tests '^INV-\\d{1,9}$' with ~)", () => {
+    const sql = readFileSync(path.resolve(__dirname, "../../supabase/release/152_sliq_import_route.release.sql"), "utf8");
+    expect(sql).toContain("~ '^INV-\\d{1,9}$'");
+    expect(sql).not.toMatch(/~\*\s*'\^INV/i);
+  });
+
+  const badDir = async (label: string, r1: string, r2: string, reason: RegExp, edit?: (f: ReturnType<typeof smallFiles>) => void) => {
+    const { o, u } = await newCompany();
+    const files = smallFiles(r1, r2);
+    edit?.(files);
+    const built = await validateAndBuild(files, SMALL_MAPPING);
+    expect(built.report.ok, label).toBe(false);
+    expect(built.payload, label).toBeNull();
+    expect(built.report.errors.map((e) => e.reason).join("\n"), label).toMatch(reason);
+    // Refused at validation: no payload exists to send, and nothing is in the company's books, map or counters.
+    expect(await state(o), label).toMatchObject({ customers: 0, suppliers: 0, invoices: 0, payments: 0, map_rows: 0, batches: 0 });
+    expect((await q("select 1 from doc_counters where organization_id = $1", [o])).length, label).toBe(0);
+    expect(u).toBeTruthy();
+  };
+
+  it("a file mixing INV-number and other invoice refs is refused at validation, before any write", async () => {
+    await badDir("INV + plain", "INV-1001", "1002", /has prefix .* but most refs use/);
+    await badDir("INV + S", "INV-1001", "S1002", /has prefix .* but most refs use/);
+    await badDir("INV + INV1002", "INV-1001", "INV1002", /has prefix .* but most refs use/);
+  });
+
+  it("a MISSING invoice reference (blank) is refused at validation with a reason; nothing is written", async () => {
+    await badDir("blank ref", "", "S1002", /required value is blank/);
+    const { report } = await validateAndBuild(smallFiles("", "S1002"), SMALL_MAPPING);
+    expect(report.errors.some((e) => e.field === "ref" && /required value is blank/.test(e.reason))).toBe(true);
+  });
+
+  it("DUPLICATE invoice refs within the file are refused at validation (also when only the case differs); nothing is written", async () => {
+    await badDir("exact duplicate", "S1001", "S1001", /duplicate ref "S1001"/);
+    await badDir("case duplicate", "INV-1001", "inv-1001", /duplicate ref "inv-1001"/);
+  });
+
+  it("collisions stay refused: invoices already in Tolra as S1001 / INV-1001 are listed and nothing is written", async () => {
+    for (const [existing, r1, r2] of [["INV-1001", "INV-1001", "INV-1002"], ["S1001", "S1001", "S1002"]] as const) {
+      const { o, u } = await newCompany();
+      await q("insert into invoices (organization_id, invoice_ref, customer, status, total, subtotal, vat) values ($1, $2, 'Someone Else', 'draft', 1, 1, 0)", [o, existing]);
+      const built = await validateAndBuild(smallFiles(r1, r2), SMALL_MAPPING);
+      const pf = await sliqPreflight(rpcAs(u), built.payload!);
+      expect(pf.ok, existing).toBe(false);
+      expect(pf.errors.some((e) => e.source_row_id === `I:${existing}`), existing).toBe(true);
+      const run = await sliqRunBatches(rpcAs(u), built.payload!, "collide", undefined, 0, 60);
+      expect(run.failedAt, existing).not.toBeNull();
+      // Customers and suppliers land in their own earlier batches; the invoices batch that hits the collision writes nothing, so the only invoice is the existing one.
+      expect(await state(o), existing).toMatchObject({ invoices: 1, payments: 0 });
+      expect((await q("select 1 from import_source_rows where organization_id = $1 and entity in ('invoice', 'payment')", [o])).length, existing).toBe(0);
+      expect((await q<{ r: string }>("select invoice_ref as r from invoices where organization_id = $1", [o])).map((x) => x.r), existing).toEqual([existing]);
+    }
+  });
 });
 
 /** tests/e2e/sliq-import.spec.ts's CSV and mapping, with the two invoice refs given. */
