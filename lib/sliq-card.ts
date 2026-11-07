@@ -65,8 +65,11 @@ type Store = Pick<Storage, "getItem" | "setItem">;
  * them. Written ONCE per file set: a preflight after the import must not replace them with the counters the import produced.
  */
 export const countersKey = (sourceSha: string) => `sliq-counters-before:${sourceSha}`;
-export function saveCountersBefore(store: Store | null, sourceSha: string, counters: Record<string, number>): Record<string, number> {
-  const kept = loadCountersBefore(store, sourceSha);
+export function saveCountersBefore(store: Store | null, sourceSha: string, counters: Record<string, number>, options: { nothingImportedYet?: boolean } = {}):
+  Record<string, number> {
+  // Nothing of this file set is in Tolra yet (a first preflight, or after a restore of the pre-import backup): what the database says
+  // now IS "before", so it replaces anything stored. Otherwise the first reading is kept.
+  const kept = options.nothingImportedYet ? null : loadCountersBefore(store, sourceSha);
   if (kept) return kept;
   try { store?.setItem(countersKey(sourceSha), JSON.stringify(counters)); } catch { /* storage full or blocked: the card warns */ }
   return counters;

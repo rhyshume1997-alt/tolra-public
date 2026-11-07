@@ -617,6 +617,86 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
     expect(Math.round(Number(pf.money.owed) * 100)).toBe(outstanding);
   });
 
+  it("permissions: every 152 function, as anon, service_role, a non-admin, an admin without the second step, a support session and an admin", async () => {
+    const c = await newCompany();
+    const office = randomUUID();
+    const support = randomUUID();
+    const grant = randomUUID();
+    const sessionId = randomUUID();
+    await q("insert into auth.users (id, email) values ($1, 'o152@example.test'), ($2, 's152@example.test')", [office, support]);
+    await q("insert into user_profiles (id, email, organization_id) values ($1, 'o152@example.test', $3), ($2, 's152@example.test', $3)", [office, support, c.o]);
+    await q("insert into organization_members (organization_id, user_id, role, active) values ($1, $2, 'office', true)", [c.o, office]);
+    // A platform owner in a support session for this company (036/066): a support membership under a grant, the session's chosen company.
+    await q("insert into security_audit.platform_admins (user_id) values ($1)", [support]);
+    await q("insert into organization_members (organization_id, user_id, role, active, support, expires_at, support_grant) values ($1, $2, 'admin', true, true, now() + interval '1 hour', $3)", [c.o, support, grant]);
+    await q("insert into auth.sessions (id, user_id, aal) values ($1, $2, 'aal2')", [sessionId, support]);
+    await q("insert into security_audit.session_company (session_id, user_id, organization_id, grant_id) values ($1, $2, $3, $4)", [sessionId, support, c.o, grant]);
+    await q("insert into auth.mfa_factors (user_id, factor_type, status) values ($1, 'totp', 'verified')", [c.u]);
+
+    const callAs = async (role: string, claim: Record<string, unknown> | null, fn: string, args: Record<string, unknown>) => {
+      const db = await pool.connect();
+      try {
+        await db.query("begin");
+        await db.query(`set local role ${role}`);
+        if (claim) await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)", [JSON.stringify(claim), String(claim.sub)]);
+        const names = Object.keys(args);
+        const values = names.map((n) => (args[n] !== null && typeof args[n] === "object" ? JSON.stringify(args[n]) : args[n]));
+        await db.query(`select public.${fn}(${names.map((n, i) => `${n} => $${i + 1}`).join(", ")})`, values);
+        return "ok";
+      } catch (e) {
+        const x = e as { code?: string; hint?: string };
+        return `${x.code}${x.hint ? `/${x.hint}` : ""}`;
+      } finally {
+        await db.query("rollback").catch(() => undefined);
+        db.release();
+      }
+    };
+    const b = planSliqBatches(payload, 60).batches[0];
+    const calls: Record<string, Record<string, unknown>> = {
+      import_sliq_preflight: { p_source_sha256: payload.source_sha256, p_source_files: payload.source_files, p_payload: { customers: payload.customers } },
+      import_sliq_batch: { p_source_sha256: payload.source_sha256, p_source_files: payload.source_files, p_run_label: "perm", p_entity: b.entity, p_batch_no: 1, p_rows: b.rows, p_dry_run: true },
+      import_sliq_reconcile: {},
+    };
+    const who: Record<string, [string, Record<string, unknown> | null]> = {
+      anon: ["anon", null],
+      service_role: ["service_role", { sub: c.u, role: "service_role" }],
+      office: ["authenticated", claims(office)],
+      support: ["authenticated", { ...claims(support), session_id: sessionId }],
+      admin_aal2: ["authenticated", claims(c.u)],
+    };
+    const table: Record<string, Record<string, string>> = {};
+    for (const [name, [role, claim]] of Object.entries(who)) {
+      table[name] = {};
+      for (const [fn, args] of Object.entries(calls)) table[name][fn] = await callAs(role, claim, fn, args);
+    }
+    // With the company asking for the second step, an admin at aal1 is refused; at aal2 allowed.
+    await q("update organizations set require_admin_mfa = true where id = $1", [c.o]);
+    table.admin_aal1 = {};
+    for (const [fn, args] of Object.entries(calls)) table.admin_aal1[fn] = await callAs("authenticated", claims(c.u, "aal1"), fn, args);
+    table.admin_aal2_mfa_required = {};
+    for (const [fn, args] of Object.entries(calls)) table.admin_aal2_mfa_required[fn] = await callAs("authenticated", claims(c.u, "aal2"), fn, args);
+    await q("update organizations set require_admin_mfa = false where id = $1", [c.o]);
+    const all = (v: string) => ({ import_sliq_preflight: v, import_sliq_batch: v, import_sliq_reconcile: v });
+    expect(table).toEqual({
+      anon: all("42501"),
+      service_role: all("42501"),
+      office: all("42501/admin_only"),
+      support: all("42501/support_session"),
+      admin_aal2: all("ok"),
+      admin_aal1: all("42501/mfa_required"),
+      admin_aal2_mfa_required: all("ok"),
+    });
+    // The internal functions: nobody through the API, admin included.
+    const internal = await q<{ sig: string; a: boolean; n: boolean; s: boolean }>(`select p.oid::regprocedure::text as sig, has_function_privilege('authenticated', p.oid, 'EXECUTE') as a,
+      has_function_privilege('anon', p.oid, 'EXECUTE') as n, has_function_privilege('service_role', p.oid, 'EXECUTE') as s
+      from pg_proc p where (p.proname like 'import_sliq%' or p.proname like 'import_source%') and p.proname not in ('import_sliq_preflight', 'import_sliq_batch', 'import_sliq_reconcile')`);
+    expect(internal.length).toBe(9);
+    expect(internal.filter((r) => r.a || r.n || r.s)).toEqual([]);
+    expect(await callAs("authenticated", claims(c.u), "import_sliq_reconcile_rows", { p_org: c.o })).toBe("42501");
+    // Nothing was written by any of it (dry runs and refusals).
+    expect(await state(c.o)).toMatchObject({ customers: 0, map_rows: 0, batches: 0 });
+  });
+
   it("the company comes from the session only: the other company's admin imports into its own company; it can't read this one's map", async () => {
     const otherBefore = await state(otherOrg);
     const mineBefore = await state();
@@ -635,5 +715,62 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
       expect(rows[0].n).toBe(0);
       await db.query("rollback");
     } finally { db.release(); }
+  });
+});
+
+describe.skipIf(!enabled)("release 152 rollback on an installed clone", () => {
+  const rb = `sliq152_rb_${Date.now()}`;
+  let a: Client;
+  const run = async (db: string, file: string) => {
+    const c = new Client({ connectionString: dbUrl(db) });
+    await c.connect();
+    try { await c.query(readFileSync(path.resolve(__dirname, "../..", file), "utf8")); return "ok"; } catch (e) { return (e as Error).message; } finally { await c.end(); }
+  };
+  const one = async <T,>(db: string, sql: string, params: unknown[] = []) => {
+    const c = new Client({ connectionString: dbUrl(db) });
+    await c.connect();
+    try { return (await c.query(sql, params)).rows as T[]; } finally { await c.end(); }
+  };
+  const objects = (db: string) => one<{ t: number; f: number }>(db, `select (select count(*) from pg_class where relname in ('import_source_rows', 'import_source_batches'))::int as t,
+    (select count(*) from pg_proc where proname like 'import_sliq%' or proname like 'import_source%')::int as f`).then((r) => r[0]);
+  const verify = async (db: string) => (await one<{ ok: boolean }>(db, readFileSync(path.resolve(__dirname, "../../supabase/verify/sliq_import_route_152.sql"), "utf8"))).map((r) => r.ok);
+
+  beforeAll(async () => {
+    a = new Client({ connectionString: ADMIN_URL });
+    await a.connect();
+    await a.query(`create database ${rb}_empty template ${TEMPLATE}`);
+    await a.query(`create database ${rb}_data template ${TEMPLATE}`);
+  });
+  afterAll(async () => {
+    if (!a) return;
+    for (const { datname } of (await a.query("select datname from pg_database where datname like $1", [`${rb}%`])).rows) await a.query(`drop database if exists ${datname}`);
+    await a.end();
+  });
+
+  it("(a) empty map: everything 152 made is removed; (c) a second rollback refuses; (d) reinstalling works and verifies", async () => {
+    expect(await objects(`${rb}_empty`)).toEqual({ t: 2, f: 12 });
+    expect(await run(`${rb}_empty`, "supabase/release/152_sliq_import_route.rollback.sql")).toBe("ok");
+    expect(await objects(`${rb}_empty`)).toEqual({ t: 0, f: 0 });
+    expect(await run(`${rb}_empty`, "supabase/release/152_sliq_import_route.rollback.sql")).toBe("152 rollback: release 152 is not installed");
+    expect(await run(`${rb}_empty`, "supabase/release/152_sliq_import_route.release.sql")).toBe("ok");
+    expect(await verify(`${rb}_empty`)).toEqual([true, true, true, true, true, true, true, true]);
+    expect(await objects(`${rb}_empty`)).toEqual({ t: 2, f: 12 });
+  });
+
+  it("(b) with map rows: refuses with the operator's instruction, and leaves every object and row as it was", async () => {
+    const o = (await one<{ id: string }>(`${rb}_data`, "insert into organizations (name, slug) values ('RB', 'rb-152') returning id"))[0].id;
+    const cust = (await one<{ id: string }>(`${rb}_data`, "insert into customers (organization_id, name) values ($1, 'Mapped Ltd') returning id", [o]))[0].id;
+    // A committed batch and its map row, written as the batch would (the guard trigger checks the record's company).
+    await one(`${rb}_data`, `insert into import_source_batches (organization_id, source_sha256, run_label, entity, batch_no, request_sha256, import_batch_id, rows_in, rows_created, rows_already, result)
+      values ($1, repeat('a', 64), 'live', 'customers', 1, repeat('b', 64), null, 1, 0, 1, '{}')`, [o]);
+    await one(`${rb}_data`, `insert into import_source_rows (organization_id, entity, source_row_id, source_sha256, run_label, batch_entity, batch_no, customer_id)
+      values ($1, 'customer', 'C:M1', repeat('a', 64), 'live', 'customers', 1, $2)`, [o, cust]);
+    const before = await objects(`${rb}_data`);
+    const message = await run(`${rb}_data`, "supabase/release/152_sliq_import_route.rollback.sql");
+    expect(message).toBe("152 rollback: SliQ import map rows exist; dropping them would separate the map from the data. Nothing was changed. Keep 152, or restore the backup taken before the SliQ import and run this rollback again; never delete map rows by hand.");
+    expect(await objects(`${rb}_data`)).toEqual(before);
+    expect((await one<{ n: number }>(`${rb}_data`, "select count(*)::int as n from import_source_rows"))[0].n).toBe(1);
+    expect((await one<{ n: number }>(`${rb}_data`, "select count(*)::int as n from customers where id = $1", [cust]))[0].n).toBe(1);
+    expect(await verify(`${rb}_data`)).toEqual([true, true, true, true, true, true, true, true]);
   });
 });

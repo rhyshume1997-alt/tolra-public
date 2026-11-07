@@ -76,6 +76,9 @@ describe("counters before survive a reload and a label change", () => {
     // A later preflight (after part of the import) does not replace them.
     expect(saveCountersBefore(store, "a".repeat(64), { INV: 1060, DLN: 12 })).toEqual({ INV: 10, DLN: 12 });
     expect(loadCountersBefore(store, "a".repeat(64))).toEqual({ INV: 10, DLN: 12 });
+    // After a restore of the pre-import backup nothing of the file set is imported: the fresh reading replaces the stored one.
+    expect(saveCountersBefore(store, "a".repeat(64), { INV: 7, DLN: 12 }, { nothingImportedYet: true })).toEqual({ INV: 7, DLN: 12 });
+    expect(loadCountersBefore(store, "a".repeat(64))).toEqual({ INV: 7, DLN: 12 });
     expect(loadCountersBefore(store, "c".repeat(64))).toBeNull();
     m.set(countersKey("b".repeat(64)), "{\"INV\":\"x\"}");
     expect(loadCountersBefore(store, "b".repeat(64))).toBeNull();

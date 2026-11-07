@@ -138,7 +138,8 @@ export function SliqImport() {
       // The counters as they are before anything is imported: the reconciliation checks every one but INV is unchanged after. Kept in
       // this tab's session storage per file set and run label, so a reload before the reconciliation does not lose them.
       // Kept for the file set the first time only: a preflight after (part of) the import keeps the counters from before it.
-      setCountersBefore(saveCountersBefore(session(), payload.source_sha256, counters(await reconcileRows())));
+      const nothingImportedYet = Object.values(p.counts ?? {}).every((c) => (c?.already_imported ?? 0) === 0);
+      setCountersBefore(saveCountersBefore(session(), payload.source_sha256, counters(await reconcileRows()), { nothingImportedYet }));
       setPreflight(p);
       setPhase("preflighted");
     } catch (e) {
