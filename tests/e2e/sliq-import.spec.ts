@@ -38,12 +38,23 @@ const sha = (s: string) => createHash("sha256").update(enc(s)).digest("hex");
 const CSV = {
   "customers.csv": "Account,Name\r\nC001,Alpha Fabrications Ltd\r\nC002,Beta Engineering Limited\r\n",
   "suppliers.csv": "Account,Name\r\nSUP1,Steel Supplies Ltd\r\n",
+  "invoices.csv": "Invoice No,Date,Account,Gross\r\nS1001,25/03/2026,C001,120.00\r\nS1002,26/03/2026,C002,600.00\r\n",
+  "payments.csv": "Invoice No,Received,Amount\r\nS1001,27/03/2026,120.00\r\nS1002,30/03/2026,100.00\r\n",
+} as const;
+
+// Every date has day and month both 12 or lower, so DD/MM and MM/DD both read them: the validator refuses this without a signed-off dateSample.
+const AMBIGUOUS_CSV = {
+  ...CSV,
   "invoices.csv": "Invoice No,Date,Account,Gross\r\nS1001,01/03/2026,C001,120.00\r\nS1002,02/03/2026,C002,600.00\r\n",
   "payments.csv": "Invoice No,Received,Amount\r\nS1001,05/03/2026,120.00\r\nS1002,10/03/2026,100.00\r\n",
 } as const;
 
-const mapping = (confirmed: boolean) => JSON.stringify({
+// dateSample: invoices.csv row 2 (the first data row; the header is row 1) is 25/03/2026, which can only be day-first: 25 March 2026.
+const DATE_SAMPLE = { file: "invoices.csv", row: 2, raw: "25/03/2026", means: "2026-03-25", confirmedBy: "John (synthetic e2e)" };
+
+const mapping = (confirmed: boolean, dateSample: boolean = true) => JSON.stringify({
   version: 1, confirmed, dateFormat: "DD/MM/YYYY",
+  ...(dateSample ? { dateSample: DATE_SAMPLE } : {}),
   entities: {
     customers: { file: "customers.csv", columns: { key: "Account", name: "Name" } },
     suppliers: { file: "suppliers.csv", columns: { key: "Account", name: "Name" } },
@@ -94,7 +105,7 @@ test("an unconfirmed mapping is refused and errors are listed with file, row and
   // A confirmed mapping over files with a bad amount (invoices row 3) and a missing customer (invoices row 2).
   const bad = {
     ...CSV,
-    "invoices.csv": "Invoice No,Date,Account,Gross\r\nS1001,01/03/2026,C999,120.00\r\nS1002,02/03/2026,C002,12x.00\r\n",
+    "invoices.csv": "Invoice No,Date,Account,Gross\r\nS1001,25/03/2026,C999,120.00\r\nS1002,26/03/2026,C002,12x.00\r\n",
   };
   await input.setInputFiles(toFiles(bad, mapping(true)));
   await card.getByRole("button", { name: "Check files" }).click();
@@ -103,6 +114,17 @@ test("an unconfirmed mapping is refused and errors are listed with file, row and
   const errors = report.getByTestId(SEL.reportError);
   await expect(errors.filter({ hasText: "invoices.csv" }).filter({ hasText: /row 2/i }).first()).toBeVisible();
   await expect(errors.filter({ hasText: "invoices.csv" }).filter({ hasText: /row 3/i }).filter({ hasText: /gross/i }).first()).toBeVisible();
+  await expect(card.getByRole("button", { name: "Preflight (writes nothing)" })).toBeDisabled();
+  expect(await counts()).toEqual({ customers: 0, suppliers: 0, invoices: 0, payments: 0 });
+});
+
+test("a mapping whose dates are all ambiguous and has no signed-off dateSample is refused", async ({ page }) => {
+  const card = await openCard(page);
+  await card.getByLabel(SEL.fileInput).setInputFiles(toFiles(AMBIGUOUS_CSV, mapping(true, false)));
+  await card.getByRole("button", { name: "Check files" }).click();
+  const report = card.getByTestId(SEL.report);
+  await expect(report).toBeVisible();
+  await expect(report.getByTestId(SEL.reportError).filter({ hasText: "dateFormat" }).filter({ hasText: /dateSample/ }).first()).toBeVisible();
   await expect(card.getByRole("button", { name: "Preflight (writes nothing)" })).toBeDisabled();
   expect(await counts()).toEqual({ customers: 0, suppliers: 0, invoices: 0, payments: 0 });
 });
