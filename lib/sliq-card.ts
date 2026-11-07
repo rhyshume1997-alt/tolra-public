@@ -1,7 +1,7 @@
 /**
  * The SliQ go-live import card's decisions, kept pure so they are unit-tested without a browser (components/sliq-import.tsx).
  */
-import { isRunLabel, type SliqPreflight } from "@/lib/sliq-import-route";
+import { isRunLabel, type SliqBatchResult, type SliqPreflight } from "@/lib/sliq-import-route";
 import { ALL_ENTITIES, type Entity, type SliqMapping } from "@/lib/sliq-validate/validate";
 
 /** The run label as the database takes it (trimmed, lower case), and a message when that is not what was typed. */
@@ -51,6 +51,10 @@ export function importBlockers(s: { preflighted: boolean; preflight: SliqPreflig
   if (!s.labelValid) out.push("The run label is not valid.");
   return out;
 }
+
+/** Records this run wrote: a batch already imported (a replay, which carries the first run's counts) wrote nothing. */
+export const recordsCreated = (results: Pick<SliqBatchResult, "already_imported" | "created">[]): number =>
+  results.reduce((s, r) => s + (r.already_imported ? 0 : r.created ?? 0), 0);
 
 /** The database has no such function: release 152 is not applied on this project (PostgREST PGRST202, or Postgres 42883). */
 export function isMissingImportFunction(error: { message?: string; code?: string } | null | undefined): boolean {

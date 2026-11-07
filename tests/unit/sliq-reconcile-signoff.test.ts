@@ -21,7 +21,7 @@ const clean = (): DbRow[] => [
   row("orphan_payments", "count", 0), row("overpaid_invoices", "count", 0),
 ];
 const opts = { countersBefore: { INV: 0, QUO: 5 } };
-const failed = (rows: DbRow[], s = source, o = opts) => reconcile(s, rows, o).rows.filter((r) => r.status === "FAIL").map((r) => r.check);
+const failed = (rows: DbRow[], s = source, o: { countersBefore: Record<string, number> } = opts) => reconcile(s, rows, o).rows.filter((r) => r.status === "FAIL").map((r) => r.check);
 
 describe("sliq reconcile", () => {
   it("passes a clean import", () => {
@@ -56,6 +56,35 @@ describe("sliq reconcile", () => {
     expect(failed(low)).toContain("INV counter next value above highest ref");
     const moved = clean().map((x) => (x.metric === "counter_last" && x.key === "QUO" ? { ...x, value: 6 } : x));
     expect(failed(moved)).toContain("counter unchanged: QUO");
+  });
+
+  it("non-INV refs (S1001, 1001): the ref range is none on both sides, the not-INV count must match, the INV counter must not move", () => {
+    const noInv: SourceTotals = { ...source, invoiceRefMin: undefined, invoiceRefMax: undefined };
+    const s = { ...noInv, invoiceRefsNotInvFormat: 2 };
+    // As import_sliq_reconcile_rows answers for refs S1001 / S1002 (the e2e files): min and max null, two refs not in INV-number format.
+    const rows = (inv: number | null) => clean().map((x) => (x.metric === "invoice_ref" && x.key !== "not_INV_format" ? { ...x, value: null } : x.metric === "invoice_ref" ? { ...x, value: 2 } : x))
+      .filter((x) => inv !== null || !(x.metric === "counter_last" && x.key === "INV")).map((x) => (x.metric === "counter_last" && x.key === "INV" ? { ...x, value: inv } : x));
+    const r = reconcile(s, rows(null), { countersBefore: { QUO: 5 } });
+    expect(r.rows.filter((x) => x.status === "FAIL")).toEqual([]);
+    expect(r.pass).toBe(true);
+    expect(r.rows.find((x) => x.check === "invoice refs not in INV-number format")).toMatchObject({ source: "2", database: "2", status: "PASS" });
+    expect(r.rows.find((x) => x.check === "counter unchanged: INV (no INV-number refs)")).toMatchObject({ source: "0", database: "0", status: "PASS" });
+    expect(r.rows.some((x) => x.check.startsWith("invoice ref m"))).toBe(false);
+    // An INV counter that was there before and is unchanged passes; one the import moved fails.
+    expect(reconcile(s, rows(7), { countersBefore: { INV: 7, QUO: 5 } }).pass).toBe(true);
+    expect(failed(rows(8), s, { countersBefore: { INV: 7, QUO: 5 } })).toEqual(["counter unchanged: INV (no INV-number refs)"]);
+    // The source says two non-INV refs; Tolra has one, or the source states none (old callers): FAIL.
+    expect(failed(rows(null).map((x) => (x.key === "not_INV_format" ? { ...x, value: 1 } : x)), s, { countersBefore: { QUO: 5 } })).toEqual(["invoice refs not in INV-number format"]);
+    expect(failed(rows(null), noInv, { countersBefore: { QUO: 5 } })).toEqual(["invoice refs not in INV-number format"]);
+  });
+
+  it("INV-number refs on one side only fail loudly (none against a number)", () => {
+    const noInv: SourceTotals = { ...source, invoiceRefMin: undefined, invoiceRefMax: undefined };
+    expect(failed(clean(), noInv)).toEqual(expect.arrayContaining(["invoice ref min", "invoice ref max"]));
+    const dbNone = clean().map((x) => (x.metric === "invoice_ref" && x.key !== "not_INV_format" ? { ...x, value: null } : x));
+    const r = reconcile(source, dbNone, opts);
+    expect(r.rows.find((x) => x.check === "invoice ref min")).toMatchObject({ source: "1", database: "none", status: "FAIL" });
+    expect(r.rows.find((x) => x.check === "INV counter above highest ref")?.status).toBe("FAIL");
   });
 
   it("fails when counts differ and when a customer is missing from the database", () => {

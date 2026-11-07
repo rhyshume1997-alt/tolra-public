@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MISSING_152, countersKey, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, saveCountersBefore } from "@/lib/sliq-card";
+import { MISSING_152, countersKey, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore } from "@/lib/sliq-card";
 import type { SliqPreflight } from "@/lib/sliq-import-route";
 import type { SliqMapping } from "@/lib/sliq-validate";
 
@@ -93,5 +93,13 @@ describe("preflight size limit (release 152: preflight_too_large)", () => {
     expect(preflightTooLarge({ ...base, customers: Array.from({ length: 6000 }, (_, i) => ({ source_row_id: `C:${i}` })) })).toBeNull();
     expect(preflightTooLarge({ ...base, customers: Array.from({ length: 6001 }, (_, i) => ({ source_row_id: `C:${i}` })) })).toMatch(/too large for one preflight \(6001 records/);
     expect(preflightTooLarge({ ...base, customers: [{ source_row_id: "C:1", notes: "x".repeat(4 * 1024 * 1024) }] })).toMatch(/4\.0 MB/);
+  });
+});
+
+describe("the done line's records created", () => {
+  it("records created counts only batches that wrote: an already-imported batch (a replay carries the first run's counts) adds nothing", () => {
+    expect(recordsCreated([{ already_imported: false, created: 3 }, { already_imported: false, created: 4 }])).toBe(7);
+    expect(recordsCreated([{ already_imported: true, created: 3 }, { already_imported: true, created: 4 }])).toBe(0);
+    expect(recordsCreated([])).toBe(0);
   });
 });

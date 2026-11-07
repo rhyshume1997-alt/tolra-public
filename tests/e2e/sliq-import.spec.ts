@@ -70,18 +70,18 @@ const toFiles = (csv: Record<string, string>, map: string) => [
 
 let org: Awaited<ReturnType<typeof createSoloTenant>>;
 
-async function counts() {
+async function counts(orgId: string = org.id) {
   const db = adminClient();
   const n = async (table: string) => {
-    const { count, error } = await db.from(table).select("id", { count: "exact", head: true }).eq("organization_id", org.id);
+    const { count, error } = await db.from(table).select("id", { count: "exact", head: true }).eq("organization_id", orgId);
     expect(error, table).toBeNull();
     return count ?? 0;
   };
   return { customers: await n("customers"), suppliers: await n("suppliers"), invoices: await n("invoices"), payments: await n("invoice_payments") };
 }
 
-async function openCard(page: Page) {
-  await signIn(page, org.admin);
+async function openCard(page: Page, admin: typeof org.admin = org.admin) {
+  await signIn(page, admin);
   await page.goto("/admin/data");
   await expect(page.getByRole("heading", { name: "Data", exact: true })).toBeVisible();
   const card = page.getByTestId(SEL.card);
@@ -159,6 +159,9 @@ test("preflight writes nothing, the import runs in batches, reconciliation and t
   const table = card.getByTestId(SEL.reconcile);
   await expect(table).toBeVisible({ timeout: 60_000 });
   await expect(table).not.toContainText(/FAIL/);
+  // Refs S1001 / S1002 are not INV numbers: kept as written, no INV ref range, and the INV counter must not have moved.
+  await expect(table.getByRole("row").filter({ hasText: "counter unchanged: INV (no INV-number refs)" })).toContainText("PASS");
+  await expect(table.getByRole("row").filter({ hasText: "invoice refs not in INV-number format" })).toContainText("220PASS");
   const sheet = card.getByTestId(SEL.sheet);
   await expect(sheet).toContainText("SLIQ IMPORT RECONCILIATION - SIGNING SHEET");
   await expect(sheet).toContainText("PASS - all differences are zero");
@@ -190,4 +193,26 @@ test("a non-admin cannot see the SliQ card", async ({ page }) => {
   await expect(page.getByTestId(SEL.card)).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "SliQ go-live import" })).toHaveCount(0);
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+});
+
+test("INV-number refs: imported as written, reconciliation passes and the INV counter is above the highest ref", async ({ page }) => {
+  const invOrg = await createSoloTenant(world().runId, "sliq-import-inv", undefined, { salesOrders: false });
+  const csv = Object.fromEntries(Object.entries(CSV).map(([n, t]) => [n, t.replace(/S100([12])/g, "INV-100$1")]));
+  expect(csv["invoices.csv"]).toContain("INV-1001,25/03/2026");
+  const card = await openCard(page, invOrg.admin);
+  await card.getByLabel(SEL.fileInput).setInputFiles(toFiles(csv, mapping(true)));
+  await card.getByRole("button", { name: "Check files" }).click();
+  await card.getByRole("button", { name: "Preflight (writes nothing)" }).click();
+  await expect(card.getByTestId(SEL.preflight)).toContainText("invoices: 2 to create, 0 already imported, 0 with problems");
+  await card.getByRole("button", { name: /^Import \d+ batches$/ }).click();
+  await page.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(card.getByTestId(SEL.done)).toBeVisible({ timeout: 120_000 });
+  expect(await counts(invOrg.id)).toEqual({ customers: 2, suppliers: 1, invoices: 2, payments: 2 });
+  await card.getByRole("button", { name: /reconcil/i }).click();
+  const table = card.getByTestId(SEL.reconcile);
+  await expect(table).toBeVisible({ timeout: 60_000 });
+  await expect(table).not.toContainText(/FAIL/);
+  await expect(table.getByRole("row").filter({ hasText: "invoice ref max" })).toContainText("100210020PASS");
+  await expect(table.getByRole("row").filter({ hasText: "INV counter next value above highest ref" })).toContainText("next 1003");
+  await expect(card.getByTestId(SEL.sheet)).toContainText("PASS - all differences are zero");
 });

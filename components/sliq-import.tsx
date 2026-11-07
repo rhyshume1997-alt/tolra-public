@@ -10,7 +10,7 @@ import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-b
 import {
   type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, SLIQ_BATCH_WEIGHT, planSliqBatches, preflightTooLarge, sliqPreflight, sliqRunBatches,
 } from "@/lib/sliq-import-route";
-import { MISSING_152, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, saveCountersBefore } from "@/lib/sliq-card";
+import { MISSING_152, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore } from "@/lib/sliq-card";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { type DbRow, type ReconcileReport, reconcile } from "@/lib/sliq-reconcile/reconcile";
 import { renderSigningSheet } from "@/lib/sliq-reconcile/sheet";
@@ -297,7 +297,7 @@ export function SliqImport() {
         {phase === "done" ? (
           <div className="space-y-2">
             <p className="text-sm text-emerald-700" data-testid="sliq-done">
-              Imported: {results.reduce((s, r) => s + (r.created ?? 0), 0)} records created, {results.filter((r) => r.already_imported).length} batches already imported. Now run the reconciliation.
+              Imported: {recordsCreated(results)} records created, {results.filter((r) => r.already_imported).length} batches already imported. Now run the reconciliation.
             </p>
             <Button type="button" variant="outline" disabled={busy} onClick={() => void runReconcile()}>Run the reconciliation</Button>
           </div>

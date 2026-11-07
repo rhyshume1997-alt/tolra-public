@@ -128,6 +128,9 @@ export async function validateAndBuild(files: SourceFiles, mapping: unknown): Pr
   return { report, payload };
 }
 
+/** An invoice number the INV counter follows: exactly the database's '^INV-(\d{1,9})$'. Any other ref is kept as written and moves no counter. */
+const INV_NUMBER = /^INV-(\d{1,9})$/;
+
 /** The per-customer key both sides use: the account code ("acct:<code>", what the route's map stores) or, without the map, the name. */
 export const customerKey = (by: "account" | "name", code: string, name: string) => (by === "account" ? `acct:${code.toUpperCase()}` : `name:${normaliseName(name)}`);
 
@@ -171,6 +174,7 @@ export function sourceTotalsFromValidated(report: ValidationReport, payload: Sli
   let outstandingPence = 0;
   let customerCreditPence = 0;
   const nums: number[] = [];
+  let notInv = 0;
   for (const i of invoices) {
     const ref = String(i.invoice_ref).toUpperCase();
     const left = pence(i.total) - (paidBy.get(ref) ?? 0) - (creditBy.get(ref) ?? 0);
@@ -178,8 +182,10 @@ export function sourceTotalsFromValidated(report: ValidationReport, payload: Sli
     customerCreditPence += Math.max(0, -left);
     const k = customerKey(by, String(i.customer_key ?? ""), String(i.customer));
     customerBalancesPence[k] = (customerBalancesPence[k] ?? 0) + left;
-    const m = /(\d+)$/.exec(String(i.invoice_ref));
+    // The INV-number rule the database uses (076/085's INV counter, import_sliq_reconcile_rows): only "INV-<1..9 digits>", as written.
+    const m = INV_NUMBER.exec(String(i.invoice_ref));
     if (m) nums.push(Number(m[1]));
+    else notInv += 1;
   }
   return {
     files: payload.source_files.map((f) => ({ name: f.name, sha256: f.sha256 })),
@@ -193,5 +199,6 @@ export function sourceTotalsFromValidated(report: ValidationReport, payload: Sli
     customerCreditPence,
     customerBalancesPence,
     ...(nums.length ? { invoiceRefMin: Math.min(...nums), invoiceRefMax: Math.max(...nums) } : {}),
+    invoiceRefsNotInvFormat: notInv,
   };
 }

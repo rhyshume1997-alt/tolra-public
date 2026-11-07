@@ -23,8 +23,14 @@ export type SourceTotals = {
    * import map, else "name:<name as Tolra normalises it>" (lib/sliq-import-build.ts customerKey). Compared case-insensitively.
    */
   customerBalancesPence: Record<string, number>;
+  /** Lowest and highest number over the INV-number refs ("INV-<1..9 digits>", the INV counter's rule); left out when there are none. */
   invoiceRefMin?: number;
   invoiceRefMax?: number;
+  /**
+   * Invoice refs not in INV-number format (e.g. "S1001", "1001"): imported as written, and they move no counter. Default 0, so a
+   * caller that does not state it keeps the old rule (any such ref in Tolra is a FAIL).
+   */
+  invoiceRefsNotInvFormat?: number;
 };
 
 export type DbRow = { metric: string; key: string; value: string | number | null };
@@ -208,16 +214,24 @@ export function reconcile(source: SourceTotals, dbRows: DbRow[], opts: Reconcile
   });
   for (const x of diffs.slice(0, topN)) rows.push({ ...diffRow(`customer balance: ${x.n}`, x.s, x.d) });
 
-  // Invoice ref range, then counters.
-  if (source.invoiceRefMin !== undefined) rows.push(diffRow("invoice ref min", source.invoiceRefMin, db.refMin ?? -1));
-  if (source.invoiceRefMax !== undefined) rows.push(diffRow("invoice ref max", source.invoiceRefMax, db.refMax ?? -1));
-  rows.push(zeroRow("invoice refs not in INV-number format", db.refNotInvFormat));
+  // Invoice ref range over the INV-number refs (both sides use the same rule), then counters. A side with no INV-number ref is "none":
+  // equal only to "none" on the other side.
+  const refRow = (check: string, s: number | undefined, d: number | null): CheckRow =>
+    s !== undefined && d !== null ? diffRow(check, s, d)
+      : { check, source: s === undefined ? "none" : String(s), database: d === null ? "none" : String(d), difference: s === undefined && d === null ? "0" : "n/a",
+          status: s === undefined && d === null ? "PASS" : "FAIL" };
+  if (source.invoiceRefMin !== undefined || db.refMin !== null) rows.push(refRow("invoice ref min", source.invoiceRefMin, db.refMin));
+  if (source.invoiceRefMax !== undefined || db.refMax !== null) rows.push(refRow("invoice ref max", source.invoiceRefMax, db.refMax));
+  rows.push(diffRow("invoice refs not in INV-number format", source.invoiceRefsNotInvFormat ?? 0, db.refNotInvFormat));
 
   const after = db.countersLast;
   const before = opts.countersBefore;
   const invLast = after["INV"];
-  if (db.refMax === null) {
-    rows.push({ check: "INV counter above highest ref", source: "n/a", database: "no invoices", difference: "n/a", status: "FAIL" });
+  if (db.refMax === null && source.invoiceRefMax === undefined) {
+    // No INV-number refs on either side (e.g. SliQ refs "S1001" or "1001"): the import must not have moved the INV counter.
+    rows.push(diffRow("counter unchanged: INV (no INV-number refs)", before["INV"] ?? 0, invLast ?? 0));
+  } else if (db.refMax === null) {
+    rows.push({ check: "INV counter above highest ref", source: "n/a", database: "no INV-number invoices", difference: "n/a", status: "FAIL" });
   } else {
     const ok = invLast !== undefined && invLast >= db.refMax;
     rows.push({

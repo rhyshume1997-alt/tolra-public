@@ -26,6 +26,7 @@ import { isolatedBackend } from "../support/isolation";
 import { EMAIL_DOMAIN, destroySyntheticWorld, verifyBackendIdentity, withDb } from "../support/fixtures";
 import { preparePost144Fixture } from "../support/post-144-release-fixture";
 import { MAPPING, N_CRD, N_INV, syntheticFiles } from "../support/sliq-152";
+import { recordsCreated } from "@/lib/sliq-card";
 import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-build";
 import type { ValidationReport } from "@/lib/sliq-validate";
 import { type DbRow, reconcile } from "@/lib/sliq-reconcile/reconcile";
@@ -636,5 +637,59 @@ describe("release 152 SliQ import route", () => {
       await db.query("rollback");
     } finally { db.release(); }
   });
+
+  // The browser spec's own files (tests/e2e/sliq-import.spec.ts, refs S1001 / S1002), and the same files with INV-number refs and with
+  // plain-number refs. Refs are kept as written; only INV-<digits> refs move the INV counter (076/085); the reconciliation passes for
+  // all three, and a second run (the spec's re-run test) writes nothing.
+  for (const [label, r1, r2] of [["S-prefix (the e2e files)", "S1001", "S1002"], ["INV-number", "INV-1001", "INV-1002"], ["plain number", "1001", "1002"]] as const) {
+    it(`invoice refs as SliQ writes them, ${label}: imported as written; the reconciliation passes; a re-run writes nothing`, async () => {
+      const { o, u } = await newCompany();
+      const built = await validateAndBuild(smallFiles(r1, r2), SMALL_MAPPING);
+      expect(built.report.errors).toEqual([]);
+      const p = built.payload!;
+      const call = rpcAs(u);
+      const reconRows = async () => ((await call("import_sliq_reconcile", {})).data as { rows: DbRow[] }).rows;
+      const before: Record<string, number> = {};
+      for (const r of await reconRows()) if (r.metric === "counter_last") before[r.key] = Number(r.value);
+      expect((await sliqPreflight(call, p)).ok).toBe(true);
+      expect((await sliqRunBatches(call, p, "live", undefined, 0, 60)).failedAt).toBeNull();
+      const s = await state(o);
+      expect(s).toMatchObject({ customers: 2, suppliers: 1, invoices: 2, payments: 2, paid_mismatch: 0 });
+      expect(s.inv_counter === null || s.inv_counter === undefined ? null : Number(s.inv_counter)).toBe(r1.startsWith("INV-") ? 1002 : null);
+      expect((await q<{ r: string }>("select invoice_ref as r from invoices where organization_id = $1 order by 1", [o])).map((x) => x.r)).toEqual([r1, r2]);
+      const rec = reconcile(sourceTotalsFromValidated(built.report, p), await reconRows(), { countersBefore: before });
+      expect(rec.rows.filter((r) => r.status !== "PASS")).toEqual([]);
+      expect(rec.pass).toBe(true);
+      const again = await sliqPreflight(call, p);
+      for (const k of ["customers", "invoices", "payments"] as const) expect(again.counts[k]).toMatchObject({ to_create: 0, already_imported: 2, problems: 0 });
+      const rerun = await sliqRunBatches(call, p, "live", undefined, 0, 60);
+      expect(rerun.failedAt).toBeNull();
+      // Every batch answers already imported (a replay carries the first run's counts); the card counts only batches that wrote: 0.
+      expect(rerun.results.every((r) => r.already_imported)).toBe(true);
+      expect(recordsCreated(rerun.results)).toBe(0);
+      expect(await state(o)).toEqual(s);
+    });
+  }
 });
+
+/** tests/e2e/sliq-import.spec.ts's CSV and mapping, with the two invoice refs given. */
+const SMALL_MAPPING = {
+  version: 1, confirmed: true, dateFormat: "DD/MM/YYYY",
+  dateSample: { file: "invoices.csv", row: 2, raw: "25/03/2026", means: "2026-03-25", confirmedBy: "John (synthetic e2e)" },
+  entities: {
+    customers: { file: "customers.csv", columns: { key: "Account", name: "Name" } },
+    suppliers: { file: "suppliers.csv", columns: { key: "Account", name: "Name" } },
+    invoices: { file: "invoices.csv", columns: { ref: "Invoice No", customerKey: "Account", date: "Date", gross: "Gross" } },
+    payments: { file: "payments.csv", columns: { invoiceRef: "Invoice No", date: "Received", amount: "Amount" } },
+  },
+};
+function smallFiles(r1: string, r2: string) {
+  const f = (name: string, text: string) => ({ name, bytes: new TextEncoder().encode(text) });
+  return {
+    customers: f("customers.csv", "Account,Name\r\nC001,Alpha Fabrications Ltd\r\nC002,Beta Engineering Limited\r\n"),
+    suppliers: f("suppliers.csv", "Account,Name\r\nSUP1,Steel Supplies Ltd\r\n"),
+    invoices: f("invoices.csv", `Invoice No,Date,Account,Gross\r\n${r1},25/03/2026,C001,120.00\r\n${r2},26/03/2026,C002,600.00\r\n`),
+    payments: f("payments.csv", `Invoice No,Received,Amount\r\n${r1},27/03/2026,120.00\r\n${r2},30/03/2026,100.00\r\n`),
+  };
+}
 
