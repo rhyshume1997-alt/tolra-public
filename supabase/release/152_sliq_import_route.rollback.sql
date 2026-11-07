@@ -1,4 +1,4 @@
--- Rollback of release step 152 (SliQ go-live import route). One transaction. Removes the two tables and five functions; nothing of 076 is touched.
+-- Rollback of release step 152 (SliQ go-live import route). One transaction. Removes the two tables and its functions; nothing of 076 is touched.
 -- Refuses while any SliQ import map row exists: dropping the map with the data still there is exactly the "map lost, data kept" case.
 -- Remove the imported records first (their map rows go with them), or keep 152.
 BEGIN;
@@ -10,6 +10,8 @@ DO $rollback_guard$ BEGIN
   RAISE EXCEPTION '152 rollback: SliQ import map rows exist; dropping them would separate the map from the data. Stop.';
  END IF;
 END $rollback_guard$;
+DROP FUNCTION IF EXISTS public.import_sliq_reconcile();
+DROP FUNCTION IF EXISTS public.import_sliq_reconcile_rows(UUID);
 DROP FUNCTION IF EXISTS public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN);
 DROP FUNCTION IF EXISTS public.import_sliq_preflight(TEXT, JSONB, JSONB);
 DROP FUNCTION IF EXISTS public.import_sliq_check_files(TEXT, JSONB);

@@ -15,7 +15,7 @@
 
 export type SliqEntity = "customers" | "suppliers" | "invoices";
 export type SliqRow = Record<string, unknown> & { source_row_id: string };
-export type SliqSourceFile = { entity: "customers" | "suppliers" | "invoices" | "payments"; name: string; sha256: string };
+export type SliqSourceFile = { entity: "customers" | "suppliers" | "invoices" | "payments" | "creditNotes"; name: string; sha256: string };
 export type SliqPayload = {
   /** SHA-256 of the sorted "<entity>:<file sha256>" lines (lib/sliq-import-build.ts sourceKeyText); p152 checks it against source_files. */
   source_sha256: string;
@@ -25,8 +25,10 @@ export type SliqPayload = {
   suppliers?: SliqRow[];
   invoices?: SliqRow[];
   payments?: SliqRow[];
+  /** Issued credit notes, each applied in full to its invoice (085); they travel in their invoice's batch. */
+  credit_notes?: SliqRow[];
 };
-export type SliqBatch = { entity: SliqEntity; batchNo: number; rows: Partial<Record<SliqEntity | "payments", SliqRow[]>>; weight: number; records: number; lines: number };
+export type SliqBatch = { entity: SliqEntity; batchNo: number; rows: Partial<Record<SliqEntity | "payments" | "credit_notes", SliqRow[]>>; weight: number; records: number; lines: number };
 
 /** About 500 audit rows a batch, as 076's IMPORT_PART_WEIGHT (at most 1.1 s measured; Supabase stops a call at 8 s). */
 export const SLIQ_BATCH_WEIGHT = 500;
@@ -39,8 +41,9 @@ export type SliqCounts = { rows: number; already_imported: number; from_other_fi
 export type SliqPreflight = {
   ok: boolean;
   source_sha256: string;
-  counts: Record<"customers" | "suppliers" | "invoices" | "payments", SliqCounts>;
-  money: { invoiced: number; paid: number; owed: number; payment_to_confirm: number };
+  counts: Record<"customers" | "suppliers" | "invoices" | "payments" | "credit_notes", SliqCounts>;
+  money: { invoiced: number; paid: number; credited: number; owed: number; customer_credit: number; excluded_invoices: number; payment_to_confirm: number };
+  changed_since_import?: SliqMessage[];
   error_count: number;
   errors: SliqMessage[];
   warnings?: { kind: string | null; row: number | null; field: string | null; message: string }[];
@@ -68,18 +71,21 @@ const text = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "n
  * The batches, in order (customers, suppliers, invoices with their payments), and the payments whose invoice is not in the file
  * (never sent in a batch: the preflight reports them as problems). Deterministic: the same payload always gives the same batches.
  */
-export function planSliqBatches(payload: SliqPayload, weight = SLIQ_BATCH_WEIGHT): { batches: SliqBatch[]; orphanPayments: SliqRow[] } {
+export function planSliqBatches(payload: SliqPayload, weight = SLIQ_BATCH_WEIGHT): { batches: SliqBatch[]; orphanPayments: SliqRow[]; orphanCredits: SliqRow[] } {
   const batches: SliqBatch[] = [];
-  const paymentsByInvoice = new Map<string, SliqRow[]>();
   const invoiceRefs = new Set((payload.invoices ?? []).map((i) => text(i.invoice_ref)));
-  const orphanPayments: SliqRow[] = [];
-  for (const p of payload.payments ?? []) {
-    const ref = text(p.invoice_ref);
-    if (!ref || !invoiceRefs.has(ref)) { orphanPayments.push(p); continue; }
-    const list = paymentsByInvoice.get(ref) ?? [];
-    list.push(p);
-    paymentsByInvoice.set(ref, list);
-  }
+  const group = (list: SliqRow[] | undefined) => {
+    const by = new Map<string, SliqRow[]>();
+    const orphans: SliqRow[] = [];
+    for (const p of list ?? []) {
+      const ref = text(p.invoice_ref);
+      if (!ref || !invoiceRefs.has(ref)) { orphans.push(p); continue; }
+      by.set(ref, [...(by.get(ref) ?? []), p]);
+    }
+    return { by, orphans };
+  };
+  const { by: paymentsByInvoice, orphans: orphanPayments } = group(payload.payments);
+  const { by: creditsByInvoice, orphans: orphanCredits } = group(payload.credit_notes);
   const taken = new Set<string>();
 
   for (const entity of ["customers", "suppliers", "invoices"] as const) {
@@ -88,11 +94,14 @@ export function planSliqBatches(payload: SliqPayload, weight = SLIQ_BATCH_WEIGHT
     for (const row of payload[entity] ?? []) {
       const ref = entity === "invoices" ? text(row.invoice_ref) : "";
       // An invoice's payments go with its first appearance only (a duplicate number is the preflight's problem, not a second copy).
-      const pays = entity === "invoices" && !taken.has(ref) ? paymentsByInvoice.get(ref) ?? [] : [];
+      const first = entity === "invoices" && !taken.has(ref);
+      const pays = first ? paymentsByInvoice.get(ref) ?? [] : [];
+      const creds = first ? creditsByInvoice.get(ref) ?? [] : [];
       if (entity === "invoices") taken.add(ref);
       const lines = entity === "invoices" ? linesOf(row) : 0;
-      const w = entity === "invoices" ? 2 + lines + pays.length : 1;
-      const records = 1 + pays.length;
+      // A credit note writes the note, one line and an allocation: weighed 3.
+      const w = entity === "invoices" ? 2 + lines + pays.length + 3 * creds.length : 1;
+      const records = 1 + pays.length + creds.length;
       if (!current || (current.weight > 0 && (current.weight + w > weight || current.records + records > SLIQ_BATCH_MAX_RECORDS || current.lines + lines > SLIQ_BATCH_MAX_LINES))) {
         n += 1;
         current = { entity, batchNo: n, rows: {}, weight: 0, records: 0, lines: 0 };
@@ -100,12 +109,13 @@ export function planSliqBatches(payload: SliqPayload, weight = SLIQ_BATCH_WEIGHT
       }
       (current.rows[entity] ??= []).push(row);
       if (pays.length) (current.rows.payments ??= []).push(...pays);
+      if (creds.length) (current.rows.credit_notes ??= []).push(...creds);
       current.weight += w;
       current.records += records;
       current.lines += lines;
     }
   }
-  return { batches, orphanPayments };
+  return { batches, orphanPayments, orphanCredits };
 }
 
 export type Rpc = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string; code?: string; hint?: string } | null }>;
@@ -196,7 +206,7 @@ export function parseSliqPayload(json: string): SliqPayload {
   const out: SliqPayload = { source_sha256: sha, source_files: files as SliqSourceFile[] };
   for (const key of Object.keys(r)) {
     if (key === "source_sha256" || key === "source_files") continue;
-    if (!["customers", "suppliers", "invoices", "payments"].includes(key)) throw new Error(`Unknown section "${key}".`);
+    if (!["customers", "suppliers", "invoices", "payments", "credit_notes"].includes(key)) throw new Error(`Unknown section "${key}".`);
     const list = r[key];
     if (!Array.isArray(list)) throw new Error(`"${key}" must be a list.`);
     for (const [i, row] of list.entries()) {

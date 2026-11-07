@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { buildSliqPayload, sourceKeyText, sourceTotalsFromPayload } from "@/lib/sliq-import-build";
+import { buildSliqPayload, sourceKeyText, sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-build";
 import { SLIQ_BATCH_MAX_LINES, SLIQ_BATCH_MAX_RECORDS, type SliqPayload, isRunLabel, parseSliqPayload, planSliqBatches, sliqRunBatches } from "@/lib/sliq-import-route";
-import { validateSliqExport } from "@/lib/sliq-validate";
+import { validateSliqExport, validateSliqExportWith } from "@/lib/sliq-validate";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const root = path.resolve(__dirname, "../..");
@@ -110,25 +110,45 @@ describe("buildSliqPayload (after the validator says ok)", () => {
   const files = {
     customers: { name: "c.csv", bytes: enc.encode("Acc,Name\r\nA1,Alpha Ltd\r\nB2,Beta Ltd\r\n") },
     suppliers: { name: "s.csv", bytes: enc.encode("Acc,Name\r\nS1,Steel Ltd\r\n") },
-    invoices: { name: "i.csv", bytes: enc.encode("No,Acc,Date,Gross\r\nINV-10,A1,03/02/2026,120.00\r\nINV-11,B2,04/02/2026,60.50\r\n") },
-    payments: { name: "p.csv", bytes: enc.encode("No,Date,Amount\r\nINV-10,05/02/2026,60.00\r\nINV-10,05/02/2026,60.00\r\n") },
+    invoices: { name: "i.csv", bytes: enc.encode("No,Acc,Date,Gross\r\nINV-10,A1,13/02/2026,120.00\r\nINV-11,B2,14/02/2026,60.50\r\n") },
+    payments: { name: "p.csv", bytes: enc.encode("No,Date,Amount\r\nINV-10,15/02/2026,60.00\r\nINV-10,15/02/2026,60.00\r\n") },
   };
 
   it("maps the confirmed columns; the source key is the SHA-256 p152 recomputes from the per-file hashes", async () => {
-    expect(validateSliqExport({ files, mapping }).ok).toBe(false); // two identical payments without a receipt key: the validator refuses them
-    const ok = { ...files, payments: { name: "p.csv", bytes: enc.encode("No,Date,Amount\r\nINV-10,05/02/2026,60.00\r\nINV-10,06/02/2026,60.00\r\n") } };
-    expect(validateSliqExport({ files: ok, mapping }).ok).toBe(true);
+    expect((await validateSliqExport({ files, mapping })).ok).toBe(false); // two identical payments without a receipt key: the validator refuses them
+    expect((await validateAndBuild(files, mapping)).payload).toBeNull();
+    const ok = { ...files, payments: { name: "p.csv", bytes: enc.encode("No,Date,Amount\r\nINV-10,15/02/2026,60.00\r\nINV-10,16/02/2026,60.00\r\n") } };
+    const report = await validateSliqExport({ files: ok, mapping });
+    expect(report.ok).toBe(true);
+    // Web Crypto (browser path) and node:crypto give the same hashes.
+    expect(validateSliqExportWith({ files: ok, mapping }, (b) => sha(Buffer.from(b).toString("latin1"))).totals).toEqual(report.totals);
     const { payload, sourceFiles } = await buildSliqPayload(ok, mapping as never);
     expect(sourceFiles.map((f) => f.sha256)).toEqual((["customers", "invoices", "payments", "suppliers"] as const).map((e) => sha(Buffer.from(ok[e].bytes).toString("latin1"))));
     expect(payload.source_sha256).toBe(sha(sourceKeyText(sourceFiles)));
     expect(sourceKeyText(sourceFiles).split("\n").map((l) => l.split(":")[0])).toEqual(["customers", "invoices", "payments", "suppliers"]);
     expect(payload.customers).toEqual([{ source_row_id: "C:A1", name: "Alpha Ltd", external_ref: "A1" }, { source_row_id: "C:B2", name: "Beta Ltd", external_ref: "B2" }]);
-    expect(payload.invoices![0]).toEqual({ source_row_id: "I:INV-10", invoice_ref: "INV-10", customer: "Alpha Ltd", invoice_date: "2026-02-03", total: "120.00", status: "sent" });
-    expect(payload.payments!.map((p) => p.source_row_id)).toEqual(["P:INV-10|2026-02-05|60.00|1", "P:INV-10|2026-02-06|60.00|1"]);
-    const totals = sourceTotalsFromPayload(payload);
+    expect(payload.invoices![0]).toEqual({ source_row_id: "I:INV-10", invoice_ref: "INV-10", customer: "Alpha Ltd", customer_key: "A1", invoice_date: "2026-02-13", total: "120.00", status: "sent" });
+    expect(payload.payments!.map((p) => p.source_row_id)).toEqual(["P:INV-10|2026-02-15|60.00|1", "P:INV-10|2026-02-16|60.00|1"]);
+    // The adapter: from the validator's report (counts and money) and the payload, keyed by account code as the route's map stores it.
+    const totals = sourceTotalsFromValidated(report, payload);
     expect(totals).toMatchObject({ counts: { customers: 2, invoices: 2, payments: 2, credit_notes: 0 }, invoiceTotalPence: 18050, paymentsTotalPence: 12000,
-      outstandingPence: 6050, customerBalancesPence: { "Alpha Ltd": 0, "Beta Ltd": 6050 }, invoiceRefMin: 10, invoiceRefMax: 11 });
+      outstandingPence: 6050, customerCreditPence: 0, customerBalancesPence: { "acct:A1": 0, "acct:B2": 6050 }, invoiceRefMin: 10, invoiceRefMax: 11 });
     expect(totals.files.length).toBe(4);
+    expect(sourceTotalsFromValidated(report, payload, "name").customerBalancesPence).toEqual({ "name:alpha ltd": 0, "name:beta ltd": 6050 });
+    // A payload that does not match the report is refused, never reconciled.
+    expect(() => sourceTotalsFromValidated(report, { ...payload, payments: payload.payments!.slice(1) })).toThrow(/payments is 2 in the validator's report but 1/);
+    expect(() => sourceTotalsFromValidated({ ...report, ok: false }, payload)).toThrow(/not ok/);
+  });
+});
+
+describe("credit notes ride with their invoice", () => {
+  it("plans each credit note in its invoice's batch and keeps unknown ones out", () => {
+    const p = payload(30, 1);
+    p.credit_notes = [{ source_row_id: "N:CRD-1", credit_ref: "CRD-1", invoice_ref: "INV-7", total: "1.00" }, { source_row_id: "N:CRD-2", credit_ref: "CRD-2", invoice_ref: "INV-NOPE", total: "1.00" }];
+    const plan = planSliqBatches(p, 20);
+    expect(plan.orphanCredits.map((c) => c.source_row_id)).toEqual(["N:CRD-2"]);
+    const b = plan.batches.find((x) => (x.rows.credit_notes ?? []).length > 0)!;
+    expect(b.rows.invoices!.some((i) => i.invoice_ref === "INV-7")).toBe(true);
   });
 });
 

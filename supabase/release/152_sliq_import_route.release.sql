@@ -54,7 +54,7 @@ GRANT SELECT ON public.import_source_batches TO authenticated;
 
 CREATE TABLE IF NOT EXISTS public.import_source_rows (
   organization_id UUID NOT NULL REFERENCES public.organizations(id),
-  entity          TEXT NOT NULL CHECK (entity IN ('customer', 'supplier', 'invoice', 'payment')),
+  entity          TEXT NOT NULL CHECK (entity IN ('customer', 'supplier', 'invoice', 'payment', 'credit_note')),
   source_row_id   TEXT NOT NULL CHECK (length(source_row_id) BETWEEN 1 AND 200),
   source_sha256   TEXT NOT NULL CHECK (source_sha256 ~ '^[0-9a-f]{64}$'),
   run_label       TEXT NOT NULL,
@@ -64,18 +64,21 @@ CREATE TABLE IF NOT EXISTS public.import_source_rows (
   supplier_id     UUID REFERENCES public.suppliers(id) ON DELETE CASCADE,
   invoice_id      UUID REFERENCES public.invoices(id) ON DELETE CASCADE,
   payment_id      UUID REFERENCES public.invoice_payments(id) ON DELETE CASCADE,
+  credit_note_id  UUID REFERENCES public.credit_notes(id) ON DELETE CASCADE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
   CONSTRAINT import_source_rows_pkey PRIMARY KEY (organization_id, entity, source_row_id),
   CONSTRAINT import_source_rows_batch_fkey FOREIGN KEY (organization_id, source_sha256, run_label, batch_entity, batch_no)
     REFERENCES public.import_source_batches (organization_id, source_sha256, run_label, entity, batch_no),
   CONSTRAINT import_source_rows_one_record CHECK (
-    num_nonnulls(customer_id, supplier_id, invoice_id, payment_id) = 1
+    num_nonnulls(customer_id, supplier_id, invoice_id, payment_id, credit_note_id) = 1
     AND (entity = 'customer') = (customer_id IS NOT NULL) AND (entity = 'supplier') = (supplier_id IS NOT NULL)
-    AND (entity = 'invoice') = (invoice_id IS NOT NULL) AND (entity = 'payment') = (payment_id IS NOT NULL)),
+    AND (entity = 'invoice') = (invoice_id IS NOT NULL) AND (entity = 'payment') = (payment_id IS NOT NULL)
+    AND (entity = 'credit_note') = (credit_note_id IS NOT NULL)),
   CONSTRAINT import_source_rows_customer_once UNIQUE (customer_id),
   CONSTRAINT import_source_rows_supplier_once UNIQUE (supplier_id),
   CONSTRAINT import_source_rows_invoice_once UNIQUE (invoice_id),
-  CONSTRAINT import_source_rows_payment_once UNIQUE (payment_id)
+  CONSTRAINT import_source_rows_payment_once UNIQUE (payment_id),
+  CONSTRAINT import_source_rows_credit_note_once UNIQUE (credit_note_id)
 );
 CREATE INDEX IF NOT EXISTS idx_import_source_rows_batch ON public.import_source_rows (organization_id, source_sha256, run_label, batch_entity, batch_no);
 ALTER TABLE public.import_source_rows ENABLE ROW LEVEL SECURITY;
@@ -118,7 +121,8 @@ BEGIN
       SELECT c.organization_id FROM public.customers c WHERE c.id = NEW.customer_id
       UNION ALL SELECT s.organization_id FROM public.suppliers s WHERE s.id = NEW.supplier_id
       UNION ALL SELECT i.organization_id FROM public.invoices i WHERE i.id = NEW.invoice_id
-      UNION ALL SELECT p.organization_id FROM public.invoice_payments p WHERE p.id = NEW.payment_id) x;
+      UNION ALL SELECT p.organization_id FROM public.invoice_payments p WHERE p.id = NEW.payment_id
+      UNION ALL SELECT n.organization_id FROM public.credit_notes n WHERE n.id = NEW.credit_note_id) x;
     IF v_org IS DISTINCT FROM NEW.organization_id THEN
       RAISE EXCEPTION 'An import map row must name a record of its own company.' USING ERRCODE = '42501', HINT = 'import_map_other_company';
     END IF;
@@ -127,7 +131,8 @@ BEGIN
   IF EXISTS (SELECT 1 FROM public.customers c WHERE c.id = OLD.customer_id)
      OR EXISTS (SELECT 1 FROM public.suppliers s WHERE s.id = OLD.supplier_id)
      OR EXISTS (SELECT 1 FROM public.invoices i WHERE i.id = OLD.invoice_id)
-     OR EXISTS (SELECT 1 FROM public.invoice_payments p WHERE p.id = OLD.payment_id) THEN
+     OR EXISTS (SELECT 1 FROM public.invoice_payments p WHERE p.id = OLD.payment_id)
+     OR EXISTS (SELECT 1 FROM public.credit_notes n WHERE n.id = OLD.credit_note_id) THEN
     RAISE EXCEPTION 'An import map row goes only with its record: remove the record, not its map row.' USING ERRCODE = '42501', HINT = 'import_map_locked';
   END IF;
   RETURN OLD;
@@ -169,7 +174,7 @@ BEGIN
   IF p_payload IS NULL OR jsonb_typeof(p_payload) <> 'object' THEN
     RAISE EXCEPTION 'The import must be one record of sections.' USING ERRCODE = '22023', HINT = 'bad_payload';
   END IF;
-  SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_payload) k WHERE k NOT IN ('customers', 'suppliers', 'invoices', 'payments');
+  SELECT string_agg(k, ', ' ORDER BY k) INTO v_bad FROM jsonb_object_keys(p_payload) k WHERE k NOT IN ('customers', 'suppliers', 'invoices', 'payments', 'credit_notes');
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION 'Unknown section(s): %.', left(v_bad, 200) USING ERRCODE = '22023', HINT = 'bad_payload';
   END IF;
@@ -178,15 +183,17 @@ BEGIN
     RAISE EXCEPTION 'Section(s) % must be lists.', v_bad USING ERRCODE = '22023', HINT = 'bad_payload';
   END IF;
 
-  DROP TABLE IF EXISTS pg_temp._sliq_in, pg_temp._sliq_err;
+  DROP TABLE IF EXISTS pg_temp._sliq_in, pg_temp._sliq_err, pg_temp._sliq_warn;
   CREATE TEMP TABLE _sliq_err (seq INT GENERATED ALWAYS AS IDENTITY, kind TEXT, source_row_id TEXT, field TEXT, message TEXT, code TEXT) ON COMMIT DROP;
+  CREATE TEMP TABLE _sliq_warn (seq INT GENERATED ALWAYS AS IDENTITY, kind TEXT, source_row_id TEXT, field TEXT, message TEXT, code TEXT) ON COMMIT DROP;
   CREATE TEMP TABLE _sliq_in ON COMMIT DROP AS
-  SELECT s.kind, CASE s.kind WHEN 'customers' THEN 'customer' WHEN 'suppliers' THEN 'supplier' WHEN 'invoices' THEN 'invoice' ELSE 'payment' END AS entity,
+  SELECT s.kind, CASE s.kind WHEN 'customers' THEN 'customer' WHEN 'suppliers' THEN 'supplier' WHEN 'invoices' THEN 'invoice'
+                             WHEN 'credit_notes' THEN 'credit_note' ELSE 'payment' END AS entity,
          e.ord::INT AS ord, jsonb_typeof(e.v) = 'object' AS obj,
          nullif(btrim(CASE WHEN jsonb_typeof(e.v -> 'source_row_id') IN ('string', 'number') THEN e.v ->> 'source_row_id' END), '') AS source_row_id,
          CASE WHEN jsonb_typeof(e.v) = 'object' THEN e.v - 'source_row_id' - 'row' END AS rec,
-         FALSE AS mapped, NULL::TEXT AS mapped_sha, NULL::INT AS pos
-  FROM unnest(ARRAY['customers', 'suppliers', 'invoices', 'payments']) s(kind)
+         FALSE AS mapped, NULL::TEXT AS mapped_sha, NULL::INT AS pos, NULL::UUID AS mapped_id
+  FROM unnest(ARRAY['customers', 'suppliers', 'invoices', 'payments', 'credit_notes']) s(kind)
   CROSS JOIN LATERAL jsonb_array_elements(coalesce(p_payload -> s.kind, '[]'::JSONB)) WITH ORDINALITY e(v, ord);
 
   INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
@@ -201,9 +208,28 @@ BEGIN
         FROM _sliq_in i WHERE i.source_row_id IS NOT NULL) d
   WHERE d.rn > 1;
 
-  UPDATE _sliq_in i SET mapped = TRUE, mapped_sha = m.source_sha256
+  UPDATE _sliq_in i SET mapped = TRUE, mapped_sha = m.source_sha256,
+                        mapped_id = coalesce(m.customer_id, m.supplier_id, m.invoice_id, m.payment_id, m.credit_note_id)
   FROM public.import_source_rows m
   WHERE m.organization_id = p_org AND m.entity = i.entity AND m.source_row_id = i.source_row_id;
+  -- Already imported, but the export says something else now: listed, kept as it is in Tolra (never overwritten).
+  INSERT INTO _sliq_warn (kind, source_row_id, field, message, code)
+  SELECT i.kind, i.source_row_id, x.field, 'Already imported, but the export now says ' || x.now || ' (Tolra has ' || x.was || '): kept as it is in Tolra.', 'changed_since_import'
+  FROM _sliq_in i
+  CROSS JOIN LATERAL (
+    SELECT 'name' AS field, coalesce(i.rec ->> 'name', '') AS now, c.name AS was FROM public.customers c
+      WHERE i.entity = 'customer' AND c.id = i.mapped_id AND public.import_norm_name(c.name) <> public.import_norm_name(coalesce(i.rec ->> 'name', ''))
+    UNION ALL SELECT 'name', coalesce(i.rec ->> 'name', ''), s2.name FROM public.suppliers s2
+      WHERE i.entity = 'supplier' AND s2.id = i.mapped_id AND public.import_norm_name(s2.name) <> public.import_norm_name(coalesce(i.rec ->> 'name', ''))
+    UNION ALL SELECT 'total', coalesce(i.rec ->> 'total', ''), v.total::TEXT FROM public.invoices v
+      WHERE i.entity = 'invoice' AND v.id = i.mapped_id AND public.import_num(i.rec ->> 'total') IS DISTINCT FROM v.total
+    UNION ALL SELECT 'customer', coalesce(i.rec ->> 'customer', ''), v.customer FROM public.invoices v
+      WHERE i.entity = 'invoice' AND v.id = i.mapped_id AND public.import_norm_name(v.customer) <> public.import_norm_name(coalesce(i.rec ->> 'customer', ''))
+    UNION ALL SELECT 'amount', coalesce(i.rec ->> 'amount', ''), y.amount::TEXT FROM public.invoice_payments y
+      WHERE i.entity = 'payment' AND y.id = i.mapped_id AND public.import_num(i.rec ->> 'amount') IS DISTINCT FROM y.amount
+    UNION ALL SELECT 'total', coalesce(i.rec ->> 'total', ''), n.total::TEXT FROM public.credit_notes n
+      WHERE i.entity = 'credit_note' AND n.id = i.mapped_id AND public.import_num(i.rec ->> 'total') IS DISTINCT FROM n.total) x
+  WHERE i.mapped;
   UPDATE _sliq_in i SET pos = r.n
   FROM (SELECT i2.kind, i2.ord, row_number() OVER (PARTITION BY i2.kind ORDER BY i2.ord)::INT AS n FROM _sliq_in i2 WHERE NOT i2.mapped) r
   WHERE r.kind = i.kind AND r.ord = i.ord;
@@ -235,8 +261,41 @@ BEGIN
          'map_diverged'
   FROM (SELECT p.kind, p.ord, 'name' AS field FROM pg_temp._imp_parties p WHERE p.action = 'match'
         UNION ALL SELECT 'invoices', v.ord, 'invoice_ref' FROM pg_temp._imp_invoices v WHERE v.action = 'match'
-        UNION ALL SELECT 'payments', y.ord, 'invoice_ref' FROM pg_temp._imp_payments y WHERE y.action = 'match') m
+        UNION ALL SELECT 'payments', y.ord, 'invoice_ref' FROM pg_temp._imp_payments y WHERE y.action = 'match'
+        UNION ALL SELECT 'credit_notes', n.ord, 'credit_ref' FROM pg_temp._imp_credit_notes n WHERE n.action = 'match') m
   JOIN _sliq_in i ON i.kind = m.kind AND i.pos = m.ord AND NOT i.mapped;
+  -- A customer or supplier 076 would CREATE (its account reference is new) whose name Tolra already has: typed by hand, or imported
+  -- without this map. Refused and listed, never created a second time.
+  INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+  SELECT p.kind, i.source_row_id, 'name',
+         'Tolra already has ' || CASE p.kind WHEN 'customers' THEN 'customer' ELSE 'supplier' END || ' "' || x.name || '" (not from this import): merge or remove it, or leave this row out. Nothing in this batch was written.',
+         'already_in_tolra'
+  FROM pg_temp._imp_parties p
+  JOIN _sliq_in i ON i.kind = p.kind AND i.pos = p.ord AND NOT i.mapped
+  -- (records this same run has just written are not "already in Tolra": in a commit they exist by now, under the run's new ids)
+  CROSS JOIN LATERAL (SELECT c.name FROM public.customers c WHERE p.kind = 'customers' AND c.organization_id = current_setting('quoteflow.sliq_org')::UUID
+                        AND public.import_norm_name(c.name) = public.import_norm_name(p.name)
+                        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = c.id)
+                      UNION ALL SELECT s2.name FROM public.suppliers s2 WHERE p.kind = 'suppliers' AND s2.organization_id = current_setting('quoteflow.sliq_org')::UUID
+                        AND public.import_norm_name(s2.name) = public.import_norm_name(p.name)
+                        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = s2.id) LIMIT 1) x
+  WHERE p.action = 'create';
+  -- Every invoice names exactly one customer (Tolra's own or one this file creates), by Tolra's name rule: an invoice keeps its
+  -- customer as text, so a missing or ambiguous name would put the money on the wrong account.
+  INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+  SELECT 'invoices', i.source_row_id, 'customer',
+         CASE WHEN r.n = 0 THEN 'Customer "' || v.customer || '" is not in Tolra or in this file.'
+              ELSE 'Customer "' || v.customer || '" matches ' || r.n || ' customers: the invoice can''t be put on one account.' END,
+         'customer_unresolved'
+  FROM pg_temp._imp_invoices v
+  JOIN _sliq_in i ON i.kind = 'invoices' AND i.pos = v.ord AND NOT i.mapped
+  CROSS JOIN LATERAL (SELECT count(*) AS n FROM (
+      SELECT c.id::TEXT FROM public.customers c WHERE c.organization_id = current_setting('quoteflow.sliq_org')::UUID
+        AND public.import_norm_name(c.name) = public.import_norm_name(v.customer)
+        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = c.id)
+      UNION SELECT 'new:' || p.ord FROM pg_temp._imp_parties p WHERE p.kind = 'customers' AND p.action = 'create'
+        AND public.import_norm_name(p.name) = public.import_norm_name(v.customer)) z) r
+  WHERE v.action = 'create' AND v.customer IS NOT NULL AND r.n <> 1;
 END
 $$;
 REVOKE ALL ON FUNCTION public.import_sliq_collect(JSONB) FROM PUBLIC, anon, authenticated, service_role;
@@ -255,7 +314,9 @@ BEGIN
                  'from_other_file', (SELECT count(*) FROM _sliq_in i WHERE i.kind = k.kind AND i.mapped AND i.mapped_sha <> p_sha),
                  'to_create', (SELECT count(*) FROM _sliq_in i WHERE i.kind = k.kind AND NOT i.mapped AND NOT EXISTS (SELECT 1 FROM _sliq_err e WHERE e.kind = k.kind AND e.source_row_id = i.source_row_id)),
                  'problems', (SELECT count(DISTINCT e.source_row_id) FROM _sliq_err e WHERE e.kind = k.kind))), '{}'::JSONB)
-               FROM unnest(ARRAY['customers', 'suppliers', 'invoices', 'payments']) k(kind)),
+               FROM unnest(ARRAY['customers', 'suppliers', 'invoices', 'payments', 'credit_notes']) k(kind)),
+    'changed_since_import', (SELECT coalesce(jsonb_agg(jsonb_build_object('kind', w.kind, 'source_row_id', w.source_row_id, 'field', w.field, 'message', w.message, 'code', w.code) ORDER BY w.seq)
+                 FILTER (WHERE w.seq <= 1000), '[]'::JSONB) FROM _sliq_warn w),
     'error_count', (SELECT count(*) FROM _sliq_err),
     'errors', (SELECT coalesce(jsonb_agg(jsonb_build_object('kind', e.kind, 'source_row_id', e.source_row_id, 'field', e.field, 'message', e.message, 'code', e.code) ORDER BY e.seq)
                  FILTER (WHERE e.seq <= 1000), '[]'::JSONB) FROM _sliq_err e));
@@ -275,7 +336,7 @@ AS $$
 BEGIN
   IF p_files IS NULL OR jsonb_typeof(p_files) <> 'array' OR jsonb_array_length(p_files) NOT BETWEEN 1 AND 10
      OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_files) f
-                WHERE jsonb_typeof(f) <> 'object' OR coalesce(f ->> 'entity', '') NOT IN ('customers', 'suppliers', 'invoices', 'payments')
+                WHERE jsonb_typeof(f) <> 'object' OR coalesce(f ->> 'entity', '') NOT IN ('customers', 'suppliers', 'invoices', 'payments', 'creditNotes')
                    OR coalesce(f ->> 'sha256', '') !~ '^[0-9a-f]{64}$' OR length(coalesce(f ->> 'name', '')) NOT BETWEEN 1 AND 255)
      OR (SELECT count(DISTINCT f ->> 'entity') FROM jsonb_array_elements(p_files) f) <> jsonb_array_length(p_files) THEN
     RAISE EXCEPTION 'Give the source files: entity, name and SHA-256 of each, one per entity.' USING ERRCODE = '22023', HINT = 'bad_source_files';
@@ -309,6 +370,7 @@ BEGIN
   END IF;
   PERFORM public.import_sliq_check_files(v_sha, p_source_files);
   PERFORM pg_advisory_xact_lock(hashtext('import_company_data'), hashtext(v_org::TEXT));
+  PERFORM set_config('quoteflow.sliq_org', v_org::TEXT, TRUE);
   BEGIN
     v_imp := public.import_sliq_prepare(v_org, v_sha, p_payload, 'preflight');
     IF (SELECT count(*) FROM _sliq_in WHERE NOT mapped) > 0 THEN
@@ -316,15 +378,20 @@ BEGIN
       v_run := public.import_company_data_run(v_org, v_uid, gen_random_uuid(), jsonb_strip_nulls(v_imp), 'validate', gen_random_uuid(),
                                               repeat('0', 64), NULL, NULL, NULL);
       PERFORM public.import_sliq_collect(v_run);
-      -- The money, from 076's own figures for the rows it would create.
+      -- The money, from 076's own figures for the rows it would create, by the app's rule (034): per invoice
+      -- greatest(0, total - paid - credited + refunded) (an import has no refunds), void / cancelled / written off / draft excluded,
+      -- the excess as customer credit.
       SELECT jsonb_build_object(
                'invoiced', coalesce(sum(v.total) FILTER (WHERE v.action = 'create'), 0),
                'paid', coalesce((SELECT sum(y.amount) FROM pg_temp._imp_payments y WHERE y.action = 'create'), 0),
-               'owed', coalesce(sum(v.total - v.paid) FILTER (WHERE v.action = 'create' AND v.status NOT IN ('void', 'cancelled', 'written_off') AND NOT v.payment_unverified), 0),
+               'credited', coalesce((SELECT sum(n.total) FROM pg_temp._imp_credit_notes n WHERE n.action = 'create'), 0),
+               'owed', coalesce(sum(greatest(0, v.total - v.paid - v.credited)) FILTER (WHERE v.action = 'create' AND v.status NOT IN ('void', 'cancelled', 'written_off', 'draft') AND NOT v.payment_unverified), 0),
+               'customer_credit', coalesce(sum(greatest(0, v.paid + v.credited - v.total)) FILTER (WHERE v.action = 'create' AND v.status NOT IN ('void', 'cancelled', 'written_off', 'draft')), 0),
+               'excluded_invoices', count(*) FILTER (WHERE v.action = 'create' AND v.status IN ('void', 'cancelled', 'written_off', 'draft')),
                'payment_to_confirm', count(*) FILTER (WHERE v.action = 'create' AND v.payment_unverified))
         INTO v_money FROM pg_temp._imp_invoices v;
     END IF;
-    v_out := public.import_sliq_summary(v_sha) || jsonb_build_object('money', coalesce(v_money, jsonb_build_object('invoiced', 0, 'paid', 0, 'owed', 0, 'payment_to_confirm', 0)),
+    v_out := public.import_sliq_summary(v_sha) || jsonb_build_object('money', coalesce(v_money, jsonb_build_object('invoiced', 0, 'paid', 0, 'credited', 0, 'owed', 0, 'customer_credit', 0, 'excluded_invoices', 0, 'payment_to_confirm', 0)),
                                                                  'doc_counters_note', 'counters only rise (GREATEST); invoice numbers are kept as written',
                                                                  'warnings', coalesce(v_run -> 'warnings', '[]'::JSONB));
     RAISE EXCEPTION 'preflight rolled back' USING ERRCODE = 'QI152';
@@ -362,6 +429,8 @@ DECLARE
   v_created INT;
   v_n       INT;
   v_lines   INT;
+  v_before  JSONB;
+  v_moved   TEXT;
 BEGIN
   IF v_sha IS NULL OR v_sha !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'Give the source file''s SHA-256 (64 hex characters).' USING ERRCODE = '22023', HINT = 'bad_source_sha';
@@ -374,8 +443,8 @@ BEGIN
     RAISE EXCEPTION 'A batch is customers, suppliers or invoices, numbered 1 to 10000, and says whether it is a dry run.' USING ERRCODE = '22023', HINT = 'bad_request';
   END IF;
   IF p_rows IS NULL OR jsonb_typeof(p_rows) <> 'object'
-     OR EXISTS (SELECT 1 FROM jsonb_object_keys(p_rows) k WHERE k <> p_entity AND NOT (p_entity = 'invoices' AND k = 'payments')) THEN
-    RAISE EXCEPTION 'A % batch carries only %.', p_entity, CASE p_entity WHEN 'invoices' THEN 'invoices and their payments' ELSE p_entity END
+     OR EXISTS (SELECT 1 FROM jsonb_object_keys(p_rows) k WHERE k <> p_entity AND NOT (p_entity = 'invoices' AND k IN ('payments', 'credit_notes'))) THEN
+    RAISE EXCEPTION 'A % batch carries only %.', p_entity, CASE p_entity WHEN 'invoices' THEN 'invoices and their payments and credit notes' ELSE p_entity END
       USING ERRCODE = '22023', HINT = 'bad_payload';
   END IF;
   SELECT coalesce(sum(CASE WHEN jsonb_typeof(v) = 'array' THEN jsonb_array_length(v) ELSE 0 END), 0) INTO v_in FROM jsonb_each(p_rows) e(k, v);
@@ -405,6 +474,8 @@ BEGIN
     RETURN v_prior.result || jsonb_build_object('already_imported', TRUE, 'replayed', TRUE);
   END IF;
 
+  PERFORM set_config('quoteflow.sliq_org', v_org::TEXT, TRUE);
+  SELECT coalesce(jsonb_object_agg(dc.prefix, dc.last), '{}'::JSONB) INTO v_before FROM public.doc_counters dc WHERE dc.organization_id = v_org;
   BEGIN
     v_imp := public.import_sliq_prepare(v_org, v_sha, p_rows, p_run_label || ' ' || p_entity || ' batch ' || p_batch_no);
     SELECT count(*) FILTER (WHERE mapped), count(*) FILTER (WHERE NOT mapped) INTO v_already, v_created FROM _sliq_in;
@@ -427,6 +498,16 @@ BEGIN
       RAISE EXCEPTION 'batch rolled back' USING ERRCODE = 'QI152';
     END IF;
 
+    -- Counters: only INV may move (and only up); any other counter moving refuses the whole batch.
+    SELECT string_agg(coalesce(a.prefix, b.key) || ' ' || coalesce(b.value, 'none') || ' -> ' || coalesce(a.last::TEXT, 'none'), ', ') INTO v_moved
+    FROM (SELECT dc.prefix, dc.last FROM public.doc_counters dc WHERE dc.organization_id = v_org) a
+    FULL JOIN jsonb_each_text(v_before) b ON b.key = a.prefix
+    WHERE (coalesce(a.prefix, b.key) <> 'INV' AND a.last::TEXT IS DISTINCT FROM b.value)
+       OR (coalesce(a.prefix, b.key) = 'INV' AND (a.last IS NULL OR (b.value IS NOT NULL AND a.last < b.value::BIGINT)));
+    IF v_moved IS NOT NULL THEN
+      RAISE EXCEPTION 'import_sliq_batch: counter_changed: % (this route may only raise INV)', v_moved;
+    END IF;
+
     -- The batch and its map rows, in this transaction.
     v_result := v_result || jsonb_build_object('committed', TRUE);
     INSERT INTO public.import_source_batches (organization_id, source_sha256, run_label, entity, batch_no, request_sha256, import_batch_id,
@@ -435,14 +516,16 @@ BEGIN
             v_in, v_created, v_already, v_result, v_uid);
     IF v_created > 0 THEN
       INSERT INTO public.import_source_rows (organization_id, entity, source_row_id, source_sha256, run_label, batch_entity, batch_no,
-                                             customer_id, supplier_id, invoice_id, payment_id)
+                                             customer_id, supplier_id, invoice_id, payment_id, credit_note_id)
       SELECT v_org, i.entity, i.source_row_id, v_sha, p_run_label, p_entity, p_batch_no,
              CASE WHEN i.entity = 'customer' THEN r.new_id END, CASE WHEN i.entity = 'supplier' THEN r.new_id END,
-             CASE WHEN i.entity = 'invoice' THEN r.new_id END, CASE WHEN i.entity = 'payment' THEN r.new_id END
+             CASE WHEN i.entity = 'invoice' THEN r.new_id END, CASE WHEN i.entity = 'payment' THEN r.new_id END,
+             CASE WHEN i.entity = 'credit_note' THEN r.new_id END
       FROM _sliq_in i
       JOIN (SELECT p.kind, p.ord, p.new_id FROM pg_temp._imp_parties p WHERE p.action = 'create'
             UNION ALL SELECT 'invoices', v.ord, v.new_id FROM pg_temp._imp_invoices v WHERE v.action = 'create'
-            UNION ALL SELECT 'payments', y.ord, y.new_id FROM pg_temp._imp_payments y WHERE y.action = 'create') r ON r.kind = i.kind AND r.ord = i.pos
+            UNION ALL SELECT 'payments', y.ord, y.new_id FROM pg_temp._imp_payments y WHERE y.action = 'create'
+            UNION ALL SELECT 'credit_notes', n.ord, n.new_id FROM pg_temp._imp_credit_notes n WHERE n.action = 'create') r ON r.kind = i.kind AND r.ord = i.pos
       WHERE NOT i.mapped;
       GET DIAGNOSTICS v_n = ROW_COUNT;
       IF v_n <> v_created THEN
@@ -453,8 +536,9 @@ BEGIN
                  JOIN public.import_source_rows m ON m.invoice_id = v.id AND m.organization_id = v_org AND m.source_sha256 = v_sha
                   AND m.run_label = p_run_label AND m.batch_entity = p_entity AND m.batch_no = p_batch_no
                  WHERE coalesce(v.amount_paid, 0) <> coalesce((SELECT sum(p.amount) FROM public.invoice_payments p WHERE p.invoice_id = v.id), 0)
-                    OR coalesce(v.amount_paid, 0) > v.total) THEN
-        RAISE EXCEPTION 'import_sliq_batch: an invoice''s paid amount differs from its payments';
+                    OR coalesce(v.credited_amount, 0) <> coalesce((SELECT sum(a.amount) FROM public.invoice_credit_allocations a WHERE a.invoice_id = v.id), 0)
+                    OR coalesce(v.amount_paid, 0) + coalesce(v.credited_amount, 0) > v.total) THEN
+        RAISE EXCEPTION 'import_sliq_batch: an invoice''s paid or credited amount differs from its payments or credit allocations, or exceeds its total';
       END IF;
     END IF;
     PERFORM security_audit.log_named_event(v_org, 'IMPORT_SOURCE_BATCH', 'import_source_batches',
@@ -475,6 +559,156 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN) TO authenticated;
+
+-- ---- 5. Reconciliation rows (read only) ------------------------------------------------------------------------------------------
+-- The metric rows lib/sliq-reconcile compares with the validator's source totals. One definition, two callers: the browser card
+-- (import_sliq_reconcile, the session's company, admins) and supabase/verify/sliq_reconcile.sql in the SQL editor (as the owner, for a
+-- named company). Outstanding as the app (034); customers keyed by the import map's account code, else name; refuses an unknown company.
+CREATE OR REPLACE FUNCTION public.import_sliq_reconcile_rows(p_org UUID)
+RETURNS TABLE (metric TEXT, key TEXT, value TEXT)
+LANGUAGE plpgsql
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+#variable_conflict use_column
+BEGIN
+  IF p_org IS NULL OR p_org = '00000000-0000-0000-0000-000000000000'::UUID THEN
+    RAISE EXCEPTION 'Replace the organisation id placeholder first.' USING ERRCODE = '22023', HINT = 'org_placeholder';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.organizations o WHERE o.id = p_org) THEN
+    RAISE EXCEPTION 'No company has the organisation id %.', p_org USING ERRCODE = '22023', HINT = 'org_unknown';
+  END IF;
+  RETURN QUERY
+  WITH p0 AS (
+    SELECT p_org AS org
+  ),
+  p AS (
+    SELECT p0.org FROM p0
+  ),
+  inv AS (
+    SELECT i.id, i.invoice_ref, i.customer, i.total, i.credited_amount, i.amount_paid, i.refunded_amount,
+           lower(coalesce(i.status, 'draft')) IN ('draft', 'void', 'voided', 'cancelled', 'canceled', 'written_off') AS excluded
+    FROM public.invoices i JOIN p ON i.organization_id = p.org
+  ),
+  pay AS (
+    SELECT x.id, x.invoice_id, x.amount, x.paid_on, x.reference
+    FROM public.invoice_payments x JOIN p ON x.organization_id = p.org
+  ),
+  paid AS (
+    SELECT invoice_id, sum(amount) AS paid FROM pay GROUP BY invoice_id
+  ),
+  inv_bal AS (
+    SELECT i.id, i.invoice_ref, i.customer, i.excluded,
+           round(coalesce(i.total, 0) / 0.01)::bigint AS total_p,
+           coalesce(round(pd.paid / 0.01), 0)::bigint AS paid_p,
+           round(coalesce(i.credited_amount, 0) / 0.01)::bigint AS credit_p,
+           round(coalesce(i.refunded_amount, 0) / 0.01)::bigint AS refund_p
+    FROM inv i LEFT JOIN paid pd ON pd.invoice_id = i.id
+  ),
+  -- The app's balance (034): per live invoice greatest(0, total - paid - credited + refunded); the excess is customer credit.
+  inv_due AS (
+    SELECT b.*, (b.total_p - b.paid_p - b.credit_p + b.refund_p) AS left_p FROM inv_bal b WHERE NOT b.excluded
+  ),
+  cust AS (
+    SELECT c.id, c.name, c.email FROM public.customers c JOIN p ON c.organization_id = p.org
+  ),
+  -- The customer each invoice is on, by Tolra's name rule; its key is the account code the import map holds ("acct:"), else the name.
+  -- An invoice that names no customer or several gets "unresolved:" and so can never match a source balance.
+  cust_key AS (
+    SELECT c.id, public.import_norm_name(c.name) AS nn,
+           coalesce('acct:' || upper(substr((SELECT m.source_row_id FROM public.import_source_rows m WHERE m.customer_id = c.id AND m.entity = 'customer'), 3)),
+                    'name:' || public.import_norm_name(c.name)) AS k
+    FROM cust c
+  ),
+  inv_key AS (
+    SELECT d.id, CASE WHEN (SELECT count(1) FROM cust_key ck WHERE ck.nn = public.import_norm_name(d.customer)) = 1
+                      THEN (SELECT ck.k FROM cust_key ck WHERE ck.nn = public.import_norm_name(d.customer))
+                      ELSE 'unresolved:' || lower(btrim(coalesce(d.customer, ''))) END AS k
+    FROM inv_due d
+  ),
+  refs AS (
+    SELECT invoice_ref,
+           substring(invoice_ref FROM '^INV-(\d{1,9})$')::int AS n
+    FROM inv
+  ),
+  dup_cust_name AS (
+    SELECT lower(btrim(name)) AS k, count(1) AS n FROM cust GROUP BY 1 HAVING count(1) > 1
+  ),
+  dup_cust_email AS (
+    SELECT lower(btrim(email)) AS k, count(1) AS n FROM cust
+    WHERE email IS NOT NULL AND btrim(email) <> '' GROUP BY 1 HAVING count(1) > 1
+  ),
+  dup_inv_ref AS (
+    SELECT invoice_ref AS k, count(1) AS n FROM inv GROUP BY 1 HAVING count(1) > 1
+  ),
+  -- The same payment twice: same invoice, date, amount AND reference (the receipt key). Two receipts of the same amount on the same day
+  -- with different references are a legitimate split, not a duplicate.
+  dup_pay AS (
+    SELECT x.invoice_id::text || '|' || coalesce(x.paid_on::text, 'none') || '|' || round(x.amount / 0.01)::bigint::text || '|' || coalesce(x.reference, '') AS k,
+           count(1) AS n
+    FROM pay x GROUP BY x.invoice_id, x.paid_on, round(x.amount / 0.01), coalesce(x.reference, '') HAVING count(1) > 1
+  ),
+  orphan AS (
+    SELECT x.id FROM pay x LEFT JOIN inv i ON i.id = x.invoice_id WHERE i.id IS NULL
+  ),
+  overpaid AS (
+    SELECT invoice_ref, total_p, paid_p, credit_p FROM inv_bal WHERE paid_p + credit_p > total_p
+  )
+  SELECT metric, key, value FROM (
+    SELECT 1 AS o, 'count' AS metric, 'customers' AS key, (SELECT count(1) FROM cust)::text AS value
+    UNION ALL SELECT 1, 'count', 'invoices', (SELECT count(1) FROM inv)::text
+    UNION ALL SELECT 1, 'count', 'payments', (SELECT count(1) FROM pay)::text
+    UNION ALL SELECT 1, 'count', 'credit_notes',
+      (SELECT count(1) FROM public.credit_notes c JOIN p ON c.organization_id = p.org)::text
+    UNION ALL SELECT 2, 'total_pence', 'invoiced', (SELECT coalesce(sum(total_p), 0) FROM inv_bal)::text
+    UNION ALL SELECT 2, 'total_pence', 'paid', (SELECT coalesce(sum(paid_p), 0) FROM inv_bal)::text
+    UNION ALL SELECT 2, 'total_pence', 'credits', (SELECT coalesce(sum(credit_p), 0) FROM inv_bal)::text
+    UNION ALL SELECT 2, 'total_pence', 'refunds', (SELECT coalesce(sum(refund_p), 0) FROM inv_bal)::text
+    UNION ALL SELECT 2, 'total_pence', 'outstanding', (SELECT coalesce(sum(greatest(0, left_p)), 0) FROM inv_due)::text
+    UNION ALL SELECT 2, 'total_pence', 'customer_credit', (SELECT coalesce(sum(greatest(0, -left_p)), 0) FROM inv_due)::text
+    UNION ALL SELECT 2, 'total_pence', 'net_live', (SELECT coalesce(sum(left_p), 0) FROM inv_due)::text
+    UNION ALL SELECT 2, 'excluded_invoices', 'count', (SELECT count(1) FROM inv_bal WHERE excluded)::text
+    UNION ALL SELECT 3, 'customer_outstanding_pence', k.k, sum(d.left_p)::text
+      FROM inv_due d JOIN inv_key k ON k.id = d.id GROUP BY k.k
+    UNION ALL SELECT 4, 'invoice_ref', 'min_number', (SELECT min(n) FROM refs)::text
+    UNION ALL SELECT 4, 'invoice_ref', 'max_number', (SELECT max(n) FROM refs)::text
+    UNION ALL SELECT 4, 'invoice_ref', 'not_INV_format', (SELECT count(1) FROM refs WHERE n IS NULL)::text
+    UNION ALL SELECT 5, 'counter_last', d.prefix, d.last::text
+      FROM public.doc_counters d JOIN p ON d.organization_id = p.org
+    UNION ALL SELECT 6, 'dup_customer_name', 'groups', (SELECT count(1) FROM dup_cust_name)::text
+    UNION ALL SELECT 6, 'dup_customer_name_detail', k, n::text FROM dup_cust_name
+    UNION ALL SELECT 6, 'dup_customer_email', 'groups', (SELECT count(1) FROM dup_cust_email)::text
+    UNION ALL SELECT 6, 'dup_customer_email_detail', k, n::text FROM dup_cust_email
+    UNION ALL SELECT 6, 'dup_invoice_ref', 'groups', (SELECT count(1) FROM dup_inv_ref)::text
+    UNION ALL SELECT 6, 'dup_invoice_ref_detail', k, n::text FROM dup_inv_ref
+    UNION ALL SELECT 6, 'dup_payment', 'groups', (SELECT count(1) FROM dup_pay)::text
+    UNION ALL SELECT 6, 'dup_payment_detail', k, n::text FROM dup_pay
+    UNION ALL SELECT 7, 'orphan_payments', 'count', (SELECT count(1) FROM orphan)::text
+    UNION ALL SELECT 8, 'overpaid_invoices', 'count', (SELECT count(1) FROM overpaid)::text
+    UNION ALL SELECT 8, 'overpaid_invoices_detail', invoice_ref,
+      (paid_p + credit_p - total_p)::text FROM overpaid
+  ) r
+  ORDER BY o, metric, key;
+END
+$$;
+REVOKE ALL ON FUNCTION public.import_sliq_reconcile_rows(UUID) FROM PUBLIC, anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.import_sliq_reconcile()
+RETURNS JSONB
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public
+AS $$
+DECLARE
+  v_org UUID := public.import_admin_org();
+BEGIN
+  RETURN jsonb_build_object('rows', (SELECT coalesce(jsonb_agg(jsonb_build_object('metric', r.metric, 'key', r.key, 'value', r.value)), '[]'::JSONB)
+                                     FROM public.import_sliq_reconcile_rows(v_org) r));
+END
+$$;
+REVOKE ALL ON FUNCTION public.import_sliq_reconcile() FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.import_sliq_reconcile() TO authenticated;
 
 DO $self_check$ BEGIN
   IF NOT has_function_privilege('authenticated', 'public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)', 'EXECUTE')
