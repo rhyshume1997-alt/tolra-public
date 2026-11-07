@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { parseDate, parsePence, validateSliqExport, type SliqMapping, type SourceFiles } from "../../lib/sliq-validate";
+import { parseDate, parsePence, validateSliqExportWith, type SliqMapping, type SourceFiles, type ValidateInput } from "../../lib/sliq-validate";
+
+const nodeSha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+const validateSliqExport = (input: ValidateInput) => validateSliqExportWith(input, nodeSha);
 
 const enc = (s: string) => new TextEncoder().encode(s);
 
@@ -21,7 +24,8 @@ const MAPPING: SliqMapping = {
 const CUSTOMERS = "Code,Name\nC1,Acme\nC2,Beta\n";
 const SUPPLIERS = "Code,Name\nS1,Steel Co\n";
 const INVOICES = "Inv,Cust,Date,Net,VAT,Gross\nS1001,C1,01/03/2026,100.00,20.00,120.00\nS1002,C2,02/03/2026,500.00,100.00,600.00\n";
-const PAYMENTS = "Inv,Date,Amount\nS1001,05/03/2026,120.00\nS1002,10/03/2026,100.00\n";
+// One date with a day above 12, so DD/MM/YYYY is not ambiguous for the base set (the ambiguous case has its own tests).
+const PAYMENTS = "Inv,Date,Amount\nS1001,05/03/2026,120.00\nS1002,15/03/2026,100.00\n";
 
 function files(over: Partial<Record<"customers" | "suppliers" | "invoices" | "payments", string | Uint8Array>> = {}): SourceFiles {
   const pick = (k: keyof typeof over, def: string) => {
@@ -195,13 +199,13 @@ describe("duplicates", () => {
     expect(reasons(r).join()).toContain("duplicate ref");
   });
   it("rejects an exact duplicate payment row", () => {
-    const r = run({ payments: PAYMENTS + "S1002,10/03/2026,100.00\n" });
+    const r = run({ payments: PAYMENTS + "S1002,15/03/2026,100.00\n" });
     expect(reasons(r).join()).toContain("duplicate payment row");
   });
   it("uses a mapped payment key for duplicates instead of the whole-row rule", () => {
     const m = structuredClone(MAPPING);
     m.entities.payments.columns.key = "Ref";
-    const p = "Inv,Date,Amount,Ref\nS1002,10/03/2026,100.00,R1\nS1002,10/03/2026,100.00,R2\n";
+    const p = "Inv,Date,Amount,Ref\nS1002,15/03/2026,100.00,R1\nS1002,15/03/2026,100.00,R2\n";
     expect(run({ payments: p }, m).ok).toBe(true);
     expect(run({ payments: p.replace("R2", "R1") }, m).ok).toBe(false);
   });
@@ -247,7 +251,7 @@ describe("money as integer pence", () => {
     expect(parsePence("9999999999999999").ok).toBe(false);
   });
   it("0.1 + 0.2 paid against a 0.30 invoice is exactly 30 pence and passes", () => {
-    const r = run({ invoices: "Inv,Cust,Date,Net,VAT,Gross\nS1001,C1,01/03/2026,0.25,0.05,0.30\n", payments: "Inv,Date,Amount\nS1001,05/03/2026,0.1\nS1001,06/03/2026,0.2\n" });
+    const r = run({ invoices: "Inv,Cust,Date,Net,VAT,Gross\nS1001,C1,01/03/2026,0.25,0.05,0.30\n", payments: "Inv,Date,Amount\nS1001,05/03/2026,0.1\nS1001,16/03/2026,0.2\n" });
     expect(r.errors).toEqual([]);
     expect(r.totals.entities.payments?.moneyPence.amount).toBe(30);
     expect(r.totals.entities.invoices?.moneyPence.gross).toBe(30);
@@ -278,9 +282,9 @@ describe("cross-file checks", () => {
     expect(r.errors).toContainEqual({ file: "payments.csv", row: 4, field: "invoiceRef", reason: 'payment references invoice "S9999" which is not in the invoices file' });
   });
   it("accepts payments up to exactly the invoice total, rejects over", () => {
-    const ok = run({ payments: "Inv,Date,Amount\nS1002,10/03/2026,300.00\nS1002,11/03/2026,300.00\n" });
+    const ok = run({ payments: "Inv,Date,Amount\nS1002,10/03/2026,300.00\nS1002,13/03/2026,300.00\n" });
     expect(ok.ok).toBe(true);
-    const over = run({ payments: "Inv,Date,Amount\nS1002,10/03/2026,300.00\nS1002,11/03/2026,300.01\n" });
+    const over = run({ payments: "Inv,Date,Amount\nS1002,10/03/2026,300.00\nS1002,13/03/2026,300.01\n" });
     expect(over.errors).toContainEqual({
       file: "payments.csv",
       row: 3,
@@ -308,6 +312,68 @@ describe("invoice ref format", () => {
   });
 });
 
+describe("review D1 fixes (validate)", () => {
+  it("normalises the payment duplicate key: 10 and 10.00, 5/3/2026 and 05/03/2026 are the same payment", () => {
+    const r = run({ payments: "Inv,Date,Amount\nS1002,15/03/2026,100\nS1002,15/3/2026,100.00\n" });
+    expect(reasons(r).join()).toContain("duplicate payment row");
+  });
+  it("refuses customer keys that differ only in case, and two accounts with the same name as Tolra matches names", () => {
+    expect(reasons(run({ customers: "Code,Name\nC1,Acme\nc1,Other\nC2,Beta\n" })).join()).toContain('duplicate key "c1"');
+    expect(reasons(run({ customers: "Code,Name\nC1,Acme Limited\nC2,ACME Ltd.\n" })).join()).toContain('duplicate name "ACME Ltd."');
+  });
+  it("an all-ambiguous date set needs a signed-off example that reads as stated and is in the file", () => {
+    const amb = { payments: "Inv,Date,Amount\nS1001,05/03/2026,120.00\nS1002,10/03/2026,100.00\n" };
+    expect(reasons(run(amb)).join()).toContain("every date could be day-first or month-first");
+    const m = { ...structuredClone(MAPPING), dateSample: { file: "payments.csv", row: 2, raw: "05/03/2026", means: "2026-03-05", confirmedBy: "John" } };
+    const ok = run(amb, m);
+    expect(ok.errors).toEqual([]);
+    expect(ok.dateSample).toEqual({ raw: "05/03/2026", means: "2026-03-05", confirmedBy: "John" });
+    expect(reasons(run(amb, { ...m, dateSample: { ...m.dateSample, means: "2026-05-03" } })).join()).toContain("does not read as 2026-05-03");
+    expect(reasons(run(amb, { ...m, dateSample: { ...m.dateSample, row: 3 } })).join()).toContain("is not the date in payments.csv row 3");
+    expect(run(amb, { ...m, dateSample: { ...m.dateSample, confirmedBy: "" } }).mappingConfirmed).toBe(false);
+  });
+  it("warns (never silently) on a zero-total invoice, a payment before its invoice and a Windows-1252 file", () => {
+    const r = run({ invoices: "Inv,Cust,Date,Net,VAT,Gross\nS1001,C1,01/03/2026,100.00,20.00,120.00\nS1002,C2,14/03/2026,0.00,0.00,0.00\n",
+      payments: "Inv,Date,Amount\nS1001,28/02/2026,120.00\n", customers: new Uint8Array([...enc("Code,Name\nC1,Caf"), 0xe9, ...enc("\nC2,Beta\n")]) });
+    expect(r.ok).toBe(true);
+    const w = r.warnings.map((x) => x.reason).join("|");
+    expect(w).toContain('invoice "S1002" has a zero total');
+    expect(w).toContain('payment dated 2026-02-28, before its invoice "S1001" (2026-03-01)');
+    expect(w).toContain("read as Windows-1252");
+  });
+});
+
+describe("credit notes (IMPORT-CREDIT-NOTES.md option 1)", () => {
+  const withCredits = (text: string) => {
+    const m = structuredClone(MAPPING);
+    m.entities.creditNotes = { file: "credits.csv", columns: { ref: "CN", invoiceRef: "Inv", date: "Date", gross: "Gross", reason: "Why" } };
+    return validateSliqExport({ files: { ...files(), creditNotes: { name: "credits.csv", bytes: enc(text) } }, mapping: m });
+  };
+  it("accepts a credit applied to an invoice within what is unpaid, and totals it", () => {
+    const r = withCredits("CN,Inv,Date,Gross,Why\nCRD-7,S1002,20/03/2026,50.00,Damaged\n");
+    expect(r.errors).toEqual([]);
+    expect(r.totals.entities.creditNotes?.moneyPence).toEqual({ gross: 5000 });
+  });
+  it("refuses: zero/negative, an unknown invoice, credits + payments over the total, a ref that is an invoice number, duplicate refs", () => {
+    const why = (t: string) => reasons(withCredits(t)).join("|");
+    expect(why("CN,Inv,Date,Gross,Why\nCRD-1,S1002,20/03/2026,0.00,x\n")).toContain("greater than zero");
+    expect(why("CN,Inv,Date,Gross,Why\nCRD-1,S1002,20/03/2026,-5.00,x\n")).toContain("greater than zero");
+    expect(why("CN,Inv,Date,Gross,Why\nCRD-1,S9999,20/03/2026,5.00,x\n")).toContain('invoice "S9999" which is not in the invoices file');
+    expect(why("CN,Inv,Date,Gross,Why\nCRD-1,S1002,20/03/2026,500.01,x\n")).toContain("are more than its total");
+    expect(why("CN,Inv,Date,Gross,Why\nS1001,S1002,20/03/2026,5.00,x\n")).toContain("is also an invoice number");
+    expect(why("CN,Inv,Date,Gross,Why\nCRD-1,S1002,20/03/2026,5.00,x\ncrd-1,S1002,21/03/2026,5.00,y\n")).toContain("duplicate ref");
+  });
+  it("a credit not applied in full is a decision for a person", () => {
+    const m = structuredClone(MAPPING);
+    m.entities.creditNotes = { file: "credits.csv", columns: { ref: "CN", invoiceRef: "Inv", date: "Date", gross: "Gross", allocated: "Used" } };
+    const r = validateSliqExport({ files: { ...files(), creditNotes: { name: "credits.csv", bytes: enc("CN,Inv,Date,Gross,Used\nCRD-1,S1002,20/03/2026,50.00,20.00\n") } }, mapping: m });
+    expect(reasons(r).join()).toContain("not applied in full");
+  });
+  it("is optional: a mapping without creditNotes needs no file", () => {
+    expect(run().ok).toBe(true);
+  });
+});
+
 describe("scale and reporting", () => {
   it("handles a 20,000 invoice file and still hashes it", () => {
     const n = 20000;
@@ -315,7 +381,7 @@ describe("scale and reporting", () => {
     const pay = ["Inv,Date,Amount"];
     for (let i = 0; i < n; i++) {
       inv.push(`S${100000 + i},C${(i % 2) + 1},01/03/2026,10.00,2.00,12.00`);
-      pay.push(`S${100000 + i},02/03/2026,12.00`);
+      pay.push(`S${100000 + i},20/03/2026,12.00`);
     }
     const invText = inv.join("\r\n") + "\r\n";
     const r = run({ invoices: invText, payments: pay.join("\r\n") + "\r\n" });
