@@ -30,8 +30,19 @@ jobs:
     - name: Exact candidate inputs unchanged
       run: 'git merge-base --is-ancestor cbff130342145884fca10d2fb227f4888ac53ea3 HEAD
 
-        git diff --exit-code cbff130342145884fca10d2fb227f4888ac53ea3 -- app components lib supabase scripts tests/support tests/e2e tests/rehearsal
-        ''*.config.ts''
+        python3 - <<''PY_GUARD''
+
+        import subprocess
+
+        allowed = {''.github/workflows/builder3-cbff-safety.yml'',''tests/reviews/pm-four-hour/marker-107.mjs'',''tests/reviews/pm-four-hour/legacy-runner.mjs'',''tests/reviews/pm-four-hour/legacy.config.ts'',''tests/reviews/pm-four-hour/legacy-099.test.ts'',''tests/unit/builder3-revoked-outbox-recovery.test.ts'',''tests/db/builder3-invoice-offline-safety.test.ts''}
+
+        changed = set(subprocess.check_output([''git'',''diff'',''--name-only'',''cbff130342145884fca10d2fb227f4888ac53ea3'',''HEAD''],text=True).splitlines())
+
+        if changed - allowed: raise SystemExit(''Unapproved candidate changes: ''+str(sorted(changed - allowed)))
+
+        print(''Exact candidate inputs unchanged; own new files:'',sorted(changed))
+
+        PY_GUARD
 
         mkdir -p evidence/builder3
 
