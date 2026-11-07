@@ -74,7 +74,7 @@ import { useDatabaseHas067 } from "@/lib/use-database-has-067";
 import { useDatabaseHas073 } from "@/lib/use-database-has-073";
 import { VoidInvoiceDialog } from "@/components/void-invoice-dialog";
 import { WriteOffInvoiceDialog } from "@/components/write-off-invoice-dialog";
-import { chipsForPhase } from "@/lib/invoice-phase-filters";
+import { chipsForPhase, isFinalInvoice } from "@/lib/invoice-phase-filters";
 import { isVoid, voidOffered } from "@/lib/invoice-void";
 import { type WriteOffMode, isWrittenOff, writeOffOffered } from "@/lib/invoice-write-off";
 import { deliveryAddressLines, optionalColumn } from "@/lib/invoice-fields";
@@ -592,7 +592,7 @@ export default function InvoicesPage() {
   const [phase, setPhase] = useState<PhaseFilterValue>("open");
   // /invoices?filter=overdue|draft-old (the dashboard's "View all"): only those invoices, whatever Show says.
   const [listFilter, clearListFilter] = useListFilter("invoices");
-  const phaseFor = useCallback((invoice: (typeof invoices)[number]) => phaseOf({ final: ["paid", "void", "cancelled"].includes(invoice.status), finalDate: invoice.paidAt || invoice.date }, invoice.id ? archive.manual.get(String(invoice.id)) : undefined, archive.months), [archive.manual, archive.months]);
+  const phaseFor = useCallback((invoice: (typeof invoices)[number]) => phaseOf({ final: isFinalInvoice(invoice.rawStatus), finalDate: invoice.paidAt || invoice.date }, invoice.id ? archive.manual.get(String(invoice.id)) : undefined, archive.months), [archive.manual, archive.months]);
   // Open drafts of any age (archived ones are not waiting), and how many are over 2 days old (the dashboard counts only those).
   const drafts = useMemo(() => draftInvoiceCounts(invoices, today, (invoice) => phaseFor(invoice) === "archived"), [invoices, today, phaseFor]);
   const draftsWaiting = drafts.total;
