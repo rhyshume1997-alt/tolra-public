@@ -86,13 +86,18 @@ jobs:
       continue-on-error: true
       run: NODE_OPTIONS="--require $GITHUB_WORKSPACE/tests/support/no-network.cjs" node tests/reviews/pm-four-hour/marker-107.mjs
     - name: Reset only this disposable backend to unchanged baseline
-      run: npm run test:backend:reset
+      run: bash scripts/test-backend.sh reset
     - name: Full candidate database suite and PM regressions
       id: database
       continue-on-error: true
       timeout-minutes: 30
       run: CI_EVIDENCE_DB_JSON=evidence/db.json NODE_OPTIONS="--require $GITHUB_WORKSPACE/tests/support/no-network.cjs" E2E_BLOCKED_LOG="$GITHUB_WORKSPACE/evidence/builder3/db-outbound-attempts.log"
         npm run test:db
+    - name: P0-2 genuine pre099 populated upgrade, actual099 release
+      id: legacy099
+      continue-on-error: true
+      timeout-minutes: 10
+      run: NODE_OPTIONS="--require $GITHUB_WORKSPACE/tests/support/no-network.cjs" node tests/reviews/pm-four-hour/legacy-runner.mjs
     - name: Full units
       id: units
       continue-on-error: true
@@ -116,7 +121,7 @@ jobs:
       run: 'node - <<''JS''
 
         const fs=require(''node:fs''); const s=JSON.parse(process.env.OUTCOMES); const r={status:''PRELIMINARY'',candidate:''cbff130342145884fca10d2fb227f4888ac53ea3'',outcomes:{}};for(const
-        k of [''marker'',''database'',''units'',''typecheck'',''lint'',''diff''])r.outcomes[k]=s[k]?.outcome??''NOT RUN'';fs.mkdirSync(''evidence/builder3'',{recursive:true});fs.writeFileSync(''evidence/builder3/summary.json'',JSON.stringify(r,null,2));console.log(r);if(Object.values(r.outcomes).some(x=>x!==''success''))process.exitCode=1;
+        k of [''marker'',''database'',''legacy099'',''units'',''typecheck'',''lint'',''diff''])r.outcomes[k]=s[k]?.outcome??''NOT RUN'';fs.mkdirSync(''evidence/builder3'',{recursive:true});fs.writeFileSync(''evidence/builder3/summary.json'',JSON.stringify(r,null,2));console.log(r);if(Object.values(r.outcomes).some(x=>x!==''success''))process.exitCode=1;
 
         JS'
     - uses: actions/upload-artifact@v4
