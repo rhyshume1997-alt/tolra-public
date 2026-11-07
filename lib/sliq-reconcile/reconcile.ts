@@ -10,8 +10,18 @@ export type SourceTotals = {
   paymentsTotalPence: number;
   /** Credits applied to invoices. Defaults to 0 when the source has none. */
   creditsTotalPence?: number;
+  /** Refunds (a SliQ file set carries none: anything in Tolra is a FAIL unless stated here). Default 0. */
+  refundsTotalPence?: number;
+  /** Invoices the app leaves out of what is owed (void, cancelled, written off, draft). Default 0. */
+  excludedInvoices?: number;
+  /** As the app (034): sum over live invoices of greatest(0, total - paid - credited + refunded). */
   outstandingPence: number;
-  /** Customer name to outstanding pence. Names are compared case-insensitively with spaces collapsed. */
+  /** The excess (paid + credited - refunded above the total) as customer credit. Default 0. */
+  customerCreditPence?: number;
+  /**
+   * Per customer, net (owed - customer credit). Keyed as the database rows are: "acct:<account code>" for customers in the route's
+   * import map, else "name:<name as Tolra normalises it>" (lib/sliq-import-build.ts customerKey). Compared case-insensitively.
+   */
   customerBalancesPence: Record<string, number>;
   invoiceRefMin?: number;
   invoiceRefMax?: number;
@@ -24,7 +34,12 @@ export type DbTotals = {
   invoicedPence: number;
   paidPence: number;
   creditsPence: number;
+  refundsPence: number;
   outstandingPence: number;
+  customerCreditPence: number;
+  /** Over live invoices: sum of (total - paid - credited + refunded), unfloored; outstanding - customer credit must equal it. */
+  netLivePence: number;
+  excludedInvoices: number;
   customerOutstandingPence: Record<string, number>;
   refMin: number | null;
   refMax: number | null;
@@ -75,7 +90,11 @@ export function parseDbRows(rows: DbRow[]): DbTotals {
     invoicedPence: 0,
     paidPence: 0,
     creditsPence: 0,
+    refundsPence: 0,
     outstandingPence: 0,
+    customerCreditPence: 0,
+    netLivePence: 0,
+    excludedInvoices: 0,
     customerOutstandingPence: {},
     refMin: null,
     refMax: null,
@@ -95,6 +114,11 @@ export function parseDbRows(rows: DbRow[]): DbTotals {
         else if (r.key === "paid") t.paidPence = num(r.value);
         else if (r.key === "credits") t.creditsPence = num(r.value);
         else if (r.key === "outstanding") t.outstandingPence = num(r.value);
+        else if (r.key === "refunds") t.refundsPence = num(r.value);
+        else if (r.key === "customer_credit") t.customerCreditPence = num(r.value);
+        else if (r.key === "net_live") t.netLivePence = num(r.value);
+        break;
+      case "excluded_invoices": t.excludedInvoices = num(r.value);
         break;
       case "customer_outstanding_pence": {
         const k = normName(r.key);
@@ -149,17 +173,22 @@ export function reconcile(source: SourceTotals, dbRows: DbRow[], opts: Reconcile
   rows.push(diffRow("invoice total (pence)", source.invoiceTotalPence, db.invoicedPence));
   rows.push(diffRow("payments total (pence)", source.paymentsTotalPence, db.paidPence));
   rows.push(diffRow("credits total (pence)", srcCredits, db.creditsPence));
+  // What the app does that a SliQ file set can't carry: refunds and void / cancelled / written-off / draft invoices. Any in Tolra
+  // that the source did not state is a FAIL (loud), never folded into a balance.
+  rows.push(diffRow("refunds total (pence)", source.refundsTotalPence ?? 0, db.refundsPence));
+  rows.push(diffRow("invoices left out of what is owed (void, cancelled, written off, draft)", source.excludedInvoices ?? 0, db.excludedInvoices));
   rows.push(diffRow("outstanding (pence)", source.outstandingPence, db.outstandingPence));
-  // The outstanding figure must also follow from its own parts on both sides.
+  rows.push(diffRow("customer credit (pence)", source.customerCreditPence ?? 0, db.customerCreditPence));
+  // The outstanding figure must also follow from its own parts on both sides (034: per invoice floored at 0, the rest customer credit).
   rows.push(diffRow(
-    "source outstanding = invoiced - paid - credits",
-    source.invoiceTotalPence - source.paymentsTotalPence - srcCredits,
-    source.outstandingPence,
+    "source outstanding - customer credit = invoiced - paid - credits + refunds",
+    source.invoiceTotalPence - source.paymentsTotalPence - srcCredits + (source.refundsTotalPence ?? 0),
+    source.outstandingPence - (source.customerCreditPence ?? 0),
   ));
   rows.push(diffRow(
-    "database outstanding = invoiced - paid - credits",
-    db.invoicedPence - db.paidPence - db.creditsPence,
-    db.outstandingPence,
+    "database outstanding - customer credit = live invoiced - paid - credits + refunds",
+    db.netLivePence,
+    db.outstandingPence - db.customerCreditPence,
   ));
 
   // Per-customer outstanding: every customer on either side, biggest absolute difference first.
@@ -207,7 +236,7 @@ export function reconcile(source: SourceTotals, dbRows: DbRow[], opts: Reconcile
   rows.push(zeroRow("duplicate customer names (groups)", db.dupGroups.customerName));
   rows.push(zeroRow("duplicate customer emails (groups)", db.dupGroups.customerEmail));
   rows.push(zeroRow("duplicate invoice refs (groups)", db.dupGroups.invoiceRef));
-  rows.push(zeroRow("duplicate payments (invoice, date, amount) (groups)", db.dupGroups.payment));
+  rows.push(zeroRow("duplicate payments (invoice, date, amount, reference) (groups)", db.dupGroups.payment));
   rows.push(zeroRow("orphan payments", db.orphanPayments));
   rows.push(zeroRow("invoices with paid + credits above total", db.overpaidInvoices));
 

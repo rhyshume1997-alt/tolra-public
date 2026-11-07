@@ -1,16 +1,20 @@
 // Local proof for the SliQ reconciliation (D1). Builds a throwaway database from a template on a LOCAL Postgres,
 // loads synthetic data, runs supabase/verify/sliq_reconcile.sql and lib/sliq-reconcile, and checks which checks fail.
-// Run: PGHOST=127.0.0.1 PGPORT=55591 PGUSER=postgres TEMPLATE_DB=r151tpl npx vite-node scripts/sliq-reconcile-scenarios.ts
+// Run: PGHOST=127.0.0.1 PGPORT=55591 PGUSER=postgres TEMPLATE_DB=sliq152tpl npx vite-node -c vitest.db.config.ts scripts/sliq-reconcile-scenarios.ts
+// The template needs release 152 (sliq_reconcile.sql reads public.import_sliq_reconcile_rows).
 // Refuses any host that is not 127.0.0.1 or localhost. Never run against hosted data.
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { reconcile, type DbRow, type SourceTotals } from "../lib/sliq-reconcile/reconcile";
 import { renderSigningSheet } from "../lib/sliq-reconcile/sheet";
+import { buildSliqPayload, sourceTotalsFromValidated } from "../lib/sliq-import-build";
+import { validateSliqExportWith } from "../lib/sliq-validate/validate";
 
 const host = process.env.PGHOST ?? "127.0.0.1";
 if (host !== "127.0.0.1" && host !== "localhost") throw new Error("Local Postgres only");
 const env = { ...process.env, PGHOST: host, PGPORT: process.env.PGPORT ?? "55591", PGUSER: process.env.PGUSER ?? "postgres" };
-const tpl = process.env.TEMPLATE_DB ?? "r151tpl";
+const tpl = process.env.TEMPLATE_DB ?? "sliq152tpl";
 const psql = (db: string, sql: string, extra: string[] = []) =>
   execFileSync("psql", ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1", "-d", db, ...extra, "-c", sql], { env, encoding: "utf8" });
 
@@ -32,20 +36,35 @@ function dataset(): { invs: Inv[]; customers: { name: string; email: string }[] 
   return { invs, customers };
 }
 
-function sourceOf(d: ReturnType<typeof dataset>): SourceTotals {
-  const bal: Record<string, number> = {};
-  let inv = 0, pay = 0, npay = 0;
-  for (const i of d.invs) {
-    const paid = i.paid.reduce((a, b) => a + b.p, 0);
-    inv += i.totalP; pay += paid; npay += i.paid.length;
-    bal[i.customer] = (bal[i.customer] ?? 0) + i.totalP - paid;
-  }
-  return {
-    files: [{ name: "sliq-customers.csv", sha256: "a".repeat(64) }, { name: "sliq-invoices.csv", sha256: "b".repeat(64) }],
-    counts: { customers: d.customers.length, invoices: d.invs.length, payments: npay, credit_notes: 0 },
-    invoiceTotalPence: inv, paymentsTotalPence: pay, creditsTotalPence: 0, outstandingPence: inv - pay,
-    customerBalancesPence: bal, invoiceRefMin: 1, invoiceRefMax: d.invs.length,
+/**
+ * The source totals are NOT written by hand: the dataset is written out as SliQ-shaped CSV files, checked by lib/sliq-validate and
+ * built by lib/sliq-import-build, and the totals come from sourceTotalsFromValidated (the adapter the card uses). Keyed by name: this
+ * script loads the database directly, without the route's import map.
+ */
+async function sourceOf(d: ReturnType<typeof dataset>): Promise<SourceTotals> {
+  const enc = new TextEncoder();
+  const codeOf = new Map(d.customers.map((c, i) => [c.name, `C${i + 1}`]));
+  const csv = {
+    customers: ["Code,Name", ...d.customers.map((c) => `${codeOf.get(c.name)},${c.name}`)].join("\n") + "\n",
+    suppliers: "Code,Name\nS1,Synthetic Steel\n",
+    invoices: ["Ref,Cust,Date,Gross", ...d.invs.map((i) => `${i.ref},${codeOf.get(i.customer)},2025-02-01,${pen(i.totalP)}`)].join("\n") + "\n",
+    payments: ["Ref,Date,Amount", ...d.invs.flatMap((i) => i.paid.map((p) => `${i.ref},${p.on},${pen(p.p)}`))].join("\n") + "\n",
   };
+  const mapping = {
+    version: 1, confirmed: true, dateFormat: "YYYY-MM-DD",
+    entities: {
+      customers: { file: "sliq-customers.csv", columns: { key: "Code", name: "Name" } },
+      suppliers: { file: "sliq-suppliers.csv", columns: { key: "Code", name: "Name" } },
+      invoices: { file: "sliq-invoices.csv", columns: { ref: "Ref", customerKey: "Cust", date: "Date", gross: "Gross" } },
+      payments: { file: "sliq-payments.csv", columns: { invoiceRef: "Ref", date: "Date", amount: "Amount" } },
+    },
+  };
+  const files = Object.fromEntries(Object.entries(csv).map(([k, text]) => [k, { name: `sliq-${k}.csv`, bytes: enc.encode(text) }]));
+  const nodeSha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex");
+  const report = validateSliqExportWith({ files, mapping }, nodeSha);
+  if (!report.ok) throw new Error(`synthetic files did not validate: ${JSON.stringify(report.errors.slice(0, 3))}`);
+  const { payload } = await buildSliqPayload(files, mapping as never);
+  return sourceTotalsFromValidated(report, payload, "name");
 }
 
 function load(db: string, d: ReturnType<typeof dataset>, mutate: string) {
@@ -82,6 +101,7 @@ const scenarios: { name: string; mutate: string; expectPass: boolean; mustFail: 
     expectPass: false, mustFail: ["invoice total (pence)", "outstanding (pence)", "customer balances differing (count)"] },
 ];
 
+async function main() {
 let bad = 0;
 const base = `sliqscen${process.pid}`;
 for (const [n, s] of scenarios.entries()) {
@@ -90,15 +110,18 @@ for (const [n, s] of scenarios.entries()) {
   try {
     const d = dataset();
     load(db, d, s.mutate);
-    const report = runReconcile(db, sourceOf(d), { INV: 0, QUO: 7 });
+    const source = await sourceOf(d);
+    const report = runReconcile(db, source, { INV: 0, QUO: 7 });
     const failed = report.rows.filter((r) => r.status === "FAIL").map((r) => r.check);
     const ok = report.pass === s.expectPass && s.mustFail.every((m) => failed.includes(m));
     if (!ok) bad++;
     console.log(`${ok ? "OK  " : "BAD "} ${s.name}: pass=${report.pass} failed=[${failed.join("; ")}]`);
-    if (n === 0 && process.env.SHOW_SHEET) console.log(renderSigningSheet(sourceOf(d), report, { company: "Synthetic Ltd", importedOn: "synthetic" }));
+    if (n === 0 && process.env.SHOW_SHEET) console.log(renderSigningSheet(source, report, { company: "Synthetic Ltd", importedOn: "synthetic" }));
   } finally {
     psql("postgres", `DROP DATABASE IF EXISTS ${db} WITH (FORCE)`);
   }
 }
 console.log(bad === 0 ? "ALL SCENARIOS AS EXPECTED" : `${bad} SCENARIO(S) NOT AS EXPECTED`);
 process.exit(bad === 0 ? 0 : 1);
+}
+void main();
