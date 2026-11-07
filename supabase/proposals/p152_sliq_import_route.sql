@@ -415,8 +415,11 @@ $$;
 REVOKE ALL ON FUNCTION public.import_sliq_counter_moves(UUID) FROM PUBLIC, anon, authenticated, service_role;
 
 -- An INV-<digits> number to create that is more than p_gap above the nearest lower INV number (in Tolra, or in this call): refused,
--- one problem per row, unless p_allow. Reads 076's _imp_invoices (rows decided 'create').
-CREATE OR REPLACE FUNCTION public.import_sliq_check_inv_gap(p_org UUID, p_gap INT, p_allow BOOLEAN)
+-- one problem per row, unless p_allow. The lowest one is measured from the INV counter; in a company with no INV counter and no
+-- INV invoice (an empty company) the first number may be at most 100,000. Reads 076's _imp_invoices (rows decided 'create').
+-- The same rule in the preflight (whole file) and in each batch: the planner sends invoices in ascending number order
+-- (lib/sliq-import-route.ts), so every row's nearest lower number is either in Tolra already or in the same batch.
+CREATE OR REPLACE FUNCTION public.import_sliq_check_inv_gap(p_org UUID, p_gap INT, p_allow BOOLEAN, p_inv_counter BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
 SET search_path = pg_catalog, public
@@ -427,20 +430,28 @@ BEGIN
   END IF;
   INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
   SELECT 'invoices', i.source_row_id, 'invoice_ref',
-         x.invoice_ref || ' is ' || (x.n - x.prev) || ' above the nearest lower invoice number (' || x.prev || '): a typo would move the INV counter there for good. '
-         || 'Check the number; if it is right, import with the large-gap allowance.', 'inv_gap'
-  FROM (SELECT y.*, lag(y.n) OVER (ORDER BY y.n, y.src) AS prev
-        FROM (SELECT substring(v.invoice_ref FROM '^INV-(\d{1,9})$')::BIGINT AS n, 0 AS src, NULL::INT AS ord, NULL::TEXT AS invoice_ref
+         x.invoice_ref || ' is ' || (x.n - x.prev) || ' above ' || CASE WHEN x.prev_src = -1 THEN 'the INV counter (' ELSE 'the nearest lower invoice number (' END || x.prev
+         || '): a typo would move the INV counter there for good. Check the number; if it is right, import with the large-gap allowance.', 'inv_gap'
+  FROM (SELECT y.*, lag(y.n) OVER (ORDER BY y.n, y.src) AS prev, lag(y.src) OVER (ORDER BY y.n, y.src) AS prev_src
+        -- p_inv_counter: the INV counter as it was BEFORE this call (in a commit, 076 has reseeded it by now).
+        FROM (SELECT coalesce(p_inv_counter, 0) AS n,
+                     -1 AS src, NULL::INT AS ord, NULL::TEXT AS invoice_ref
+              UNION ALL
+              SELECT substring(v.invoice_ref FROM '^INV-(\d{1,9})$')::BIGINT AS n, 0 AS src, NULL::INT AS ord, NULL::TEXT AS invoice_ref
               FROM public.invoices v WHERE v.organization_id = p_org AND v.invoice_ref ~ '^INV-\d{1,9}$'
                 AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_invoices w WHERE w.action = 'create' AND w.new_id = v.id)  -- in a commit, this run's own rows are written by now
               UNION ALL
               SELECT substring(t.invoice_ref FROM '^INV-(\d{1,9})$')::BIGINT, 1, t.ord, t.invoice_ref
               FROM pg_temp._imp_invoices t WHERE t.action = 'create' AND t.invoice_ref ~ '^INV-\d{1,9}$') y) x
   JOIN _sliq_in i ON i.kind = 'invoices' AND i.pos = x.ord AND NOT i.mapped
-  WHERE x.src = 1 AND x.prev IS NOT NULL AND x.n - x.prev > p_gap;
+  WHERE x.src = 1 AND x.prev IS NOT NULL
+    AND x.n - x.prev > CASE WHEN x.prev_src = -1 AND x.prev = 0
+                                 AND NOT EXISTS (SELECT 1 FROM public.invoices v WHERE v.organization_id = p_org AND v.invoice_ref ~ '^INV-\d{1,9}$'
+                                                   AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_invoices w WHERE w.action = 'create' AND w.new_id = v.id))
+                            THEN 100000 ELSE p_gap END;
 END
 $$;
-REVOKE ALL ON FUNCTION public.import_sliq_check_inv_gap(UUID, INT, BOOLEAN) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.import_sliq_check_inv_gap(UUID, INT, BOOLEAN, BIGINT) FROM PUBLIC, anon, authenticated, service_role;
 
 -- ---- 3. Preflight: the whole file, nothing written --------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.import_sliq_preflight(p_source_sha256 TEXT, p_source_files JSONB, p_payload JSONB, p_allow_inv_gap BOOLEAN DEFAULT FALSE)
@@ -477,7 +488,8 @@ BEGIN
       v_run := public.import_company_data_run(v_org, v_uid, gen_random_uuid(), jsonb_strip_nulls(v_imp), 'validate', gen_random_uuid(),
                                               repeat('0', 64), NULL, NULL, NULL);
       PERFORM public.import_sliq_collect(v_run);
-      PERFORM public.import_sliq_check_inv_gap(v_org, 1000, coalesce(p_allow_inv_gap, FALSE));
+      PERFORM public.import_sliq_check_inv_gap(v_org, 1000, coalesce(p_allow_inv_gap, FALSE),
+        (SELECT dc.last FROM public.doc_counters dc WHERE dc.organization_id = v_org AND dc.prefix = 'INV'));
       -- The batch's counter rule, applied here too: any counter but INV that a commit would move refuses the import.
       v_moved := public.import_sliq_counter_moves(v_org);
       IF v_moved IS NOT NULL THEN
@@ -592,7 +604,7 @@ BEGIN
       v_run := public.import_company_data_run(v_org, v_uid, v_batch, jsonb_strip_nulls(v_imp), CASE WHEN p_dry_run THEN 'dry_run' ELSE 'commit' END,
                                               v_op, v_request, NULL, NULL, NULL);
       PERFORM public.import_sliq_collect(v_run);
-      PERFORM public.import_sliq_check_inv_gap(v_org, 1000, coalesce(p_allow_inv_gap, FALSE));
+      PERFORM public.import_sliq_check_inv_gap(v_org, 1000, coalesce(p_allow_inv_gap, FALSE), (v_before ->> 'INV')::BIGINT);
     END IF;
     v_sum := public.import_sliq_summary(v_sha);
     v_result := jsonb_build_object('ok', (v_sum ->> 'error_count')::INT = 0, 'dry_run', p_dry_run, 'committed', FALSE, 'already_imported', v_created = 0,

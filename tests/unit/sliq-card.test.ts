@@ -68,16 +68,18 @@ describe("release 152 missing", () => {
   });
 });
 
-describe("counters before survive a reload", () => {
-  it("are kept per source and run label, and anything malformed reads as none", () => {
+describe("counters before survive a reload and a label change", () => {
+  it("are kept per file set only, written once, and anything malformed reads as none", () => {
     const m = new Map<string, string>();
     const store = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
-    saveCountersBefore(store, "a".repeat(64), "live", { INV: 10, DLN: 12 });
-    expect(loadCountersBefore(store, "a".repeat(64), "live")).toEqual({ INV: 10, DLN: 12 });
-    expect(loadCountersBefore(store, "a".repeat(64), "live-2")).toBeNull();
-    m.set(countersKey("b".repeat(64), "live"), "{\"INV\":\"x\"}");
-    expect(loadCountersBefore(store, "b".repeat(64), "live")).toBeNull();
-    expect(loadCountersBefore(null, "a".repeat(64), "live")).toBeNull();
+    expect(saveCountersBefore(store, "a".repeat(64), { INV: 10, DLN: 12 })).toEqual({ INV: 10, DLN: 12 });
+    // A later preflight (after part of the import) does not replace them.
+    expect(saveCountersBefore(store, "a".repeat(64), { INV: 1060, DLN: 12 })).toEqual({ INV: 10, DLN: 12 });
+    expect(loadCountersBefore(store, "a".repeat(64))).toEqual({ INV: 10, DLN: 12 });
+    expect(loadCountersBefore(store, "c".repeat(64))).toBeNull();
+    m.set(countersKey("b".repeat(64)), "{\"INV\":\"x\"}");
+    expect(loadCountersBefore(store, "b".repeat(64))).toBeNull();
+    expect(loadCountersBefore(null, "a".repeat(64))).toBeNull();
   });
 });
 

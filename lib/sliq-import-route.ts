@@ -67,6 +67,18 @@ export type SliqBatchResult = {
 const linesOf = (row: SliqRow) => (Array.isArray(row.lines) ? row.lines.length : 0);
 const text = (v: unknown) => (typeof v === "string" ? v.trim() : typeof v === "number" ? String(v) : "");
 
+const invNumber = (ref: string) => { const m = /^INV-(\d{1,9})$/.exec(ref); return m ? Number(m[1]) : null; };
+/** Invoices by ascending INV number, then other numbers as text; stable for equal keys. */
+export function sortInvoices(list: SliqRow[]): SliqRow[] {
+  return list.map((row, i) => ({ row, i, ref: text(row.invoice_ref) })).sort((a, b) => {
+    const na = invNumber(a.ref), nb = invNumber(b.ref);
+    if (na !== null && nb !== null && na !== nb) return na - nb;
+    if ((na === null) !== (nb === null)) return na === null ? 1 : -1;
+    if (na === null && a.ref !== b.ref) return a.ref < b.ref ? -1 : 1;
+    return a.i - b.i;
+  }).map((x) => x.row);
+}
+
 /**
  * The batches, in order (customers, suppliers, invoices with their payments), and the payments whose invoice is not in the file
  * (never sent in a batch: the preflight reports them as problems). Deterministic: the same payload always gives the same batches.
@@ -91,7 +103,10 @@ export function planSliqBatches(payload: SliqPayload, weight = SLIQ_BATCH_WEIGHT
   for (const entity of ["customers", "suppliers", "invoices"] as const) {
     let current: SliqBatch | null = null;
     let n = 0;
-    for (const row of payload[entity] ?? []) {
+    // Invoices in ascending number order (INV-<digits> numerically, then any other number as text), so release 152's INV-gap rule
+    // sees in each batch exactly what the preflight saw for the whole file.
+    const rows = entity === "invoices" ? sortInvoices(payload.invoices ?? []) : payload[entity] ?? [];
+    for (const row of rows) {
       const ref = entity === "invoices" ? text(row.invoice_ref) : "";
       // An invoice's payments go with its first appearance only (a duplicate number is the preflight's problem, not a second copy).
       const first = entity === "invoices" && !taken.has(ref);

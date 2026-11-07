@@ -141,6 +141,14 @@ describe("buildSliqPayload (after the validator says ok)", () => {
   });
 });
 
+describe("invoices are batched in ascending number order (release 152's INV-gap rule sees what the preflight saw)", () => {
+  it("sorts an unsorted file, INV numbers numerically, others after them", () => {
+    const p: SliqPayload = { source_sha256: "a".repeat(64), source_files: [], invoices: ["INV-2100", "INV-9", "S100", "INV-1001", "INV-10", "A7"].map((r) => ({ source_row_id: `I:${r}`, invoice_ref: r, total: "1.00" })) };
+    const refs = planSliqBatches(p, 4).batches.flatMap((b) => (b.rows.invoices ?? []).map((i) => i.invoice_ref));
+    expect(refs).toEqual(["INV-9", "INV-10", "INV-1001", "INV-2100", "A7", "S100"]);
+  });
+});
+
 describe("credit notes ride with their invoice", () => {
   it("plans each credit note in its invoice's batch and keeps unknown ones out", () => {
     const p = payload(30, 1);

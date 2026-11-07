@@ -35,6 +35,25 @@ describe("release readiness gate: decisions", () => {
     expect(report).toContain("OVERALL: GO");
   });
 
+  it("152 (SliQ import route) is required: GO with it, NO GO without its marker or its verify file, every other row unchanged", () => {
+    expect(REQUIRED_MARKERS.map((m: { n: string }) => m.n)).toContain("152");
+    expect(VERIFY_RELEASES).toContain("152");
+    const base = verdict(green());
+    expect(base.overall).toBe("GO");
+    const noMarker = green();
+    noMarker.preflight.rows.find((r: Any) => r.check.startsWith("post-144 marker 152")).value = "not applied";
+    const m = verdict(noMarker);
+    expect(m.overall).toBe("NO GO");
+    expect(m.checks.find((c: Any) => c.id === "1a").detail).toContain("152 not applied");
+    expect(m.checks.filter((c: Any) => c.id !== "1a")).toEqual(base.checks.filter((c: Any) => c.id !== "1a"));
+    const noVerify = green();
+    delete noVerify.verify["152"];
+    const v = verdict(noVerify);
+    expect(v.overall).toBe("NO GO");
+    expect(v.checks.find((c: Any) => c.id === "1b").detail).toContain("152 missing");
+    expect(v.checks.filter((c: Any) => c.id !== "1b")).toEqual(base.checks.filter((c: Any) => c.id !== "1b"));
+  });
+
   it("other held companies are reported but are not NO GO unless the flag is given", () => {
     expect(verdict(green()).checks.find((c: Any) => c.id === "2").detail).toContain("acme");
     expect(verdict(green(), { ...opts, failOnOtherHeld: true }).overall).toBe("NO GO");

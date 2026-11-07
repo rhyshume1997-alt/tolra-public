@@ -582,6 +582,28 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
     expect(tooBig.hint).toBe("preflight_too_large");
   });
 
+  it("re-review: an UNSORTED invoice file gets the same INV-gap answer in the preflight and in the batches; an empty company's first number is limited", async () => {
+    const c = await newCompany();
+    // 60 invoices plus INV-1900..INV-2100 (dense: no gap above 1,000), in descending order: the highest comes first in the file.
+    const extra = Array.from({ length: 201 }, (_, k) => ({ source_row_id: `I:INV-${1900 + k}`, invoice_ref: `INV-${1900 + k}`, customer: "Synthetic Customer 1 Ltd",
+      customer_key: "ACC001", invoice_date: "2026-03-14", total: "1.00", status: "sent" }));
+    const unsorted: SliqPayload = { ...payload, invoices: [...payload.invoices!, ...extra].reverse() };
+    const pf = await sliqPreflight(rpcAs(c.u), unsorted);
+    expect(pf.errors).toEqual([]);
+    const run = await sliqRunBatches(rpcAs(c.u), unsorted, "unsorted", undefined, 0, 60);
+    expect(run.failedAt).toBeNull();
+    expect((await state(c.o)).invoices).toBe(N_INV + 201);
+    // An empty company: the first INV number is measured from 0 with a limit of 100,000.
+    const e = await newCompany();
+    const files = [{ entity: "invoices", name: "i.csv", sha256: "f".repeat(64) }] as SliqPayload["source_files"];
+    const key = (await q<{ h: string }>("select encode(sha256(convert_to('invoices:' || repeat('f', 64), 'UTF8')), 'hex') as h"))[0].h;
+    await q("insert into customers (organization_id, name) values ($1, 'First Ltd')", [e.o]);
+    const one = (ref: string) => sliqPreflight(rpcAs(e.u), { source_sha256: key, source_files: files, invoices: [{ source_row_id: `I:${ref}`, invoice_ref: ref, customer: "First Ltd", invoice_date: "2026-01-15", total: "1.00" }] });
+    expect((await one("INV-100000")).errors.filter((x) => x.code === "inv_gap")).toEqual([]);
+    const far = await one("INV-100001");
+    expect(far.errors.find((x) => x.code === "inv_gap")?.message).toMatch(/above the INV counter \(0\)/);
+  });
+
   it("DB review: the preflight's owed and the reconciliation's outstanding agree, payment-to-confirm invoices included", async () => {
     const c = await newCompany();
     const marked: SliqPayload = { ...payload, invoices: payload.invoices!.map((r) => (r.source_row_id === "I:INV-1024" ? { ...r, status: "paid" } : r)) };

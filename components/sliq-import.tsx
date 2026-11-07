@@ -137,9 +137,8 @@ export function SliqImport() {
       const p = await sliqPreflight(rpc, payload, { allowInvGap });
       // The counters as they are before anything is imported: the reconciliation checks every one but INV is unchanged after. Kept in
       // this tab's session storage per file set and run label, so a reload before the reconciliation does not lose them.
-      const before = counters(await reconcileRows());
-      setCountersBefore(before);
-      saveCountersBefore(session(), payload.source_sha256, label, before);
+      // Kept for the file set the first time only: a preflight after (part of) the import keeps the counters from before it.
+      setCountersBefore(saveCountersBefore(session(), payload.source_sha256, counters(await reconcileRows())));
       setPreflight(p);
       setPhase("preflighted");
     } catch (e) {
@@ -157,7 +156,7 @@ export function SliqImport() {
     setPhase("importing");
     setFailure(null);
     // Counters before: from this page, else from this tab's storage for the same files and label (a reload after the preflight).
-    if (!countersBefore) setCountersBefore(loadCountersBefore(session(), payload.source_sha256, label));
+    if (!countersBefore) setCountersBefore(loadCountersBefore(session(), payload.source_sha256));
     let out: Awaited<ReturnType<typeof sliqRunBatches>>;
     try {
       out = await sliqRunBatches(rpc, payload, label, setProgress, startAt, SLIQ_BATCH_WEIGHT, { allowInvGap });
@@ -178,7 +177,7 @@ export function SliqImport() {
     setBusy(true);
     try {
       const source = sourceTotalsFromValidated(report, payload);
-      const before = countersBefore ?? loadCountersBefore(session(), payload.source_sha256, label);
+      const before = countersBefore ?? loadCountersBefore(session(), payload.source_sha256);
       setCountersNote(before ? null : "The counters read before the import were not kept (the page was reloaded in another tab, or storage is blocked): the \"counter unchanged\" rows compare with 0. Re-read them from the SQL-editor script taken before the import.");
       const r = reconcile(source, await reconcileRows(), { countersBefore: before ?? {} });
       const who = company ? `${company.name} (${company.slug})` : "the signed-in admin's company (its name could not be read)";
@@ -221,7 +220,12 @@ export function SliqImport() {
           Mapping: {mapping ? "chosen" : "not chosen"}. Files: {ALL_ENTITIES.filter((e) => e !== "creditNotes" || mapping?.entities.creditNotes).map((e) => `${e} ${files[e] ? "yes" : "no"}`).join(", ")}.
         </p>
         <label className="flex items-center gap-2 text-xs text-slate-600">
-          <input type="checkbox" checked={allowInvGap} disabled={importing} onChange={(e) => { setAllowInvGap(e.target.checked); setPreflight(null); if (phase === "preflighted") setPhase("checked"); }} />
+          <input type="checkbox" checked={allowInvGap} disabled={importing} onChange={(e) => {
+            // A changed allowance invalidates the preflight, also after a failed batch: run the preflight again before importing.
+            setAllowInvGap(e.target.checked);
+            setPreflight(null);
+            if (phase === "preflighted" || phase === "failed") { setPhase("checked"); setFailedAt(null); setFailure(null); }
+          }} />
           Invoice numbers really do jump by more than 1,000 (only tick after checking: a typo would carry the INV counter there for good)
         </label>
         <div className="flex flex-wrap gap-2">

@@ -14,7 +14,7 @@ DROP FUNCTION IF EXISTS public.import_sliq_reconcile();
 DROP FUNCTION IF EXISTS public.import_sliq_reconcile_rows(UUID);
 DROP FUNCTION IF EXISTS public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN, BOOLEAN);
 DROP FUNCTION IF EXISTS public.import_sliq_preflight(TEXT, JSONB, JSONB, BOOLEAN);
-DROP FUNCTION IF EXISTS public.import_sliq_check_inv_gap(UUID, INT, BOOLEAN);
+DROP FUNCTION IF EXISTS public.import_sliq_check_inv_gap(UUID, INT, BOOLEAN, BIGINT);
 DROP FUNCTION IF EXISTS public.import_sliq_counter_moves(UUID);
 DROP FUNCTION IF EXISTS public.import_sliq_check_files(TEXT, JSONB);
 DROP FUNCTION IF EXISTS public.import_sliq_summary(TEXT);

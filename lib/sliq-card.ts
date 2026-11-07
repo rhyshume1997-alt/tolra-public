@@ -60,14 +60,20 @@ export function isMissingImportFunction(error: { message?: string; code?: string
 export const MISSING_152 = "This database does not have the SliQ import route (release 152) yet. Nothing was changed. Apply and verify release 152 first.";
 
 type Store = Pick<Storage, "getItem" | "setItem">;
-/** The counters read before an import, kept per source file set and run label, so a reload before the reconciliation keeps them. */
-export const countersKey = (sourceSha: string, label: string) => `sliq-counters-before:${sourceSha}:${label}`;
-export function saveCountersBefore(store: Store | null, sourceSha: string, label: string, counters: Record<string, number>) {
-  try { store?.setItem(countersKey(sourceSha, label), JSON.stringify(counters)); } catch { /* storage full or blocked: the card warns */ }
+/**
+ * The counters read before an import, kept per source file set (its source key) only: a reload, or a change of run label, keeps
+ * them. Written ONCE per file set: a preflight after the import must not replace them with the counters the import produced.
+ */
+export const countersKey = (sourceSha: string) => `sliq-counters-before:${sourceSha}`;
+export function saveCountersBefore(store: Store | null, sourceSha: string, counters: Record<string, number>): Record<string, number> {
+  const kept = loadCountersBefore(store, sourceSha);
+  if (kept) return kept;
+  try { store?.setItem(countersKey(sourceSha), JSON.stringify(counters)); } catch { /* storage full or blocked: the card warns */ }
+  return counters;
 }
-export function loadCountersBefore(store: Store | null, sourceSha: string, label: string): Record<string, number> | null {
+export function loadCountersBefore(store: Store | null, sourceSha: string): Record<string, number> | null {
   try {
-    const raw = store?.getItem(countersKey(sourceSha, label));
+    const raw = store?.getItem(countersKey(sourceSha));
     if (!raw) return null;
     const v = JSON.parse(raw) as unknown;
     if (!v || typeof v !== "object" || Array.isArray(v)) return null;
