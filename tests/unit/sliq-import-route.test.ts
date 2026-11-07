@@ -136,7 +136,8 @@ describe("p152 files", () => {
   it("the release carries the proposal verbatim, and the rehearsal CLI's hosted-database refusal is unchanged", () => {
     const proposal = readFileSync(path.join(root, "supabase/proposals/p152_sliq_import_route.sql"), "utf8");
     const release = readFileSync(path.join(root, "supabase/release/152_sliq_import_route.release.sql"), "utf8");
-    expect(release.includes(proposal)).toBe(true);
+    expect(release.includes(proposal.slice(proposal.indexOf("BEGIN;") + 6, proposal.lastIndexOf("COMMIT;")).trim())).toBe(true);
+    expect(release).toContain("DO $post_release_guard$");
     expect(release.trimStart().startsWith("--")).toBe(true);
     expect(release.trimEnd().endsWith("COMMIT;")).toBe(true);
     const guard = readFileSync(path.join(root, "scripts/sliq-import/guard.mjs"), "utf8");

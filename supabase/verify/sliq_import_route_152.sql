@@ -1,4 +1,4 @@
--- Read only: after release step 152 (SliQ go-live import route), every row must say true.
+-- Read only: after release 152 (SliQ go-live import route; registered in supabase/release-plan.json as phase 152, after 151), every row must say true.
 -- What it proves: the map and batch tables exist with row security, are readable (not writable) through the API, and the map's records are
 -- foreign keys that cascade; the map and batch guards are in place; only the preflight and the batch are callable, by signed-in users only,
 -- both SECURITY DEFINER with a pinned search_path; every map row names a record that exists in its own company; every invoice in the map is

@@ -1,6 +1,6 @@
 /**
  * Release order guards. The plan (supabase/release-plan.json "after" chain), supabase/verify/release_preflight.sql and the
- * release headers all say 144, 145, 146, 147, 148, 149, 150, 151 in that order. A release applied out of order must be refused
+ * release headers all say 144, 145, 146, 147, 148, 149, 150, 151, 152 in that order. A release applied out of order must be refused
  * by its OWN guard, testing an object its predecessor creates (not by calling the preflight). Static checks; the behavioural
  * proof is tests/db/release-order-guards.test.ts. Also pins the header comments that used to contradict the plan.
  */
@@ -27,6 +27,7 @@ const predecessor: Array<[number, number, string, RegExp]> = [
   [149, 148, "to_regclass('public.job_costing_settings') IS NULL", /149: required release 148 \(job costing\) is missing; stop and check release preflight/],
   [150, 149, "to_regclass('public.xero_transfer_hold') IS NULL", /150: required release 149 \(the Xero transfer switch\) is missing; stop and check release preflight/],
   [151, 150, "to_regprocedure('public.ai_helper_tolra_remove_key(uuid,text)') IS NULL", /151: required release 150 \(AI cap and key-off\) is missing; stop and check release preflight/],
+  [152, 151, "to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') IS NULL", /152: required release 151 \(Xero invite hardening\) is missing; stop and check release preflight/],
 ];
 
 describe("each release refuses to run before the release the plan says it follows", () => {
@@ -41,6 +42,8 @@ describe("each release refuses to run before the release the plan says it follow
     created(148, "CREATE TABLE public.job_costing_settings");
     created(149, "CREATE TABLE public.xero_transfer_hold");
     created(150, "CREATE FUNCTION public.ai_helper_tolra_remove_key");
+    created(151, "FUNCTION public.integration_invite_code_verify");
+    for (const old of [145, 146, 147, 148, 149, 150]) expect(read(release(old))).not.toContain("integration_invite_code_verify");
     for (const old of [145, 146, 147]) {
       expect(read(release(old))).not.toContain("job_costing_settings");
       expect(read(release(old))).not.toContain("xero_transfer_hold");
@@ -64,8 +67,8 @@ describe("each release refuses to run before the release the plan says it follow
     expect(read("supabase/release/144_accounting_connections.release.sql")).toBe(releaseSql(migration, "144_accounting_connections.sql"));
   });
 
-  it("the plan chain is 144 then 145 .. 151, each one after the one before", () => {
-    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"]]);
+  it("the plan chain is 144 then 145 .. 152, each one after the one before", () => {
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"], [152, "151"]]);
   });
 });
 

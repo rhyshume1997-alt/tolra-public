@@ -52,5 +52,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   const problems = checkReleasePlan(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
   problems.forEach(p => console.error(`FAIL ${p}`));
   if (problems.length) process.exitCode = 1;
-  else console.log('release-plan: every proposal accounted for; 143 costing rates → 144 → 145 N5 → 146 N2/cap → 147 C17 → 148 job costing → 149 Xero switch → 150 AI cap/key-off → 151 Xero invite hardening, no number collisions');
+  else console.log('release-plan: every proposal accounted for; 143 costing rates → 144 → 145 N5 → 146 N2/cap → 147 C17 → 148 job costing → 149 Xero switch → 150 AI cap/key-off → 151 Xero invite hardening → 152 SliQ import route, no number collisions');
 }

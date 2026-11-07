@@ -255,9 +255,9 @@ jobs:
         # A targeted manual run (workflow_dispatch with `specs` and skip_db=true) skips this and the rehearsal; every other run keeps them.
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.specs != '' && inputs.skip_db == 'true') }}
         # Full command, no exclusions. The sequencer runs every baseline file first,
-        # then all release proofs prepare/verify 145 to 151 on this disposable backend.
+        # then all release proofs prepare/verify 145 to 152 on this disposable backend.
         # The baseline and upgrade rehearsal still test only numbered migrations first.
-        # Post-144 release plan (supabase/release-plan.json): 145 N5, 146 N2/cap, 147 delivery note, 148 job costing, 149 Xero switch, 150 AI cap/key-off, 151 Xero invite hardening; proofs remain mandatory.
+        # Post-144 release plan (supabase/release-plan.json): 145 N5, 146 N2/cap, 147 delivery note, 148 job costing, 149 Xero switch, 150 AI cap/key-off, 151 Xero invite hardening, 152 SliQ import route; proofs remain mandatory.
         env:
           CI_EVIDENCE_DB_JSON: evidence/db.json
         run: npm run test:db
@@ -312,11 +312,11 @@ jobs:
           set -a; . ./.env.test.local; set +a
           NEXT_PUBLIC_SUPABASE_URL="$TEST_SUPABASE_URL" NEXT_PUBLIC_SUPABASE_ANON_KEY="$TEST_SUPABASE_ANON_KEY" npm run build
       # The upgrade rehearsal ends with `scripts/test-backend.sh reset`, which
-      # rebuilds the disposable database from numbered migrations only, so the one-time releases 145, 146, 147, 148, 149, 150 and 151 that the test:db fixture
+      # rebuilds the disposable database from numbered migrations only, so the one-time releases 145, 146, 147, 148, 149, 150, 151 and 152 that the test:db fixture
       # installed are gone and the browser backend has no company_setup_progress / Tolra AI tables. Re-install them here the way
       # tests/support/post-144-release-fixture.ts does (preflight marker, release file, verify file with every row true, schema reload).
       # Loopback database only; each marker is checked first so a release file is never applied twice.
-      - name: "Install one-time releases 145, 146, 147, 148, 149, 150 and 151 on the disposable database "
+      - name: "Install one-time releases 145, 146, 147, 148, 149, 150, 151 and 152 on the disposable database "
         run: |
           set -euo pipefail
           set -a; . ./.env.test.local; set +a
@@ -325,7 +325,7 @@ jobs:
             *) echo "Refusing: $TEST_DATABASE_URL is not the local disposable database" >&2; exit 1 ;;
           esac
           psql_q() { psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -X -At -F '|' "$@"; }
-          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening"; do
+          for phase in "145_company_setup|company_setup_145|post-144 marker 145 company_setup" "146_tolra_provided_ai|tolra_provided_ai_146|post-144 marker 146 tolra_provided_ai" "147_job_delivery_note|job_delivery_note_147|post-144 marker 147 job_delivery_note" "148_job_profitability_actuals|job_profitability_actuals_148|post-144 marker 148 job_profitability_actuals" "149_xero_launch_hold|xero_launch_hold_149|post-144 marker 149 xero_launch_hold" "150_ai_cap_key_off|ai_cap_key_off_150|post-144 marker 150 ai_cap_key_off" "151_xero_invite_hardening|xero_invite_hardening_151|post-144 marker 151 xero_invite_hardening" "152_sliq_import_route|sliq_import_route_152|post-144 marker 152 sliq_import_route"; do
             IFS='|' read -r release verify marker <<< "$phase"
             state="$(psql_q -f supabase/verify/release_preflight.sql | awk -F'|' -v m="$marker" '$1==m {print $2}')"
             [ -n "$state" ] || { echo "Missing release preflight marker: $marker" >&2; exit 1; }
@@ -350,7 +350,7 @@ jobs:
           node scripts/ci-evidence.mjs vitest-summary evidence/rehearsal.json REHEARSAL
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: "SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151 install step)"
+      - name: "SCHEMA MARKER before the browser tests (no reset since the 145/146/147/148/149/150/151/152 install step)"
         run: scripts/ci-schema-markers.sh
       - name: Browser suite
         # A manual run may name spec files (`specs`): only those run, in the same disposable stack. Empty = the whole suite.

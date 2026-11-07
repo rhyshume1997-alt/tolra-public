@@ -110,6 +110,15 @@
       "rollback": "supabase/release/151_xero_invite_hardening.rollback.sql",
       "verify": "supabase/verify/xero_invite_hardening_151.sql",
       "marker": "post-144 marker 151 xero_invite_hardening"
+    },
+    {
+      "number": 152,
+      "after": "151",
+      "source": "supabase/proposals/p152_sliq_import_route.sql",
+      "release": "supabase/release/152_sliq_import_route.release.sql",
+      "rollback": "supabase/release/152_sliq_import_route.rollback.sql",
+      "verify": "supabase/verify/sliq_import_route_152.sql",
+      "marker": "post-144 marker 152 sliq_import_route"
     }
   ],
   "other_proposals": [

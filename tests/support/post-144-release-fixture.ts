@@ -10,9 +10,10 @@ const phases = [
   { number: 149, marker: "post-144 marker 149 xero_launch_hold", file: "supabase/release/149_xero_launch_hold.release.sql", verifyFile: "supabase/verify/xero_launch_hold_149.sql" },
   { number: 150, marker: "post-144 marker 150 ai_cap_key_off", file: "supabase/release/150_ai_cap_key_off.release.sql", verifyFile: "supabase/verify/ai_cap_key_off_150.sql" },
   { number: 151, marker: "post-144 marker 151 xero_invite_hardening", file: "supabase/release/151_xero_invite_hardening.release.sql", verifyFile: "supabase/verify/xero_invite_hardening_151.sql" },
+  { number: 152, marker: "post-144 marker 152 sliq_import_route", file: "supabase/release/152_sliq_import_route.release.sql", verifyFile: "supabase/verify/sliq_import_route_152.sql" },
 ];
 export async function preparePost144Fixture(deps: {
-  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151;
+  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151 | 152;
   verify: () => Promise<unknown>;
   query: (sql: string) => Promise<{ rows: Array<{ check?: string; value?: string; ok?: boolean; passed?: boolean }> }>;
 }) {
@@ -20,7 +21,7 @@ export async function preparePost144Fixture(deps: {
   await deps.verify();
   await deps.query("SELECT pg_advisory_lock(144145146)");
   try {
-    for (const phase of phases.filter(p => p.number <= (deps.through ?? 151))) {
+    for (const phase of phases.filter(p => p.number <= (deps.through ?? 152))) {
       const state = (await deps.query(read("supabase/verify/release_preflight.sql"))).rows.find(row => row.check === phase.marker);
       if (!state) throw new Error(`Missing release preflight marker: ${phase.marker}`);
       if (state.value !== "applied") {

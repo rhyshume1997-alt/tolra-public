@@ -1,6 +1,6 @@
 -- =====================================================================================================
--- p152: the SliQ go-live import route (Admin > Data import > SliQ go-live import). PROPOSAL: not applied anywhere hosted, not registered
--- in supabase/release-plan.json, never run on production. Builds on 076 (as replaced by 079 and 085): every row check, match rule,
+-- p152: the SliQ go-live import route (Admin > Data import > SliQ go-live import). Registered in supabase/release-plan.json as post-144
+-- phase 152, after 151 (an ADDITION to the approved sequence 138..151). Not applied anywhere hosted, never run on production. Builds on 076 (as replaced by 079 and 085): every row check, match rule,
 -- payment rule and counter rule is 076's import_company_data_run, called unchanged. This adds only what a repeatable, browser-driven
 -- go-live load needs on top of it.
 --
@@ -42,6 +42,8 @@
 -- Additive: two tables, two callable SECURITY DEFINER functions (signed-in admins), four internal functions, two trigger functions. Rollback:
 -- supabase/release/152_sliq_import_route.rollback.sql. Verify: supabase/verify/sliq_import_route_152.sql (every row TRUE).
 -- =====================================================================================================
+
+BEGIN;
 
 -- ---- 1. Tables --------------------------------------------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.import_source_batches (
@@ -492,3 +494,5 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN) FROM PUBLIC, anon, service_role;
 GRANT EXECUTE ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN) TO authenticated;
+
+COMMIT;

@@ -1,11 +1,14 @@
--- Release step 152 (SliQ go-live import route). PROPOSAL ONLY: not registered in supabase/release-plan.json, not applied anywhere hosted.
--- One-time, one transaction. Canonical source: supabase/proposals/p152_sliq_import_route.sql (copied below verbatim between the guard and
--- the self-check; read its header). Apply only after 076, 079 and 085 (the data import), which every hosted database already has.
+-- Post-144 release step 152 (SliQ go-live import route; registered in supabase/release-plan.json as phase 152, after 151; CI's post-144 step installs it). One-time, one transaction; never part of baseline replay.
+-- Not applied anywhere hosted. Canonical source: supabase/proposals/p152_sliq_import_route.sql (its body between BEGIN; and COMMIT; is copied below verbatim
+-- between the guard and the self-check; read its header). Apply only after 151 (the guard tests 151's objects) and 076/079/085 (the data import).
 -- Verify: supabase/verify/sliq_import_route_152.sql (every row true). Rollback: supabase/release/152_sliq_import_route.rollback.sql.
 BEGIN;
-DO $release_guard$ BEGIN
+DO $post_release_guard$ BEGIN
  IF to_regclass('public.import_source_rows') IS NOT NULL OR to_regclass('public.import_source_batches') IS NOT NULL THEN
   RAISE EXCEPTION '152: the SliQ import route already exists; this one-time release was applied before';
+ END IF;
+ IF to_regprocedure('public.integration_invite_code_verify(text,text,text,text)') IS NULL THEN
+  RAISE EXCEPTION '152: required release 151 (Xero invite hardening) is missing; stop and check release preflight';
  END IF;
  IF to_regprocedure('public.import_company_data_run(uuid,uuid,uuid,jsonb,text,uuid,text,uuid,integer,integer)') IS NULL
     OR to_regprocedure('public.import_admin_org()') IS NULL OR to_regprocedure('public.import_check_payload(jsonb)') IS NULL
@@ -21,52 +24,7 @@ DO $release_guard$ BEGIN
     OR to_regprocedure('public.current_user_organization_id()') IS NULL THEN
   RAISE EXCEPTION '152: the helper functions it builds on are not all in place; stop and check release preflight';
  END IF;
-END $release_guard$;
-
--- =====================================================================================================
--- p152: the SliQ go-live import route (Admin > Data import > SliQ go-live import). PROPOSAL: not applied anywhere hosted, not registered
--- in supabase/release-plan.json, never run on production. Builds on 076 (as replaced by 079 and 085): every row check, match rule,
--- payment rule and counter rule is 076's import_company_data_run, called unchanged. This adds only what a repeatable, browser-driven
--- go-live load needs on top of it.
---
--- Why. Gates D1 / C1 (state-machines/IMPORT-REPLAY-ASSESSMENT.md): the rehearsal tool (scripts/sliq-import) can never write
--- production by design; 076's one-call import is cut off at 8 s for JNR's size; the owner-only wrapper was never built; and two replay
--- cases went wrong silently (map kept and data wiped: nothing imported, reported ok; map lost and data kept: customers and suppliers
--- duplicated). This route runs in the browser, signed in, as an admin of the session's company (same MFA, support and role rules as
--- 076: import_admin_org), in batches small enough for the 8 s limit, each batch one transaction.
---
--- 1. import_source_batches: one row per committed SliQ batch, keyed (company, source file SHA-256, run label, entity, batch number).
---    Never changed or removed. A re-run of the same key with the same rows answers the first result with already_imported = TRUE and
---    the same counts; the same key with different rows is refused (batch_reused); the same key whose records have since been removed
---    (a wipe) is refused loudly (records_removed), never a silent "ok": a new run label starts a fresh run.
--- 2. import_source_rows: the import map, one row per imported source row (customer, supplier, invoice, payment), keyed (company,
---    entity, source row id) with the source file SHA-256 and the batch that wrote it. Its record is a FOREIGN KEY with ON DELETE
---    CASCADE (one column per entity, exactly one set), so the map row goes with its record: a wipe of the data wipes its map, and a
---    replay after a wipe imports again instead of doing nothing. A map row can't be changed, and can't be removed while its record
---    exists (import_source_rows_guard). Written in the SAME transaction as the records (the batch function), never on its own.
--- 3. Map lost, data kept (or a record keyed by hand): before writing, every row NOT in the map that 076 would match to a record already
---    in Tolra (same customer or supplier name or reference, same invoice number, same payment) is refused (map_diverged), and nothing
---    in the batch is written. Nothing is ever matched silently, so nothing is duplicated and nothing is skipped without a reason.
--- 4. import_sliq_preflight(source_sha256, payload): the WHOLE file, checked at once, writes nothing (076's 'validate' mode inside a
---    rolled-back sub-block). Returns per-entity counts (rows, already imported, to create, problems), every problem with its source row
---    id, and the money: invoiced, paid (sum of payments), owed; any invoice whose payments exceed its total is a problem.
--- 5. import_sliq_batch(source_sha256, run_label, entity, batch_no, rows, dry_run): one batch, one transaction. entity is customers,
---    suppliers or invoices (an invoices batch carries its invoices' payments: 076 writes a payment only with its invoice, and sets
---    amount_paid to the sum of them). At most 2,000 records and 4,000 lines per call. Rows already in the map are skipped and counted
---    already_imported. Numbering: invoice numbers are kept as written; 076 reseeds doc_counters with GREATEST (never lower, never a
---    number invented); a number already in Tolra is refused (076 with different content; this route with the same content but no map
---    row). After the write, in the same transaction: every map row is checked against its record, and every created invoice's
---    amount_paid against the sum of its payments; any difference raises and the whole batch is rolled back. A dry run, a problem or an
---    unexpected error rolls back everything; a cancelled call (statement_timeout, a killed connection) is not caught and rolls back
---    the whole transaction. Audited: 076's IMPORT_COMMITTED for the records, plus IMPORT_SOURCE_BATCH (this table, key, counts) per
---    committed or already-imported batch.
--- 6. Locking: the same advisory lock as 076 (one import per company at a time).
--- 7. The original files: every call names them ([{entity, name, sha256}]); the source key must be the SHA-256 of the sorted lines
---    "<entity>:<sha256>" (import_sliq_check_files), and every batch's IMPORT_SOURCE_BATCH audit row records them.
---
--- Additive: two tables, two callable SECURITY DEFINER functions (signed-in admins), four internal functions, two trigger functions. Rollback:
--- supabase/release/152_sliq_import_route.rollback.sql. Verify: supabase/verify/sliq_import_route_152.sql (every row TRUE).
--- =====================================================================================================
+END $post_release_guard$;
 
 -- ---- 1. Tables --------------------------------------------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.import_source_batches (

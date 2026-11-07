@@ -1,4 +1,4 @@
--- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151. Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152. Numbered cutover markers: 138, 140, 141, 143, 144.
 -- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
@@ -235,6 +235,7 @@ proposal_files(file, disposition) AS (
     ('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147'),
     ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 149'),
     ('supabase/proposals/p151_xero_invite_hardening.sql', 'post-144 release 151; apply only after 150 (replaces 107''s token invite functions; no 107 token link survives)'),
+    ('supabase/proposals/p152_sliq_import_route.sql', 'post-144 release 152; apply only after 151 (SliQ go-live import route over 076/085; an addition to 138..151)'),
     ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
     ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
     ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
@@ -319,6 +320,12 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_tolra_control' AND column_name = 'key_removed' AND is_nullable = 'NO')
       AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.ai_helper_tolra_control') AND conname = 'ai_helper_tolra_control_removed_off')
       AND NOT has_function_privilege('authenticated', to_regprocedure('public._ai_helper_force_off(uuid,text)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 152 sliq_import_route', coalesce((to_regclass('public.import_source_rows') IS NOT NULL AND to_regclass('public.import_source_batches') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.import_source_rows') AND relrowsecurity)
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.import_source_rows') AND tgname = 'import_source_rows_guard')
+      AND (SELECT count(*) = 2 FROM pg_proc p WHERE p.prosecdef AND p.proconfig IS NOT NULL
+             AND p.oid IN (to_regprocedure('public.import_sliq_preflight(text,jsonb,jsonb)'), to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)')))
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)'), 'EXECUTE')), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
       AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
@@ -649,7 +656,7 @@ checks(n, check_name, value, expected) AS (
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
-    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
   UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
     'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )
