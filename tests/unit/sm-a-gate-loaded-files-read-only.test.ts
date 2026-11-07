@@ -1,6 +1,6 @@
 /**
  * Every SQL file the production readiness gate loads must be read-only. The gate (scripts/release-readiness-gate.mjs) loads:
- *   supabase/verify/release_readiness_gate.sql, supabase/verify/release_preflight.sql, and the verify file of each release in VERIFY_RELEASES (143..151).
+ *   supabase/verify/release_readiness_gate.sql, supabase/verify/release_preflight.sql, and the verify file of each release in VERIFY_RELEASES (143..152).
  * It also runs inside BEGIN READ ONLY and always rolls back (so a write would raise 25006), but this test checks the files themselves:
  * no INSERT/UPDATE/DELETE/DDL/privilege/lock/notify keyword in code, no function that writes or has side effects, every query_to_xml() argument is a SELECT.
  */
@@ -39,7 +39,7 @@ const SQL_WORDS = new Set(["in", "as", "exists", "and", "or", "not", "from", "wh
 
 describe("the SQL files the readiness gate loads are read-only", () => {
   it("lists exactly the expected files and all exist", () => {
-    expect(loaded).toHaveLength(2 + 9);
+    expect(loaded).toHaveLength(2 + 10);
     expect(loaded.filter((f) => f.startsWith("MISSING_"))).toEqual([]);
   });
 

@@ -212,6 +212,13 @@ BEGIN
                         mapped_id = coalesce(m.customer_id, m.supplier_id, m.invoice_id, m.payment_id, m.credit_note_id)
   FROM public.import_source_rows m
   WHERE m.organization_id = p_org AND m.entity = i.entity AND m.source_row_id = i.source_row_id;
+  -- Already imported from a DIFFERENT export (another source key): refused. One export, one key; the source row ids of two exports
+  -- are not assumed to mean the same rows.
+  INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+  SELECT i.kind, i.source_row_id, 'source_row_id',
+         'Already imported from a different export (source key ' || left(i.mapped_sha, 12) || '...): this file set is not the one that was imported. Nothing was written.',
+         'other_source_file'
+  FROM _sliq_in i WHERE i.mapped AND i.mapped_sha <> p_sha;
   -- Already imported, but the export says something else now: listed, kept as it is in Tolra (never overwritten).
   INSERT INTO _sliq_warn (kind, source_row_id, field, message, code)
   SELECT i.kind, i.source_row_id, x.field, 'Already imported, but the export now says ' || x.now || ' (Tolra has ' || x.was || '): kept as it is in Tolra.', 'changed_since_import'
@@ -349,8 +356,57 @@ END
 $$;
 REVOKE ALL ON FUNCTION public.import_sliq_check_files(TEXT, JSONB) FROM PUBLIC, anon, authenticated, service_role;
 
+-- What 076's reseed would set the company's counters to (QUO, J, PO, SO, DLN), from what is in Tolra now: the same formulas as 076/085.
+-- The preflight uses it so a dry run applies the batch's counter_changed rule.
+CREATE OR REPLACE FUNCTION public.import_sliq_counter_moves(p_org UUID)
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SET search_path = pg_catalog, public
+AS $$
+  SELECT string_agg(v.prefix || ' ' || coalesce(dc.last::TEXT, 'none') || ' -> ' || v.n, ', ' ORDER BY v.prefix)
+  FROM (SELECT 'QUO' AS prefix, (SELECT max(substring(q.quote_ref FROM '^QUO-(\d{1,9})$')::INT) FROM public.quotes q WHERE q.organization_id = p_org) AS n
+        UNION ALL SELECT 'J', GREATEST((SELECT max(substring(j.job_no FROM '^J-(\d{1,9})$')::INT) FROM public.jobs j WHERE j.organization_id = p_org),
+                                       (SELECT max(substring(q.quote_ref FROM '^QUO-(\d{1,9})$')::INT) FROM public.quotes q WHERE q.organization_id = p_org))
+        UNION ALL SELECT 'PO', GREATEST((SELECT max(substring(po.po_ref FROM '^PO-(\d{1,9})$')::INT) FROM public.purchase_orders po WHERE po.organization_id = p_org),
+                                        (SELECT max(substring(po.po_number FROM '^PO-(\d{1,9})$')::INT) FROM public.purchase_orders po WHERE po.organization_id = p_org))
+        UNION ALL SELECT 'SO', (SELECT max(substring(so.so_number FROM '^SO-(\d{1,9})$')::INT) FROM public.sales_orders so WHERE so.organization_id = p_org)
+        UNION ALL SELECT 'DLN', (SELECT max(substring(dn.dn_number FROM '^DLN-(\d{1,9})$')::INT) FROM public.delivery_notes dn WHERE dn.organization_id = p_org)) v
+  LEFT JOIN public.doc_counters dc ON dc.organization_id = p_org AND dc.prefix = v.prefix
+  WHERE v.n IS NOT NULL AND v.n > coalesce(dc.last, 0)
+$$;
+REVOKE ALL ON FUNCTION public.import_sliq_counter_moves(UUID) FROM PUBLIC, anon, authenticated, service_role;
+
+-- An INV-<digits> number to create that is more than p_gap above the nearest lower INV number (in Tolra, or in this call): refused,
+-- one problem per row, unless p_allow. Reads 076's _imp_invoices (rows decided 'create').
+CREATE OR REPLACE FUNCTION public.import_sliq_check_inv_gap(p_org UUID, p_gap INT, p_allow BOOLEAN)
+RETURNS VOID
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public
+AS $$
+BEGIN
+  IF p_allow THEN
+    RETURN;
+  END IF;
+  INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+  SELECT 'invoices', i.source_row_id, 'invoice_ref',
+         x.invoice_ref || ' is ' || (x.n - x.prev) || ' above the nearest lower invoice number (' || x.prev || '): a typo would move the INV counter there for good. '
+         || 'Check the number; if it is right, import with the large-gap allowance.', 'inv_gap'
+  FROM (SELECT y.*, lag(y.n) OVER (ORDER BY y.n, y.src) AS prev
+        FROM (SELECT substring(v.invoice_ref FROM '^INV-(\d{1,9})$')::BIGINT AS n, 0 AS src, NULL::INT AS ord, NULL::TEXT AS invoice_ref
+              FROM public.invoices v WHERE v.organization_id = p_org AND v.invoice_ref ~ '^INV-\d{1,9}$'
+                AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_invoices w WHERE w.action = 'create' AND w.new_id = v.id)  -- in a commit, this run's own rows are written by now
+              UNION ALL
+              SELECT substring(t.invoice_ref FROM '^INV-(\d{1,9})$')::BIGINT, 1, t.ord, t.invoice_ref
+              FROM pg_temp._imp_invoices t WHERE t.action = 'create' AND t.invoice_ref ~ '^INV-\d{1,9}$') y) x
+  JOIN _sliq_in i ON i.kind = 'invoices' AND i.pos = x.ord AND NOT i.mapped
+  WHERE x.src = 1 AND x.prev IS NOT NULL AND x.n - x.prev > p_gap;
+END
+$$;
+REVOKE ALL ON FUNCTION public.import_sliq_check_inv_gap(UUID, INT, BOOLEAN) FROM PUBLIC, anon, authenticated, service_role;
+
 -- ---- 3. Preflight: the whole file, nothing written --------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.import_sliq_preflight(p_source_sha256 TEXT, p_source_files JSONB, p_payload JSONB)
+CREATE OR REPLACE FUNCTION public.import_sliq_preflight(p_source_sha256 TEXT, p_source_files JSONB, p_payload JSONB, p_allow_inv_gap BOOLEAN DEFAULT FALSE)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -364,11 +420,17 @@ DECLARE
   v_run    JSONB;
   v_out    JSONB;
   v_money  JSONB;
+  v_moved  TEXT;
 BEGIN
   IF v_sha IS NULL OR v_sha !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'Give the source file''s SHA-256 (64 hex characters).' USING ERRCODE = '22023', HINT = 'bad_source_sha';
   END IF;
   PERFORM public.import_sliq_check_files(v_sha, p_source_files);
+  IF octet_length(p_payload::TEXT) > 4194304
+     OR (SELECT coalesce(sum(CASE WHEN jsonb_typeof(v) = 'array' THEN jsonb_array_length(v) ELSE 0 END), 0) FROM jsonb_each(p_payload) e(k, v)) > 6000 THEN
+    RAISE EXCEPTION 'The file set is too large for one preflight (at most 6,000 records and 4 MB; JNR is about 4,300): nothing was checked. Split it by date into separate exports.'
+      USING ERRCODE = '22023', HINT = 'preflight_too_large';
+  END IF;
   PERFORM pg_advisory_xact_lock(hashtext('import_company_data'), hashtext(v_org::TEXT));
   PERFORM set_config('quoteflow.sliq_org', v_org::TEXT, TRUE);
   BEGIN
@@ -378,6 +440,13 @@ BEGIN
       v_run := public.import_company_data_run(v_org, v_uid, gen_random_uuid(), jsonb_strip_nulls(v_imp), 'validate', gen_random_uuid(),
                                               repeat('0', 64), NULL, NULL, NULL);
       PERFORM public.import_sliq_collect(v_run);
+      PERFORM public.import_sliq_check_inv_gap(v_org, 1000, coalesce(p_allow_inv_gap, FALSE));
+      -- The batch's counter rule, applied here too: any counter but INV that a commit would move refuses the import.
+      v_moved := public.import_sliq_counter_moves(v_org);
+      IF v_moved IS NOT NULL THEN
+        INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+        VALUES (NULL, NULL, NULL, 'counter_changed: ' || v_moved || ' (records in Tolra are numbered above their counter; this route may only raise INV). Nothing would be imported.', 'counter_changed');
+      END IF;
       -- The money, from 076's own figures for the rows it would create, by the app's rule (034): per invoice
       -- greatest(0, total - paid - credited + refunded) (an import has no refunds), void / cancelled / written off / draft excluded,
       -- the excess as customer credit.
@@ -385,7 +454,7 @@ BEGIN
                'invoiced', coalesce(sum(v.total) FILTER (WHERE v.action = 'create'), 0),
                'paid', coalesce((SELECT sum(y.amount) FROM pg_temp._imp_payments y WHERE y.action = 'create'), 0),
                'credited', coalesce((SELECT sum(n.total) FROM pg_temp._imp_credit_notes n WHERE n.action = 'create'), 0),
-               'owed', coalesce(sum(greatest(0, v.total - v.paid - v.credited)) FILTER (WHERE v.action = 'create' AND v.status NOT IN ('void', 'cancelled', 'written_off', 'draft') AND NOT v.payment_unverified), 0),
+               'owed', coalesce(sum(greatest(0, v.total - v.paid - v.credited)) FILTER (WHERE v.action = 'create' AND v.status NOT IN ('void', 'cancelled', 'written_off', 'draft')), 0),
                'customer_credit', coalesce(sum(greatest(0, v.paid + v.credited - v.total)) FILTER (WHERE v.action = 'create' AND v.status NOT IN ('void', 'cancelled', 'written_off', 'draft')), 0),
                'excluded_invoices', count(*) FILTER (WHERE v.action = 'create' AND v.status IN ('void', 'cancelled', 'written_off', 'draft')),
                'payment_to_confirm', count(*) FILTER (WHERE v.action = 'create' AND v.payment_unverified))
@@ -401,11 +470,12 @@ BEGIN
   RETURN jsonb_build_object('ok', (v_out ->> 'error_count')::INT = 0, 'dry_run', TRUE, 'preflight', TRUE, 'source_sha256', v_sha, 'source_files', p_source_files) || v_out;
 END
 $$;
-REVOKE ALL ON FUNCTION public.import_sliq_preflight(TEXT, JSONB, JSONB) FROM PUBLIC, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.import_sliq_preflight(TEXT, JSONB, JSONB) TO authenticated;
+REVOKE ALL ON FUNCTION public.import_sliq_preflight(TEXT, JSONB, JSONB, BOOLEAN) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.import_sliq_preflight(TEXT, JSONB, JSONB, BOOLEAN) TO authenticated;
 
 -- ---- 4. One batch: one transaction ----------------------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.import_sliq_batch(p_source_sha256 TEXT, p_source_files JSONB, p_run_label TEXT, p_entity TEXT, p_batch_no INT, p_rows JSONB, p_dry_run BOOLEAN)
+CREATE OR REPLACE FUNCTION public.import_sliq_batch(p_source_sha256 TEXT, p_source_files JSONB, p_run_label TEXT, p_entity TEXT, p_batch_no INT, p_rows JSONB, p_dry_run BOOLEAN,
+                                                    p_allow_inv_gap BOOLEAN DEFAULT FALSE)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -485,6 +555,7 @@ BEGIN
       v_run := public.import_company_data_run(v_org, v_uid, v_batch, jsonb_strip_nulls(v_imp), CASE WHEN p_dry_run THEN 'dry_run' ELSE 'commit' END,
                                               v_op, v_request, NULL, NULL, NULL);
       PERFORM public.import_sliq_collect(v_run);
+      PERFORM public.import_sliq_check_inv_gap(v_org, 1000, coalesce(p_allow_inv_gap, FALSE));
     END IF;
     v_sum := public.import_sliq_summary(v_sha);
     v_result := jsonb_build_object('ok', (v_sum ->> 'error_count')::INT = 0, 'dry_run', p_dry_run, 'committed', FALSE, 'already_imported', v_created = 0,
@@ -557,8 +628,8 @@ BEGIN
   RETURN v_result || jsonb_build_object('replayed', FALSE);
 END
 $$;
-REVOKE ALL ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN) FROM PUBLIC, anon, service_role;
-GRANT EXECUTE ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN) TO authenticated;
+REVOKE ALL ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN, BOOLEAN) FROM PUBLIC, anon, service_role;
+GRANT EXECUTE ON FUNCTION public.import_sliq_batch(TEXT, JSONB, TEXT, TEXT, INT, JSONB, BOOLEAN, BOOLEAN) TO authenticated;
 
 -- ---- 5. Reconciliation rows (read only) ------------------------------------------------------------------------------------------
 -- The metric rows lib/sliq-reconcile compares with the validator's source totals. One definition, two callers: the browser card
@@ -711,8 +782,8 @@ REVOKE ALL ON FUNCTION public.import_sliq_reconcile() FROM PUBLIC, anon, service
 GRANT EXECUTE ON FUNCTION public.import_sliq_reconcile() TO authenticated;
 
 DO $self_check$ BEGIN
-  IF NOT has_function_privilege('authenticated', 'public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)', 'EXECUTE')
-     OR has_function_privilege('anon', 'public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)', 'EXECUTE')
+  IF NOT has_function_privilege('authenticated', 'public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'public.import_sliq_prepare(uuid,text,jsonb,text)', 'EXECUTE') THEN
     RAISE EXCEPTION '152 self-check: function grants are not as designed';
   END IF;

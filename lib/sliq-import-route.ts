@@ -154,9 +154,21 @@ export function cleanSha(value: unknown): string | null {
   return /^[0-9a-f]{64}$/.test(s) ? s : null;
 }
 
-export function sliqPreflight(rpc: Rpc, payload: SliqPayload): Promise<SliqPreflight> {
+/** At most this much in one preflight call (release 152 refuses more: preflight_too_large). JNR is about 4,300 records. */
+export const SLIQ_PREFLIGHT_MAX_RECORDS = 6000;
+export const SLIQ_PREFLIGHT_MAX_BYTES = 4 * 1024 * 1024;
+/** The plain-words reason a file set is too large for one preflight, or null. Checked in the page before anything is sent. */
+export function preflightTooLarge(payload: SliqPayload): string | null {
+  const sections = { customers: payload.customers, suppliers: payload.suppliers, invoices: payload.invoices, payments: payload.payments, credit_notes: payload.credit_notes };
+  const records = Object.values(sections).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
+  const bytes = new TextEncoder().encode(JSON.stringify(sections)).length;
+  if (records <= SLIQ_PREFLIGHT_MAX_RECORDS && bytes <= SLIQ_PREFLIGHT_MAX_BYTES) return null;
+  return `The file set is too large for one preflight (${records} records, ${(bytes / 1048576).toFixed(1)} MB; at most ${SLIQ_PREFLIGHT_MAX_RECORDS} records and 4 MB). Nothing was sent. Split the export by date.`;
+}
+
+export function sliqPreflight(rpc: Rpc, payload: SliqPayload, options: { allowInvGap?: boolean } = {}): Promise<SliqPreflight> {
   const { source_sha256, source_files, ...sections } = payload;
-  return call<SliqPreflight>(rpc, "import_sliq_preflight", { p_source_sha256: source_sha256, p_source_files: source_files, p_payload: sections });
+  return call<SliqPreflight>(rpc, "import_sliq_preflight", { p_source_sha256: source_sha256, p_source_files: source_files, p_payload: sections, p_allow_inv_gap: options.allowInvGap === true });
 }
 
 export type SliqRunProgress = { done: number; total: number; batch?: SliqBatch };
@@ -167,6 +179,7 @@ export type SliqRunProgress = { done: number; total: number; batch?: SliqBatch }
  */
 export async function sliqRunBatches(
   rpc: Rpc, payload: SliqPayload, runLabel: string, onProgress?: (p: SliqRunProgress) => void, startAt = 0, weight = SLIQ_BATCH_WEIGHT,
+  options: { allowInvGap?: boolean } = {},
 ): Promise<{ results: SliqBatchResult[]; failedAt: number | null; error?: Error; last?: SliqBatchResult }> {
   const { batches } = planSliqBatches(payload, weight);
   const results: SliqBatchResult[] = [];
@@ -177,6 +190,7 @@ export async function sliqRunBatches(
     try {
       result = await call<SliqBatchResult>(rpc, "import_sliq_batch", {
         p_source_sha256: payload.source_sha256, p_source_files: payload.source_files, p_run_label: runLabel, p_entity: b.entity, p_batch_no: b.batchNo, p_rows: b.rows, p_dry_run: false,
+        p_allow_inv_gap: options.allowInvGap === true,
       });
     } catch (err) {
       return { results, failedAt: i, error: err instanceof Error ? err : new Error(String(err)) };

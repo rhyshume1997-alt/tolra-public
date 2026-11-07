@@ -18,7 +18,7 @@ UNION ALL SELECT 'guards: map rows locked while their record exists; batches imm
 UNION ALL SELECT 'functions: only the preflight, the batch and the reconciliation are callable (signed-in only), all definer with a pinned search_path',
   (SELECT count(*) = 3 FROM pg_proc p WHERE (p.proname LIKE 'import_sliq%' OR p.proname LIKE 'import_source%') AND has_function_privilege('authenticated', p.oid, 'EXECUTE'))
   AND (SELECT bool_and(p.prosecdef AND p.proconfig::TEXT LIKE '%search_path=pg_catalog, public%') FROM pg_proc p
-       WHERE p.oid IN (to_regprocedure('public.import_sliq_preflight(text,jsonb,jsonb)'), to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)'),
+       WHERE p.oid IN (to_regprocedure('public.import_sliq_preflight(text,jsonb,jsonb,boolean)'), to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)'),
                        to_regprocedure('public.import_sliq_reconcile()')))
   AND NOT EXISTS (SELECT 1 FROM pg_proc p WHERE (p.proname LIKE 'import_sliq%' OR p.proname LIKE 'import_source%')
                   AND (has_function_privilege('anon', p.oid, 'EXECUTE') OR has_function_privilege('service_role', p.oid, 'EXECUTE')))

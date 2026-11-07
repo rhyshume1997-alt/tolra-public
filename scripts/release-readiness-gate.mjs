@@ -15,9 +15,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const MIN_CRON_SECRET_LENGTH = 16;
 export const REQUIRED_MARKERS = [
   { n: "138", re: /^marker 138\b/ }, { n: "140", re: /^marker 140\b/ }, { n: "141", re: /^marker 141\b/ }, { n: "143", re: /^marker 143\b/ }, { n: "144", re: /^marker 144\b/ },
-  ...["145", "146", "147", "148", "149", "150", "151"].map((n) => ({ n, re: new RegExp(`^post-144 marker ${n}\\b`) })),
+  ...["145", "146", "147", "148", "149", "150", "151", "152"].map((n) => ({ n, re: new RegExp(`^post-144 marker ${n}\\b`) })),
 ];
-export const VERIFY_RELEASES = ["143", "144", "145", "146", "147", "148", "149", "150", "151"];
+export const VERIFY_RELEASES = ["143", "144", "145", "146", "147", "148", "149", "150", "151", "152"];
 /** 073's invoice status allowlist plus the spellings the app also reads as void / cancelled. */
 export const INVOICE_STATUS_ALLOWLIST = new Set(["draft", "issued", "sent", "partial", "paid", "credited", "void", "cancelled", "written_off", "voided", "canceled"]);
 export const EXPECTED_CRONS = ["/api/cron/daily", "/api/cron/nightly"];
@@ -112,7 +112,7 @@ const unreadable = (id, name, r) => ok(id, name, false, `NOT CHECKED (${r?.statu
 const num = (v) => (v === null || v === undefined || v === "" ? NaN : Number(v));
 
 function checkPreflight(r) {
-  const name = "1a preflight markers 138/140/141/143/144 and 145-151 applied";
+  const name = "1a preflight markers 138/140/141/143/144 and 145-152 applied";
   if (!readable(r)) return unreadable("1a", name, r);
   const bad = [];
   for (const m of REQUIRED_MARKERS) {
@@ -128,7 +128,7 @@ function checkPreflight(r) {
 }
 
 function checkVerify(map) {
-  const name = "1b verify files 143-151 return all true";
+  const name = "1b verify files 143-152 return all true";
   if (!map || typeof map !== "object") return unreadable("1b", name, undefined);
   const bad = [];
   for (const n of VERIFY_RELEASES) {

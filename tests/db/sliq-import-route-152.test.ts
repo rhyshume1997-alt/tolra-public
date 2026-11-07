@@ -1,15 +1,19 @@
 /**
- * p152 (supabase/proposals/p152_sliq_import_route.sql): the SliQ go-live import route, end to end below PostgREST.
+ * Release 152 (supabase/release/152_sliq_import_route.release.sql, phase 152 after 151): the SliQ go-live import route, end to end
+ * below PostgREST.
  *
  * Synthetic SliQ-shaped CSV files -> lib/sliq-validate (must be ok) -> lib/sliq-import-build -> lib/sliq-import-route (preflight,
  * planned batches) -> import_sliq_preflight / import_sliq_batch, each call ONE transaction as the `authenticated` role with an admin's
  * JWT claims (as PostgREST runs it). Proves: preflight writes nothing; twice-run changes nothing; a killed batch and a failed batch
  * leave nothing and a retry completes once; the map and the data can't diverge (map kept / data wiped refuses loudly, map lost / data
  * kept refuses, never duplicates); counters only rise and numbering continues; balances equal the source; restore -> import again
- * gives identical results; the company comes from the session only; MFA, role and support rules hold; the definer census of p152.
+ * gives identical results; credit notes; a hand-typed customer, an unresolvable invoice customer, a moved counter, an INV gap, a
+ * different export and an oversized preflight are refused; the company comes from the session only; MFA, role and support rules
+ * hold; the definer census of 152.
  *
- * Runs only where SLIQ152_ADMIN_URL (a loopback superuser URL) and SLIQ152_TEMPLATE (a database with p152 applied, no connections)
- * are set: p152 is a proposal, not in supabase/release-plan.json, so CI's database has no p152 and this file is skipped there.
+ * Runs only where SLIQ152_ADMIN_URL (a loopback superuser URL) and SLIQ152_TEMPLATE (a database with 145..152 applied, no
+ * connections) are set: it makes and drops its own databases from the template, which CI's Supabase stack does not allow, so CI
+ * skips this file. In CI, 152 is installed by the post-144 step and checked by its release guard, verify file and preflight marker.
  * Not PostgREST: request size limits, the 8 s statement_timeout of the hosted API and its error mapping are not proved here.
  */
 import { randomUUID } from "node:crypto";
@@ -87,6 +91,10 @@ const claims = (sub: string, aal = "aal2") => ({ sub, role: "authenticated", aal
 async function openWork(name: string) {
   work = name;
   pool = new Pool({ connectionString: dbUrl(name), max: 4 });
+  // The killed-connection test ends a backend on purpose; an idle pooled client then reports it here (not an unhandled error).
+  const killed = (e: Error) => { if (!/terminat/i.test(e.message)) throw e; };
+  pool.on("error", killed);
+  pool.on("connect", (client) => { client.on("error", killed); });
 }
 async function closeWork() { await pool.end(); }
 
@@ -234,7 +242,7 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
       select p.oid::regprocedure::text as sig, p.prosecdef as definer, has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth,
              has_function_privilege('anon', p.oid, 'EXECUTE') as anon, has_function_privilege('service_role', p.oid, 'EXECUTE') as service
       from pg_proc p where p.proname like 'import_sliq%' or p.proname like 'import_source%' order by 1`);
-    const callable = ["import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)", "import_sliq_preflight(text,jsonb,jsonb)", "import_sliq_reconcile()"];
+    const callable = ["import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)", "import_sliq_preflight(text,jsonb,jsonb,boolean)", "import_sliq_reconcile()"];
     expect(rows.filter((r) => r.auth).map((r) => r.sig).sort()).toEqual(callable);
     expect(rows.filter((r) => r.definer).map((r) => r.sig).sort()).toEqual(callable);
     expect(rows.some((r) => r.anon || r.service)).toBe(false);
@@ -531,6 +539,60 @@ describe.skipIf(!enabled)("p152 SliQ import route", () => {
     expect(run.last?.errors?.[0]?.message).toMatch(/counter_changed: QUO 3 -> 99/);
     expect(await state(c.o)).toMatchObject({ customers: 0, map_rows: 0, batches: 0 });
     expect(await q("select prefix, last::int as last from doc_counters where organization_id = $1 order by 1", [c.o])).toEqual([{ prefix: "DLN", last: 12 }, { prefix: "QUO", last: 3 }]);
+  });
+
+  it("DB review: a different export reusing imported row ids is refused (other_source_file); nothing written", async () => {
+    const before = await state();
+    const other: SliqPayload = { ...payload, source_files: payload.source_files.map((f) => (f.entity === "customers" ? { ...f, sha256: "d".repeat(64) } : f)) };
+    other.source_sha256 = (await q<{ h: string }>("select encode(sha256(convert_to($1, 'UTF8')), 'hex') as h",
+      [other.source_files.map((f) => `${f.entity}:${f.sha256}`).sort().join("\n")]))[0].h;
+    const pf = await sliqPreflight(rpc(), other);
+    expect(pf.ok).toBe(false);
+    expect(pf.errors.filter((e) => e.code === "other_source_file").length).toBe(first.map_rows);
+    const run = await sliqRunBatches(rpc(), other, "other-export", undefined, 0, 60);
+    expect(run.failedAt).toBe(0);
+    expect(run.last?.errors?.[0]?.code).toBe("other_source_file");
+    expect(await state()).toEqual(before);
+  });
+
+  it("DB review: an INV number far above its nearest lower one is refused unless the call allows it; the preflight applies the counter rule; too large is refused", async () => {
+    const c = await newCompany();
+    const typo: SliqPayload = { ...payload, invoices: payload.invoices!.map((r) => (r.source_row_id === "I:INV-1060" ? { ...r, invoice_ref: "INV-999999999" } : r)),
+      payments: payload.payments!.filter((x) => x.invoice_ref !== "INV-1060"), credit_notes: payload.credit_notes };
+    const pf = await sliqPreflight(rpcAs(c.u), typo);
+    expect(pf.errors.filter((e) => e.code === "inv_gap").map((e) => e.source_row_id)).toEqual(["I:INV-1060"]);
+    const allowed = await sliqPreflight(rpcAs(c.u), typo, { allowInvGap: true });
+    expect(allowed.errors.filter((e) => e.code === "inv_gap")).toEqual([]);
+    // The batch refuses the same way (the first invoices batch that holds it), and nothing in that batch is written.
+    const run = await sliqRunBatches(rpcAs(c.u), typo, "gap", undefined, 0, 60);
+    expect(run.failedAt).not.toBeNull();
+    expect(run.last?.errors?.map((e) => e.code)).toContain("inv_gap");
+    expect((await q("select count(*)::int as n from invoices where organization_id = $1 and invoice_ref = 'INV-999999999'", [c.o]))[0].n).toBe(0);
+    expect((await q("select last::int as last from doc_counters where organization_id = $1 and prefix = 'INV'", [c.o]))[0]?.last ?? 0).toBeLessThan(2000);
+    // Counter rule in the preflight: a hand-typed QUO-99 above QUO 3 makes the PREFLIGHT fail too (not only the batch).
+    const d = await newCompany();
+    await q("insert into doc_counters (organization_id, prefix, last) values ($1, 'QUO', 3)", [d.o]);
+    await q("insert into quotes (organization_id, quote_ref, customer, status, total_value) values ($1, 'QUO-99', 'Somebody', 'draft', 1)", [d.o]);
+    const pq = await sliqPreflight(rpcAs(d.u), payload);
+    expect(pq.ok).toBe(false);
+    expect(pq.errors.find((e) => e.code === "counter_changed")?.message).toMatch(/QUO 3 -> 99/);
+    // Too large for one call: refused before anything is checked, with the limit in words.
+    const big: SliqPayload = { ...payload, customers: Array.from({ length: 6001 }, (_, i) => ({ source_row_id: `C:Z${i}`, name: `Z ${i}`, external_ref: `Z${i}` })) };
+    const tooBig = await sliqPreflight(rpcAs(d.u), big).catch((e) => e);
+    expect(tooBig.hint).toBe("preflight_too_large");
+  });
+
+  it("DB review: the preflight's owed and the reconciliation's outstanding agree, payment-to-confirm invoices included", async () => {
+    const c = await newCompany();
+    const marked: SliqPayload = { ...payload, invoices: payload.invoices!.map((r) => (r.source_row_id === "I:INV-1024" ? { ...r, status: "paid" } : r)) };
+    const pf = await sliqPreflight(rpcAs(c.u), marked);
+    expect(pf.ok).toBe(true);
+    expect(pf.money.payment_to_confirm).toBe(1);
+    const run = await sliqRunBatches(rpcAs(c.u), marked, "owed", undefined, 0, 60);
+    expect(run.failedAt).toBeNull();
+    const rows = ((await rpcAs(c.u)("import_sliq_reconcile", {})).data as { rows: DbRow[] }).rows;
+    const outstanding = Number(rows.find((r) => r.metric === "total_pence" && r.key === "outstanding")!.value);
+    expect(Math.round(Number(pf.money.owed) * 100)).toBe(outstanding);
   });
 
   it("the company comes from the session only: the other company's admin imports into its own company; it can't read this one's map", async () => {

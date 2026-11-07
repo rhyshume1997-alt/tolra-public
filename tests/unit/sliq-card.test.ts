@@ -80,3 +80,13 @@ describe("counters before survive a reload", () => {
     expect(loadCountersBefore(null, "a".repeat(64), "live")).toBeNull();
   });
 });
+
+describe("preflight size limit (release 152: preflight_too_large)", () => {
+  it("is checked in the page before anything is sent", async () => {
+    const { preflightTooLarge } = await import("@/lib/sliq-import-route");
+    const base = { source_sha256: "a".repeat(64), source_files: [] };
+    expect(preflightTooLarge({ ...base, customers: Array.from({ length: 6000 }, (_, i) => ({ source_row_id: `C:${i}` })) })).toBeNull();
+    expect(preflightTooLarge({ ...base, customers: Array.from({ length: 6001 }, (_, i) => ({ source_row_id: `C:${i}` })) })).toMatch(/too large for one preflight \(6001 records/);
+    expect(preflightTooLarge({ ...base, customers: [{ source_row_id: "C:1", notes: "x".repeat(4 * 1024 * 1024) }] })).toMatch(/4\.0 MB/);
+  });
+});

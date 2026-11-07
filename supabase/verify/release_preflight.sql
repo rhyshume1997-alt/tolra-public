@@ -324,7 +324,7 @@ post_release_markers(label, present) AS (
       AND EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.import_source_rows') AND relrowsecurity)
       AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.import_source_rows') AND tgname = 'import_source_rows_guard')
       AND (SELECT count(*) = 2 FROM pg_proc p WHERE p.prosecdef AND p.proconfig IS NOT NULL
-             AND p.oid IN (to_regprocedure('public.import_sliq_preflight(text,jsonb,jsonb)'), to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean)')))
+             AND p.oid IN (to_regprocedure('public.import_sliq_preflight(text,jsonb,jsonb,boolean)'), to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)')))
       AND NOT has_function_privilege('authenticated', to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)'), 'EXECUTE')), FALSE)),
     ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
              AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))

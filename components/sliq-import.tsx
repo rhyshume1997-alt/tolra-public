@@ -8,7 +8,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-build";
 import {
-  type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, planSliqBatches, sliqPreflight, sliqRunBatches,
+  type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, SLIQ_BATCH_WEIGHT, planSliqBatches, preflightTooLarge, sliqPreflight, sliqRunBatches,
 } from "@/lib/sliq-import-route";
 import { MISSING_152, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, saveCountersBefore } from "@/lib/sliq-card";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
@@ -54,6 +54,8 @@ export function SliqImport() {
   const [countersNote, setCountersNote] = useState<string | null>(null);
   // Set synchronously when a batch loop starts, before React re-renders: a second click (or a second confirm) can't start another.
   const running = useRef(false);
+  // A large jump in INV numbers is refused unless the admin says it is right (release 152: inv_gap).
+  const [allowInvGap, setAllowInvGap] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -130,7 +132,9 @@ export function SliqImport() {
     setError(null);
     setBusy(true);
     try {
-      const p = await sliqPreflight(rpc, payload);
+      const tooLarge = preflightTooLarge(payload);
+      if (tooLarge) throw new Error(tooLarge);
+      const p = await sliqPreflight(rpc, payload, { allowInvGap });
       // The counters as they are before anything is imported: the reconciliation checks every one but INV is unchanged after. Kept in
       // this tab's session storage per file set and run label, so a reload before the reconciliation does not lose them.
       const before = counters(await reconcileRows());
@@ -156,7 +160,7 @@ export function SliqImport() {
     if (!countersBefore) setCountersBefore(loadCountersBefore(session(), payload.source_sha256, label));
     let out: Awaited<ReturnType<typeof sliqRunBatches>>;
     try {
-      out = await sliqRunBatches(rpc, payload, label, setProgress, startAt);
+      out = await sliqRunBatches(rpc, payload, label, setProgress, startAt, SLIQ_BATCH_WEIGHT, { allowInvGap });
     } finally {
       running.current = false;
       setBusy(false);
@@ -216,6 +220,10 @@ export function SliqImport() {
         <p className="text-xs text-slate-500" data-testid="sliq-files">
           Mapping: {mapping ? "chosen" : "not chosen"}. Files: {ALL_ENTITIES.filter((e) => e !== "creditNotes" || mapping?.entities.creditNotes).map((e) => `${e} ${files[e] ? "yes" : "no"}`).join(", ")}.
         </p>
+        <label className="flex items-center gap-2 text-xs text-slate-600">
+          <input type="checkbox" checked={allowInvGap} disabled={importing} onChange={(e) => { setAllowInvGap(e.target.checked); setPreflight(null); if (phase === "preflighted") setPhase("checked"); }} />
+          Invoice numbers really do jump by more than 1,000 (only tick after checking: a typo would carry the INV counter there for good)
+        </label>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" disabled={importing || !mapping} onClick={() => void check()}>Check files</Button>
           <Button type="button" variant="outline" disabled={importing || !payload} onClick={() => void runPreflight()}>Preflight (writes nothing)</Button>
