@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,8 +8,10 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-build";
 import {
-  type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, isRunLabel, planSliqBatches, sliqPreflight, sliqRunBatches,
+  type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, planSliqBatches, sliqPreflight, sliqRunBatches,
 } from "@/lib/sliq-import-route";
+import { MISSING_152, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, saveCountersBefore } from "@/lib/sliq-card";
+import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { type DbRow, type ReconcileReport, reconcile } from "@/lib/sliq-reconcile/reconcile";
 import { renderSigningSheet } from "@/lib/sliq-reconcile/sheet";
 import { ALL_ENTITIES, type SliqMapping, type SourceFiles, type ValidationReport, checkMapping } from "@/lib/sliq-validate/validate";
@@ -23,11 +25,12 @@ const rpc: Rpc = (fn, args) => {
 /** The reconciliation rows for the session's company (release 152 import_sliq_reconcile; the same function the SQL-editor script reads). */
 async function reconcileRows(): Promise<DbRow[]> {
   const { data, error } = await rpc("import_sliq_reconcile", {});
-  if (error) throw new Error(error.message);
+  if (error) throw Object.assign(new Error(isMissingImportFunction(error) ? MISSING_152 : error.message), { code: error.code });
   const rows = (data as { rows?: DbRow[] } | null)?.rows;
   if (!Array.isArray(rows)) throw new Error("The database's reconciliation answer wasn't one this page understands.");
   return rows;
 }
+const session = () => (typeof window !== "undefined" ? window.sessionStorage : null);
 const counters = (rows: DbRow[]) => Object.fromEntries(rows.filter((r) => r.metric === "counter_last").map((r) => [r.key, Number(r.value)]));
 
 type Phase = "idle" | "checked" | "preflighted" | "importing" | "done" | "failed";
@@ -44,7 +47,13 @@ export function SliqImport() {
   const [payload, setPayload] = useState<SliqPayload | null>(null);
   const [preflight, setPreflight] = useState<SliqPreflight | null>(null);
   const [countersBefore, setCountersBefore] = useState<Record<string, number> | null>(null);
-  const [label, setLabel] = useState("live");
+  const [typedLabel, setTypedLabel] = useState("live");
+  const { label, note: labelNote, valid: labelValid } = normaliseRunLabel(typedLabel);
+  const [fileProblems, setFileProblems] = useState<string[]>([]);
+  const [company, setCompany] = useState<{ name: string; slug: string } | null>(null);
+  const [countersNote, setCountersNote] = useState<string | null>(null);
+  // Set synchronously when a batch loop starts, before React re-renders: a second click (or a second confirm) can't start another.
+  const running = useRef(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -55,9 +64,23 @@ export function SliqImport() {
   const [rec, setRec] = useState<{ report: ReconcileReport; sheet: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const id = await getCurrentOrganizationId();
+        if (!supabase || !id) return;
+        const { data } = await supabase.from("organizations").select("name, slug").eq("id", id).maybeSingle<{ name: string; slug: string }>();
+        if (live && data) setCompany({ name: data.name, slug: data.slug });
+      } catch { /* the sheet then says the company could not be read */ }
+    })();
+    return () => { live = false; };
+  }, []);
+
   const reset = () => { setReport(null); setPayload(null); setPreflight(null); setPhase("idle"); setFailedAt(null); setFailure(null); setResults([]); setRec(null); };
 
   async function onFiles(list: FileList | null) {
+    if (running.current) return; // never reset state while an import runs
     reset();
     setError(null);
     if (!list) return;
@@ -82,9 +105,11 @@ export function SliqImport() {
     }
     setMapping(parsed);
     setFiles(next);
+    setFileProblems(matchFiles(parsed, all.map((f) => f.name)).problems);
   }
 
   async function check() {
+    if (running.current) return;
     setError(null);
     setBusy(true);
     try {
@@ -106,26 +131,37 @@ export function SliqImport() {
     setBusy(true);
     try {
       const p = await sliqPreflight(rpc, payload);
-      // The counters as they are before anything is imported: the reconciliation checks every one but INV is unchanged after.
-      setCountersBefore(counters(await reconcileRows()));
+      // The counters as they are before anything is imported: the reconciliation checks every one but INV is unchanged after. Kept in
+      // this tab's session storage per file set and run label, so a reload before the reconciliation does not lose them.
+      const before = counters(await reconcileRows());
+      setCountersBefore(before);
+      saveCountersBefore(session(), payload.source_sha256, label, before);
       setPreflight(p);
       setPhase("preflighted");
     } catch (e) {
-      setError(friendlyError(e));
+      setError(isMissingImportFunction(e as { code?: string; message?: string }) ? MISSING_152 : friendlyError(e));
     } finally {
       setBusy(false);
     }
   }
 
   async function runImport(startAt: number) {
-    if (!payload) return;
+    if (!payload || running.current) return;
+    running.current = true;
     setConfirm(false);
     setBusy(true);
     setPhase("importing");
     setFailure(null);
-    const out = await sliqRunBatches(rpc, payload, label, setProgress, startAt);
+    // Counters before: from this page, else from this tab's storage for the same files and label (a reload after the preflight).
+    if (!countersBefore) setCountersBefore(loadCountersBefore(session(), payload.source_sha256, label));
+    let out: Awaited<ReturnType<typeof sliqRunBatches>>;
+    try {
+      out = await sliqRunBatches(rpc, payload, label, setProgress, startAt);
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
     setResults((prev) => [...prev.slice(0, startAt), ...out.results]);
-    setBusy(false);
     if (out.failedAt === null) { setPhase("done"); setFailedAt(null); return; }
     setFailedAt(out.failedAt);
     setFailure(out.error ? friendlyError(out.error) : (out.last?.errors ?? []).slice(0, 5).map((m) => `${m.source_row_id ?? ""} ${m.message}`).join("; "));
@@ -138,8 +174,11 @@ export function SliqImport() {
     setBusy(true);
     try {
       const source = sourceTotalsFromValidated(report, payload);
-      const r = reconcile(source, await reconcileRows(), { countersBefore: countersBefore ?? {} });
-      setRec({ report: r, sheet: renderSigningSheet(source, r, { company: "this company (signed-in admin's)", importedOn: new Date().toISOString().slice(0, 10) }) });
+      const before = countersBefore ?? loadCountersBefore(session(), payload.source_sha256, label);
+      setCountersNote(before ? null : "The counters read before the import were not kept (the page was reloaded in another tab, or storage is blocked): the \"counter unchanged\" rows compare with 0. Re-read them from the SQL-editor script taken before the import.");
+      const r = reconcile(source, await reconcileRows(), { countersBefore: before ?? {} });
+      const who = company ? `${company.name} (${company.slug})` : "the signed-in admin's company (its name could not be read)";
+      setRec({ report: r, sheet: renderSigningSheet(source, r, { company: who, importedOn: new Date().toISOString().slice(0, 10) }) });
     } catch (e) {
       setError(friendlyError(e));
     } finally {
@@ -148,7 +187,10 @@ export function SliqImport() {
   }
 
   const plan = payload ? planSliqBatches(payload) : null;
-  const ready = phase === "preflighted" && preflight?.ok && plan && plan.orphanPayments.length === 0 && plan.orphanCredits.length === 0 && isRunLabel(label);
+  const importing = phase === "importing" || busy;
+  const blockers = importBlockers({ preflighted: phase === "preflighted" || phase === "failed", preflight, orphanPayments: plan?.orphanPayments.length ?? 0,
+    orphanCredits: plan?.orphanCredits.length ?? 0, labelValid, running: phase === "importing" });
+  const ready = phase === "preflighted" && blockers.length === 0;
   const kinds = ["customers", "suppliers", "invoices", "payments", "credit_notes"] as const;
 
   return (
@@ -161,13 +203,22 @@ export function SliqImport() {
             Keep the untouched originals and their signed SHA-256 sheet outside Tolra.
           </p>
         </div>
-        <input type="file" multiple accept=".csv,.json,text/csv,application/json" aria-label="SliQ files and mapping" onChange={(e) => void onFiles(e.target.files)} />
+        <label className="block text-sm font-medium" htmlFor="sliq-files-input">SliQ files and mapping
+          <span className="block text-xs font-normal text-slate-500">The confirmed mapping (.json) and every SliQ export file, chosen together.</span>
+        </label>
+        <input id="sliq-files-input" type="file" multiple accept=".csv,.json,text/csv,application/json" aria-label="SliQ files and mapping" disabled={importing}
+          onChange={(e) => void onFiles(e.target.files)} />
+        {fileProblems.length ? (
+          <ul className="list-disc pl-5 text-sm text-amber-700" data-testid="sliq-file-names">
+            {fileProblems.map((m, i) => <li key={i}>{m}</li>)}
+          </ul>
+        ) : null}
         <p className="text-xs text-slate-500" data-testid="sliq-files">
           Mapping: {mapping ? "chosen" : "not chosen"}. Files: {ALL_ENTITIES.filter((e) => e !== "creditNotes" || mapping?.entities.creditNotes).map((e) => `${e} ${files[e] ? "yes" : "no"}`).join(", ")}.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" disabled={busy || !mapping} onClick={() => void check()}>Check files</Button>
-          <Button type="button" variant="outline" disabled={busy || !payload} onClick={() => void runPreflight()}>Preflight (writes nothing)</Button>
+          <Button type="button" variant="outline" disabled={importing || !mapping} onClick={() => void check()}>Check files</Button>
+          <Button type="button" variant="outline" disabled={importing || !payload} onClick={() => void runPreflight()}>Preflight (writes nothing)</Button>
         </div>
         {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
         {report ? (
@@ -214,13 +265,21 @@ export function SliqImport() {
         {phase === "preflighted" || phase === "failed" || phase === "importing" || phase === "done" ? (
           <div className="flex flex-wrap items-end gap-2">
             <label className="text-sm">Run label
-              <input className="ml-2 h-9 rounded-lg border border-slate-300 px-2" value={label} onChange={(e) => setLabel(e.target.value.trim().toLowerCase())} disabled={busy} />
+              <input className="ml-2 h-9 rounded-lg border border-slate-300 px-2" value={typedLabel} onChange={(e) => setTypedLabel(e.target.value)} disabled={importing} />
             </label>
-            <Button type="button" disabled={!ready || busy} onClick={() => setConfirm(true)}>Import {plan?.batches.length ?? 0} batches</Button>
-            {phase === "failed" && failedAt !== null ? <Button type="button" variant="outline" disabled={busy} onClick={() => void runImport(failedAt)}>Retry from batch {failedAt + 1}</Button> : null}
+            <Button type="button" disabled={!ready || importing} onClick={() => setConfirm(true)}>Import {plan?.batches.length ?? 0} batches</Button>
+            {phase === "failed" && failedAt !== null ? <Button type="button" variant="outline" disabled={importing} onClick={() => void runImport(failedAt)}>Retry from batch {failedAt + 1}</Button> : null}
           </div>
         ) : null}
-        {progress && phase === "importing" ? <p className="text-sm" data-testid="sliq-progress">Batch {Math.min(progress.done + 1, progress.total)} of {progress.total}</p> : null}
+        {labelNote && (phase === "preflighted" || phase === "failed") ? <p className="text-xs text-amber-700" data-testid="sliq-label-note">{labelNote}</p> : null}
+        {(phase === "preflighted" || phase === "failed") && blockers.length && !(phase === "failed") ? (
+          <ul className="list-disc pl-5 text-xs text-slate-600" data-testid="sliq-import-blocked">
+            {blockers.map((b, i) => <li key={i}>Import is not available: {b}</li>)}
+          </ul>
+        ) : null}
+        <p className="text-sm" data-testid="sliq-progress" aria-live="polite">
+          {progress && phase === "importing" ? `Batch ${Math.min(progress.done + 1, progress.total)} of ${progress.total}` : ""}
+        </p>
         {phase === "failed" ? <p className="text-sm text-red-700" role="alert">Batch {(failedAt ?? 0) + 1} was not imported, and nothing in it was written. {failure}</p> : null}
         {phase === "done" ? (
           <div className="space-y-2">
@@ -232,7 +291,9 @@ export function SliqImport() {
         ) : null}
         {rec ? (
           <div className="space-y-2">
+            {countersNote ? <p className="text-xs text-amber-700" role="alert">{countersNote}</p> : null}
             <table className="w-full text-xs" data-testid="sliq-reconcile">
+              <caption className="text-left font-medium">Reconciliation: the SliQ files against Tolra (every difference must be zero)</caption>
               <thead><tr><th className="text-left">Check</th><th>Source</th><th>Tolra</th><th>Difference</th><th>Result</th></tr></thead>
               <tbody>
                 {rec.report.rows.map((r, i) => (
@@ -249,6 +310,7 @@ export function SliqImport() {
           description={`${plan?.batches.length ?? 0} batches, run "${label}". Each batch is all or nothing; a batch already imported is not written again.`}
           confirmLabel="Import"
           busy={busy}
+          confirmDisabled={busy || running.current}
           onConfirm={() => void runImport(0)}
           onCancel={() => setConfirm(false)}
         />
