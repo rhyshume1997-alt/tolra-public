@@ -60,13 +60,14 @@ vi.mock("@/lib/server/auth",()=>({
   jsonError:(error:string,status:number)=>NextResponse.json({error},{status}),
   requireProfile:async(roles:string[])=>{
     expect(roles).toEqual(["admin"]);
-    return {supabase:{rpc,from},profile:{organization_id:fixture.org},user:{id:fixture.user},session:{support:false,read_only:false}};
+    return {supabase:{rpc,from,auth:freshMfaAuth()},profile:{organization_id:fixture.org},user:{id:fixture.user},session:{support:false,read_only:false}};
   },
 }));
 vi.mock("@/lib/server/supabase-admin",()=>({createSupabaseAdminClient:()=>({rpc,from})}));
 
 import { GET,POST } from "@/app/api/accounting/[provider]/[action]/route";
 import { decryptSecret } from "@/lib/integrations/crypto";
+import { freshMfaAuth } from "../support/fresh-mfa";
 
 beforeEach(()=>{
   fixture.org="00000000-0000-4000-8000-0000000000a1";fixture.user="admin-a";

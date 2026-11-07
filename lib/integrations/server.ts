@@ -6,7 +6,8 @@ import { getAppCredentials } from "@/lib/integrations/app-credentials";
 import { KEY_VERSION, encryptSecret, encryptionKey, decryptSecret } from "@/lib/integrations/crypto";
 import { type EngineDb, type EngineDeps, type RunSummary, runSends } from "@/lib/integrations/engine";
 import { createTokenSource } from "@/lib/integrations/tokens";
-import type { AccountingProvider, Mappings, ProviderId } from "@/lib/integrations/types";
+import { type AccountingProvider, type Mappings, type ProviderId, TransfersHeldError } from "@/lib/integrations/types";
+import { XERO_HOLD_MESSAGE, heldXeroProvider, xeroTransfersEnabled } from "@/lib/integrations/xero/launch-hold";
 import { createXeroClient } from "@/lib/integrations/xero/client";
 import {
   type XeroConfig, type XeroConnection, XeroAuthError, authorizeUrl, chooseConnection, deleteConnection, exchangeCode, hashState, listConnections,
@@ -67,16 +68,22 @@ export async function xeroReady(env: Record<string, string | undefined> = proces
   return { config: { clientId: creds.clientId, clientSecret: creds.clientSecret, redirectUri: creds.redirectUri }, key };
 }
 
-function engineDeps(db: EngineDb, ready: { config: XeroConfig; key: Buffer }): EngineDeps {
-  return {
+function engineDeps(db: EngineDb, ready: { config: XeroConfig; key: Buffer }, enabled?: () => Promise<boolean>): EngineDeps {
+  const deps: EngineDeps = {
     db,
     accessToken: createTokenSource({
       db, key: ready.key,
       refresh: (refreshToken) => refreshTokens(ready.config, refreshToken),
       isRefused: (err) => err instanceof XeroAuthError,
     }),
-    provider: (accessToken, tenantId) => createXeroClient({ accessToken, tenantId }),
+    provider: (accessToken, tenantId) => { const p = createXeroClient({ accessToken, tenantId }); return enabled ? heldXeroProvider(p, enabled) : p; },
   };
+  if (enabled) {
+    // Release 149: the switch is re-read before the sign-in is renewed and before each provider call, so turning it off mid-run stops the next step.
+    const token = deps.accessToken;
+    deps.accessToken = async (...args) => { if (!(await enabled())) throw new TransfersHeldError(XERO_HOLD_MESSAGE); return token(...args); };
+  }
+  return deps;
 }
 
 /**
@@ -104,9 +111,12 @@ export async function companyXeroToken(service: SupabaseClient, org: string, rea
 }
 
 /** Sends what one company has queued (bounded: a few documents per call; the rest go on the next call). */
-export function sendQueued(client: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer },
-                           opts?: { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string } }): Promise<RunSummary> {
-  return runSends(org, "xero", engineDeps(serviceDb(client), ready), opts);
+export async function sendQueued(client: SupabaseClient, org: string, ready: { config: XeroConfig; key: Buffer },
+                                 opts?: { maxDocuments?: number; budgetMs?: number; only?: { docType: "invoice" | "credit_note"; docId: string } }): Promise<RunSummary> {
+  // Release 149: the company's transfer switch. Off (or unreadable) is answered here before any token or Xero work; the database's claim judges it again.
+  const enabled = () => xeroTransfersEnabled(client, org);
+  if (!(await enabled())) return { sent: 0, failed: 0, needsCheck: 0, retryLater: 0, skipped: 0, blocked: "launch_hold", unmapped: [] };
+  return runSends(org, "xero", engineDeps(serviceDb(client), ready, enabled), opts);
 }
 
 /** Connect, step 1: the state and PKCE verifier are kept (as the signed-in admin: the database checks admin and two-step) and Xero's URL returned. */
@@ -120,7 +130,13 @@ export async function beginConnect(userClient: SupabaseClient, org: string, read
   return authorizeUrl(ready.config, auth.state, auth.challenge);
 }
 
-export type ConnectOutcome = { ok: true; tenantName: string } | { ok: false; reason: string };
+/** The several organisations one consent made, kept (sealed, in the browser's own cookie: lib/integrations/xero/picker.ts) until the admin picks one. */
+/** The most organisations one picker offers (they are sealed into a cookie); more than this keeps the old refusal. */
+export const MAX_OFFERED = 8;
+
+export type PickerOffer = { refreshToken: string; eventId: string | null; orgs: Array<{ id: string; tenantId: string; tenantName: string }> };
+
+export type ConnectOutcome = { ok: true; tenantName: string } | { ok: false; reason: "choose_organisation"; offer: PickerOffer } | { ok: false; reason: string; offer?: undefined };
 
 /**
  * Connect, steps 2 and 3 (the callback): the state is used up for this admin and company; the code is exchanged (client secret, PKCE);
@@ -130,7 +146,7 @@ export type ConnectOutcome = { ok: true; tenantName: string } | { ok: false; rea
  * connection another company relies on, or one that existed before, is never touched.
  */
 export async function finishConnect(service: SupabaseClient, org: string, userId: string, state: string, code: string, ready: { config: XeroConfig; key: Buffer },
-                                    deps: { fetchImpl?: typeof fetch; now?: () => number } = {}): Promise<ConnectOutcome> {
+                                    deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean; inviteStateHash?: string } = {}): Promise<ConnectOutcome> {
   const db = serviceDb(service);
   const consumed = await db.rpc<{ verifier_enc: string }>("integration_oauth_consume", { p_org: org, p_user: userId, p_provider: "xero", p_state_hash: hashState(state) });
   const verifier = decryptSecret(consumed.verifier_enc, { organizationId: org, provider: "xero", purpose: "pkce" }, ready.key);
@@ -143,41 +159,85 @@ export async function finishConnect(service: SupabaseClient, org: string, userId
  * organisation chosen, the tokens stored for `org` as `userId` (the database checks that person is still an active admin of it).
  */
 export async function completeConnect(service: SupabaseClient, org: string, userId: string, verifier: string, code: string, ready: { config: XeroConfig; key: Buffer },
-                                      deps: { fetchImpl?: typeof fetch; now?: () => number } = {}): Promise<ConnectOutcome> {
-  const db = serviceDb(service);
+                                      deps: { fetchImpl?: typeof fetch; now?: () => number; offerPicker?: boolean; inviteStateHash?: string } = {}): Promise<ConnectOutcome> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const tokens = await exchangeCode(ready.config, code, verifier, fetchImpl);
   const chosen = chooseConnection(await listConnections(tokens.accessToken, fetchImpl), tokens.authEventId);
-  const cleanUp = async (touched: XeroConnection[]) => {
-    const linked = await linkedTenantIds(service);
-    // Can't tell which organisations are in use: remove nothing.
-    if (!linked) return;
-    for (const c of removableConnections(touched, linked, (deps.now ?? Date.now)())) {
-      // Read again right before the delete: another company's Connect to the same new organisation may have been stored meanwhile (one
-      // Xero login, two companies, a second apart). If any company now uses it, or the list can't be read, it is kept.
-      const current = await linkedTenantIds(service);
-      if (!current || current.has(c.tenantId)) continue;
-      await deleteConnection(tokens.accessToken, c.id, fetchImpl);
-    }
-  };
   if (!chosen.ok) {
-    await cleanUp(chosen.fresh);
+    // Several organisations made by this consent: when the caller can show a picker (the admin's own callback), nothing is removed yet and
+    // the admin chooses; otherwise (or when there are too many to seal) the old refusal stands, with its clean-up.
+    if (chosen.reason === "several" && deps.offerPicker && chosen.fresh.length <= MAX_OFFERED) {
+      return { ok: false, reason: "choose_organisation", offer: { refreshToken: tokens.refreshToken, eventId: tokens.authEventId, orgs: chosen.fresh.map((c) => ({ id: c.id, tenantId: c.tenantId, tenantName: c.tenantName })) } };
+    }
+    await cleanUpConnections(service, tokens.accessToken, chosen.fresh, fetchImpl, deps.now);
     return { ok: false, reason: chosen.reason === "several" ? "choose_one" : "no_organisation" };
   }
+  return storeChosen(service, org, userId, tokens, chosen.connection, [chosen.connection], ready, deps);
+}
+
+/**
+ * Connect, the picker's step: the admin chose one of the organisations offered for THEIR Connect. The sealed offer was checked by the
+ * route (company, admin, expiry, single use); here the refresh token is used (it rotates), Xero's list is read again, and the chosen
+ * organisation must be one the offer named AND still be in that list under the same connection. Then it is stored exactly as a
+ * one-organisation Connect (084's integration_store_connection: transfers stay off, 149 holds every document), and the other organisations
+ * this consent made are removed again at Xero when removableConnections allows it.
+ */
+export async function finishPick(service: SupabaseClient, org: string, userId: string, offer: PickerOffer, tenantId: string, ready: { config: XeroConfig; key: Buffer },
+                                 deps: { fetchImpl?: typeof fetch; now?: () => number } = {}): Promise<ConnectOutcome> {
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const offered = offer.orgs.find((o) => o.tenantId === tenantId);
+  if (!offered) return { ok: false, reason: "not_offered" };
+  let tokens: Awaited<ReturnType<typeof refreshTokens>>;
   try {
-    await db.rpc("integration_store_connection", {
-      p_org: org, p_user: userId, p_provider: "xero", p_tenant_id: chosen.connection.tenantId, p_tenant_name: chosen.connection.tenantName,
-      p_external_connection_id: chosen.connection.id,
+    tokens = await refreshTokens(ready.config, offer.refreshToken, fetchImpl, deps.now);
+  } catch (err) {
+    if (err instanceof XeroAuthError) return { ok: false, reason: "expired" };
+    throw err;
+  }
+  const current = (await listConnections(tokens.accessToken, fetchImpl)).filter((c) => c.tenantType === "ORGANISATION" && offer.orgs.some((o) => o.id === c.id && o.tenantId === c.tenantId));
+  const connection = current.find((c) => c.id === offered.id && c.tenantId === tenantId);
+  if (!connection) {
+    await cleanUpConnections(service, tokens.accessToken, current, fetchImpl, deps.now);
+    return { ok: false, reason: "not_offered" };
+  }
+  return storeChosen(service, org, userId, tokens, connection, current, ready, deps);
+}
+
+/** Stores the chosen organisation's tokens for `org` as `userId`, then removes the rest of `touched` at Xero (best effort, only what removableConnections allows). */
+async function storeChosen(service: SupabaseClient, org: string, userId: string, tokens: Awaited<ReturnType<typeof exchangeCode>>, connection: XeroConnection, touched: XeroConnection[],
+                           ready: { config: XeroConfig; key: Buffer }, deps: { fetchImpl?: typeof fetch; now?: () => number; inviteStateHash?: string }): Promise<ConnectOutcome> {
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  try {
+    const stored = await serviceDb(service).rpc<{ok?: boolean}>(deps.inviteStateHash ? "integration_invite_store_connection" : "integration_store_connection", {
+      ...(deps.inviteStateHash ? {p_state_hash: deps.inviteStateHash} : {}),
+      p_org: org, p_user: userId, p_provider: "xero", p_tenant_id: connection.tenantId, p_tenant_name: connection.tenantName,
+      p_external_connection_id: connection.id,
       p_refresh_enc: encryptSecret(tokens.refreshToken, { organizationId: org, provider: "xero", purpose: "refresh" }, ready.key),
       p_access_enc: encryptSecret(tokens.accessToken, { organizationId: org, provider: "xero", purpose: "access" }, ready.key),
       p_access_expires_at: tokens.expiresAt.toISOString(), p_key_version: KEY_VERSION,
     });
+    if (stored?.ok === false) throw new DbError("Invite cannot complete", "42501", "invite_invalid");
   } catch (err) {
-    await cleanUp([chosen.connection]);
+    await cleanUpConnections(service, tokens.accessToken, touched, fetchImpl, deps.now);
     const hint = err instanceof DbError ? err.hint : undefined;
     return { ok: false, reason: hint === "tenant_in_use" || (err instanceof DbError && err.code === "23505") ? "tenant_in_use" : hint === "disconnect_first" ? "disconnect_first" : "store_failed" };
   }
-  return { ok: true, tenantName: chosen.connection.tenantName };
+  if (touched.length > 1) await cleanUpConnections(service, tokens.accessToken, touched.filter((c) => c.id !== connection.id), fetchImpl, deps.now);
+  return { ok: true, tenantName: connection.tenantName };
+}
+
+/** Removes at Xero the connections a Connect touched that removableConnections allows (never one a Tolra company uses, never one that existed before this consent). */
+async function cleanUpConnections(service: SupabaseClient, accessToken: string, touched: XeroConnection[], fetchImpl: typeof fetch, now: () => number = Date.now): Promise<void> {
+  const linked = await linkedTenantIds(service);
+  // Can't tell which organisations are in use: remove nothing.
+  if (!linked) return;
+  for (const c of removableConnections(touched, linked, now())) {
+    // Read again right before the delete: another company's Connect to the same new organisation may have been stored meanwhile (one
+    // Xero login, two companies, a second apart). If any company now uses it, or the list can't be read, it is kept.
+    const current = await linkedTenantIds(service);
+    if (!current || current.has(c.tenantId)) continue;
+    await deleteConnection(accessToken, c.id, fetchImpl);
+  }
 }
 
 /** Every Xero organisation a Tolra company is linked to (connected or waiting to connect again): never removed by a refused Connect. */
@@ -218,11 +278,17 @@ export function sweepDeps(service: SupabaseClient, ready: { config: XeroConfig; 
   return {
     async connected() {
       // Accounting providers only: a Microsoft 365 connection (107) is renewed by its own token source when mail is sent.
-      const { data, error } = await service.from("integration_connections").select("organization_id, provider").eq("status", "connected").eq("provider", "xero");
+      // Release 149: only companies whose transfer switch is on (and connected). A database without the switch (149 not applied or rolled back)
+      // answers PGRST202 / 42883: the caller (xero-pass) reports 'skipped' and nothing is sent; this never reads the connections table directly.
+      const { data, error } = await service.rpc("integration_xero_enabled_orgs");
       if (error) throw new DbError(error.message, error.code);
-      return ((data ?? []) as Array<{ organization_id: string; provider: ProviderId }>).map((r) => ({ organizationId: r.organization_id, provider: r.provider }));
+      return ((data ?? []) as string[]).map((id) => ({ organizationId: id, provider: "xero" as ProviderId }));
     },
-    renew: (org: string, provider: ProviderId) => deps.accessToken(org, provider, { force: true }),
+    // Renewal is a Xero call: only while the switch is on (re-read here, so a company switched off after the list was made is not touched).
+    renew: async (org: string, provider: ProviderId) => {
+      if (!(await xeroTransfersEnabled(service, org))) throw new TransfersHeldError(XERO_HOLD_MESSAGE);
+      return deps.accessToken(org, provider, { force: true });
+    },
     send: (org: string) => sendQueued(service, org, ready),
   };
 }

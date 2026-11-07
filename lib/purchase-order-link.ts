@@ -13,7 +13,7 @@
  *           than the order's own value. An order is counted once even when it is linked to both the quote and its job.
  *   profit = sell - buy; margin % = profit / sell, one decimal place (none when sell is 0).
  *   UNAVAILABLE (no number at all): the viewer can't read invoices, quotes or purchase orders (public.section_allowed), or any input is
- *           missing or unreadable (a read failed, an order with no value, a line with no quantity or price, an issued invoice or credit
+ *           missing, unreadable or outside the safe integer-pence range (a read failed, an order with no value, a line with no quantity or price, an issued invoice or credit
  *           note with no net, no quote lines and no issued invoice). Nothing is read as 0, and the quote's figure is never shown in place
  *           of the invoiced one to someone who can't see invoices.
  */
@@ -122,10 +122,12 @@ export function linkedPoPence(po: LinkedPo): number | null {
   const value = figure(po.total_value);
   if (value === null || value < 0) return null;
   const valuePence = toPence(value);
+  if (!Number.isSafeInteger(valuePence)) return null;
   if (po.linked_net === null || po.linked_net === undefined) return valuePence;
   const part = figure(po.linked_net);
   if (part === null || part < 0) return null;
-  return Math.min(valuePence, toPence(part));
+  const partPence = toPence(part);
+  return Number.isSafeInteger(partPence) ? Math.min(valuePence, partPence) : null;
 }
 
 /** Bought in: the sum over the linked orders (each counted once, cancelled ones left out) and how many orders that is; null when any is unreadable. */
@@ -136,7 +138,7 @@ export function boughtIn(pos: LinkedPo[]): { pence: number; count: number } | nu
   let pence = 0;
   for (const po of live) {
     const cost = linkedPoPence(po);
-    if (cost === null) return null;
+    if (cost === null || !Number.isSafeInteger(pence + cost)) return null;
     pence += cost;
   }
   return { pence, count: live.length };
@@ -156,7 +158,9 @@ export function quoteSellPence(lines: SellLine[]): number | null {
     const quantity = figure(line.quantity);
     const price = figure(line.unitPrice ?? line.unit_price);
     if (quantity === null || price === null) return null;
-    pence += linePence(quantity, price);
+    const lineTotal = linePence(quantity, price);
+    if (!Number.isSafeInteger(lineTotal) || !Number.isSafeInteger(pence + lineTotal)) return null;
+    pence += lineTotal;
   }
   return pence;
 }
@@ -179,13 +183,17 @@ export function invoicedSellPence(invoices: SellInvoice[], credits: SellCredit[]
   for (const inv of issued) {
     const net = figure(inv.subtotal);
     if (net === null) return { issued: true, pence: null };
-    pence += toPence(net);
+    const netPence = toPence(net);
+    if (!Number.isSafeInteger(netPence) || !Number.isSafeInteger(pence + netPence)) return { issued: true, pence: null };
+    pence += netPence;
   }
   for (const cn of credits) {
     if (!cn.invoice_id || !ids.has(cn.invoice_id) || String(cn.status ?? "").trim().toLowerCase() !== "issued") continue;
     const net = figure(cn.subtotal);
     if (net === null) return { issued: true, pence: null };
-    pence -= toPence(net);
+    const netPence = toPence(net);
+    if (!Number.isSafeInteger(netPence) || !Number.isSafeInteger(pence - netPence)) return { issued: true, pence: null };
+    pence -= netPence;
   }
   return { issued: true, pence };
 }
@@ -245,6 +253,7 @@ export function profitFigure(input: ProfitInputs): ProfitFigure {
     if (sell === null) return unavailable("the quote has no ordered line with a quantity and price", buy);
   }
   const profitPence = sell - buy.pence;
+  if (!Number.isSafeInteger(profitPence)) return unavailable("the profit is outside the supported money range", buy);
   const marginPct = sell > 0 ? Math.round((profitPence * 1000) / sell) / 10 : null;
   return { state, sellPence: sell, buyPence: buy.pence, count: buy.count, profitPence, marginPct };
 }

@@ -1,0 +1,16 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/sliq-archive.test.ts (48 tests) 544ms
+   ✓ command line > exits 0 for a good archive and non-zero for each kind of failure 318ms
+ ✓ tests/unit/sliq-reconcile-offline.test.ts (35 tests) 282ms
+ ✓ tests/unit/check-migrations.test.ts (29 tests) 149ms
+ ✓ tests/unit/capacity-check.test.ts (10 tests) 180ms
+ ✓ tests/unit/no-network.test.ts (2 tests) 150ms
+
+ Test Files  5 passed (5)
+      Tests  124 passed (124)
+   Start at  16:27:03
+   Duration  2.62s (transform 268ms, setup 0ms, collect 469ms, tests 1.30s, environment 1ms, prepare 239ms)
+

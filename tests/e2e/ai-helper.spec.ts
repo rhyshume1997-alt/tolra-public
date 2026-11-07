@@ -11,7 +11,7 @@
 import { expect, test } from "@playwright/test";
 
 import { adminClient, signedInClient, withDb } from "../support/fixtures";
-import { signIn, world } from "./helpers";
+import { aal2Admin, signIn, world } from "./helpers";
 
 const w = world();
 test.describe.configure({ mode: "serial" });
@@ -54,27 +54,21 @@ test("switch off: no AI UI, and the routes refuse", async ({ page }) => {
   expect(await requests(w.tenants.alpha.id)).toEqual([]);
 });
 
-test("an admin turns it on in the AI section with a cap and the company's own key; the key never comes back", async ({ page }) => {
-  await signIn(page, w.tenants.alpha.users.admin);
+test("an admin turns it on with the company's own key and a cap (from the AI card's routes); the old AI page only points there; the key never comes back", async ({ page }) => {
+  // Saving the key needs a recent authenticator code (requireRecentAal2, forced): a new admin of alpha who has just entered one, so the shared world admin keeps its password-only sign-in for the other tests.
+  await aal2Admin(page, "alpha");
+  // The old AI page keeps no management control: a notice and a link to Admin > Integrations (the AI card), nothing to click that the server would refuse.
   await page.goto("/ai-helper");
-  const card = page.getByTestId("ai-helper-settings");
-  const master = page.getByTestId("ai-helper-master");
-  await expect(card).toContainText("No API key set");
-  await expect(page.getByTestId("ai-master-state")).toHaveText("AI is off");
-  // Each switch saves straight away (the box only changes once the server has answered).
-  await master.getByRole("checkbox", { name: /Round-up/ }).click();
-  await expect(master.getByRole("checkbox", { name: /Round-up/ })).toBeChecked();
-  await master.getByRole("checkbox", { name: /RFQ email to draft quote/ }).click();
-  await expect(master.getByRole("checkbox", { name: /RFQ email to draft quote/ })).toBeChecked();
-  await expect(page.getByTestId("ai-master-state")).not.toHaveText("AI is off");
-  await card.getByRole("textbox", { name: "Monthly AI limit in pounds" }).fill("5");
-  await card.getByRole("button", { name: "Save monthly limit" }).click();
-  await expect(page.getByText("Monthly limit saved")).toBeVisible();
-  await card.getByLabel("Anthropic API key").fill(KEY);
-  await card.getByRole("button", { name: "Save key" }).click();
-  await expect(card.getByTestId("ai-helper-key-state")).toHaveText("API key set (ending WXYZ)");
+  await expect(page.getByTestId("ai-helper-manage-notice")).toBeVisible();
+  await expect(page.getByTestId("ai-helper-manage-link")).toHaveAttribute("href", "/admin/integrations#ai");
+  await expect(page.getByTestId("ai-helper-off")).toBeVisible();
+  for (const gone of ["ai-helper-settings", "ai-helper-master", "ai-master-switch"]) await expect(page.getByTestId(gone)).toHaveCount(0);
+  // The key is saved first (saving or replacing a key switches AI off, release 150), then the switches and the cap are set on purpose.
+  expect((await page.request.post("/api/ai-helper/key", { data: { key: KEY } })).ok()).toBe(true);
+  expect((await page.request.post("/api/ai-helper/settings", { data: { roundupEnabled: true, rfqEnabled: true, monthlyCapPence: 500 } })).ok()).toBe(true);
   await page.reload();
-  await expect(page.getByTestId("ai-helper-key-state")).toHaveText("API key set (ending WXYZ)");
+  await expect(page.getByTestId("ai-helper-off")).toHaveCount(0);
+  await expect(page.getByTestId("ai-helper-manage-notice")).toBeVisible();
   expect(await page.content()).not.toContain("SYNTHETIC");
   const status = await (await page.request.get("/api/ai-helper/status")).text();
   expect(status).not.toContain("SYNTHETIC");
@@ -234,7 +228,6 @@ test("company beta can't see alpha's settings, key, ledger or suggestions", asyn
   const status = await (await page.request.get("/api/ai-helper/status")).json();
   expect(status).toMatchObject({ roundup_enabled: false, rfq_enabled: false, key_set: false, key_last4: null, month_spent_pence: 0 });
   await page.goto("/ai-helper");
-  await expect(page.getByTestId("ai-helper-key-state")).toHaveText("No API key set");
   await expect(page.getByTestId("ai-helper-off")).toBeVisible();
   expect((await page.request.post("/api/ai-helper/rfq/decision", { data: { requestId: alphaRequest, decision: "rejected" } })).status()).toBe(404);
 

@@ -4,6 +4,7 @@ import { DbError, disconnectCompany, xeroReady } from "@/lib/integrations/server
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 
 /**
  * Admin > Integrations > Disconnect (G22; Xero question 9: admins only). The database disconnects as the signed-in admin (admin and
@@ -17,6 +18,8 @@ export async function POST(request: Request) {
   // Support access (the platform owner inside a company) holds an admin membership but never changes or reads through this company's Xero:
   // refused before any Xero or database call, as on the Admin > Users routes. The database's connect functions exclude support too.
   if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
+  const recent = await requireRecentAal2(auth, "disconnect Xero", true);
+  if (recent) return recent;
   const service = createSupabaseAdminClient();
   if (!service) return jsonError("Service unavailable", 503);
   try {

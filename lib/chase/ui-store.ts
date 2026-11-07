@@ -14,8 +14,8 @@ export async function saveChaseSteps(db: SupabaseClient, org: string, before: Sa
   return data as SavedStep[];
 }
 
-export async function approveDraft(id: string, reviewed: { subject: string; body: string }, request: typeof fetch = fetch) {
-  const response = await request("/api/chase/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ history_id: id, expected_subject: reviewed.subject, expected_body: reviewed.body }) });
+export async function approveDraft(id: string, reviewed: { to: string; subject: string; body: string }, request: typeof fetch = fetch) {
+  const response = await request("/api/chase/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ history_id: id, expected_to: reviewed.to, expected_subject: reviewed.subject, expected_body: reviewed.body }) });
   const answer = await response.json().catch(() => ({}));
   if (!response.ok || answer.status !== "sent") throw new Error(answer.error || "Could not send the reminder. Check the result before trying again.");
   return answer as { status: "sent"; recorded: boolean };

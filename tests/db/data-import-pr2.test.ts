@@ -360,7 +360,9 @@ describe("people named on documents", () => {
     expect(await refusal(A().admin, "insert into public.invoices (organization_id, customer, status, sent_by_name) values ($1, 'C', 'draft', 'Me')", [orgA()])).toMatchObject({ code: "42501", hint: "imported_people_field" });
     expect(await refusal(A().admin, "insert into public.purchase_orders (organization_id, po_ref, supplier, status, sent_by_user_id) values ($1, $2, null, 'draft', $3)", [orgA(), `PO-G${t}`, A().admin.id]))
       .toMatchObject({ code: "42501", hint: "imported_people_field" });
-    const dn = (await q<{ id: string }>(A().admin, "insert into public.delivery_notes (organization_id, dn_number, customer) values ($1, $2, 'C') returning id", [orgA(), `DLN-G${t}`]))[0].id;
+    // Release 147 refuses a typed dn_number from a browser session (numbers come from the series), so the note this case updates is made
+    // directly (as the import and the series functions do); the assertions below are about the PEOPLE fields on that note, unchanged.
+    const dn = (await sql<{ id: string }>("insert into public.delivery_notes (organization_id, dn_number, customer) values ($1, $2, 'C') returning id", [orgA(), `DLN-G${t}`]))[0].id;
     expect(await refusal(A().admin, "update public.delivery_notes set signed_by_user_id = $2 where id = $1", [dn, A().admin.id])).toMatchObject({ code: "42501", hint: "imported_people_field" });
     // Everything else on the draft is as before: the people fields left alone, an update goes through.
     expect(await refusal(A().admin, "update public.invoices set description = 'Edited' where id = $1", [inv])).toBeNull();

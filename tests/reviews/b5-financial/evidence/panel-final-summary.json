@@ -1,0 +1,64 @@
+{
+  "base": "e42d927383513d1b98ce9cfca444884475622e2f",
+  "tested_product_source": "861fe9b0772cf3435a7e3820c01dbeb8fba15f8f",
+  "utc": "2026-11-05T16:43:06.006125+00:00",
+  "environment": "Isolated own worktree, unchanged lockfile, synthetic/mocked full unit suite with subprocess permission; no live provider or database calls in this supplemental run",
+  "full_unit": {
+    "passed": 6550,
+    "failed": 0,
+    "skipped": 0,
+    "files": 460
+  },
+  "focused_costing_subset": {
+    "passed": 570,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck_exit": 0,
+  "lint_changed_files_exit": 0,
+  "source_sha256": {
+    "components/costing/price-this-part.tsx": "8693cf21e9acbf1572e84c347f301037528ce4b8cb341b1391692bba95176a9d",
+    "tests/unit/b5-costing-stale-ui.test.ts": "4d4efd4cc780c1ac1b4613002b7371e6fb6ac6c52670297cf9a3206abfd8c474"
+  },
+  "log_sha256": {
+    "full-unit-panel-final.log": "224682a981448a5b90396f8da2c4663895ea0b4788a83ae179bd63c59b103548",
+    "full-unit-quote-total.log": "ca5bb91e37d87103e5c7701a275421eeea3e0d9a9cb549b05e815bb4160e08b7",
+    "quote-panel-final-focused.log": "cace9ef05f7885cbf78c3107853299ce2b45390d8ec166019d6b766a79cbea48",
+    "quote-total-before.log": "8a771e92f0b041fb9873b526c510c3a8534d01e9e6e17f4c66e8bd9b1529cb57",
+    "quote-total-after.log": "79163a53d35f1c8ddb59451b3262afb09987bdaff6c9e5362adc6299dc52af3d",
+    "negative-hours-before.log": "af4881d2480d601b45a7f39c3c85d8adbb634cb561b46ff65a3ef794888e9546",
+    "typecheck-panel-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lint-panel-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "prior_disposable_proof": {
+    "source": "60a1a279aeea21a0bdc8fe70814475ba634768de",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "unchanged_inputs": {
+      "supabase/migrations/143_costing_rates.sql": true,
+      "supabase/release/143_costing_rates.release.sql": true,
+      "tests/reviews/b5-financial/migration.db.test.ts": true,
+      "tests/reviews/b5-financial/disposable.ts": true,
+      "lib/costing/price-part.ts": true,
+      "lib/costing/app-rates.ts": true,
+      "lib/costing/rates-store.ts": true,
+      "lib/integrations/xero-setup-state.ts": true
+    }
+  },
+  "latest_completed_integration": {
+    "run": 42062335485,
+    "passed": 1822,
+    "failed": 17,
+    "skipped": 41,
+    "accepted": false
+  },
+  "preceding_head_ci": {
+    "run": 42065219102,
+    "head": "a96b72631e42bee877567b3db34aa8c1f24e572f",
+    "web": "success",
+    "integration": "running at receipt creation"
+  },
+  "intermediate_log": "full-unit-quote-total.log overlapped the negative-hours reproduction/edit:6549 pass/1 fail; retained diagnostic only, not stable-source final proof",
+  "constraints": "No formula, rate, permission, engine/golden fixture, applied quote price or production database change; Code integrates, ChatGPT reviews. New final head CI/upgrade/browser/production acceptance UNPROVEN."
+}

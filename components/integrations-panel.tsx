@@ -6,16 +6,20 @@ import { toast } from "sonner";
 
 import { AccountingCloudCards } from "@/components/integrations/accounting-cloud-cards";
 import { AccountantInviteCard } from "@/components/accountant-invite-card";
+import { useCodePrompt } from "@/components/authenticator-code-dialog";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { type ConnectStatus, MicrosoftConnectCard, postIntegration } from "@/components/microsoft-connect-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmailChoiceGuide } from "@/components/email-choice-guide";
+import { ResendStatusCard } from "@/components/resend-status-card";
 import { XeroMappings } from "@/components/xero-mappings";
 import { XeroSendLog } from "@/components/xero-send-log";
 import { NEEDS_DATABASE_UPDATE, databaseHas084, missingDbObject } from "@/lib/db-features";
 import { fmtDate, fmtDateTime } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
 import { NEEDS_107, cardStatusLabel, connectCardView, connectOutcomeMessage, overviewSummary, type IntegrationOverview } from "@/lib/integrations/overview";
+import { postIntegrationWithCode } from "@/lib/integrations/post-with-code";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
@@ -23,9 +27,16 @@ import { useUser } from "@/lib/use-user";
  * Admin > Integrations (G22): one card per accounting system; Xero first. Per company (the one signed in to) and OFF until an admin
  * connects; nothing is sent until both account codes and every VAT rate used are mapped. Shows the connection (never a token), what is
  * not mapped yet and the send log's counts, then the mappings and the send log (PR 2). Hidden until the database has 084.
+ *
+ * `guided` (the Integrations page, W-F4): the four guided setup cards (AI, Xero, Microsoft 365, Resend) sit above and own the connect,
+ * disconnect, mappings and e-mail cards, so this panel is the "More" section: it keeps the Xero send-now / test / accountant-link tools, the
+ * accountant invite, the accounting cloud cards and the send log, and leaves out only what the guided cards now show (the company line, the
+ * Connect and Disconnect buttons, the e-mail guide, the old Microsoft 365 and Resend cards, the mappings). Default false = unchanged.
  */
-export function IntegrationsPanel() {
+export function IntegrationsPanel({ guided = false }: { guided?: boolean } = {}) {
   const params = useSearchParams();
+  // Xero Connect and Disconnect need a recent authenticator code: the prompt opens on the server's say-so and the request is sent once more.
+  const { requestCode, codeDialog } = useCodePrompt();
   const [overview, setOverview] = useState<IntegrationOverview | null>(null);
   const [missing084, setMissing084] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,8 +45,9 @@ export function IntegrationsPanel() {
   const [version, setVersion] = useState(0);
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
-  const [invite, setInvite] = useState<{ url: string; expiresAt: string | null } | null>(null);
-  const [openInvites, setOpenInvites] = useState<Array<{ id: string; created_at: string; expires_at: string; created_by_name: string | null }>>([]);
+  const [invite, setInvite] = useState<{ recipient: string | null; expiresAt: string | null } | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [openInvites, setOpenInvites] = useState<Array<{ id: string; created_at: string; expires_at: string; created_by_name: string | null; recipient?: string | null }>>([]);
   const [cancelInvite, setCancelInvite] = useState<string | null>(null);
   const { organizations } = useUser();
   const company = organizations.find((org) => org.is_current)?.name ?? null;
@@ -87,11 +99,17 @@ export function IntegrationsPanel() {
     return body;
   }
 
+  async function postGuarded(path: string): Promise<Record<string, unknown> | null> {
+    const r = await postIntegrationWithCode(path, requestCode);
+    if (!r.ok) { toast.error(r.error); return null; }
+    return r.body;
+  }
+
   async function connect() {
     if (xeroView.connectDisabled) return;
     setBusy(true);
     try {
-      const body = await post("/api/accounting/xero/connect");
+      const body = await postGuarded("/api/accounting/xero/connect");
       if (body && typeof body.url === "string") window.location.assign(body.url);
     } finally {
       setBusy(false);
@@ -102,7 +120,7 @@ export function IntegrationsPanel() {
     setConfirmDisconnect(false);
     setBusy(true);
     try {
-      if (await post("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
+      if (await postGuarded("/api/accounting/xero/disconnect")) toast.success("Disconnected from Xero. Nothing more is sent.");
       setTest(null);
       await load();
     } finally {
@@ -160,22 +178,15 @@ export function IntegrationsPanel() {
   async function makeInvite() {
     setBusy(true);
     try {
-      const r = await postIntegration("/api/integrations/invite");
+      const r = await postIntegration("/api/integrations/invite", { email: inviteEmail });
       if (!r.ok) toast.error(r.error);
-      else if (typeof r.body.url === "string") setInvite({ url: r.body.url, expiresAt: typeof r.body.expiresAt === "string" ? r.body.expiresAt : null });
+      else if (r.body.sent === true) {
+        setInvite({ recipient: typeof r.body.recipient === "string" ? r.body.recipient : null, expiresAt: typeof r.body.expiresAt === "string" ? r.body.expiresAt : null });
+        setInviteEmail("");
+      }
       await loadInvites();
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function copyInvite() {
-    if (!invite) return;
-    try {
-      await navigator.clipboard.writeText(invite.url);
-      toast.success("Link copied. Send it to the accountant: it works once, for 24 hours.");
-    } catch {
-      toast.error("Couldn't copy: select the link and copy it.");
     }
   }
 
@@ -187,10 +198,11 @@ export function IntegrationsPanel() {
 
   return (
     <div className="space-y-6">
-      {company ? <p className="text-sm text-slate-600" data-testid="integrations-company">For <strong>{company}</strong>. Each company has its own page: switch company to set up the other.</p> : null}
+      {codeDialog}
+      {company && !guided ? <p className="text-sm text-slate-600" data-testid="integrations-company">For <strong>{company}</strong>. Each company has its own page: switch company to set up the other.</p> : null}
       <Card>
         <CardHeader>
-          <CardTitle>Xero</CardTitle>
+          <CardTitle>{guided ? "Xero: send now and the accountant's link" : "Xero"}</CardTitle>
           <CardDescription>
             One way, Tolra to Xero: issued invoices, issued credit notes and their customers, with Tolra&apos;s numbers. Voids are sent as voids.
             Nothing is ever read back into Tolra; payments stay in Xero.
@@ -219,12 +231,12 @@ export function IntegrationsPanel() {
                 <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="xero-not-set-up">{xeroView.message}{status?.xero.problem ? ` ${status.xero.problem}` : ""}</p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                {overview.status !== "connected" ? (
+                {overview.status !== "connected" && !guided ? (
                   <Button onClick={connect} disabled={busy || xeroView.connectDisabled}>{overview.status === "needs_reconnect" ? "Connect again" : "Connect to Xero"}</Button>
                 ) : null}
                 {overview.status === "connected" ? <Button variant="outline" onClick={sendNow} disabled={busy}>Send now</Button> : null}
                 {overview.status === "connected" ? <Button variant="outline" onClick={runTest} disabled={busy}>Test</Button> : null}
-                {overview.status !== "not_connected" && overview.status !== "disconnected" ? (
+                {overview.status !== "not_connected" && overview.status !== "disconnected" && !guided ? (
                   <Button variant="outline" onClick={() => setConfirmDisconnect(true)} disabled={busy}>Disconnect</Button>
                 ) : null}
               </div>
@@ -236,21 +248,21 @@ export function IntegrationsPanel() {
                   <p className="text-sm text-slate-500" data-testid="xero-invite-needs-107">{NEEDS_107}</p>
                 ) : !xeroView.offerInvite ? null : (
                   <>
-                    <Button variant="outline" onClick={makeInvite} disabled={busy}>Send the accountant a connect link</Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input type="email" aria-label="Accountant's e-mail address" placeholder="accountant@firm.example" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)}
+                        className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 px-2 text-sm" data-testid="xero-invite-email" />
+                      <Button variant="outline" onClick={makeInvite} disabled={busy || !inviteEmail.trim()}>E-mail the accountant a connect link</Button>
+                    </div>
                     {invite ? (
                       <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input readOnly aria-label="Connect link" value={invite.url} onFocus={(e) => e.currentTarget.select()} className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 font-mono text-xs" data-testid="xero-invite-url" />
-                          <Button variant="outline" size="sm" onClick={copyInvite}>Copy</Button>
-                        </div>
-                        <p className="text-xs text-slate-500">Works once{invite.expiresAt ? `, until ${fmtDate(invite.expiresAt)} (24 hours)` : ", for 24 hours"}. It opens Xero&apos;s sign-in for this company only and gives no access to Tolra.</p>
+                        <p className="text-xs text-slate-500" data-testid="xero-invite-sent">Sent to {invite.recipient ?? "the accountant"}. It works once{invite.expiresAt ? `, until ${fmtDate(invite.expiresAt)} (24 hours)` : ", for 24 hours"}. The accountant asks for a code on the page, and it is e-mailed to that address only. The link gives no access to Tolra.</p>
                       </div>
                     ) : null}
                     {openInvites.length ? (
                       <ul className="space-y-1" data-testid="xero-open-invites">
                         {openInvites.map((i) => (
                           <li key={i.id} className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                            <span>Open link{i.created_by_name ? ` from ${i.created_by_name}` : ""}, made {fmtDateTime(i.created_at)}, expires {fmtDateTime(i.expires_at)}</span>
+                            <span>Open link{i.recipient ? ` to ${i.recipient}` : ""}{i.created_by_name ? ` from ${i.created_by_name}` : ""}, made {fmtDateTime(i.created_at)}, expires {fmtDateTime(i.expires_at)}</span>
                             <Button variant="outline" size="sm" onClick={() => setCancelInvite(i.id)} disabled={busy}>Cancel</Button>
                           </li>
                         ))}
@@ -284,12 +296,14 @@ export function IntegrationsPanel() {
       </Card>
       {/* C3 (129): the accountant joins as a viewer; the Xero step is offered only while Xero is set up here and not connected. */}
       <AccountantInviteCard
-        offerXero={Boolean(status?.db107 && !xeroView.notSetUp && xeroView.offerInvite && overview && overview.status !== "connected")}
+        offerXero={false}
         onXeroLink={() => void loadInvites()}
       />
       <AccountingCloudCards />
-      <MicrosoftConnectCard status={status} />
-      {overview && linked ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
+      {guided ? null : <EmailChoiceGuide />}
+      {guided ? null : <MicrosoftConnectCard status={status} />}
+      {guided ? null : <ResendStatusCard />}
+      {overview && linked && !guided ? <XeroMappings connected={overview.status === "connected"} unmapped={overview.unmapped ?? []} onChanged={() => void load()} /> : null}
       {overview && (linked || anySends) ? <XeroSendLog reloadKey={version} onChanged={() => void load()} /> : null}
     </div>
   );

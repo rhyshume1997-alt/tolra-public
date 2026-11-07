@@ -6,6 +6,7 @@ import { type AccountingProvider, ProviderError } from "@/lib/integrations/types
 import { MAPPING_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,8 @@ export async function POST(request: Request) {
   // Support access (the platform owner inside a company) holds an admin membership but never changes or reads through this company's Xero:
   // refused before any Xero or database call, as on the Admin > Users routes. The database's connect functions exclude support too.
   if (auth.session?.support) return jsonError("Support access can't change Xero settings.", 403);
+  const recent = await requireRecentAal2(auth, "change the Xero mappings", true);
+  if (recent) return recent;
   const body = await readJson(request, 4 * 1024);
   if (!body.ok) return body.response;
   const req = parseMappingRequest(body.data);

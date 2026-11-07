@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { approveChaseDraft } from "@/lib/email/chase/approve";
 import { localDate } from "@/lib/email/schedules/due";
-import { EMAIL_SEND_ROLES, onRecipientAllowlist, selectProvider, sendCompanyEmail } from "@/lib/email/send-company-email";
+import { EMAIL_SEND_ROLES, onRecipientAllowlist, resendFromEnv, selectProvider, sendCompanyEmail } from "@/lib/email/send-company-email";
 import { forbiddenOrigin, isErrorResponse, jsonError, readJson, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
@@ -15,8 +15,10 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
  */
 const schema = z.object({
   history_id: z.string().uuid(),
+  expected_to: z.string().min(1).max(2000),
   expected_subject: z.string().max(400),
   expected_body: z.string().max(100_000),
+  provider: z.literal("resend").optional(),
 }).strict();
 
 export async function POST(request: Request) {
@@ -36,12 +38,13 @@ export async function POST(request: Request) {
   const { data: schedule } = await admin.from("email_schedules").select("timezone").eq("organization_id", profile.organization_id).eq("kind", "invoice_reminder").maybeSingle();
   const zone = (schedule as { timezone?: string } | null)?.timezone || "Europe/London";
   const result = await approveChaseDraft(
-    { organizationId: profile.organization_id, userId: user.id, draftId: parsed.data.history_id, expectedSubject: parsed.data.expected_subject, expectedBody: parsed.data.expected_body, today: localDate(new Date(), zone) },
+    { organizationId: profile.organization_id, userId: user.id, draftId: parsed.data.history_id, expectedTo: parsed.data.expected_to, expectedSubject: parsed.data.expected_subject, expectedBody: parsed.data.expected_body, today: localDate(new Date(), zone), provider: parsed.data.provider, isAdmin: profile.role === "admin" },
     {
       db: supabase,
       admin,
       provider: (org) => selectProvider(org),
-      send: (input) => sendCompanyEmail(input, { db: supabase }),
+      send: (input, provider) => sendCompanyEmail(input, { db: supabase, ...(provider ? { provider: provider as never } : {}) }),
+      resend: () => resendFromEnv(process.env),
       allowlisted: (address) => onRecipientAllowlist(address, process.env.EMAIL_RECIPIENT_DOMAINS),
     },
   );

@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { INVITE_TOKEN, escapeHtml, hashInviteToken, page, peekInvite } from "@/lib/integrations/invite";
+import { INVITE_TOKEN, escapeHtml, hashInviteToken, page } from "@/lib/integrations/invite";
 import { serviceDb } from "@/lib/integrations/server";
 
 // "Invite your accountant" (C3, migration 129). It REUSES 007's invite (public.organization_invites) with an expiry, a token hash, single
@@ -46,11 +46,12 @@ export async function peekAccountantInvite(service: SupabaseClient, token: strin
   return { companyName: out.company_name, email: out.email, expiresAt: String(out.expires_at ?? ""), xeroConnected: out.xero_connected === true };
 }
 
-/** The Xero connect link to offer, or null: only a well-formed link that is still open (107), when the company's Xero isn't connected. */
-export async function xeroOfferFor(service: SupabaseClient, xeroToken: string | null, invite: { xeroConnected: boolean } | null, xeroIsReady: boolean): Promise<string | null> {
-  if (!xeroToken || !INVITE_TOKEN.test(xeroToken) || !xeroIsReady || !invite || invite.xeroConnected) return null;
-  const open = await peekInvite(service, xeroToken).catch(() => null);
-  return open ? `/api/integrations/invite/${xeroToken}` : null;
+/**
+ * The Xero connect link is no longer offered on this page: since proposal 151 it is an opaque reference e-mailed to a named address that needs an
+ * e-mailed code, so it cannot be carried in this page's address. Always null (the callers and the page's Xero section stay as they were).
+ */
+export async function xeroOfferFor(_service: SupabaseClient, _xeroToken: string | null, _invite: { xeroConnected: boolean } | null, _xeroIsReady: boolean): Promise<string | null> {
+  return null;
 }
 
 /** "a***@firm.example": enough for the accountant to recognise the address, not the whole of it. */

@@ -1,0 +1,17 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/reviews/b5-financial/migration.db.test.ts (3 tests) 38729ms
+   ✓ original143 reproduces exact CLI prepared-statement error; whole migration writes nothing 1272ms
+   ✓ quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true 1377ms
+   ✓ existing company isolation, roles, whole-pence constraints and audit SQL proof all hold 379ms
+stdout | tests/reviews/b5-financial/migration.db.test.ts
+Disposable proof: /tmp/tolra-b5-financial-8c04f999-e5bb-40d0-92ff-f34240be081c
+
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  15:01:56
+   Duration  39.03s (transform 53ms, setup 0ms, collect 81ms, tests 38.73s, environment 0ms, prepare 61ms)
+

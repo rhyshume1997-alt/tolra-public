@@ -68,9 +68,22 @@ export class ProviderError extends Error {
   }
 }
 
+/**
+ * Xero transfers were switched off (release 149) after a send had been claimed. Raised BEFORE the provider call it stops, so nothing of the
+ * document reached the provider: the engine puts the row back to pending (no error shown, no check needed) and the run stops.
+ */
+export class TransfersHeldError extends ProviderError {
+  constructor(message: string) {
+    super(message, "failed", 0);
+    this.name = "TransfersHeldError";
+  }
+}
+
 /** One accounting system, for one connected organisation (tenant), with a valid access token. */
 export interface AccountingProvider {
   readonly id: ProviderId;
+  /** Provider-specific void rules; legacy stand-ins omit this and keep the existing send behaviour. */
+  readonly voidPolicy?: { enabled: boolean; refusedMessage(reason: string): string };
   /** Active accounts; revenue: the account can take sales (Xero class REVENUE: types REVENUE, SALES, OTHERINCOME). */
   listAccounts(): Promise<Array<{ code: string; name: string; type: string; revenue: boolean }>>;
   /** Tax rates not deleted; revenue: Xero's CanApplyToRevenue; active: Xero's Status ACTIVE (not archived or pending). */

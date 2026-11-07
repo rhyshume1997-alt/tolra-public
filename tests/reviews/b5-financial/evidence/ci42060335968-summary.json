@@ -1,0 +1,29 @@
+{
+  "run": 42060335968,
+  "head": "d13c9ef2817eddc0c45086ec8fad46e0d6cd71f3",
+  "web": {
+    "passed": 6540,
+    "failed": 2,
+    "skipped": 0,
+    "cause": "workflow literal command assertions; restored, 16 local contract tests pass"
+  },
+  "database": {
+    "passed": 1822,
+    "failed": 17,
+    "skipped": 41,
+    "extra_skips_not_accepted": 34
+  },
+  "financial_disposable": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "native_costing": {
+    "rates": 6,
+    "atomic_save": 21,
+    "failed": 0
+  },
+  "upgrade_browser": "not executed after DB failure",
+  "remaining_owners": "Code with email/Xero test owners; no guard weakening",
+  "approvals": "UNPROVEN"
+}

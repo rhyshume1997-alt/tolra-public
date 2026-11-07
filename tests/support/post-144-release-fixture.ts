@@ -3,17 +3,24 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 const read = (file: string) => readFileSync(path.resolve(__dirname, "../..", file), "utf8");
 const phases = [
-  { marker: "post-144 marker 145 company_setup", file: "supabase/release/145_company_setup.release.sql", verifyFile: "supabase/verify/company_setup_145.sql" },
-  { marker: "post-144 marker 146 tolra_provided_ai", file: "supabase/release/146_tolra_provided_ai.release.sql", verifyFile: "supabase/verify/tolra_provided_ai_146.sql" },
+  { number: 145, marker: "post-144 marker 145 company_setup", file: "supabase/release/145_company_setup.release.sql", verifyFile: "supabase/verify/company_setup_145.sql" },
+  { number: 146, marker: "post-144 marker 146 tolra_provided_ai", file: "supabase/release/146_tolra_provided_ai.release.sql", verifyFile: "supabase/verify/tolra_provided_ai_146.sql" },
+  { number: 147, marker: "post-144 marker 147 job_delivery_note", file: "supabase/release/147_job_delivery_note.release.sql", verifyFile: "supabase/verify/job_delivery_note_147.sql" },
+  { number: 148, marker: "post-144 marker 148 job_profitability_actuals", file: "supabase/release/148_job_profitability_actuals.release.sql", verifyFile: "supabase/verify/job_profitability_actuals_148.sql" },
+  { number: 149, marker: "post-144 marker 149 xero_launch_hold", file: "supabase/release/149_xero_launch_hold.release.sql", verifyFile: "supabase/verify/xero_launch_hold_149.sql" },
+  { number: 150, marker: "post-144 marker 150 ai_cap_key_off", file: "supabase/release/150_ai_cap_key_off.release.sql", verifyFile: "supabase/verify/ai_cap_key_off_150.sql" },
+  { number: 151, marker: "post-144 marker 151 xero_invite_hardening", file: "supabase/release/151_xero_invite_hardening.release.sql", verifyFile: "supabase/verify/xero_invite_hardening_151.sql" },
 ];
 export async function preparePost144Fixture(deps: {
+  through?: 145 | 146 | 147 | 148 | 149 | 150 | 151;
   verify: () => Promise<unknown>;
   query: (sql: string) => Promise<{ rows: Array<{ check?: string; value?: string; ok?: boolean; passed?: boolean }> }>;
 }) {
+  if (deps.through !== undefined && !phases.some(p => p.number === deps.through)) throw new Error("Invalid release fixture target");
   await deps.verify();
   await deps.query("SELECT pg_advisory_lock(144145146)");
   try {
-    for (const phase of phases) {
+    for (const phase of phases.filter(p => p.number <= (deps.through ?? 151))) {
       const state = (await deps.query(read("supabase/verify/release_preflight.sql"))).rows.find(row => row.check === phase.marker);
       if (!state) throw new Error(`Missing release preflight marker: ${phase.marker}`);
       if (state.value !== "applied") {

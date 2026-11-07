@@ -1,0 +1,14 @@
+
+Oops! Something went wrong! :(
+
+ESLint: 8.57.1
+
+ESLint couldn't determine the plugin "@next/next" uniquely.
+
+- /workspace/tolra-public/work/b5-financial-candidate/node_modules/@next/eslint-plugin-next/dist/index.js (loaded in ".eslintrc.json » eslint-config-next/core-web-vitals » plugin:@next/next/core-web-vitals")
+- /workspace/tolra-public/node_modules/@next/eslint-plugin-next/dist/index.js (loaded in "../../.eslintrc.json » eslint-config-next/core-web-vitals » plugin:@next/next/core-web-vitals")
+
+Please remove the "plugins" setting from either config or remove either plugin installation.
+
+If you still can't figure out the problem, please stop by https://eslint.org/chat/help to chat with the team.
+

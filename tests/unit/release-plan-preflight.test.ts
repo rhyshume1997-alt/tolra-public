@@ -16,6 +16,21 @@ describe("no proposal silently disappears from release preflight", () => {
   it("covers every proposal, both ordered post-144 packages and every preflight marker", () => {
     expect(checkReleasePlan(root)).toEqual([]);
   });
+  it("orders the post-144 phases 145, 146, 147, 148, 149, 150, 151 and leaves the numbered cutover and its catalogue alone", () => {
+    const plan = JSON.parse(readFileSync(path.join(root, "supabase/release-plan.json"), "utf8"));
+    expect(plan.numbered_through).toBe(144);
+    expect(plan.phases.map((p: { number: number; after: string }) => [p.number, p.after])).toEqual([[145, "144"], [146, "145"], [147, "146"], [148, "147"], [149, "148"], [150, "149"], [151, "150"]]);
+    const c17 = plan.phases[2];
+    expect(c17).toMatchObject({ source: "supabase/proposals/c17_job_delivery_note.sql", release: "supabase/release/147_job_delivery_note.release.sql", rollback: "supabase/release/147_job_delivery_note.rollback.sql", verify: "supabase/verify/job_delivery_note_147.sql", marker: "post-144 marker 147 job_delivery_note" });
+    const preflight = readFileSync(path.join(root, "supabase/verify/release_preflight.sql"), "utf8");
+    expect(preflight).toContain("('supabase/proposals/c17_job_delivery_note.sql', 'post-144 release 147; apply only after 146')");
+    expect(plan.phases[3]).toMatchObject({ source: "supabase/proposals/p148_job_profitability_actuals.sql", release: "supabase/release/148_job_profitability_actuals.release.sql", rollback: "supabase/release/148_job_profitability_actuals.rollback.sql", verify: "supabase/verify/job_profitability_actuals_148.sql", marker: "post-144 marker 148 job_profitability_actuals" });
+    expect(preflight).toContain("('supabase/proposals/p148_job_profitability_actuals.sql', 'post-144 release 148; apply only after 147 (reads only 143''s rates)')");
+    expect(plan.phases[4]).toMatchObject({ source: "supabase/proposals/x149_xero_launch_hold.sql", release: "supabase/release/149_xero_launch_hold.release.sql", rollback: "supabase/release/149_xero_launch_hold.rollback.sql", verify: "supabase/verify/xero_launch_hold_149.sql", marker: "post-144 marker 149 xero_launch_hold" });
+    expect(preflight).toContain("('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147')");
+    expect(plan.phases[6]).toMatchObject({ source: "supabase/proposals/p151_xero_invite_hardening.sql", release: "supabase/release/151_xero_invite_hardening.release.sql", rollback: "supabase/release/151_xero_invite_hardening.rollback.sql", verify: "supabase/verify/xero_invite_hardening_151.sql", marker: "post-144 marker 151 xero_invite_hardening" });
+    expect(preflight).toContain("('supabase/proposals/p151_xero_invite_hardening.sql', 'post-144 release 151; apply only after 150 (replaces 107''s token invite functions; no 107 token link survives)')");
+  });
   it("fails when a new proposal has no plan or preflight disposition", () => {
     const copy=tree();
     writeFileSync(path.join(copy,"supabase/proposals/new_unreviewed.sql"),"SELECT 1;");
@@ -28,9 +43,9 @@ describe("no proposal silently disappears from release preflight", () => {
     expect(checkReleasePlan(copy)).toContain("Proposal missing from release preflight: supabase/proposals/n2_tolra_provided_ai.sql");
     expect(checkReleasePlan(copy)).toContain("Release marker missing: post-144 marker 145 company_setup");
   });
-  it("lists 138, 140, 141 and 144 in order for the JNR cutover and refuses a missing file, marker or release", () => {
+  it("lists 138, 140, 141, 143 and 144 in order for the JNR cutover and refuses a missing file, marker or release", () => {
     const plan = JSON.parse(readFileSync(path.join(root, "supabase/release-plan.json"), "utf8"));
-    expect(plan.jnr_cutover_numbered_order.map((entry: { number: number }) => entry.number)).toEqual([138, 140, 141, 144]);
+    expect(plan.jnr_cutover_numbered_order.map((entry: { number: number }) => entry.number)).toEqual([138, 140, 141, 143, 144]);
     const copy = tree();
     rmSync(path.join(copy, "supabase/verify/opening_wip_141.sql"));
     const preflight = path.join(copy, "supabase/verify/release_preflight.sql");

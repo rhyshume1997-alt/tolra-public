@@ -9,6 +9,10 @@ process.env.REVIEWER_TEST_KEY ??= randomBytes(32).toString("base64");
 const servers = base.webServer ? (Array.isArray(base.webServer) ? base.webServer : [base.webServer]) : [];
 export default defineConfig({
   ...base,
+  // Playwright empties its output directory at the start of every run. Without this the reviewer run shared the default `test-results`
+  // with the main browser suite and deleted that suite's traces and screenshots before the evidence upload. Nested inside test-results
+  // so the existing upload path keeps covering it, and so e2e-state (which the globalSetup writes there) is not touched.
+  outputDir: "./test-results/reviewer",
   testMatch: /reviewer\/.*\.spec\.ts/,
   testIgnore: [],
   webServer: configured ? servers.map(server => ({ ...server, env: { ...server.env,

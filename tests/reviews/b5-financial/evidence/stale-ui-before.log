@@ -1,0 +1,37 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ❯ tests/unit/b5-costing-stale-ui.test.ts (2 tests | 2 failed) 611ms
+   × changing rates must not silently replace a selected material 495ms
+     → expected false to be true // Object.is equality
+   × changing rates must not silently replace a selected machine 111ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-costing-stale-ui.test.ts > changing rates must not silently replace a selected material
+ FAIL  tests/unit/b5-costing-stale-ui.test.ts > changing rates must not silently replace a selected machine
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/b5-costing-stale-ui.test.ts:24:46
+     22|   const changed=structuredClone(CONFIGURED);const nextId='99999999-999…
+     23|   if(kind==='material')changed.materials[0].id=nextId;else changed.mac…
+     24|   await draw(changed);expect(add().disabled).toBe(true);expect(host.te…
+       |                                              ^
+     25|   await input(kind==='material'?'Part material':'Part machine',nextId,…
+     26|  }finally{await act(async()=>root.unmount());host.remove();}
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  15:17:59
+   Duration  4.50s (transform 565ms, setup 0ms, collect 1.19s, tests 611ms, environment 1.90s, prepare 153ms)
+

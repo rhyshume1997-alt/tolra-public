@@ -59,11 +59,11 @@ afterAll(async () => {
 
 describe("who can create a job", () => {
   it.each(["admin", "office", "workshop"])("%s creates a customer job with no sales order and no PO", async (role) => {
-    const { data, error } = await create(as[role], { p_customer: `Acme ${role}`, p_required: "2026-12-01" });
+    const { data, error } = await create(as[role], { p_customer: `Acme ${role}`, p_required: "2027-12-28" });
     expect(error).toBeNull();
     expect(data.job_no).toMatch(/^J-\d{4,}$/);
     const { data: row } = await adminClient().from("jobs").select("*").eq("id", data.job_id).single();
-    expect(row).toMatchObject({ organization_id: world.tenants.alpha.id, job_no: data.job_no, customer: `Acme ${role}`, is_internal: false, related_job_id: null, customer_po: null, stage: "material", converted_from_sales_order_id: null, date_required: "2026-12-01" });
+    expect(row).toMatchObject({ organization_id: world.tenants.alpha.id, job_no: data.job_no, customer: `Acme ${role}`, is_internal: false, related_job_id: null, customer_po: null, stage: "material", converted_from_sales_order_id: null, date_required: "2027-12-28" });
   });
 
   it("the viewer, anon and another company's session can't", async () => {
@@ -213,7 +213,7 @@ describe("machines and bookings", () => {
 describe("clashes", () => {
   // Found by the function from the table: the app's p_clashes is a hint only. Existing bookings on the mill (plain) and the lathe
   // (split by day, 038) at a time no other test uses.
-  const WEEK = "2026-11-09T08:00:00Z";
+  const WEEK = "2027-12-06T08:00:00Z";
   let millNo: string;
   let latheNo: string;
   beforeAll(async () => {
@@ -222,8 +222,8 @@ describe("clashes", () => {
     latheNo = `J-X2-${world.runId}`;
     expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: mill, job_no: millNo, description: "Existing", start_at: WEEK, estimated_hours: 4 })).error).toBeNull();
     expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_no: latheNo, description: "Split", start_at: WEEK, estimated_hours: 8,
-      day_plan: [{ date: "2026-11-09", start: "08:00", end: "12:00" }, { date: "2026-11-10", start: "08:00", end: "12:00" }] })).error).toBeNull();
-    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: mill, job_no: `J-X3-${world.runId}`, description: "Done", start_at: "2026-11-16T08:00:00Z", estimated_hours: 4, status: "complete" })).error).toBeNull();
+      day_plan: [{ date: "2027-12-06", start: "08:00", end: "12:00" }, { date: "2027-12-07", start: "08:00", end: "12:00" }] })).error).toBeNull();
+    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: mill, job_no: `J-X3-${world.runId}`, description: "Done", start_at: "2027-12-13T08:00:00Z", estimated_hours: 4, status: "complete" })).error).toBeNull();
   });
   const over = (machine_id: string, start_at: string) => [{ machine_id, hours: 1, start_at }];
 
@@ -234,26 +234,26 @@ describe("clashes", () => {
       expect(r.error?.hint).toBe("machine_clash");
       expect(r.error?.message).toContain(millNo);
       // A start inside the second day of the split booking, and one inside the first booking's last hour.
-      expect((await create(as[role], { p_machines: over(lathe, "2026-11-10T09:00:00Z"), p_clashes: [] })).error?.hint).toBe("machine_clash");
-      expect((await create(as[role], { p_machines: over(mill, "2026-11-09T11:30:00Z"), p_clashes: [] })).error?.hint).toBe("machine_clash");
+      expect((await create(as[role], { p_machines: over(lathe, "2027-12-07T09:00:00Z"), p_clashes: [] })).error?.hint).toBe("machine_clash");
+      expect((await create(as[role], { p_machines: over(mill, "2027-12-06T11:30:00Z"), p_clashes: [] })).error?.hint).toBe("machine_clash");
     }
     const admin = await create(as.admin, { p_machines: over(mill, WEEK), p_clashes: [], p_clash_override: false });
     expect(admin.error?.hint).toBe("machine_clash");
     // Nothing was written and no number was taken.
     const service = adminClient();
-    expect((await service.from("machine_bookings").select("id").eq("organization_id", world.tenants.alpha.id).eq("machine_id", mill).gte("start_at", WEEK).lt("start_at", "2026-11-16T00:00:00Z")).data).toHaveLength(1);
+    expect((await service.from("machine_bookings").select("id").eq("organization_id", world.tenants.alpha.id).eq("machine_id", mill).gte("start_at", WEEK).lt("start_at", "2027-12-13T00:00:00Z")).data).toHaveLength(1);
   });
 
   it("a free slot, a complete booking and the end of a booking don't clash, for the office", async () => {
-    expect((await create(as.office, { p_machines: over(mill, "2026-11-09T12:00:00Z"), p_clashes: [] })).error).toBeNull();
-    expect((await create(as.office, { p_machines: over(mill, "2026-11-16T08:00:00Z"), p_clashes: [] })).error).toBeNull();
-    expect((await create(as.office, { p_machines: over(lathe, "2026-11-10T12:00:00Z"), p_clashes: [] })).error).toBeNull();
+    expect((await create(as.office, { p_machines: over(mill, "2027-12-06T12:00:00Z"), p_clashes: [] })).error).toBeNull();
+    expect((await create(as.office, { p_machines: over(mill, "2027-12-13T08:00:00Z"), p_clashes: [] })).error).toBeNull();
+    expect((await create(as.office, { p_machines: over(lathe, "2027-12-07T12:00:00Z"), p_clashes: [] })).error).toBeNull();
   });
 
   it("two jobs asked for the same machine and time at the same moment: exactly one is made, the other is refused as a clash", async () => {
     // Two signed-in connections (office and workshop) through PostgREST at once, on a slot nothing else uses. The per-company lock makes
     // the second call's clash check run after the first has committed, whichever arrives first.
-    for (const [i, slot] of ["2026-11-23T08:00:00Z", "2026-11-23T13:00:00Z"].entries()) {
+    for (const [i, slot] of ["2027-12-20T08:00:00Z", "2027-12-20T13:00:00Z"].entries()) {
       const [a, b] = await Promise.all([
         create(as.office, { p_description: `Race A${i}`, p_machines: [{ machine_id: lathe, hours: 2, start_at: slot }], p_clashes: [] }),
         create(as.workshop, { p_description: `Race B${i}`, p_internal: true, p_customer: null, p_machines: [{ machine_id: lathe, hours: 2, start_at: slot }], p_clashes: [] }),
@@ -268,14 +268,14 @@ describe("clashes", () => {
 
   it("the app's clash hint is capped at 20000 characters", async () => {
     const long = Array.from({ length: 150 }, (_, i) => ({ machine_id: mill, job_no: `J-${String(i).padStart(4, "0")}-${"x".repeat(200)}` }));
-    const r = await create(as.admin, { p_machines: over(mill, "2026-11-30T08:00:00Z"), p_clashes: long, p_clash_override: true });
+    const r = await create(as.admin, { p_machines: over(mill, "2027-12-27T08:00:00Z"), p_clashes: long, p_clash_override: true });
     expect(r.error?.code).toBe("22023");
     expect(r.error?.message).toContain("too long");
-    expect((await create(as.admin, { p_machines: over(mill, "2026-11-30T08:00:00Z"), p_clashes: long.slice(0, 50), p_clash_override: true })).error).toBeNull();
+    expect((await create(as.admin, { p_machines: over(mill, "2027-12-27T08:00:00Z"), p_clashes: long.slice(0, 50), p_clash_override: true })).error).toBeNull();
   });
 
   it("an admin's override needs a reason: none, blank or too short is refused and nothing is written", async () => {
-    const attempt = { p_machines: over(mill, "2026-11-09T10:00:00Z"), p_clashes: [], p_clash_override: true };
+    const attempt = { p_machines: over(mill, "2027-12-06T10:00:00Z"), p_clashes: [], p_clash_override: true };
     for (const p_override_reason of [null, "", "   ", "ab"]) {
       const r = await create(as.admin, { ...attempt, p_override_reason });
       expect(r.error?.code, String(p_override_reason)).toBe("22023");
@@ -284,11 +284,11 @@ describe("clashes", () => {
     expect((await create(as.admin, { ...attempt, p_override_reason: "x".repeat(501) })).error?.code).toBe("22023");
     // A reason doesn't help the office: not an admin.
     expect((await create(as.office, { ...attempt, p_override_reason: "Customer waiting" })).error?.hint).toBe("machine_clash");
-    expect((await adminClient().from("machine_bookings").select("id").eq("organization_id", world.tenants.alpha.id).eq("machine_id", mill).eq("start_at", "2026-11-09T10:00:00+00:00")).data).toEqual([]);
+    expect((await adminClient().from("machine_bookings").select("id").eq("organization_id", world.tenants.alpha.id).eq("machine_id", mill).eq("start_at", "2027-12-06T10:00:00+00:00")).data).toEqual([]);
   });
   it("an admin can book anyway with a reason, and that is audited with the bookings the database found, who and when", async () => {
     const before = new Date();
-    const { data, error } = await create(as.admin, { p_machines: [{ machine_id: mill, hours: 2, start_at: "2026-11-09T10:00:00Z" }, { machine_id: lathe, hours: 1, start_at: "2026-11-10T09:00:00Z" }],
+    const { data, error } = await create(as.admin, { p_machines: [{ machine_id: mill, hours: 2, start_at: "2027-12-06T10:00:00Z" }, { machine_id: lathe, hours: 1, start_at: "2027-12-07T09:00:00Z" }],
       p_clashes: [{ machine_id: mill, job_no: "J-GUESS" }], p_clash_override: true, p_override_reason: "  Customer waiting on this part  " });
     expect(error).toBeNull();
     const rows = await withDb((db) => db.query("select action, actor_user_id, metadata from security_audit.audit_log where entity_table = 'jobs' and entity_id = $1 and action in ('CREATE_JOB', 'OVERRIDE_MACHINE_CLASH') order by action", [data.job_id]));
@@ -306,9 +306,9 @@ describe("clashes", () => {
     const latheBooking = (await service.from("machine_bookings").select("id").eq("job_no", latheNo).single()).data!.id;
     const byJob = Object.fromEntries((meta.conflicts as { job_no: string; booking_id: string; machine_id: string; intervals: [string, string][] }[]).map((c) => [c.job_no, c]));
     expect(byJob[millNo]).toMatchObject({ booking_id: millBooking, machine_id: mill });
-    expect(byJob[millNo].intervals.map((i) => i.map((t) => new Date(t).toISOString()))).toEqual([["2026-11-09T08:00:00.000Z", "2026-11-09T12:00:00.000Z"]]);
+    expect(byJob[millNo].intervals.map((i) => i.map((t) => new Date(t).toISOString()))).toEqual([["2027-12-06T08:00:00.000Z", "2027-12-06T12:00:00.000Z"]]);
     expect(byJob[latheNo]).toMatchObject({ booking_id: latheBooking, machine_id: lathe });
-    expect(byJob[latheNo].intervals.map((i) => i.map((t) => new Date(t).toISOString()))).toEqual([["2026-11-09T08:00:00.000Z", "2026-11-09T12:00:00.000Z"], ["2026-11-10T08:00:00.000Z", "2026-11-10T12:00:00.000Z"]]);
+    expect(byJob[latheNo].intervals.map((i) => i.map((t) => new Date(t).toISOString()))).toEqual([["2027-12-06T08:00:00.000Z", "2027-12-06T12:00:00.000Z"], ["2027-12-07T08:00:00.000Z", "2027-12-07T12:00:00.000Z"]]);
     expect(rows.rows[0].metadata).toMatchObject({ job_no: data.job_no, internal: false });
   });
 });
@@ -383,21 +383,23 @@ describe("the schedule's own rule decides a clash (working days, hours per day, 
     wk = await machine("Weekday mill");
     bst = await machine("Summer mill");
     split = await machine("Split mill");
-    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: split, job_no: `J-SPL-${world.runId}`, description: "Saturday only", start_at: "2026-11-14T08:00:00Z", estimated_hours: 4,
-      day_plan: [{ date: "2026-11-14", start: "08:00", end: "12:00" }] })).error).toBeNull();
+    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: split, job_no: `J-SPL-${world.runId}`, description: "Saturday only", start_at: "2027-12-11T08:00:00Z", estimated_hours: 4,
+      day_plan: [{ date: "2027-12-11", start: "08:00", end: "12:00" }] })).error).toBeNull();
   });
   const one = (machine_id: string, hours: number, start_at: string) => [{ machine_id, hours, start_at }];
 
   it("GMT: 16 hours from Friday 08:00 run Friday and Monday, so Monday morning is taken and Monday 16:00 is free", async () => {
-    const fri = await create(as.office, { p_description: "Friday job", p_machines: one(wk, 16, "2026-11-06T08:00:00Z") });
+    // Dates are ahead of today on purpose (a Friday in December 2027, GMT, like the July 2027 case below): a booking whose start has passed and isn't
+    // complete is drawn from now, so a fixed date that becomes "today" changes the answer (this test failed on Friday 2026-11-06 after 08:00 UTC).
+    const fri = await create(as.office, { p_description: "Friday job", p_machines: one(wk, 16, "2027-12-03T08:00:00Z") });
     expect(fri.error).toBeNull();
-    const mon = await create(as.office, { p_description: "Monday job", p_machines: one(wk, 2, "2026-11-09T09:00:00Z") });
+    const mon = await create(as.office, { p_description: "Monday job", p_machines: one(wk, 2, "2027-12-06T09:00:00Z") });
     expect(mon.error?.hint).toBe("machine_clash");
     expect(mon.error?.message).toContain(fri.data.job_no);
     // The schedule draws a booking as one stretch from its start to its finish, so the weekend inside the Friday job is taken too
     // (a free day between two planned days is only free for a booking split by day).
-    expect((await create(as.office, { p_description: "Saturday job", p_machines: one(wk, 2, "2026-11-07T08:00:00Z") })).error?.hint).toBe("machine_clash");
-    expect((await create(as.office, { p_description: "Monday late", p_machines: one(wk, 1, "2026-11-09T16:00:00Z") })).error).toBeNull();
+    expect((await create(as.office, { p_description: "Saturday job", p_machines: one(wk, 2, "2027-12-04T08:00:00Z") })).error?.hint).toBe("machine_clash");
+    expect((await create(as.office, { p_description: "Monday late", p_machines: one(wk, 1, "2027-12-06T16:00:00Z") })).error).toBeNull();
   });
 
   it("BST: the machine's day is 08:00 to 16:00 London time (07:00 to 15:00 UTC)", async () => {
@@ -409,8 +411,8 @@ describe("the schedule's own rule decides a clash (working days, hours per day, 
   });
 
   it("a booking split by day takes exactly its days", async () => {
-    expect((await create(as.office, { p_description: "Saturday clash", p_machines: one(split, 1, "2026-11-14T09:00:00Z") })).error?.hint).toBe("machine_clash");
-    expect((await create(as.office, { p_description: "Saturday after", p_machines: one(split, 1, "2026-11-14T12:00:00Z") })).error).toBeNull();
+    expect((await create(as.office, { p_description: "Saturday clash", p_machines: one(split, 1, "2027-12-11T09:00:00Z") })).error?.hint).toBe("machine_clash");
+    expect((await create(as.office, { p_description: "Saturday after", p_machines: one(split, 1, "2027-12-11T12:00:00Z") })).error).toBeNull();
   });
 });
 
@@ -461,7 +463,7 @@ describe("the migration on a database with data", () => {
     const service = adminClient();
     // Rows as a live company has them before the release: a customer job made by hand and a booking on it, plus everything made above.
     const legacyJob = (await service.from("jobs").insert({ organization_id: world.tenants.alpha.id, job_no: `J-LEG-${world.runId}`, customer: "Legacy Ltd", description: "Pre-release" }).select("id").single()).data!.id;
-    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_id: legacyJob, job_no: `J-LEG-${world.runId}`, start_at: "2026-12-21T08:00:00Z", estimated_hours: 3 })).error).toBeNull();
+    expect((await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_id: legacyJob, job_no: `J-LEG-${world.runId}`, start_at: "2028-01-17T08:00:00Z", estimated_hours: 3 })).error).toBeNull();
     const fingerprint = "select (select count(*) from public.jobs) as jobs, (select count(*) from public.machine_bookings) as bookings, (select count(*) from public.job_machines) as links, (select md5(string_agg(id::text || coalesce(customer, '') || is_internal::text || coalesce(related_job_id::text, ''), ',' order by id)) from public.jobs) as jobs_fp, (select md5(string_agg(id::text || machine_id::text || start_at::text || estimated_hours::text || status || coalesce(day_plan::text, ''), ',' order by id)) from public.machine_bookings) as bookings_fp, (select md5(string_agg(id::text || machine_id::text || estimated_hours::text || coalesce(booking_id::text, ''), ',' order by id)) from public.job_machines) as links_fp, (select array_agg(privilege_type::text order by privilege_type) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'machine_bookings' and grantee = 'authenticated') as booking_grants, (select array_agg(privilege_type::text order by privilege_type) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'job_machines' and grantee = 'authenticated') as link_grants";
     await withDb(async (db) => {
       await db.query("begin");

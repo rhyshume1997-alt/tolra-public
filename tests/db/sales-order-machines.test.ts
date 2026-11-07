@@ -370,8 +370,8 @@ describe("editing the machines on the job", () => {
     const { jobId } = await convertedJob();
     // Another job's booking on the mill over the time; this job's own bookings never count against it.
     const clashNo = `J-SOMCL-${world.runId}`;
-    const AT = "2026-12-01T08:00:00Z"; // a day no other test books
-    expect((await adminClient().from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: mill, job_no: clashNo, description: "Clash", start_at: "2026-12-01T09:00:00Z", estimated_hours: 4 })).error).toBeNull();
+    const AT = "2027-12-28T08:00:00Z"; // a day no other test books
+    expect((await adminClient().from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: mill, job_no: clashNo, description: "Clash", start_at: "2027-12-28T09:00:00Z", estimated_hours: 4 })).error).toBeNull();
     for (const role of ["office", "workshop"]) {
       const r = await setJob(as[role], jobId, [{ machine_id: mill, hours: 3, start_at: AT }], { p_clashes: [], p_clash_override: true });
       expect(r.error?.code).toBe("42501");
@@ -379,7 +379,7 @@ describe("editing the machines on the job", () => {
       expect(r.error?.message).toContain(clashNo);
     }
     // The app's own list of clashes is a hint: without a real overlap nothing is refused.
-    expect((await setJob(as.office, jobId, [{ machine_id: mill, hours: 3, start_at: "2026-12-03T08:00:00Z" }], { p_clashes: [{ machine_id: mill, job_no: "J-0001" }] })).error).toBeNull();
+    expect((await setJob(as.office, jobId, [{ machine_id: mill, hours: 3, start_at: "2027-12-30T08:00:00Z" }], { p_clashes: [{ machine_id: mill, job_no: "J-0001" }] })).error).toBeNull();
     // A free time, then moving onto the clash: this job's own booking on the mill is not a clash with itself.
     expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 3, start_at: AT }], { p_clashes: [] })).error?.hint).toBe("machine_clash");
     // An admin needs a reason (3 to 500 characters) to book anyway.
@@ -387,9 +387,9 @@ describe("editing the machines on the job", () => {
     expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 3, start_at: AT }], { p_clash_override: true, p_override_reason: "no" })).error?.hint).toBe("override_reason");
     expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 3, start_at: AT }], { p_clash_override: true, p_override_reason: "x".repeat(501) })).error?.hint).toBe("override_reason");
     expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 3, start_at: AT }], { p_clashes: [], p_clash_override: true, p_override_reason: "Customer priority: runs first" })).error).toBeNull();
-    expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 3, start_at: "2026-12-01T08:30:00Z" }], { p_clashes: [] })).error?.hint).toBe("machine_clash");
+    expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 3, start_at: "2027-12-28T08:30:00Z" }], { p_clashes: [] })).error?.hint).toBe("machine_clash");
     // Resizing a booked booking is checked too: 1 h at 08:00 is free of the 09:00 booking, 2 h is not.
-    expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 1, start_at: "2026-12-01T08:00:00Z" }], { p_clash_override: true, p_override_reason: "Customer priority: runs first" })).error).toBeNull();
+    expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 1, start_at: "2027-12-28T08:00:00Z" }], { p_clash_override: true, p_override_reason: "Customer priority: runs first" })).error).toBeNull();
     expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 2 }])).error?.hint).toBe("machine_clash");
     expect((await setJob(as.admin, jobId, [{ machine_id: mill, hours: 1 }])).error).toBeNull();
     // A start out of range, and an over-long clash hint, are refused.
@@ -413,16 +413,16 @@ describe("editing the machines on the job", () => {
 
   it("a booking partly done is checked with its real hours done, exactly as the schedule checks it (no spurious refusal)", async () => {
     const { jobId } = await convertedJob();
-    expect((await setJob(as.office, jobId, [{ machine_id: lathe, hours: 3, start_at: "2026-12-16T08:00:00Z" }])).error).toBeNull();
+    expect((await setJob(as.office, jobId, [{ machine_id: lathe, hours: 3, start_at: "2028-01-12T08:00:00Z" }])).error).toBeNull();
     const [{ booking_id }] = await jobPlan(jobId);
     const { data: b } = await adminClient().from("machine_bookings").select("description, notes").eq("id", booking_id!).single();
     // Two of its three hours are done (recorded through the schedule); another job sits right after it.
-    expect((await as.office.rpc("save_machine_booking", { p_id: booking_id, p_machine: lathe, p_job: jobId, p_job_no: "x", p_description: b!.description, p_start: "2026-12-16T08:00:00Z", p_hours: 3, p_hours_done: 2, p_status: "booked", p_notes: b!.notes, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null })).error).toBeNull();
-    expect((await adminClient().from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_no: `J-SOMPD-${world.runId}`, description: "Next", start_at: "2026-12-16T11:00:00Z", estimated_hours: 2 })).error).toBeNull();
+    expect((await as.office.rpc("save_machine_booking", { p_id: booking_id, p_machine: lathe, p_job: jobId, p_job_no: "x", p_description: b!.description, p_start: "2028-01-12T08:00:00Z", p_hours: 3, p_hours_done: 2, p_status: "booked", p_notes: b!.notes, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null })).error).toBeNull();
+    expect((await adminClient().from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_no: `J-SOMPD-${world.runId}`, description: "Next", start_at: "2028-01-12T11:00:00Z", estimated_hours: 2 })).error).toBeNull();
     // Resized to 4 h here: the same answer the schedule's own function gives for the same change.
     const here = await setJob(as.office, jobId, [{ machine_id: lathe, hours: 4 }]);
     const { data: now } = await adminClient().from("machine_bookings").select("estimated_hours, hours_done").eq("id", booking_id!).single();
-    const there = await as.office.rpc("save_machine_booking", { p_id: booking_id, p_machine: lathe, p_job: jobId, p_job_no: "x", p_description: b!.description, p_start: "2026-12-16T08:00:00Z", p_hours: 4, p_hours_done: 2, p_status: "booked", p_notes: b!.notes, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null });
+    const there = await as.office.rpc("save_machine_booking", { p_id: booking_id, p_machine: lathe, p_job: jobId, p_job_no: "x", p_description: b!.description, p_start: "2028-01-12T08:00:00Z", p_hours: 4, p_hours_done: 2, p_status: "booked", p_notes: b!.notes, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null });
     expect(here.error?.hint ?? null).toBe(there.error?.hint ?? null);
     if (!here.error) expect(now).toMatchObject({ estimated_hours: 4, hours_done: 2 });
     // And a resize that cannot clash passes with the hours done kept.
@@ -433,7 +433,7 @@ describe("editing the machines on the job", () => {
   it("a booking from before 042 with long text is still edited here: its text is cut to the schedule function's limits", async () => {
     const { jobId, jobNo } = await convertedJob();
     const service = adminClient();
-    const { data: legacy } = await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_id: jobId, job_no: jobNo, description: "D".repeat(600), notes: "N".repeat(2500), start_at: "2026-12-17T08:00:00Z", estimated_hours: 2, status: "booked" }).select("id").single();
+    const { data: legacy } = await service.from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_id: jobId, job_no: jobNo, description: "D".repeat(600), notes: "N".repeat(2500), start_at: "2028-01-13T08:00:00Z", estimated_hours: 2, status: "booked" }).select("id").single();
     expect((await service.from("job_machines").insert({ organization_id: world.tenants.alpha.id, job_id: jobId, machine_id: lathe, estimated_hours: 2, booking_id: legacy!.id, position: 1 })).error).toBeNull();
     expect((await setJob(as.office, jobId, [{ machine_id: mill, hours: 3 }, { machine_id: lathe, hours: 2.5 }])).error).toBeNull();
     const { data: after } = await service.from("machine_bookings").select("estimated_hours, description, notes").eq("id", legacy!.id).single();
@@ -446,15 +446,15 @@ describe("editing the machines on the job", () => {
   it("clashes follow the schedule's own rule: a booking that runs past the working day is busy on the next working day, not overnight", async () => {
     // The lathe works Mon to Fri, 8 h a day. Another job: 6 h from Friday 4 Dec 2026 12:00 London (ends Mon 7 Dec 10:00, not Friday 18:00).
     const other = `J-SOMWD-${world.runId}`;
-    expect((await adminClient().from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_no: other, description: "Spills over", start_at: "2026-12-04T12:00:00Z", estimated_hours: 6 })).error).toBeNull();
+    expect((await adminClient().from("machine_bookings").insert({ organization_id: world.tenants.alpha.id, machine_id: lathe, job_no: other, description: "Spills over", start_at: "2027-12-31T12:00:00Z", estimated_hours: 6 })).error).toBeNull();
     const { jobId } = await convertedJob();
     // Monday 7 Dec 08:00 for 1 h overlaps that spill-over; a plain-hours span would have called Monday free.
-    const monday = await setJob(as.office, jobId, [{ machine_id: lathe, hours: 1, start_at: "2026-12-07T08:00:00Z" }]);
+    const monday = await setJob(as.office, jobId, [{ machine_id: lathe, hours: 1, start_at: "2028-01-03T08:00:00Z" }]);
     expect(monday.error?.hint).toBe("machine_clash");
     expect(monday.error?.message).toContain(other);
     // Friday evening is not machine time: 1 h at 17:00 Friday is normalised to the next working slot by the same rule and so also clashes,
     // while Monday 10:00 is free.
-    expect((await setJob(as.office, jobId, [{ machine_id: lathe, hours: 1, start_at: "2026-12-07T10:00:00Z" }])).error).toBeNull();
+    expect((await setJob(as.office, jobId, [{ machine_id: lathe, hours: 1, start_at: "2028-01-03T10:00:00Z" }])).error).toBeNull();
   });
 });
 
@@ -463,19 +463,19 @@ describe("the plan row follows the schedule", () => {
     const id = await order(false);
     const { data: made } = await as.admin.rpc("convert_sales_order", { p_order: id });
     const jobId = made.job_id as string;
-    expect((await setJob(as.office, jobId, [{ machine_id: mill, hours: 3, start_at: "2026-12-14T08:00:00Z" }])).error).toBeNull();
+    expect((await setJob(as.office, jobId, [{ machine_id: mill, hours: 3, start_at: "2028-01-10T08:00:00Z" }])).error).toBeNull();
     const [{ booking_id }] = await jobPlan(jobId);
     const { data: booking } = await adminClient().from("machine_bookings").select("*").eq("id", booking_id!).single();
     expect(booking).toMatchObject({ job_id: jobId, estimated_hours: 3, status: "booked" });
     // Edited on the schedule (moved a day, 5 h): the plan row takes the hours and stays linked.
-    const saved = await as.office.rpc("save_machine_booking", { p_id: booking_id, p_machine: mill, p_job: jobId, p_job_no: made.job_no, p_description: booking!.description, p_start: "2026-12-15T08:00:00Z", p_hours: 5, p_hours_done: 0, p_status: "booked", p_notes: null, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null });
+    const saved = await as.office.rpc("save_machine_booking", { p_id: booking_id, p_machine: mill, p_job: jobId, p_job_no: made.job_no, p_description: booking!.description, p_start: "2028-01-11T08:00:00Z", p_hours: 5, p_hours_done: 0, p_status: "booked", p_notes: null, p_day_plan: null, p_clear_day_plan: false, p_clash_override: false, p_override_reason: null });
     expect(saved.error).toBeNull();
     expect((await jobPlan(jobId)).map((r) => [r.machine_id, Number(r.estimated_hours), r.booking_id])).toEqual([[mill, 5, booking_id]]);
     // An edit here afterwards sees the moved booking and resizes it in place (one booking, one row, same hours on both).
     expect((await setJob(as.office, jobId, [{ machine_id: mill, hours: 4 }])).error).toBeNull();
     expect((await jobPlan(jobId)).map((r) => [Number(r.estimated_hours), r.booking_id])).toEqual([[4, booking_id]]);
     expect((await adminClient().from("machine_bookings").select("estimated_hours, start_at").eq("id", booking_id!).single()).data).toMatchObject({ estimated_hours: 4 });
-    expect(new Date((await adminClient().from("machine_bookings").select("start_at").eq("id", booking_id!).single()).data!.start_at).toISOString()).toBe("2026-12-15T08:00:00.000Z");
+    expect(new Date((await adminClient().from("machine_bookings").select("start_at").eq("id", booking_id!).single()).data!.start_at).toISOString()).toBe("2028-01-11T08:00:00.000Z");
     // Removed on the schedule: the row stays, unlinked, with its hours; an edit here then books nothing until a start is given.
     expect((await as.office.rpc("delete_machine_booking", { p_id: booking_id })).error).toBeNull();
     expect((await jobPlan(jobId)).map((r) => [Number(r.estimated_hours), r.booking_id])).toEqual([[4, null]]);
@@ -489,7 +489,7 @@ describe("two edits at the same moment", () => {
   it("asking for the same machine and time on two jobs: exactly one is booked, the other is refused as a clash", async () => {
     const a = await convertedJob();
     const b = await convertedJob();
-    const AT = "2026-12-10T08:00:00Z";
+    const AT = "2028-01-06T08:00:00Z";
     const [ra, rb] = await Promise.all([
       setJob(as.admin, a.jobId, [{ machine_id: lathe, hours: 3, start_at: AT }]),
       setJob(as.office, b.jobId, [{ machine_id: lathe, hours: 3, start_at: AT }]),

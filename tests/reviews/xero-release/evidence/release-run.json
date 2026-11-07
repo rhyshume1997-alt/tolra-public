@@ -1,0 +1,2270 @@
+{
+  "recordedAt": "2026-11-05T15:55:59.793Z",
+  "subject": "e42d927383513d1b98ce9cfca444884475622e2f",
+  "database": "xero_verify_2e464375cb344ad894809cd79daa9597",
+  "server": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit",
+  "events": [
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/000_base_schema.sql",
+      "sha256": "7443c9b4929dd24d088d521d875d0b252fb0cc175ec7fdc5f19c332e04dae503",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/001_customers_suppliers_quotes.sql",
+      "sha256": "86214d6ecdbeccfd9f5f8cc76516f06bfaeba7f95b36d8d2b3b10392f1753b37",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/002_job_worksheet.sql",
+      "sha256": "81a67e08e81452d6eedd19ba595f041ed2dc97b0ce77f1db6c6d96bd6d6a2913",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/003_machine_schedule.sql",
+      "sha256": "6e5d14f4bebe0323d60a70925c7d3cb35a6476c210610ed4d90881382eea2d6e",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/004_organization_settings.sql",
+      "sha256": "102509eda0e08c478f28ac95372ffc6ef6f42059b40890b3d13ef7789cffbfba",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/005_document_fields.sql",
+      "sha256": "16a2a8492b29b7ebd758952f868f26cc5410255bcb2a98ef0bac87babf0f01e1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/006_production_hardening.sql",
+      "sha256": "0445209fc1d0dbc45cf79dbc6a60493fcbf6cd5e2b1facab4c6c468ccf970b0d",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/007_tenant_onboarding.sql",
+      "sha256": "14db92f90d7014f96557f2c99dca325349a17bdfd98305ac530b45d18bf21967",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/008_org_logos.sql",
+      "sha256": "c86e6dfe3c19df008dc7aae096517f1cf003049a0020b4b71d59fa29f0d5adcb",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/009_job_values_and_profile_guard.sql",
+      "sha256": "a95330a96231f0398ae4213653cf45da941ec548588023477ae31d688c5ac4c1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/010_document_vat.sql",
+      "sha256": "dea18edc26b52af1db4bb3871692c02d52cd2768917936a7416647bb7502e069",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/011_usernames_and_login_limits.sql",
+      "sha256": "4df94c5fca57889894f107e31d741eaef56b5f451840e1be25b5d4efd8e2f5db",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/012_user_management.sql",
+      "sha256": "a5c613ee83de0db894f3c8511ac003793ad652cec82f69e65a49096c4ac2ad1a",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/013_activity_trail.sql",
+      "sha256": "ad1c52646292dc742856976a6b5b0947da11d99cb1680b618c7c83a398d67bd2",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/014_password_setup_gate.sql",
+      "sha256": "8595d1c68a7e017fc957056856a2270cf512b9c5dde90c477db2209fc2b945b6",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/015_cross_org_link_guards.sql",
+      "sha256": "73fe373e09373271f4936c77afcf2577fa36e63fc4d6b5d834247b70fdfea66d",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/016_document_economics.sql",
+      "sha256": "b64cc02de01175de7fdbc17416d985076f532fba2cb6dd6de9b657aaa8a96828",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/017_session_and_deferred_link_checks.sql",
+      "sha256": "2aeb129e9238e6a7a7119ea4fe9ce4a9f0a6d9ead9439dbd749dc814d2681ce7",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/018_atomic_order_conversion.sql",
+      "sha256": "07694a53aecaf8a6627371ab6211d567eb8cef038c9141eeca3986f21e989355",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/019_issued_document_history.sql",
+      "sha256": "ead341ef3f7468901447df820957f88c57b2cc4e6330d58ed3e8eb2e245560c7",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/020_quote_lifecycle.sql",
+      "sha256": "4a02e702cdd3fba9a60299357697860d882235fd1cef956c34a1f4bbfd854fda",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/021_draft_quote_correction.sql",
+      "sha256": "502fad00e32d115534e62a2fec9624d205f2de1065256d5d68367bade3dbc40e",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/022_worksheet_safety.sql",
+      "sha256": "f06140b32621d8ebf06a85ec23ca0eb778770b8738d49a9b53cfde0c2e3a33a5",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/023_audit_event_rules.sql",
+      "sha256": "0cec819bf7a69fc142928d8ad896eaa70198b0e14ea217ad6aa6979e50377ab1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/024_activity_money_redaction.sql",
+      "sha256": "353ae079e583060e4f7912d1c745689e3969b0d86c151d31e4befb7ebf179a1c",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/025_job_email_quota.sql",
+      "sha256": "710da019d7e4923504a48cb7475595fded205950f1b03e6ec92cdbaa3a7e7153",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/026_delivery_note_email_record.sql",
+      "sha256": "054e64c7e0f775ed6b2fb4e6c1246ab5e5e4f7542080d831e2c207d515e09d1d",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/027_draft_issue_and_delivery.sql",
+      "sha256": "bf26d5a9e2a78dbb59ec4fddc32f43b336881524a23d4002dc2d5e93e541ef8f",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/028_record_archive.sql",
+      "sha256": "e8080632a80151a08fdc8e54bed0da83bb16fa5d788b8ef95bc9370d8384662c",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/029_job_inspection.sql",
+      "sha256": "09f5a10f6dfa0c29557c57a1e547790fa4a9d2d0c9ff4e8bb2693e5bf00e3432",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/030_vat_registration_totals.sql",
+      "sha256": "b95fe5007fa7796c73207fa5e5bcfb84db54b2686ed764210fc21952d0259cda",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/031_inbound_mail.sql",
+      "sha256": "04614a11c3de2db661f3be037a6787eb810ca6f8c58fbd711f01677fd81019ee",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/032_invoice_payments.sql",
+      "sha256": "4ccd515f569a8a902257eed22af235102cdbf92a4e0969583c5785e72695da33",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/033_prelaunch_hardening.sql",
+      "sha256": "f9c27afbd0eb0b4eb0aaf1e511ce18ea212afe885eaa0ad87f9234d187b748ac",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/034_workflow_day_one.sql",
+      "sha256": "a14b1909df3caa408068d89697a6ef32bbb53086381728046db9790d26d46f01",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/035_who_did_what.sql",
+      "sha256": "25ae2acc8bac7a45f0bbb24dac694dd5617e56c525db62e10a450a606b88a9b6",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/036_two_level_access.sql",
+      "sha256": "8deeb6fc9b22d73f2ba5ff5d69fada05fb0291f3d5d6ebd2be2586fc47b59357",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/037_rework.sql",
+      "sha256": "4ea8331b50d123734d50b48a06a4bba5409ea00703a58c544143d46cbfc7b4d8",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/038_booking_day_plan.sql",
+      "sha256": "d6df76af40f91dd612ab5c6fdf851b90ea8d7fbcf25a3576034bc637dfb88002",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/039_platform_create_organization.sql",
+      "sha256": "9ff81f2cac1b99030d618514211cd798374b153e3cb21b9b05cd9e4e9d9776b9",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/040_job_photos.sql",
+      "sha256": "d88bfab0abb009e05f9d58d7c2a49f792ca5aabf6ecba16694de129c25900cad",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/042_internal_jobs_and_machines.sql",
+      "sha256": "c09bbfc176af1864e25dbdc2e233425bec8f5fb9f3ce64d42044b3199a09e40c",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/043_sales_order_machines.sql",
+      "sha256": "54a357010ad8926870ee6bdfe73d85dc88a5c64f3040f1ca4c99428bb90352e1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/044_machine_runs.sql",
+      "sha256": "4eadb7908b0796c05ed154e082f4d1d5c8dd75b5503c6623c168b23feb28924a",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/045_job_signoff.sql",
+      "sha256": "86d50b4b50dbed2f3f9a72004447d663e4a235976a4a35c1be692f843abebad0",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/046_bench_pause.sql",
+      "sha256": "034e9fbbaad3a38c3ac5fa8a1f305e39edf51526177098e7b04f8216fa55b560",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/049_paused_machine_ack.sql",
+      "sha256": "ce5cf35c5f0e56c98b4fec07906c96a6d2ac18aad7b08d080089dfd3bf20435d",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/050_attendance.sql",
+      "sha256": "f1d34165d0ad7eeb7bbacc4ee1008db4f930d026f152b689c8d64ee9153632ec",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/051_job_labour.sql",
+      "sha256": "32467a8282ff6764ced2959fa5c2c8c30485c2602372cb92d356b59235673344",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/052_time_week_review.sql",
+      "sha256": "7b3635e9c022cb11cdc310471b7d77831aceed38001466156df6bd99c6638a80",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/058_quote_to_job.sql",
+      "sha256": "3cd75054492793b52f36c86e07473b7e1261b2552fe18bdacec3b0009f865d80",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/059_delivery_note_auto_invoice.sql",
+      "sha256": "7216eb008837f292bc948905fc33040c97272bfebb1614b98bb5160d8182edb8",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/061_auto_book_next_free.sql",
+      "sha256": "aa81bdbf669e7a7f69f4f59ba4d33a2c299dcce22e8c6da3d2ddd8a81ba3f3c9",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/064_booking_run_identity.sql",
+      "sha256": "e3f77011eddb3bdf399378f001eda8f6aa8cedfb49e4e51e8b6aa6c749a8e05c",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/065_admin_mfa_onboarding.sql",
+      "sha256": "7215cc99344773e2ba952e2e8cdb2e24dfd250b3f9f09fc9e2823d3b5573bbf1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/066_company_access.sql",
+      "sha256": "73ae3d4500cbe2dc849f0e65cf6e228c6852095dc47f5cb2030125942dae2dee",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/067_document_attachments.sql",
+      "sha256": "a8f3c0d10879534018eb9d6a9fb695e33589ddd2bd9996789233be0a804992c4",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/068_quote_versions.sql",
+      "sha256": "b4a8f81a5b44c49da64197c97d6c4eeda63f69d14bf8279fa527202a6817631e",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/072_customer_signoff.sql",
+      "sha256": "a49e253c8abc9fd02e9fd59120717864a3187f0916023f61a2972953c8656a81",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/073_invoice_screen.sql",
+      "sha256": "d7e498cca63b35e8d661a9f0c1f59e0f3d517fc21b3c961b2a58a0272f62e2ed",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/074_time_day_flags.sql",
+      "sha256": "2d33e49e21821c909fe3ead715d5e167459fbf5dc12ced46a68cc8aa07ce8405",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/075_site_network_and_sync_rejections.sql",
+      "sha256": "8d0ed22dc5ad68eed347c2d192714b2f5d65d29f22bae80b7ab6c4051b4eb213",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/076_data_import.sql",
+      "sha256": "b16187da99a474f2351fe57df6d15c8d93723b359a438a9b8f9166e895b8f6ab",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/077_audit_hash_index_lookup.sql",
+      "sha256": "d3404a4027ec12077fd3d563493007f374da8789689bb9439bb9d2225e779111",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/078_ip_retention_and_crd_numbers.sql",
+      "sha256": "9d7c09fc3863dc3b4fa87082603d9c10b25e1c922bcc365f8bdc930862719768",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/079_import_safeupdate.sql",
+      "sha256": "4cd4a44c584d3a7cb4390bd37aec6cf43ca1884149a524d615be5e7d3978a964",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/080_activity_labels_job_work.sql",
+      "sha256": "a4f977cad01693565b001098a6e9b9b9d6b2c54ab46bb8469197cc5a6a36aad0",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/081_job_flow_release.sql",
+      "sha256": "859191d0661abced7ee089471b112a3c5b93449dd4a521dc3653c63dc95e491f",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/082_traceability_records_suppliers.sql",
+      "sha256": "845ba3f3a26d00990cc04ef09be3aef198cfca86d4f378c147019446215bc33c",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/083_authorised_inspectors.sql",
+      "sha256": "07ad819982cf1c13bb7eecb69f371c3deacaf9a3c67feb0f273b609c3999b77d",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/084_integrations_xero.sql",
+      "sha256": "5cf83d7e6bf07488c7ccbb13225c30b4e09068073a1091dc8e11622a5df67ace",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/085_data_import_credit_delivery.sql",
+      "sha256": "2c79973736310c870fa7f219cd96385f354641fa3d87c84f63d94bb0de6b4bd3",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/088_converted_sales_order_guard.sql",
+      "sha256": "a5df8523f617e4e2239c5343f22a6fb3d2f61031386292bce98e4fa01c7ed9fc",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/089_invoice_receipt_guard.sql",
+      "sha256": "0d703e4e14eaf6ca70e18561ea5d1b4a1f83e046f63da234480bc40a4296c903",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/090_attendance_expected_company.sql",
+      "sha256": "a045e72c7f3f4009e09a9b48cc4b56ce42d77190da5f2d1443e245768e98b760",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/091_invoice_issue_guard.sql",
+      "sha256": "59b5261c1741213068314c35dba2c3945532a4fed230c1bdd9f43bf7cab04cd5",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/092_release_ends_session.sql",
+      "sha256": "427de0bc51f4307e62c94020008691abbecf9e2460b5bab4540f2a9c84e82863",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/093_protect_platform_owner_login.sql",
+      "sha256": "64ee8f51c15e11c8d216458f4f8ad7352d5ac9972b0ab0a301ef709554d02fb1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/094_activity_one_row_per_change.sql",
+      "sha256": "3989bfd4e0e10b2f882384466ecdd532bd2625a4f2601839b52a49fab0772d60",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/095_ai_finance_check_audit_events.sql",
+      "sha256": "bfc19293db0e55815ac235708c7afa6b73ab550c9e17e82b7c44fec4478cbdb9",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/099_part_despatch_invoice_quantity.sql",
+      "sha256": "6c53586e20669930e1b4426a23a4f70a43ed11793094f252f278ba1e6419f60f",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/100_customer_archive.sql",
+      "sha256": "592660c00c93449c7a220cce6b5787ed4dda688f0af2feea3afcc162236afbd7",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/101_ai_helper.sql",
+      "sha256": "80c4514d1436e56af3a0bb37de57a7668c96d0c19769d20ab113ed11f3a9e128",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/102_security_guards.sql",
+      "sha256": "dd38aef17f99ef2d1604171ea356660ed0543ce72a37281ea7fc5f5e225e05db",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/103_ai_helper_service_role.sql",
+      "sha256": "cfd411580998aa639ae39d8931675aa6347e0cbb5f9f0cdd5923bd36e2b7bf9e",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/105_invoice_write_off.sql",
+      "sha256": "279c626ac78f7230fcbfb2af4f546957d55fc91f2ce47b54114bb10bfbd8e0c0",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/106_email_templates.sql",
+      "sha256": "287ce9bcbe189dec79f9f45f19731d842db1ab6610651538e25b8a8e87592ee4",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/107_integrations_connect.sql",
+      "sha256": "7fd2822864404b205e2e7f404c63f3509b25d94b7aa965ca8cf2125dec41bfa1",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/108_email_schedules.sql",
+      "sha256": "ef31bf5e49a4fb114768d733b91d58f967ff71a84a370fcde962262e2614ac44",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/109_user_date_format.sql",
+      "sha256": "4200a53b2bf11ad1bdc92d0c01867cf0b8cae8c716930de031f88f1f4b605724",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/110_rfq_clarification_atomic.sql",
+      "sha256": "b6d35cd1625a3377d1b0d64f6717963877b9f85776922cde9137d3d5ca893a10",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/113_reopen_requests.sql",
+      "sha256": "5fa7f8a6cbfb141503fbbe1b736f0da9509ca0fc518858f8724c0b17c0d19309",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/114_clock_in_network_lock.sql",
+      "sha256": "c26c6ba570921dc6d0d6b08404df348ed071ac665a111cf7a7a450f232f388cb",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/115_browser_error_alert_budget.sql",
+      "sha256": "285213c61657a5c7494289179ef5f146239022497ace833f30e693ff2d850da8",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/116_overview_owed_snapshots.sql",
+      "sha256": "d5b603e19182b4ef7107103968e233ab81122f08692eac1bf0483b5a9c524c61",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/117_job_problems.sql",
+      "sha256": "7d1433f869f1ee9428f31cb596c66043bd4c269cde5adf25c2fb201ef90a9f68",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/118_job_part_logs.sql",
+      "sha256": "b123f92f365ada8a78a478885beee6f77018975f5e627e456f8d860a07133c5b",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/119_ban_ends_session.sql",
+      "sha256": "74cde16b42734565096ba3b61d89dceae486acdeda05246088a0ceb9ba0ec068",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/120_email_history_drafted_by_lock.sql",
+      "sha256": "6f7a2f24a596e3c35b1cc8c598bddfeb05fa6e762b2ac457a9e6b1da1a7bd142",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/121_rls_helper_speed.sql",
+      "sha256": "02784150bd33fbef6a5180d678f31e38b951974c49205ba0dfed5e8ed7de0d29",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/122_ai_helper_cap_default.sql",
+      "sha256": "ea42e00ee649615c780207138cd6509289825ce41e904f370229fe6337fe746a",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/123_quote_customer_po.sql",
+      "sha256": "abaebcb5e25e80ac76962aa2d2379e842cd53b1b5a7807718dacd31ee4ed2098",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/124_purchase_order_link.sql",
+      "sha256": "ffa005475f44836aa7e2682cfc117926cc0c629e8e11ce415911d162fb9d3f6e",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/125_inbound_email_links.sql",
+      "sha256": "a9488644207d5d44b9d2edee8e9bc80bf75e6d05b4a5f3e6e8cd1a20b66c1029",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/126_booking_time_zero_quote_guards.sql",
+      "sha256": "5ec5d3a229a2d139bca6c8d5cd17b6d21b4c2483e92bebcfa7e924c6464a2b9d",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/127_mailbox_read.sql",
+      "sha256": "b9367e525129c0a3063df03c73c568733a7c433283b0c8a18af4000710544664",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/128_workshop_network.sql",
+      "sha256": "7dd821182205428b2511650c02ada7ed204a2343902719391406eec003007787",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/129_accountant_invite.sql",
+      "sha256": "7f69b47aad1919b8dcfb078d240b342a6c7ce2ae723aaa385d270402c0e5fb28",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/131_rls_select_wrap.sql",
+      "sha256": "48ef4c6d9e15ecc61821e7ff11e8bcfa2d12c44972b44ee5f1ed0f0406b90fef",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/132_dashboard_tile_figures.sql",
+      "sha256": "060294c3a8ab39ed0bcd5aa4bfa05ed3e2ebf7dafa6fc4f47a5506bad64b85d4",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/133_ai_helper_pre_enable.sql",
+      "sha256": "fe0c49df90d48419ca0d1809508173f129d6e6609c36fa0534fa25dc16bc807e",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/134_ai_assistant.sql",
+      "sha256": "1c0f8f853f266151191b51e61bfacc970b8b8ab417f396d1df696b785b2ba5fd",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/135_job_spec_customer_po.sql",
+      "sha256": "a27f4b5d7b63b072dc0f4e887050cb3260c757400e5b4756f3582ef475779248",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/136_recent_second_step_admin_changes.sql",
+      "sha256": "866e6f709ce9b9c3397b8449c1bed769ced4a5a69c71a09d567284fad3df5bd8",
+      "ok": true
+    },
+    {
+      "kind": "baseline",
+      "file": "supabase/migrations/137_password_change_ticket.sql",
+      "sha256": "323c252599a3eb12882a1298d0cba7d9723ec1fb49b1ea8396f9bee35bdf8d6c",
+      "ok": true
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/138_chase_steps.release.sql",
+      "sha256": "beb4ee14c052829ab36d1d460e97747f16c4fd1eac92ec6f02b667e0b0f72d99",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/chase_steps_138.sql",
+      "sha256": "3ca0475b3b7d6673ce9ed29f2dc4613799cfe53e57c0b36c4d84f7349e88c95d",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "chase_functions_are_138",
+          "ok": true
+        },
+        {
+          "check_name": "chase_functions_definer_pinned_service_only",
+          "ok": true
+        },
+        {
+          "check_name": "chase_tables_row_secured",
+          "ok": true
+        },
+        {
+          "check_name": "chase_policies",
+          "ok": true
+        },
+        {
+          "check_name": "chase_sends_server_written",
+          "ok": true
+        },
+        {
+          "check_name": "chase_sends_one_per_step",
+          "ok": true
+        },
+        {
+          "check_name": "chase_guards",
+          "ok": true
+        },
+        {
+          "check_name": "email_templates_key_138",
+          "ok": true
+        },
+        {
+          "check_name": "invoice_issue_lock_is_138",
+          "ok": true
+        },
+        {
+          "check_name": "payment_claim_functions_are_138",
+          "ok": true
+        },
+        {
+          "check_name": "payment_claim_definer_pinned_granted",
+          "ok": true
+        },
+        {
+          "check_name": "payment_claim_columns",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/140_import_source_ref.release.sql",
+      "sha256": "d424a2fbcdc97d42189b897a06265f0fb1b443958a1a9837570b3cbed01b4af1",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/import_source_ref_140.sql",
+      "sha256": "fbe2570ebfcde3cd3856652b61e0449179b840f2a631efd7cfd832881a78d439",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "five_columns_text_nullable",
+          "ok": true
+        },
+        {
+          "check_name": "five_checks_validated",
+          "ok": true
+        },
+        {
+          "check_name": "five_triggers_enabled",
+          "ok": true
+        },
+        {
+          "check_name": "function_is_140s",
+          "ok": true
+        },
+        {
+          "check_name": "function_not_callable_from_the_api",
+          "ok": true
+        },
+        {
+          "check_name": "source_ref_well_formed",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/141_opening_wip.release.sql",
+      "sha256": "ae9f353bd85a7eefd56ae3fc0c89b6fc8ca532cf5fbda0df550171aec9bc2549",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/opening_wip_141.sql",
+      "sha256": "7125c1714ffc3c909dc2542281c66d25d1d526f41e88194c2615c29ae7eff949",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "table_present_rls_on",
+          "ok": true
+        },
+        {
+          "check_name": "columns",
+          "ok": true
+        },
+        {
+          "check_name": "one_select_policy_admin_office",
+          "ok": true
+        },
+        {
+          "check_name": "grants_read_only",
+          "ok": true
+        },
+        {
+          "check_name": "repeat_key_unique",
+          "ok": true
+        },
+        {
+          "check_name": "job_link_set_null_same_org",
+          "ok": true
+        },
+        {
+          "check_name": "audit_support_mfa_triggers",
+          "ok": true
+        },
+        {
+          "check_name": "source_is_sliq_only",
+          "ok": true
+        },
+        {
+          "check_name": "nothing_reads_it",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/143_costing_rates.release.sql",
+      "sha256": "52f28caeaabe50c5f2f7cc04ce0c26540feff82b012c7956265e8ef3747d4cb9",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/costing_rates_143.sql",
+      "sha256": "5c5ec46c3f3fabbe1a17b2bf7ef4ddbc8d1bc26c08950174acfa14013cba0838",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "three_tables_with_their_columns",
+          "ok": true
+        },
+        {
+          "check_name": "checks_validated",
+          "ok": true
+        },
+        {
+          "check_name": "unique_names_and_one_defaults_row",
+          "ok": true
+        },
+        {
+          "check_name": "rls_on",
+          "ok": true
+        },
+        {
+          "check_name": "policies_admin_office_own_company",
+          "ok": true
+        },
+        {
+          "check_name": "grants_authenticated_only",
+          "ok": true
+        },
+        {
+          "check_name": "four_triggers_each",
+          "ok": true
+        },
+        {
+          "check_name": "stamp_is_143s_not_definer",
+          "ok": true
+        },
+        {
+          "check_name": "no_helper_called_per_row",
+          "ok": true
+        },
+        {
+          "check_name": "company_delete_cascades",
+          "ok": true
+        },
+        {
+          "check_name": "no_built_in_rates",
+          "ok": true
+        },
+        {
+          "check_name": "inputs_only_no_foreign_key_into_them",
+          "ok": true
+        },
+        {
+          "check_name": "save_function_is_143s_invoker",
+          "ok": true
+        },
+        {
+          "check_name": "save_function_execute_authenticated_only",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/144_accounting_connections.release.sql",
+      "sha256": "d11cb063e367038fc76374e172770c08499ebd6cd541b10490eee8096410711b",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/accounting_connections_144.sql",
+      "sha256": "2f18baf81290e0b5de22b983dfb7b5c15a8cd058e0ace43261298c581a8e7593",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "144 ready service-only",
+          "ok": true
+        },
+        {
+          "check_name": "144 sends Xero only",
+          "ok": true
+        },
+        {
+          "check_name": "144 document trigger targets",
+          "ok": true
+        },
+        {
+          "check_name": "084 enqueue body preserved",
+          "ok": true
+        },
+        {
+          "check_name": "144 provider checks",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/145_company_setup.release.sql",
+      "sha256": "58a0560736b9a443952ee222796de030a39c439ee5c2ce47877b88ef07d59d6e",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/company_setup_145.sql",
+      "sha256": "1694fb6d41ee6c85c086f3600922179247e8fc966e461fbf799ee2314adc1a83",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "RLS enabled",
+          "ok": true
+        },
+        {
+          "check_name": "three separate policies",
+          "ok": true
+        },
+        {
+          "check_name": "anon cannot read",
+          "ok": true
+        },
+        {
+          "check_name": "authenticated cannot delete",
+          "ok": true
+        },
+        {
+          "check_name": "session API callable",
+          "ok": true
+        },
+        {
+          "check_name": "private membership helper stays private",
+          "ok": true
+        },
+        {
+          "check_name": "all clauses reject support through scoped API",
+          "ok": true
+        },
+        {
+          "check_name": "no orphan company progress",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/146_tolra_provided_ai.release.sql",
+      "sha256": "316862ac765251c6f602042dbd41fce46ce6a52b7eb73b5012575a326b84b9cd",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/tolra_provided_ai_146.sql",
+      "sha256": "67a85b0fc64775a0fab1469588dd1aaa90d12cd65da8490b8f4e60662d564f3d",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "control has RLS",
+          "passed": true
+        },
+        {
+          "check_name": "company settings have RLS",
+          "passed": true
+        },
+        {
+          "check_name": "anonymous cannot read control",
+          "passed": true
+        },
+        {
+          "check_name": "signed-in users cannot read control",
+          "passed": true
+        },
+        {
+          "check_name": "companies cannot raise allowance directly",
+          "passed": true
+        },
+        {
+          "check_name": "signed-in users cannot read Tolra key",
+          "passed": true
+        },
+        {
+          "check_name": "signed-in users cannot enable global service",
+          "passed": true
+        },
+        {
+          "check_name": "service can retrieve reserved key",
+          "passed": true
+        },
+        {
+          "check_name": "original reserve is not a public bypass",
+          "passed": true
+        },
+        {
+          "check_name": "provided reserve is not a public bypass",
+          "passed": true
+        },
+        {
+          "check_name": "companies cannot set caps",
+          "passed": true
+        },
+        {
+          "check_name": "companies cannot list other caps",
+          "passed": true
+        },
+        {
+          "check_name": "service can set caps",
+          "passed": true
+        },
+        {
+          "check_name": "1000p default",
+          "passed": true
+        },
+        {
+          "check_name": "caps bounded by 100000p",
+          "passed": true
+        },
+        {
+          "check_name": "valid encrypted form only",
+          "passed": true
+        },
+        {
+          "check_name": "allowance and ledger nonnegative",
+          "passed": true
+        },
+        {
+          "check_name": "own reserve body preserved",
+          "passed": true
+        },
+        {
+          "check_name": "assistant own reserve body preserved",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/147_job_delivery_note.release.sql",
+      "sha256": "795040328c6be99952076a0b320c9a8d2f2be7211a2b6898e0cb0b8d64bea5b3",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/job_delivery_note_147.sql",
+      "sha256": "e8866233169863a61cd88cf42d6cb59114685da6942d85943106f9b05288877b",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "create_job_delivery_note is security definer with a pinned search path",
+          "ok": true
+        },
+        {
+          "check_name": "authenticated may call it; anon and PUBLIC may not",
+          "ok": true
+        },
+        {
+          "check_name": "it checks the role, the second step and the release before numbering",
+          "ok": true
+        },
+        {
+          "check_name": "request key column and per-company unique index",
+          "ok": true
+        },
+        {
+          "check_name": "request key guard trigger enabled on request_id and request_hash, not callable by browser roles",
+          "ok": true
+        },
+        {
+          "check_name": "request hash column (a changed retry is refused, an identical one replays)",
+          "ok": true
+        },
+        {
+          "check_name": "ambiguous customer names refused (jobs carry no customer key)",
+          "ok": true
+        },
+        {
+          "check_name": "numbering guard enabled: insert and number change, security definer, pinned search path, not callable by browser roles",
+          "ok": true
+        },
+        {
+          "check_name": "hold table: row security on, no browser access, one row per company at most",
+          "ok": true
+        },
+        {
+          "check_name": "the no-order function checks the hold before numbering",
+          "ok": true
+        },
+        {
+          "check_name": "release gate still on delivery notes (inspection must pass unless an admin releases early)",
+          "ok": true
+        },
+        {
+          "check_name": "link guard still on delivery notes",
+          "ok": true
+        },
+        {
+          "check_name": "same-company triggers on job_id and customer_id",
+          "ok": true
+        },
+        {
+          "check_name": "row audit still on delivery notes",
+          "ok": true
+        },
+        {
+          "check_name": "row security on delivery notes and items",
+          "ok": true
+        },
+        {
+          "check_name": "no note links a job or customer of another company",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/149_xero_launch_hold.release.sql",
+      "sha256": "c162c53a7f1b9fbb9f8ddba3e8a8f525a0c00e6a504c3685e1717a74a5926a15",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/xero_launch_hold_149.sql",
+      "sha256": "fa95a29e0e0b67b1f98f2b5de2dda8744e717b561058ce7c65447f358e4dfb43",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "hold table: row security on, no grant to PUBLIC, anon, authenticated or service_role",
+          "ok": true
+        },
+        {
+          "check_name": "off by default: the enabled column is NOT NULL with default false",
+          "ok": true
+        },
+        {
+          "check_name": "install and connecting never switch a company on: every row that is on was turned on by the admin function (an actor, reason admin)",
+          "ok": true
+        },
+        {
+          "check_name": "the gate is a security definer with a pinned search path, for the service role only",
+          "ok": true
+        },
+        {
+          "check_name": "the gate says on only for a row that is on AND a connected connection (company by company)",
+          "ok": true
+        },
+        {
+          "check_name": "the sweep list is for the service role only and holds on-and-connected companies only",
+          "ok": true
+        },
+        {
+          "check_name": "the switch function: signed-in admin of the company, never a support session, second step, connected and mapped before ON, audited",
+          "ok": true
+        },
+        {
+          "check_name": "the status function answers an admin of the company only, never anon",
+          "ok": true
+        },
+        {
+          "check_name": "the claim refuses a held company BEFORE it changes any row (after the connection status answer)",
+          "ok": true
+        },
+        {
+          "check_name": "the retry refuses a held company after finding the company's own row (a foreign id stays not found)",
+          "ok": true
+        },
+        {
+          "check_name": "nothing refuses a result write: no trigger of the switch on the send queue, and recording a result does not consult it",
+          "ok": true
+        },
+        {
+          "check_name": "a connection change puts the company back off: row trigger on insert, update and delete, no API role may call its function",
+          "ok": true
+        },
+        {
+          "check_name": "the reset covers a reconnect or fresh consent (connected_at), another organisation (tenant), a status change and a deleted row",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "apply",
+      "file": "supabase/release/150_ai_cap_key_off.release.sql",
+      "sha256": "18fdc9a57d954b8502e006e7206c60cc19d44df394b60792acf1facae838eefa",
+      "ok": true
+    },
+    {
+      "kind": "verify",
+      "file": "supabase/verify/ai_cap_key_off_150.sql",
+      "sha256": "dbe7d1473caaaf031944af050b5745ae0c2011723924156564772411acb2459f",
+      "ok": true,
+      "rows": [
+        {
+          "check_name": "own-key cap defaults to 1000p on new rows",
+          "ok": true
+        },
+        {
+          "check_name": "provided AI cap still defaults to 1000p per company",
+          "ok": true
+        },
+        {
+          "check_name": "every stored cap is still inside 0 to 100000 (101 check)",
+          "ok": true
+        },
+        {
+          "check_name": "the status fallback is 150's (a company with no row reads 1000, none reads 500), stable, definer, pinned, not callable by signed-in users",
+          "ok": true
+        },
+        {
+          "check_name": "ai_helper_set_key is 150's, definer, pinned, signed-in only (anon and PUBLIC may not)",
+          "ok": true
+        },
+        {
+          "check_name": "a key save, replacement or removal runs the force-off after it has written, in the same function",
+          "ok": true
+        },
+        {
+          "check_name": "the force-off is internal: no PUBLIC, anon, signed-in or service role may run it; it switches roundup, rfq, assistant, finance check and the Tolra mode off and audits it",
+          "ok": true
+        },
+        {
+          "check_name": "ai_helper_tolra_configure is 150's; owner service only (signed-in users and anon may not); a replaced platform key switches the platform off",
+          "ok": true
+        },
+        {
+          "check_name": "signed-in users still cannot write the AI tables directly",
+          "ok": true
+        },
+        {
+          "check_name": "every force-off audit row carries only codes and booleans (reason, scope, was_on flags, source), no key and no text",
+          "ok": true
+        },
+        {
+          "check_name": "info: 0 existing ai_helper_settings rows carry 500 (150 leaves every existing cap as it was)",
+          "ok": true
+        }
+      ]
+    },
+    {
+      "kind": "final-preflight",
+      "ok": true,
+      "rows": [
+        {
+          "check": "postgres version",
+          "value": "17.6",
+          "expected": "17.x expected (local tests ran on 17.6); any other major: stop and report"
+        },
+        {
+          "check": "connected as",
+          "value": "xero_test (superuser true, createrole true)",
+          "expected": "postgres; createrole true"
+        },
+        {
+          "check": "017 needs: may change authenticator settings",
+          "value": "true",
+          "expected": "true"
+        },
+        {
+          "check": "017 needs: may read auth.sessions",
+          "value": "true",
+          "expected": "true"
+        },
+        {
+          "check": "017 needs: auth.sessions has id, user_id, not_after",
+          "value": "3",
+          "expected": "3"
+        },
+        {
+          "check": "existing PostgREST request hooks",
+          "value": "role authenticator: public.check_request_session",
+          "expected": "none (before 017) or only public.check_request_session (after). Anything else: stop, 017 will refuse until both checks are combined"
+        },
+        {
+          "check": "all pgrst.* settings in the database",
+          "value": "pgrst.db_pre_request=public.check_request_session",
+          "expected": "record for the release notes"
+        },
+        {
+          "check": "migration history table",
+          "value": "absent (migrations were applied by hand; use the markers below)",
+          "expected": "informational"
+        },
+        {
+          "check": "036 needs: may reference auth.sessions",
+          "value": "true",
+          "expected": "true"
+        },
+        {
+          "check": "040 needs: may read storage.objects past its row rules (finalise_job_photo checks the stored object)",
+          "value": "true",
+          "expected": "true"
+        },
+        {
+          "check": "065 needs: may read auth.mfa_factors (who has set up an authenticator app)",
+          "value": "true",
+          "expected": "true"
+        },
+        {
+          "check": "077 needs: audit_log_org_created_idx is the valid (organization_id, created_at DESC) index",
+          "value": "true",
+          "expected": "true (false: 077 would build it inside its transaction, holding audit writes for the build; RELEASE.md 077)"
+        },
+        {
+          "check": "077 needs: security_audit.set_audit_hash is 006's (or already 077's)",
+          "value": "077",
+          "expected": "006 before 077, 077 after (other: stop, 077 refuses to replace it)"
+        },
+        {
+          "check": "078: audit rows already holding a clock-in address (075 check rows audited before 078; never rewritten)",
+          "value": "0",
+          "expected": "0 (the check was never switched on). More than 0: those copies stay in the hash-chained log for good; RELEASE.md 078, tell Rhys"
+        },
+        {
+          "check": "078: check rows holding an address (078 moves those under 30 days old and clears the rest)",
+          "value": "0",
+          "expected": "0 before 078 normally (check off by default); 0 after 078 always"
+        },
+        {
+          "check": "078: highest credit note number per company (the next CRD carries on above it)",
+          "value": "none",
+          "expected": "informational; JNR: after S-day seed_credit_note_number(org, 'CRD-2166') unless SliQ's credit notes are in Tolra"
+        },
+        {
+          "check": "079 needs: public.import_company_data_run is 076's (or already 079's)",
+          "value": "085 (079 kept in it)",
+          "expected": "076 before 079, 079 after (085 after 085; other: stop, 079 refuses to replace it; missing: 076 not applied)"
+        },
+        {
+          "check": "080 needs: public.org_activity is 035's and public.convert_sales_order 068's (or already 080's)",
+          "value": "094 / 135",
+          "expected": "035 / 068 before 080, 080 / 080 after (094 / 080 after 094; 094 / 135 after 135; other: stop, 080 refuses to replace it)"
+        },
+        {
+          "check": "080: jobs still described 'Converted from SO-...' whose quote has ordered lines (080 describes them by that work)",
+          "value": "0 ()",
+          "expected": "informational before 080 (JNR: at least J-0010; each gets its quote's work and one more worksheet revision); 0 () after 080"
+        },
+        {
+          "check": "081 needs: public.job_release_state is 037's and public.delivery_note_try_draft 059's (or already 081's)",
+          "value": "081 / other",
+          "expected": "037 / 059 before 081, 081 / 081 after (other: stop, 081 refuses to replace it)"
+        },
+        {
+          "check": "081: jobs by flow status (In progress, of them put back; Finished; Complete), worked out as 081's flow_status(job) does",
+          "value": "in progress 0 (put back 0), finished 0, complete 0",
+          "expected": "informational: Done on the board is Complete, Awaiting inspection is Finished, Rework is In progress put back; the same counts after 081"
+        },
+        {
+          "check": "081: draft invoices for a job that isn't Complete (they can be issued once it passes, or an admin releases it early)",
+          "value": "0 ()",
+          "expected": "informational before 081 (each such draft waits for its job); the same after"
+        },
+        {
+          "check": "081: delivery notes not sent out yet for a job that isn't Complete (they can go out once it passes, or an admin releases it early)",
+          "value": "0 ()",
+          "expected": "informational before 081 (JNR: check none is waiting to go today; a part-failed job's rest now needs an admin's early release); the same after"
+        },
+        {
+          "check": "081: jobs with more than one live draft invoice (081 makes no second one; existing ones stay as they are)",
+          "value": "0 ()",
+          "expected": "informational before and after 081"
+        },
+        {
+          "check": "082: suppliers by status (before 082 every existing supplier starts approved)",
+          "value": "none",
+          "expected": "informational; after 082: approved N (every existing supplier), then as set on the Suppliers page"
+        },
+        {
+          "check": "083: inspectors list: members ticked as inspectors / active admins not ticked (083 puts them on the list)",
+          "value": "0 / 0",
+          "expected": "informational before 083 (after 083 every admin who could record a pass is on the list: the second number is 0); n / 0 after 083"
+        },
+        {
+          "check": "084: companies connected to an accounting system (084 adds Admin > Integrations; every company starts not connected)",
+          "value": "0 connected / 0 to connect again",
+          "expected": "informational; 0 connected / 0 to connect again right after 084 (an admin connects each company; nothing is sent until every VAT rate used is mapped)"
+        },
+        {
+          "check": "085 needs: public.import_company_data_run is 079's (or already 085's); the four credit / delivery note guards 034's / 037's (or 085's)",
+          "value": "085 / guards 0 before, 4 085's",
+          "expected": "079 / guards 4 before, 0 085's before 085; 085 / guards 0 before, 4 085's after (other or fewer: stop, 085 refuses to replace them)"
+        },
+        {
+          "check": "088: converted sales orders / of them whose value is not their job's value (088 freezes a converted order's value and VAT for signed-in users)",
+          "value": "0 / 0",
+          "expected": "informational, the same before and after 088 (a job's value can be changed on the job; 088 changes no data)"
+        },
+        {
+          "check": "089: draft invoices showing a payment, credit, refund, paid date or unverified flag / other invoices whose amount paid is not their recorded payments",
+          "value": "0 / 0",
+          "expected": "informational, the same before and after 089 (089 changes no data); expected 0 / 0. A draft in the first figure can't be issued after 089 until it is checked; the second: Record payment already refuses those"
+        },
+        {
+          "check": "091: draft invoices that already carry an invoice number / draft invoices that carry an issue date or issuer",
+          "value": "0 / 0",
+          "expected": "informational, the same before and after 091 (091 changes no data); expected 0 / 0. After 091 such a draft is issued only with Issue invoice, which gives it the next number in place of the one it carries"
+        },
+        {
+          "check": "092: open job time sessions on a job whose latest run was ended by an admin's Release machine (and nothing runs on it now)",
+          "value": "0",
+          "expected": "informational, the same before and after 092 (092 changes no data and acts only on releases after it); such a session keeps counting until the person stops it or an admin corrects it: report the figure"
+        },
+        {
+          "check": "093 needs: public.admin_set_company_access and set_member_access are 066's (or already 093's); admin_login_is_protected absent (or 093's)",
+          "value": "093 / 093 / 093",
+          "expected": "066 / 066 / absent before 093; 093 / 093 / 093 after (other: stop, 093 refuses to replace it)"
+        },
+        {
+          "check": "093 (informational): support rows whose window is over but still active / platform-owner logins with any support row",
+          "value": "0 / 0",
+          "expected": "informational, the same before and after 093 (093 changes no row: such support rows stay, and from 093 count for nothing in Admin > Users): report the figures"
+        },
+        {
+          "check": "094 needs: public.org_activity is 080's (or already 094's)",
+          "value": "094",
+          "expected": "080 before 094, 094 after (other: stop, 094 refuses to replace it)"
+        },
+        {
+          "check": "095 needs: public.audit_event_allowed is 076's and write_audit 035's (or already 095's)",
+          "value": "095 / 095",
+          "expected": "076 / 035 before 095, 095 / 095 after (other: stop, 095 refuses to replace it). 39 is 094's row"
+        },
+        {
+          "check": "099 needs: invoice_from_delivery_notes_draft 059's, job_finish_draft_invoice and delivery_note_try_draft 081's, replace_draft_invoice 073's (or already 099's)",
+          "value": "099 / 099 / 099 / 099",
+          "expected": "059 / 081 / 081 / 073 before 099, 099 / 099 / 099 / 099 after (other: stop, 099 refuses to replace it)"
+        },
+        {
+          "check": "099 (informational): live Job Finish invoices made by 081 (from 099 they count the whole order as invoiced) / all live invoices",
+          "value": "0 / 0",
+          "expected": "informational, the same before and after 099 (099 changes no invoice): report both figures"
+        },
+        {
+          "check": "100 needs: public.set_archive_state is 028's (or already 100's); customers_in_use_guard (082) present",
+          "value": "100 / guard present",
+          "expected": "028 / guard present before 100, 100 / guard present after (other or missing: stop, 100 refuses to replace it)"
+        },
+        {
+          "check": "101 needs: assert_privileged_aal, _session_membership, support_readonly_guard and the audit log (033, 036)",
+          "value": "true",
+          "expected": "true (101 replaces no existing object; its tables are new)"
+        },
+        {
+          "check": "102 needs: organization_settings_guard_nav 058's, user_profiles_guard 012's (or already 102's); admin_login_is_protected (093). Needs no 099 or 101 object",
+          "value": "102 / 102 / 093 present",
+          "expected": "058 / 012 / 093 present before 102, 102 / 102 / 093 present after (other or missing: stop, 102 refuses to replace it)"
+        },
+        {
+          "check": "103 needs: 101 applied; ai_helper_reserve and ai_helper_settle 101's (or already 103's)",
+          "value": "133 / 133",
+          "expected": "101 / 101 before 103, 103 / 103 after (133 / 133 once 133 is applied; missing: apply 101 first; other: stop, 103 refuses to replace it)"
+        },
+        {
+          "check": "113 needs: public.reopen_job is 081's (113 calls it for every reopen and replaces nothing)",
+          "value": "081",
+          "expected": "081 before and after 113 (other or missing: stop and report)"
+        },
+        {
+          "check": "107 needs: the integrations layer (084) and is_platform_admin / assert_platform_aal (036)",
+          "value": "true",
+          "expected": "true (107 replaces no existing function; it widens three provider checks to add microsoft and adds two tables)"
+        },
+        {
+          "check": "119 needs: public.session_is_active is 017's and _session_membership 036's (or already 119's); may read auth.users.banned_until",
+          "value": "119 / 121 / true",
+          "expected": "017 / 036 / true before 119, 119 / 119 / true after (119 / 121 / true once 121 is applied; other: stop, 119 refuses to replace it)"
+        },
+        {
+          "check": "119 (informational): logins banned now that still hold an active membership (their open tokens stop working when 119 is applied)",
+          "value": "0",
+          "expected": "informational: report the figure (119 changes no row; those people already cannot sign in)"
+        },
+        {
+          "check": "105 (informational): issued invoices now written off / write-offs with no WRITE_OFF_INVOICE audit row (made by a direct update before 105, or imported)",
+          "value": "0 / 0",
+          "expected": "informational, the same before and after 105 (105 changes no invoice): report both figures; from 105 a write-off is made only with Write off"
+        },
+        {
+          "check": "121 needs: public._session_membership is 119's (or already 121's)",
+          "value": "121",
+          "expected": "119 before 121, 121 after (036: apply 119 first; other: stop, 121 refuses to replace it)"
+        },
+        {
+          "check": "123 needs: quote_lifecycle_guard 076's, create_sales_order_from_quote and revise_quote 068's (or already 123's)",
+          "value": "123 / 123 / 123",
+          "expected": "076 / 068 / 068 before 123, 123 / 123 / 123 after (other: stop, 123 refuses to replace it)"
+        },
+        {
+          "check": "124 needs: purchase_orders, quotes, jobs and enforce_same_org_parent; public.purchase_order_issue_lock is 076's (or already 124's)",
+          "value": "true / 124",
+          "expected": "true / 076 before 124, true / 124 after (other: stop, 124 refuses to replace it)"
+        },
+        {
+          "check": "133 needs: public.ai_helper_reserve and ai_helper_settle are 103's (or already 133's)",
+          "value": "133 / 133",
+          "expected": "103 / 103 before 133, 133 / 133 after (other: stop, 133 refuses to replace it)"
+        },
+        {
+          "check": "134 needs: 101 and 103 applied (the AI helper tables and caller check; settle the service role's only), then 133's reserve, settle and purge",
+          "value": "true / 133 / 133 / 133",
+          "expected": "true / 103 / 103 / missing before 133; true / 133 / 133 / 133 after 133 and after 134 (false or other: stop, 134 refuses to apply)"
+        },
+        {
+          "check": "136 needs: organizations.require_admin_mfa (033), organization_members.support (036), is_api_role and assert_privileged_aal, and set_member_access / admin_set_company_access as 093 left them",
+          "value": "true / 093 / 093",
+          "expected": "true / 093 / 093 before 136 and after (false or other: stop, 136 refuses to apply)"
+        },
+        {
+          "check": "137 needs: may create a trigger on auth.users (as 007 / 012); auth.users has the 5 columns it reads; stored passwords in Auth's encrypted form; stored passwords that are not bcrypt cost 10 (information); the trigger password_change_ticket on auth.users (none, 137, no-op after the rollback, other)",
+          "value": "true / 5 / 0 / 0 / 137",
+          "expected": "true / 5 / 0 / any number / none before 137, 137 after it, no-op after its rollback (false, not 5, encrypted above 0 or other: stop, 137 refuses to apply)"
+        },
+        {
+          "check": "marker 013 activity trail",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 014 password set-up gate",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 015 same-company link triggers",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 016 document line checks",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 017 session check + deferred links",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 018 atomic order conversion",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 019 issued document history",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 020 quote lifecycle",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 021 draft quote correction",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 022 worksheet safety",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 023 audit event rules",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 024 activity money redaction",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 025 job e-mail quota",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 026 delivery note e-mail record",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 027 drafts, issue, delivery",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 028 archive (never delete)",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 029 job inspection step",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 030 totals follow VAT registration",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 031 inbound mail",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 032 invoice part payments",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 033 pre-launch hardening",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 034 workflow day-one gaps",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 035 who did what",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 036 two-level access",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 037 failed inspection and rework",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 038 booking day plan",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 039 platform new company audited",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 040 job photos",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 042 internal jobs and machines",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 043 sales order machines",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 044 machine runs",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 045 job sign-off",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 046 bench pause",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 049 paused-machine acknowledgement",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 050 attendance",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 051 job labour",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 052 weekly review and approval",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 058 quote to job",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 059 delivery note auto invoice",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 061 auto book next free slot",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 064 booking run identity",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 065 admin MFA onboarding",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 066 company access",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 067 document attachments",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 068 quote versions",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 072 customer sign-off",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 073 invoice screen",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 074 day flags on the job sheet",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 075 site network, refused sync",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 076 data import",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 077 audit hash index lookup",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 078 ip retention, CRD numbers",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 079 import under pg-safeupdate",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 080 activity labels, job work",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 081 job flow and release",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 082 traceability, records, suppliers",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 083 authorised inspectors",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 084 integrations (Xero)",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 085 import: credit and delivery notes",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 088 converted sales order guard",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 089 invoice receipt guard",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 090 clock action in its own company",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 091 invoice issue guard",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 092 release ends job time",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 093 platform owner login protected",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 094 activity one row per change",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 095 finance check audit events",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 099 part despatch invoice quantity",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 100 customer archive",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 101 ai helper",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 102 security guards",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 103 ai helper service role",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 105 invoice write-off",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 106 email templates",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 107 integrations connect",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 108 email schedules",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 109 user date format",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 110 rfq clarification in one step",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 113 reopen sign-off",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 114 clock-in network lock",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 115 browser error alert budget",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 116 overview owed snapshots",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 117 job problems",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 118 job part logs",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 119 ban ends session",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 120 email history drafted_by lock",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 121 rls helper speed",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 122 ai helper cap default",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 123 quote customer po",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 124 purchase order link",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 125 inbound email links",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 126 booking time zero quote guards",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 127 mailbox read",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 128 workshop network",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 129 accountant invite",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 131 rls select wrap",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 132 dashboard tile figures",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 133 ai helper pre enable",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 134 ai assistant",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 135 job spec customer po",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 136 recent second step",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 137 password change ticket",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 138 chase steps",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 140 import source ref",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 141 opening wip",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 143 costing rates",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "marker 144 accounting connections",
+          "value": "applied",
+          "expected": "before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied"
+        },
+        {
+          "check": "post-144 marker 145 company_setup",
+          "value": "applied",
+          "expected": "One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first."
+        },
+        {
+          "check": "post-144 marker 146 tolra_provided_ai",
+          "value": "applied",
+          "expected": "One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first."
+        },
+        {
+          "check": "post-144 marker 147 job_delivery_note",
+          "value": "applied",
+          "expected": "One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first."
+        },
+        {
+          "check": "post-144 marker 149 xero_launch_hold",
+          "value": "applied",
+          "expected": "One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first."
+        },
+        {
+          "check": "post-144 marker 150 ai_cap_key_off",
+          "value": "applied",
+          "expected": "One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 149 Xero launch hold before 150 AI cap and key-off; all applied before go-live. Baseline replay intentionally runs first."
+        },
+        {
+          "check": "proposal file supabase/proposals/a150_ai_cap_key_off.sql",
+          "value": "post-144 release 150; apply only after 149",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/builder2_atomic_settings.rollback.sql",
+          "value": "rollback only; never forward release input",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/builder2_chase_settings_atomic.sql",
+          "value": "separate chase settings release decision; requires 138; browser fixture is not production packaging",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/builder2_costing_settings_atomic.sql",
+          "value": "superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/c17_job_delivery_note.sql",
+          "value": "post-144 release 147; apply only after 146",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/n2_tolra_provided_ai.sql",
+          "value": "post-144 release 146; apply only after 145",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/n5_company_setup.sql",
+          "value": "post-144 release 145; apply only after 144",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        },
+        {
+          "check": "proposal file supabase/proposals/x149_xero_launch_hold.sql",
+          "value": "post-144 release 149; apply only after 147",
+          "expected": "Explicitly accounted for; no proposal runs merely because preflight is read."
+        }
+      ]
+    },
+    {
+      "kind": "149-database-tests",
+      "ok": true,
+      "status": 0,
+      "stdout": "JSON report written to /workspace/work/xero-off-release-verification/tests/reviews/xero-release/evidence/database.json\n",
+      "stderr": "\u001b[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\u001b[39m\n"
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/150_ai_cap_key_off.rollback.sql",
+      "sha256": "d5250033ace9c884b5493f90390d9c7f6ba6055d64e8cabcda051de89d25ebc0",
+      "ok": true
+    },
+    {
+      "kind": "149-held-company-rollback-refusal",
+      "ok": true,
+      "message": "149 rollback refused: a connected Xero company is still held (off); rolling back lets it send. SET tolra.x149_accept_old_sending = 'yes' first if that is accepted."
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/149_xero_launch_hold.rollback.sql",
+      "sha256": "1d8852fda3435c6acd6fa52edb4bab166bb10c25f7667f25a91a381eb09c5a37",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/147_job_delivery_note.rollback.sql",
+      "sha256": "f600cae91c030b6c0f9c0ba93c2459c44f0a2c4058ef4d62fb176427e41254ee",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/146_tolra_provided_ai.rollback.sql",
+      "sha256": "37464a6daba9a0a881526f2ff10ff984398a721ce1fa8d38b5b517a39e0b8b0b",
+      "ok": true
+    },
+    {
+      "kind": "146-reapply-after-rollback-refusal",
+      "ok": true,
+      "message": "column \"key_source\" of relation \"ai_helper_requests\" already exists"
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/145_company_setup.rollback.sql",
+      "sha256": "5381d106de1ab65d91a68ce3caac24fb0d615e56b805fe34e5c36ca824872ec5",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/144_accounting_connections.rollback.sql",
+      "sha256": "d3cd6f0d101f66769cd90d079b282e9ae55d0877f20a919f6363e0c01e565d8c",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/143_costing_rates.rollback.sql",
+      "sha256": "bc70451d2659f732e9a5e22a97af6b1d5fc95f45b84229834727491efef09336",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/141_opening_wip.rollback.sql",
+      "sha256": "d7846d089404289066380118c8cbf0ef0cd9d2366a6dd44b181fae291a232406",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/140_import_source_ref.rollback.sql",
+      "sha256": "32a561cfc03667a5fb04c152c4209f25263d01a2d05487450d1134a6e20cac69",
+      "ok": true
+    },
+    {
+      "kind": "rollback",
+      "file": "supabase/release/138_chase_steps.rollback.sql",
+      "sha256": "9bb52738a9395713c7700f7dcdfcb479c931bb4f68acfde58efbcf8cf75100af",
+      "ok": true
+    },
+    {
+      "kind": "post-rollback-catalogue-difference",
+      "baselineCount": 1701,
+      "restoredCount": 1702,
+      "added": [
+        "public.ai_helper_requests.key_source"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    {
+      "kind": "completed-reverse-rollback",
+      "ok": true,
+      "order": [
+        150,
+        149,
+        147,
+        146,
+        145,
+        144,
+        143,
+        141,
+        140,
+        138
+      ]
+    }
+  ],
+  "failed": 0
+}

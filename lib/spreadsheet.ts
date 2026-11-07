@@ -13,6 +13,8 @@
  *   date   YYYY-MM-DD text (ISO), never a locale date, so it reads the same everywhere.
  */
 
+import {toPence} from "@/lib/money";
+
 export type SheetColumnType = "text" | "number" | "money" | "date";
 
 export type SheetColumn<R> = {
@@ -33,7 +35,7 @@ function cellOf<R>(column: SheetColumn<R>, row: R): Cell | null {
     // A value that isn't a number is kept as text rather than lost.
     if (!Number.isFinite(n)) return { kind: "text", text: String(raw) };
     if (column.type === "money") {
-      const pounds = Math.round(n * 100) / 100;
+      const pounds = toPence(n) / 100;
       return { kind: "number", number: pounds, text: pounds.toFixed(2) };
     }
     return { kind: "number", number: n, text: String(n) };

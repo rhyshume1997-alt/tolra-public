@@ -1,0 +1,31 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ❯ tests/unit/b5-costing-stale-ui.test.ts (3 tests | 1 failed) 113ms
+   × quote preview agrees with the rounded unit price actually copied, preserving the separate engine estimate 19ms
+     → expected 'Price this partDescriptionMaterialSte…' to contain 'Total quote: £0.03'
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-costing-stale-ui.test.ts > quote preview agrees with the rounded unit price actually copied, preserving the separate engine estimate
+AssertionError: expected 'Price this partDescriptionMaterialSte…' to contain 'Total quote: £0.03'
+
+Expected: "Total quote: £0.03"
+Received: "Price this partDescriptionMaterialSteel barMachineMillQuantityMaterial weight kg per partSetup hours for batchCycle hours per partProgramming hours for batchMaterial: £0.01Machine: £0.00Labour: £0.00Programming: £0.00Overhead: £0.00Cost per part: £0.01Price per part: £0.01Total quote: £0.01Add as quote lineThe price is copied into the quote line as plain numbers. Changing your costing rates later does not change a quote already saved."
+
+ ❯ tests/unit/b5-costing-stale-ui.test.ts:38:28
+     36|   const add=[...host.querySelectorAll('button')].find(b=>b.textContent…
+     37|   await act(async()=>add.click());expect(onAdd).toHaveBeenCalledWith(e…
+     38|   expect(host.textContent).toContain('Total quote: £0.03');
+       |                            ^
+     39|   expect(host.textContent).toContain('costing batch estimate is £0.01'…
+     40|  }finally{await act(async()=>root.unmount());host.remove();}
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  16:35:45
+   Duration  1.11s (transform 143ms, setup 0ms, collect 302ms, tests 113ms, environment 488ms, prepare 55ms)
+
