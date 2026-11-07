@@ -20,6 +20,7 @@ const green = (): Any => ({
   ai_control: { status: "ok", rows: [{ rows: 1, enabled_rows: 0 }] },
   ai_flagged: { status: "ok", rows: [] },
   invoice_statuses: { status: "ok", rows: [{ status: "draft" }, { status: "paid" }, { status: "voided" }] },
+  email_ledger: { status: "ok", rows: [{ reserve_present: true, complete_present: true }] },
 });
 const opts = { jnrSlug: "jnr", cronSecretLength: "32", alertEmailSet: "yes" };
 const verdict = (c: Any, o: Any = opts) => decide(c, o);
@@ -28,7 +29,7 @@ describe("release readiness gate: decisions", () => {
   it("all green is GO, with one OVERALL line and one row per check", () => {
     const r = verdict(green());
     expect(r.overall).toBe("GO");
-    expect(r.checks).toHaveLength(8);
+    expect(r.checks).toHaveLength(9);
     const report = formatReport(r);
     expect(report.match(/^OVERALL: /gm)).toHaveLength(1);
     expect(report).toContain("OVERALL: GO");
@@ -73,6 +74,8 @@ describe("release readiness gate: decisions", () => {
     ["an unexpected invoice status", (c) => { c.invoice_statuses.rows.push({ status: "paid " }); }],
     ["a null invoice status", (c) => { c.invoice_statuses.rows.push({ status: "(null)" }); }],
     ["invoice statuses unreadable", (c) => { c.invoice_statuses = undefined; }],
+    ["e-mail ledger (106) missing", (c) => { c.email_ledger.rows = [{ reserve_present: false, complete_present: true }]; }],
+    ["e-mail ledger unreadable", (c) => { c.email_ledger = undefined; }],
   ];
   it.each(failing)("NO GO when %s", (_name, mutate) => {
     const c = green();
@@ -149,7 +152,7 @@ describe("release readiness gate: it can only read", () => {
   it("the shipped gate SQL and verify files are all SELECT-only", async () => {
     const { readFileSync, readdirSync } = await import("node:fs");
     const gate = splitSections(readFileSync("supabase/verify/release_readiness_gate.sql", "utf8"));
-    expect(Object.keys(gate).sort()).toEqual(["ai_control", "ai_flagged", "dln", "invoice_statuses", "mfa", "xero_hold", "xero_sends"]);
+    expect(Object.keys(gate).sort()).toEqual(["ai_control", "ai_flagged", "dln", "email_ledger", "invoice_statuses", "mfa", "xero_hold", "xero_sends"]);
     for (const s of Object.values(gate) as Array<{ sql: string }>) expect(() => assertSelectOnly(s.sql)).not.toThrow();
     for (const n of VERIFY_RELEASES) {
       const f = readdirSync("supabase/verify").find((x) => x.endsWith(`_${n}.sql`));

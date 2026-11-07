@@ -229,6 +229,15 @@ function checkInvoices(r) {
   return ok("7", name, bad.length === 0, bad.length ? `unexpected status: ${bad.join(", ")}; in use: ${seen.join(", ")}` : `in use: ${seen.length ? seen.join(", ") : "(no invoices)"}`);
 }
 
+function checkEmailLedger(r) {
+  const name = "8 e-mail send ledger (106) present";
+  if (!readable(r)) return unreadable("8", name, r);
+  const row = r.rows[0];
+  if (!row) return ok("8", name, false, "no result row");
+  const missing = ["reserve_present", "complete_present"].filter((k) => row[k] !== true).map((k) => k.replace("_present", "_company_email"));
+  return ok("8", name, missing.length === 0, missing.length ? `missing: ${missing.join(", ")}; the send route refuses to send, so do not enable e-mail sending` : "reserve_company_email and complete_company_email present");
+}
+
 /** collected: { preflight, verify, dln, mfa, vercel, xero_hold, xero_sends, ai_control, ai_flagged, invoice_statuses }. Never throws: a check that blows up is a FAIL. */
 export function decide(collected, opts = {}) {
   const c = collected ?? {};
@@ -242,6 +251,7 @@ export function decide(collected, opts = {}) {
     run("5", "5 Xero", () => checkXero(c.xero_hold, c.xero_sends)),
     run("6", "6 AI", () => checkAi(c.ai_control, c.ai_flagged)),
     run("7", "7 invoices", () => checkInvoices(c.invoice_statuses)),
+    run("8", "8 e-mail ledger", () => checkEmailLedger(c.email_ledger)),
   ];
   return { overall: checks.every((x) => x.pass) ? "GO" : "NO GO", checks };
 }
@@ -297,7 +307,7 @@ export async function collect(client, opts) {
     collected.verify[n] = !file ? { status: "missing", message: "verify file not found" } : await guarded(client, `verify ${n}`, async () => ({ status: "ok", sets: await query(client, readFileSync(join(dir, file), "utf8")) }));
   }
   await section("dln", [opts.jnrSlug ?? ""]);
-  for (const key of ["mfa", "xero_hold", "xero_sends", "ai_control", "ai_flagged", "invoice_statuses"]) await section(key);
+  for (const key of ["mfa", "xero_hold", "xero_sends", "ai_control", "ai_flagged", "invoice_statuses", "email_ledger"]) await section(key);
   const vercelPath = opts.vercelJson ?? join(ROOT, "vercel.json");
   try { collected.vercel = JSON.parse(readFileSync(vercelPath, "utf8")); } catch { collected.vercel = null; }
   return collected;

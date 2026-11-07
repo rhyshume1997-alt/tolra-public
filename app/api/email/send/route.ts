@@ -114,6 +114,8 @@ export async function POST(request: Request) {
     {
       organizationId: profile.organization_id, userId: user.id, kind: input.kind, to: to as string[], cc: cc as string[],
       subject: input.subject, text: input.text, recordType: input.kind, recordId: input.record_id, attachments, idempotencyKey: input.idempotency_key,
+      // Fail closed: without the 106 send ledger a retry could e-mail the customer twice (Graph has no idempotency header), so send nothing.
+      requireLedger: true,
     },
     { db: supabase },
   );

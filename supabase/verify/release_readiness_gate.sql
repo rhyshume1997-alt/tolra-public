@@ -52,3 +52,8 @@ ORDER BY a.created_at, 1;
 -- @section invoice_statuses
 -- 7. Every distinct invoice status in use.
 SELECT DISTINCT coalesce(status::text, '(null)') AS status FROM public.invoices ORDER BY 1;
+
+-- @section email_ledger
+-- 8. E-mail send ledger (106): the functions the send route needs before any provider call. Both must exist before Microsoft 365 / Resend sending is enabled.
+SELECT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'reserve_company_email') AS reserve_present,
+  EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname = 'complete_company_email') AS complete_present;

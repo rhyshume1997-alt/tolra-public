@@ -219,7 +219,7 @@ export async function sendCompanyEmail(input: CompanyEmailInput, deps: CompanyEm
     p_related_type: related, p_related_id: input.recordId ?? null, p_mode: provider ? "sending" : "drafted",
   });
   if (reserveError && isMissingFunction(reserveError)) {
-    if (input.requireLedger) return { ok: false, code: "provider_error", error: "The email send ledger is unavailable. Nothing was sent." };
+    if (input.requireLedger) return { ok: false, code: "provider_error", error: "E-mail sending is switched off until a database update (the send ledger, migration 106) is applied. Nothing was sent." };
     return sendWithoutLedger(input, email, provider, db, to, related);
   }
   if (reserveError) {
