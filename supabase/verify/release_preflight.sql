@@ -130,7 +130,19 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_set_finance_check')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reserve_company_email')),
     ('107 integrations connect',          to_regclass('public.integration_app_credentials') IS NOT NULL AND to_regclass('public.integration_connect_invites') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname IN ('integration_invite_redeem', 'integration_invite_store_connection'))),
+                                          -- 107's token functions in place and none of the functions only 151 has, OR (after 151) 107's token functions gone and all eleven functions of 151 present
+                                          -- (the marker's final column below also requires marker 151 for that second case). Both families, a part of 151, or neither: not applied.
+                                          AND EXISTS (SELECT 1 FROM (SELECT count(*) FILTER (WHERE t.new_only) AS n_new, count(*) AS n_all
+                                                FROM (VALUES ('public.integration_invite_create(text,text,text)', TRUE), ('public.integration_invite_code_issue(text,text)', TRUE),
+                                                      ('public.integration_invite_code_verify(text,text,text,text)', TRUE), ('public.integration_invite_refusal_log(text,text,text,uuid)', TRUE),
+                                                      ('security_audit.integration_invite_refuse(text,text,text,uuid,uuid)', TRUE),
+                                                      ('public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)', TRUE),
+                                                      ('public.integration_xero_picker_claim(text,text,integer,integer)', TRUE), ('public.integration_invite_peek(text)', FALSE),
+                                                      ('public.integration_invites_open(text)', FALSE), ('public.integration_invite_revoke(uuid)', FALSE),
+                                                      ('public.integration_oauth_consume_invite(text,text)', FALSE)) AS t(sig, new_only)
+                                                WHERE to_regprocedure(t.sig) IS NOT NULL) c
+                                                WHERE (to_regprocedure('public.integration_invite_create(text,text)') IS NOT NULL AND to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL AND c.n_new = 0)
+                                                   OR (to_regprocedure('public.integration_invite_create(text,text)') IS NULL AND to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NULL AND c.n_new = 7 AND c.n_all = 11))),
     ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
                                           AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
     ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
@@ -630,7 +642,10 @@ checks(n, check_name, value, expected) AS (
                           FROM pg_trigger t LEFT JOIN pg_proc p ON p.oid = t.tgfoid
                           WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket'), 'none'),
     'true / 5 / 0 / any number / none before 137, 137 after it, no-op after its rollback (false, not 5, encrypted above 0 or other: stop, 137 refuses to apply)'
-  UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
+  UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
+    CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
+                           OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
+         THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
   UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
