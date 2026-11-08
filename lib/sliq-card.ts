@@ -1,7 +1,11 @@
 /**
  * The SliQ go-live import card's decisions, kept pure so they are unit-tested without a browser (components/sliq-import.tsx).
  */
-import { isRunLabel, type SliqBatchResult, type SliqPreflight } from "@/lib/sliq-import-route";
+import { friendlyError } from "@/lib/friendly-error";
+import {
+  type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, SLIQ_BATCH_WEIGHT, isRunLabel, planSliqBatches, preflightTooLarge,
+  sliqPreflight, sliqRunBatches,
+} from "@/lib/sliq-import-route";
 import { ALL_ENTITIES, type Entity, type SliqMapping } from "@/lib/sliq-validate/validate";
 
 /** The run label as the database takes it (trimmed, lower case), and a message when that is not what was typed. */
@@ -103,4 +107,72 @@ export function loadCountersBefore(store: Store | null, sourceSha: string): Reco
   } catch {
     return null;
   }
+}
+
+export type CardPhase = "idle" | "checked" | "preflighted" | "importing" | "done" | "failed";
+
+/** The INV-gap override sent with every preflight and batch: on only when the admin ticked the box (strictly true), else off. */
+export const invGapOptions = (ticked: unknown): { allowInvGap: boolean } => ({ allowInvGap: ticked === true });
+
+/**
+ * After the INV-gap box changes (either way): the preflight made under the old answer no longer stands, also after a failed batch;
+ * the card goes back to "checked" and the preflight must be run again before Import.
+ */
+export function afterInvGapChange(phase: CardPhase): { phase: CardPhase; clearPreflight: true; clearFailure: boolean } {
+  const back = phase === "preflighted" || phase === "failed";
+  return { phase: back ? "checked" : phase, clearPreflight: true, clearFailure: back };
+}
+
+/** Import can start only after a clean preflight (phase "preflighted") with nothing blocking it, and never while a run is going. */
+export const canStartImport = (phase: CardPhase, blockers: string[], running: boolean) => phase === "preflighted" && blockers.length === 0 && !running;
+
+/**
+ * Where the batch plan does not carry every row of the payload (candidate 2F, final pass): per section, the rows in the batches plus
+ * the orphans the page refuses must equal the rows built from the files. Suppliers matter most: the database's reconciliation does
+ * not count them, so a plan that dropped them would otherwise pass everything. Empty when it matches.
+ */
+export function planCountProblems(payload: SliqPayload, weight = SLIQ_BATCH_WEIGHT): string[] {
+  const plan = planSliqBatches(payload, weight);
+  const out: string[] = [];
+  for (const k of ["customers", "suppliers", "invoices", "payments", "credit_notes"] as const) {
+    const planned = plan.batches.reduce((n, b) => n + (b.rows[k] ?? []).length, 0)
+      + (k === "payments" ? plan.orphanPayments.length : k === "credit_notes" ? plan.orphanCredits.length : 0);
+    const built = (payload[k] ?? []).length;
+    if (planned !== built) out.push(`${k}: ${built} in the files but ${planned} in the import plan`);
+  }
+  return out;
+}
+
+/** The card's preflight: refused in the page when too large (nothing sent), else one call with the INV-gap answer; plain words on failure. */
+export async function runSliqPreflightStep(rpc: Rpc, payload: SliqPayload, allowInvGap: boolean): Promise<{ preflight: SliqPreflight; message?: undefined } | { preflight?: undefined; message: string }> {
+  const tooLarge = preflightTooLarge(payload);
+  if (tooLarge) return { message: tooLarge };
+  try {
+    return { preflight: await sliqPreflight(rpc, payload, invGapOptions(allowInvGap)) };
+  } catch (e) {
+    const ce = e as { code?: string; message?: string };
+    return { message: isMissingImportFunction(ce) ? MISSING_152 : isStatementTimeout(ce) ? statementTimeoutMessage("preflight") : friendlyError(e) };
+  }
+}
+
+/**
+ * The card's import from batch `startAt`: nothing is sent when the plan does not carry every row; otherwise the batches in order with
+ * the INV-gap answer, stopping at the first that fails (lib/sliq-import-route), and the failure in plain words. Never throws.
+ */
+export async function runSliqImportStep(
+  rpc: Rpc, payload: SliqPayload, label: string, startAt: number, allowInvGap: boolean, onProgress?: (p: SliqRunProgress) => void,
+  problems: string[] = planCountProblems(payload),
+): Promise<{ results: SliqBatchResult[]; failedAt: number | null; failure: string | null }> {
+  if (problems.length) return { results: [], failedAt: startAt, failure: `Nothing was sent: the import plan does not carry every row of the files (${problems.join("; ")}).` };
+  let out: Awaited<ReturnType<typeof sliqRunBatches>>;
+  try {
+    out = await sliqRunBatches(rpc, payload, label, onProgress, startAt, SLIQ_BATCH_WEIGHT, invGapOptions(allowInvGap));
+  } catch (e) {
+    return { results: [], failedAt: startAt, failure: friendlyError(e) };
+  }
+  if (out.failedAt === null) return { results: out.results, failedAt: null, failure: null };
+  const failure = out.error
+    ? (isStatementTimeout(out.error as { code?: string }) ? statementTimeoutMessage("batch") : friendlyError(out.error))
+    : (out.last?.errors ?? []).slice(0, 5).map((m) => `${m.source_row_id ?? ""} ${m.message}`).join("; ");
+  return { results: out.results, failedAt: out.failedAt, failure };
 }

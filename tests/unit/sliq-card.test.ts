@@ -163,8 +163,14 @@ describe("statement timeout (Postgres 57014; candidate 2F)", () => {
     expect(run.failedAt).toBe(0);
     expect(isStatementTimeout(run.error as { code?: string })).toBe(true);
   });
-  it("the card shows these words for the preflight, a batch and the reconciliation", () => {
+  it("the card shows these words for the preflight, a batch and the reconciliation", async () => {
+    // The preflight and the batches go through lib/sliq-card's steps (tests/unit/sliq-card-steps.test.ts pins their words); the
+    // reconciliation read is in the component.
     const src = readFileSync(path.resolve(__dirname, "../../components/sliq-import.tsx"), "utf8");
-    for (const step of ["preflight", "batch", "reconcile"]) expect(src).toContain(`statementTimeoutMessage("${step}")`);
+    expect(src).toContain(`statementTimeoutMessage("reconcile")`);
+    expect(src).toContain("runSliqPreflightStep(rpc, payload, allowInvGap)");
+    expect(src).toContain("runSliqImportStep(rpc, payload, label, startAt, allowInvGap, setProgress)");
+    const lib = readFileSync(path.resolve(__dirname, "../../lib/sliq-card.ts"), "utf8");
+    for (const step of ["preflight", "batch"]) expect(lib).toContain(`statementTimeoutMessage("${step}")`);
   });
 });

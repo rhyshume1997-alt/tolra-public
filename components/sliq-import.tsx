@@ -7,10 +7,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { friendlyError } from "@/lib/friendly-error";
 import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-build";
+import { type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, planSliqBatches } from "@/lib/sliq-import-route";
 import {
-  type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, SLIQ_BATCH_WEIGHT, planSliqBatches, preflightTooLarge, sliqPreflight, sliqRunBatches,
-} from "@/lib/sliq-import-route";
-import { MISSING_152, importBlockers, isMissingImportFunction, isStatementTimeout, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore, statementTimeoutMessage } from "@/lib/sliq-card";
+  type CardPhase, MISSING_152, afterInvGapChange, canStartImport, importBlockers, isMissingImportFunction, isStatementTimeout, loadCountersBefore, matchFiles,
+  normaliseRunLabel, planCountProblems, recordsCreated, runSliqImportStep, runSliqPreflightStep, saveCountersBefore, statementTimeoutMessage,
+} from "@/lib/sliq-card";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { type DbRow, type ReconcileReport, reconcile } from "@/lib/sliq-reconcile/reconcile";
 import { renderSigningSheet } from "@/lib/sliq-reconcile/sheet";
@@ -33,7 +34,7 @@ async function reconcileRows(): Promise<DbRow[]> {
 const session = () => (typeof window !== "undefined" ? window.sessionStorage : null);
 const counters = (rows: DbRow[]) => Object.fromEntries(rows.filter((r) => r.metric === "counter_last").map((r) => [r.key, Number(r.value)]));
 
-type Phase = "idle" | "checked" | "preflighted" | "importing" | "done" | "failed";
+type Phase = CardPhase;
 
 /**
  * Admin > Data import > SliQ go-live import (release 152). The original SliQ export files and the CONFIRMED mapping are read and fully
@@ -132,9 +133,10 @@ export function SliqImport() {
     setError(null);
     setBusy(true);
     try {
-      const tooLarge = preflightTooLarge(payload);
-      if (tooLarge) throw new Error(tooLarge);
-      const p = await sliqPreflight(rpc, payload, { allowInvGap });
+      // Decisions in lib/sliq-card (unit-tested): too large is refused here and nothing is sent; the INV-gap answer is the box's.
+      const step = await runSliqPreflightStep(rpc, payload, allowInvGap);
+      if (!step.preflight) { setError(step.message); return; }
+      const p = step.preflight;
       // The counters as they are before anything is imported: the reconciliation checks every one but INV is unchanged after. Kept in
       // this tab's session storage per file set and run label, so a reload before the reconciliation does not lose them.
       // Kept for the file set the first time only: a preflight after (part of) the import keeps the counters from before it.
@@ -143,8 +145,9 @@ export function SliqImport() {
       setPreflight(p);
       setPhase("preflighted");
     } catch (e) {
+      // Only the counters read (the reconciliation function) can fail here: the preflight's own failures are handled above.
       const ce = e as { code?: string; message?: string };
-      setError(isMissingImportFunction(ce) ? MISSING_152 : isStatementTimeout(ce) ? statementTimeoutMessage("preflight") : friendlyError(e));
+      setError(isMissingImportFunction(ce) ? MISSING_152 : isStatementTimeout(ce) ? statementTimeoutMessage("reconcile") : friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -159,9 +162,10 @@ export function SliqImport() {
     setFailure(null);
     // Counters before: from this page, else from this tab's storage for the same files and label (a reload after the preflight).
     if (!countersBefore) setCountersBefore(loadCountersBefore(session(), payload.source_sha256));
-    let out: Awaited<ReturnType<typeof sliqRunBatches>>;
+    let out: Awaited<ReturnType<typeof runSliqImportStep>>;
     try {
-      out = await sliqRunBatches(rpc, payload, label, setProgress, startAt, SLIQ_BATCH_WEIGHT, { allowInvGap });
+      // lib/sliq-card (unit-tested): the plan must carry every row, the INV-gap answer is the box's, stop at the first failed batch.
+      out = await runSliqImportStep(rpc, payload, label, startAt, allowInvGap, setProgress);
     } finally {
       running.current = false;
       setBusy(false);
@@ -169,8 +173,7 @@ export function SliqImport() {
     setResults((prev) => [...prev.slice(0, startAt), ...out.results]);
     if (out.failedAt === null) { setPhase("done"); setFailedAt(null); return; }
     setFailedAt(out.failedAt);
-    setFailure(out.error ? (isStatementTimeout(out.error as { code?: string }) ? statementTimeoutMessage("batch") : friendlyError(out.error))
-      : (out.last?.errors ?? []).slice(0, 5).map((m) => `${m.source_row_id ?? ""} ${m.message}`).join("; "));
+    setFailure(out.failure);
     setPhase("failed");
   }
 
@@ -194,9 +197,9 @@ export function SliqImport() {
 
   const plan = payload ? planSliqBatches(payload) : null;
   const importing = phase === "importing" || busy;
-  const blockers = importBlockers({ preflighted: phase === "preflighted" || phase === "failed", preflight, orphanPayments: plan?.orphanPayments.length ?? 0,
-    orphanCredits: plan?.orphanCredits.length ?? 0, labelValid, running: phase === "importing" });
-  const ready = phase === "preflighted" && blockers.length === 0;
+  const blockers = [...importBlockers({ preflighted: phase === "preflighted" || phase === "failed", preflight, orphanPayments: plan?.orphanPayments.length ?? 0,
+    orphanCredits: plan?.orphanCredits.length ?? 0, labelValid, running: phase === "importing" }), ...(payload ? planCountProblems(payload) : [])];
+  const ready = canStartImport(phase, blockers, importing);
   const kinds = ["customers", "suppliers", "invoices", "payments", "credit_notes"] as const;
 
   return (
@@ -226,8 +229,10 @@ export function SliqImport() {
           <input type="checkbox" checked={allowInvGap} disabled={importing} onChange={(e) => {
             // A changed allowance invalidates the preflight, also after a failed batch: run the preflight again before importing.
             setAllowInvGap(e.target.checked);
-            setPreflight(null);
-            if (phase === "preflighted" || phase === "failed") { setPhase("checked"); setFailedAt(null); setFailure(null); }
+            const next = afterInvGapChange(phase);
+            if (next.clearPreflight) setPreflight(null);
+            setPhase(next.phase);
+            if (next.clearFailure) { setFailedAt(null); setFailure(null); }
           }} />
           Invoice numbers really do jump by more than 1,000 (only tick after checking: a typo would carry the INV counter there for good)
         </label>
