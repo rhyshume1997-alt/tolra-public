@@ -256,6 +256,12 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
     parsed[e] = rows;
   }
 
+  // A file set with headers but not one data row anywhere (candidate 2F, F4): nothing to import, most likely an export cut short.
+  const read = present.map((e) => totals.entities[e]).filter((t): t is EntityTotals => t !== undefined);
+  if (read.length === present.length && read.every((t) => t.rows === 0)) {
+    err("files", null, null, "every file has its header row but no data rows: there is nothing to import. Check the export was not cut short and export again.");
+  }
+
   const fileOf = (e: Entity) => totals.entities[e]?.file ?? mapping.entities[e]!.file;
   const dateFormat = mapping.dateFormat;
 

@@ -376,6 +376,26 @@ describe("review D1 fixes (validate)", () => {
   });
 });
 
+describe("F4 (candidate 2F): a file set with headers only is refused: nothing to import", () => {
+  const HEADERS = { customers: "Code,Name\r\n", suppliers: "Code,Name\r\n", invoices: "Inv,Cust,Date,Net,VAT,Gross\r\n", payments: "Inv,Date,Amount\r\n" };
+  const NOTHING = "files:null:null:every file has its header row but no data rows: there is nothing to import. Check the export was not cut short and export again.";
+  it("every file header-only: refused with one plain reason", () => {
+    const r = run(HEADERS);
+    expect(r.ok).toBe(false);
+    expect(reasons(r)).toEqual([NOTHING]);
+  });
+  it("also with a credit notes file mapped (and header-only)", () => {
+    const m = structuredClone(MAPPING);
+    m.entities.creditNotes = { file: "credits.csv", columns: { ref: "CN", invoiceRef: "Inv", date: "Date", gross: "Gross" } };
+    const r = validateSliqExport({ files: { ...files(HEADERS), creditNotes: { name: "credits.csv", bytes: enc("CN,Inv,Date,Gross\r\n") } }, mapping: m });
+    expect(reasons(r)).toEqual([NOTHING]);
+  });
+  it("one row in any file is not 'nothing to import'", () => {
+    const r = run({ ...HEADERS, customers: "Code,Name\r\nC1,Acme\r\n" });
+    expect(reasons(r).join("|")).not.toContain("nothing to import");
+  });
+});
+
 describe("F1 (candidate 2F): a payment dated before its invoice still counts towards that invoice", () => {
   // S1001 is 120.00 dated 01/03/2026 (INVOICES); a day above 12 elsewhere keeps DD/MM unambiguous.
   it("an early payment over the total is refused on amount (and still warned about its date)", () => {
