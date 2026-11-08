@@ -10,6 +10,7 @@
  */
 
 import { DELIMITERS, decodeBytes, detectDelimiter, detectLineEnding, parseCsv, type Delimiter, type DetectedEncoding, type LineEnding } from "./csv";
+import { REF_SHAPE_MAX_LENGTH, compileRefShape } from "./ref-shape";
 import { DATE_FORMATS, parseDate, parsePence, type DateFormat } from "./values";
 
 export const ENTITIES = ["customers", "suppliers", "invoices", "payments"] as const;
@@ -33,7 +34,11 @@ export type SliqMapping = {
   /** Optional: when given, the detected delimiter/encoding must agree. */
   delimiter?: Delimiter;
   encoding?: DetectedEncoding;
-  /** Optional regex source every invoice ref must match (full match). Default: one shared non-digit prefix then digits. */
+  /**
+   * Optional shape every invoice ref must match in full (lib/sliq-validate/ref-shape.ts): literal letters, digits, space, - _ / . and
+   * \d with {n}, {n,m}, +, * or ?; not a full regular expression, so it is checked in linear time. Default: one shared non-digit
+   * prefix then digits.
+   */
   invoiceRefPattern?: string;
   /**
    * A row John has looked at and signed off: the raw date text as it is in the file and the calendar date it means (YYYY-MM-DD).
@@ -90,12 +95,8 @@ export function checkMapping(m: unknown): { mapping: SliqMapping | null; problem
   }
   if (m.delimiter !== undefined && !(DELIMITERS as readonly unknown[]).includes(m.delimiter)) problems.push("mapping.delimiter is not a supported delimiter");
   if (m.encoding !== undefined && !["utf-8", "utf-16le", "windows-1252"].includes(String(m.encoding))) problems.push("mapping.encoding is not supported");
-  if (m.invoiceRefPattern !== undefined) {
-    try {
-      new RegExp(String(m.invoiceRefPattern));
-    } catch {
-      problems.push("mapping.invoiceRefPattern is not a valid regular expression");
-    }
+  if (m.invoiceRefPattern !== undefined && compileRefShape(String(m.invoiceRefPattern)) === null) {
+    problems.push(`mapping.invoiceRefPattern is not an accepted ref shape: use only letters, digits, space, - _ / . and \\d with {n}, {n,m}, +, * or ? (at most ${REF_SHAPE_MAX_LENGTH} characters; no groups, alternation or classes)`);
   }
   const ents = isObj(m.entities) ? m.entities : null;
   if (!ents) problems.push("mapping.entities is required");
@@ -294,7 +295,7 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
     const hasNet = "net" in (mapping.entities.invoices.columns);
     const hasVat = "vat" in (mapping.entities.invoices.columns);
     const custOk = parsed.customers !== undefined;
-    const custre = mapping.invoiceRefPattern ? new RegExp(`^(?:${mapping.invoiceRefPattern})$`) : null;
+    const custre = mapping.invoiceRefPattern ? compileRefShape(mapping.invoiceRefPattern) : null;
     const prefixes = new Map<string, number>();
     for (const r of invoices) {
       checkBlank("invoices", r);

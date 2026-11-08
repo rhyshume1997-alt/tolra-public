@@ -310,6 +310,39 @@ describe("invoice ref format", () => {
     expect(run({}, m).ok).toBe(true);
     expect(run({ invoices: INVOICES + "S10031,C1,03/03/2026,1.00,0.20,1.20\n" }, m).ok).toBe(false);
   });
+  it("F2 (candidate 2F): a backtracking pattern is refused as a mapping problem, in well under a second (it took 127 s as a RegExp)", () => {
+    const hostileRef = "a".repeat(39) + "!";
+    expect(hostileRef).toHaveLength(40);
+    const t0 = performance.now();
+    const r = run({ invoices: INVOICES + `${hostileRef},C1,03/03/2026,1.00,0.20,1.20\n` }, { ...MAPPING, invoiceRefPattern: "(a+)+$" });
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(r.ok).toBe(false);
+    expect(reasons(r).join()).toContain("mapping.invoiceRefPattern is not an accepted ref shape");
+    for (const bad of ["(a+)+", "S|T", "[0-9]+", "S.*", "^S\\d+$", "S\\w+", "S\\d{0}", "S\\d{5,3}", "S\\d{1,99}", "x".repeat(101)]) {
+      expect(run({}, { ...MAPPING, invoiceRefPattern: bad }).ok, bad).toBe(false);
+    }
+  });
+  it("F2 (candidate 2F): an accepted shape is matched in linear time, even a pattern that is catastrophic as a RegExp", () => {
+    const m = { ...MAPPING, invoiceRefPattern: "\\d+\\d+\\d+\\d+\\d+\\d+\\d+\\d+\\d+\\d+" };
+    const hostileRef = "1".repeat(39) + "!";
+    const t0 = performance.now();
+    const r = run({ invoices: "Inv,Cust,Date,Net,VAT,Gross\n" + `${hostileRef},C1,01/03/2026,100.00,20.00,120.00\n1234567890,C2,02/03/2026,500.00,100.00,600.00\n`, payments: "Inv,Date,Amount\n1234567890,15/03/2026,100.00\n" }, m);
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(reasons(r)).toEqual([`invoices.csv:2:ref:invoice ref "${hostileRef}" does not match the confirmed pattern`]);
+  });
+  it("F2 (candidate 2F): the shape means what the RegExp meant for literals, \\d and its repeats (whole ref, case-sensitive)", () => {
+    const shape = (p: string, ref: string) => run({ invoices: `Inv,Cust,Date,Net,VAT,Gross\n${ref},C1,15/03/2026,100.00,20.00,120.00\n`, payments: "Inv,Date,Amount\n" }, { ...MAPPING, invoiceRefPattern: p }).ok;
+    const cases: [string, string, boolean][] = [
+      ["S\\d{4}", "S1001", true], ["S\\d{4}", "S10011", false], ["S\\d{4}", "s1001", false], ["S\\d{4}", "XS1001", false],
+      ["INV-\\d{1,9}", "INV-1", true], ["INV-\\d{1,9}", "INV-1234567890", false], ["INV\\-\\d+", "INV-77", true], ["INV-\\d+", "INV-", false],
+      ["A/\\d{2}/\\d+", "A/26/5", true], ["A/\\d{2}/\\d+", "A/2/5", false], ["\\d{3}\\d?", "123", true], ["\\d{3}\\d?", "1234", true], ["\\d{3}\\d?", "12345", false],
+      ["X\\d*Y", "XY", true], ["X\\d*Y", "X12Y", true], ["S 1\\d", "S 12", true],
+    ];
+    for (const [p, ref, ok] of cases) {
+      expect(shape(p, ref), `${p} ${ref}`).toBe(ok);
+      if (ok !== new RegExp(`^(?:${p})$`).test(ref)) throw new Error(`shape and RegExp disagree on ${p} ${ref}`);
+    }
+  });
 });
 
 describe("review D1 fixes (validate)", () => {
