@@ -16,7 +16,8 @@
  * (slug t-<run>-...), removed afterwards by destroySyntheticWorld. Ranked with the post-144 proofs (tests/support/db-release-sequencer.ts).
  * The two proofs that need whole-database copies (restore before / after the import, and the rollback on an installed clone) are
  * in tests/local/sliq-import-152-clones.test.ts, run by hand with vitest.local.config.ts; they are not part of CI.
- * Not PostgREST: request size limits, the 8 s statement_timeout of the hosted API and its error mapping are not proved here.
+ * Not PostgREST: request size limits and the hosted API's error mapping are not proved here; the 8 s statement_timeout is applied
+ * locally (SET LOCAL) to the 6,000-record capacity test only, so hosted hardware speed is not proved either.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { Pool } from "pg";
@@ -59,11 +60,12 @@ function openPool() {
 }
 
 /** rpc(fn, namedArgs) as PostgREST would run it: one transaction, role authenticated, the caller's claims. */
-function rpcAs(sub: string | null, aal = "aal2", role = "authenticated"): Rpc {
+function rpcAs(sub: string | null, aal = "aal2", role = "authenticated", statementTimeout?: string): Rpc {
   return async (fn, args) => {
     const db = await pool.connect();
     try {
       await db.query("begin");
+      if (statementTimeout) await db.query(`set local statement_timeout = '${statementTimeout}'`);
       await db.query(`set local role ${role}`);
       if (sub) await db.query("select set_config('request.jwt.claims', $1, true), set_config('request.jwt.claim.sub', $2, true)", [JSON.stringify(claims(sub, aal)), sub]);
       const names = Object.keys(args);
@@ -764,6 +766,39 @@ describe("release 152 SliQ import route", () => {
       expect((await q<{ r: string }>("select invoice_ref as r from invoices where organization_id = $1", [o])).map((x) => x.r), existing).toEqual([existing]);
     }
   });
+
+  it("at the 6,000-record cap the preflight, every batch and the reconciliation each finish inside the hosted 8 s statement_timeout (name matching is linear)", async () => {
+    // 1,000 customers, 1 supplier, 3,000 invoices, 1,999 payments = 6,000 records. Before candidate 2F the name checks were quadratic
+    // (locally about 32 s for this preflight and 31 s for the reconciliation); each call here runs under SET LOCAL statement_timeout = 8s,
+    // so a quadratic regression fails with 57014. Hosted hardware is not proved here.
+    const { o, u } = await newCompany();
+    const enc = new TextEncoder();
+    const f = (name: string, lines: string[]) => ({ name, bytes: enc.encode(lines.join("\r\n") + "\r\n") });
+    const C = 1000, I = 3000, P = 1999;
+    const files = {
+      customers: f("customers.csv", ["Account,Name", ...Array.from({ length: C }, (_, k) => `ACC${k + 1},Capacity Customer ${k + 1} Ltd`)]),
+      suppliers: f("suppliers.csv", ["Account,Name", "SUP001,Capacity Steel Ltd"]),
+      invoices: f("invoices.csv", ["Invoice No,Account,Date,Net,VAT,Gross", ...Array.from({ length: I }, (_, k) => `INV-${1001 + k},ACC${(k % C) + 1},${String((k % 28) + 1).padStart(2, "0")}/0${(k % 9) + 1}/2026,100.00,20.00,120.00`)]),
+      payments: f("payments.csv", ["Receipt,Invoice No,Date,Amount", ...Array.from({ length: P }, (_, k) => `R${k + 1},INV-${1001 + k},${String((k % 28) + 1).padStart(2, "0")}/10/2026,60.00`)]),
+      creditNotes: f("credits.csv", ["Credit No,Invoice No,Date,Gross,Reason"]),
+    };
+    const built = await validateAndBuild(files, MAPPING);
+    expect(built.report.errors).toEqual([]);
+    const big = built.payload!;
+    expect([big.customers, big.suppliers, big.invoices, big.payments, big.credit_notes].reduce((n, list) => n + (list ?? []).length, 0)).toBe(6000);
+    const within8s = rpcAs(u, "aal2", "authenticated", "8s");
+    const pf = await sliqPreflight(within8s, big);
+    expect(pf.ok).toBe(true);
+    const run = await sliqRunBatches(within8s, big, "capacity");
+    expect(run.error?.message ?? null).toBeNull();
+    expect(run.failedAt).toBeNull();
+    const rec = await within8s("import_sliq_reconcile", {});
+    expect(rec.error).toBeNull();
+    const rows = (rec.data as { rows: DbRow[] }).rows;
+    expect(rows.find((r) => r.metric === "count" && r.key === "invoices")?.value).toBe(String(I));
+    expect(rows.filter((r) => r.metric === "customer_outstanding_pence" && r.key.startsWith("unresolved:"))).toEqual([]);
+    expect(await state(o)).toMatchObject({ customers: C, suppliers: 1, invoices: I, payments: P, paid_mismatch: 0, dup_customers: 0, dup_invoices: 0 });
+  }, 180_000);
 });
 
 /** tests/e2e/sliq-import.spec.ts's CSV and mapping, with the two invoice refs given. */

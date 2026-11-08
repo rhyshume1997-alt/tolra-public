@@ -48,7 +48,8 @@
 -- 11. Outstanding as the app has it (034): per invoice greatest(0, total - paid - credited + refunded), void / cancelled / written
 --    off / draft excluded; the excess is customer credit.
 -- 12. Limits and guards from the DB review: the preflight takes at most 6,000 records and 4 MB of JSON in one call (the whole of JNR
---    is about 4,300 records, 3.0 s locally; Supabase stops a call at 8 s), else preflight_too_large with the limit in words. The
+--    is about 4,300 records; the name checks are hash joins, linear: 6,000 records 0.7 s locally (candidate 2F; quadratic before, 32 s);
+--    Supabase stops a call at 8 s), else preflight_too_large with the limit in words. The
 --    preflight applies the same counter rule as the batch (counter_changed) so a dry run can't pass where the batch would refuse. An
 --    invoice number far above its nearest lower one (existing or in the file) by more than 1,000 is refused as inv_gap (a typo such
 --    as INV-999999999 would carry the INV counter there for good) unless the call says p_allow_inv_gap. A row already imported from
@@ -310,36 +311,50 @@ BEGIN
   JOIN _sliq_in i ON i.kind = m.kind AND i.pos = m.ord AND NOT i.mapped;
   -- A customer or supplier 076 would CREATE (its account reference is new) whose name Tolra already has: typed by hand, or imported
   -- without this map. Refused and listed, never created a second time.
+  -- (records this same run has just written are not "already in Tolra": in a commit they exist by now, under the run's new ids)
+  -- Linear: each existing name is normalised once and hash-joined to the new parties' normalised names (a per-party scan of every
+  -- customer was quadratic: about 5.5 s for one 1,000-customer batch locally).
   INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+  WITH existing AS MATERIALIZED (
+      SELECT 'customers'::TEXT AS kind, c.name, public.import_norm_name(c.name) AS nn FROM public.customers c
+      WHERE c.organization_id = current_setting('quoteflow.sliq_org')::UUID
+        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = c.id)
+      UNION ALL SELECT 'suppliers'::TEXT, s2.name, public.import_norm_name(s2.name) FROM public.suppliers s2
+      WHERE s2.organization_id = current_setting('quoteflow.sliq_org')::UUID
+        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = s2.id)),
+    one_per_name AS (SELECT DISTINCT ON (e.kind, e.nn) e.kind, e.nn, e.name FROM existing e ORDER BY e.kind, e.nn, e.name),
+    created AS MATERIALIZED (
+      SELECT p.kind, p.ord, public.import_norm_name(p.name) AS nn FROM pg_temp._imp_parties p WHERE p.action = 'create')
   SELECT p.kind, i.source_row_id, 'name',
          'Tolra already has ' || CASE p.kind WHEN 'customers' THEN 'customer' ELSE 'supplier' END || ' "' || x.name || '" (not from this import): merge or remove it, or leave this row out. Nothing in this batch was written.',
          'already_in_tolra'
-  FROM pg_temp._imp_parties p
+  FROM created p
   JOIN _sliq_in i ON i.kind = p.kind AND i.pos = p.ord AND NOT i.mapped
-  -- (records this same run has just written are not "already in Tolra": in a commit they exist by now, under the run's new ids)
-  CROSS JOIN LATERAL (SELECT c.name FROM public.customers c WHERE p.kind = 'customers' AND c.organization_id = current_setting('quoteflow.sliq_org')::UUID
-                        AND public.import_norm_name(c.name) = public.import_norm_name(p.name)
-                        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = c.id)
-                      UNION ALL SELECT s2.name FROM public.suppliers s2 WHERE p.kind = 'suppliers' AND s2.organization_id = current_setting('quoteflow.sliq_org')::UUID
-                        AND public.import_norm_name(s2.name) = public.import_norm_name(p.name)
-                        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = s2.id) LIMIT 1) x
-  WHERE p.action = 'create';
+  JOIN one_per_name x ON x.kind = p.kind AND x.nn = p.nn
+  ORDER BY p.kind, p.ord;
   -- Every invoice names exactly one customer (Tolra's own or one this file creates), by Tolra's name rule: an invoice keeps its
   -- customer as text, so a missing or ambiguous name would put the money on the wrong account.
+  -- Linear: each name is normalised once (customers, the file's new customers, invoices), then one hash join on the normalised name
+  -- (a per-invoice scan of every customer was quadratic and passed the hosted 8 s limit at JNR size).
   INSERT INTO _sliq_err (kind, source_row_id, field, message, code)
+  WITH cand AS MATERIALIZED (
+      SELECT c.id::TEXT AS t, public.import_norm_name(c.name) AS nn FROM public.customers c
+      WHERE c.organization_id = current_setting('quoteflow.sliq_org')::UUID
+        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = c.id)
+      UNION ALL SELECT 'new:' || p.ord, public.import_norm_name(p.name) FROM pg_temp._imp_parties p WHERE p.kind = 'customers' AND p.action = 'create'),
+    per_name AS (SELECT cand.nn, count(DISTINCT cand.t) AS n FROM cand GROUP BY cand.nn),
+    inv AS MATERIALIZED (
+      SELECT v.ord, v.customer, public.import_norm_name(v.customer) AS nn FROM pg_temp._imp_invoices v
+      WHERE v.action = 'create' AND v.customer IS NOT NULL)
   SELECT 'invoices', i.source_row_id, 'customer',
-         CASE WHEN r.n = 0 THEN 'Customer "' || v.customer || '" is not in Tolra or in this file.'
+         CASE WHEN coalesce(r.n, 0) = 0 THEN 'Customer "' || v.customer || '" is not in Tolra or in this file.'
               ELSE 'Customer "' || v.customer || '" matches ' || r.n || ' customers: the invoice can''t be put on one account.' END,
          'customer_unresolved'
-  FROM pg_temp._imp_invoices v
+  FROM inv v
   JOIN _sliq_in i ON i.kind = 'invoices' AND i.pos = v.ord AND NOT i.mapped
-  CROSS JOIN LATERAL (SELECT count(*) AS n FROM (
-      SELECT c.id::TEXT FROM public.customers c WHERE c.organization_id = current_setting('quoteflow.sliq_org')::UUID
-        AND public.import_norm_name(c.name) = public.import_norm_name(v.customer)
-        AND NOT EXISTS (SELECT 1 FROM pg_temp._imp_parties n WHERE n.action = 'create' AND n.new_id = c.id)
-      UNION SELECT 'new:' || p.ord FROM pg_temp._imp_parties p WHERE p.kind = 'customers' AND p.action = 'create'
-        AND public.import_norm_name(p.name) = public.import_norm_name(v.customer)) z) r
-  WHERE v.action = 'create' AND v.customer IS NOT NULL AND r.n <> 1;
+  LEFT JOIN per_name r ON r.nn = v.nn
+  WHERE coalesce(r.n, 0) <> 1
+  ORDER BY v.ord;
 END
 $$;
 REVOKE ALL ON FUNCTION public.import_sliq_collect(JSONB) FROM PUBLIC, anon, authenticated, service_role;
@@ -740,11 +755,16 @@ BEGIN
                     'name:' || public.import_norm_name(c.name)) AS k
     FROM cust c
   ),
+  -- Linear: one row per normalised name (how many customers have it, and the key when exactly one does), hash-joined to each
+  -- invoice's normalised customer name (computed once per invoice).
+  cust_by_name AS (
+    SELECT ck.nn, count(1) AS n, min(ck.k) AS k FROM cust_key ck GROUP BY ck.nn
+  ),
   inv_key AS (
-    SELECT d.id, CASE WHEN (SELECT count(1) FROM cust_key ck WHERE ck.nn = public.import_norm_name(d.customer)) = 1
-                      THEN (SELECT ck.k FROM cust_key ck WHERE ck.nn = public.import_norm_name(d.customer))
+    SELECT d.id, CASE WHEN cb.n = 1 THEN cb.k
                       ELSE 'unresolved:' || lower(btrim(coalesce(d.customer, ''))) END AS k
-    FROM inv_due d
+    FROM (SELECT d0.id, d0.customer, public.import_norm_name(d0.customer) AS nn FROM inv_due d0) d
+    LEFT JOIN cust_by_name cb ON cb.nn = d.nn
   ),
   refs AS (
     SELECT invoice_ref,
