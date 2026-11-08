@@ -376,6 +376,32 @@ describe("review D1 fixes (validate)", () => {
   });
 });
 
+describe("F1 (candidate 2F): a payment dated before its invoice still counts towards that invoice", () => {
+  // S1001 is 120.00 dated 01/03/2026 (INVOICES); a day above 12 elsewhere keeps DD/MM unambiguous.
+  it("an early payment over the total is refused on amount (and still warned about its date)", () => {
+    const r = run({ payments: "Inv,Date,Amount\nS1001,28/02/2026,500.00\nS1002,15/03/2026,100.00\n" });
+    expect(r.ok).toBe(false);
+    expect(reasons(r)).toEqual(['payments.csv:2:amount:payments for invoice "S1001" total 50000 pence, more than the invoice total 12000 pence']);
+    expect(r.warnings.map((w) => w.reason)).toContain('payment dated 2026-02-28, before its invoice "S1001" (2026-03-01)');
+  });
+  it("an early payment plus a later one over the total is refused on the later row", () => {
+    const r = run({ payments: "Inv,Date,Amount\nS1001,28/02/2026,90.00\nS1001,16/03/2026,90.00\n" });
+    expect(reasons(r)).toEqual(['payments.csv:3:amount:payments for invoice "S1001" total 18000 pence, more than the invoice total 12000 pence']);
+  });
+  it("credits plus an early payment over the total are refused on the credit's gross", () => {
+    const m = structuredClone(MAPPING);
+    m.entities.creditNotes = { file: "credits.csv", columns: { ref: "CN", invoiceRef: "Inv", date: "Date", gross: "Gross", reason: "Why" } };
+    const r = validateSliqExport({ files: { ...files({ payments: "Inv,Date,Amount\nS1001,28/02/2026,100.00\nS1002,15/03/2026,100.00\n" }),
+      creditNotes: { name: "credits.csv", bytes: enc("CN,Inv,Date,Gross,Why\nCRD-1,S1001,20/03/2026,40.00,x\n") } }, mapping: m });
+    expect(reasons(r)).toEqual(['credits.csv:2:gross:credits 4000 + payments 10000 pence for invoice "S1001" are more than its total 12000 pence (customer credit is not imported: a person must decide)']);
+  });
+  it("an early payment within the total is still fine (a warning, not an error)", () => {
+    const r = run({ payments: "Inv,Date,Amount\nS1001,28/02/2026,120.00\nS1002,15/03/2026,100.00\n" });
+    expect(r.ok).toBe(true);
+    expect(r.warnings).toHaveLength(1);
+  });
+});
+
 describe("credit notes (IMPORT-CREDIT-NOTES.md option 1)", () => {
   const withCredits = (text: string) => {
     const m = structuredClone(MAPPING);

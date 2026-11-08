@@ -383,11 +383,15 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
       if (r.v.invoiceRef !== "" && invoices) {
         const inv = invoiceTotals.get(r.v.invoiceRef.toUpperCase());
         if (!inv) err(f, r.row, "invoiceRef", `payment references invoice "${r.v.invoiceRef}" which is not in the invoices file`);
-        else if (d.ok && inv.date && d.value < inv.date) warn(f, r.row, "date", `payment dated ${d.value}, before its invoice "${r.v.invoiceRef}" (${inv.date})`);
-        else if (a && a.ok && a.value > 0) {
-          const next = (perInvoice.get(r.v.invoiceRef.toUpperCase()) ?? 0) + a.value;
-          perInvoice.set(r.v.invoiceRef.toUpperCase(), next);
-          if (next > inv.gross) err(f, r.row, "amount", `payments for invoice "${r.v.invoiceRef}" total ${next} pence, more than the invoice total ${inv.gross} pence`);
+        else {
+          // The early-date warning is separate (candidate 2F, F1): an early payment still counts towards its invoice's paid total and
+          // the overpayment and credits-over-total checks.
+          if (d.ok && inv.date && d.value < inv.date) warn(f, r.row, "date", `payment dated ${d.value}, before its invoice "${r.v.invoiceRef}" (${inv.date})`);
+          if (a && a.ok && a.value > 0) {
+            const next = (perInvoice.get(r.v.invoiceRef.toUpperCase()) ?? 0) + a.value;
+            perInvoice.set(r.v.invoiceRef.toUpperCase(), next);
+            if (next > inv.gross) err(f, r.row, "amount", `payments for invoice "${r.v.invoiceRef}" total ${next} pence, more than the invoice total ${inv.gross} pence`);
+          }
         }
       }
     }
