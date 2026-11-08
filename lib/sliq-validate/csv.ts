@@ -83,10 +83,10 @@ export function detectDelimiter(text: string): Delimiter | null {
 export type ParsedCsv = { records: string[][]; error?: string; trailingBlankRows?: number };
 
 /**
- * Parses to records (blank lines skipped). Record index + 1 is the file row number (header = row 1). Rows at the END of the file
- * whose every field is blank (",,", as Excel leaves them) are dropped and counted in trailingBlankRows (candidate 2F); a blank row
- * with data after it is kept, so the validator can refuse it and every row number stays right. The file's bytes and SHA-256 are
- * not changed by this.
+ * Parses to records. Record index + 1 is the file row number (header = row 1). Rows at the END of the file whose every field is
+ * blank (",,", as Excel leaves them, or empty lines) are dropped and counted in trailingBlankRows (candidate 2F); a blank row or an
+ * empty line with data after it is KEPT (as [""] for an empty line), so the validator refuses it at its own row number and the
+ * rows after it keep theirs. The file's bytes and SHA-256 are not changed by this.
  */
 export function parseCsv(text: string, delimiter: Delimiter): ParsedCsv {
   const records: string[][] = [];
@@ -101,7 +101,7 @@ export function parseCsv(text: string, delimiter: Delimiter): ParsedCsv {
   };
   const endRow = () => {
     endField();
-    if (!(row.length === 1 && row[0] === "")) records.push(row);
+    records.push(row);
     row = [];
   };
   for (let i = 0; i < text.length; i++) {

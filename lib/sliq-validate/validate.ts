@@ -144,6 +144,12 @@ async function sha256(b: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (x) => x.toString(16).padStart(2, "0")).join("");
 }
 
+/** U+0000 to U+0008, U+000B, U+000C, U+000E to U+001F and U+007F. */
+const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+
+/** The longest invoice ref accepted (SliQ refs are short, e.g. S1234 or INV-1234; the database's own cap is 60). */
+export const INVOICE_REF_MAX_LENGTH = 32;
+
 /** Shape of an invoice ref: its non-digit prefix and trailing digits. */
 const REF_SHAPE = /^(\D*)(\d+)$/;
 
@@ -198,6 +204,10 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
     if (mapping.encoding && mapping.encoding !== dec.encoding) {
       err(fname, null, null, `detected encoding ${dec.encoding} but the mapping says ${mapping.encoding}`);
     }
+    if (/^[ \t]*(\r\n|\r|\n)/.test(dec.text)) {
+      err(fname, 1, null, "row 1 is empty: the header must be the first row of the file");
+      continue;
+    }
     const detected = detectDelimiter(dec.text);
     const delimiter = mapping.delimiter ?? detected;
     if (!delimiter) {
@@ -215,6 +225,10 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
     const [header, ...body] = csv.records;
     if (!header) {
       err(fname, null, null, "file has no header row");
+      continue;
+    }
+    if (header.every((h) => h.trim() === "")) {
+      err(fname, 1, null, "row 1 is empty: the header must be the first row of the file");
       continue;
     }
     if (csv.trailingBlankRows) warn(fname, null, null, `${csv.trailingBlankRows} empty row${csv.trailingBlankRows === 1 ? "" : "s"} at the end of the file (every field blank, as Excel leaves them) ignored`);
@@ -255,7 +269,17 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
         return;
       }
       const v: Record<string, string> = {};
-      for (const [field, ix] of Object.entries(idx)) v[field] = rec[ix].trim();
+      let control = false;
+      for (const [field, ix] of Object.entries(idx)) {
+        v[field] = rec[ix].trim();
+        // NUL and other control characters (not tab, line feed or carriage return): the database can't store U+0000 at all and
+        // the rest are never part of a real name or number. Refused here, in words, not as "Something went wrong" later.
+        if (CONTROL_CHARS.test(v[field])) {
+          err(fname, row, field, `contains a control character (U+${v[field].codePointAt(v[field].search(CONTROL_CHARS))!.toString(16).toUpperCase().padStart(4, "0")}): remove it from the file and export again`);
+          control = true;
+        }
+      }
+      if (control) return;
       rows.push({ row, v });
     });
     parsed[e] = rows;
@@ -265,6 +289,11 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
   const read = present.map((e) => totals.entities[e]).filter((t): t is EntityTotals => t !== undefined);
   if (read.length === present.length && read.every((t) => t.rows === 0)) {
     err("files", null, null, "every file has its header row but no data rows: there is nothing to import. Check the export was not cut short and export again.");
+  } else if (totals.entities.invoices?.rows === 0 && (totals.entities.customers?.rows ?? 0) > 0) {
+    // Refused, not warned (candidate 2F, final pass): this card is the go-live import of SliQ's ledger, whose reconciliation would
+    // PASS on an all-zero invoice side, so an invoices export cut short to its header must not look like a company with no invoices.
+    // Customers on their own go in through Admin > Data import's ordinary customer import instead.
+    err(totals.entities.invoices.file, null, null, `the invoices file has its header row but no data rows, while the customers file has ${totals.entities.customers!.rows}: check the invoices export was not cut short. (To bring in customers only, use the ordinary customer import.)`);
   }
 
   const fileOf = (e: Entity) => totals.entities[e]?.file ?? mapping.entities[e]!.file;
@@ -342,7 +371,10 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
       if (custOk && r.v.customerKey !== "" && !customerKeys.has(r.v.customerKey)) {
         err(f, r.row, "customerKey", `customer "${r.v.customerKey}" is not in the customers file`);
       }
-      if (r.v.ref !== "") {
+      if (r.v.ref.length > INVOICE_REF_MAX_LENGTH) {
+        // Checked before any shape is run on it, so a long ref costs nothing (candidate 2F, final pass).
+        err(f, r.row, "ref", `invoice ref is longer than ${INVOICE_REF_MAX_LENGTH} characters`);
+      } else if (r.v.ref !== "") {
         if (custre) {
           if (!custre.test(r.v.ref)) err(f, r.row, "ref", `invoice ref "${r.v.ref}" does not match the confirmed pattern`);
         } else {
@@ -357,7 +389,7 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
     if (!custre && prefixes.size > 1) {
       const main = [...prefixes.entries()].sort((a, b) => b[1] - a[1])[0][0];
       for (const r of invoices) {
-        const m = REF_SHAPE.exec(r.v.ref);
+        const m = r.v.ref.length > INVOICE_REF_MAX_LENGTH ? null : REF_SHAPE.exec(r.v.ref);
         if (m && m[1] !== main) err(f, r.row, "ref", `invoice ref "${r.v.ref}" has prefix "${m[1]}" but most refs use "${main}"`);
       }
     }

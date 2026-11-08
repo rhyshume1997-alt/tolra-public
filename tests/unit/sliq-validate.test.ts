@@ -324,11 +324,17 @@ describe("invoice ref format", () => {
   });
   it("F2 (candidate 2F): an accepted shape is matched in linear time, even a pattern that is catastrophic as a RegExp", () => {
     const m = { ...MAPPING, invoiceRefPattern: "\\d+\\d+\\d+\\d+\\d+\\d+\\d+\\d+\\d+\\d+" };
-    const hostileRef = "1".repeat(39) + "!";
+    // 32 characters: the longest ref accepted (a 40-character one is now refused for its length before any shape runs, below).
+    const hostileRef = "1".repeat(31) + "!";
     const t0 = performance.now();
     const r = run({ invoices: "Inv,Cust,Date,Net,VAT,Gross\n" + `${hostileRef},C1,01/03/2026,100.00,20.00,120.00\n1234567890,C2,02/03/2026,500.00,100.00,600.00\n`, payments: "Inv,Date,Amount\n1234567890,15/03/2026,100.00\n" }, m);
     expect(performance.now() - t0).toBeLessThan(1000);
     expect(reasons(r)).toEqual([`invoices.csv:2:ref:invoice ref "${hostileRef}" does not match the confirmed pattern`]);
+    const long = "1".repeat(39) + "!";
+    const t1 = performance.now();
+    const r2 = run({ invoices: "Inv,Cust,Date,Net,VAT,Gross\n" + `${long},C1,01/03/2026,100.00,20.00,120.00\n1234567890,C2,02/03/2026,500.00,100.00,600.00\n`, payments: "Inv,Date,Amount\n1234567890,15/03/2026,100.00\n" }, m);
+    expect(performance.now() - t1).toBeLessThan(1000);
+    expect(reasons(r2)).toEqual(["invoices.csv:2:ref:invoice ref is longer than 32 characters"]);
   });
   it("F2 (candidate 2F): the shape means what the RegExp meant for literals, \\d and its repeats (whole ref, case-sensitive)", () => {
     const shape = (p: string, ref: string) => run({ invoices: `Inv,Cust,Date,Net,VAT,Gross\n${ref},C1,15/03/2026,100.00,20.00,120.00\n`, payments: "Inv,Date,Amount\n" }, { ...MAPPING, invoiceRefPattern: p }).ok;
