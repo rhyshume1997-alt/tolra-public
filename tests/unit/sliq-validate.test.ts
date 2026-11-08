@@ -396,6 +396,56 @@ describe("F4 (candidate 2F): a file set with headers only is refused: nothing to
   });
 });
 
+describe("blank rows (candidate 2F): Excel's trailing ',,' rows", () => {
+  it("empty rows at the end are ignored with a warning; the counts, totals and hash are the file's", () => {
+    const text = "\uFEFFInv,Date,Amount\r\nS1001,05/03/2026,120.00\r\nS1002,15/03/2026,100.00\r\n,,\r\n , ,\r\n,,\r\n";
+    const r = run({ payments: text });
+    expect(r.errors).toEqual([]);
+    expect(r.ok).toBe(true);
+    expect(r.totals.entities.payments?.rows).toBe(2);
+    expect(r.totals.entities.payments?.moneyPence).toEqual({ amount: 22000 });
+    expect(r.totals.entities.payments?.sha256).toBe(createHash("sha256").update(enc(text)).digest("hex"));
+    expect(r.warnings.map((w) => `${w.file}:${w.reason}`)).toContain("payments.csv:3 empty rows at the end of the file (every field blank, as Excel leaves them) ignored");
+  });
+  it("an empty row with data after it is refused with one plain reason (row numbers stay right)", () => {
+    const r = run({ payments: "Inv,Date,Amount\nS1001,05/03/2026,120.00\n,,\nS1002,15/03/2026,100.00\n" });
+    expect(reasons(r)).toEqual(["payments.csv:3:null:row is empty (every field blank) with data after it: delete the empty row and save the file again"]);
+  });
+  it("a file of a header and empty rows only is a header-only file", () => {
+    const r = run({ customers: "Code,Name\n,\n", suppliers: "Code,Name\n", invoices: "Inv,Cust,Date,Net,VAT,Gross\n,,,,,\n", payments: "Inv,Date,Amount\n" });
+    expect(reasons(r).join("|")).toContain("there is nothing to import");
+  });
+  it("the payload build reads the same rows (both use parseCsv)", async () => {
+    const { parseCsv } = await import("../../lib/sliq-validate/csv");
+    expect(parseCsv("a,b\r\n1,2\r\n,\r\n,\r\n", ",")).toEqual({ records: [["a", "b"], ["1", "2"]], trailingBlankRows: 2 });
+    expect(parseCsv("a,b\r\n1,2\r\n", ",")).toEqual({ records: [["a", "b"], ["1", "2"]] });
+    const { sourceTotalsFromValidated, validateAndBuild } = await import("../../lib/sliq-import-build");
+    const { MAPPING: M152, syntheticFiles } = await import("../support/sliq-152");
+    const f = syntheticFiles();
+    f.payments = { name: f.payments.name, bytes: new Uint8Array([...f.payments.bytes, ...enc(",,,\r\n,,,\r\n")]) };
+    const built = await validateAndBuild(f, M152);
+    expect(built.report.ok).toBe(true);
+    expect(built.payload!.payments).toHaveLength(built.report.totals.entities.payments!.rows);
+    expect(() => sourceTotalsFromValidated(built.report, built.payload!)).not.toThrow();
+  });
+});
+
+describe("mixed-case invoice prefixes (candidate 2F, F2/LOW)", () => {
+  const inv = (a: string, b: string) => `Inv,Cust,Date,Net,VAT,Gross\n${a},C1,01/03/2026,100.00,20.00,120.00\n${b},C2,02/03/2026,500.00,100.00,600.00\n`;
+  const pay = (a: string) => `Inv,Date,Amount\n${a},15/03/2026,100.00\n`;
+  it("INV-100 and inv-102 are refused as two prefixes (the database's INV rule is case-sensitive)", () => {
+    const r = run({ invoices: inv("INV-100", "inv-102"), payments: pay("INV-100") });
+    expect(r.ok).toBe(false);
+    expect(reasons(r).join("|")).toMatch(/invoice ref "(INV-100|inv-102)" has prefix "(INV-|inv-)" but most refs use "(INV-|inv-)"/);
+    const r2 = run({ invoices: inv("S1001", "s1002").replace("02/03", "02/03") + "S1003,C1,03/03/2026,1.00,0.20,1.20\n", payments: pay("S1001") });
+    expect(reasons(r2)).toEqual(['invoices.csv:3:ref:invoice ref "s1002" has prefix "s" but most refs use "S"']);
+  });
+  it("one case throughout is accepted: all INV- or all inv-", () => {
+    expect(run({ invoices: inv("INV-100", "INV-102"), payments: pay("INV-100") }).ok).toBe(true);
+    expect(run({ invoices: inv("inv-100", "inv-102"), payments: pay("inv-100") }).ok).toBe(true);
+  });
+});
+
 describe("F1 (candidate 2F): a payment dated before its invoice still counts towards that invoice", () => {
   // S1001 is 120.00 dated 01/03/2026 (INVOICES); a day above 12 elsewhere keeps DD/MM unambiguous.
   it("an early payment over the total is refused on amount (and still warned about its date)", () => {

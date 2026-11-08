@@ -10,7 +10,7 @@ import { sourceTotalsFromValidated, validateAndBuild } from "@/lib/sliq-import-b
 import {
   type Rpc, type SliqBatchResult, type SliqPayload, type SliqPreflight, type SliqRunProgress, SLIQ_BATCH_WEIGHT, planSliqBatches, preflightTooLarge, sliqPreflight, sliqRunBatches,
 } from "@/lib/sliq-import-route";
-import { MISSING_152, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore } from "@/lib/sliq-card";
+import { MISSING_152, importBlockers, isMissingImportFunction, isStatementTimeout, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore, statementTimeoutMessage } from "@/lib/sliq-card";
 import { getCurrentOrganizationId } from "@/lib/supabase-business";
 import { type DbRow, type ReconcileReport, reconcile } from "@/lib/sliq-reconcile/reconcile";
 import { renderSigningSheet } from "@/lib/sliq-reconcile/sheet";
@@ -25,7 +25,7 @@ const rpc: Rpc = (fn, args) => {
 /** The reconciliation rows for the session's company (release 152 import_sliq_reconcile; the same function the SQL-editor script reads). */
 async function reconcileRows(): Promise<DbRow[]> {
   const { data, error } = await rpc("import_sliq_reconcile", {});
-  if (error) throw Object.assign(new Error(isMissingImportFunction(error) ? MISSING_152 : error.message), { code: error.code });
+  if (error) throw Object.assign(new Error(isMissingImportFunction(error) ? MISSING_152 : isStatementTimeout(error) ? statementTimeoutMessage("reconcile") : error.message), { code: error.code });
   const rows = (data as { rows?: DbRow[] } | null)?.rows;
   if (!Array.isArray(rows)) throw new Error("The database's reconciliation answer wasn't one this page understands.");
   return rows;
@@ -143,7 +143,8 @@ export function SliqImport() {
       setPreflight(p);
       setPhase("preflighted");
     } catch (e) {
-      setError(isMissingImportFunction(e as { code?: string; message?: string }) ? MISSING_152 : friendlyError(e));
+      const ce = e as { code?: string; message?: string };
+      setError(isMissingImportFunction(ce) ? MISSING_152 : isStatementTimeout(ce) ? statementTimeoutMessage("preflight") : friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -168,7 +169,8 @@ export function SliqImport() {
     setResults((prev) => [...prev.slice(0, startAt), ...out.results]);
     if (out.failedAt === null) { setPhase("done"); setFailedAt(null); return; }
     setFailedAt(out.failedAt);
-    setFailure(out.error ? friendlyError(out.error) : (out.last?.errors ?? []).slice(0, 5).map((m) => `${m.source_row_id ?? ""} ${m.message}`).join("; "));
+    setFailure(out.error ? (isStatementTimeout(out.error as { code?: string }) ? statementTimeoutMessage("batch") : friendlyError(out.error))
+      : (out.last?.errors ?? []).slice(0, 5).map((m) => `${m.source_row_id ?? ""} ${m.message}`).join("; "));
     setPhase("failed");
   }
 
@@ -184,7 +186,7 @@ export function SliqImport() {
       const who = company ? `${company.name} (${company.slug})` : "the signed-in admin's company (its name could not be read)";
       setRec({ report: r, sheet: renderSigningSheet(source, r, { company: who, importedOn: new Date().toISOString().slice(0, 10) }) });
     } catch (e) {
-      setError(friendlyError(e));
+      setError(isStatementTimeout(e as { code?: string }) ? statementTimeoutMessage("reconcile") : friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -208,7 +210,7 @@ export function SliqImport() {
           </p>
         </div>
         <label className="block text-sm font-medium" htmlFor="sliq-files-input">SliQ files and mapping
-          <span className="block text-xs font-normal text-slate-500">The confirmed mapping (.json) and every SliQ export file, chosen together.</span>
+          <span className="block text-xs font-normal text-slate-500">The confirmed mapping (.json) and every SliQ export file (.csv), chosen together. Only .csv and .json files can be chosen: save an .xls or .xlsx export as CSV first.</span>
         </label>
         <input id="sliq-files-input" type="file" multiple accept=".csv,.json,text/csv,application/json" aria-label="SliQ files and mapping" disabled={importing}
           onChange={(e) => void onFiles(e.target.files)} />

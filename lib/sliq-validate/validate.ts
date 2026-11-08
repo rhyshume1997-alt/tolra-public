@@ -217,6 +217,7 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
       err(fname, null, null, "file has no header row");
       continue;
     }
+    if (csv.trailingBlankRows) warn(fname, null, null, `${csv.trailingBlankRows} empty row${csv.trailingBlankRows === 1 ? "" : "s"} at the end of the file (every field blank, as Excel leaves them) ignored`);
     const heads = header.map((h) => h.trim());
     const idx: Record<string, number> = {};
     let headerOk = true;
@@ -245,6 +246,10 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
     const rows: Row[] = [];
     body.forEach((rec, i) => {
       const row = i + 2;
+      if (rec.every((x) => x.trim() === "")) {
+        err(fname, row, null, "row is empty (every field blank) with data after it: delete the empty row and save the file again");
+        return;
+      }
       if (rec.length !== heads.length) {
         err(fname, row, null, `row has ${rec.length} fields but the header has ${heads.length}`);
         return;
@@ -343,7 +348,8 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
         } else {
           const m = REF_SHAPE.exec(r.v.ref);
           if (!m) err(f, r.row, "ref", `invoice ref "${r.v.ref}" is not a prefix followed by digits`);
-          else prefixes.set(m[1].toUpperCase(), (prefixes.get(m[1].toUpperCase()) ?? 0) + 1);
+          // Case-sensitive (candidate 2F): "INV-100" and "inv-102" are two families, as the database's INV rule ('^INV-') reads them.
+          else prefixes.set(m[1], (prefixes.get(m[1]) ?? 0) + 1);
         }
       }
     }
@@ -352,7 +358,7 @@ export function validateSliqExportWith(input: ValidateInput, hash: (bytes: Uint8
       const main = [...prefixes.entries()].sort((a, b) => b[1] - a[1])[0][0];
       for (const r of invoices) {
         const m = REF_SHAPE.exec(r.v.ref);
-        if (m && m[1].toUpperCase() !== main) err(f, r.row, "ref", `invoice ref "${r.v.ref}" has prefix "${m[1]}" but most refs use "${main}"`);
+        if (m && m[1] !== main) err(f, r.row, "ref", `invoice ref "${r.v.ref}" has prefix "${m[1]}" but most refs use "${main}"`);
       }
     }
     const t = totals.entities.invoices;

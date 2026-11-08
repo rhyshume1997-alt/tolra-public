@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { MISSING_152, countersKey, importBlockers, isMissingImportFunction, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore } from "@/lib/sliq-card";
+import { MISSING_152, countersKey, importBlockers, isMissingImportFunction, isStatementTimeout, loadCountersBefore, matchFiles, normaliseRunLabel, recordsCreated, saveCountersBefore, statementTimeoutMessage } from "@/lib/sliq-card";
 import type { SliqPreflight } from "@/lib/sliq-import-route";
 import type { SliqMapping } from "@/lib/sliq-validate";
 
@@ -130,5 +133,38 @@ describe("the done line's records created", () => {
     expect(recordsCreated([{ already_imported: false, created: 3 }, { already_imported: false, created: 4 }])).toBe(7);
     expect(recordsCreated([{ already_imported: true, created: 3 }, { already_imported: true, created: 4 }])).toBe(0);
     expect(recordsCreated([])).toBe(0);
+  });
+});
+
+describe("statement timeout (Postgres 57014; candidate 2F)", () => {
+  const timeout = { data: null, error: { message: "canceling statement due to statement timeout", code: "57014" } };
+  it("each step says in plain words that nothing was written and not to keep retrying; no database text", () => {
+    expect(isStatementTimeout({ code: "57014" })).toBe(true);
+    expect(isStatementTimeout({ code: "57P01" })).toBe(false);
+    expect(isStatementTimeout(null)).toBe(false);
+    expect(statementTimeoutMessage("preflight")).toMatch(/^The preflight took longer than the database's time limit and was stopped\. Nothing was written/);
+    expect(statementTimeoutMessage("batch")).toMatch(/Nothing in this batch was written: it was rolled back whole/);
+    expect(statementTimeoutMessage("reconcile")).toMatch(/It only reads, so nothing was changed/);
+    for (const step of ["preflight", "batch", "reconcile"] as const) {
+      expect(statementTimeoutMessage(step)).toContain("Don't keep retrying");
+      expect(statementTimeoutMessage(step)).not.toMatch(/canceling|57014|statement/i);
+    }
+  });
+  it("is not retried: one call for the preflight, and a batch run stops at the timed-out batch after one call to it", async () => {
+    const { sliqPreflight, sliqRunBatches } = await import("@/lib/sliq-import-route");
+    const p = { source_sha256: "a".repeat(64), source_files: [], customers: [{ source_row_id: "C:1", name: "A", external_ref: "1" }] };
+    let n = 0;
+    const err = await sliqPreflight(async () => { n += 1; return timeout; }, p).catch((e) => e);
+    expect(n).toBe(1);
+    expect(isStatementTimeout(err)).toBe(true);
+    n = 0;
+    const run = await sliqRunBatches(async () => { n += 1; return timeout; }, p, "live");
+    expect(n).toBe(1);
+    expect(run.failedAt).toBe(0);
+    expect(isStatementTimeout(run.error as { code?: string })).toBe(true);
+  });
+  it("the card shows these words for the preflight, a batch and the reconciliation", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../components/sliq-import.tsx"), "utf8");
+    for (const step of ["preflight", "batch", "reconcile"]) expect(src).toContain(`statementTimeoutMessage("${step}")`);
   });
 });

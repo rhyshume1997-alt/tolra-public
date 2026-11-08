@@ -63,6 +63,21 @@ export function isMissingImportFunction(error: { message?: string; code?: string
 }
 export const MISSING_152 = "This database does not have the SliQ import route (release 152) yet. Nothing was changed. Apply and verify release 152 first.";
 
+/** Postgres 57014: the database stopped the call at its time limit (hosted: 8 s). The call's transaction is rolled back whole. */
+export const isStatementTimeout = (error: { code?: string } | null | undefined) => error?.code === "57014";
+/**
+ * The plain words for a statement timeout, per step (candidate 2F). Nothing is retried for it (lib/sliq-import-route retries only a
+ * failure of the road, which has no code): the same call would take as long again.
+ */
+export function statementTimeoutMessage(step: "preflight" | "batch" | "reconcile"): string {
+  const what = step === "preflight"
+    ? "The preflight took longer than the database's time limit and was stopped. Nothing was written (the preflight never writes)."
+    : step === "batch"
+      ? "This batch took longer than the database's time limit and was stopped. Nothing in this batch was written: it was rolled back whole. Batches before it are in Tolra and answer \"already imported\" if sent again."
+      : "The reconciliation took longer than the database's time limit and was stopped. It only reads, so nothing was changed.";
+  return `${what} Don't keep retrying: it would take as long again. Tell Rhys, or split the export by date into smaller file sets.`;
+}
+
 type Store = Pick<Storage, "getItem" | "setItem">;
 /**
  * The counters read before an import, kept per source file set (its source key) only: a reload, or a change of run label, keeps
