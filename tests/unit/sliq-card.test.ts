@@ -94,6 +94,35 @@ describe("preflight size limit (release 152: preflight_too_large)", () => {
     expect(preflightTooLarge({ ...base, customers: Array.from({ length: 6001 }, (_, i) => ({ source_row_id: `C:${i}` })) })).toMatch(/too large for one preflight \(6001 records/);
     expect(preflightTooLarge({ ...base, customers: [{ source_row_id: "C:1", notes: "x".repeat(4 * 1024 * 1024) }] })).toMatch(/4\.0 MB/);
   });
+  it("F6 (candidate 2F): measures the bytes as Postgres's jsonb text does (\", \" and \": \"), the figure release 152 checks", async () => {
+    const { jsonbTextBytes } = await import("@/lib/sliq-import-route");
+    // octet_length(<this>::jsonb::text) on local Postgres 16.15 = 227 (escapes, accents, a control character, astral emoji, empty [] and {}).
+    const sample = { customers: [{ source_row_id: "C:é\n\"q\\", name: "Café \u0001 ☃ 😀", external_ref: "x" }, { source_row_id: "C:2", name: "B", tags: [], meta: {} }],
+      invoices: [], payments: [{ amount: "12.50", row: 7 }], suppliers: undefined };
+    expect(jsonbTextBytes(sample)).toBe(227);
+    expect(new TextEncoder().encode(JSON.stringify(sample)).length).toBeLessThan(227);
+  });
+  it("F6 (candidate 2F): the 4 MiB boundary in jsonb bytes: just under and exactly at pass, one byte over is refused", async () => {
+    const { jsonbTextBytes, preflightTooLarge, SLIQ_PREFLIGHT_MAX_BYTES } = await import("@/lib/sliq-import-route");
+    const base = { source_sha256: "a".repeat(64), source_files: [] };
+    const sized = (k: number) => ({ ...base, customers: [{ source_row_id: "C:1", notes: "x".repeat(k) }] });
+    const k0 = SLIQ_PREFLIGHT_MAX_BYTES - jsonbTextBytes({ customers: [{ source_row_id: "C:1", notes: "" }] });
+    const sent = (k: number) => jsonbTextBytes({ customers: sized(k).customers });
+    expect(sent(k0)).toBe(SLIQ_PREFLIGHT_MAX_BYTES);
+    expect(preflightTooLarge(sized(k0 - 1))).toBeNull();
+    expect(preflightTooLarge(sized(k0))).toBeNull();
+    expect(preflightTooLarge(sized(k0 + 1))).toMatch(/too large for one preflight/);
+  });
+  it("F6 (candidate 2F): a payload under 4 MiB as compact JSON but over it as jsonb text is refused in the page", async () => {
+    const { jsonbTextBytes, preflightTooLarge, SLIQ_PREFLIGHT_MAX_BYTES } = await import("@/lib/sliq-import-route");
+    const rows = (pad: number) => Array.from({ length: 6000 }, (_, i) => ({ source_row_id: `C:${i}`, name: "n".repeat(pad), external_ref: `${i}` }));
+    // Compact length grows by 6,000 bytes per padding character: the largest padding still under the limit as compact JSON.
+    const pad = Math.floor((SLIQ_PREFLIGHT_MAX_BYTES - new TextEncoder().encode(JSON.stringify({ customers: rows(0) })).length) / 6000);
+    const customers = rows(pad);
+    expect(new TextEncoder().encode(JSON.stringify({ customers })).length).toBeLessThanOrEqual(SLIQ_PREFLIGHT_MAX_BYTES);
+    expect(jsonbTextBytes({ customers })).toBeGreaterThan(SLIQ_PREFLIGHT_MAX_BYTES);
+    expect(preflightTooLarge({ source_sha256: "a".repeat(64), source_files: [], customers })).toMatch(/too large for one preflight \(6000 records/);
+  });
 });
 
 describe("the done line's records created", () => {

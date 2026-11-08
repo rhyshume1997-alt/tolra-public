@@ -33,7 +33,7 @@ import type { ValidationReport } from "@/lib/sliq-validate";
 import { type DbRow, reconcile } from "@/lib/sliq-reconcile/reconcile";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { type Rpc, type SliqBatchResult, type SliqPayload, planSliqBatches, sliqPreflight, sliqRunBatches } from "@/lib/sliq-import-route";
+import { type Rpc, type SliqBatchResult, type SliqPayload, SLIQ_PREFLIGHT_MAX_BYTES, jsonbTextBytes, planSliqBatches, preflightTooLarge, sliqPreflight, sliqRunBatches } from "@/lib/sliq-import-route";
 
 const runId = randomBytes(4).toString("hex");
 let seq = 0;
@@ -503,6 +503,14 @@ describe("release 152 SliQ import route", () => {
     const big: SliqPayload = { ...payload, customers: Array.from({ length: 6001 }, (_, i) => ({ source_row_id: `C:Z${i}`, name: `Z ${i}`, external_ref: `Z${i}` })) };
     const tooBig = await sliqPreflight(rpcAs(d.u), big).catch((e) => e);
     expect(tooBig.hint).toBe("preflight_too_large");
+    // The page measures what the database measures (candidate 2F, F6): exactly 4 MiB of jsonb text passes the size check, one byte more is refused.
+    const k0 = SLIQ_PREFLIGHT_MAX_BYTES - jsonbTextBytes({ customers: [{ source_row_id: "C:EDGE", name: "Edge Ltd", external_ref: "EDGE", notes: "" }] });
+    const edge = (k: number): SliqPayload => ({ ...payload, customers: [{ source_row_id: "C:EDGE", name: "Edge Ltd", external_ref: "EDGE", notes: "x".repeat(k) }], suppliers: undefined, invoices: undefined, payments: undefined, credit_notes: undefined });
+    expect(preflightTooLarge(edge(k0))).toBeNull();
+    expect(preflightTooLarge(edge(k0 + 1))).toMatch(/too large/);
+    const atLimit = await sliqPreflight(rpcAs(d.u), edge(k0)).catch((e) => e);
+    expect(atLimit.hint ?? null).not.toBe("preflight_too_large");
+    expect((await sliqPreflight(rpcAs(d.u), edge(k0 + 1)).catch((e) => e)).hint).toBe("preflight_too_large");
   });
 
   it("re-review: an UNSORTED invoice file gets the same INV-gap answer in the preflight and in the batches; an empty company's first number is limited", async () => {

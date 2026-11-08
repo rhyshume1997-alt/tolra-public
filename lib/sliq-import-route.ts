@@ -172,11 +172,42 @@ export function cleanSha(value: unknown): string | null {
 /** At most this much in one preflight call (release 152 refuses more: preflight_too_large). JNR is about 4,300 records. */
 export const SLIQ_PREFLIGHT_MAX_RECORDS = 6000;
 export const SLIQ_PREFLIGHT_MAX_BYTES = 4 * 1024 * 1024;
+/**
+ * The length in UTF-8 bytes of Postgres's jsonb text for this value (what release 152 measures: octet_length(p_payload::TEXT)).
+ * jsonb prints ", " and ": " between items, so it is longer than compact JSON.stringify (about 8 to 11% on a SliQ payload); the
+ * strings and numbers of a payload print the same way in both. Undefined members are left out, as JSON.stringify leaves them out.
+ */
+export function jsonbTextBytes(value: unknown): number {
+  const enc = new TextEncoder();
+  let n = 0;
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) {
+      n += 2;
+      v.forEach((x, i) => { if (i > 0) n += 2; walk(x === undefined || typeof x === "function" ? null : x); });
+    } else if (v !== null && typeof v === "object" && typeof (v as { toJSON?: unknown }).toJSON !== "function") {
+      n += 2;
+      let first = true;
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+        if (x === undefined || typeof x === "function") continue;
+        if (!first) n += 2;
+        first = false;
+        n += enc.encode(JSON.stringify(k)).length + 2;
+        walk(x);
+      }
+    } else {
+      n += enc.encode(JSON.stringify(v) ?? "null").length;
+    }
+  };
+  walk(value);
+  return n;
+}
+
 /** The plain-words reason a file set is too large for one preflight, or null. Checked in the page before anything is sent. */
 export function preflightTooLarge(payload: SliqPayload): string | null {
   const sections = { customers: payload.customers, suppliers: payload.suppliers, invoices: payload.invoices, payments: payload.payments, credit_notes: payload.credit_notes };
   const records = Object.values(sections).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
-  const bytes = new TextEncoder().encode(JSON.stringify(sections)).length;
+  // Measured as the database measures it: the jsonb text of exactly what sliqPreflight sends as p_payload (candidate 2F, F6).
+  const bytes = jsonbTextBytes(Object.fromEntries(Object.entries(payload).filter(([k]) => k !== "source_sha256" && k !== "source_files")));
   if (records <= SLIQ_PREFLIGHT_MAX_RECORDS && bytes <= SLIQ_PREFLIGHT_MAX_BYTES) return null;
   return `The file set is too large for one preflight (${records} records, ${(bytes / 1048576).toFixed(1)} MB; at most ${SLIQ_PREFLIGHT_MAX_RECORDS} records and 4 MB). Nothing was sent. Split the export by date.`;
 }
