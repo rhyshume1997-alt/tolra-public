@@ -120,11 +120,40 @@ export async function buildSliqPayload(files: SourceFiles, mapping: SliqMapping)
   return { payload, sourceFiles };
 }
 
-/** Every file check (lib/sliq-validate, in the browser), then the payload, only when the report is ok. */
+const SECTIONS = [["customers", "customers"], ["suppliers", "suppliers"], ["invoices", "invoices"], ["payments", "payments"], ["creditNotes", "credit_notes"]] as const;
+
+/**
+ * Where the built payload does not match the validator's report (candidate 2F, final pass): every file's row count per section
+ * (suppliers included: the database's reconciliation does not count them, so this is their only count check), and every file's
+ * name and SHA-256 (64 hex characters, the very hash the file checks recorded; the signing sheet prints these). Empty when it matches.
+ */
+export function payloadReportProblems(report: ValidationReport, payload: SliqPayload): string[] {
+  const out: string[] = [];
+  const t = report.totals.entities;
+  for (const [e, k] of SECTIONS) {
+    const rows = t[e]?.rows;
+    const built = (payload[k] ?? []).length;
+    if (rows === undefined ? built !== 0 : built !== rows) out.push(`${e}: the files have ${rows ?? 0} rows but ${built} were built to send`);
+  }
+  const named = new Set<string>();
+  for (const f of payload.source_files ?? []) {
+    named.add(f.entity);
+    const r = t[f.entity as Entity];
+    if (!/^[0-9a-f]{64}$/.test(String(f.sha256)) || !r || r.sha256 !== f.sha256 || r.file !== f.name) out.push(`${f.name}: its SHA-256 is not the one the file checks recorded`);
+  }
+  for (const e of Object.keys(t)) if (!named.has(e)) out.push(`${e}: the file checked is not among the files sent`);
+  return out;
+}
+
+/** Every file check (lib/sliq-validate, in the browser), then the payload, only when the report is ok and the payload matches it. */
 export async function validateAndBuild(files: SourceFiles, mapping: unknown): Promise<{ report: ValidationReport; payload: SliqPayload | null }> {
   const report = await validateSliqExport({ files, mapping });
   if (!report.ok) return { report, payload: null };
   const { payload } = await buildSliqPayload(files, mapping as SliqMapping);
+  const problems = payloadReportProblems(report, payload);
+  if (problems.length) {
+    return { report: { ...report, ok: false, errors: [...report.errors, ...problems.map((reason) => ({ file: "build", row: null, field: null, reason: `${reason}: nothing can be imported` }))] }, payload: null };
+  }
   return { report, payload };
 }
 
@@ -162,6 +191,9 @@ export function sourceTotalsFromValidated(report: ValidationReport, payload: Sli
   check("invoice total", invoiceTotalPence, invoices.reduce((s, i) => s + pence(i.total), 0));
   check("payments total", paymentsTotalPence, payments.reduce((s, p) => s + pence(p.amount), 0));
   check("credits total", creditsTotalPence, credits.reduce((s, c) => s + pence(c.total), 0));
+  // Suppliers and the file hashes the sheet prints (candidate 2F, final pass).
+  const problems = payloadReportProblems(report, payload);
+  if (problems.length) throw new Error(`source totals: ${problems.join("; ")}`);
 
   const sumBy = (list: SliqRow[], field: string) => {
     const m = new Map<string, number>();

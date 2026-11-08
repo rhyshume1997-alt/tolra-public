@@ -13,7 +13,10 @@ export function renderSigningSheet(
   L.push("SLIQ IMPORT RECONCILIATION - SIGNING SHEET");
   L.push(`Company: ${meta.company}`);
   L.push(`Import date: ${meta.importedOn}`);
-  L.push(`Overall result: ${report.pass ? "PASS - all differences are zero" : "FAIL - do not sign"}`);
+  // PASS needs a passing report AND every source file named with a 64-character SHA-256 (the paper binds the totals to the files).
+  const hashesOk = source.files.length > 0 && source.files.every((f) => f.name !== "" && /^[0-9a-f]{64}$/.test(f.sha256));
+  L.push(`Overall result: ${report.pass && hashesOk ? "PASS - all differences are zero" : "FAIL - do not sign"}`);
+  if (!hashesOk) L.push("  (a source file's SHA-256 is missing or not 64 hex characters: the sheet can't be signed)");
   L.push("");
   L.push("SOURCE FILES (SHA-256)");
   for (const f of source.files) L.push(`  ${f.name}  ${f.sha256}`);

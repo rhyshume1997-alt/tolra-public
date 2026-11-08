@@ -122,12 +122,16 @@ describe("source totals (M44-M48): the app's outstanding rule and the INV-number
     { source_row_id: "I:INV-1000000000", invoice_ref: "INV-1000000000", customer: "C Two", customer_key: "C2", total: "0.10" },
     { source_row_id: "I:inv-5", invoice_ref: "inv-5", customer: "C Two", customer_key: "C2", total: "0.05" },
   ];
+  const h = (c: string) => c.repeat(64);
   const p: SliqPayload = {
-    ...base, customers: [{ source_row_id: "C:C1", name: "C One" }, { source_row_id: "C:C2", name: "C Two" }], invoices,
+    ...base,
+    source_files: [{ entity: "customers", name: "c.csv", sha256: h("1") }, { entity: "invoices", name: "i.csv", sha256: h("2") }, { entity: "payments", name: "p.csv", sha256: h("3") }, { entity: "creditNotes", name: "n.csv", sha256: h("4") }],
+    customers: [{ source_row_id: "C:C1", name: "C One" }, { source_row_id: "C:C2", name: "C Two" }], invoices,
     payments: [{ source_row_id: "P:1", invoice_ref: "INV-1", amount: "1.50" }], credit_notes: [{ source_row_id: "N:CRD-1", invoice_ref: "INV-2", total: "0.30" }],
   };
   const report = { ok: true, totals: { entities: {
-    customers: { rows: 2 }, invoices: { rows: 4, moneyPence: { gross: 315 } }, payments: { rows: 1, moneyPence: { amount: 150 } }, creditNotes: { rows: 1, moneyPence: { gross: 30 } },
+    customers: { rows: 2, file: "c.csv", sha256: h("1") }, invoices: { rows: 4, file: "i.csv", sha256: h("2"), moneyPence: { gross: 315 } },
+    payments: { rows: 1, file: "p.csv", sha256: h("3"), moneyPence: { amount: 150 } }, creditNotes: { rows: 1, file: "n.csv", sha256: h("4"), moneyPence: { gross: 30 } },
   } } } as unknown as ValidationReport;
   it("outstanding floors each invoice at 0, the excess is customer credit, credit notes reduce what is owed", () => {
     const s = sourceTotalsFromValidated(report, p);
