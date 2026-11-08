@@ -3,8 +3,7 @@
  * fixtures only (tests/fixtures/sliq); no database is touched here (the database suite covers the write).
  */
 import { createHash } from "node:crypto";
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -17,6 +16,7 @@ import { loadResolutions } from "../../scripts/sliq-import/resolutions.mjs";
 import { MappingError, getProfile } from "../../scripts/sliq-import/mapping.mjs";
 import { ParseError, parseCsv, parseDate, parseMoneyPence, parsePercentCenti, parseQuantityMilli } from "../../scripts/sliq-import/parse.mjs";
 import { analyse, renderMarkdown } from "../../scripts/sliq-import/reconcile.mjs";
+import { tempDir } from "../support/temp-dirs";
 
 const FIXTURE = path.resolve(__dirname, "../fixtures/sliq/basic");
 const ORG = "11111111-2222-4333-8444-555555555555";
@@ -25,7 +25,7 @@ const RES = path.resolve(__dirname, "../fixtures/sliq/basic-resolutions.json");
 const REHEARSAL = "99999999-aaaa-4bbb-8ccc-dddddddddddd";
 
 function copyFixture(edit?: (file: string, text: string) => string) {
-  const dir = mkdtempSync(path.join(tmpdir(), "sliq-unit-"));
+  const dir = tempDir("sliq-unit-");
   cpSync(FIXTURE, dir, { recursive: true });
   if (edit) {
     for (const f of ["customers", "invoices", "quotes", "invoice-lines", "payments", "credit-notes", "products"]) {
@@ -56,12 +56,12 @@ describe("mapping", () => {
   it("lists every missing column and a missing required file together", () => {
     const dir = copyFixture((f, t) => (f === "customers.csv" ? t.replace("Name", "Full name") : f === "payments.csv" ? t.replace("Amount", "Sum") : t));
     expect(() => loadFolder(dir, synthetic)).toThrowError(/"Name".*\n.*"Amount"|"Amount".*\n.*"Name"|Name[\s\S]*Amount/);
-    const empty = mkdtempSync(path.join(tmpdir(), "sliq-empty-"));
+    const empty = tempDir("sliq-empty-");
     expect(() => loadFolder(empty, synthetic)).toThrowError(/required file customers\.csv[^\n]*was not found[\s\S]*required file invoices\.csv[^\n]*was not found/);
   });
 
   it("a stub mapping stops: nothing is guessed", () => {
-    const dir = mkdtempSync(path.join(tmpdir(), "sliq-stub-"));
+    const dir = tempDir("sliq-stub-");
     writeFileSync(path.join(dir, "stub.json"), JSON.stringify({ id: "stub", status: "stub", files: {} }));
     expect(getProfile(path.join(dir, "stub.json")).isStub).toBe(true);
     expect(() => loadFolder(FIXTURE, getProfile(path.join(dir, "stub.json")))).toThrowError(/STUB[\s\S]*no source column is mapped to "number"/);
@@ -321,7 +321,7 @@ describe("reverse charge and discounts need review", () => {
 describe("write-mode guard", () => {
   const folder = FIXTURE;
   const base = async () => {
-    const out = mkdtempSync(path.join(tmpdir(), "sliq-report-"));
+    const out = tempDir("sliq-report-");
     const { report } = await dryRunLocal(out);
     return { out, report };
   };
@@ -391,7 +391,7 @@ describe("write-mode guard", () => {
   });
 
   it("refuses while reverse-charge or discount documents are unresolved and not excluded", async () => {
-    const out = mkdtempSync(path.join(tmpdir(), "sliq-report-"));
+    const out = tempDir("sliq-report-");
     const { report } = await dryRunLocal(out, []);
     expect(() => allow({ report, excludeNumbers: [], current: current([]) })).toThrowError(/unresolved: Q2004, S1011, S1012/);
     expect(() => allow({ report, excludeNumbers: ["S1011"], current: current(["S1011"]) })).toThrowError();

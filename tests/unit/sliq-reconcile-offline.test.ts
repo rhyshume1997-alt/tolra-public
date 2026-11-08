@@ -7,11 +7,10 @@
 import { spawnSync } from "node:child_process";
 import dgram from "node:dgram";
 import dns from "node:dns";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import tls from "node:tls";
 import childProcess from "node:child_process";
@@ -23,6 +22,7 @@ import { OfflineGuardError, PROJECT_REFS, assertOfflineArgs, describeForbidden }
 import { parseCsv } from "../../scripts/sliq-import/parse.mjs";
 import { buildXlsx } from "../support/make-xlsx.mjs";
 import { GENERATED_AT, runCli, workspace } from "../support/sliq-reconcile";
+import { tempDir } from "../support/temp-dirs";
 
 const TOOL = path.resolve(__dirname, "../../scripts/sliq-reconcile");
 const PRELOAD = path.resolve(__dirname, "../support/no-network.cjs");
@@ -65,7 +65,7 @@ describe("forbidden endpoints are refused before anything is read", () => {
 
   for (const bad of BAD) {
     it(`refuses ${bad} as any value (exit 3, nothing created)`, async () => {
-      const root = mkdtempSync(path.join(tmpdir(), "sliq-reconcile-refuse-"));
+      const root = tempDir("sliq-reconcile-refuse-");
       const out = path.join(root, "out");
       for (const option of ["--sliq", "--tolra", "--out", "--mapping", "--encoding", "--date-format", "--sheet", "--generated-at"]) {
         const argv = ["--sliq", path.join(root, "no-such-sliq"), "--tolra", path.join(root, "no-such-tolra"), "--out", out, option, bad];
@@ -188,7 +188,7 @@ describe("zero outbound network while the tool runs", () => {
   });
 
   it("as a real process under the repo's outbound-network guard, nothing is blocked (and nothing is attempted)", () => {
-    const root = mkdtempSync(path.join(tmpdir(), "sliq-reconcile-proc-"));
+    const root = tempDir("sliq-reconcile-proc-");
     const log = path.join(root, "blocked.log");
     const ws = workspace();
     const env = { ...process.env, E2E_BLOCKED_LOG: log, HTTPS_PROXY: "", HTTP_PROXY: "", https_proxy: "", http_proxy: "", NODE_OPTIONS: "" };

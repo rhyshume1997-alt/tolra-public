@@ -2,8 +2,7 @@
  * Regression tests for the PR B audit: duplicate receipts, unresolved credit notes blocking a write, approval of the whole mapping
  * file and every option, the rehearsal identity, and the per-document figures. Synthetic fixtures only.
  */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -13,6 +12,7 @@ import { loadFolder } from "../../scripts/sliq-import/load.mjs";
 import { getProfile } from "../../scripts/sliq-import/mapping.mjs";
 import { analyse, renderMarkdown } from "../../scripts/sliq-import/reconcile.mjs";
 import { loadResolutions } from "../../scripts/sliq-import/resolutions.mjs";
+import { tempDir } from "../support/temp-dirs";
 
 const BASIC = path.resolve(__dirname, "../fixtures/sliq/basic");
 const RES = path.resolve(__dirname, "../fixtures/sliq/basic-resolutions.json");
@@ -21,7 +21,7 @@ const LOCAL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 const REH = "99999999-aaaa-4bbb-8ccc-dddddddddddd";
 const EXCL = ["S1011", "S1012", "Q2004"];
 const synthetic = getProfile("synthetic");
-const tmp = () => mkdtempSync(path.join(tmpdir(), "sliq-audit-"));
+const tmp = () => tempDir("sliq-audit-");
 const copy = (edit?: (file: string, text: string) => string) => {
   const dir = tmp();
   cpSync(BASIC, dir, { recursive: true });

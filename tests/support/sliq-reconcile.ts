@@ -3,8 +3,7 @@
  * folder) that a test then corrupts in one place, and wrappers that run the comparison with the clock fixed.
  * Synthetic data only: nothing here is, or may become, real JNR data.
  */
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { main } from "../../scripts/sliq-reconcile/cli.mjs";
@@ -12,6 +11,7 @@ import { reconcile } from "../../scripts/sliq-reconcile/engine.mjs";
 import { loadSnapshot } from "../../scripts/sliq-reconcile/snapshot.mjs";
 import { loadSource } from "../../scripts/sliq-reconcile/source.mjs";
 import { parseCsv } from "../../scripts/sliq-import/parse.mjs";
+import { tempDir } from "./temp-dirs";
 
 export const FIXTURE = path.resolve(__dirname, "../fixtures/sliq-reconcile/clean");
 export const GENERATED_AT = "2026-10-13T09:00:00Z";
@@ -23,7 +23,7 @@ export type Ws = { root: string; sliq: string; tolra: string; out: string };
 type Any = any;
 
 export function workspace(): Ws {
-  const root = mkdtempSync(path.join(tmpdir(), "sliq-reconcile-"));
+  const root = tempDir("sliq-reconcile-");
   const ws = { root, sliq: path.join(root, "sliq"), tolra: path.join(root, "tolra"), out: path.join(root, "out") };
   cpSync(path.join(FIXTURE, "sliq"), ws.sliq, { recursive: true });
   cpSync(path.join(FIXTURE, "tolra"), ws.tolra, { recursive: true });
