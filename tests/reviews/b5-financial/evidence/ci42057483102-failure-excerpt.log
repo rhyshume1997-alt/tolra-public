@@ -1,0 +1,44 @@
+2026-11-05T15:44:22.2877848Z  Test Files  1 passed (1)
+2026-11-05T15:44:22.2878823Z       Tests  7 passed (7)
+2026-11-05T15:54:24.5563772Z  FAIL  tests/db/e2-chase-rules-cron.test.ts [ tests/db/e2-chase-rules-cron.test.ts ]
+2026-11-05T15:54:24.5579925Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5726296Z  FAIL  tests/db/e2-chase-rules.test.ts [ tests/db/e2-chase-rules.test.ts ]
+2026-11-05T15:54:24.5727746Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5748824Z  FAIL  tests/db/e2-chase-rules.test.ts [ tests/db/e2-chase-rules.test.ts ]
+2026-11-05T15:54:24.5750349Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5761903Z  FAIL  tests/db/wa-email-binding.test.ts [ tests/db/wa-email-binding.test.ts ]
+2026-11-05T15:54:24.5763444Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5780678Z  FAIL  tests/db/wa-email-binding.test.ts [ tests/db/wa-email-binding.test.ts ]
+2026-11-05T15:54:24.5782268Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5793925Z  FAIL  tests/db/xero-launch-paths-149.test.ts [ tests/db/xero-launch-paths-149.test.ts ]
+2026-11-05T15:54:24.5797140Z       stack: 'Error: connect ECONNREFUSED ::1:5432\n' +
+2026-11-05T15:54:24.5799231Z       message: 'connect ECONNREFUSED ::1:5432',
+2026-11-05T15:54:24.5799903Z       code: 'ECONNREFUSED',
+2026-11-05T15:54:24.5802779Z       stack: 'Error: connect ECONNREFUSED 127.0.0.1:5432\n' +
+2026-11-05T15:54:24.5804211Z       message: 'connect ECONNREFUSED 127.0.0.1:5432',
+2026-11-05T15:54:24.5804855Z       code: 'ECONNREFUSED',
+2026-11-05T15:54:24.5807478Z   code: 'ECONNREFUSED',
+2026-11-05T15:54:24.5820114Z Serialized Error: { errors: [ { stack: 'Error: connect ECONNREFUSED ::1:5432\n    at createConnectionError (node:net:1679:14)\n    at afterConnectMultiple (node:net:1709:16)', message: 'connect ECONNREFUSED ::1:5432', errno: -111, code: 'ECONNREFUSED', syscall: 'connect', address: '::1', port: 5432, constructor: 'Function<Error>', name: 'Error', toString: 'Function<toString>' }, { stack: 'Error: connect ECONNREFUSED 127.0.0.1:5432\n    at createConnectionError (node:net:1679:14)\n    at afterConnectMultiple (node:net:1709:16)', message: 'connect ECONNREFUSED 127.0.0.1:5432', errno: -111, code: 'ECONNREFUSED', syscall: 'connect', address: '127.0.0.1', port: 5432, constructor: 'Function<Error>', name: 'Error', toString: 'Function<toString>' } ], code: 'ECONNREFUSED' }
+2026-11-05T15:54:24.5823971Z ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+2026-11-05T15:54:24.5825361Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > without the secret: 401, nothing read (no service client, no query), nothing drafted
+2026-11-05T15:54:24.5827238Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5856490Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > without the secret: 401, nothing read (no service client, no query), nothing drafted
+2026-11-05T15:54:24.5859015Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > GET /api/cron/daily with the secret: drafts for the owed invoices only, the result JSON, a second call drafts nothing more
+2026-11-05T15:54:24.5861242Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > GET /api/cron/email-schedules with the secret does the same on its own
+2026-11-05T15:54:24.5862947Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > no service key on the server: daily answers 500 with both jobs reported, and drafts nothing
+2026-11-05T15:54:24.5865576Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > a schedule that is switched off is not run by the cron
+2026-11-05T15:54:24.5867356Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5916854Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > GET /api/cron/daily with the secret: drafts for the owed invoices only, the result JSON, a second call drafts nothing more
+2026-11-05T15:54:24.5919315Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5939807Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > GET /api/cron/email-schedules with the secret does the same on its own
+2026-11-05T15:54:24.5941697Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5955228Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > no service key on the server: daily answers 500 with both jobs reported, and drafts nothing
+2026-11-05T15:54:24.5957224Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5970904Z  FAIL  tests/db/e2-chase-rules-cron.test.ts > R7 the cron handlers, in-process, no browser session > a schedule that is switched off is not run by the cron
+2026-11-05T15:54:24.5972786Z IsolationError: Isolated test backend required: TEST_DATABASE_URL is not set. Start one with `npm run test:backend` (Docker); never point tests at a hosted project.
+2026-11-05T15:54:24.5985710Z  Test Files  4 failed | 147 passed (151)
+2026-11-05T15:54:24.5999919Z       Tests  5 failed | 1819 passed | 56 skipped (1880)
+2026-11-05T15:54:25.1224134Z PASS CASES tests/db/costing-rates-143.test.ts: 6/6 passed
+2026-11-05T15:54:25.1266314Z PASS CASES tests/db/costing-save-143.test.ts: 21/21 passed
+2026-11-05T15:54:26.4252948Z   143 costing rates applied   [preflight row: marker 143 costing rates|applied|before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied] [verify rows all t: 14]
+2026-11-05T15:54:28.4553470Z [WebServer] [Error: Could not find a production build in the '.next' directory. Try building your app with 'next build' before starting the production server. https://nextjs.org/docs/messages/production-start-no-build-id]

@@ -55,7 +55,7 @@ export type ExportProgress = (done: number, total: number, label: string) => voi
 /** DATE columns as they are; timestamps as their Europe/London calendar date (lib/dates calendarDate). */
 const day = calendarDate;
 const inRange = (date: string, from: string, to: string) => Boolean(date) && date >= from && date <= to;
-const money = (n: unknown) => Math.round(Number(n || 0) * 100) / 100;
+const money = (n: unknown) => toPence(Number(n || 0)) / 100;
 const safe = (name: string) => name.replace(/[^\w.\- ]/g, "_");
 
 /**
@@ -84,6 +84,9 @@ export function invoicePaidFigures(r: Row): { paid: number | null; balance: numb
   if (paid === null) {
     const why = r.payment_unverified ? "imported without payment details and still to be confirmed" : "marked paid but no payment amount was ever recorded";
     return { paid: null, balance: null, problem: `Invoice ${ref}: payment to confirm (${why}). Paid and balance due are left blank in summary.csv; nothing has been guessed.` };
+  }
+  if (r.total === null || r.total === undefined || r.total === "" || !Number.isFinite(Number(r.total))) {
+    return { paid, balance: null, problem: `Invoice ${ref}: missing stored total. Balance due is left blank; nothing has been guessed.` };
   }
   const closed = invoiceLifecycle(r.status as string | null) === "closed";
   return { paid, balance: closed ? 0 : balanceDue(Number(r.total || 0), paid, Number(r.credited_amount || 0), Number(r.refunded_amount || 0)), problem: null };
@@ -150,7 +153,8 @@ export function paymentsCsv(rows: PaymentExportRow[]) {
 
 async function all(table: string) {
   if (!supabase) throw new Error("Supabase is not configured.");
-  const { rows } = await fetchAll<Row>((from, to) => supabase!.from(table).select("*").order("id").range(from, to));
+  const { rows, truncated } = await fetchAll<Row>((from, to) => supabase!.from(table).select("*").order("id").range(from, to));
+  if (truncated) throw new Error(`Too many ${table.replaceAll("_", " ")} records for a complete export. Export stopped; a checked full export is needed.`);
   return rows;
 }
 
@@ -265,11 +269,18 @@ export async function buildYearEndZip(from: string, to: string, company: Company
   const summary: SummaryRow[] = [];
   const problems: string[] = [];
   let done = 0;
+  let unresolved = 0;
   const step = (label: string) => onProgress(++done, total, label);
 
   for (const r of pick.invoices) {
     const ref = String(r.invoice_ref);
-    const row: SummaryRow = { type: "Invoice", number: ref, date: day(r.invoice_date) || day(r.created_at), party: String(r.customer || ""), net: money(r.subtotal), vat: money(r.vat), gross: money(r.total), paidDate: day(r.paid_at), status: String(r.status || ""), pdf: "" };
+    const row: SummaryRow = { type: "Invoice", number: ref, date: day(r.invoice_date) || day(r.created_at), party: String(r.customer || ""), net: null, vat: null, gross: null, paidDate: day(r.paid_at), status: String(r.status || ""), pdf: "" };
+    if ([r.subtotal,r.vat,r.total].some(n => n === null || n === undefined || n === "" || !Number.isFinite(Number(n)))) {
+      Object.assign(row,{net:null,vat:null,gross:null,paid:null,balance:null,status:"UNRESOLVED"});
+      problems.push(`Invoice ${ref}: missing stored net, VAT or gross total. Amounts and PDF are left out; nothing has been guessed.`);
+      unresolved += 1;summary.push(row);step(ref);continue;
+    }
+    row.net=money(r.subtotal);row.vat=money(r.vat);row.gross=money(r.total);
     const figures = invoicePaidFigures(r);
     row.paid = figures.paid;
     row.balance = figures.balance;
@@ -296,7 +307,6 @@ export async function buildYearEndZip(from: string, to: string, company: Company
     step(ref);
   }
 
-  let unresolved = 0;
   for (const r of pick.quotes) {
     const ref = String(r.quote_ref || "");
     const items = (await lines("quote_line_items", "quote_id", r.id, "description, quantity, unit_price, vat_pct, vat_exempt")).map((l) => ({ description: String(l.description || ""), quantity: Number(l.quantity || 0), unitPrice: Number(l.unit_price || 0), vatPct: l.vat_pct === null || l.vat_pct === undefined ? undefined : Number(l.vat_pct), vatExempt: Boolean(l.vat_exempt) }));
@@ -352,6 +362,7 @@ export async function buildYearEndZip(from: string, to: string, company: Company
       files[path] = await render(<DeliveryNotePDF data={{
         number: ref, taxDate: fmtDate(day(r.tax_date) || shipDate), shipDate: fmtDate(shipDate), shipVia: r.ship_via || undefined,
         billTo: await resolveCustomerAddress(row.party), items, company,
+        signedByName: String(r.status || "").toLowerCase() === "signed" ? (r.signed_by_name as string | null) : null, signedDate: r.signed_at ? fmtDate(day(r.signed_at)) : null,
       }} />);
       row.pdf = path;
     } catch (err) {

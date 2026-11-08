@@ -1,11 +1,9 @@
 /**
  * C3 "Invite your accountant" (migration 129), the routes and the page (the database rules are proven in tests/scripts/accountant-invite-129.proof.sql):
  *  - create: admin only, the second step (aal2) always, never support; only the token's SHA-256 goes to the database; the link is on
- *    NEXT_PUBLIC_SITE_URL; the database's refusals in plain words. "Also connect Xero" uses the existing Xero connect link (107), only while
- *    Xero is set up here and not connected; otherwise the invite is made without it and says why.
+ *    NEXT_PUBLIC_SITE_URL; the database's refusals in plain words. The Xero connect link is no longer part of it (proposal 151).
  *  - revoke: admin, own company (the database), 404 for one no longer open.
- *  - the accountant's page: nothing is used up by opening it; the Xero offer only for an open 107 link while Xero is set up and not
- *    connected; join uses the browser's OWN session (signed out: "Sign in first"); new e-mails the invite's own address only.
+ *  - the accountant's page: nothing is used up by opening it; no Xero offer (proposal 151); join uses the browser's OWN session (signed out: "Sign in first"); new e-mails the invite's own address only.
  */
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -145,27 +143,13 @@ describe("create (POST /api/integrations/accountant-invite)", () => {
     expect((await missing.json()).error).toBe("Not available until database update 129 is applied.");
   });
 
-  it("'Also connect Xero': the existing connect link, only while Xero is set up and not connected", async () => {
+  it("no Xero step any more (proposal 151: the Xero link is e-mailed to a named address and needs a code): connectXero is ignored and no Xero link is made", async () => {
     const { POST } = await import("@/app/api/integrations/accountant-invite/route");
-    // Xero not set up on this server: no Xero step, and the answer says why.
-    let body = await (await POST(create({ email: "a@b.example", connectXero: true }))).json();
-    expect(body.xero).toBe(false);
-    expect(body.xeroProblem).toContain("isn't set up");
+    xeroReadyValue = { config: {}, key: Buffer.alloc(32) }; xeroStatus = "not_connected";
+    const body = await (await POST(create({ email: "a@b.example", connectXero: true }))).json();
+    expect(body).toMatchObject({ xero: false, xeroProblem: null });
     expect(new URL(body.url).searchParams.get("xero")).toBeNull();
     expect(callsOf("integration_invite_create")).toHaveLength(0);
-    // Set up, already connected: no Xero step.
-    xeroReadyValue = { config: {}, key: Buffer.alloc(32) }; xeroStatus = "connected";
-    body = await (await POST(create({ email: "a@b.example", connectXero: true }))).json();
-    expect(body.xero).toBe(false);
-    expect(body.xeroProblem).toContain("already connected");
-    expect(callsOf("integration_invite_create")).toHaveLength(0);
-    // Set up, not connected: 107's link is made (its hash only) and carried on the accountant's link.
-    xeroStatus = "not_connected";
-    body = await (await POST(create({ email: "a@b.example", connectXero: true }))).json();
-    expect(body.xero).toBe(true);
-    const xero = new URL(body.url).searchParams.get("xero")!;
-    expect(xero).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(callsOf("integration_invite_create")[0][1]).toEqual({ p_provider: "xero", p_token_hash: sha(xero) });
   });
 });
 
@@ -202,17 +186,12 @@ describe("the accountant's page (/api/integrations/accountant-invite/[token])", 
     expect((await GET(pageGet("", "short"), params("short"))).status).toBe(404);
   });
 
-  it("the Xero offer: only for an open 107 link, while Xero is set up here and the company's Xero is not connected", async () => {
+  it("the Xero offer is gone: even an open 151 reference or an old ?xero= token in the address is never offered", async () => {
     const { GET } = await import("@/app/api/integrations/accountant-invite/[token]/route");
-    const offered = async () => (await (await GET(pageGet(`?xero=${XTOKEN}`), params())).text()).includes(`/api/integrations/invite/${XTOKEN}`);
-    expect(await offered()).toBe(false); // Xero not set up: hidden (the not-set-up state)
     xeroReadyValue = { config: {}, key: Buffer.alloc(32) };
-    expect(await offered()).toBe(true);
-    peek = { company_name: "Alpha", email: "acct@firm.example", expires_at: "x", xero_connected: true };
-    expect(await offered()).toBe(false); // already connected
-    peek = { company_name: "Alpha", email: "acct@firm.example", expires_at: "x", xero_connected: false };
-    xeroPeek = null;
-    expect(await offered()).toBe(false); // the Xero link is used, cancelled or expired
+    const html = await (await GET(pageGet(`?xero=${XTOKEN}`), params())).text();
+    expect(html).not.toContain(`/api/integrations/invite/${XTOKEN}`);
+    expect(html).not.toContain("Also connect Xero");
   });
 
   it("POST join: the browser's own session redeems (the token's hash); signed out: Sign in first; refusals in plain words", async () => {

@@ -7,6 +7,7 @@ import { DbError } from "@/lib/integrations/server";
 import { CONNECT_ROLES } from "@/lib/integrations/xero/policy";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 
 /**
  * Admin > Integrations > Microsoft 365 > Connect (E7, migration 107). Admin only, two-step, own company, never a support session (the
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
   const auth = await requireProfile([...CONNECT_ROLES]);
   if (isErrorResponse(auth)) return auth;
   if (auth.session?.support) return jsonError("Support access can't change Microsoft 365 settings.", 403);
+  const recent = await requireRecentAal2(auth, "connect Microsoft 365", true);
+  if (recent) return recent;
   const ready = await microsoftReady(createSupabaseAdminClient());
   if (!ready) return notConfiguredResponse("microsoft");
   try {

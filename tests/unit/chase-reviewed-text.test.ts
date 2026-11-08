@@ -24,7 +24,7 @@ it("the approval button passes the exact displayed snapshot, including whitespac
     const button = Array.from(container.querySelectorAll("button")).find(node => node.textContent === "Approve and send")!;
     await act(async () => button.click());
     expect(onApproveAndSend).toHaveBeenCalledTimes(1);
-    expect(onApproveAndSend).toHaveBeenCalledWith(draft.id, { subject: draft.subject, body: draft.body });
+    expect(onApproveAndSend).toHaveBeenCalledWith(draft.id, { to: draft.to, subject: draft.subject, body: draft.body });
   } finally {
     await act(async () => root.unmount());
     container.remove();

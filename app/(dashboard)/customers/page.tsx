@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Pencil, Plus } from "lucide-react";
 
 import { ChasePauseControl, ChasePausedBadge, useChasePauses } from "@/components/chase/chase-pause";
+import { DeliveryNotesFor } from "@/components/delivery-notes-for";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ArchiveButton, PhaseFilter } from "@/components/phase-filter";
 import { ListToolbar } from "@/components/list-toolbar";
@@ -66,6 +67,20 @@ export default function CustomersPage() {
     return { open: customers.length - archived, done: 0, archived };
   }, [customers, archive.manual]);
   const shown = customers.filter((customer) => phase === "all" || phaseFor(customer) === phase);
+
+  const statementKeys = useRef(new Map<string, string>());
+  async function draftStatement(id: string) {
+    await run(async () => {
+      try {
+        const key = statementKeys.current.get(id) ?? crypto.randomUUID();
+        statementKeys.current.set(id, key);
+        const response = await fetch("/api/email/statement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ customer_id: id, idempotency_key: key }) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error ?? "Could not prepare the statement.");
+        toast.success("Statement saved in Approvals. Check it there before sending; nothing was sent.");
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not prepare the statement."); }
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -181,7 +196,7 @@ export default function CustomersPage() {
                     {isVisible("address") ? <TableCell data-label="Address" className="block md:table-cell">{customer.address || "-"}</TableCell> : null}
                     <TableCell data-actions className="block md:table-cell">{customer.notSaved
                       ? <Button variant="outline" size="sm" onClick={() => setEditing(newDraft(customer.name))}><Plus className="size-3.5" /> Add customer</Button>
-                      : <div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => setEditing(customer)} disabled={!customer.id} title={customer.id ? undefined : "Demo data cannot be edited"}><Pencil className="size-3.5" /> Edit</Button>{archive.canManage ? <ArchiveButton id={customer.id} phase={phaseFor(customer)} manual={customer.id ? archive.manual.get(customer.id) : undefined} onSet={archive.setState} /> : null}</div>}</TableCell>
+                      : <div className="flex flex-wrap gap-2">{customer.id && !DEMO_MODE ? <Button variant="outline" size="sm" disabled={saving} onClick={() => void draftStatement(customer.id!)}>Draft statement</Button> : null}<Button variant="outline" size="sm" onClick={() => setEditing(customer)} disabled={!customer.id} title={customer.id ? undefined : "Demo data cannot be edited"}><Pencil className="size-3.5" /> Edit</Button>{archive.canManage ? <ArchiveButton id={customer.id} phase={phaseFor(customer)} manual={customer.id ? archive.manual.get(customer.id) : undefined} onSet={archive.setState} /> : null}</div>}</TableCell>
                   </TableRow>
                 ))}
                 {!customers.length ? <TableRow><TableCell colSpan={6} className="py-8 text-center text-slate-500">No customers yet. {customersEmptyHint()}</TableCell></TableRow> : null}
@@ -210,6 +225,7 @@ export default function CustomersPage() {
                 <Button type="submit" disabled={saving} className="bg-brand text-brand-ink hover:bg-brand-hover">{saving ? "Saving..." : "Save Customer"}</Button>
               </form>
             ) : null}
+            {editing?.id ? <DeliveryNotesFor query={{ customerId: editing.id, customerName: editing.name }} /> : null}
             {editing?.id ? <ChasePauseControl target={{ kind: "customer", id: editing.id, name: editing.name }} onChange={() => void chasePauses.reload()} /> : null}
           </DialogContent>
         </Dialog>

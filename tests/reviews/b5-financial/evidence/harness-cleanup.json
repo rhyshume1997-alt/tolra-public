@@ -1,0 +1,12 @@
+{
+  "utc": "2026-11-05T15:21:26.965178+00:00",
+  "terminated_own_test_pids": [
+    417401,
+    417424,
+    417468,
+    417888,
+    417956,
+    417980
+  ],
+  "reason": "Initial synthetic paging mock repeated the same page. Fixed to honor offset. Stopped orphan busy-loop workers; no test assertions changed. Before/after reproduction logs are separate."
+}

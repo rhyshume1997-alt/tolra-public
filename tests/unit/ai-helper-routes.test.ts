@@ -78,6 +78,7 @@ function builder(table: string) {
   return q;
 }
 const supabase = {
+  auth: { mfa: { getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: "aal2", currentAuthenticationMethods: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) }] }, error: null }) } },
   from: (table: string) => builder(table),
   rpc: async (fn: string, args: Record<string, unknown>) => {
     db.rpcs.push({ fn, args });

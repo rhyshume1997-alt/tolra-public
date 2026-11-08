@@ -15,7 +15,10 @@ let who: { role: string };
 vi.mock("@/lib/resend", () => ({
   resend: { emails: { send: async (payload: never, options: never) => { sent.push({ payload, options }); return sendAnswer(); } } },
 }));
-vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({ rpc: async () => claimAnswer() }) }));
+vi.mock("@/lib/server/supabase-admin", () => ({ createSupabaseAdminClient: () => ({ rpc: () => {
+  const result = claimAnswer();
+  return Object.assign(result, { abortSignal: () => result });
+} }) }));
 const chain = (result: unknown) => {
   const c: unknown = new Proxy(() => undefined, { get: (_, prop) => (prop === "maybeSingle" || prop === "single" ? () => Promise.resolve({ data: result, error: null }) : () => c) });
   return c;

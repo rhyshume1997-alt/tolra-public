@@ -123,7 +123,8 @@ describe("wiring", () => {
   // The writes the database files in the session's company by itself: each asks first, before its RPC.
   for (const [file, rpc] of [
     ["app/(dashboard)/invoices/page.tsx", 'supabase.rpc("create_with_lines", {\n          p_parent: "invoices"'],
-    ["app/(dashboard)/delivery-notes/page.tsx", 'supabase.rpc("next_doc_number", { p_prefix: "DLN" })'],
+    // Release 147: the hand-made note's DLN number is given inside create_with_lines (the page no longer calls next_doc_number first).
+    ["app/(dashboard)/delivery-notes/page.tsx", 'supabase.rpc("create_with_lines", {\n          p_parent: "delivery_notes"'],
     ["components/new-job-dialog.tsx", 'supabase.rpc("create_job"'],
   ] as const) {
     it(`${file} confirms the page's company before ${rpc.split("(")[0]}`, () => {

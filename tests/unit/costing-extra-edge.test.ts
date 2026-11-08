@@ -1,0 +1,27 @@
+import { describe, expect, it } from 'vitest';
+import { calcUnitCost, calcDetailedQuote, type DetailedInputs } from '../../lib/costing/engine';
+const operation={name:'Mill',sequence:1,setup_time_hr:1,cycle_time_hr:0.25,allowance_pct:0,machine_rate_per_hr:60,labor_rate_per_hr:30};
+const input=(overrides:Partial<DetailedInputs>={}):DetailedInputs=>({quantity:1,stock_weight_lb:1,cost_per_lb:2,scrap_factor:0.05,ops:[operation],margin_pct:0.15,programming_rate_per_hr:75,overhead_rate_pct:1.5,...overrides});
+describe('costing extended edge cases',()=>{
+ it('quantity one keeps all setup time',()=>expect(calcDetailedQuote(input({quantity:1})).operations[0].time.setup_per_part).toBe(1));
+ it('quantity one thousand amortises setup',()=>expect(calcDetailedQuote(input({quantity:1000})).operations[0].time.setup_per_part).toBe(0.001));
+ it('zero scrap adds no scrap money',()=>expect(calcDetailedQuote(input({scrap_factor:0})).cost_breakdown.material.scrap).toBe(0));
+ it('zero margin leaves price equal to cost',()=>{const r=calcDetailedQuote(input({margin_pct:0}));expect(r.summary.unit_price).toBe(r.summary.unit_cost)});
+ it('tiny material is accepted',()=>expect(calcDetailedQuote(input({stock_weight_lb:0.00001,cost_per_lb:0.00001})).summary.unit_price).toBeGreaterThan(0));
+ it('large but finite amount is accepted',()=>expect(calcDetailedQuote(input({stock_weight_lb:100000,cost_per_lb:100000})).summary.unit_price).toBeGreaterThan(0));
+ it('unit quote and detailed calculations remain separate',()=>expect(calcUnitCost(input()).unit_cost).toBeGreaterThan(0));
+ it('rejects invalid quantity zero',()=>expect(()=>calcDetailedQuote(input({quantity:0}))).toThrow(/quantity/i));
+ it('rejects quantity above million',()=>expect(()=>calcDetailedQuote(input({quantity:1000001}))).toThrow(/quantity/i));
+ it('rejects fractional quantity',()=>expect(()=>calcDetailedQuote(input({quantity:1.5}))).toThrow(/quantity/i));
+ it('rejects negative material price',()=>expect(()=>calcDetailedQuote(input({cost_per_lb:-1}))).toThrow(/nonnegative/i));
+ it('rejects negative scrap',()=>expect(()=>calcDetailedQuote(input({scrap_factor:-0.1}))).toThrow(/nonnegative/i));
+ it('rejects negative machine rate',()=>expect(()=>calcDetailedQuote(input({ops:[{...operation,machine_rate_per_hr:-1}]}))).toThrow(/nonnegative/i));
+ it('rejects negative operation time',()=>expect(()=>calcDetailedQuote(input({ops:[{...operation,cycle_time_hr:-1}]}))).toThrow(/nonnegative/i));
+ it('rejects Infinity',()=>expect(()=>calcDetailedQuote(input({stock_weight_lb:Infinity}))).toThrow(/finite/i));
+ it('rejects NaN',()=>expect(()=>calcDetailedQuote(input({cost_per_lb:NaN}))).toThrow(/finite/i));
+ it('rejects negative programming',()=>expect(()=>calcDetailedQuote(input({programming_time_hr:-1}))).toThrow(/Invalid detailed/i));
+ it('rejects nonfinite overhead',()=>expect(()=>calcDetailedQuote(input({overhead_rate_pct:Infinity}))).toThrow(/Invalid detailed/i));
+ it('tests exact half to even material round',()=>{const r=calcDetailedQuote(input({stock_weight_lb:1,cost_per_lb:21.125,scrap_factor:0,ops:[],overhead_rate_pct:1,margin_pct:0}));expect(r.cost_breakdown.material.base).toBe(21.12)});
+ it('tests exact half to even machine round',()=>{const r=calcDetailedQuote(input({stock_weight_lb:0,cost_per_lb:0,scrap_factor:0,ops:[{...operation,setup_time_hr:0,cycle_time_hr:0.325,machine_rate_per_hr:65,labor_rate_per_hr:0}],overhead_rate_pct:1,margin_pct:0}));expect(r.cost_breakdown.machine_cost).toBe(21.12)});
+ it('keeps full precision when multiplying quantity',()=>{const r=calcDetailedQuote(input({quantity:1000}));expect(r.summary.extended_price).toBeGreaterThan(r.summary.unit_price)});
+});

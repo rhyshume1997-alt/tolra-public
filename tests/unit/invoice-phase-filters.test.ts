@@ -15,3 +15,9 @@ describe("invoice status chips by Show tab", () => {
     expect([...chipsForPhase(new Set(["all"]), "done")]).toEqual(["all"]);
   });
 });
+
+describe("void and credited invoices are Done (sm-c)", () => {
+  it("keeps the Draft / void chip in the Done tab", () => {
+    expect([...chipsForPhase(new Set(["closed"]), "done")]).toEqual(["closed"]);
+  });
+});

@@ -2,6 +2,9 @@
 
 3 November 2026. This is a draft rehearsal candidate, not permission to deploy or apply SQL. Nothing was applied here. No feature behavior or existing test assertion was changed while combining the branches.
 
+> **Update, 6 November 2026 (read first).** This record is the 3 November rehearsal and is kept as it was written, except for the markers below. It is out of date on the release plan: `supabase/release-plan.json` now lists the numbered cutover releases 138, 140, 141, 143 and 144, then the one-time post-144 releases 145 (company setup), 146 (Tolra AI), 147 (job delivery note), 148 (job costing), 149 (Xero transfer switch), 150 (AI cap and key-off) and 151 (Xero invite hardening), each with a release, rollback, verify file and preflight marker, and CI installs 145 to 151 after the baseline. The statements below about 139, 140 to 143 and N5/N2 having no release allocation are superseded. The current order is `supabase/release-plan.json`.
+
+
 ## Inputs, in merge order
 
 Base main: `68f89ca7b801a10587ff9b51d6c820462847b65a`.
@@ -26,8 +29,8 @@ No other files conflicted. The catalogue snapshot and package lock merged automa
 ## Migration allocation and preflight
 
 - Numbered migrations contain one 138 and one 144; no duplicate three-digit prefixes. `npm run check:migrations` passes: 80 applied migrations remain unchanged and all 37 new numbered migrations have release, rollback, verify and preflight files.
-- This exact candidate does **not** include 139 or 140–143. The gaps are not duplicate numbers. SliQ 140/141, E13 142 and costing 143 are separate lines, not silently included in this merge request.
-- N5 setup is still `supabase/proposals/n5_company_setup.sql`; N2 and its per-company cap are together in `supabase/proposals/n2_tolra_provided_ai.sql`. Neither has a numbered migration or normal release/preflight marker. **Release allocation, repeatable upgrade packaging and review remain blockers before main/go-live.** No new number was invented here and no proposal was applied.
+- [Superseded 6 Nov: 140, 141 and 143 are now in the plan; 139 has no migration in the tree; 142 is optional and not in the cutover.] This exact candidate does **not** include 139 or 140–143. The gaps are not duplicate numbers. SliQ 140/141, E13 142 and costing 143 are separate lines, not silently included in this merge request.
+- N5 setup is still `supabase/proposals/n5_company_setup.sql`; N2 and its per-company cap are together in `supabase/proposals/n2_tolra_provided_ai.sql`. Neither has a numbered migration or normal release/preflight marker. [Superseded 6 Nov: they are post-144 releases 145 and 146 with release, rollback, verify files and preflight markers.] **Release allocation, repeatable upgrade packaging and review remain blockers before main/go-live.** No new number was invented here and no proposal was applied.
 - Numbered order is ascending through 137, 138, then 144. 138 depends on existing company/email/invoice helpers. 144 depends on the existing integration/session helpers and has no dependency on missing 140–143. Its two new functions are created before existing objects change; matching release and rollback ordering is retained. The frozen 084 enqueue body remains intact.
 - Run the existing numbered baseline and `scripts/upgrade-rehearsal.sh 013` on Code's disposable environment before installing either proposal. Both apply-twice and catalogue comparisons remain required. No such command was executed here.
 - Only after that baseline, the existing CI steps prepare N5, verify it and run company isolation; then prepare N2, verify it and run the AI/cap race proofs. Both require a loopback database URL and fail if verification is empty or any row is not true.

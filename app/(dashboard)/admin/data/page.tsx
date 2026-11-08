@@ -2,6 +2,7 @@
 
 import { DataImport } from "@/components/data-import";
 import { RoleGate } from "@/components/role-gate";
+import { SliqImport } from "@/components/sliq-import";
 
 /** Admin > Data (migration 076): import customers, suppliers, stock, quotes, sales orders, jobs, purchase orders, invoices and payments from one upload. */
 export default function AdminDataPage() {
@@ -13,6 +14,7 @@ export default function AdminDataPage() {
           <p className="mt-2 text-sm text-slate-500">Bring records in from a spreadsheet. The database checks every row first and writes nothing if any row has a problem.</p>
         </div>
         <DataImport />
+        <SliqImport />
       </div>
     </RoleGate>
   );

@@ -1,0 +1,86 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+stdout | tests/reviews/b5-financial/migration.db.test.ts
+Disposable proof: /tmp/tolra-b5-financial-dc2a1e49-e669-4a39-b5c2-d4a572f4b616
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts (3 tests | 3 failed) 35440ms
+   × original143 reproduces exact CLI prepared-statement error; whole migration writes nothing 159ms
+     → expected '\nConnecting to remote database...\nf…' to contain 'cannot insert multiple commands into …'
+   × quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true 151ms
+     → 
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=/tmp user=postgres database=tmp/tolra-b5-financial-dc2a1e49-e669-4a39-b5c2-d4a572f4b616-socket:5432/postgres`: dial error (dial unix /tmp/.s.PGSQL.5432: connect: no such file or directory)
+Try rerunning the command with --debug to troubleshoot the error.
+: expected 1 to be +0 // Object.is equality
+   × existing company isolation, roles, whole-pence constraints and audit SQL proof all hold 251ms
+     → ERROR:  relation "public.costing_materials" does not exist
+LINE 1: INSERT INTO public.costing_materials (id, organization_id, n...
+                    ^
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > original143 reproduces exact CLI prepared-statement error; whole migration writes nothing
+AssertionError: expected '\nConnecting to remote database...\nf…' to contain 'cannot insert multiple commands into …'
+
+- Expected
++ Received
+
+- cannot insert multiple commands into a prepared statement
++
++ Connecting to remote database...
++ failed to connect to postgres: failed to connect to `host=/tmp user=postgres database=tmp/tolra-b5-financial-dc2a1e49-e669-4a39-b5c2-d4a572f4b616-socket:5432/postgres`: dial error (dial unix /tmp/.s.PGSQL.5432: connect: no such file or directory)
++ Try rerunning the command with --debug to troubleshoot the error.
++
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:23:43
+     21|  writeFileSync(path.join(workspace,'supabase','migrations','143_costin…
+     22|  const r=db.cli(cli!,workspace);writeFileSync(`${db.evidence}/original…
+     23|  expect(r.code).not.toBe(0);expect(r.log).toContain('cannot insert mul…
+       |                                           ^
+     24|  expect(db.ok("SELECT to_regclass('public.costing_defaults') IS NULL")…
+     25| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > quoted name lets the exact CLI execute statements separately, same body/grants, all verifier rows true
+AssertionError: 
+Connecting to remote database...
+failed to connect to postgres: failed to connect to `host=/tmp user=postgres database=tmp/tolra-b5-financial-dc2a1e49-e669-4a39-b5c2-d4a572f4b616-socket:5432/postgres`: dial error (dial unix /tmp/.s.PGSQL.5432: connect: no such file or directory)
+Try rerunning the command with --debug to troubleshoot the error.
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:28:106
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/reviews/b5-financial/migration.db.test.ts > existing company isolation, roles, whole-pence constraints and audit SQL proof all hold
+Error: ERROR:  relation "public.costing_materials" does not exist
+LINE 1: INSERT INTO public.costing_materials (id, organization_id, n...
+                    ^
+
+ ❯ Disposable.ok tests/reviews/b5-financial/disposable.ts:60:72
+     58|     return { code: r.status, output: r.stdout.trim(), error: r.stderr …
+     59|   }
+     60|   ok(text: string) { const r = this.sql(text); if (r.code !== 0) throw…
+       |                                                                        ^
+     61|   async parallelSql(text: string) {
+     62|     const environment = this.identity(), time = new Date().toISOString…
+ ❯ tests/reviews/b5-financial/migration.db.test.ts:34:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  14:58:31
+   Duration  35.74s (transform 76ms, setup 0ms, collect 86ms, tests 35.44s, environment 0ms, prepare 65ms)
+

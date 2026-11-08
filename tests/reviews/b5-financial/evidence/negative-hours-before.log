@@ -1,0 +1,29 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ❯ tests/unit/b5-costing-stale-ui.test.ts (4 tests | 1 failed) 220ms
+   × refuses negative optional hours instead of silently pricing them as zero 21ms
+     → expected false to be true // Object.is equality
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-costing-stale-ui.test.ts > refuses negative optional hours instead of silently pricing them as zero
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/unit/b5-costing-stale-ui.test.ts:49:66
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 3 passed (4)
+   Start at  16:38:51
+   Duration  1.61s (transform 248ms, setup 0ms, collect 462ms, tests 220ms, environment 610ms, prepare 63ms)
+

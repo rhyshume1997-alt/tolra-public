@@ -56,12 +56,12 @@ describe("GET /api/cron/overview-snapshot: the capture", () => {
     expect(logs).toEqual(["[cron/overview-snapshot] companies=3"]);
   });
 
-  it.each([["PGRST202"], ["42883"]])("fails closed while 116 is not applied (%s): 200 skipped, no alert", async (code) => {
+  it.each([["PGRST202"], ["42883"]])("fails closed while 116 is not applied (%s): 200 skipped, one alert", async (code) => {
     rpc.mockResolvedValue({ data: null, error: { code, message: "Could not find the function public.capture_overview_owed" } });
     const res = await call(withSecret);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ skipped: "not configured" });
-    expect(reportServerError).not.toHaveBeenCalled();
+    expect(reportServerError).toHaveBeenCalledTimes(1); // sm-a: alerted once, 200 kept
   });
 
   it("any other database error is a 500 and an alert naming only the code", async () => {

@@ -40,7 +40,8 @@ test("job e-mail to the job's customer is delivered to the mock provider only", 
   expect(await sent.json()).toEqual({ status: "sent" });
   const emails = await recorded();
   expect(emails.length).toBe(before + 1);
-  expect(emails.at(-1)?.body).toMatchObject({ to: recipient, subject: `Job ${w.runId}` });
+  // The provider adapter takes a list of recipients (lib/email/providers/types.ts, to: string[]); exactly the one reviewed recipient, nobody else.
+  expect(emails.at(-1)?.body).toMatchObject({ to: [recipient], subject: `Job ${w.runId}` });
 
   const { data: history } = await admin.from("email_history").select("status, to_email").eq("related_to_id", job!.id);
   expect(history).toEqual([{ status: "sent_via_system", to_email: recipient }]);

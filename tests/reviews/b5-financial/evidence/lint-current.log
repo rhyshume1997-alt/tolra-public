@@ -1,0 +1,12 @@
+
+/workspace/tolra-public/work/b5-financial-candidate/components/job-photos.tsx
+  58:6  warning  React Hook useCallback has a missing dependency: 'viewer?.profile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/workspace/tolra-public/work/b5-financial-candidate/components/rework-dialog.tsx
+  217:6  warning  React Hook useCallback has a missing dependency: 'viewer?.profile'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+/workspace/tolra-public/work/b5-financial-candidate/lib/offline/outbox.ts
+  446:55  warning  '_buildId' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 3 problems (0 errors, 3 warnings)
+

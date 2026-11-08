@@ -97,6 +97,31 @@ export async function aal2Admin(page: Page, tenant: "alpha" | "beta" = "alpha") 
 }
 
 /**
+ * Gives an EXISTING synthetic user a recent authenticator code in the browser (aal2), on this page: the connect, disconnect and key routes
+ * need one (requireRecentAal2, accounting fcef1f0 / AI key). The authenticator is enrolled through the Auth API, the browser signs in
+ * again and enters a code from a fresh 30-second window on /mfa. Same steps as aal2Admin, for a user a test already created.
+ */
+export async function stepUpWithAuthenticator(page: Page, user: SyntheticUser) {
+  const { signedInClient } = await import("../support/fixtures");
+  const { enrolTotp, totpCode } = await import("../support/totp");
+  const { secret } = await enrolTotp(await signedInClient({ email: user.email, password: user.password }));
+  const used = totpCode(secret);
+  while (totpCode(secret) === used) await page.waitForTimeout(1000);
+  await page.context().clearCookies();
+  await asSeparateDevice(page);
+  await page.goto("/login");
+  await page.getByLabel("Username or email").fill(user.email);
+  await page.getByLabel("Password", { exact: true }).fill(user.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL(/\/(select-role|dashboard|mfa)/, { timeout: 45_000 });
+  await page.goto("/mfa");
+  await expect(page.getByRole("heading", { name: "Enter your code" })).toBeVisible();
+  await page.getByLabel("6-digit code").fill(totpCode(secret));
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.waitForURL(/\/(dashboard|select-role)/, { timeout: 30_000 });
+}
+
+/**
  * Fault injection on the disposable database: makes writes that set user_profiles.must_change_password to `value`
  * fail for one person (by id or e-mail). Returns the undo. Never used outside the isolated backend.
  */

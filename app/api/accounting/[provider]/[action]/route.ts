@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { accountingConnection, disconnectAccounting } from "@/lib/accounting/connections";
 import { accountingId } from "@/lib/accounting/types";
+import { requireRecentAal2 } from "@/lib/server/admin-users";
 import { forbiddenOrigin, isErrorResponse, jsonError, requireProfile, sameOrigin } from "@/lib/server/auth";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
 
@@ -14,6 +15,10 @@ async function handle(request: Request, context: Context, method: "GET" | "POST"
   const id = accountingId(provider);
   if (!id || !(method === "GET" ? ["status", "callback"] : ["connect", "disconnect", "check"]).includes(action)) return jsonError("Not found", 404);
   if (!auth.session || auth.session.support || auth.session.read_only) return jsonError("Only the company's own admin can manage accounting connections.", 403);
+  if (method === "POST" && (action === "connect" || action === "disconnect")) {
+    const recent = await requireRecentAal2(auth, `${action} accounting`, true);
+    if (recent) return recent;
+  }
   const service = createSupabaseAdminClient();
   if (!service) return jsonError("Accounting is not set up yet.", 503);
   const org = auth.profile.organization_id;

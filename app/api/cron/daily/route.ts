@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { runEmailSchedulesPass } from "@/lib/email/schedules/pass";
 import { runXeroSweepPass } from "@/lib/integrations/xero-pass";
 import { isCronRequest } from "@/lib/server/cron-auth";
+import { alertIfMigrationSkip } from "@/lib/server/cron-skip";
 import { passFailureReason } from "@/lib/server/cron-pass";
 import { reportServerError } from "@/lib/server/error-alert";
 
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
 /** One job's result, or { error } (reported, with a safe reason) when it could not run at all. Never throws. */
 async function settle<T extends object>(label: string, job: () => Promise<T>): Promise<T | { error: string }> {
   try {
-    return await job();
+    return await alertIfMigrationSkip(ROUTE, label, await job());
   } catch (err) {
     const reason = passFailureReason(err);
     console.error(`[cron/daily] ${label} failed: ${reason}`);
