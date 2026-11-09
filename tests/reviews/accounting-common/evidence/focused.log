@@ -1,0 +1,18 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/queue-accounting-common
+
+ ✓ tests/unit/integrations-engine.test.ts (22 tests) 60ms
+ ✓ tests/unit/xero-batch-chunk.test.ts (20 tests) 10ms
+ ✓ tests/unit/xero-mappings-send-log.test.ts (21 tests) 43ms
+ ✓ tests/unit/xero-batch-select.test.ts (19 tests) 19ms
+ ✓ tests/unit/xero-batch-routes.test.ts (17 tests) 141ms
+ ✓ tests/unit/xero-mapper.test.ts (12 tests) 9ms
+ ✓ tests/unit/integrations-crypto-oauth.test.ts (8 tests) 15ms
+ ✓ tests/unit/xero-batch-deps.test.ts (1 test) 3ms
+
+ Test Files  8 passed (8)
+      Tests  120 passed (120)
+   Start at  09:37:59
+   Duration  3.18s (transform 584ms, setup 0ms, collect 1.10s, tests 298ms, environment 1ms, prepare 483ms)
+

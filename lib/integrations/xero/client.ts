@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AccountingProvider, ContactCandidate, IntegrationDocument, Mappings, ProviderDocument } from "@/lib/integrations/types";
 import { ProviderError } from "@/lib/integrations/types";
+import { VOID_IN_XERO, voidRefusedMessage } from "@/lib/integrations/xero/policy";
 import { mapCreditNote, mapInvoice } from "@/lib/integrations/xero/mapper";
 
 // The Xero Accounting API for one connected organisation (tenant), with a valid access token. Every write carries an Idempotency-Key
@@ -86,6 +87,7 @@ export function createXeroClient(opts: { accessToken: string; tenantId: string; 
 
   return {
     id: "xero",
+    voidPolicy: { enabled: VOID_IN_XERO, refusedMessage: voidRefusedMessage },
 
     async listAccounts() {
       const json = (await call("GET", "/Accounts?where=" + encodeURIComponent('Status=="ACTIVE"'))) as {
