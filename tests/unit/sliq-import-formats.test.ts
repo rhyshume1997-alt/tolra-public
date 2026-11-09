@@ -3,8 +3,7 @@
  * invoices that read "Unpaid", credit-note allocations, percentage discounts, prefixed numbers with leading zeros).
  * Synthetic fixtures only.
  */
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -17,6 +16,7 @@ import { loadFolder, readWorkbooks } from "../../scripts/sliq-import/load.mjs";
 import { MappingError, getProfile } from "../../scripts/sliq-import/mapping.mjs";
 import { analyse, renderMarkdown } from "../../scripts/sliq-import/reconcile.mjs";
 import { buildXlsx } from "../support/make-xlsx.mjs";
+import { tempDir } from "../support/temp-dirs";
 
 const FIX = path.resolve(__dirname, "../fixtures/sliq");
 const BASIC = path.join(FIX, "basic");
@@ -24,7 +24,7 @@ const PROV = path.join(FIX, "provisional");
 const XLSX = path.join(FIX, "xlsx");
 const ORG = "11111111-2222-4333-8444-555555555555";
 const LOCAL = "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
-const tmp = (p = "sliq-fmt-") => mkdtempSync(path.join(tmpdir(), p));
+const tmp = (p = "sliq-fmt-") => tempDir(p);
 const nums = (xs: { number: string }[]) => xs.map((x) => x.number).sort();
 
 /** A copy of the provisional SliQ mapping marked confirmed (what the file would look like after a real check). */

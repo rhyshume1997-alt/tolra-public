@@ -1,0 +1,84 @@
+{
+  "base": "e42d927383513d1b98ce9cfca444884475622e2f",
+  "tested_product_source": "36a432d3337393483c57af7177bce0eff29c67b1",
+  "utc": "2026-11-05T16:30:29.707359+00:00",
+  "environment": "Own worktree, unchanged npm lockfile; synthetic/mocked unit suite. Full permitted run uses subprocess permission; network guards unchanged. No database/provider call by this supplemental suite.",
+  "full_unit": {
+    "passed": 6548,
+    "failed": 0,
+    "skipped": 0
+  },
+  "retained_sandbox_run": {
+    "passed": 6541,
+    "failed": 7,
+    "skipped": 0,
+    "reason": "Subprocess EPERM / empty child output; exact 5 suites rerun unchanged with permission:124/0/0"
+  },
+  "range_regression_before": {
+    "passed": 1,
+    "failed": 5,
+    "skipped": 0
+  },
+  "range_and_historical_oracle_after": {
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0
+  },
+  "typecheck": {
+    "exit_code": 0,
+    "heap_mb": 4096
+  },
+  "lint": {
+    "exit_code": 0,
+    "baseline_warnings": 3,
+    "config": "Same checked-in config; identical ancestor config excluded to avoid duplicate plugins"
+  },
+  "latest_completed_ci": {
+    "run": 42062335485,
+    "head": "28f26a9583bdbb8b66eb0c198123c73634fb6204",
+    "web": {
+      "passed": 6542,
+      "failed": 0,
+      "skipped": 0,
+      "build": "success"
+    },
+    "own_financial_db": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "native_costing_db": {
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0
+    },
+    "overall_db": {
+      "passed": 1822,
+      "failed": 17,
+      "skipped": 41,
+      "extra_skips_not_accepted": 34
+    },
+    "overall": "failure; remaining address/port guard and cron errors handed to Code/test owners; no check weakened"
+  },
+  "source_sha256": {
+    "lib/purchase-order-link.ts": "7d4b13c81570f62ea0dc2f0f7b89a616df62534c230afc17658b286cd03e5e97",
+    "tests/unit/b5-profitability-range.test.ts": "9ec184b0be969900670c472b60fef3915ef44e95ecb70bfe66a2b09b94eb0254",
+    "supabase/migrations/143_costing_rates.sql": "7ad0fae3bf11bdd37bcfaebef0b6947848ace1135c3a5d5f2cf6d5b081bd6d72",
+    "supabase/release/143_costing_rates.release.sql": "d1dc0e93c507b0c12d7d40028af0aa16aeb4cde5b1b54e3935aa88659e642ad8",
+    "lib/costing/price-part.ts": "03b083b04a82c58e835d283ee59c992d3af7ba5517d35cc36cd1a478c39a0367",
+    "components/costing/price-this-part.tsx": "826a65a96d41789270de72664f500b35dee43d2847072c4ec3c15b9654caf0a4",
+    "lib/html.ts": "bd646f1d7aeec1391a647467adb97e8e43e8c43fef93e8045f39f0b843ab6c27",
+    "lib/spreadsheet.ts": "c5798600c3cc520933b8a606fc41ff7060713dabd3a34f75aff826350a85bdad",
+    "lib/year-end-export.tsx": "f1693271adeee8efc8b7ec876edc8b8acfd242696a421b274998592d4683dead"
+  },
+  "log_sha256": {
+    "full-unit-range-final.log": "5a5dc20168a2217e41f22a7bb6476477a8febacac9e8e2e593b786313e0da304",
+    "full-unit-range-permitted.log": "09920a0a0b5d9e1fc51c0a0f787af78d102a3694d2755ec49e3d90f3d5355ae6",
+    "legacy-range-before.log": "084995ba2fb781df169f100fb24d5dbe56f175092cdcd599a695e6bc6e0088cb",
+    "legacy-range-after.log": "fb42dd002aa6adc93ba90dabddabb0374fb04222416b7996e5a1c8b91abe7f6b",
+    "lint-range-final.log": "bcd0a15dc0350b1d6f7acbdacc2df9b44fbe2fa94852aadbbe45c751a8dbb625",
+    "subprocess-permission-recheck.log": "df44a1bcf7f58d0fb532adc8034eb70b21190ca36f92f16786dfc6a983b7bcda",
+    "typecheck-range-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "approvals": "AWAITING CHATGPT REVIEW; Code integration, final candidate and company/accountant approvals outstanding; not merged/deployed/live verified"
+}

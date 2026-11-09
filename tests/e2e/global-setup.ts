@@ -14,6 +14,8 @@ import type { FullConfig } from "@playwright/test";
 
 import { allowInspectors, createSyntheticWorld, destroySyntheticWorld, leftoverRows, verifyBackendIdentity, withDb } from "../support/fixtures";
 import { isolatedBackend } from "../support/isolation";
+import { prepareChaseBrowserProposal } from "../support/chase-browser-proposal";
+import { adminClient } from "../support/fixtures";
 import { startMockProviders } from "../support/mock-providers";
 import { E2E_BLOCKED_LOG, E2E_MOCK_PORT, E2E_STATE_DIR, E2E_WORLD_FILE } from "./paths";
 
@@ -31,10 +33,12 @@ export default async function globalSetup(config: FullConfig) {
   // Inspectors are chosen by an admin and off by default (migration 034); the alpha office and workshop users are ticked for the specs.
   await allowInspectors(world);
 
+  let cleanupChase = async () => undefined as void;
   const cleanup = async () => {
     await mocks.close();
     await destroySyntheticWorld(world.runId);
     const left = await leftoverRows(world.runId);
+    await cleanupChase();
     if (Object.keys(left).length) throw new Error(`teardown left synthetic rows behind: ${JSON.stringify(left)}`);
   };
 
@@ -49,6 +53,21 @@ export default async function globalSetup(config: FullConfig) {
     await cleanup();
     throw error;
   }
+
+  // The UI calls the reviewed atomic proposal, which numbered migrations do not install.
+  // This fixture is ONLY on the independently verified disposable browser backend, after baseline DB/upgrade checks.
+  try {
+    cleanupChase = await prepareChaseBrowserProposal({ verify: () => verifyBackendIdentity(backend), query: (text, args) => withDb(db => db.query(text, args), backend) });
+    let visible = false;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      // The service role has no user: the visible function must refuse before any data change.
+      const { error } = await adminClient(backend).rpc("save_chase_steps_atomic", { p_org: world.tenants.alpha.id, p_expected: [], p_steps: [] });
+      if (error?.code === "42501") { visible = true; break; }
+      if (error?.code !== "PGRST202") throw new Error("Browser chase fixture schema probe did not refuse the service identity as expected.");
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    if (!visible) throw new Error("Browser atomic chase save is missing from the API schema cache.");
+  } catch (error) { await cleanup(); throw error; }
 
   writeFileSync(E2E_WORLD_FILE, JSON.stringify(world, null, 2));
   writeFileSync(path.join(E2E_STATE_DIR, "identity.json"), JSON.stringify({ ...identity, appUrl: baseURL, mockProviders: `http://127.0.0.1:${E2E_MOCK_PORT}` }, null, 2));

@@ -59,8 +59,9 @@ describe("renderTemplate", () => {
     expect(renderTemplate("quote", vars, null).subject).toBe("Quote Q-9 from Acme");
   });
 
-  it("knows exactly the eight keys of the contract, each with a label and only known placeholders", () => {
-    expect([...TEMPLATE_KEYS]).toEqual(["quote", "invoice", "purchase_order", "delivery_note", "invoice_reminder", "timesheet", "job_to_workshop", "rfq_clarify"]);
+  it("knows exactly the keys of the contract (eight, plus 138's three chase texts), each with a label and only known placeholders", () => {
+    // 138 adds the chase steps' before-due, firm and final texts (the friendly step uses invoice_reminder).
+    expect([...TEMPLATE_KEYS]).toEqual(["quote", "invoice", "purchase_order", "delivery_note", "invoice_reminder", "timesheet", "job_to_workshop", "rfq_clarify", "chase_before_due", "chase_firm", "chase_final"]);
     for (const key of TEMPLATE_KEYS) {
       const d = DEFAULT_TEMPLATES[key];
       expect(d.label).toBeTruthy();

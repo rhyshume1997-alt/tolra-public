@@ -6,6 +6,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname),
       // next/font only works through Next's compiler; the public pages' fonts (components/marketing/fonts.ts) get a stub here.
+      "next/font/local": path.resolve(__dirname, "tests/stubs/next-font-local.ts"),
       "next/font/google": path.resolve(__dirname, "tests/stubs/next-font-google.ts"),
     },
   },

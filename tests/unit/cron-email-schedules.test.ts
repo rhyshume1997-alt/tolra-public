@@ -25,6 +25,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-26T09:05:00Z")); // Monday, five past nine, London (GMT)
   sendCompanyEmail.mockResolvedValue({ ok: true, mode: "sent", provider: "mock" });
+  rpcFails = () => false;
   logs = [];
   for (const level of ["log", "error", "warn"] as const) vi.spyOn(console, level).mockImplementation((...args) => void logs.push(args.map(String).join(" ")));
 });
@@ -33,7 +34,21 @@ afterEach(() => { vi.useRealTimers(); });
 const invoice = (id: string, org: string, extra: Record<string, unknown> = {}) => ({
   id, organization_id: org, invoice_ref: `INV-${id}`, customer: "Acme", total: 100, amount_paid: 0, credited_amount: 0, refunded_amount: 0, status: "sent", due_date: "2026-10-01", payment_unverified: false, ...extra,
 });
-const world = () => new FakeDb({
+/** 138: the scheduled reminders only DRAFT, through public.chase_create_draft (here a stand-in that records the draft once per step). */
+type ChaseDb = FakeDb & { rpc: ReturnType<typeof vi.fn> };
+let rpcFails: (args: Record<string, unknown>) => boolean = () => false;
+const withRpc = (db: FakeDb): ChaseDb => Object.assign(db, {
+  rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
+    if (name !== "chase_create_draft") return { data: null, error: { code: "PGRST202" } };
+    if (rpcFails(args)) return { data: null, error: { code: "XX000", message: `failed for ${String(args.p_to)}` } };
+    if (db.rows("chase_sends").some((r) => r.invoice_id === args.p_invoice && r.step_id === args.p_step)) return { data: { created: false, reason: "step_done" }, error: null };
+    const history = `h-${String(args.p_invoice)}`;
+    db.rows("chase_sends").push({ organization_id: args.p_org, invoice_id: args.p_invoice, step_id: args.p_step, offset_days: 7, draft_history_id: history });
+    db.rows("email_history").push({ id: history, organization_id: args.p_org, to_email: args.p_to, status: "drafted" });
+    return { data: { created: true, history_id: history }, error: null };
+  }),
+});
+const world = () => withRpc(new FakeDb({
   organizations: [{ id: "a", name: "Alpha", status: "active" }, { id: "b", name: "Beta", status: "active" }, { id: "c", name: "Gamma", status: "paused" }],
   email_schedules: [
     { id: "sa", organization_id: "a", kind: "invoice_reminder", enabled: true, frequency: "daily", weekday: null, time_of_day: "08:00", run_at: null, timezone: "Europe/London", recipients: null, last_run_at: null, updated_at: "2026-10-01T00:00:00Z" },
@@ -42,8 +57,10 @@ const world = () => new FakeDb({
     { id: "sd", organization_id: "a", kind: "timesheet", enabled: false, frequency: "weekly", weekday: 1, time_of_day: "09:00", run_at: null, timezone: "Europe/London", recipients: null, last_run_at: null, updated_at: "2026-10-01T00:00:00Z" },
   ],
   invoices: [invoice("1", "a"), invoice("2", "b"), invoice("3", "c")],
-  customers: [{ organization_id: "a", name: "Acme", email: "acme@a.test", contact_name: null }, { organization_id: "b", name: "Acme", email: "acme@b.test", contact_name: null }, { organization_id: "c", name: "Acme", email: "acme@c.test", contact_name: null }],
-});
+  customers: [{ id: "ca", organization_id: "a", name: "Acme", email: "acme@a.test", contact_name: null }, { id: "cb", organization_id: "b", name: "Acme", email: "acme@b.test", contact_name: null }, { id: "cc", organization_id: "c", name: "Acme", email: "acme@c.test", contact_name: null }],
+  chase_steps: [{ id: "a7", organization_id: "a", offset_days: 7, tone: "friendly" }, { id: "b7", organization_id: "b", offset_days: 7, tone: "friendly" }, { id: "c7", organization_id: "c", offset_days: 7, tone: "friendly" }],
+  chase_pauses: [], chase_sends: [], email_history: [], jobs: [], purchase_orders: [], email_templates: [],
+}));
 
 describe("GET /api/cron/email-schedules: who may call it", () => {
   it.each([
@@ -70,20 +87,25 @@ describe("GET /api/cron/email-schedules: who may call it", () => {
 });
 
 describe("GET /api/cron/email-schedules: the run", () => {
-  it("sends the due reminders of active companies only, and a second call a minute later sends nothing more", async () => {
+  it("drafts (never sends) the due reminders of active companies only, and a second call later drafts nothing more", async () => {
     const db = world();
     admin = db;
     const res = await call(withSecret);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ schedules: 2, due: 2, ran: 2, emails: 2, drafted: 0, failed: 0, errors: 0 });
-    expect(sendCompanyEmail.mock.calls.map((c) => c[0].to)).toEqual([["acme@a.test"], ["acme@b.test"]]);
-    expect(sendCompanyEmail.mock.calls.map((c) => c[0].organizationId)).toEqual(["a", "b"]);
-    expect(db.rows("email_schedule_runs").map((r) => [r.schedule_id, r.period_key, r.sent_count, r.error])).toEqual([["sa", "2026-10-26", 1, null], ["sb", "2026-10-26", 1, null]]);
+    expect(await res.json()).toEqual({ schedules: 2, due: 2, ran: 2, emails: 0, drafted: 2, failed: 0, errors: 0 });
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
+    expect(db.rpc.mock.calls.map((c) => [c[1].p_org, c[1].p_to, c[1].p_user])).toEqual([["a", "acme@a.test", null], ["b", "acme@b.test", null]]);
+    expect(db.rows("email_history").map((r) => [r.organization_id, r.status])).toEqual([["a", "drafted"], ["b", "drafted"]]);
+    expect(db.rows("email_schedule_runs").map((r) => [r.schedule_id, r.period_key, r.sent_count, r.error])).toEqual([["sa", "2026-10-26", 0, null], ["sb", "2026-10-26", 0, null]]);
     expect(db.rows("email_schedules").find((r) => r.id === "sa")!.last_run_at).toBe("2026-10-26T09:05:00.000Z");
 
     vi.setSystemTime(new Date("2026-10-26T09:20:00Z"));
-    expect(await (await call(withSecret)).json()).toMatchObject({ due: 2, ran: 0, emails: 0 });
-    expect(sendCompanyEmail).toHaveBeenCalledTimes(2);
+    expect(await (await call(withSecret)).json()).toMatchObject({ due: 2, ran: 0, emails: 0, drafted: 0 });
+    // The next day's period: the 7-day step is already drafted for each invoice, so nothing new.
+    vi.setSystemTime(new Date("2026-10-27T09:05:00Z"));
+    expect(await (await call(withSecret)).json()).toMatchObject({ due: 2, ran: 2, emails: 0, drafted: 0 });
+    expect(db.rows("chase_sends")).toHaveLength(2);
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
   });
 
   it("at 07:30 the schedule's previous slot (yesterday 08:00, 23.5 h ago) is still inside the catch-up window", async () => {
@@ -97,28 +119,26 @@ describe("GET /api/cron/email-schedules: the run", () => {
   it("one company's failure never stops the others and never makes the route throw", async () => {
     const db = world();
     admin = db;
-    sendCompanyEmail.mockImplementation(async (input: { organizationId: string }) => {
-      if (input.organizationId === "a") throw new Error("mailer exploded for a@a.test");
-      return { ok: true, mode: "sent", provider: "mock" };
-    });
+    rpcFails = (args) => args.p_org === "a";
     const res = await call(withSecret);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ ran: 2, emails: 1, failed: 1 });
-    expect(db.rows("email_schedule_runs").find((r) => r.schedule_id === "sa")!.error).toBe("1 reminder not sent (unexpected)");
+    expect(await res.json()).toMatchObject({ ran: 2, emails: 0, drafted: 1, failed: 1 });
+    expect(db.rows("email_schedule_runs").find((r) => r.schedule_id === "sa")!.error).toBe("1 chase draft not made (XX000)");
     expect(db.rows("email_schedule_runs").find((r) => r.schedule_id === "sb")!.error).toBeNull();
-    expect(logs.join("\n")).not.toContain("a@a.test");
+    expect(logs.join("\n")).not.toContain("acme@a.test");
   });
 
-  it("a failed reminder is tried again on a later call, and only what is left is sent", async () => {
+  it("a failed draft is tried again on a later call, and only what is left is drafted", async () => {
     const db = world();
     admin = db;
-    sendCompanyEmail.mockResolvedValueOnce({ ok: false, error: "nope", code: "provider_error" });
+    let first = true;
+    rpcFails = (args) => { if (args.p_org === "a" && first) { first = false; return true; } return false; };
     await call(withSecret);
-    expect(db.rows("invoice_reminder_sends").map((r) => r.invoice_id)).toEqual(["2"]); // company a's claim was given back
+    expect(db.rows("chase_sends").map((r) => r.invoice_id)).toEqual(["2"]);
     vi.setSystemTime(new Date("2026-10-26T09:20:00Z"));
-    expect(await (await call(withSecret)).json()).toMatchObject({ ran: 1, emails: 1 });
-    expect(sendCompanyEmail).toHaveBeenCalledTimes(3);
-    expect(db.rows("invoice_reminder_sends").map((r) => r.invoice_id).sort()).toEqual(["1", "2"]);
+    expect(await (await call(withSecret)).json()).toMatchObject({ ran: 1, emails: 0, drafted: 1 });
+    expect(db.rows("chase_sends").map((r) => r.invoice_id).sort()).toEqual(["1", "2"]);
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
   });
 
   it("answers 200 skipped while migration 108 is not applied", async () => {
@@ -129,7 +149,7 @@ describe("GET /api/cron/email-schedules: the run", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ skipped: "database update 108 not applied", ran: 0 });
     expect(sendCompanyEmail).not.toHaveBeenCalled();
-    expect(reportServerError).not.toHaveBeenCalled();
+    expect(reportServerError).toHaveBeenCalledTimes(1); // sm-a: a missing critical migration is alerted once, the 200 is kept
   });
 
   it("does nothing, quietly, until a schedule is enabled", async () => {

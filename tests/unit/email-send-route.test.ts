@@ -47,7 +47,7 @@ import { POST } from "@/app/api/email/send/route";
 import { EMAIL_SEND_ROLES as SEND_ROLES } from "@/lib/email/send-company-email";
 
 const post = (body: Record<string, unknown>) => POST(new Request("http://localhost/api/email/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
-const valid = { kind: "invoice", record_id: DOC, to: ["acc@customer.test"], subject: "Invoice I-1", text: "Hello" };
+const valid = { kind: "invoice", record_id: DOC, to: ["acc@customer.test"], subject: "Invoice I-1", text: "Hello", idempotency_key: "fixture-key-0001" };
 
 describe("POST /api/email/send", () => {
   beforeEach(() => {
@@ -133,6 +133,10 @@ describe("POST /api/email/send", () => {
       expect(res.status).toBe(status);
       expect(await res.json()).toEqual({ status: "failed", error: `e-${code}`, code });
     }
+  });
+  it.each([" Invoice I-1 ", "Invoice\r\nchanged", "Invoice\u2028changed", "Invoice\0changed", "   "])("refuses a subject that would change after approval: %j", async subject => {
+    expect((await post({ ...valid, subject })).status).toBe(400);
+    expect(mailer.calls).toEqual([]);
   });
 });
 

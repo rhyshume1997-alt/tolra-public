@@ -20,6 +20,7 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
  */
 
 const SEND_TIMEOUT_MS = 8000;
+const BUDGET_TIMEOUT_MS = 2000;
 const memoryBudget = createAlertBudget();
 
 export type AlertResult = { sent: boolean; reason: "sent" | "disabled" | "not-production" | "rate-limited" | "no-provider" | "no-sender" | "send-failed" };
@@ -40,23 +41,42 @@ function functionMissing(error: { code?: string } | null | undefined) {
   return error?.code === "PGRST202" || error?.code === "42883";
 }
 
+/** Abort the request AND bound the wait, even when a transport fails to honour cancellation. */
+async function budgetLookup<T>(start: (signal: AbortSignal) => PromiseLike<T>): Promise<T> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        const error = new Error("Alert budget lookup timed out");
+        error.name = "TimeoutError";
+        reject(error);
+      }, BUDGET_TIMEOUT_MS);
+    });
+    return await Promise.race([start(controller.signal), deadline]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 async function claim(fp: string, source: string, reporter?: AlertReporter): Promise<boolean> {
   const browser = source === "browser";
   const admin = createSupabaseAdminClient();
   if (admin) {
     try {
       if (browser && reporter) {
-        const { data, error } = await admin.rpc("claim_browser_error_alert", { p_fingerprint: fp, p_user_id: reporter.userId, p_company_id: reporter.companyId });
+        const { data, error } = await budgetLookup(signal => admin.rpc("claim_browser_error_alert", { p_fingerprint: fp, p_user_id: reporter.userId, p_company_id: reporter.companyId }).abortSignal(signal));
         if (!error && typeof data === "boolean") return data;
         // 115 not applied yet: the old shared budget, so alerts keep working while the release is pending.
         if (!functionMissing(error)) console.error("[error-alert] browser budget check failed", error?.code);
         else {
-          const old = await admin.rpc("claim_error_alert", { p_fingerprint: fp });
+          const old = await budgetLookup(signal => admin.rpc("claim_error_alert", { p_fingerprint: fp }).abortSignal(signal));
           if (!old.error && typeof old.data === "boolean") return old.data;
           console.error("[error-alert] budget check failed", old.error?.code);
         }
       } else {
-        const { data, error } = await admin.rpc("claim_error_alert", { p_fingerprint: fp });
+        const { data, error } = await budgetLookup(signal => admin.rpc("claim_error_alert", { p_fingerprint: fp }).abortSignal(signal));
         if (!error && typeof data === "boolean") return data;
         console.error("[error-alert] budget check failed", error?.code);
       }

@@ -54,6 +54,7 @@ function serverEnv(): Record<string, string> | null {
     INTEGRATIONS_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
     // Xero: placeholder app settings so the Integrations routes treat Xero as set up (otherwise the batch route answers 503). Nothing here
     // reaches Xero: the no-network guard blocks outbound calls and no spec connects a real account (tests/e2e/xero-batch.spec.ts fakes a connection row).
+    XERO_INVITE_REDIRECT_URIS: "https://tolra.example.test/api/integrations/invite/callback",
     XERO_CLIENT_ID: "e2e-xero-client-id",
     XERO_CLIENT_SECRET: "e2e-xero-client-secret",
     XERO_REDIRECT_URI: `${baseURL}/api/integrations/xero/callback`,
@@ -66,6 +67,8 @@ const build = process.env.E2E_SKIP_BUILD === "1" ? "" : "npm run build && ";
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: /.*\.spec\.ts/,
+  // These ten cases use a separate required CI runner with provider mocks.
+  testIgnore: ["**/reviewer/**"],
   globalSetup: "./tests/e2e/global-setup.ts",
   timeout: 90_000,
   expect: { timeout: 20_000 },

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { microsoftReady } from "@/lib/integrations/microsoft/client";
 import { runMailboxPollPass } from "@/lib/integrations/microsoft/inbox";
 import { isCronRequest } from "@/lib/server/cron-auth";
+import { alertIfMigrationSkip } from "@/lib/server/cron-skip";
 import { passFailureReason } from "@/lib/server/cron-pass";
 import { reportServerError } from "@/lib/server/error-alert";
 import { createSupabaseAdminClient } from "@/lib/server/supabase-admin";
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
     const service = createSupabaseAdminClient();
     const ready = service ? await microsoftReady(service) : null;
     if (!service || !ready) return NextResponse.json({ skipped: "Microsoft 365 is not set up on this server" });
-    return NextResponse.json(await runMailboxPollPass({ service, ready, budgetMs: BUDGET_MS }));
+    return NextResponse.json(await alertIfMigrationSkip(ROUTE, "mailbox poll", await runMailboxPollPass({ service, ready, budgetMs: BUDGET_MS })));
   } catch (err) {
     const reason = passFailureReason(err);
     console.error(`[cron/mail-poll] failed: ${reason}`);

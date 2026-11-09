@@ -3,7 +3,7 @@
  * (two runs are byte-identical), and no personal data. Synthetic fixtures only.
  */
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -14,6 +14,7 @@ import { csvField, neutraliseCsvText, toCsv } from "../../scripts/sliq-reconcile
 import { AREAS, CSV_COLUMNS, SEVERITIES, sortRows } from "../../scripts/sliq-reconcile/rows.mjs";
 import { csvField as appCsvField, neutraliseCsvText as appNeutralise } from "../../lib/html";
 import { FIXTURE, GENERATED_AT, analyse, editCsv, editTable, idOf, readCsvRows, runCli, workspace, type Row, type Ws } from "../support/sliq-reconcile";
+import { tempDir } from "../support/temp-dirs";
 
 const dirHash = (dir: string) => Object.fromEntries(readdirSync(dir).sort().map((f) => [f, createHash("sha256").update(readFileSync(path.join(dir, f))).digest("hex")]));
 
@@ -371,7 +372,7 @@ describe("running it", () => {
     expect(r.stderr).toContain("ISO date");
     expect(existsSync(ws.out)).toBe(false);
     const ws2 = workspace();
-    cpSync(path.join(ws2.tolra, "invoices.json"), path.join(mkdtempSync(path.join(tmpdir(), "x-")), "invoices.json"));
+    cpSync(path.join(ws2.tolra, "invoices.json"), path.join(tempDir("x-"), "invoices.json"));
     editTable(ws2, "customers", (rows) => rows.map(({ name, ...r }) => (void name, r)));
     expect((await runCli(ws2)).stderr).toContain("required column is not in the snapshot rows");
   });

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { AccountingProvider, ContactCandidate, IntegrationDocument, Mappings, ProviderDocument } from "@/lib/integrations/types";
 import { ProviderError } from "@/lib/integrations/types";
+import { VOID_IN_XERO, voidRefusedMessage } from "@/lib/integrations/xero/policy";
 import { mapCreditNote, mapInvoice } from "@/lib/integrations/xero/mapper";
 
 // The Xero Accounting API for one connected organisation (tenant), with a valid access token. Every write carries an Idempotency-Key
@@ -36,12 +37,29 @@ function retryAfterMs(res: Response): number {
 function toProviderDocument(d: XeroDocJson | undefined, kind: "invoice" | "credit_note"): ProviderDocument | null {
   const id = kind === "invoice" ? d?.InvoiceID : d?.CreditNoteID;
   if (!d || !id) return null;
+  if ([d.SubTotal, d.TotalTax, d.Total].some(value => typeof value !== "number" || !Number.isFinite(value))) {
+    throw new ProviderError("Xero answered without complete numeric totals: check it there", "unknown", 200);
+  }
   return {
     externalId: id,
     externalNumber: (kind === "invoice" ? d.InvoiceNumber : d.CreditNoteNumber) ?? null,
     status: d.Status ?? "",
-    totals: { subTotal: Number(d.SubTotal ?? 0), totalTax: Number(d.TotalTax ?? 0), total: Number(d.Total ?? 0) },
+    totals: { subTotal: d.SubTotal!, totalTax: d.TotalTax!, total: d.Total! },
   };
+}
+
+/** An incomplete or ambiguous read is unknown, never evidence that a resend is safe. */
+function exactReadBack(rows: XeroDocJson[] | undefined, kind: "invoice" | "credit_note", number: string): ProviderDocument | null {
+  if (!Array.isArray(rows)) throw new ProviderError("Xero's document list could not be checked", "unknown", 200);
+  const salesType = kind === "invoice" ? "ACCREC" : "ACCRECCREDIT";
+  const candidates = rows.filter(d => d && (kind === "invoice" ? d.InvoiceNumber : d.CreditNoteNumber) === number && d.Status !== "DELETED");
+  if (candidates.some(d => !d.Type)) throw new ProviderError("Xero answered without the document type", "unknown", 200);
+  const found = candidates.filter(d => d.Type === salesType);
+  if (found.length > 1) throw new ProviderError("Several Xero documents match this number: check them there", "unknown", 200);
+  if (!found.length) return null;
+  const result = toProviderDocument(found[0], kind);
+  if (!result) throw new ProviderError("Xero answered without the document's id", "unknown", 200);
+  return result;
 }
 
 /** A Xero where-clause string literal: the value in double quotes, with backslashes and quotes escaped. */
@@ -86,6 +104,7 @@ export function createXeroClient(opts: { accessToken: string; tenantId: string; 
 
   return {
     id: "xero",
+    voidPolicy: { enabled: VOID_IN_XERO, refusedMessage: voidRefusedMessage },
 
     async listAccounts() {
       const json = (await call("GET", "/Accounts?where=" + encodeURIComponent('Status=="ACTIVE"'))) as {
@@ -134,13 +153,11 @@ export function createXeroClient(opts: { accessToken: string; tenantId: string; 
     async readBack(docType, number) {
       if (docType === "invoice") {
         const json = (await call("GET", `/Invoices?InvoiceNumbers=${encodeURIComponent(number)}`)) as { Invoices?: XeroDocJson[] };
-        const found = (json.Invoices ?? []).filter((d) => d.Type === "ACCREC" && d.InvoiceNumber === number && d.Status !== "DELETED");
-        return toProviderDocument(found[0], "invoice");
+        return exactReadBack(json.Invoices, "invoice", number);
       }
       const where = encodeURIComponent(`CreditNoteNumber==${xeroString(number)}`);
       const json = (await call("GET", `/CreditNotes?where=${where}`)) as { CreditNotes?: XeroDocJson[] };
-      const found = (json.CreditNotes ?? []).filter((d) => d.CreditNoteNumber === number && d.Status !== "DELETED");
-      return toProviderDocument(found[0], "credit_note");
+      return exactReadBack(json.CreditNotes, "credit_note", number);
     },
   };
 }

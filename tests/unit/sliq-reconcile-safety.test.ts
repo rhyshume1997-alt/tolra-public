@@ -3,8 +3,7 @@
  * overwrites a file the tool did not write, and is written atomically. No name, e-mail address, phone number, address or
  * password from the inputs or the arguments reaches any output file, standard output or standard error, however it got in.
  */
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -13,6 +12,7 @@ import { EXIT } from "../../scripts/sliq-reconcile/cli.mjs";
 import { safeFile, safeRef, safeText, safeWord, scrub, stripQuoted } from "../../scripts/sliq-reconcile/safe.mjs";
 import { CSV_COLUMNS, ids, makeCollector } from "../../scripts/sliq-reconcile/rows.mjs";
 import { ORG, editCsv, editTable, runCli, workspace, type Ws } from "../support/sliq-reconcile";
+import { tempDir } from "../support/temp-dirs";
 
 const args = (ws: Ws, over: Record<string, string> = {}) => {
   const a = { "--sliq": ws.sliq, "--tolra": ws.tolra, "--out": ws.out, "--mapping": "synthetic", ...over };
@@ -33,7 +33,7 @@ describe("--out can never be, sit inside, or contain an input", () => {
 
   it("sees through symlinks: a link to an input, a link inside an input, and a link to a parent", async () => {
     const ws = workspace();
-    const links = mkdtempSync(path.join(tmpdir(), "sliq-reconcile-links-"));
+    const links = tempDir("sliq-reconcile-links-");
     symlinkSync(ws.sliq, path.join(links, "to-sliq"));
     symlinkSync(ws.tolra, path.join(links, "to-tolra"));
     symlinkSync(ws.root, path.join(links, "to-root"));

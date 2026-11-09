@@ -56,6 +56,16 @@
  },
  {
   "kind": "function",
+  "object": "public.accounting_cloud_connections_ready()",
+  "detail": "definer search_path=pg_catalog, public 83942b63e9ac68fd0f8c1294d54f7c1c"
+ },
+ {
+  "kind": "function",
+  "object": "public.accounting_cloud_enqueue()",
+  "detail": "definer search_path=pg_catalog, public 07eda98e2de92e1c292940c17543f05c"
+ },
+ {
+  "kind": "function",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "definer search_path=pg_catalog, public d0d9351d698893fa56c9617e8001dce1"
  },
@@ -316,6 +326,26 @@
  },
  {
   "kind": "function",
+  "object": "public.chase_create_draft(p_org uuid, p_invoice uuid, p_step uuid, p_to text, p_to_name text, p_subject text, p_body text, p_user uuid)",
+  "detail": "definer search_path=pg_catalog, public e34d09d760a745e3dca1680980c8e362"
+ },
+ {
+  "kind": "function",
+  "object": "public.chase_pauses_guard()",
+  "detail": "invoker search_path=pg_catalog, public d24b6c7f0841d5b433b99f0dab4a2935"
+ },
+ {
+  "kind": "function",
+  "object": "public.chase_record_sent(p_org uuid, p_draft uuid, p_sent uuid, p_user uuid)",
+  "detail": "definer search_path=pg_catalog, public 638795401ee2f92d21f8234cf42619bf"
+ },
+ {
+  "kind": "function",
+  "object": "public.chase_steps_guard()",
+  "detail": "invoker search_path=pg_catalog, public 680441ffe1c88e3e7f37c30ac56878a4"
+ },
+ {
+  "kind": "function",
   "object": "public.check_credit_note_caps(p_invoice uuid)",
   "detail": "invoker search_path=pg_catalog, public 1b900a512a9e6f79661d058c10f29db4"
  },
@@ -408,6 +438,11 @@
   "kind": "function",
   "object": "public.correct_labour_session(p_session uuid, p_started_at timestamp with time zone, p_ended_at timestamp with time zone, p_reason text)",
   "detail": "definer search_path=pg_catalog, public 5568e7c86f6d9d4ec84d2b484771cb35"
+ },
+ {
+  "kind": "function",
+  "object": "public.costing_rates_stamp()",
+  "detail": "invoker search_path=pg_catalog, public b592661c61faa5695fa1f425cf165348"
  },
  {
   "kind": "function",
@@ -897,7 +932,7 @@
  {
   "kind": "function",
   "object": "public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)",
-  "detail": "definer search_path=pg_catalog, public 4ee36581e711352a9de91a134e97171b"
+  "detail": "definer search_path=pg_catalog, public f584ce0c6e18e9512e543c4cfe69c5b2"
  },
  {
   "kind": "function",
@@ -977,7 +1012,7 @@
  {
   "kind": "function",
   "object": "public.invoice_issue_lock()",
-  "detail": "invoker search_path=pg_catalog, public db08937a7fc02e8a7066c69d4886f98d"
+  "detail": "invoker search_path=pg_catalog, public a8c8872bdf04335e301a202bb2af896a"
  },
  {
   "kind": "function",
@@ -1008,6 +1043,11 @@
   "kind": "function",
   "object": "public.invoices_job_release_gate()",
   "detail": "invoker search_path=pg_catalog, public 1d7a66df2edf4a37f0f428662761df69"
+ },
+ {
+  "kind": "function",
+  "object": "public.invoices_payment_claim_guard()",
+  "detail": "invoker search_path=pg_catalog, public 59807819b600509077282964401a2cf5"
  },
  {
   "kind": "function",
@@ -1396,6 +1436,11 @@
  },
  {
   "kind": "function",
+  "object": "public.mark_payment_claimed(p_invoice uuid, p_source text, p_evidence text, p_message_id text)",
+  "detail": "definer search_path=pg_catalog, public b09b3a71e659b117c8f80d2536fdf104"
+ },
+ {
+  "kind": "function",
   "object": "public.member_has_verified_totp(p_user uuid)",
   "detail": "definer search_path=pg_catalog, public 2dbd5c63b2275e46eaaa7e832d8e9264"
  },
@@ -1781,6 +1826,11 @@
  },
  {
   "kind": "function",
+  "object": "public.resolve_payment_claim(p_invoice uuid, p_outcome text)",
+  "detail": "definer search_path=pg_catalog, public 0f3456049dca04e1b2d08208c0d980a6"
+ },
+ {
+  "kind": "function",
   "object": "public.resolve_time_sync_rejection(p_id uuid, p_note text)",
   "detail": "definer search_path=pg_catalog, public b78c2aa68e667a61424930ec5e45f594"
  },
@@ -1813,6 +1863,11 @@
   "kind": "function",
   "object": "public.sales_orders_converted_money_guard()",
   "detail": "definer search_path=pg_catalog, public 501564a07b01bfbcb20cb9a3d85cc2e6"
+ },
+ {
+  "kind": "function",
+  "object": "public.save_costing_settings_atomic(p_org uuid, p_expected jsonb, p_value jsonb)",
+  "detail": "invoker search_path=pg_catalog, public fc2e317d6af26bcf8ff3a7e2a1ba0c8a"
  },
  {
   "kind": "function",
@@ -1978,6 +2033,11 @@
   "kind": "function",
   "object": "public.site_network_replay(p_org uuid, p_client_op_id uuid, p_kind text, p_request jsonb)",
   "detail": "invoker search_path=pg_catalog, public 2f7826635fd70da7a3468d265cb7186c"
+ },
+ {
+  "kind": "function",
+  "object": "public.source_ref_import_only()",
+  "detail": "invoker search_path=pg_catalog, public 4e0c7a5f210db4ee26bd37bb3e69fb32"
  },
  {
   "kind": "function",
@@ -2246,6 +2306,16 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.accounting_cloud_connections_ready()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.accounting_cloud_enqueue()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.acknowledge_paused_machine(p_machine uuid, p_paused_run uuid, p_job uuid, p_client_op_id uuid)",
   "detail": "authenticated,service_role"
  },
@@ -2506,6 +2576,26 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.chase_create_draft(p_org uuid, p_invoice uuid, p_step uuid, p_to text, p_to_name text, p_subject text, p_body text, p_user uuid)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.chase_pauses_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.chase_record_sent(p_org uuid, p_draft uuid, p_sent uuid, p_user uuid)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.chase_steps_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.check_credit_note_caps(p_invoice uuid)",
   "detail": "authenticated,service_role"
  },
@@ -2598,6 +2688,11 @@
   "kind": "function-grant",
   "object": "public.correct_labour_session(p_session uuid, p_started_at timestamp with time zone, p_ended_at timestamp with time zone, p_reason text)",
   "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.costing_rates_stamp()",
+  "detail": "service_role"
  },
  {
   "kind": "function-grant",
@@ -3201,6 +3296,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.invoices_payment_claim_guard()",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.invoices_status_allowlist()",
   "detail": "service_role"
  },
@@ -3582,6 +3682,11 @@
  {
   "kind": "function-grant",
   "object": "public.mailbox_sync_status()",
+  "detail": "authenticated,service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.mark_payment_claimed(p_invoice uuid, p_source text, p_evidence text, p_message_id text)",
   "detail": "authenticated,service_role"
  },
  {
@@ -3971,6 +4076,11 @@
  },
  {
   "kind": "function-grant",
+  "object": "public.resolve_payment_claim(p_invoice uuid, p_outcome text)",
+  "detail": "authenticated"
+ },
+ {
+  "kind": "function-grant",
   "object": "public.resolve_time_sync_rejection(p_id uuid, p_note text)",
   "detail": "authenticated,service_role"
  },
@@ -4003,6 +4113,11 @@
   "kind": "function-grant",
   "object": "public.sales_orders_converted_money_guard()",
   "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.save_costing_settings_atomic(p_org uuid, p_expected jsonb, p_value jsonb)",
+  "detail": "authenticated"
  },
  {
   "kind": "function-grant",
@@ -4167,6 +4282,11 @@
  {
   "kind": "function-grant",
   "object": "public.site_network_replay(p_org uuid, p_client_op_id uuid, p_kind text, p_request jsonb)",
+  "detail": "service_role"
+ },
+ {
+  "kind": "function-grant",
+  "object": "public.source_ref_import_only()",
   "detail": "service_role"
  },
  {
@@ -4416,6 +4536,51 @@
  },
  {
   "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_pauses :: chase_pauses office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_sends :: chase_sends office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps member select",
+  "detail": "PERMISSIVE SELECT authenticated aba327892564ca66f25161fdcaa8da48"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.chase_steps :: chase_steps office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
   "object": "public.clock_in_network_exemptions :: clock_in_network_exemptions rbac select",
   "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
  },
@@ -4433,6 +4598,66 @@
   "kind": "policy",
   "object": "public.clock_in_network_unverified :: clock_in_network_unverified rbac select",
   "detail": "PERMISSIVE SELECT authenticated 14f218c24e3af08658a68116b0748f1f"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_defaults :: costing_defaults office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_machines :: costing_machines office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office delete",
+  "detail": "PERMISSIVE DELETE authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office insert",
+  "detail": "PERMISSIVE INSERT authenticated 1a35fb1b2012d619accab921244582b3"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
+ },
+ {
+  "kind": "policy",
+  "object": "public.costing_materials :: costing_materials office update",
+  "detail": "PERMISSIVE UPDATE authenticated 369c9e3cb9b8da8035af82e319a6aa3b"
  },
  {
   "kind": "policy",
@@ -4963,6 +5188,11 @@
   "kind": "policy",
   "object": "public.mail_poll_state :: mail_poll_state rbac select",
   "detail": "PERMISSIVE SELECT authenticated 0c3f9197b8141c8b66f15268b935ae94"
+ },
+ {
+  "kind": "policy",
+  "object": "public.opening_wip :: opening_wip rbac select",
+  "detail": "PERMISSIVE SELECT authenticated 6a18e9fed9ee8dd956c314df2b296562"
  },
  {
   "kind": "policy",
@@ -5511,6 +5741,21 @@
  },
  {
   "kind": "rls",
+  "object": "public.chase_pauses",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.chase_sends",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.chase_steps",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.clock_in_network_exemptions",
   "detail": "enabled"
  },
@@ -5527,6 +5772,21 @@
  {
   "kind": "rls",
   "object": "public.clock_in_network_unverified",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.costing_defaults",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.costing_machines",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
+  "object": "public.costing_materials",
   "detail": "enabled"
  },
  {
@@ -5801,6 +6061,11 @@
  },
  {
   "kind": "rls",
+  "object": "public.opening_wip",
+  "detail": "enabled"
+ },
+ {
+  "kind": "rls",
   "object": "public.operator_sessions",
   "detail": "enabled"
  },
@@ -6051,6 +6316,21 @@
  },
  {
   "kind": "table-grant",
+  "object": "public.chase_pauses :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.chase_sends :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.chase_steps :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
   "object": "public.clock_in_network_exemptions :: authenticated",
   "detail": "SELECT"
  },
@@ -6068,6 +6348,21 @@
   "kind": "table-grant",
   "object": "public.clock_in_network_unverified :: authenticated",
   "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.costing_defaults :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.costing_machines :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.costing_materials :: authenticated",
+  "detail": "DELETE,INSERT,SELECT,UPDATE"
  },
  {
   "kind": "table-grant",
@@ -6287,6 +6582,11 @@
  {
   "kind": "table-grant",
   "object": "public.mail_poll_state :: authenticated",
+  "detail": "SELECT"
+ },
+ {
+  "kind": "table-grant",
+  "object": "public.opening_wip :: authenticated",
   "detail": "SELECT"
  },
  {
@@ -6566,6 +6866,46 @@
  },
  {
   "kind": "trigger",
+  "object": "public.chase_pauses :: admin_mfa",
+  "detail": "O d9bf0996de9181110cb02517918ca5aa"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_pauses :: chase_pauses_guard",
+  "detail": "O 165855b45c6c58b1ed616addec15bec1"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_pauses :: support_read_only",
+  "detail": "O a09b679db1f699c2dea6fd70ce483fe8"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_sends :: admin_mfa",
+  "detail": "O d6d4d0ae9a629345d1b6b0d314036829"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_sends :: support_read_only",
+  "detail": "O 3f191cc23cef6b5c1211fd6b74bc735e"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_steps :: admin_mfa",
+  "detail": "O 3e77f63fdbae4d741d62622c65fb83d0"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_steps :: chase_steps_guard",
+  "detail": "O 8cee042ec3b15d72731959f31f014e0c"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.chase_steps :: support_read_only",
+  "detail": "O 98fd3e87c69ab638fb0b336de6074e91"
+ },
+ {
+  "kind": "trigger",
   "object": "public.clock_in_network_exemptions :: admin_mfa",
   "detail": "O 8916d1b7160c9ea23d4fbdfdff13e6ee"
  },
@@ -6626,6 +6966,66 @@
  },
  {
   "kind": "trigger",
+  "object": "public.costing_defaults :: admin_mfa",
+  "detail": "O ddf024a3ae6e38169c0e2e949018c643"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: audit_costing_defaults_changes",
+  "detail": "O 7d284ed8e42919254c454b82155a6747"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: costing_rates_stamp",
+  "detail": "O 25afa1db95acd2117139ff055867f6bd"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_defaults :: support_read_only",
+  "detail": "O 0be7cc72ff19e9e2f097569141ae36f8"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: admin_mfa",
+  "detail": "O 13a6cc6f7ba030284cacddc7b0c070f2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: audit_costing_machines_changes",
+  "detail": "O 2c8e3bfc7d9e53d823bd7b99f121e08d"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: costing_rates_stamp",
+  "detail": "O 4fd8c7ae97c5f6510db33500d3c6c4e2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_machines :: support_read_only",
+  "detail": "O 9f5c9aca243e4b37e708f3619b8ac92d"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: admin_mfa",
+  "detail": "O 1e03ff46229a462ef5a168e91954ccde"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: audit_costing_materials_changes",
+  "detail": "O b380727a25d1203738a1799860224209"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: costing_rates_stamp",
+  "detail": "O ff165373e5bddb5d62ffa6414d341073"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.costing_materials :: support_read_only",
+  "detail": "O 016669da061328a50c51466c70258680"
+ },
+ {
+  "kind": "trigger",
   "object": "public.credit_note_lines :: admin_mfa",
   "detail": "O b2d3c098b70fcb28081642dba9176e29"
  },
@@ -6682,7 +7082,7 @@
  {
   "kind": "trigger",
   "object": "public.credit_notes :: zz_integration_enqueue",
-  "detail": "O bc71aca5576f709bbb7949e296f247d5"
+  "detail": "O ecde16000b5fd5159d0109af1eec8730"
  },
  {
   "kind": "trigger",
@@ -7311,6 +7711,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoices :: invoices_payment_claim_guard",
+  "detail": "O 2b9f96ab815ed94fe4ca5c4ae58cce42"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoices :: invoices_start_as_drafts",
   "detail": "O 4764a7e3c6c6148ea710af086a3fdc98"
  },
@@ -7331,13 +7736,18 @@
  },
  {
   "kind": "trigger",
+  "object": "public.invoices :: source_ref_import_only",
+  "detail": "O ce0e9c61cb33cebfe7e871b93865c3c2"
+ },
+ {
+  "kind": "trigger",
   "object": "public.invoices :: support_read_only",
   "detail": "O 8898d9ef1e25e7dca094000dc875f0b1"
  },
  {
   "kind": "trigger",
   "object": "public.invoices :: zz_integration_enqueue",
-  "detail": "O ebb2045fa51d3b0b2bf1bc14289afc37"
+  "detail": "O f262af4714960cb89a3992dc882e6101"
  },
  {
   "kind": "trigger",
@@ -7741,6 +8151,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.jobs :: source_ref_import_only",
+  "detail": "O f3503d591d130bf90bf1c9bdc7a27d8e"
+ },
+ {
+  "kind": "trigger",
   "object": "public.jobs :: support_read_only",
   "detail": "O 4e7b793f39d65e294915445e34c3b9f7"
  },
@@ -7916,6 +8331,26 @@
  },
  {
   "kind": "trigger",
+  "object": "public.opening_wip :: admin_mfa",
+  "detail": "O 7844a5e71b04cc4e4af055c7677ca5b4"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.opening_wip :: audit_opening_wip_changes",
+  "detail": "O c4f01db7f45bab5233980709455bb8d2"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.opening_wip :: support_read_only",
+  "detail": "O 322e9112f99e52e8f0328dd7f6176c92"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.opening_wip :: zz_same_org_job_id",
+  "detail": "O 76ad2e436dde07866ed0a9228fb25987"
+ },
+ {
+  "kind": "trigger",
   "object": "public.operator_sessions :: admin_mfa",
   "detail": "O 6dcaf6fc96e66c999a2ecf39524f3c0f"
  },
@@ -8056,6 +8491,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.purchase_orders :: source_ref_import_only",
+  "detail": "O af27a05720643c306cc2f39f265bb3b7"
+ },
+ {
+  "kind": "trigger",
   "object": "public.purchase_orders :: support_read_only",
   "detail": "O 9f0bc0d1ee2bb17b71191337a0d62d45"
  },
@@ -8171,6 +8611,11 @@
  },
  {
   "kind": "trigger",
+  "object": "public.quotes :: source_ref_import_only",
+  "detail": "O 6cebade21341684e6ab4e9b6353f4b3e"
+ },
+ {
+  "kind": "trigger",
   "object": "public.quotes :: support_read_only",
   "detail": "O 707cf8dad0ee93a5f23ae5faafd3e988"
  },
@@ -8283,6 +8728,11 @@
   "kind": "trigger",
   "object": "public.sales_orders :: audit_sales_orders_changes",
   "detail": "O 4b4a190ac336bfc8c0235d8bb6bff97f"
+ },
+ {
+  "kind": "trigger",
+  "object": "public.sales_orders :: source_ref_import_only",
+  "detail": "O 55efa12e42c0d57c47ef087f69d0976d"
  },
  {
   "kind": "trigger",
@@ -8611,6 +9061,26 @@
  },
  {
   "kind": "unique-index",
+  "object": "public.chase_pauses :: chase_pauses_one_per_customer",
+  "detail": "f18a4a9e313a40b53c531d99abfae099"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_pauses :: chase_pauses_one_per_invoice",
+  "detail": "9cc98d1f318efb9ae546074c1ebdb89a"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_sends :: chase_sends_one_per_step",
+  "detail": "8fca0b358a774bd66c3e2a9d30d2d869"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.chase_steps :: chase_steps_one_per_offset",
+  "detail": "0d5c06dac99be818cb5ebb8ad98d018e"
+ },
+ {
+  "kind": "unique-index",
   "object": "public.clock_in_network_exemptions :: clock_in_network_exemptions_id_key",
   "detail": "880c140ad0485ce5854b5bba2b1980e0"
  },
@@ -8628,6 +9098,21 @@
   "kind": "unique-index",
   "object": "public.clock_in_network_unverified :: clock_in_network_unverified_id_key",
   "detail": "9fa66ddd38f27da21fcc8f6342d40332"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.costing_defaults :: costing_defaults_org",
+  "detail": "ff074770f830f21699766f768d01c5ad"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.costing_machines :: costing_machines_org_name",
+  "detail": "29e0d68e762ddd893b8d88b4e2d8c2c1"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.costing_materials :: costing_materials_org_name",
+  "detail": "ceb4d73ec74515a61cb1336e0fd4c938"
  },
  {
   "kind": "unique-index",
@@ -8833,6 +9318,11 @@
   "kind": "unique-index",
   "object": "public.machine_runs :: machine_runs_one_open_per_machine",
   "detail": "731c6aa05b5ced36d909d0df2d092d00"
+ },
+ {
+  "kind": "unique-index",
+  "object": "public.opening_wip :: opening_wip_source_key_unique",
+  "detail": "1d8fd8528884fa11fdd50784cebd3b9a"
  },
  {
   "kind": "unique-index",

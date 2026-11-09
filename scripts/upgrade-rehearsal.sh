@@ -27,7 +27,7 @@ echo "[rehearsal] rebuilding the local database at $BASE ($(ls "$work"/supabase/
 scripts/test-backend.sh env
 
 status=0
-REHEARSAL_BASE="$BASE" npx vitest run -c vitest.rehearsal.config.ts || status=$?
+REHEARSAL_BASE="$BASE" npx vitest run -c vitest.rehearsal.config.ts ${REHEARSAL_VITEST_ARGS:-} || status=$?
 
 echo "[rehearsal] rebuilding the full migration chain"
 scripts/test-backend.sh reset

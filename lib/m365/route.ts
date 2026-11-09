@@ -1,4 +1,5 @@
 import "server-only";
+import { getDelegatedAccessToken } from "@/lib/integrations/microsoft/token-source";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
@@ -18,6 +19,11 @@ export async function mailGuard(request: Request): Promise<MailContext | NextRes
   if (!sameOrigin(request)) return forbiddenOrigin();
   const auth = await requireProfile(["admin"]);
   if (isErrorResponse(auth)) return auth;
+  if (auth.session?.support) return jsonError("Support access can't send or read company mail.", 403);
+  try {
+    const token = await getDelegatedAccessToken(auth.profile.organization_id);
+    if (token) return { auth, config: { delegatedAccessToken: token, organizationId: auth.profile.organization_id, mailbox: "me", pageSize: 50, tenantId: "", clientId: "", clientSecret: "" } };
+  } catch { return jsonError("Microsoft 365 needs attention. Reconnect before using this mailbox.", 502); }
   let config: MailConfig | null;
   try {
     config = mailConfig();
@@ -50,6 +56,7 @@ const clean = (value: unknown) => (typeof value === "string" ? value.trim().toLo
 export async function recipientAllowed(auth: AuthContext, email: string): Promise<boolean> {
   const address = clean(email);
   const entries = (process.env.EMAIL_RECIPIENT_DOMAINS || "").split(",").map(clean).filter(Boolean);
+  if (process.env.VERCEL_ENV === "preview" && !entries.length) return false;
   if (entries.length) {
     const domain = address.split("@")[1] ?? "";
     return entries.some((entry) => (entry.includes("@") ? entry === address : entry.replace(/^@/, "") === domain));

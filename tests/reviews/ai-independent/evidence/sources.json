@@ -1,0 +1,62 @@
+{
+  "main": {
+    "sha": "68f89ca7b801a10587ff9b51d6c820462847b65a",
+    "tree": "5d8f11ac186b4d69f326c4eda57aafe382332218"
+  },
+  "pr410": {
+    "sha": "8bfed64e56d5a7645ebdcb758e8d8c0d0085f71e",
+    "tree": "ab73f0395c693ec687b7ea51d496e081f6107b60"
+  },
+  "provided": {
+    "sha": "9d7725e7e1b59e68a314c4148513b9b7d7aa4e92",
+    "baseline": [
+      {
+        "file": "101_ai_helper.sql",
+        "blob": "c85fba27b0c1430d372fd354286818c49d5af930"
+      },
+      {
+        "file": "103_ai_helper_service_role.sql",
+        "blob": "e6f58e70b6050b8037d24a9c7b21eb169dca0075"
+      },
+      {
+        "file": "122_ai_helper_cap_default.sql",
+        "blob": "c68ac11e4972bae2cc780fdf5595254dd0926d8d"
+      },
+      {
+        "file": "133_ai_helper_pre_enable.sql",
+        "blob": "247b65717ed6f00e612b00e6ccaaaf0914214883"
+      },
+      {
+        "file": "134_ai_assistant.sql",
+        "blob": "105f5e80b57d39b516a0078aa0008a09437e5c60"
+      }
+    ],
+    "files": [
+      {
+        "path": "supabase/release/146_tolra_provided_ai.release.sql",
+        "blob": "f0f9cab3656311a70cf55c5224502c73338216c9"
+      },
+      {
+        "path": "lib/ai-helper/server.ts",
+        "blob": "0d8ecea5bc3829c784e8072e33915896ac6e98fd"
+      },
+      {
+        "path": "lib/ai-helper/tolra-key-context.ts",
+        "blob": "c9146be57d12594276029e4777790752925bc4b5"
+      }
+    ]
+  },
+  "migration150": {
+    "available": false,
+    "tested": false
+  },
+  "exit_codes": {
+    "main-unit": 1,
+    "410-unit": 1,
+    "146-unit": 0,
+    "main-db": 1,
+    "410-db": 1,
+    "146-own-db": 1,
+    "146-tolra-db": 1
+  }
+}

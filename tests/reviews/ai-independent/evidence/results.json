@@ -1,0 +1,819 @@
+{
+  "scope": "New ordinary acceptance contracts, not an implementation change; migration150 unavailable",
+  "working_directory": "/workspace/work/ai-independent-verification",
+  "profiles": [
+    {
+      "profile": "main-unit",
+      "command": "node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.unit.config.ts --reporter=json --outputFile=/tmp/ai-independent-main-unit.json > /tmp/ai-independent-main-unit.log 2>&1",
+      "exit_code": 1,
+      "passed": 22,
+      "failed": 3,
+      "skipped": 0,
+      "total": 25,
+      "full_json_sha256": "c859e06c0dc4eaf8583ba01c10dba1372a85a0faae30c8b4a18c6f173118cd06",
+      "cases": [
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: rfq refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: roundup refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: assistant refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: rfq refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: roundup refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: assistant refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider rfq OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider roundup OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider assistant OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: rfq uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: roundup uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: assistant uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: rfq uses that key only",
+          "status": "failed",
+          "failure": "AssertionError: expected 'synthetic-own-key' to be 'synthetic-tolra-key' // Object.is equality"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: roundup uses that key only",
+          "status": "failed",
+          "failure": "AssertionError: expected 'synthetic-own-key' to be 'synthetic-tolra-key' // Object.is equality"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: assistant uses that key only",
+          "status": "failed",
+          "failure": "AssertionError: expected 'synthetic-own-key' to be 'synthetic-tolra-key' // Object.is equality"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks rfq before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks roundup before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks assistant before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use rfq",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use roundup",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use assistant",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use replace key",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use remove key",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use settings",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries finance check is deterministic, costs no tokens and cannot mutate its input",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "profile": "410-unit",
+      "command": "AI_CONTRACT_SOURCE_ROOT=/workspace/work/ai-ready-for-keys node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.unit.config.ts --reporter=json --outputFile=/tmp/ai-independent-410-unit.json > /tmp/ai-independent-410-unit.log 2>&1",
+      "exit_code": 1,
+      "passed": 22,
+      "failed": 3,
+      "skipped": 0,
+      "total": 25,
+      "full_json_sha256": "1a72a8aebac9771f5048bdfe52e6ddaba466faca064702414ed7112f8f84c496",
+      "cases": [
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: rfq refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: roundup refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: assistant refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: rfq refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: roundup refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: assistant refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider rfq OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider roundup OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider assistant OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: rfq uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: roundup uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: assistant uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: rfq uses that key only",
+          "status": "failed",
+          "failure": "AssertionError: expected 'synthetic-own-key' to be 'synthetic-tolra-key' // Object.is equality"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: roundup uses that key only",
+          "status": "failed",
+          "failure": "AssertionError: expected 'synthetic-own-key' to be 'synthetic-tolra-key' // Object.is equality"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: assistant uses that key only",
+          "status": "failed",
+          "failure": "AssertionError: expected 'synthetic-own-key' to be 'synthetic-tolra-key' // Object.is equality"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks rfq before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks roundup before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks assistant before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use rfq",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use roundup",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use assistant",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use replace key",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use remove key",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use settings",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries finance check is deterministic, costs no tokens and cannot mutate its input",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "profile": "146-unit",
+      "command": "AI_CONTRACT_SERVER_FILE=/workspace/work/ai-public-evidence/lib/ai-helper/server.ts AI_CONTRACT_CONTEXT_FILE=/workspace/work/ai-public-evidence/lib/ai-helper/tolra-key-context.ts node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.unit.config.ts --reporter=json --outputFile=/tmp/ai-independent-146-unit.json > /tmp/ai-independent-146-unit.log 2>&1",
+      "exit_code": 0,
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "total": 25,
+      "full_json_sha256": "d4a0cdda40157e0eefa9c59a3351abb5db4a707e08e188b762fc8a437ac24e5f",
+      "cases": [
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: rfq refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: roundup refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider own: assistant refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: rfq refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: roundup refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider tolra: assistant refuses before key access",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider rfq OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider roundup OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "every paid feature, either key source: cap refusal before key/provider assistant OFF refuses before key/provider",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: rfq uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: roundup uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback own: assistant uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: rfq uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: roundup uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "successful reservations select the recorded key source, never a fallback tolra: assistant uses that key only",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks rfq before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks roundup before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries server OFF blocks assistant before provider work",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use rfq",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use roundup",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use assistant",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use replace key",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use remove key",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries support cannot use settings",
+          "status": "passed"
+        },
+        {
+          "name": "session and free finance boundaries finance check is deterministic, costs no tokens and cannot mutate its input",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "profile": "main-db",
+      "command": "AI_CONTRACT_RECEIPT=/tmp/ai-independent-main-db-receipt.json node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.db.config.ts --reporter=json --outputFile=/tmp/ai-independent-main-db.json > /tmp/ai-independent-main-db.log 2>&1",
+      "exit_code": 1,
+      "passed": 16,
+      "failed": 8,
+      "skipped": 0,
+      "total": 24,
+      "full_json_sha256": "48005de6da118721efb5119b79c2fccb2a96367ed665179c6c44447878e4b029",
+      "cases": [
+        {
+          "name": "the actual effective column default is 1000p, including own-key",
+          "status": "failed",
+          "failure": "AssertionError: expected '500' to be '1000' // Object.is equality"
+        },
+        {
+          "name": "no-settings status reports a 1000p effective allowance",
+          "status": "failed",
+          "failure": "AssertionError: expected 500 to be 1000 // Object.is equality"
+        },
+        {
+          "name": "a newly created settings row receives 1000p without specifying a cap",
+          "status": "failed",
+          "failure": "AssertionError: expected 500 to be 1000 // Object.is equality"
+        },
+        {
+          "name": "new company starts OFF on RFQ, roundup and assistant without any usage",
+          "status": "passed"
+        },
+        {
+          "name": "rfq cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "roundup cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "assistant cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "all paid features share one 1000p month row, not 1000p each",
+          "status": "passed"
+        },
+        {
+          "name": "two real independent sessions cannot reserve the last allowance twice",
+          "status": "passed"
+        },
+        {
+          "name": "replacing the selected key forces AI OFF inside the key transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "removing the selected key forces AI OFF in that same transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "replacement alone cannot run any feature; explicit human re-enable is required",
+          "status": "failed",
+          "failure": "Error: promise resolved \"{ ok: true, \u2026(1) }\" instead of rejecting"
+        },
+        {
+          "name": "remove then save a replacement key cannot silently re-enable AI",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "key replacement preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "key removal preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "a rolled-back key change also rolls back its state/audit changes",
+          "status": "passed"
+        },
+        {
+          "name": "key replacement does not change another company's allowance or spending",
+          "status": "passed"
+        },
+        {
+          "name": "another company's settings and request log cannot be read through RLS",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve rfq or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve roundup or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve assistant or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "no ordinary browser identity can directly change usage or settle cheaply",
+          "status": "passed"
+        },
+        {
+          "name": "cap cannot be lowered below already spent plus reserved usage",
+          "status": "failed",
+          "failure": "Error: promise resolved \"undefined\" instead of rejecting"
+        },
+        {
+          "name": "changing key/mode cannot select a separate higher company allowance",
+          "status": "passed"
+        }
+      ],
+      "receipt": "main-db-receipt.json"
+    },
+    {
+      "profile": "410-db",
+      "command": "AI_CONTRACT_SOURCE_ROOT=/workspace/work/ai-ready-for-keys AI_CONTRACT_SQL_FILES='[\"/workspace/work/ai-ready-for-keys/supabase/proposals/ai_ready_for_keys.sql\"]' AI_CONTRACT_RECEIPT=/tmp/ai-independent-410-db-receipt.json node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.db.config.ts --reporter=json --outputFile=/tmp/ai-independent-410-db.json > /tmp/ai-independent-410-db.log 2>&1",
+      "exit_code": 1,
+      "passed": 20,
+      "failed": 4,
+      "skipped": 0,
+      "total": 24,
+      "full_json_sha256": "0404fb3453b6c179b650e8b8e8ddfd4ca7b71645567b683f17be631048b7a400",
+      "cases": [
+        {
+          "name": "the actual effective column default is 1000p, including own-key",
+          "status": "passed"
+        },
+        {
+          "name": "no-settings status reports a 1000p effective allowance",
+          "status": "passed"
+        },
+        {
+          "name": "a newly created settings row receives 1000p without specifying a cap",
+          "status": "passed"
+        },
+        {
+          "name": "new company starts OFF on RFQ, roundup and assistant without any usage",
+          "status": "passed"
+        },
+        {
+          "name": "rfq cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "roundup cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "assistant cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "all paid features share one 1000p month row, not 1000p each",
+          "status": "passed"
+        },
+        {
+          "name": "two real independent sessions cannot reserve the last allowance twice",
+          "status": "passed"
+        },
+        {
+          "name": "replacing the selected key forces AI OFF inside the key transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "removing the selected key forces AI OFF in that same transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "replacement alone cannot run any feature; explicit human re-enable is required",
+          "status": "failed",
+          "failure": "Error: promise resolved \"{ ok: true, \u2026(1) }\" instead of rejecting"
+        },
+        {
+          "name": "remove then save a replacement key cannot silently re-enable AI",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "key replacement preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "key removal preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "a rolled-back key change also rolls back its state/audit changes",
+          "status": "passed"
+        },
+        {
+          "name": "key replacement does not change another company's allowance or spending",
+          "status": "passed"
+        },
+        {
+          "name": "another company's settings and request log cannot be read through RLS",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve rfq or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve roundup or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve assistant or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "no ordinary browser identity can directly change usage or settle cheaply",
+          "status": "passed"
+        },
+        {
+          "name": "cap cannot be lowered below already spent plus reserved usage",
+          "status": "passed"
+        },
+        {
+          "name": "changing key/mode cannot select a separate higher company allowance",
+          "status": "passed"
+        }
+      ],
+      "receipt": "410-db-receipt.json"
+    },
+    {
+      "profile": "146-own-db",
+      "command": "AI_CONTRACT_MODE=own AI_CONTRACT_SQL_FILES='[\"/workspace/work/ai-public-evidence/146.sql\"]' AI_CONTRACT_RECEIPT=/tmp/ai-independent-146-own-db-receipt.json node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.db.config.ts --reporter=json --outputFile=/tmp/ai-independent-146-own-db.json > /tmp/ai-independent-146-own-db.log 2>&1",
+      "exit_code": 1,
+      "passed": 16,
+      "failed": 8,
+      "skipped": 0,
+      "total": 24,
+      "full_json_sha256": "c081d1eeafdf6406c11c9047937124f88c0e64f1767e8860359a3b3f6c11c9ad",
+      "cases": [
+        {
+          "name": "the actual effective column default is 1000p, including own-key",
+          "status": "failed",
+          "failure": "AssertionError: expected '500' to be '1000' // Object.is equality"
+        },
+        {
+          "name": "no-settings status reports a 1000p effective allowance",
+          "status": "failed",
+          "failure": "AssertionError: expected 500 to be 1000 // Object.is equality"
+        },
+        {
+          "name": "a newly created settings row receives 1000p without specifying a cap",
+          "status": "failed",
+          "failure": "AssertionError: expected 500 to be 1000 // Object.is equality"
+        },
+        {
+          "name": "new company starts OFF on RFQ, roundup and assistant without any usage",
+          "status": "passed"
+        },
+        {
+          "name": "rfq cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "roundup cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "assistant cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "all paid features share one 1000p month row, not 1000p each",
+          "status": "passed"
+        },
+        {
+          "name": "two real independent sessions cannot reserve the last allowance twice",
+          "status": "passed"
+        },
+        {
+          "name": "replacing the selected key forces AI OFF inside the key transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "removing the selected key forces AI OFF in that same transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "replacement alone cannot run any feature; explicit human re-enable is required",
+          "status": "failed",
+          "failure": "Error: promise resolved \"{ ok: true, \u2026(1) }\" instead of rejecting"
+        },
+        {
+          "name": "remove then save a replacement key cannot silently re-enable AI",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "key replacement preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "key removal preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "a rolled-back key change also rolls back its state/audit changes",
+          "status": "passed"
+        },
+        {
+          "name": "key replacement does not change another company's allowance or spending",
+          "status": "passed"
+        },
+        {
+          "name": "another company's settings and request log cannot be read through RLS",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve rfq or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve roundup or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve assistant or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "no ordinary browser identity can directly change usage or settle cheaply",
+          "status": "passed"
+        },
+        {
+          "name": "cap cannot be lowered below already spent plus reserved usage",
+          "status": "failed",
+          "failure": "Error: promise resolved \"undefined\" instead of rejecting"
+        },
+        {
+          "name": "changing key/mode cannot select a separate higher company allowance",
+          "status": "passed"
+        }
+      ],
+      "receipt": "146-own-db-receipt.json"
+    },
+    {
+      "profile": "146-tolra-db",
+      "command": "AI_CONTRACT_MODE=tolra AI_CONTRACT_SQL_FILES='[\"/workspace/work/ai-public-evidence/146.sql\"]' AI_CONTRACT_RECEIPT=/tmp/ai-independent-146-tolra-db-receipt.json node_modules/.bin/vitest run -c tests/reviews/ai-independent/vitest.db.config.ts --reporter=json --outputFile=/tmp/ai-independent-146-tolra-db.json > /tmp/ai-independent-146-tolra-db.log 2>&1",
+      "exit_code": 1,
+      "passed": 18,
+      "failed": 6,
+      "skipped": 0,
+      "total": 24,
+      "full_json_sha256": "b7baa41826e01fb7a49c7ae231cd0b02d94c4a5f45f7eb24a96dbeb0b49e49ac",
+      "cases": [
+        {
+          "name": "the actual effective column default is 1000p, including own-key",
+          "status": "passed"
+        },
+        {
+          "name": "no-settings status reports a 1000p effective allowance",
+          "status": "passed"
+        },
+        {
+          "name": "a newly created settings row receives 1000p without specifying a cap",
+          "status": "passed"
+        },
+        {
+          "name": "new company starts OFF on RFQ, roundup and assistant without any usage",
+          "status": "passed"
+        },
+        {
+          "name": "rfq cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "roundup cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "assistant cannot reserve beyond the same company's selected 1000p cap",
+          "status": "passed"
+        },
+        {
+          "name": "all paid features share one 1000p month row, not 1000p each",
+          "status": "passed"
+        },
+        {
+          "name": "two real independent sessions cannot reserve the last allowance twice",
+          "status": "passed"
+        },
+        {
+          "name": "replacing the selected key forces AI OFF inside the key transaction",
+          "status": "failed",
+          "failure": "AssertionError: expected false to be true // Object.is equality"
+        },
+        {
+          "name": "removing the selected key forces AI OFF in that same transaction",
+          "status": "failed",
+          "failure": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        },
+        {
+          "name": "replacement alone cannot run any feature; explicit human re-enable is required",
+          "status": "failed",
+          "failure": "Error: promise resolved \"{ ok: true, key_source: 'tolra', \u2026(1) }\" instead of rejecting"
+        },
+        {
+          "name": "remove then save a replacement key cannot silently re-enable AI",
+          "status": "failed",
+          "failure": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        },
+        {
+          "name": "key replacement preserves every existing usage/request/audit row",
+          "status": "passed"
+        },
+        {
+          "name": "key removal preserves every existing usage/request/audit row",
+          "status": "failed",
+          "failure": "Error: No public Tolra key-removal interface supplied; map the actual 150 function via AI_CONTRACT_TOLRA_CLEAR_FUNCTION"
+        },
+        {
+          "name": "a rolled-back key change also rolls back its state/audit changes",
+          "status": "passed"
+        },
+        {
+          "name": "key replacement does not change another company's allowance or spending",
+          "status": "passed"
+        },
+        {
+          "name": "another company's settings and request log cannot be read through RLS",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve rfq or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve roundup or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "support session cannot reserve assistant or change the key",
+          "status": "passed"
+        },
+        {
+          "name": "no ordinary browser identity can directly change usage or settle cheaply",
+          "status": "passed"
+        },
+        {
+          "name": "cap cannot be lowered below already spent plus reserved usage",
+          "status": "passed"
+        },
+        {
+          "name": "changing key/mode cannot select a separate higher company allowance",
+          "status": "failed",
+          "failure": "AssertionError: 25p already reserved under the selected 25p allowance; mode switch returned {\"ok\":true,\"request_id\":\"25861fb3-940a-442a-bab6-a703d8e2e4b7\"}: expected true to be false // Object.is equality"
+        }
+      ],
+      "receipt": "146-tolra-db-receipt.json"
+    }
+  ],
+  "test_files_sha256": {
+    "vitest.db.config.ts": "9ba1d14ebf8efa2ef1ec026a99eff60317406a8965d8a91ee8fc12aa505fc42b",
+    "bootstrap.sql": "f802894dd5d664fed89dfc1e25a1471bfefa784b02509a91857159a37aa9ec65",
+    "cap.db.test.ts": "5438d7663e3b211426c1e1df1e9166661e099887a5701adbfff1aa66adc0a345",
+    "server-only.ts": "1a473c67a055b4e199a3bb69f9d80a7908d0789aa35749fce0bd8373cef00bec",
+    "cap.unit.test.ts": "2ab25be2cc58f38a101a7cc66488a2ec0be04e61856ee11e0d4ffd1b9ebb11e7",
+    "vitest.unit.config.ts": "7dd8973f3aa55d73e7e1cecfb90c411009d56f492216b8a184835f59459ab00b",
+    "database.ts": "7b13cff3ab5ef63378c8b0f4800c6cb318cae1081b966a67d860fb665a494856"
+  }
+}

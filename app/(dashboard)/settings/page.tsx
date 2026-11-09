@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Archive, Building2, Columns3, FileArchive, ImageUp, LayoutList, Mail, Trash2, Workflow } from "lucide-react";
 
+import { CostingRatesCard } from "@/components/costing/costing-rates-card";
 import { AiHelperSettingsCard } from "@/components/ai-helper/settings-card";
 import { EmailSchedulesCard } from "@/components/email-schedules/settings-card";
 import { EmailTemplatesCard } from "@/components/email/email-templates-card";
@@ -28,10 +29,12 @@ import { NAV_TOGGLES, resetHiddenColumns, saveOrgSettings, screensByGroup, setCo
 import { PRODUCT } from "@/lib/product";
 import { SALES_ORDERS_KEY, salesOrdersEnabled, salesOrdersSwitchChange } from "@/lib/sales-orders-switch";
 import { WEEKDAY_OPTIONS } from "@/lib/machine-schedule";
-import { BREAK_MINUTES, LUNCH_MINUTES, MIN_DAY_HOURS, formatHoursMinutes, paidDay, paidWeek } from "@/lib/working-hours";
+import { formatHoursMinutes, paidDay, paidWeek, paidHoursExplanation } from "@/lib/working-hours";
 import { TimeSettingsCard } from "@/components/time/time-settings-card";
 import { SiteNetworkCard } from "@/components/time/site-network-card";
 import { ClockInLockCard } from "@/components/time/clock-in-lock-card";
+
+import type { TimeSettings } from "@/lib/time-sheet";
 
 const navSections = Array.from(new Set(NAV_TOGGLES.map((item) => item.section)));
 
@@ -48,7 +51,7 @@ const lines = (value: string) => value.split("\n").map((line) => line.trim()).fi
 const LOGO_TYPES: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg" };
 const LOGO_MAX_BYTES = 1024 * 1024;
 
-function CompanyDetailsCard() {
+function CompanyDetailsCard({ timeSettings }: { timeSettings: TimeSettings | null }) {
   const { profile, loading } = useCompanyProfile();
   const { organizations } = useUser();
   const currentSlug = organizations.find((org) => org.is_current)?.slug ?? "";
@@ -121,7 +124,7 @@ function CompanyDetailsCard() {
     }
   }, [hydrated, loading, profile]);
   const ready = hydrated;
-  const week = paidWeek(form.workDays.map((day) => form.workHours[day]));
+  const week = paidWeek(form.workDays.map((day) => form.workHours[day]), timeSettings ?? undefined);
 
   const set = (key: Exclude<keyof CompanyForm, "vatRegistered" | "brandedLogin" | "loginStyle" | "showCreditsInBalance" | "workDays" | "workHours" | "bank">) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((current) => ({ ...current, [key]: event.target.value }));
 
@@ -334,7 +337,7 @@ function CompanyDetailsCard() {
               const iso = option.dow === 0 ? 7 : option.dow;
               const works = form.workDays.includes(iso);
               const day = form.workHours[iso];
-              const paid = works ? paidDay(day.start, day.end) : null;
+              const paid = works && timeSettings ? paidDay(day.start, day.end, timeSettings) : null;
               const setDay = (patch: Partial<DayHours>) => setForm((current) => ({ ...current, workHours: { ...current.workHours, [iso]: { ...current.workHours[iso], ...patch } } }));
               return (
                 <div key={iso} className="grid grid-cols-2 items-end gap-x-3 gap-y-2 rounded-lg border p-3 sm:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)_6.5rem]" data-testid="working-hours-day">
@@ -351,20 +354,21 @@ function CompanyDetailsCard() {
                     <Input type="time" aria-label={`${option.label} finish`} className="h-11" disabled={!works} value={day.end} onChange={(event) => setDay({ end: event.target.value })} />
                   </label>
                   <p className="col-span-2 flex min-h-11 items-center text-sm font-semibold text-slate-800 sm:col-span-1 sm:justify-end" data-testid="working-hours-day-paid">
-                    {!works ? <span className="font-normal text-slate-400">Not worked</span> : paid ? <>Paid {formatHoursMinutes(paid.paid)}</> : <span className="font-normal text-amber-800">Check times</span>}
+                    {!works ? <span className="font-normal text-slate-400">Not worked</span> : !timeSettings ? <span>Hours settings not loaded</span> : paid ? <>Paid {formatHoursMinutes(paid.paid)}</> : <span className="font-normal text-amber-800">Check times</span>}
                   </p>
                 </div>
               );
             })}
           </div>
-          <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-800" data-testid="working-hours-week">
+          {timeSettings ? <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-800" data-testid="working-hours-week">
             <p className="font-semibold">
               Week: <span data-testid="working-hours-week-at-work">{formatHoursMinutes(week.atWork)}</span> at work,{" "}
               <span data-testid="working-hours-week-breaks">{formatHoursMinutes(week.breaks)}</span> breaks,{" "}
               <span data-testid="working-hours-week-paid">{formatHoursMinutes(week.paid)}</span> paid
             </p>
-            <p className="mt-1 text-xs text-slate-500">Paid hours, breaks unpaid. Pay comes from clock in and out. On a day of {MIN_DAY_HOURS} hours or more at work, {LUNCH_MINUTES} minutes for lunch and {BREAK_MINUTES} minutes for a break come off; on a shorter day nothing does.</p>
+            <p className="mt-1 text-xs text-slate-500">{paidHoursExplanation(timeSettings)} Planned hours only; pay comes from clock records.</p>
           </div>
+          : <p role="status">Load the Hours settings below to see planned paid hours.</p>}
           <p className="text-xs text-slate-500">A finish of 00:00 means midnight.</p>
         </fieldset>
         <Button className="bg-brand text-brand-ink" disabled={saving || !ready} onClick={save}>{saving ? "Saving..." : "Save company details"}</Button>
@@ -598,6 +602,11 @@ function YearEndExportCard() {
 
 export default function SettingsPage() {
   const settings = useOrgSettings();
+  const { profile } = useUser();
+  const organizationId = profile?.organization_id;
+  const [timeSnapshot, setTimeSnapshot] = useState<{ organizationId: typeof organizationId; settings: TimeSettings } | null>(null);
+  const onTimeSettings = useCallback((next: TimeSettings) => setTimeSnapshot({ organizationId, settings: next }), [organizationId]);
+  const timeSettings = timeSnapshot?.organizationId === organizationId ? timeSnapshot?.settings ?? null : null;
   const [saving, setSaving] = useState(false);
 
   async function persist(save: Promise<SaveResult>, what: string, oldData: Record<string, unknown>, newData: Record<string, unknown>, metadata: Record<string, unknown>) {
@@ -643,16 +652,17 @@ export default function SettingsPage() {
       <div className="space-y-6">
         <div><h1 className="page-title">Settings</h1><p className="mt-2 text-sm text-slate-500">Company-wide settings for {PRODUCT.name}. Only admins can change them.</p></div>
         {settings.loaded && settings.localOnly ? <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Company settings aren&apos;t available right now. Menu and column choices are saved in this browser only.</div> : null}
-        <CompanyDetailsCard />
+        <section id="setup-company"><CompanyDetailsCard timeSettings={timeSettings} /></section>
         <ArchiveSettingsCard />
         <AutoConvertCard />
-        <TimeSettingsCard />
+        <section id="setup-breaks"><TimeSettingsCard key={organizationId} onSettings={onTimeSettings} /></section>
         <SiteNetworkCard />
         <ClockInLockCard />
         <CustomerSignOffCard />
         <PrintLayoutCard />
         <YearEndExportCard />
         <AiHelperSettingsCard />
+        <CostingRatesCard />
         <EmailSchedulesCard />
         <Card>
           <CardHeader><CardTitle className="flex items-center gap-2"><LayoutList className="size-5 text-brand-accent" /> Menu Sections</CardTitle></CardHeader>
@@ -723,7 +733,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
         <WorkshopEmailCard />
-        <EmailTemplatesCard />
+        <section id="setup-email"><EmailTemplatesCard /></section>
       </div>
     </RoleGate>
   );

@@ -1,0 +1,15 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/costing-wiring-ui.test.ts (49 tests) 307ms
+ ✓ tests/unit/b5-costing-stale-ui.test.ts (3 tests) 122ms
+ ✓ tests/unit/costing-price-part.test.ts (36 tests) 14ms
+ ✓ tests/unit/costing-golden.test.ts (474 tests) 44ms
+ ✓ tests/unit/costing-ui.test.ts (7 tests) 26ms
+
+ Test Files  5 passed (5)
+      Tests  569 passed (569)
+   Start at  16:36:08
+   Duration  3.17s (transform 314ms, setup 0ms, collect 790ms, tests 513ms, environment 997ms, prepare 250ms)
+

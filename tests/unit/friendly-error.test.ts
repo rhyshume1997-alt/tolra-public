@@ -92,4 +92,15 @@ describe("friendlyError", () => {
       "A draft invoice is issued with Issue invoice, which gives it the next number. Its number and status can't be set by editing it.");
     expect(friendlyError({ code: "42501", hint: "invoice_issue_direct" })).toMatch(/^A draft invoice is issued with Issue invoice/);
   });
+
+  it("DEV-001: a held delivery note (147, 55000 + dln_numbering_not_set) always reads as the fixed staff wording", () => {
+    const DLN = "Delivery notes are paused while the next number is checked. Ask the office for help. Your note has not been saved.";
+    expect(friendlyError({ code: "55000", hint: "dln_numbering_not_set", message: "Delivery note numbering for this company hasn't been set yet." })).toBe(DLN);
+    expect(friendlyError({ code: "55000", hint: "dln_numbering_not_set" })).toBe(DLN);
+    // No raw database text, other company text or addresses leak through.
+    expect(friendlyError({ code: "55000", hint: "dln_numbering_not_set", message: "relation other_company contains a@b.test" })).toBe(DLN);
+    // Other 55000 refusals, and unknown hints, are never labelled as a hold.
+    expect(friendlyError({ code: "55000", message: "x" })).not.toBe(DLN);
+    expect(friendlyError({ code: "55000", hint: "unknown_synthetic" }, "fallback")).toBe("fallback");
+  });
 });

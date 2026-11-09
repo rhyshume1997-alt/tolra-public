@@ -1,0 +1,13 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ✓ tests/unit/post-144-release-fixture.test.ts (10 tests) 12ms
+ ✓ tests/unit/go-live-candidate-order.test.ts (3 tests) 13ms
+ ✓ tests/unit/ci-workflow-inputs.test.ts (3 tests) 18ms
+
+ Test Files  3 passed (3)
+      Tests  16 passed (16)
+   Start at  16:03:59
+   Duration  633ms (transform 70ms, setup 0ms, collect 91ms, tests 44ms, environment 0ms, prepare 145ms)
+

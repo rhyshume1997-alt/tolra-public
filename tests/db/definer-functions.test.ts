@@ -108,6 +108,8 @@ beforeAll(async () => {
   if ((await betaAdmin.rpc("issue_invoice", { p_invoice: beta.voidable })).error) throw new Error("beta voidable invoice");
   // Waiting to be confirmed, so that confirming it would work if it were the caller's own.
   await withDb((db) => db.query("update public.invoices set payment_unverified = true where id = $1", [beta.invoice]));
+  // 138: the voidable invoice carries a payment claim (as the database owner: no API role), so resolving it would work if it were the caller's own.
+  await withDb((db) => db.query("update public.invoices set payment_claimed_at = now(), payment_claim_source = 'manual' where id = $1", [beta.voidable]));
 
   const email = await betaOffice.rpc("reserve_job_email", { p_job: beta.job, p_recipient: "buyer@example.test", p_subject: "S", p_body: "B", p_key: randomUUID(), p_mode: "sending" });
   if (email.error) throw new Error(email.error.message);
@@ -293,6 +295,7 @@ function attempts(): Attempt[] {
     ["public.integration_resolve_contact(p_provider text, p_customer text, p_external_contact_id text)", () => alpha.rpc("integration_resolve_contact", { p_provider: "xero", p_customer: `${MARKER} Customer`, p_external_contact_id: "c-1" }), "refused"],
     ["public.integration_disconnect(p_provider text)", () => alpha.rpc("integration_disconnect", { p_provider: "xero" }), "refused"],
     ["public.integration_oauth_begin(p_provider text, p_state_hash text, p_verifier_enc text)", () => alpha.rpc("integration_oauth_begin", { p_provider: "xero", p_state_hash: randomBytes(32).toString("hex"), p_verifier_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}` }), "nothing of beta's"],
+    // 107 (baseline; release 151 replaces integration_invite_create(text,text) with a three-argument form and is proved in xero-invite-151.test.ts, which runs after this file).
     // 107: Connect (Xero or Microsoft 365) and the accountant's link are the caller's own company's (beta's fingerprint below is unchanged);
     // the app-level credentials are the platform owner's: a company admin is refused.
     ["public.integration_oauth_start(p_provider text, p_state_hash text, p_verifier_enc text)", () => alpha.rpc("integration_oauth_start", { p_provider: "microsoft", p_state_hash: randomBytes(32).toString("hex"), p_verifier_enc: `v1.${randomBytes(12).toString("base64url")}.${randomBytes(16).toString("base64url")}.${randomBytes(48).toString("base64url")}` }), "nothing of beta's"],
@@ -391,6 +394,9 @@ function attempts(): Attempt[] {
     // 105: writing off, and reversing a write-off, go through functions that re-check the company; beta's invoice is refused untouched.
     ["public.write_off_invoice(p_invoice_id uuid, p_reason text)", () => alpha.rpc("write_off_invoice", { p_invoice_id: beta.invoice, p_reason: "cross-company attempt" }), "refused"],
     ["public.reverse_write_off(p_invoice_id uuid, p_reason text)", () => alpha.rpc("reverse_write_off", { p_invoice_id: beta.invoice, p_reason: "cross-company attempt" }), "refused"],
+    // 138: a payment claim on another company's invoice can neither be marked nor resolved (P0002: not this company's invoice).
+    ["public.mark_payment_claimed(p_invoice uuid, p_source text, p_evidence text, p_message_id text)", () => alpha.rpc("mark_payment_claimed", { p_invoice: beta.voidable, p_source: "manual", p_evidence: "cross-company attempt", p_message_id: null }), "refused"],
+    ["public.resolve_payment_claim(p_invoice uuid, p_outcome text)", () => alpha.rpc("resolve_payment_claim", { p_invoice: beta.voidable, p_outcome: "not_received" }), "refused"],
     ["public.ai_helper_reserve(p_feature text, p_estimate_pence integer, p_input_digest text, p_input_bytes integer)", () => alpha.rpc("ai_helper_reserve", { p_feature: "rfq", p_estimate_pence: 1, p_input_digest: "b".repeat(64), p_input_bytes: 1 }), "nothing of beta's"],
     ["public.ai_helper_decide(p_request uuid, p_decision text, p_quote uuid)", () => alpha.rpc("ai_helper_decide", { p_request: beta.aiRequest, p_decision: "rejected", p_quote: null }), "refused"],
     // 113: previewing or reopening beta's job, and deciding beta's waiting request, are refused (beta's job and request stay as they are).

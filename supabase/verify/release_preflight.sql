@@ -1,3 +1,5 @@
+-- Post-144 phase markers are separate from baseline markers: 145 then 146 then 147 then 148 then 149 then 150 then 151 then 152. Numbered cutover markers: 138, 140, 141, 143, 144.
+-- Legacy AI body checks inspect preserved own-key functions after 146; the 146 marker pins every live wrapper.
 -- READ ONLY. Release preflight (docs/RELEASE-CHECKLIST.md, step 2). One query, one result table of check / value /
 -- expected, so it works in the Supabase SQL editor (which shows only the last statement's result). Nothing is
 -- written, no setting is changed. Run it on the test project first, then on production.
@@ -128,7 +130,19 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_set_finance_check')
                                           AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'reserve_company_email')),
     ('107 integrations connect',          to_regclass('public.integration_app_credentials') IS NOT NULL AND to_regclass('public.integration_connect_invites') IS NOT NULL
-                                          AND EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'integration_invite_redeem')),
+                                          -- 107's token functions in place and none of the functions only 151 has, OR (after 151) 107's token functions gone and all eleven functions of 151 present
+                                          -- (the marker's final column below also requires marker 151 for that second case). Both families, a part of 151, or neither: not applied.
+                                          AND EXISTS (SELECT 1 FROM (SELECT count(*) FILTER (WHERE t.new_only) AS n_new, count(*) AS n_all
+                                                FROM (VALUES ('public.integration_invite_create(text,text,text)', TRUE), ('public.integration_invite_code_issue(text,text)', TRUE),
+                                                      ('public.integration_invite_code_verify(text,text,text,text)', TRUE), ('public.integration_invite_refusal_log(text,text,text,uuid)', TRUE),
+                                                      ('security_audit.integration_invite_refuse(text,text,text,uuid,uuid)', TRUE),
+                                                      ('public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)', TRUE),
+                                                      ('public.integration_xero_picker_claim(text,text,integer,integer)', TRUE), ('public.integration_invite_peek(text)', FALSE),
+                                                      ('public.integration_invites_open(text)', FALSE), ('public.integration_invite_revoke(uuid)', FALSE),
+                                                      ('public.integration_oauth_consume_invite(text,text)', FALSE)) AS t(sig, new_only)
+                                                WHERE to_regprocedure(t.sig) IS NOT NULL) c
+                                                WHERE (to_regprocedure('public.integration_invite_create(text,text)') IS NOT NULL AND to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL AND c.n_new = 0)
+                                                   OR (to_regprocedure('public.integration_invite_create(text,text)') IS NULL AND to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NULL AND c.n_new = 7 AND c.n_all = 11))),
     ('108 email schedules',               to_regclass('public.email_schedules') IS NOT NULL AND to_regclass('public.email_schedule_runs') IS NOT NULL
                                           AND to_regclass('public.invoice_reminder_sends') IS NOT NULL AND to_regclass('public.timesheet_sends') IS NOT NULL),
     ('109 user date format',              to_regclass('public.user_preferences') IS NOT NULL
@@ -154,7 +168,7 @@ markers(migration, present) AS (
     ('120 email history drafted_by lock', EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = 'email_history_drafted_by_lock' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '14f7b3e1e4488d7df58a5e72568d2e91')
                                           AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'email_history_drafted_by_lock' AND tgrelid = 'public.email_history'::regclass)),
     ('121 rls helper speed',              EXISTS (SELECT 1 FROM fn WHERE nspname = 'public' AND proname = '_session_membership' AND md5(regexp_replace(prosrc, '\s', '', 'g')) = '4fa415c7b3222def6c37e93353e804c2')),
-    ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_status()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3ef44c838451b46ea14030164d9b1384')),
+    ('122 ai helper cap default',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_status_own_key()'), to_regprocedure('public.ai_helper_status()')) AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('3ef44c838451b46ea14030164d9b1384', 'a144add4b49efdc0b08fb9a3ad4657d9'))),
     ('123 quote customer po',             EXISTS (SELECT 1 FROM col WHERE table_name = 'quotes' AND column_name = 'customer_po')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.set_quote_customer_po(uuid, text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '00f8488bd689f3e473209d520218d402')),
     ('124 purchase order link',           to_regclass('public.purchase_orders') IS NOT NULL
@@ -181,10 +195,10 @@ markers(migration, present) AS (
                                             ('dashboard_open_quotes', 'd2c5bd23f4c46c421b989012e74c2e80'), ('dashboard_quotes_sent', '308be040514eab13aca8cf86dd7f2c63'),
                                             ('dashboard_quotes_won', 'd2ca2c957383ede97833c95b84b0f8fa'), ('dashboard_quote_outcomes', '774a67cfe0e7fd2f013f7fd3abcc7dad'),
                                             ('dashboard_rfqs_to_quote', 'feb2db260235700a2166bb4c1a550467'), ('dashboard_money_owed', '214295752bb751f03a74c767b090e8c0')))),
-    ('133 ai helper pre enable',          EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '972540e833a42bbb35ac5b670c56daa8')
+    ('133 ai helper pre enable',          EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)'), to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')) AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '972540e833a42bbb35ac5b670c56daa8')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e04d0ab645ec24dc0f0acb78c222702')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_purge_requests(integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'c4b0d7f39cec1f23c6bd1d5e31e59fa9')),
-    ('134 ai assistant',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
+    ('134 ai assistant',                  EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_reserve_assistant_own_key(integer,text,integer)'), to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)')) AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
                                           AND EXISTS (SELECT 1 FROM col WHERE table_name = 'ai_helper_settings' AND column_name = 'assistant_enabled')
                                           AND to_regprocedure('public.ai_helper_set_assistant(boolean)') IS NOT NULL),
     ('135 job spec customer po',         EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.convert_sales_order(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bde44b5ddf519640f1053bcf747c26d')),
@@ -194,7 +208,143 @@ markers(migration, present) AS (
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.issue_password_change_ticket(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a2936196b138dd7dee76db6be3b8ed82')
                                           AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.revoke_password_change_ticket(uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '42f77209ec079fa354f54ef78784a4b4')
                                           AND EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket' AND t.tgenabled = 'O'
-                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19))
+                                                      AND t.tgfoid = to_regprocedure('public.auth_users_password_change_ticket()') AND t.tgtype = 19)),
+    ('138 chase steps',                  to_regclass('public.chase_steps') IS NOT NULL AND to_regclass('public.chase_pauses') IS NOT NULL AND to_regclass('public.chase_sends') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.chase_create_draft(uuid,uuid,uuid,text,text,text,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '5452f25d1f364e3915e01db2cfed2fee')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.chase_record_sent(uuid,uuid,uuid,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '213c534d5aeb25f0d14f9070396faf76')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.mark_payment_claimed(uuid,text,text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '1ee5cb529645fd03263bd9e481864b1d')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.resolve_payment_claim(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'd3cbee1ab48f8e29d20fe23f8d8603fd')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.invoice_issue_lock()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'aa8c9f3ae3035d0ed566723a28edd827')),
+    ('140 import source ref',            (SELECT count(*) FROM col WHERE table_name IN ('invoices', 'quotes', 'purchase_orders', 'jobs', 'sales_orders') AND column_name = 'source_ref') = 5
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.source_ref_import_only()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '169cd2798340f7ba1d43b8b85e3be923')),
+    ('141 opening wip',                   to_regclass('public.opening_wip') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = 'opening_wip' AND p.policyname = 'opening_wip rbac select'
+                                                 AND md5(coalesce(p.qual, '') || '|' || coalesce(p.with_check, '')) = '6a18e9fed9ee8dd956c314df2b296562')),
+    ('143 costing rates',                 to_regclass('public.costing_materials') IS NOT NULL AND to_regclass('public.costing_machines') IS NOT NULL
+                                          AND to_regclass('public.costing_defaults') IS NOT NULL
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.costing_rates_stamp()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '7e262df9f33ad0ece30d5ac7122995f3')
+                                          AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.save_costing_settings_atomic(uuid,jsonb,jsonb)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2c779bca11212d8bf660c4526719c919')),
+    ('144 accounting connections', to_regprocedure('public.accounting_cloud_connections_ready()') IS NOT NULL)
+),
+proposal_files(file, disposition) AS (
+  VALUES
+    ('supabase/proposals/n5_company_setup.sql', 'post-144 release 145; apply only after 144'),
+    ('supabase/proposals/n2_tolra_provided_ai.sql', 'post-144 release 146; apply only after 145'),
+    ('supabase/proposals/c17_job_delivery_note.sql', 'post-144 release 147; apply only after 146'),
+    ('supabase/proposals/p148_job_profitability_actuals.sql', 'post-144 release 148; apply only after 147 (reads only 143''s rates)'),
+    ('supabase/proposals/x149_xero_launch_hold.sql', 'post-144 release 149; apply only after 147'),
+    ('supabase/proposals/a150_ai_cap_key_off.sql', 'post-144 release 150; apply only after 149'),
+    ('supabase/proposals/p151_xero_invite_hardening.sql', 'post-144 release 151; apply only after 150 (replaces 107''s token invite functions; no 107 token link survives)'),
+    ('supabase/proposals/p152_sliq_import_route.sql', 'post-144 release 152; apply only after 151 (SliQ go-live import route over 076/085; an addition to 138..151)'),
+    ('supabase/proposals/builder2_chase_settings_atomic.sql', 'separate chase settings release decision; requires 138; browser fixture is not production packaging'),
+    ('supabase/proposals/builder2_costing_settings_atomic.sql', 'superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied'),
+    ('supabase/proposals/builder2_atomic_settings.rollback.sql', 'rollback only; never forward release input')
+),
+post_release_markers(label, present) AS (
+  VALUES
+    ('post-144 marker 145 company_setup', coalesce((to_regclass('public.company_setup_progress') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.company_setup_progress') AND relrowsecurity)
+      AND NOT has_table_privilege('anon', to_regclass('public.company_setup_progress'), 'SELECT')
+      AND NOT has_table_privilege('authenticated', to_regclass('public.company_setup_progress'), 'DELETE')
+      AND (SELECT count(*) = 3 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'company_setup_progress')
+      AND NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'company_setup_progress'
+        AND (roles <> ARRAY['authenticated']::name[] OR cmd NOT IN ('SELECT','INSERT','UPDATE')
+          OR (cmd IN ('SELECT','UPDATE') AND (qual IS NULL OR qual NOT LIKE '%current_user_organization_id%' OR qual NOT LIKE '%has_org_role%' OR qual NOT LIKE '%my_session%' OR qual NOT LIKE '%support%' OR qual LIKE '%_session_membership%' OR qual ~ '\mOR\M'))
+          OR (cmd IN ('INSERT','UPDATE') AND (with_check IS NULL OR with_check NOT LIKE '%current_user_organization_id%' OR with_check NOT LIKE '%has_org_role%' OR with_check NOT LIKE '%my_session%' OR with_check NOT LIKE '%support%' OR with_check LIKE '%_session_membership%' OR with_check ~ '\mOR\M'))))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.company_setup_progress') AND tgname = 'support_read_only' AND tgenabled = 'O' AND tgfoid = to_regprocedure('public.support_readonly_guard()'))), FALSE)),
+    ('post-144 marker 146 tolra_provided_ai', coalesce((to_regclass('public.ai_helper_tolra_control') IS NOT NULL AND to_regclass('public.ai_helper_tolra_companies') IS NOT NULL
+      AND (SELECT count(*) = 2 AND bool_and(relrowsecurity) FROM pg_class WHERE oid IN (to_regclass('public.ai_helper_tolra_control'),to_regclass('public.ai_helper_tolra_companies')))
+      AND NOT has_table_privilege('authenticated', to_regclass('public.ai_helper_tolra_control'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND NOT has_table_privilege('authenticated', to_regclass('public.ai_helper_tolra_companies'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND NOT EXISTS (SELECT 1 FROM (VALUES
+        ('public._ai_helper_reserve_tolra(text,integer,text,integer)','e42be8232233f31b44d901786f4c5df9',true),
+        ('public.ai_helper_reserve(text,integer,text,integer)','9c5edca01d9bed8602b6186dfffa278b',true),
+        ('public.ai_helper_reserve_assistant(integer,text,integer)','9d2ef791742a5b67a02277ea04bb08e3',true),
+        ('public.ai_helper_status()','f80ce4b2f7b6f5ea0d2ad319babb3763',true),
+        ('public.ai_helper_set_tolra_mode(boolean)','68b7b123410985eff9a27da9859e13f6',true),
+        ('public.ai_helper_tolra_key(uuid,uuid)','bbc46281879b7774a75965e1e63a9791',true),
+        ('public.ai_helper_tolra_owner_status()','92b836d4d9b1b129654284a6c586859b',true),
+        ('public.ai_helper_tolra_configure(boolean,text,uuid)','a100254532a8b9635e0b2b0952801b60',true),
+        ('public.ai_helper_tolra_caps()','9739a998b7ff205d129ff5a309ddda18',true),
+        ('public.ai_helper_tolra_set_cap(uuid,integer,uuid)','d3aa64310bd74d79e6bf85317f663710',true)
+      ) expected(signature, body, definer)
+        LEFT JOIN pg_proc p ON p.oid = to_regprocedure(expected.signature)
+        WHERE p.oid IS NULL OR (md5(regexp_replace(p.prosrc, '\s', '', 'g')) <> expected.body AND NOT ((expected.signature, md5(regexp_replace(p.prosrc, '\s', '', 'g'))) IN (('public.ai_helper_tolra_configure(boolean,text,uuid)', '9bdcf4abcf7549ff2e0240f7609502cd'), ('public.ai_helper_reserve(text,integer,text,integer)', '48b3f8302686bc6310402b117ea09ad5'), ('public.ai_helper_reserve_assistant(integer,text,integer)', '3c415227fefdeda349442ff870a88e64')))) OR p.prosecdef <> expected.definer OR p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog, public'])
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = '972540e833a42bbb35ac5b670c56daa8')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_reserve_assistant_own_key(integer,text,integer)') AND md5(regexp_replace(prosrc,'\s','','g')) = 'f3e880f36702f8a1d358a4da194f7b5a')
+      AND EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(prosrc,'\s','','g')) IN ('3ef44c838451b46ea14030164d9b1384', 'a144add4b49efdc0b08fb9a3ad4657d9'))
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')
+      AND has_function_privilege('service_role', to_regprocedure('public.ai_helper_tolra_set_cap(uuid,integer,uuid)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 147 job_delivery_note', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'delivery_notes' AND column_name = 'request_id')
+      AND EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'delivery_notes_org_request_uniq')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)')
+                  AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '0eff98a39b4b111651ca81b1876ae21f' AND p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'])
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_notes_request_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3f0446deb43e1e7eb177aceef58c69e0')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_request_guard' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.delivery_notes_numbering_guard()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '61619d558fad51f5689048011f90dd19' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_numbering_guard' AND tgenabled = 'O')
+      AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.dln_numbering_pending')), FALSE)
+      AND NOT has_table_privilege('authenticated', to_regclass('public.dln_numbering_pending'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = 'public.delivery_notes'::regclass AND tgname = 'delivery_notes_release_gate' AND tgenabled = 'O')
+      AND NOT has_function_privilege('anon', to_regprocedure('public.create_job_delivery_note(uuid,uuid,uuid,date,date,text,text,jsonb)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 148 job_profitability_actuals', coalesce(((SELECT count(*) = 4 FROM pg_class WHERE relrowsecurity AND oid IN (to_regclass('public.job_costing_settings'),
+             to_regclass('public.job_costing_machine_links'), to_regclass('public.job_cost_declarations'), to_regclass('public.job_cost_snapshots')))
+      AND NOT has_table_privilege('authenticated', to_regclass('public.job_cost_snapshots'), 'INSERT,UPDATE,DELETE')
+      AND to_regclass('public.job_machine_cost_rates') IS NULL AND to_regclass('public.job_costing_rate_history') IS NULL
+      AND (SELECT count(*) = 6 FROM pg_proc p WHERE p.prosecdef AND p.proconfig = ARRAY['search_path=pg_catalog, public'] AND p.oid IN (to_regprocedure('public.job_cost_figures(uuid,uuid,jsonb)'),
+             to_regprocedure('public.job_cost_rates(uuid)'), to_regprocedure('public.job_cost_take_snapshot(uuid,uuid,text)'), to_regprocedure('public.job_cost_snapshot_on_close()'),
+             to_regprocedure('public.job_profitability_actual_inputs(uuid)'), to_regprocedure('public.set_job_costing_enabled(uuid,integer,boolean)'))
+           AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('c4e45bd28ccd5d5c9a9d691ec552fefc','c98f3e9d11e056a5bd83058f16fa36f4','4b00c032583a02d3c353561f03403ba3','bdeed22a214965caf88909bddbf31a42','8e5d7b65d788791ec9e6f298b084e595','3519a71abd8691238c3815d93e8c51bd'))
+      AND (SELECT count(*) = 2 FROM pg_trigger WHERE tgname = 'zz_job_cost_snapshot' AND tgenabled = 'O' AND tginitdeferred AND tgrelid IN ('public.jobs'::regclass, 'public.invoices'::regclass))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.job_cost_snapshots') AND tgname = 'job_cost_snapshot_frozen' AND tgenabled = 'O')), FALSE)),
+    ('post-144 marker 149 xero_launch_hold', coalesce((coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.xero_transfer_hold')), FALSE)
+      AND NOT has_table_privilege('authenticated', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND NOT has_table_privilege('service_role', to_regclass('public.xero_transfer_hold'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.xero_send_release')), FALSE)
+      AND NOT has_table_privilege('authenticated', to_regclass('public.xero_send_release'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND NOT has_table_privilege('service_role', to_regclass('public.xero_send_release'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND (SELECT count(*) = 11 FROM pg_proc p WHERE p.oid IN (to_regprocedure('public.integration_claim_next(uuid,text,integer,text,uuid)'), to_regprocedure('public.integration_retry_send(uuid)'), to_regprocedure('public.integration_xero_transfer_enabled(uuid)'), to_regprocedure('public.integration_xero_enabled_orgs()'), to_regprocedure('public.integration_xero_launch_status()'), to_regprocedure('public.integration_xero_set_transfers(boolean)'), to_regprocedure('public.integration_xero_connection_reset()'), to_regprocedure('public.integration_xero_held_sends()'), to_regprocedure('public.integration_xero_approve_held(uuid[])'), to_regprocedure('public.integration_xero_send_queued()'), to_regprocedure('public.integration_xero_send_released(uuid,uuid)'))
+           AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('0e9eff4841aae59b2fce206cf498030e','3c4665d7f33d8b2b9c946ab1ebab0958','5522484bf0b08beb6da75aade2083106','57e9d29bf39d82eb2138abf02da84290','c2739b09eb75c5afc20f4ba3db07c758','c3d2ca18c42fbc3ca1b287dca6816961','cb609c066e4341482dd9888579a3a93c','d8aa93c5072ad4b811bb397f11653b76','dd988ce9a311a5c8524de985311eb1a9','e46ac87c559077b16643f0287a0fc08a','ff1f8f33b7d4f7163c98557bb06f4a5b'))
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.integration_connections') AND tgname = 'xero_connection_reset' AND tgenabled = 'O')
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.integration_sends') AND tgname = 'xero_send_queued' AND tgenabled = 'O')), FALSE)),
+    ('post-144 marker 150 ai_cap_key_off', coalesce((EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_settings' AND column_name = 'monthly_cap_pence' AND column_default = '1000')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_status_own_key()') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = 'a144add4b49efdc0b08fb9a3ad4657d9')
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_set_key(text,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '423fd435ce49775980461ee998cff63f' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public._ai_helper_force_off(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '81fb7034c4cddc39c8cba5d4f6822fbf' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_tolra_configure(boolean,text,uuid)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '9bdcf4abcf7549ff2e0240f7609502cd' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '48b3f8302686bc6310402b117ea09ad5' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve_assistant(integer,text,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '3c415227fefdeda349442ff870a88e64' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_save_settings(boolean,boolean,integer)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '2d9f74178c3527f28dab42e17dcc29b0' AND p.prosecdef)
+      AND EXISTS (SELECT 1 FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_tolra_remove_key(uuid,text)') AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) = '34d6fa1e5ea438941599bac8fa2df12c' AND p.prosecdef)
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.ai_helper_tolra_remove_key(uuid,text)'), 'EXECUTE')
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'ai_helper_tolra_control' AND column_name = 'key_removed' AND is_nullable = 'NO')
+      AND EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = to_regclass('public.ai_helper_tolra_control') AND conname = 'ai_helper_tolra_control_removed_off')
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public._ai_helper_force_off(uuid,text)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 152 sliq_import_route', coalesce((to_regclass('public.import_source_rows') IS NOT NULL AND to_regclass('public.import_source_batches') IS NOT NULL
+      AND EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.import_source_rows') AND relrowsecurity)
+      AND EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.import_source_rows') AND tgname = 'import_source_rows_guard')
+      AND (SELECT count(*) = 2 FROM pg_proc p WHERE p.prosecdef AND p.proconfig IS NOT NULL
+             AND p.oid IN (to_regprocedure('public.import_sliq_preflight(text,jsonb,jsonb,boolean)'), to_regprocedure('public.import_sliq_batch(text,jsonb,text,text,integer,jsonb,boolean,boolean)')))
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.import_sliq_prepare(uuid,text,jsonb,text)'), 'EXECUTE')), FALSE)),
+    ('post-144 marker 151 xero_invite_hardening', coalesce(((SELECT count(*) = 10 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_connect_invites'
+             AND column_name IN ('ref', 'recipient_email', 'code_hash', 'code_expires_at', 'code_sent_at', 'code_sent_count', 'code_attempts', 'locked_at', 'expired_logged_at', 'revoke_reason'))
+      AND EXISTS (SELECT 1 FROM pg_constraint c WHERE c.conrelid = to_regclass('public.integration_connect_invites') AND c.conname IN ('integration_connect_invites_ref_key', 'integration_connect_invites_bound', 'integration_connect_invites_recipient') HAVING count(*) = 3)
+      AND to_regprocedure('public.integration_invite_create(text,text)') IS NULL AND to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NULL
+      AND (SELECT count(*) = 11 FROM pg_proc p WHERE p.prosecdef AND p.proconfig IS NOT NULL AND p.oid IN (to_regprocedure('public.integration_invite_create(text,text,text)'),
+             to_regprocedure('public.integration_invite_peek(text)'), to_regprocedure('public.integration_invite_code_issue(text,text)'), to_regprocedure('public.integration_invite_code_verify(text,text,text,text)'),
+             to_regprocedure('public.integration_invites_open(text)'), to_regprocedure('public.integration_invite_revoke(uuid)'), to_regprocedure('public.integration_oauth_consume_invite(text,text)'),
+             to_regprocedure('public.integration_invite_refusal_log(text,text,text,uuid)'), to_regprocedure('security_audit.integration_invite_refuse(text,text,text,uuid,uuid)'),
+             to_regprocedure('public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)'), to_regprocedure('public.integration_xero_picker_claim(text,text,integer,integer)'))
+           AND md5(regexp_replace(p.prosrc, '\s', '', 'g')) IN ('b86e02fdfffbb57d36d71c9c1912502f','991b9f883be0e095a4da8dd710fa3f64','c22d01e73913b254944aab48e6f88327','92e5ead59bad8ed0525dbd94c42329da','93a964b68da646dde0df548e4b6b2ea2','a14c66849f79459dec243bc4b5db2d1d','6f077ddac2da68539201862fe157a191','78a1d8c5d33a8a19c0ed7f706ca297d9','e0038a10ab9f5c71acdd4858a4f9cdba','182c2422d44a6d8d7365166407657735','10b29a99950d6f41b36f8b45433ff80d'))
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.integration_invite_code_verify(text,text,text,text)'), 'EXECUTE')
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.integration_invite_store_connection(text,uuid,uuid,text,text,text,text,text,text,timestamptz,integer)'), 'EXECUTE')
+      AND NOT has_function_privilege('authenticated', to_regprocedure('public.integration_xero_picker_claim(text,text,integer,integer)'), 'EXECUTE')
+      AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'integration_oauth_states' AND column_name = 'invite_completed_at')
+      AND has_function_privilege('authenticated', to_regprocedure('public.integration_invite_create(text,text,text)'), 'EXECUTE')
+      AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('public.integration_connect_invites')), FALSE)
+      AND NOT has_table_privilege('authenticated', to_regclass('public.integration_connect_invites'), 'SELECT,INSERT,UPDATE,DELETE')
+      AND coalesce((SELECT relrowsecurity FROM pg_class WHERE oid = to_regclass('security_audit.integration_invite_refusals')), FALSE)
+      AND NOT has_table_privilege('service_role', to_regclass('security_audit.integration_invite_refusals'), 'SELECT,INSERT,UPDATE,DELETE')), FALSE))
 ),
 checks(n, check_name, value, expected) AS (
   SELECT 1, 'postgres version', current_setting('server_version'), '17.x expected (local tests ran on 17.6); any other major: stop and report'
@@ -411,7 +561,7 @@ checks(n, check_name, value, expected) AS (
     '058 / 012 / 093 present before 102, 102 / 102 / 093 present after (other or missing: stop, 102 refuses to replace it)'
   UNION ALL SELECT 46, '103 needs: 101 applied; ai_helper_reserve and ai_helper_settle 101''s (or already 103''s)',
     coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN '8b9a4ec9293a5b6f0ddc8e505822c84f' THEN '101' WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' WHEN '972540e833a42bbb35ac5b670c56daa8' THEN '133' ELSE 'other' END
-              FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_reserve'), 'missing (101 not applied)')
+              FROM pg_proc WHERE oid = coalesce(to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)'), to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'))), 'missing (101 not applied)')
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(prosrc, '\s', '', 'g')) WHEN 'cd5ac6d43f9a5ade20815a82ed123717' THEN '101' WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
               FROM fn WHERE nspname = 'public' AND proname = 'ai_helper_settle'), 'missing (101 not applied)'),
     '101 / 101 before 103, 103 / 103 after (133 / 133 once 133 is applied; missing: apply 101 first; other: stop, 103 refuses to replace it)'
@@ -462,7 +612,7 @@ checks(n, check_name, value, expected) AS (
     'true / 076 before 124, true / 124 after (other: stop, 124 refuses to replace it)'
   UNION ALL SELECT 55, '133 needs: public.ai_helper_reserve and ai_helper_settle are 103''s (or already 133''s)',
     coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' WHEN '972540e833a42bbb35ac5b670c56daa8' THEN '133' ELSE 'other' END
-              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')), 'missing')
+              FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)'), to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'))), 'missing')
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)')), 'missing'),
     '103 / 103 before 133, 133 / 133 after (other: stop, 133 refuses to replace it)'
@@ -472,7 +622,7 @@ checks(n, check_name, value, expected) AS (
      AND to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)') IS NOT NULL
      AND NOT has_function_privilege('authenticated', 'public.ai_helper_settle(uuid,text,text,integer,text,jsonb)', 'EXECUTE'))::TEXT
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c75e470a73e4d0e7508a27125f6f9e9c' THEN '103' WHEN '972540e833a42bbb35ac5b670c56daa8' THEN '133' ELSE 'other' END
-              FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)')), 'missing')
+              FROM pg_proc p WHERE p.oid = coalesce(to_regprocedure('public._ai_helper_reserve_own_key(text,integer,text,integer)'), to_regprocedure('public.ai_helper_reserve(text,integer,text,integer)'))), 'missing')
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'ca5166191666584107491f95ccce4702' THEN '103' WHEN '7e04d0ab645ec24dc0f0acb78c222702' THEN '133' ELSE 'other' END
               FROM pg_proc p WHERE p.oid = to_regprocedure('public.ai_helper_settle(uuid,text,text,integer,text,jsonb)')), 'missing')
     || ' / ' || coalesce((SELECT CASE md5(regexp_replace(p.prosrc, '\s', '', 'g')) WHEN 'c4b0d7f39cec1f23c6bd1d5e31e59fa9' THEN '133' ELSE 'other' END
@@ -499,8 +649,15 @@ checks(n, check_name, value, expected) AS (
                           FROM pg_trigger t LEFT JOIN pg_proc p ON p.oid = t.tgfoid
                           WHERE t.tgrelid = 'auth.users'::regclass AND t.tgname = 'password_change_ticket'), 'none'),
     'true / 5 / 0 / any number / none before 137, 137 after it, no-op after its rollback (false, not 5, encrypted above 0 or other: stop, 137 refuses to apply)'
-  UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
+  UNION ALL SELECT 100 + row_number() OVER (), 'marker ' || migration,
+    CASE WHEN present AND (migration <> '107 integrations connect' OR to_regprocedure('public.integration_invite_redeem(text,text,text)') IS NOT NULL
+                           OR coalesce((SELECT pm.present FROM post_release_markers pm WHERE pm.label = 'post-144 marker 151 xero_invite_hardening'), FALSE))
+         THEN 'applied' ELSE 'not applied' END,
     'before the release: 013 applied, 014 onwards as recorded in the sign-off; after: all applied'
   FROM markers
+  UNION ALL SELECT 300 + row_number() OVER (ORDER BY label), label, CASE WHEN present THEN 'applied' ELSE 'not applied' END,
+    'One-time post-144 phase: 145 N5 before 146 N2 before 147 C17 before 148 job costing before 149 Xero launch hold before 150 AI cap and key-off before 151 Xero invite hardening before 152 SliQ import route; all applied before go-live. Baseline replay intentionally runs first.' FROM post_release_markers
+  UNION ALL SELECT 400 + row_number() OVER (ORDER BY file), 'proposal file ' || file, disposition,
+    'Explicitly accounted for; no proposal runs merely because preflight is read.' FROM proposal_files
 )
 SELECT check_name AS "check", value, expected FROM checks ORDER BY n;

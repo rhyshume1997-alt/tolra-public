@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle, Clipboard, Info, Mail } from "lucide-react";
+import { CheckCircle, Clipboard, Info, Mail, Send } from "lucide-react";
 
+import { ConnectedChaseApproval } from "@/components/chase/connected-approval";
 import { ColumnToggle } from "@/components/column-toggle";
 import { ReopenApprovals } from "@/components/reopen-approvals";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { auditEvent } from "@/lib/audit";
 import { fmtDate, fmtDateTime, nowIso } from "@/lib/dates";
 import { friendlyError } from "@/lib/friendly-error";
-import { awaitingApproval } from "@/lib/approval-queue";
+import { awaitingApproval, needsChecking } from "@/lib/approval-queue";
+import { NeedsChecking, SendViaResendButton, type NeedsCheckingItem } from "@/components/approval-recovery";
 import { useColumnVisibility } from "@/lib/org-settings";
 import { supabase } from "@/lib/supabase";
 import { useSaving } from "@/lib/use-saving";
@@ -33,6 +35,12 @@ type ApprovalItem = {
   to: string;
   subject: string;
   body: string;
+  /** 138: a chase step's draft (a chase_sends row points at it): it can be approved and sent from here. */
+  chase: boolean;
+  canApprove: boolean;
+  /** An earlier send of this record was refused for certain (a 'failed' history row): the admin may choose Resend for it. */
+  failedBefore: boolean;
+  related: string;
 };
 
 type SentItem = { id: string; customer: string; when: string; status: string };
@@ -66,6 +74,10 @@ function toApproval(row: any): ApprovalItem {
     to: row.to_email || "",
     subject: row.subject || "",
     body: row.body || "",
+    chase: false,
+    failedBefore: false,
+    related: String(row.related_to_id ?? ""),
+    canApprove: String(row.related_to_id ?? "").startsWith("customer_statement:") || (type === "invoice" && row.drafted_by === null),
   };
 }
 
@@ -80,6 +92,13 @@ export default function ApprovalPage() {
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
   const [previewItem, setPreviewItem] = useState<ApprovalItem | null>(null);
+  const [approving, setApproving] = useState<ApprovalItem | null>(null);
+  const [approveSubject, setApproveSubject] = useState("");
+  const [approveBody, setApproveBody] = useState("");
+  const [noProvider, setNoProvider] = useState<string | null>(null);
+  const [checking, setChecking] = useState<NeedsCheckingItem[]>([]);
+  const [resendAvailable, setResendAvailable] = useState(false);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +106,7 @@ export default function ApprovalPage() {
     try {
       if (!supabase) throw new Error("Supabase is not configured.");
       const [drafts, sent] = await Promise.all([
-        awaitingApproval(supabase.from("email_history").select("id, to_email, to_name, subject, body, related_to_type, drafted_at, skipped_until"))
+        awaitingApproval(supabase.from("email_history").select("id, to_email, to_name, subject, body, related_to_type, related_to_id, drafted_by, drafted_at, skipped_until"))
           .order("drafted_at", { ascending: false }),
         supabase
           .from("email_history")
@@ -99,6 +118,23 @@ export default function ApprovalPage() {
       if (drafts.error) throw drafts.error;
       if (sent.error) throw sent.error;
       const items = (drafts.data ?? []).map(toApproval);
+      // 138: which drafts are chase drafts (before 138 the table is missing and none are).
+      if (items.length) {
+        const chase = await supabase.from("chase_sends").select("draft_history_id").in("draft_history_id", items.map((item) => item.id));
+        const ids = new Set(chase.error ? [] : (chase.data ?? []).map((row: any) => String(row.draft_history_id)));
+        for (const item of items) item.chase = ids.has(item.id);
+      }
+      // Earlier refused sends (status 'failed') for these records, and the held ones (unknown / stuck sending). Reads only.
+      if (items.length) {
+        const failed = await supabase.from("email_history").select("related_to_id").eq("status", "failed").in("related_to_id", items.map((item) => item.related).filter(Boolean));
+        const failedIds = new Set(failed.error ? [] : (failed.data ?? []).map((row: any) => String(row.related_to_id)));
+        for (const item of items) item.failedBefore = failedIds.has(item.related);
+      }
+      const held = await needsChecking(supabase.from("email_history").select("id, to_email, subject, status, related_to_type, drafted_at")).order("drafted_at", { ascending: false });
+      setChecking(held.error ? [] : (held.data ?? []).map((row: any) => ({ id: String(row.id), to: row.to_email || "Recipient", subject: row.subject || "", status: String(row.status), related: String(row.related_to_type ?? ""), drafted: row.drafted_at ? fmtDate(row.drafted_at) : "" })));
+      const options = await fetch("/api/email/provider-options").then((r) => (r.ok ? r.json() : { resend: false, admin: false })).catch(() => ({ resend: false, admin: false }));
+      setResendAvailable(options.resend === true);
+      setIsAdminUser(options.admin === true);
       setApprovals(items);
       updateSharedApprovalCount(items.length);
       setRecent((sent.data ?? []).map((row: any) => ({
@@ -132,6 +168,51 @@ export default function ApprovalPage() {
       console.error(err);
       toast.error("Couldn't copy. Open Full preview, select the text and copy it by hand.");
     }
+  }
+
+  async function approveCustomerDraft(item: ApprovalItem) {
+    if (!window.confirm(`Send this exact reviewed message to ${item.to}?`)) return;
+    await run(async () => {
+      try {
+        const res = await fetch("/api/email/approve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draft_id: item.id, subject: item.subject, body: item.body, to: item.to }) });
+        const answer = await res.json();
+        if (!res.ok) throw new Error(answer.error ?? "Could not send this draft.");
+        toast.success("Sent. You can check the record in Email history.");
+        setPreviewItem(null);
+        removeLocal(item.id);
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not send this draft."); }
+      finally { await load(); }
+    });
+  }
+
+  function resolveHeld(item: NeedsCheckingItem, outcome: "sent" | "not_sent") {
+    if (!window.confirm(outcome === "sent" ? `Record that the email to ${item.to} WAS sent? Only do this after you have checked.` : `Record that the email to ${item.to} was NOT sent and return it to the queue? Only do this after you have checked.`)) return;
+    void run(async () => {
+      try {
+        const job = item.related === "job";
+        const res = await fetch(job ? "/api/send-job/resolve" : "/api/email/resolve", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(job ? { historyId: item.id, as: outcome === "sent" ? "sent" : "failed" } : { history_id: item.id, outcome }) });
+        const answer = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) throw new Error(answer.error ?? "Could not record this.");
+        toast.success("Recorded. Nothing was sent.");
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not record this."); }
+      finally { await load(); }
+    });
+  }
+
+  /** The admin's explicit Resend choice for one message that failed for certain. The route re-checks everything. */
+  function sendViaResend(item: ApprovalItem) {
+    void run(async () => {
+      try {
+        const res = await fetch(item.chase ? "/api/chase/approve" : "/api/email/approve", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item.chase ? { history_id: item.id, expected_to: item.to, expected_subject: item.subject, expected_body: item.body, provider: "resend" } : { draft_id: item.id, subject: item.subject, body: item.body, to: item.to, provider: "resend" }),
+        });
+        const answer = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) throw new Error(answer.error ?? "Could not send this email.");
+        toast.success("Sent through Resend.");
+      } catch (err) { toast.error(err instanceof Error ? err.message : "Could not send this email."); }
+      finally { await load(); }
+    });
   }
 
   function markSentManually(item: ApprovalItem) {
@@ -170,6 +251,46 @@ export default function ApprovalPage() {
     });
   }
 
+  function openApprove(item: ApprovalItem) {
+    setApproveSubject(item.subject);
+    setApproveBody(item.body);
+    setApproving(item);
+  }
+
+  /** 138: sends the chase draft (as edited here) through the company mailer, records who approved it, and takes it off the queue. */
+  function approveAndSend() {
+    if (!approving) return;
+    const item = approving;
+    if (approveSubject !== item.subject || approveBody !== item.body) {
+      toast.error("Save your changes with Edit, then review the draft again before sending.");
+      return;
+    }
+    void run(async () => {
+      try {
+        const response = await fetch("/api/chase/approve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ history_id: item.id, expected_to: item.to, expected_subject: item.subject, expected_body: item.body }),
+        });
+        const answer = (await response.json().catch(() => ({}))) as { status?: string; error?: string };
+        if (answer.status === "no_provider") {
+          setNoProvider(answer.error || "E-mail sending isn't set up for this company.");
+          setApproving(null);
+          setApprovals((current) => current.map((entry) => (entry.id === item.id ? { ...entry, subject: approveSubject, body: approveBody, detail: approveSubject } : entry)));
+          toast.error("E-mail sending isn't set up, so this wasn't sent. Copy it or open it in your email client instead.");
+          return;
+        }
+        if (!response.ok || answer.status !== "sent") throw new Error(answer.error || "Couldn't send this e-mail. Try again.");
+        setApproving(null);
+        removeLocal(item.id);
+        toast.success(`Sent to ${item.customer}`);
+        void load();
+      } catch (err) {
+        toast.error(friendlyError(err, "Couldn't send this e-mail. Try again."));
+      }
+    });
+  }
+
   function openEdit(item: ApprovalItem) {
     setEditSubject(item.subject);
     setEditBody(item.body);
@@ -182,8 +303,8 @@ export default function ApprovalPage() {
     void run(async () => {
       try {
         if (!supabase) throw new Error("Supabase is not configured.");
-        const { error: updateError } = await supabase.from("email_history").update({ subject: editSubject, body: editBody }).eq("id", item.id).eq("status", "drafted");
-        if (updateError) throw updateError;
+        const { data: changed, error: updateError } = await supabase.from("email_history").update({ subject: editSubject, body: editBody }).eq("id", item.id).eq("status", "drafted").select("id");
+        if (updateError || changed?.length !== 1) throw new Error("This draft changed. Reload and review it again.");
         setApprovals((current) => current.map((entry) => (entry.id === item.id ? { ...entry, subject: editSubject, body: editBody, detail: editSubject } : entry)));
         void auditEvent({ action: "UPDATE", entityTable: "email_history", entityId: item.id, metadata: { fields: ["subject", "body"] } });
         setEditingItem(null);
@@ -210,11 +331,17 @@ export default function ApprovalPage() {
         <CardContent className="flex gap-3 p-5">
           <Info className="mt-0.5 size-5 shrink-0 text-blue-600" />
           <p className="text-sm font-medium text-blue-950">
-            Email sending isn&apos;t set up yet, so emails are saved as drafts. Copy a draft or open it in your email app, send it yourself, then choose Mark as Sent Manually.
+            Check each draft before sending. Chase reminders can be approved and sent here when email sending is set up. Customer statements and system-created invoice drafts also offer Approve and send in Full preview when a provider is configured. To send a draft yourself, copy it or open it in your email app, then choose Mark as Sent Manually after you have sent it.
             {loading || error ? "" : ` ${approvals.length} draft${approvals.length === 1 ? "" : "s"} waiting.`}
           </p>
         </CardContent>
       </Card>
+
+      {noProvider ? (
+        <Card className="border-amber-300 bg-amber-50 shadow-sm" data-testid="approval-no-provider">
+          <CardContent className="p-5 text-sm font-medium text-amber-950" role="status">{noProvider}</CardContent>
+        </Card>
+      ) : null}
 
       {error ? (
         <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-5"><p className="text-sm text-red-700">{error}</p><Button variant="outline" onClick={() => void load()}>Retry</Button></CardContent></Card>
@@ -235,6 +362,12 @@ export default function ApprovalPage() {
           </Card>
         ) : (
           approvals.map((item) => {
+            if (item.chase) return <ConnectedChaseApproval key={item.id} id={item.id} onDone={() => void load()} manualActions={<>
+              <Button variant="outline" onClick={() => void copyToClipboard(item)}>Copy draft</Button>
+              <Button variant="outline" onClick={() => openEmailClient(item)}>Open in email app</Button>
+              <Button variant="outline" disabled={saving} onClick={() => markSentManually(item)}>Mark as Sent Manually</Button>
+              <SendViaResendButton available={resendAvailable} failed={item.failedBefore} disabled={saving} recipient={item.to} subject={item.subject} onConfirm={() => sendViaResend(item)} />
+            </>} />;
             const styles = toneStyles[item.tone];
             return (
               <Card key={item.id}>
@@ -269,6 +402,12 @@ export default function ApprovalPage() {
                   </div> : null}
 
                   <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                    {item.chase ? (
+                      <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving} onClick={() => openApprove(item)}>
+                        <Send className="size-4" />
+                        Approve and send
+                      </Button>
+                    ) : null}
                     <Button className={styles.button} onClick={() => void copyToClipboard(item)}>
                       <Clipboard className="size-4" />
                       Copy to Clipboard
@@ -280,6 +419,7 @@ export default function ApprovalPage() {
                     </Button>
                     <Button variant="outline" onClick={() => openEdit(item)}>Edit</Button>
                     <Button variant="outline" onClick={() => setPreviewItem(item)}>Full preview</Button>
+                    {item.canApprove ? <SendViaResendButton available={resendAvailable} failed={item.failedBefore} disabled={saving} recipient={item.to} subject={item.subject} onConfirm={() => sendViaResend(item)} /> : null}
                     <Button variant="ghost" disabled={saving} className="text-slate-500 hover:text-slate-900 md:ml-auto" onClick={() => skipApproval(item)}>Skip</Button>
                   </div>
                 </CardContent>
@@ -288,6 +428,8 @@ export default function ApprovalPage() {
           })
         )}
       </section>
+
+      <NeedsChecking items={checking} isAdmin={isAdminUser} busy={saving} onResolve={resolveHeld} />
 
       {/* 113: reopened jobs waiting for an admin's sign-off (nothing shows before the database has 113). */}
       <ReopenApprovals />
@@ -334,6 +476,31 @@ export default function ApprovalPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={Boolean(approving)} onOpenChange={(open) => !open && setApproving(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve and send</DialogTitle>
+            <DialogDescription>Check the e-mail to {approving?.to}. It is sent from {PRODUCT.name} through your company&apos;s e-mail as soon as you approve it.</DialogDescription>
+          </DialogHeader>
+          {approving ? (
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-slate-700">
+                Subject
+                <input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand" value={approveSubject} onChange={(event) => setApproveSubject(event.target.value)} />
+              </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Body
+                <textarea className="mt-1 min-h-56 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand" value={approveBody} onChange={(event) => setApproveBody(event.target.value)} />
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setApproving(null)}>Cancel</Button>
+                <Button className="bg-brand text-brand-ink hover:bg-brand-hover" disabled={saving || !approveSubject.trim() || !approveBody.trim()} onClick={approveAndSend}>{saving ? "Sending..." : "Approve and send"}</Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={Boolean(previewItem)} onOpenChange={(open) => !open && setPreviewItem(null)}>
         <DialogContent>
           <DialogHeader>
@@ -349,7 +516,7 @@ export default function ApprovalPage() {
               <div className="whitespace-pre-wrap rounded-lg border border-slate-200 p-4 text-sm leading-6 text-slate-700">{previewItem.body}</div>
             </div>
           ) : null}
-        </DialogContent>
+        {previewItem?.canApprove ? <Button disabled={saving} onClick={() => void approveCustomerDraft(previewItem)}>Approve and send</Button> : null}</DialogContent>
       </Dialog>
     </div>
     </RoleGate>

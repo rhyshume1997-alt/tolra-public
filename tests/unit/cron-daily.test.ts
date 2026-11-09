@@ -28,12 +28,22 @@ const call = async (headers: Record<string, string> = {}) => {
 };
 const SWEEP = { companies: 1, renewed: 1, needReconnect: 0, sent: 2, failed: 0, needsCheck: 0, errors: 0 };
 
-const world = () => new FakeDb({
+/** 138: the reminders only DRAFT, through public.chase_create_draft (a stand-in here that records each step once). */
+const withRpc = (db: FakeDb) => Object.assign(db, {
+  rpc: vi.fn(async (_name: string, args: Record<string, unknown>) => {
+    if (db.rows("chase_sends").some((r) => r.invoice_id === args.p_invoice && r.step_id === args.p_step)) return { data: { created: false, reason: "step_done" }, error: null };
+    db.rows("chase_sends").push({ organization_id: args.p_org, invoice_id: args.p_invoice, step_id: args.p_step, offset_days: 7 });
+    return { data: { created: true, history_id: `h-${String(args.p_invoice)}` }, error: null };
+  }),
+});
+const world = () => withRpc(new FakeDb({
+  chase_steps: [{ id: "a7", organization_id: "a", offset_days: 7, tone: "friendly" }, { id: "a30", organization_id: "a", offset_days: 30, tone: "final" }],
+  chase_sends: [], chase_pauses: [], jobs: [], purchase_orders: [], email_templates: [],
   organizations: [{ id: "a", name: "Alpha", status: "active" }],
   email_schedules: [{ id: "sa", organization_id: "a", kind: "invoice_reminder", enabled: true, frequency: "daily", weekday: null, time_of_day: "08:00", run_at: null, timezone: "Europe/London", recipients: null, last_run_at: null, updated_at: "2026-10-01T00:00:00Z" }],
   invoices: [{ id: "1", organization_id: "a", invoice_ref: "INV-1", customer: "Acme", total: 100, amount_paid: 0, credited_amount: 0, refunded_amount: 0, status: "sent", due_date: "2026-10-01", payment_unverified: false }],
-  customers: [{ organization_id: "a", name: "Acme", email: "acme@a.test", contact_name: null }],
-});
+  customers: [{ id: "c1", organization_id: "a", name: "Acme", email: "acme@a.test", contact_name: null }],
+}));
 
 let logs: string[];
 beforeEach(() => {
@@ -66,25 +76,27 @@ describe("GET /api/cron/daily: who may call it", () => {
 });
 
 describe("GET /api/cron/daily: the pass", () => {
-  it("sends yesterday's 08:00 reminder (about 21 h late) and then runs the Xero sweep, returning both results", async () => {
+  it("drafts (never sends) yesterday's 08:00 reminder (about 21 h late) and then runs the Xero sweep, returning both results", async () => {
     const res = await call(withSecret);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ emailSchedules: { schedules: 1, due: 1, ran: 1, emails: 1, drafted: 0, failed: 0, errors: 0 }, xeroSweep: SWEEP });
-    expect(sendCompanyEmail).toHaveBeenCalledTimes(1);
+    expect(await res.json()).toEqual({ emailSchedules: { schedules: 1, due: 1, ran: 1, emails: 0, drafted: 1, failed: 0, errors: 0 }, xeroSweep: SWEEP });
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
     expect((admin as FakeDb).rows("email_schedule_runs")[0]).toMatchObject({ period_key: "2026-10-26", error: null });
   });
 
-  it("a second call the same morning (a Vercel retry) sends nothing more", async () => {
+  it("a second call the same morning (a Vercel retry) drafts nothing more", async () => {
     await call(withSecret);
     await call(withSecret);
-    expect(sendCompanyEmail).toHaveBeenCalledTimes(1);
+    expect((admin as FakeDb).rows("chase_sends")).toHaveLength(1);
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
   });
 
-  it("the next day's pass sends the next day's", async () => {
+  it("the next day's pass runs the next day's period (a step already drafted is not drafted again)", async () => {
     await call(withSecret);
     vi.setSystemTime(new Date("2026-10-28T05:30:00Z"));
     await call(withSecret);
-    expect(sendCompanyEmail).toHaveBeenCalledTimes(2);
+    expect((admin as FakeDb).rows("chase_sends")).toHaveLength(1);
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
     expect((admin as FakeDb).rows("email_schedule_runs").map((r) => r.period_key)).toEqual(["2026-10-26", "2026-10-27"]);
   });
 
@@ -102,15 +114,15 @@ describe("GET /api/cron/daily: the pass", () => {
     expect(reportServerError.mock.calls[0][0]).toMatchObject({ route: "/api/cron/daily", source: "cron" });
   });
 
-  it("the Xero sweep failing does not undo the e-mails; its detail is never returned or logged", async () => {
+  it("the Xero sweep failing does not undo the drafts; its detail is never returned or logged", async () => {
     runIntegrationSweep.mockRejectedValue(new Error("token abc123 leaked"));
     const res = await call(withSecret);
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.emailSchedules).toMatchObject({ ran: 1, emails: 1 });
+    expect(body.emailSchedules).toMatchObject({ ran: 1, emails: 0, drafted: 1 });
     expect(body.xeroSweep).toEqual({ error: "Xero sweep failed" });
     expect(JSON.stringify(body) + logs.join("\n") + JSON.stringify(reportServerError.mock.calls[0][0].error.message)).not.toContain("abc123");
-    expect(sendCompanyEmail).toHaveBeenCalledTimes(1);
+    expect(sendCompanyEmail).not.toHaveBeenCalled();
   });
 
   it("both can fail; each is reported, and the route still answers", async () => {
@@ -139,6 +151,7 @@ describe("GET /api/cron/daily: the pass", () => {
     const res = await call(withSecret);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ emailSchedules: expect.objectContaining({ skipped: "database update 108 not applied" }), xeroSweep: { skipped: "xero not configured" } });
-    expect(reportServerError).not.toHaveBeenCalled();
+    // 108 missing is a critical skip: exactly one alert (sm-a). "xero not configured" stays quiet.
+    expect(reportServerError).toHaveBeenCalledTimes(1);
   });
 });

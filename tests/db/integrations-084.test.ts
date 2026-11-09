@@ -63,6 +63,13 @@ async function connect(t = alpha(), tenant = `tenant-${randomUUID()}`) {
   await svc("select public.integration_oauth_consume($1, $2, 'xero', $3) as r", [t.id, t.users.admin.id, state]);
   await svc("select public.integration_store_connection($1, $2, 'xero', $3, $4, $5, $6, $7, now() + interval '30 minutes', 1) as r",
     [t.id, t.users.admin.id, tenant, `${t.name} Xero`, randomUUID(), cipher(), cipher()]);
+  // Release 149 (the per-company Xero transfer switch) starts every connection OFF, and turning it on needs a mapped company, which this helper's
+  // callers map afterwards. Where 149 is installed, the helper leaves the row as an admin's turn-on would (written as the database owner) so the
+  // queue tests below exercise the queue as before; where it is not installed (084 alone, the baseline run) nothing is added.
+  const hasSwitch = (await owner<{ f: string | null }>("select to_regclass('public.xero_transfer_hold')::text as f"))[0].f;
+  if (hasSwitch) {
+    await owner("insert into public.xero_transfer_hold (organization_id, enabled, changed_by, reason) values ($1, true, $2, 'admin') on conflict (organization_id) do update set enabled = true, changed_by = excluded.changed_by, changed_at = now(), reason = 'admin'", [t.id, t.users.admin.id]);
+  }
   return tenant;
 }
 async function disconnect(t = alpha()) {

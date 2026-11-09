@@ -105,8 +105,8 @@ describe("provider selection", () => {
     expect(await selectProvider("org-1", { env: { EMAIL_FROM: "a@b.test" }, getToken: noToken })).toBeNull();
     expect(await selectProvider("org-1", { env: {}, getToken: noToken })).toBeNull();
   });
-  it("a token lookup that throws is no token (next provider)", async () => {
-    expect(await selectProvider("org-1", { env: RESEND_ENV, getToken: async () => { throw new Error("db down"); } })).toMatchObject({ name: "resend" });
+  it("a token lookup failure stops selection instead of changing sender", async () => {
+    await expect(selectProvider("org-1", { env: RESEND_ENV, getToken: async () => { throw new Error("db down"); } })).rejects.toThrow("db down");
   });
   it("EMAIL_PROVIDER=mock off Vercel only; on any Vercel deployment it is refused (never a silent fall-through to Resend)", async () => {
     expect(await selectProvider("org-1", { env: { EMAIL_PROVIDER: "mock" }, getToken: noToken })).toMatchObject({ name: "mock" });
@@ -166,7 +166,7 @@ describe("the send ledger (106): drafts, sends and retries", () => {
       if (outcome === "hang") state.ledger.push({ id: "s-9", key: ledgerKey(input), history: "h-9", status: "sending" });
       else await go(db, provider, input);
       const again = await go(db, provider, input);
-      expect(again).toMatchObject({ ok: false, code: "provider_error" });
+      expect(again).toMatchObject({ ok: false, code: "provider_error", uncertain: true });
       expect(provider.send).toHaveBeenCalledTimes(outcome === "hang" ? 0 : 1);
     }
   });

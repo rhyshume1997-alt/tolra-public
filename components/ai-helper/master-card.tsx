@@ -44,7 +44,7 @@ export function AiMasterCard({ status, onStatus }: { status: AiHelperStatus; onS
     }
   }
 
-  const note = state === "off" ? null : status.key_set && status.monthly_cap_pence > 0 ? null : "Nothing runs until a monthly limit is set and your company's own Anthropic key is added (below).";
+  const note = state === "off" || status.tolra_enabled ? null : status.key_set && status.monthly_cap_pence > 0 ? null : "Nothing runs until a monthly limit is set and your company's own Anthropic key is added (below).";
 
   return (
     <Card data-testid="ai-helper-master">

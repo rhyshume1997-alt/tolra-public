@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "numbered_through": 144,
+  "jnr_cutover_numbered_order": [
+    {
+      "number": 138,
+      "migration": "supabase/migrations/138_chase_steps.sql",
+      "release": "supabase/release/138_chase_steps.release.sql",
+      "rollback": "supabase/release/138_chase_steps.rollback.sql",
+      "verify": "supabase/verify/chase_steps_138.sql",
+      "marker": "138 chase steps"
+    },
+    {
+      "number": 140,
+      "migration": "supabase/migrations/140_import_source_ref.sql",
+      "release": "supabase/release/140_import_source_ref.release.sql",
+      "rollback": "supabase/release/140_import_source_ref.rollback.sql",
+      "verify": "supabase/verify/import_source_ref_140.sql",
+      "marker": "140 import source ref"
+    },
+    {
+      "number": 141,
+      "migration": "supabase/migrations/141_opening_wip.sql",
+      "release": "supabase/release/141_opening_wip.release.sql",
+      "rollback": "supabase/release/141_opening_wip.rollback.sql",
+      "verify": "supabase/verify/opening_wip_141.sql",
+      "marker": "141 opening wip"
+    },
+    {
+      "number": 143,
+      "migration": "supabase/migrations/143_costing_rates.sql",
+      "release": "supabase/release/143_costing_rates.release.sql",
+      "rollback": "supabase/release/143_costing_rates.rollback.sql",
+      "verify": "supabase/verify/costing_rates_143.sql",
+      "marker": "143 costing rates"
+    },
+    {
+      "number": 144,
+      "migration": "supabase/migrations/144_accounting_connections.sql",
+      "release": "supabase/release/144_accounting_connections.release.sql",
+      "rollback": "supabase/release/144_accounting_connections.rollback.sql",
+      "verify": "supabase/verify/accounting_connections_144.sql",
+      "marker": "144 accounting connections"
+    }
+  ],
+  "numbers_not_in_this_candidate": {
+    "142": "email_schedule_weekdays: optional, off by default, not in the JNR cutover"
+  },
+  "mode": "post-numbered-one-time",
+  "phases": [
+    {
+      "number": 145,
+      "after": "144",
+      "source": "supabase/proposals/n5_company_setup.sql",
+      "release": "supabase/release/145_company_setup.release.sql",
+      "rollback": "supabase/release/145_company_setup.rollback.sql",
+      "verify": "supabase/verify/company_setup_145.sql",
+      "marker": "post-144 marker 145 company_setup"
+    },
+    {
+      "number": 146,
+      "after": "145",
+      "source": "supabase/proposals/n2_tolra_provided_ai.sql",
+      "release": "supabase/release/146_tolra_provided_ai.release.sql",
+      "rollback": "supabase/release/146_tolra_provided_ai.rollback.sql",
+      "verify": "supabase/verify/tolra_provided_ai_146.sql",
+      "marker": "post-144 marker 146 tolra_provided_ai"
+    },
+    {
+      "number": 147,
+      "after": "146",
+      "source": "supabase/proposals/c17_job_delivery_note.sql",
+      "release": "supabase/release/147_job_delivery_note.release.sql",
+      "rollback": "supabase/release/147_job_delivery_note.rollback.sql",
+      "verify": "supabase/verify/job_delivery_note_147.sql",
+      "marker": "post-144 marker 147 job_delivery_note"
+    },
+    {
+      "number": 148,
+      "after": "147",
+      "source": "supabase/proposals/p148_job_profitability_actuals.sql",
+      "release": "supabase/release/148_job_profitability_actuals.release.sql",
+      "rollback": "supabase/release/148_job_profitability_actuals.rollback.sql",
+      "verify": "supabase/verify/job_profitability_actuals_148.sql",
+      "marker": "post-144 marker 148 job_profitability_actuals"
+    },
+    {
+      "number": 149,
+      "after": "148",
+      "source": "supabase/proposals/x149_xero_launch_hold.sql",
+      "release": "supabase/release/149_xero_launch_hold.release.sql",
+      "rollback": "supabase/release/149_xero_launch_hold.rollback.sql",
+      "verify": "supabase/verify/xero_launch_hold_149.sql",
+      "marker": "post-144 marker 149 xero_launch_hold"
+    },
+    {
+      "number": 150,
+      "after": "149",
+      "source": "supabase/proposals/a150_ai_cap_key_off.sql",
+      "release": "supabase/release/150_ai_cap_key_off.release.sql",
+      "rollback": "supabase/release/150_ai_cap_key_off.rollback.sql",
+      "verify": "supabase/verify/ai_cap_key_off_150.sql",
+      "marker": "post-144 marker 150 ai_cap_key_off"
+    },
+    {
+      "number": 151,
+      "after": "150",
+      "source": "supabase/proposals/p151_xero_invite_hardening.sql",
+      "release": "supabase/release/151_xero_invite_hardening.release.sql",
+      "rollback": "supabase/release/151_xero_invite_hardening.rollback.sql",
+      "verify": "supabase/verify/xero_invite_hardening_151.sql",
+      "marker": "post-144 marker 151 xero_invite_hardening"
+    },
+    {
+      "number": 152,
+      "after": "151",
+      "source": "supabase/proposals/p152_sliq_import_route.sql",
+      "release": "supabase/release/152_sliq_import_route.release.sql",
+      "rollback": "supabase/release/152_sliq_import_route.rollback.sql",
+      "verify": "supabase/verify/sliq_import_route_152.sql",
+      "marker": "post-144 marker 152 sliq_import_route"
+    }
+  ],
+  "other_proposals": [
+    {
+      "source": "supabase/proposals/builder2_chase_settings_atomic.sql",
+      "disposition": "separate chase settings release decision; requires 138; browser fixture is not production packaging"
+    },
+    {
+      "source": "supabase/proposals/builder2_costing_settings_atomic.sql",
+      "disposition": "superseded: the hardened function ships inside numbered release 143 (after 141, before 144); this original proposal is never applied"
+    },
+    {
+      "source": "supabase/proposals/builder2_atomic_settings.rollback.sql",
+      "disposition": "rollback only; never forward release input"
+    }
+  ]
+}

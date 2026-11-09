@@ -1,0 +1,83 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/tolra-public/work/b5-financial-candidate
+
+ ❯ tests/unit/b5-yearend-missing-amounts.test.ts (4 tests | 4 failed) 97ms
+   × an invoice with missing subtotal is unresolved, never exported as a zero-value invoice 41ms
+     → expected { type: 'Invoice', …(11) } to match object { net: null, vat: null, …(5) }
+(5 matching properties omitted from actual)
+   × an invoice with missing vat is unresolved, never exported as a zero-value invoice 10ms
+     → expected { type: 'Invoice', …(11) } to match object { net: null, vat: null, …(5) }
+(5 matching properties omitted from actual)
+   × an invoice with missing total is unresolved, never exported as a zero-value invoice 44ms
+     → expected { type: 'Invoice', …(11) } to match object { net: null, vat: null, …(5) }
+(5 matching properties omitted from actual)
+   × a missing invoice total gives no guessed zero balance 1ms
+     → expected { Object (paid, balance, ...) } to match object { paid: +0, balance: null }
+(1 matching property omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/b5-yearend-missing-amounts.test.ts > an invoice with missing subtotal is unresolved, never exported as a zero-value invoice
+ FAIL  tests/unit/b5-yearend-missing-amounts.test.ts > an invoice with missing vat is unresolved, never exported as a zero-value invoice
+ FAIL  tests/unit/b5-yearend-missing-amounts.test.ts > an invoice with missing total is unresolved, never exported as a zero-value invoice
+AssertionError: expected { type: 'Invoice', …(11) } to match object { net: null, vat: null, …(5) }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "balance": null,
+-   "gross": null,
+-   "net": null,
+-   "paid": null,
++   "balance": 120,
++   "gross": 120,
++   "net": 0,
++   "paid": 0,
+    "pdf": "",
+-   "status": "UNRESOLVED",
+-   "vat": null,
++   "status": "sent",
++   "vat": 20,
+  }
+
+ ❯ tests/unit/b5-yearend-missing-amounts.test.ts:12:28
+     10|  state.rows=[{id:'synthetic',invoice_ref:'SYN-MISSING',customer:'Synth…
+     11|  const result=await buildYearEndZip('2026-11-01','2026-11-30',{...JNR_…
+     12|  expect(result.summary[0]).toMatchObject({net:null,vat:null,gross:null…
+       |                            ^
+     13|  expect(result.unresolved).toBe(1);expect(result.problems.join(' ')).t…
+     14|  expect(strFromU8(unzipSync(result.zip)['README.txt'])).toContain('1 U…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/unit/b5-yearend-missing-amounts.test.ts > a missing invoice total gives no guessed zero balance
+AssertionError: expected { Object (paid, balance, ...) } to match object { paid: +0, balance: null }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  Object {
+-   "balance": null,
++   "balance": 0,
+    "paid": 0,
+  }
+
+ ❯ tests/unit/b5-yearend-missing-amounts.test.ts:17:97
+     15| });
+     16| it('a missing invoice total gives no guessed zero balance',()=>{
+     17|  expect(invoicePaidFigures({invoice_ref:'SYN-MISSING',status:'sent',am…
+       |                                                                                                 ^
+     18| });
+     19| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  15:17:28
+   Duration  4.00s (transform 1.10s, setup 0ms, collect 3.07s, tests 97ms, environment 4ms, prepare 214ms)
+
