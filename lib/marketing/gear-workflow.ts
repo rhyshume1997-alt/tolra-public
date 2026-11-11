@@ -4,7 +4,7 @@
  * Inputs: FLOW_STEPS and PAIN_CARDS from lib/marketing.ts (the checked copy; this module never rewrites a caption or a record value).
  * Outputs: GEAR_STAGES (seven stages, one per gear, each with its image in public/marketing/workflow/), two gear layouts (wide and compact) with tooth paths, centres and meshing phases,
  * pure helpers for selection (stepTo, clampStage) and rotation (gearAngle), and the version switch (?gears=, parseGearsParam) with the
- * render tier for the 3D version (chooseTier). The switch defaults to the 2D drawing.
+ * render tier for the 3D version (chooseTier). The switch defaults to the 3D machine; ?gears=2d shows the drawing.
  * Must not change: the stage captions and example records come from FLOW_STEPS; the extra detail lines below describe only what the
  * app's code does today (migrations 081-083, the dashboard tiles, the FEATURES copy). No prices, numbers of hours, results or
  * integrations. Plain data and maths only: no React, no browser APIs, so the unit tests can read it.
@@ -156,7 +156,7 @@ export const STAGE_COUNT = GEAR_STAGES.length;
 
 /**
  * The stage index after moving by `delta`, kept within the first and last stage (a job's process has a start and an end). `count`
- * is the number of views: the seven stages, or eight in version B with the planned Analytics view.
+ * is the number of views: the seven stages, or eight in version B with Analytics.
  */
 export function stepTo(current: number, delta: number, count: number = STAGE_COUNT): number {
   return clampStage(current + delta, count);
@@ -319,10 +319,10 @@ export function driveFor(steps: number): number {
 
 export type GearsMode = "2d" | "3d";
 
-/** Reads ?gears=2d|3d and ?compare from a location search string. Anything else means the 2D drawing, with no compare switch. */
+/** Reads ?gears=2d|3d and ?compare from a location search string. The 3D machine is the default; ?gears=2d asks for the drawing. */
 export function parseGearsParam(search: string): { mode: GearsMode; compare: boolean } {
   const params = new URLSearchParams(search);
-  return { mode: params.get("gears") === "3d" ? "3d" : "2d", compare: params.has("compare") };
+  return { mode: params.get("gears") === "2d" ? "2d" : "3d", compare: params.has("compare") };
 }
 
 /**
@@ -349,51 +349,45 @@ export function chooseTier(d: DeviceSignals): RenderTier {
 
 /** What the version switch says (the 3D scene's own words are in lib/marketing/gear-scene.ts). */
 export const VERSION_COPY = {
+  head: "The Tolra machine",
+  poster: "The Tolra machine: eight steel gears, one for each stage from enquiry to analytics, arched around a screen showing Tolra.",
   loading: "Setting up the machine",
   compare: "Compare versions",
-  versionA: "A · Current",
-  versionB: "B · 3D",
+  versionA: "A · 2D drawing",
+  versionB: "B · 3D machine",
   fallback: "3D isn't available on this device, so this is version A.",
 } as const;
 
 /* ------------------------------------------------------------------------------------------------------------------------------ */
-/* Version B (3D): the planned Analytics view                                                                                     */
+/* Version B (3D): Analytics, the eighth gear                                                                                     */
 /* ------------------------------------------------------------------------------------------------------------------------------ */
 
-/** A view in version B: the seven stages of a job, then the planned Analytics view. `planned` marks what is not in Tolra yet. */
-export type SceneStage = Omit<GearStage, "id"> & { id: StageId | "analytics"; planned: boolean };
-
-/** How a planned feature is labelled wherever it appears, so nobody mistakes it for something Tolra does today. */
-export const PLANNED_COPY = {
-  badge: "Planned feature",
-  chip: "Planned",
-  note: "Not in Tolra yet. Illustration with example values.",
-} as const;
+/** A view in version B: the seven stages of a job, then Analytics. */
+export type SceneStage = Omit<GearStage, "id"> & { id: StageId | "analytics" };
 
 /**
- * The planned Analytics view: an eighth gear, driven by the invoice gear, for a proposed owner's dashboard. It is a design, not a
- * feature: its image is an illustration with example values, and every line says so.
+ * Analytics: the eighth gear, driven by the invoice gear, for the owner's dashboard. Its picture is a stand-in drawn in the app's
+ * style with example values until the real screenshot replaces it (same file name, update width and height here). Check these
+ * lines against the released feature before this goes live.
  */
 export const ANALYTICS_STAGE: SceneStage = {
   id: "analytics",
-  op: "--",
+  op: "80",
   label: "Analytics",
-  stamp: "PLANNED",
-  caption: "Planned: a dashboard for the owner that turns the quotes, jobs and invoices already in Tolra into trends.",
-  record: [["Status", "Planned, not in Tolra yet"], ["Shown", "Illustration, example values"]],
+  stamp: "Reviewed",
+  caption: "The owner's view: what has been invoiced and paid, what is owed and overdue, and how each job's margin came out.",
+  record: [["Period", "Last 6 months"], ["Export", "CSV"]],
   solves: null,
   details: [
-    "Not in Tolra yet: this is the design for a future feature.",
-    "Planned for admins only, showing their own company's figures and nothing else.",
-    "Planned to keep invoiced income apart from cash received, and estimated margin apart from confirmed profit.",
+    "Admins only, showing their own company's figures and nothing else.",
+    "Invoiced income and cash received are kept apart, and so are estimated and actual margin.",
   ],
   teeth: 16,
   shot: {
-    src: "/marketing/workflow/analytics.webp", width: 880, height: 1270, kind: "screen", source: "Analytics, planned",
-    alt: "Illustration of a planned Tolra analytics dashboard, with example values only: invoiced and received by month, outstanding and overdue invoices, and estimated against actual margin by job. Not a feature in Tolra yet.",
+    src: "/marketing/workflow/analytics.webp", width: 880, height: 1180, kind: "screen", source: "Analytics",
+    alt: "Tolra analytics dashboard with example values: invoiced and received by month, outstanding and overdue invoices, and estimated against actual margin by job.",
   },
-  planned: true,
 };
 
-/** Version B's views, in gear order: the seven stages of one job, then the planned Analytics view. */
-export const SCENE_STAGES: readonly SceneStage[] = [...GEAR_STAGES.map((s) => ({ ...s, planned: false })), ANALYTICS_STAGE];
+/** Version B's views, in gear order: the seven stages of one job, then Analytics. */
+export const SCENE_STAGES: readonly SceneStage[] = [...GEAR_STAGES, ANALYTICS_STAGE];

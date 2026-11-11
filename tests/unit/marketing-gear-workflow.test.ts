@@ -13,7 +13,8 @@ import { describe, expect, it } from "vitest";
 import { GearWorkflow } from "@/components/marketing/gear-workflow";
 import { FLOW_STEPS, PAIN_CARDS } from "@/lib/marketing";
 import {
-  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, STAGE_COUNT, WIDE_LAYOUT, clampStage, driveFor, gearAngle, gearPath, stepTo, type GearLayout,
+  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, SCENE_STAGES, STAGE_COUNT, WIDE_LAYOUT, clampStage, driveFor, gearAngle, gearPath, stepTo,
+  type GearLayout,
 } from "@/lib/marketing/gear-workflow";
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
@@ -166,8 +167,8 @@ describe("touch size", () => {
   });
 });
 
-describe("markup", () => {
-  const html = renderToStaticMarkup(createElement(GearWorkflow));
+describe("markup of the 2D drawing (?gears=2d, and devices without WebGL)", () => {
+  const html = renderToStaticMarkup(createElement(GearWorkflow, { defaultView: "2d" }));
   const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
   it("is radio groups, not tabs, with exactly one checked stage per group, and no figures or empty paragraphs", () => {
@@ -201,6 +202,47 @@ describe("markup", () => {
   it("lays every stage out in one place so the panel never changes height, with only the selected stage exposed", () => {
     const slides = html.match(/<div class="gw-slide[^"]*"[^>]*>/g) ?? [];
     expect(slides).toHaveLength(STAGE_COUNT * 2);
+    expect(slides.filter((s) => s.includes("gw-slide-on"))).toHaveLength(2);
+    for (const s of slides.filter((x) => !x.includes("gw-slide-on"))) {
+      expect(s).toContain('aria-hidden="true"');
+      expect(s).toContain("inert");
+    }
+  });
+});
+
+describe("markup of the default, the 3D machine's shell (what the server sends before the scene starts)", () => {
+  const html = renderToStaticMarkup(createElement(GearWorkflow));
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
+  it("is the 3D slot with a still of the machine, not the 2D drawing, and no canvas until the browser starts the scene", () => {
+    expect(html).toContain('class="gw gw-3d"');
+    expect(html).toContain('class="gw3-slot"');
+    expect(html).not.toContain("gw-machine");
+    expect(html).not.toMatch(/<canvas\b/);
+    expect(html).toMatch(/<img[^>]*machine-wide\.webp/);
+    expect(html).toMatch(/<img[^>]*machine-square\.webp/);
+  });
+
+  it("offers all eight views, enquiry to analytics, as one radio group with the first checked", () => {
+    expect(html).not.toMatch(/role="tab(?:list|panel)?"/);
+    expect(html).not.toMatch(/<figure\b/);
+    expect(html.match(/role="radiogroup"/g)).toHaveLength(1);
+    expect(html.match(/role="radio"/g)).toHaveLength(SCENE_STAGES.length);
+    expect(html.match(/aria-checked="true"/g)).toHaveLength(1);
+    expect(text).toContain("Analytics");
+    expect(text).toContain(`Stage 1 of ${SCENE_STAGES.length}: Enquiry`);
+    expect(html).not.toMatch(/<p[^>]*>\s*<\/p>/);
+  });
+
+  it("keeps the page's labelling rules: one Illustration label here, no Screenshot, alt text on every image", () => {
+    expect(text.match(/Illustration/g)).toHaveLength(1);
+    expect(text).not.toMatch(/Screenshot/);
+    for (const image of html.match(/<img\b[^>]*>/g) ?? []) expect(image).toMatch(/\balt="[^"]{20,}"/);
+  });
+
+  it("lays every view out in one place so the panel never changes height, with only the selected one exposed", () => {
+    const slides = html.match(/<div class="gw-slide[^"]*"[^>]*>/g) ?? [];
+    expect(slides).toHaveLength(SCENE_STAGES.length * 2);
     expect(slides.filter((s) => s.includes("gw-slide-on"))).toHaveLength(2);
     for (const s of slides.filter((x) => !x.includes("gw-slide-on"))) {
       expect(s).toContain('aria-hidden="true"');

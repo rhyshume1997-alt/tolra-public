@@ -846,11 +846,20 @@ details[open] > summary .mk-plus {
 @media (min-width: 900px) and (max-width: 1099px) { .gw3-slot { aspect-ratio: 1.5 / 1; } }
 @media (max-width: 899px) { .gw3-slot { aspect-ratio: 1.05 / 1; } }
 .gw3 { position: absolute; inset: 0; }
-.gw3-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; opacity: 0; transition: opacity 600ms ease; }
+.gw3-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; opacity: 0; transition: opacity 350ms ease; }
 .gw3[data-ready] .gw3-canvas { opacity: 1; }
-.gw3-load { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #9fb0cc; }
+/* The still of the machine: shown at once (server rendered), faded out once the live scene has drawn its first frame. */
+.gw3-poster { position: absolute; inset: 0; transition: opacity 350ms ease; }
+.gw3-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gw3-poster-square { display: none; }
+@media (max-width: 899px) {
+  .gw3-poster-wide { display: none; }
+  .gw3-poster-square { display: block; }
+}
+.gw3-slot:has(.gw3[data-ready]) .gw3-poster { opacity: 0; pointer-events: none; }
 .gw3-head {
   position: absolute;
+  z-index: 3;
   inset: 0 0 auto;
   display: flex;
   justify-content: space-between;
@@ -968,30 +977,39 @@ details[open] > summary .mk-plus {
 .gw3-sheet-bar { display: flex; align-items: center; gap: 0.6rem; min-width: 0; padding: 0.55rem 0.85rem; background: #17233a; color: #c3cee0; font-size: 0.75rem; }
 .gw3-sheet-bar .mk-mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gw3-sheet-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3ccf7a; }
-.gw3-sheet[data-planned] .gw3-sheet-dot { background: #e2b450; }
-.gw3-plan, .gw-chip-plan, .gw-mview-plan {
+.gw3-sheet-close {
+  display: grid;
   flex: none;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: #ffe7a8;
-  color: #5a3d00;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: -0.55rem -0.6rem -0.55rem auto;
+  border: 0;
+  background: none;
+  color: #c3cee0;
+  cursor: pointer;
 }
-.gw3-plan { margin-left: auto; }
-.gw3-sheet-body { overflow: auto; overscroll-behavior: contain; background: #eef1f5; }
-.gw3-sheet-body img { display: block; max-width: none; }
-.gw3-sheet-document { padding: 14px; }
-.gw3-sheet-document img { width: 100%; height: auto; background: #fff; box-shadow: 0 8px 24px -12px rgb(11 22 38 / 0.4); }
+.gw3-sheet-close:hover { color: #fff; background: rgb(255 255 255 / 0.08); }
+/* The picture, cropped to the screen (the whole of it is one click away): a document shows its top, an app screen its top left. */
+.gw3-sheet-body { position: relative; display: block; min-height: 0; padding: 0; border: 0; overflow: hidden; background: #eef1f5; cursor: zoom-in; }
+.gw3-sheet-img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+.gw3-sheet-document { padding: 14px 14px 0; }
+.gw3-sheet-document .gw3-sheet-img { object-position: center top; background: #fff; box-shadow: 0 8px 24px -12px rgb(11 22 38 / 0.4); }
 .gw3-sheet-body:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: -3px; }
-.gw3-sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.45rem 0.6rem 0.45rem 0.85rem; background: #0c1424; }
-.gw3-sheet-foot .mk-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9fb0cc; }
-.gw3-sheet-actions { display: flex; flex: none; gap: 0.4rem; }
-.gw3-sheet-btn, .gw3-sheet-run {
+@media (prefers-reduced-motion: no-preference) {
+  .gw3-sheet-img { animation: gw3-swap 180ms ease-out both; }
+}
+@keyframes gw3-swap { from { opacity: 0; } to { opacity: 1; } }
+.gw3-sheet-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem; background: #0c1424; }
+.gw3-sheet-op { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9fb0cc; text-align: center; }
+.gw3-sheet-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 44px;
   min-height: 44px;
-  padding: 0 0.8rem;
+  max-width: 100%;
+  padding: 0 0.85rem;
   border: 1px solid rgb(255 255 255 / 0.28);
   border-radius: 6px;
   background: transparent;
@@ -1001,17 +1019,16 @@ details[open] > summary .mk-plus {
   font-weight: 600;
   cursor: pointer;
 }
+.gw3-sheet-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw3-sheet-prev { justify-self: start; }
+.gw3-sheet-next { justify-self: end; border-color: #e6edf7; background: #e6edf7; color: #0b2a5b; }
 .gw3-sheet-btn:hover { background: rgb(255 255 255 / 0.08); }
-.gw3-sheet-run { border-color: #e6edf7; background: #e6edf7; color: #0b2a5b; }
-.gw3-sheet-btn:focus-visible, .gw3-sheet-run:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 2px; }
-
-/* The planned Analytics view, wherever it appears: an amber "Planned" mark, never mistaken for something Tolra does today. */
-.gw-chip-plan { margin-left: 0.15rem; }
-.gw-mview-open { position: relative; }
-.gw-mview-plan { position: absolute; top: 10px; right: 10px; box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
-.gw-plan-label { color: #8a5d00; }
-/* A tall screen (the planned Analytics page) shows its top in the fixed frame under the machine, not shrunk to fit. */
+.gw3-sheet-next:hover { background: #fff; }
+.gw3-sheet-btn:focus-visible, .gw3-sheet-close:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 2px; }
+/* Under the machine on phones (version B): pictures cropped to the frame too, from the top left. */
+.gw-3d .gw-mview .gw-window .gw-shot img { object-fit: cover; object-position: left top; }
+/* A tall screen (the Analytics page) shows its top in the fixed frame under the machine, not shrunk to fit. */
 .gw-mview .gw-window .gw-shot-tall img { object-fit: cover; object-position: top; }
 /* While the screen stands up, its own foot says "example data"; the corner note would sit behind it, so it steps aside. */
 .gw3-head .mk-label:last-child { transition: opacity 300ms ease; }
-.gw3[data-up] .gw3-head .mk-label:last-child { opacity: 0; }
+.gw3-slot:has(.gw3[data-up]) .gw3-head .mk-label:last-child { opacity: 0; }

@@ -13,10 +13,10 @@
  * The hero traveller stays the page's only tablist: the gears are a radio group. The word "Screenshot" is reserved for the
  * "What it does" figures (the page's tests count it), so the viewer says where the image comes from instead.
  *
- * Version B, for comparison: with ?gears=3d the machine is drawn in 3D instead (components/marketing/gear-workflow-3d.tsx, loaded
- * only then and only when the section is near the screen), driven by the same stage state, chips, panel and dialog. Without WebGL,
- * with reduced motion, or if the 3D fails, the 2D drawing stays. ?compare adds a switch between the two. With no parameter the page
- * is exactly version A, and the server always renders version A.
+ * Version B is the default: the machine in 3D (components/marketing/gear-workflow-3d.tsx), with an eighth gear for Analytics. The
+ * server renders its shell (heading, a still of the machine, chips, panel); the 3D code downloads when the page is idle and starts
+ * when the section is near, then takes over from the still without moving anything. Version A, the 2D drawing above, is shown on
+ * ?gears=2d and wherever WebGL is missing (and if the 3D fails). ?compare adds a switch between the two.
  */
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -24,7 +24,7 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Muta
 
 
 import {
-  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, PLANNED_COPY, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, WIDE_LAYOUT, chooseTier, clampStage,
+  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, WIDE_LAYOUT, chooseTier, clampStage,
   driveFor, gearAngle, parseGearsParam, stepTo, type Gear, type GearLayout, type GearStage, type GearsMode, type RenderTier, type SceneStage,
   type StageId,
 } from "@/lib/marketing/gear-workflow";
@@ -35,8 +35,14 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 /** Share of the machine bay the gears take on wide screens; the viewer takes the rest, beside them. Kept in step with .gw-bay. */
 const GEAR_SHARE = 65;
 
-/** Version B: the 3D machine, in its own chunk (three.js), fetched only when asked for and only near the screen. */
-const GearWorkflow3D = dynamic(() => import("./gear-workflow-3d"), { ssr: false });
+/** Version B: the 3D machine, in its own chunk (three.js): fetched once the page is idle, started when the section is near. */
+const load3D = () => import("./gear-workflow-3d");
+const GearWorkflow3D = dynamic(load3D, { ssr: false });
+/** Stills of the machine as it first appears, shown at once (and kept for anyone without script) while the 3D starts. */
+const POSTERS = {
+  wide: { src: "/marketing/workflow/machine-wide.webp", width: 1600, height: 889 },
+  square: { src: "/marketing/workflow/machine-square.webp", width: 900, height: 857 },
+} as const;
 
 function webglAvailable(): boolean {
   try {
@@ -262,7 +268,11 @@ function Assembly({ layout, active, hot, setHot, onPick, gearRefs, interactive }
   );
 }
 
-export function GearWorkflow() {
+/**
+ * `defaultView` is what the server renders: the 3D machine's shell (heading, a still of the machine, the stage chips and panel), which
+ * the 3D scene then takes over without moving anything. The 2D drawing replaces it on ?gears=2d or where WebGL is missing.
+ */
+export function GearWorkflow({ defaultView = "3d" }: { defaultView?: GearsMode }) {
   const [active, setActive] = useState(0);
   const [hot, setHot] = useState(-1);
   const drive = useRef(0);
@@ -272,21 +282,23 @@ export function GearWorkflow() {
   const compactRefs = useRef<Array<SVGGElement | null>>([]);
   const chips = useRef<Array<HTMLButtonElement | null>>([]);
   const dialog = useRef<HTMLDialogElement | null>(null);
-  // Version B (3D): set on the client only, from ?gears=3d and what the device can do; null means the 2D drawing.
+  const [view, setView] = useState<GearsMode>(defaultView);
+  // How much 3D the device gets: set on the client only, from what it can do; null until then.
   const [tier, setTier] = useState<Exclude<RenderTier, "none"> | null>(null);
   const [compare, setCompare] = useState<{ asked: GearsMode; fellBack: boolean } | null>(null);
   const [near, setNear] = useState(false);
   const [motion, setMotion] = useState(true);
   const slot = useRef<HTMLDivElement | null>(null);
-  // Version A shows the seven stages of a job; version B adds the planned Analytics view after them.
-  const list: readonly SceneStage[] = tier ? SCENE_STAGES : SCENE_STAGES.slice(0, STAGE_COUNT);
+  // Version A shows the seven stages of a job; version B adds Analytics after them.
+  const list: readonly SceneStage[] = view === "3d" ? SCENE_STAGES : SCENE_STAGES.slice(0, STAGE_COUNT);
   const count = useRef(STAGE_COUNT);
   count.current = list.length;
 
   useEffect(() => {
     const { mode, compare: wanted } = parseGearsParam(window.location.search);
     let fellBack = false;
-    if (mode === "3d") {
+    if (mode === "2d") setView("2d");
+    else {
       const nav = navigator as Navigator & { deviceMemory?: number };
       const chosen = chooseTier({
         webgl: webglAvailable(),
@@ -294,10 +306,16 @@ export function GearWorkflow() {
         cores: nav.hardwareConcurrency || undefined,
         memory: nav.deviceMemory,
       });
-      if (chosen === "none") fellBack = true;
-      else {
+      if (chosen === "none") {
+        fellBack = true;
+        setView("2d");
+      } else {
+        setView("3d");
         setTier(chosen);
         setMotion(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        // Download the 3D code while the page is idle, so it is ready before anyone scrolls down to it.
+        const warm = () => { void load3D(); };
+        if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(warm); else window.setTimeout(warm, 1500);
       }
     }
     if (wanted) setCompare({ asked: mode, fellBack });
@@ -307,7 +325,7 @@ export function GearWorkflow() {
   useEffect(() => {
     const node = slot.current;
     if (!tier || !node) return;
-    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setNear(true); io.disconnect(); } }, { rootMargin: "600px 0px" });
+    const io = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setNear(true); io.disconnect(); } }, { rootMargin: "700px 0px" });
     io.observe(node);
     return () => io.disconnect();
   }, [tier]);
@@ -319,6 +337,7 @@ export function GearWorkflow() {
       setActive(STAGE_COUNT - 1);
     }
     setTier(null);
+    setView("2d");
     setCompare((c) => (c ? { ...c, fellBack: true } : c));
   }, []);
 
@@ -388,14 +407,20 @@ export function GearWorkflow() {
   );
 
   return (
-    <div className={tier ? "gw gw-3d" : "gw"}>
-      {tier ? (
-        <div className="gw3-slot" ref={slot} data-tier={tier}>
-          {near ? (
+    <div className={view === "3d" ? "gw gw-3d" : "gw"}>
+      {view === "3d" ? (
+        <div className="gw3-slot" ref={slot} data-tier={tier ?? undefined}>
+          <div className="gw3-poster">
+            <Image className="gw3-poster-wide" src={POSTERS.wide.src} width={POSTERS.wide.width} height={POSTERS.wide.height} alt={VERSION_COPY.poster} sizes="(min-width: 1240px) 1160px, 94vw" />
+            <Image className="gw3-poster-square" src={POSTERS.square.src} width={POSTERS.square.width} height={POSTERS.square.height} alt={VERSION_COPY.poster} sizes="94vw" />
+          </div>
+          {tier && near ? (
             <GearWorkflow3D active={active} tier={tier} motion={motion} onPick={pick} onOpenFull={openFull} onRestart={() => pick(0)} onFail={fallBack} />
-          ) : (
-            <p className="gw3-load mk-label">{VERSION_COPY.loading}</p>
-          )}
+          ) : null}
+          <div className="gw3-head" aria-hidden="true">
+            <span className="mk-label">{VERSION_COPY.head}</span>
+            <span className="mk-label">{GEAR_COPY.illustration}, {GEAR_COPY.example}</span>
+          </div>
         </div>
       ) : (
         <div className="gw-machine">
@@ -429,7 +454,6 @@ export function GearWorkflow() {
           >
             <span className="mk-mono gw-chip-n">{String(i + 1).padStart(2, "0")}</span>
             <span>{s.label}</span>
-            {s.planned ? <span className="gw-chip-plan">{PLANNED_COPY.chip}</span> : null}
           </button>
         ))}
       </div>
@@ -438,19 +462,18 @@ export function GearWorkflow() {
       <div className="gw-mview">
         <button type="button" className="gw-mview-open" onClick={openFull} aria-label={`${GEAR_COPY.fullSize}: ${stage.shot.source}`}>
           <StageImage stage={stage} sizes="100vw" key={stage.id} />
-          {stage.planned ? <span className="gw-mview-plan">{PLANNED_COPY.badge}</span> : null}
         </button>
-        <p className="gw-view-foot"><span className="mk-label">{stage.shot.source} · {stage.planned ? PLANNED_COPY.note : GEAR_COPY.shotNote}</span><button type="button" className="mk-link gw-view-link" onClick={openFull}>{GEAR_COPY.fullSize}</button></p>
+        <p className="gw-view-foot"><span className="mk-label">{stage.shot.source} · {GEAR_COPY.shotNote}</span><button type="button" className="mk-link gw-view-link" onClick={openFull}>{GEAR_COPY.fullSize}</button></p>
       </div>
 
       <div className="gw-panel">
         {/* Every stage is laid out in the same place and only the selected one is shown, so the panel keeps the height of its
             tallest stage and nothing below the section moves when the stage changes. */}
-        <p className="sr-only" aria-live="polite">{stage.planned ? `${stage.label}, ${PLANNED_COPY.badge.toLowerCase()}: ${PLANNED_COPY.note}` : `Stage ${active + 1} of ${STAGE_COUNT}: ${stage.label}`}</p>
+        <p className="sr-only" aria-live="polite">{`Stage ${active + 1} of ${list.length}: ${stage.label}`}</p>
         <div className="gw-stack">
           {list.map((s, i) => (
             <div key={s.id} className={i === active ? "gw-slide gw-slide-on" : "gw-slide"} aria-hidden={i !== active} inert={i !== active}>
-              <p className={s.planned ? "mk-label gw-plan-label" : "mk-label"}>{s.planned ? PLANNED_COPY.badge : <>Op {s.op} · Stage {i + 1} of {STAGE_COUNT}</>}</p>
+              <p className="mk-label">Op {s.op} · Stage {i + 1} of {list.length}</p>
               <h4 className="mk-display gw-title">{s.label}</h4>
               <p className="gw-caption">{s.caption}</p>
               {s.solves ? (
@@ -489,7 +512,7 @@ export function GearWorkflow() {
 
       <dialog ref={dialog} className="gw-dialog" aria-label={`${stage.shot.source}, ${GEAR_COPY.shotNote}`} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
         <div className="gw-dialog-bar">
-          <span className="mk-label">{stage.planned ? `${PLANNED_COPY.badge} · ${stage.shot.source} · ${PLANNED_COPY.note}` : <>Op {stage.op} · {stage.shot.source} · {GEAR_COPY.shotNote}</>}</span>
+          <span className="mk-label">Op {stage.op} · {stage.shot.source} · {GEAR_COPY.shotNote}</span>
           <button type="button" className="gw-step" onClick={() => dialog.current?.close()}>{GEAR_COPY.close}</button>
         </div>
         <div className="gw-dialog-body">
@@ -501,8 +524,8 @@ export function GearWorkflow() {
         <nav className="gw3-compare" aria-label={VERSION_COPY.compare}>
           <span className="mk-label">{VERSION_COPY.compare}</span>
           <span className="gw3-compare-row">
-            <a href="?gears=2d&compare#handles-title" aria-current={tier ? undefined : "page"}>{VERSION_COPY.versionA}</a>
-            <a href="?gears=3d&compare#handles-title" aria-current={tier ? "page" : undefined}>{VERSION_COPY.versionB}</a>
+            <a href="?gears=2d&compare#handles-title" aria-current={view === "3d" ? undefined : "page"}>{VERSION_COPY.versionA}</a>
+            <a href="?gears=3d&compare#handles-title" aria-current={view === "3d" ? "page" : undefined}>{VERSION_COPY.versionB}</a>
           </span>
           {compare.asked === "3d" && compare.fellBack ? <span className="gw3-compare-note">{VERSION_COPY.fallback}</span> : null}
         </nav>

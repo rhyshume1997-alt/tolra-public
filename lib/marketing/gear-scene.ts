@@ -2,7 +2,7 @@
  * The Tolra Machine in 3D: the pure geometry and choices behind components/marketing/gear-workflow-3d.tsx, kept here so they can be
  * tested without a browser.
  *
- * Inputs: the seven stages and the planned Analytics view (SCENE_STAGES), their tooth counts and the chain layout (meshing phases)
+ * Inputs: the seven stages and Analytics (SCENE_STAGES), their tooth counts and the chain layout (meshing phases)
  * from lib/marketing/gear-workflow.ts.
  * Outputs: the ring of gears around the display (world units, y up, plate top at z = 0), involute tooth outlines, the etched label
  * boxes, camera stops for the overview, each stage (whole frame, or beside the lifted screen) and the final reveal, the matrix that
@@ -55,8 +55,8 @@ export function toothOutline(teeth: number, module = 1, flankSamples = 5, backla
 /* ------------------------------------------------------------------------------------------------------------------------------ */
 
 /**
- * The chain turns up, across and down, so the seven stage gears arch over the display set into the plate; the planned Analytics
- * gear hangs below the invoice gear, driven by it.
+ * The chain turns up, across and down, so the seven stage gears arch over the display set into the plate; the Analytics gear hangs
+ * below the invoice gear, driven by it.
  */
 export const RING_ANGLES = [-65, -30, 5, -5, 30, 65, 90] as const;
 
@@ -133,7 +133,7 @@ function buildScene(): MachineScene {
     const off = g.ra + (side === "above" ? LABEL_GAP_ABOVE : LABEL_GAP);
     const x = side === "left" ? g.cx - off - w / 2 : side === "right" ? g.cx + off + w / 2 : g.cx;
     const y = side === "above" ? g.cy - off - h / 2 : side === "below" ? g.cy + off + h / 2 : g.cy;
-    return { index: i, op: SCENE_STAGES[i].planned ? SCENE_STAGES[i].stamp : `OP ${SCENE_STAGES[i].op}`, lines, x, y, w, h };
+    return { index: i, op: `OP ${SCENE_STAGES[i].op}`, lines, x, y, w, h };
   });
 
   const boxes: Box[] = [
@@ -342,14 +342,13 @@ export function revealStop(aspect: number): CameraStop {
 
 /** Everything the 3D version says, beyond the stage copy it shares with the 2D drawing. */
 export const SCENE_COPY = {
-  head: "The Tolra machine",
-  note: "3D illustration, example values",
-  hintPointer: "Click a gear to turn the machine",
+  hintPointer: "Click a gear to raise its screen",
   hintTouch: "Tap a gear to turn the machine",
-  revealKicker: "Op 10 to Op 70",
+  revealKicker: "Op 10 to Op 80",
   revealTitle: "Enquiry to invoice, on one job",
   restart: "Start again",
   runAll: "Run the whole machine",
   lower: "Lower the screen",
-  scroll: "scroll to see all of it",
+  previous: "Previous",
+  next: "Next",
 } as const;
