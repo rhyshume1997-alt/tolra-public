@@ -38,10 +38,11 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
     const add = (rows: RawRework[]) => { for (const r of rows) byId.set(r.id, r); };
     add((await fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select(REWORK_COLS).eq("closed_how", "concession"), "closed_at").order("id").range(from, to) as never)).rows);
     const askedChildren = new Set<string>();
+    let chainCapped = true; // stays true only if the 10-round cap is reached with links still unread
     for (let round = 0; round < 10; round++) {
       const children = [...byId.keys()].filter((id) => !askedChildren.has(id));
       const parents = [...new Set([...byId.values()].map((r) => r.follow_up_of).filter((id): id is string => Boolean(id) && !byId.has(id as string)))];
-      if (!children.length && !parents.length) break;
+      if (!children.length && !parents.length) { chainCapped = false; break; }
       children.forEach((id) => askedChildren.add(id));
       for (const ids of chunks(children)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("follow_up_of", ids).order("id").range(from, to) as never)).rows);
       for (const ids of chunks(parents)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("id", ids).order("id").range(from, to) as never)).rows);
@@ -66,7 +67,7 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
       if (error) throw error;
       jobs.push(...((data ?? []) as RawJob[]));
     }
-    return { ok: true, truncated: reworks.truncated || inspections.truncated || problems.truncated, sources: { reworks: allReworks, inspections: inspections.rows, problems: problems.rows, entries, entryValues, jobs } };
+    return { ok: true, truncated: reworks.truncated || inspections.truncated || problems.truncated || chainCapped, sources: { reworks: allReworks, inspections: inspections.rows, problems: problems.rows, entries, entryValues, jobs } };
   } catch {
     return { ok: false };
   }
