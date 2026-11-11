@@ -2,7 +2,8 @@
  * Reads the rows the revenue report is worked out from. SELECT only, under the signed-in person's own session (their company is
  * the row-level-security scope; the service role is never used here). Nothing is written, nothing is saved.
  *
- * Inputs: a Supabase client (or null) and the chosen range. Output: one Read per table: its rows (with `truncated` true when the
+ * Inputs: a Supabase client (or null), the chosen range, and which families may be read (revenueSections: a hidden Invoices or Quotes
+ * section returns zero rows silently, so its tables are not read at all; they come back as failed and the page shows its notice). Output: one Read per table: its rows (with `truncated` true when the
  * 20,000-row cap was reached, so the page says "may be incomplete") or { failed: true } when the read errored. It never throws.
  * Every query is bounded by the range: invoices, credit notes, payments and quotes by their own dates; invoice lines, order lines and
  * quote lines by the ids of the rows the range produced. Paged with fetchAll (lib/fetch-all).
@@ -74,21 +75,21 @@ async function readByIds<T extends Record<string, unknown>>(ids: string[], page:
 const idsOf = (read: Read<{ id?: string | null }>) => ("rows" in read ? read.rows.map((r) => r.id).filter((id): id is string => Boolean(id)) : []);
 const FAILED = { failed: true } as const;
 
-export async function loadRevenue(db: SupabaseClient | null, range: RevenueRange): Promise<RevenueData> {
+export async function loadRevenue(db: SupabaseClient | null, range: RevenueRange, allow: { invoices: boolean; quotes: boolean } = { invoices: true, quotes: true }): Promise<RevenueData> {
   if (!db) return { invoices: FAILED, credits: FAILED, payments: FAILED, paymentInvoices: FAILED, invoiceLines: FAILED, orderLines: FAILED, quotes: FAILED, quoteLines: FAILED };
   const end = dayAfter(range.to);
   const startAt = iso(londonMidnight(range.from));
   const endAt = iso(londonMidnight(end));
 
-  const [invoices, credits, payments, quotes] = await Promise.all([
+  const [invoices, credits, payments, quotes]: [RevenueData["invoices"], RevenueData["credits"], RevenueData["payments"], RevenueData["quotes"]] = await Promise.all([
     // An invoice counts on its invoice date, else the day it was made (London): the window is applied to whichever it has.
-    readAll<NumberInvoice & Record<string, unknown>>((from, to) => db.from("invoices").select(REVENUE_SELECT.invoices)
+    !allow.invoices ? FAILED : readAll<NumberInvoice & Record<string, unknown>>((from, to) => db.from("invoices").select(REVENUE_SELECT.invoices)
       .or(`invoice_date.gte.${range.from},and(invoice_date.is.null,created_at.gte.${startAt})`)
       .or(`invoice_date.lt.${end},and(invoice_date.is.null,created_at.lt.${endAt})`)
       .order("id").range(from, to)),
-    readAll<NumberCredit & Record<string, unknown>>((from, to) => db.from("credit_notes").select(REVENUE_SELECT.credits).eq("status", "issued").gte("credit_date", range.from).lt("credit_date", end).order("id").range(from, to)),
-    readAll<CashPayment & Record<string, unknown>>((from, to) => db.from("invoice_payments").select(REVENUE_SELECT.payments).gte("paid_on", range.from).lt("paid_on", end).order("id").range(from, to)),
-    readAll<PipelineQuote & Record<string, unknown>>((from, to) => db.from("quotes").select(REVENUE_SELECT.quotes).eq("status", "sent").gte("sent_at", startAt).lt("sent_at", endAt).order("id").range(from, to)),
+    !allow.invoices ? FAILED : readAll<NumberCredit & Record<string, unknown>>((from, to) => db.from("credit_notes").select(REVENUE_SELECT.credits).eq("status", "issued").gte("credit_date", range.from).lt("credit_date", end).order("id").range(from, to)),
+    !allow.invoices ? FAILED : readAll<CashPayment & Record<string, unknown>>((from, to) => db.from("invoice_payments").select(REVENUE_SELECT.payments).gte("paid_on", range.from).lt("paid_on", end).order("id").range(from, to)),
+    !allow.quotes ? FAILED : readAll<PipelineQuote & Record<string, unknown>>((from, to) => db.from("quotes").select(REVENUE_SELECT.quotes).eq("status", "sent").gte("sent_at", startAt).lt("sent_at", endAt).order("id").range(from, to)),
   ]);
 
   // The customer of each payment: its invoice, which may be older than the range, read by id. An invoice not returned stays unknown.

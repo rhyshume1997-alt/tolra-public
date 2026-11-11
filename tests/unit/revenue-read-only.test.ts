@@ -78,4 +78,17 @@ describe("revenue stage 1 is read only", () => {
     // The read starts only inside the effect that is guarded by the switch.
     expect(view).toMatch(/if \(!on \|\| problem\) return;[\s\S]*loadRevenue\(/);
   });
+
+  it("a hidden Invoices or Quotes section is never read and never shown as zero", () => {
+    const loader = code("lib/reports/revenue/load-revenue.ts");
+    expect(loader).toMatch(/!allow\.invoices \? FAILED[^;]*db\.from\("invoices"\)/);
+    expect(loader).toMatch(/!allow\.invoices \? FAILED[^;]*db\.from\("credit_notes"\)/);
+    expect(loader).toMatch(/!allow\.invoices \? FAILED[^;]*db\.from\("invoice_payments"\)/);
+    expect(loader).toMatch(/!allow\.quotes \? FAILED[^;]*db\.from\("quotes"\)/);
+    const view = code("components/reports/revenue/revenue-view.tsx");
+    expect(view).toContain("sections.invoices ?");
+    expect(view).toContain("sections.quotes ?");
+    expect(view).toContain("INVOICES_HIDDEN_NOTICE");
+    expect(view).toContain("QUOTES_HIDDEN_NOTICE");
+  });
 });

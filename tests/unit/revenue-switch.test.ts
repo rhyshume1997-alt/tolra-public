@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { canSeeRevenue, REVENUE_OFF_NOTICE, REVENUE_ON_MARKER, revenueEnabled, revenueSwitchChange } from "@/lib/reports/revenue/revenue-switch";
+import { canSeeRevenue, INVOICES_HIDDEN_NOTICE, QUOTES_HIDDEN_NOTICE, revenueSections, REVENUE_OFF_NOTICE, REVENUE_ON_MARKER, revenueEnabled, revenueSwitchChange } from "@/lib/reports/revenue/revenue-switch";
 
 describe("Revenue reports switch", () => {
   it("is off by default and on only with the marker", () => {
@@ -26,5 +26,15 @@ describe("Revenue reports switch", () => {
 
   it("has the off notice the page shows", () => {
     expect(REVENUE_OFF_NOTICE).toBe("Revenue reports are switched off for your company.");
+  });
+
+  it("a hidden Invoices or Quotes section is decided, so the page reads nothing it can't see", () => {
+    expect(revenueSections([])).toEqual({ invoices: true, quotes: true });
+    expect(revenueSections(undefined)).toEqual({ invoices: true, quotes: true });
+    expect(revenueSections(["invoices"])).toEqual({ invoices: false, quotes: true });
+    expect(revenueSections(["quotes", "sales-orders"])).toEqual({ invoices: true, quotes: false });
+    expect(revenueSections(["invoices", "quotes"])).toEqual({ invoices: false, quotes: false });
+    expect(INVOICES_HIDDEN_NOTICE).toBe("Invoices are hidden for you, so revenue can't be shown.");
+    expect(QUOTES_HIDDEN_NOTICE).toBe("Quotes are hidden for you.");
   });
 });

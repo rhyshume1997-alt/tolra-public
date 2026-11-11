@@ -111,18 +111,39 @@ async function seed(org: string, spec: { invoices: Array<{ customer: string; net
   }
 }
 
-/** The page's own reads, by exact table and select string (other readers of these tables, such as the menu, are not counted). */
+/**
+ * The page's own reads, by exact table, select string and a distinctive filter of each query. postgrest-js removes whitespace outside
+ * quotes from select(), so the sent `select=id,customer,...` is compared with REVENUE_SELECT's whitespace removed. Other readers of
+ * these tables (the menu, the shell) differ in select or filter and are not counted.
+ */
+const READS = ["invoices", "credits", "payments", "paymentInvoices", "invoiceLines", "orderLines", "quotes", "quoteLines"] as const;
+type ReadName = (typeof READS)[number];
+const TABLE: Record<ReadName, string> = { invoices: "invoices", credits: "credit_notes", payments: "invoice_payments", paymentInvoices: "invoices", invoiceLines: "invoice_line_items", orderLines: "sales_order_lines", quotes: "quotes", quoteLines: "quote_line_items" };
+const FILTER: Record<ReadName, (q: URLSearchParams) => boolean> = {
+  invoices: (q) => (q.getAll("or").length === 2),
+  credits: (q) => q.get("status") === "eq.issued" && (q.get("credit_date") ?? "").length > 0,
+  payments: (q) => q.getAll("paid_on").some((v) => v.startsWith("gte.")),
+  paymentInvoices: (q) => (q.get("id") ?? "").startsWith("in.("),
+  invoiceLines: (q) => (q.get("invoice_id") ?? "").startsWith("in.("),
+  orderLines: (q) => (q.get("id") ?? "").startsWith("in.("),
+  quotes: (q) => q.get("status") === "eq.sent" && q.getAll("sent_at").some((v) => v.startsWith("gte.")),
+  quoteLines: (q) => (q.get("quote_id") ?? "").startsWith("in.("),
+};
+const SELECT: Record<ReadName, string> = {
+  invoices: REVENUE_SELECT.invoices, credits: REVENUE_SELECT.credits, payments: REVENUE_SELECT.payments, paymentInvoices: REVENUE_SELECT.paymentInvoices,
+  invoiceLines: REVENUE_SELECT.invoiceLines, orderLines: REVENUE_SELECT.orderLines, quotes: REVENUE_SELECT.quotes, quoteLines: REVENUE_SELECT.quoteLines,
+};
+const squash = (text: string | null) => (text ?? "").replace(/\s+/g, "");
+
 function revenueReads(page: Page) {
-  const reads: string[] = [];
-  const own = new Set<string>([
-    `invoices|${REVENUE_SELECT.invoices}`, `credit_notes|${REVENUE_SELECT.credits}`, `invoice_payments|${REVENUE_SELECT.payments}`, `invoices|${REVENUE_SELECT.paymentInvoices}`,
-    `invoice_line_items|${REVENUE_SELECT.invoiceLines}`, `sales_order_lines|${REVENUE_SELECT.orderLines}`, `quotes|${REVENUE_SELECT.quotes}`, `quote_line_items|${REVENUE_SELECT.quoteLines}`,
-  ]);
+  const reads: ReadName[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
     const table = url.pathname.split("/rest/v1/")[1];
-    const fingerprint = `${table}|${url.searchParams.get("select")}`;
-    if (table && own.has(fingerprint)) reads.push(fingerprint);
+    if (!table) return;
+    for (const name of READS) {
+      if (TABLE[name] === table && squash(url.searchParams.get("select")) === squash(SELECT[name]) && FILTER[name](url.searchParams)) reads.push(name);
+    }
   });
   return reads;
 }
@@ -167,7 +188,7 @@ test("switch off (the default): the notice, and none of the page's own reads", a
   await page.goto("/reports/revenue");
   await expect(page.getByTestId("revenue-page")).toBeVisible();
   await expect(page.getByTestId("revenue-invoiced-total")).toBeVisible();
-  for (const fingerprint of [`invoices|${REVENUE_SELECT.invoices}`, `credit_notes|${REVENUE_SELECT.credits}`, `invoice_payments|${REVENUE_SELECT.payments}`, `invoices|${REVENUE_SELECT.paymentInvoices}`, `invoice_line_items|${REVENUE_SELECT.invoiceLines}`, `sales_order_lines|${REVENUE_SELECT.orderLines}`, `quotes|${REVENUE_SELECT.quotes}`, `quote_line_items|${REVENUE_SELECT.quoteLines}`]) expect(reads, fingerprint).toContain(fingerprint);
+  for (const name of READS) expect(reads, name).toContain(name);
 });
 
 test("switch on, admin: the expected figures, three separate sections, no combined total, and not another company's rows", async ({ page, browser }) => {
@@ -324,5 +345,44 @@ test("switch on: office sees the report; workshop and viewer are refused and rea
     } finally {
       await context.close();
     }
+  }
+});
+
+test("a hidden Invoices section: one notice, no invoice figures, no invoice reads (never £0.00); a hidden Quotes section: its own notice", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const org = w.tenants.alpha.id;
+  const user = w.tenants.alpha.users.office;
+  const db = adminClient();
+  const before = await db.from("organization_members").select("hidden_sections").eq("organization_id", org).eq("user_id", user.id).single();
+  expect(before.error).toBeNull();
+  const original = (before.data!.hidden_sections ?? []) as string[];
+  const hide = async (sections: string[]) => expect((await db.from("organization_members").update({ hidden_sections: sections }).eq("organization_id", org).eq("user_id", user.id)).error).toBeNull();
+  await setSwitch(org, true);
+  const context = await browser.newContext({ timezoneId: "Europe/London" });
+  const page = await context.newPage();
+  const reads = revenueReads(page);
+  try {
+    await hide(["invoices"]);
+    await signIn(page, user);
+    await page.goto("/reports/revenue");
+    await expect(page.getByTestId("revenue-invoices-hidden")).toHaveText("Invoices are hidden for you, so revenue can't be shown.");
+    await expect(page.getByTestId("revenue-pipeline")).toBeVisible();
+    for (const testId of ["revenue-invoiced", "revenue-cash", "revenue-customers", "revenue-parts"]) await expect(page.getByTestId(testId)).toHaveCount(0);
+    await expect(page.getByTestId("revenue-page")).not.toContainText("Total invoiced");
+    for (const name of ["invoices", "credits", "payments", "paymentInvoices", "invoiceLines", "orderLines"] as const) expect(reads, name).not.toContain(name);
+    expect(reads).toContain("quotes");
+
+    reads.length = 0;
+    await hide(["quotes"]);
+    await page.reload();
+    await expect(page.getByTestId("revenue-quotes-hidden")).toHaveText("Quotes are hidden for you.");
+    await expect(page.getByTestId("revenue-invoiced")).toBeVisible();
+    await expect(page.getByTestId("revenue-pipeline")).toHaveCount(0);
+    expect(reads).not.toContain("quotes");
+    expect(reads).not.toContain("quoteLines");
+    expect(reads).toContain("invoices");
+  } finally {
+    await hide(original);
+    await context.close();
   }
 });

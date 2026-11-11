@@ -24,7 +24,7 @@ import { creditsInScope, customerName, invoicesInScope, invoicedRevenue, type Re
 import { isInvoiced, londonMonthsEnding } from "@/lib/numbers";
 import { loadRevenue, type Read, type RevenueData } from "@/lib/reports/revenue/load-revenue";
 import { pipelineQuotes } from "@/lib/reports/revenue/pipeline";
-import { canSeeRevenue, REVENUE_OFF_NOTICE, revenueEnabled } from "@/lib/reports/revenue/revenue-switch";
+import { canSeeRevenue, INVOICES_HIDDEN_NOTICE, QUOTES_HIDDEN_NOTICE, REVENUE_OFF_NOTICE, revenueEnabled, revenueSections } from "@/lib/reports/revenue/revenue-switch";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/lib/use-user";
 
@@ -49,7 +49,8 @@ function rangeProblem({ from, to }: RevenueRange): string | null {
 
 export function RevenueView() {
   const { hiddenNav, loaded } = useOrgSettings();
-  const { activeRole, loading: userLoading } = useUser();
+  const { activeRole, loading: userLoading, hiddenSections } = useUser();
+  const sections = useMemo(() => revenueSections(hiddenSections), [hiddenSections]);
   const on = loaded && !userLoading && revenueEnabled(hiddenNav) && canSeeRevenue(activeRole);
   const [range, setRange] = useState<RevenueRange>(defaultRange);
   const [customer, setCustomer] = useState("");
@@ -62,12 +63,12 @@ export function RevenueView() {
     if (!on || problem) return;
     const ticket = ++latest.current;
     setData(null);
-    void loadRevenue(supabase, range).then((result) => {
+    void loadRevenue(supabase, range, sections).then((result) => {
       if (latest.current !== ticket) return;
       setToday(toDateInput(new Date()));
       setData(result);
     });
-  }, [on, problem, range]);
+  }, [on, problem, range, sections]);
 
   const view = useMemo(() => {
     if (!data || problem) return null;
@@ -144,11 +145,17 @@ export function RevenueView() {
         problem ? null : <p className="text-sm text-muted-foreground" role="status">Loading revenue…</p>
       ) : (
         <>
-          <InvoicedCard result={view.invoiced} failed={!view.invoiced} incomplete={incomplete(data?.invoices, data?.credits)} />
-          <CashCard result={view.cash} byCustomer={view.cashCustomers} failed={!view.cash} incomplete={incomplete(data?.payments, data?.paymentInvoices)} />
-          <CustomerTable result={view.customers} failed={!view.customers} incomplete={incomplete(data?.invoices, data?.credits)} />
-          <PartTable result={view.parts} failed={!view.parts} incomplete={incomplete(data?.invoices, data?.credits, data?.invoiceLines, data?.orderLines)} />
-          <PipelineCard result={view.pipeline} failed={!view.pipeline} incomplete={incomplete(data?.quotes, data?.quoteLines)} />
+          {sections.invoices ? (
+            <>
+              <InvoicedCard result={view.invoiced} failed={!view.invoiced} incomplete={incomplete(data?.invoices, data?.credits)} />
+              <CashCard result={view.cash} byCustomer={view.cashCustomers} failed={!view.cash} incomplete={incomplete(data?.payments, data?.paymentInvoices)} />
+              <CustomerTable result={view.customers} failed={!view.customers} incomplete={incomplete(data?.invoices, data?.credits)} />
+              <PartTable result={view.parts} failed={!view.parts} incomplete={incomplete(data?.invoices, data?.credits, data?.invoiceLines, data?.orderLines)} />
+            </>
+          ) : <p className="text-sm text-muted-foreground" data-testid="revenue-invoices-hidden">{INVOICES_HIDDEN_NOTICE}</p>}
+          {sections.quotes ? (
+            <PipelineCard result={view.pipeline} failed={!view.pipeline} incomplete={incomplete(data?.quotes, data?.quoteLines)} />
+          ) : <p className="text-sm text-muted-foreground" data-testid="revenue-quotes-hidden">{QUOTES_HIDDEN_NOTICE}</p>}
         </>
       )}
     </div>
