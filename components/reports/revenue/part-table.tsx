@@ -32,6 +32,11 @@ export function PartTable({ result, failed, incomplete }: { result: PartResult |
                 {result.mismatchedInvoices} {result.mismatchedInvoices === 1 ? "invoice doesn't" : "invoices don't"} add up by line. Their whole value is under Uncategorised.
               </p>
             ) : null}
+            {result.unreadableLines > 0 ? (
+              <p className="pb-2 text-sm text-ink" data-testid="revenue-parts-unreadable">
+                {result.unreadableLines} {result.unreadableLines === 1 ? "line links" : "lines link"} to sales order lines you can&apos;t read (Sales Orders hidden for you): their part numbers aren&apos;t shown.
+              </p>
+            ) : null}
             {result.unknownInvoices > 0 ? (
               <p className="pb-2 text-sm text-ink">{result.unknownInvoices} {result.unknownInvoices === 1 ? "invoice has" : "invoices have"} no figures, so the shares can&apos;t be worked out.</p>
             ) : null}

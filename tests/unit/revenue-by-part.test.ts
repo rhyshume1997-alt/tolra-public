@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { CARRIAGE, CREDIT_NOTES_ROW, invoicedByPart, UNCATEGORISED, type InvoiceLineRow, type PartInvoice } from "@/lib/reports/revenue/by-part";
+import { CARRIAGE, CREDIT_NOTES_ROW, invoicedByPart, NOT_READABLE, UNCATEGORISED, type InvoiceLineRow, type PartInvoice } from "@/lib/reports/revenue/by-part";
 import { invoicedRevenue } from "@/lib/reports/revenue/invoiced";
 
 const range = { from: "2026-01-01", to: "2026-03-31" };
@@ -15,12 +15,13 @@ const line = (invoice_id: string, quantity: number, unit_price: number, sales_or
 const rowOf = (rows: ReturnType<typeof invoicedByPart>["rows"], part: string) => rows.find((r) => r.part === part);
 
 describe("invoiced by part number", () => {
-  it("puts a linked line with a part number under that part (trimmed); manual, unlinked and blank-part lines under Uncategorised", () => {
+  it("puts a linked line with a part number under that part (trimmed); manual, unlinked and blank-part lines under Uncategorised; an unreturned link is not readable", () => {
     const lines = [line("i1", 2, 50, "ol-1"), line("i1", 1, 30, "ol-2"), line("i1", 1, 20), line("i1", 1, 10, "ol-blank"), line("i1", 1, 5, "ol-missing")];
     const result = invoicedByPart([invoice("i1", 165)], lines, orderLines, [], range);
     expect(rowOf(result.rows, "PN-100")?.partNet).toBe(100);
     expect(rowOf(result.rows, "PN-200")?.partNet).toBe(30);
-    expect(rowOf(result.rows, UNCATEGORISED)?.partNet).toBe(35);
+    expect(rowOf(result.rows, UNCATEGORISED)?.partNet).toBe(30);
+    expect(rowOf(result.rows, NOT_READABLE)?.partNet).toBe(5);
     expect(result.mismatchedInvoices).toBe(0);
     expect(result.partNetTotal).toBe(165);
   });
@@ -94,5 +95,28 @@ describe("invoiced by part number", () => {
   it("shares add to 100", () => {
     const result = invoicedByPart([invoice("i1", 3)], [line("i1", 1, 1, "ol-1"), line("i1", 1, 1, "ol-2"), line("i1", 1, 1)], orderLines, [], range);
     expect(result.rows.reduce((sum, r) => sum + (r.partShare ?? 0), 0)).toBe(100);
+  });
+
+  it("a line linked to an order line that was not returned is its own row, not Uncategorised, and is counted", () => {
+    // ol-hidden is not among the order lines read (Sales Orders hidden for this person); ol-blank was read and has no part number.
+    const lines = [line("i1", 1, 100, "ol-hidden"), line("i1", 2, 25, "ol-hidden"), line("i1", 1, 10, "ol-blank"), line("i1", 1, 40)];
+    const result = invoicedByPart([invoice("i1", 200)], lines, orderLines, [], range);
+    expect(rowOf(result.rows, NOT_READABLE)).toMatchObject({ partNet: 150, partKind: "unreadable" });
+    expect(rowOf(result.rows, UNCATEGORISED)?.partNet).toBe(50);
+    expect(result.unreadableLines).toBe(2);
+    expect(result.partNetTotal).toBe(200);
+    expect(result.rows.reduce((sum, r) => sum + (r.partShare ?? 0), 0)).toBe(100);
+  });
+
+  it("with every order line readable there is no unreadable row", () => {
+    const result = invoicedByPart([invoice("i1", 100)], [line("i1", 1, 100, "ol-1")], orderLines, [], range);
+    expect(result.unreadableLines).toBe(0);
+    expect(rowOf(result.rows, NOT_READABLE)).toBeUndefined();
+  });
+
+  it("with no order line read at all (the section hidden), every linked line is not readable, manual lines stay Uncategorised", () => {
+    const result = invoicedByPart([invoice("i1", 130)], [line("i1", 1, 100, "ol-1"), line("i1", 1, 30)], [], [], range);
+    expect(rowOf(result.rows, NOT_READABLE)?.partNet).toBe(100);
+    expect(rowOf(result.rows, UNCATEGORISED)?.partNet).toBe(30);
   });
 });

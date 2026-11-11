@@ -53,11 +53,12 @@ const setSwitch = (org: string, on: boolean) => withDb(async (db) => {
  * Invoices (Acme 600: a part-numbered line 300 + a manual line 300; Beta 400: a manual line 360 + carriage 40; a draft and a void one
  * that are not sales), a credit note of 100 today, payments of 300 (last month) and 200 (today), and an open quote of 300.
  */
-async function seed(org: string, spec: { invoices: Array<{ customer: string; net: number; carriage?: number; status?: string; lines?: Array<{ quantity: number; price: number; part?: string }> }>; credit?: [customer: string, net: number]; payments?: number[]; quote?: [customer: string, quantity: number, price: number] }) {
+async function seed(org: string, spec: { invoices: Array<{ customer: string; net: number; carriage?: number; status?: string; lines?: Array<{ quantity: number; price: number; part?: string }> }>; credit?: [customer: string, net: number]; payments?: Array<[amount: number, invoiceIndex: number]>; quote?: [customer: string, quantity: number, price: number] }) {
   const db = adminClient();
   const ok = async (p: PromiseLike<{ error: { message: string } | null }>) => expect((await p).error).toBeNull();
   const tag = org.slice(0, 6);
   let firstInvoice: string | null = null;
+  const invoiceIds: string[] = [];
   for (const [i, invoice] of spec.invoices.entries()) {
     const carriage = invoice.carriage ?? 0;
     const lineTotal = invoice.net - carriage;
@@ -65,24 +66,27 @@ async function seed(org: string, spec: { invoices: Array<{ customer: string; net
     const made = await db.from("invoices").insert({ organization_id: org, invoice_ref: status === "draft" ? null : `INV-REV-${tag}-${i}`, customer: invoice.customer, status, invoice_date: `${last.key}-10`, subtotal: lineTotal, carriage, vat: lineTotal * 0.2, total: lineTotal * 1.2 + carriage, vat_enabled: true, description: `Revenue ${i}` }).select("id").single();
     expect(made.error).toBeNull();
     firstInvoice ??= made.data!.id;
+    invoiceIds.push(made.data!.id);
     for (const [position, line] of (invoice.lines ?? []).entries()) {
-      if (!line.part) {
-        await ok(db.from("invoice_line_items").insert({ organization_id: org, invoice_id: made.data!.id, position, description: `Manual ${position}`, quantity: line.quantity, unit_price: line.price, vat_pct: 20 }));
-        continue;
-      }
-      // A line billing an order line is only ever made by the despatch functions (099), so the seed sets what they set, in one
-      // transaction with triggers skipped: the order, its line with the part number, and the linked invoice line.
+      // The invoice is already issued, and an issued invoice's lines are locked against the API roles (019), while a line billing an
+      // order line is only ever made by the despatch functions (099). So the lines are written by SQL in one transaction with
+      // triggers skipped (session_replication_role = replica), setting what the functions would: the kind and the link. The order and
+      // its line (with the part number) are ordinary rows.
+      let orderLineId: string | null = null;
+      if (line.part) {
       const order = await db.from("sales_orders").insert({ organization_id: org, so_number: `SO-REV-${tag}-${i}`, customer: invoice.customer, total_value: 0, vat_enabled: false, status: "open" }).select("id").single();
       expect(order.error).toBeNull();
       const orderLine = await db.from("sales_order_lines").insert({ organization_id: org, sales_order_id: order.data!.id, position: 0, description: "Revenue part", quantity: line.quantity, unit_price: line.price, vat_pct: 20, vat_exempt: false, part_number: ` ${line.part} ` }).select("id").single();
       expect(orderLine.error).toBeNull();
+      orderLineId = orderLine.data!.id;
+      }
       await withDb(async (pg) => {
         await pg.query("begin");
         try {
           await pg.query("set local session_replication_role = replica");
           await pg.query(
-            "insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, vat_pct, sales_order_line_id, line_kind) values ($1, $2, $3, 'Revenue part', $4, $5, 20, $6, 'order')",
-            [org, made.data!.id, position, line.quantity, line.price, orderLine.data!.id],
+            "insert into public.invoice_line_items (organization_id, invoice_id, position, description, quantity, unit_price, vat_pct, sales_order_line_id, line_kind) values ($1, $2, $3, $4, $5, $6, 20, $7, $8)",
+            [org, made.data!.id, position, orderLineId ? "Revenue part" : `Manual ${position}`, line.quantity, line.price, orderLineId, orderLineId ? "order" : "manual"],
           );
           await pg.query("commit");
         } catch (error) {
@@ -96,8 +100,8 @@ async function seed(org: string, spec: { invoices: Array<{ customer: string; net
     const [customer, net] = spec.credit;
     await ok(db.from("credit_notes").insert({ organization_id: org, invoice_id: firstInvoice, customer, status: "issued", credit_ref: `CN-REV-${tag}`, credit_date: london(0), subtotal: net, vat: net * 0.2, total: net * 1.2, vat_enabled: true, allocated_amount: 0, issued_at: new Date().toISOString() }));
   }
-  for (const [i, amount] of (spec.payments ?? []).entries()) {
-    await ok(db.from("invoice_payments").insert({ organization_id: org, invoice_id: firstInvoice, amount, paid_on: i === 0 ? `${last.key}-10` : london(0) }));
+  for (const [i, [amount, which]] of (spec.payments ?? []).entries()) {
+    await ok(db.from("invoice_payments").insert({ organization_id: org, invoice_id: invoiceIds[which], amount, paid_on: i === 0 ? `${last.key}-10` : london(0) }));
   }
   if (spec.quote) {
     const [customer, quantity, price] = spec.quote;
@@ -110,14 +114,15 @@ async function seed(org: string, spec: { invoices: Array<{ customer: string; net
 /** The page's own reads, by exact table and select string (other readers of these tables, such as the menu, are not counted). */
 function revenueReads(page: Page) {
   const reads: string[] = [];
-  const own = new Map<string, string>([
-    ["invoices", REVENUE_SELECT.invoices], ["credit_notes", REVENUE_SELECT.credits], ["invoice_payments", REVENUE_SELECT.payments],
-    ["invoice_line_items", REVENUE_SELECT.invoiceLines], ["sales_order_lines", REVENUE_SELECT.orderLines], ["quotes", REVENUE_SELECT.quotes], ["quote_line_items", REVENUE_SELECT.quoteLines],
+  const own = new Set<string>([
+    `invoices|${REVENUE_SELECT.invoices}`, `credit_notes|${REVENUE_SELECT.credits}`, `invoice_payments|${REVENUE_SELECT.payments}`, `invoices|${REVENUE_SELECT.paymentInvoices}`,
+    `invoice_line_items|${REVENUE_SELECT.invoiceLines}`, `sales_order_lines|${REVENUE_SELECT.orderLines}`, `quotes|${REVENUE_SELECT.quotes}`, `quote_line_items|${REVENUE_SELECT.quoteLines}`,
   ]);
   page.on("request", (request) => {
     const url = new URL(request.url());
     const table = url.pathname.split("/rest/v1/")[1];
-    if (table && own.get(table) === url.searchParams.get("select")) reads.push(table);
+    const fingerprint = `${table}|${url.searchParams.get("select")}`;
+    if (table && own.has(fingerprint)) reads.push(fingerprint);
   });
   return reads;
 }
@@ -133,10 +138,10 @@ test.beforeAll(async () => {
       { customer: "Rev Void Co", net: 5000, status: "void" },
     ],
     credit: ["Rev Acme", 100],
-    payments: [300, 200],
+    payments: [[300, 0], [200, 1]], // 300 on Acme's invoice last month, 200 on Beta's today
     quote: ["Rev Acme", 2, 150],
   });
-  await seed(b.id, { invoices: [{ customer: "Zeta Ltd", net: 7000, lines: [{ quantity: 1, price: 7000 }] }], payments: [7000] });
+  await seed(b.id, { invoices: [{ customer: "Zeta Ltd", net: 7000, lines: [{ quantity: 1, price: 7000 }] }], payments: [[7000, 0]] });
   await setSwitch(a.id, false);
   await setSwitch(w.tenants.alpha.id, false);
 });
@@ -162,7 +167,7 @@ test("switch off (the default): the notice, and none of the page's own reads", a
   await page.goto("/reports/revenue");
   await expect(page.getByTestId("revenue-page")).toBeVisible();
   await expect(page.getByTestId("revenue-invoiced-total")).toBeVisible();
-  for (const table of ["invoices", "credit_notes", "invoice_payments", "invoice_line_items", "sales_order_lines", "quotes", "quote_line_items"]) expect(reads, table).toContain(table);
+  for (const fingerprint of [`invoices|${REVENUE_SELECT.invoices}`, `credit_notes|${REVENUE_SELECT.credits}`, `invoice_payments|${REVENUE_SELECT.payments}`, `invoices|${REVENUE_SELECT.paymentInvoices}`, `invoice_line_items|${REVENUE_SELECT.invoiceLines}`, `sales_order_lines|${REVENUE_SELECT.orderLines}`, `quotes|${REVENUE_SELECT.quotes}`, `quote_line_items|${REVENUE_SELECT.quoteLines}`]) expect(reads, fingerprint).toContain(fingerprint);
 });
 
 test("switch on, admin: the expected figures, three separate sections, no combined total, and not another company's rows", async ({ page, browser }) => {
@@ -182,11 +187,14 @@ test("switch on, admin: the expected figures, three separate sections, no combin
   await expect(invoiced.getByTestId("revenue-invoiced-total")).toHaveText("£900.00");
   await expect(invoiced.getByTestId(`revenue-invoiced-${last.key}`)).toContainText(last.label);
 
-  // Cash received: 300 last month, 200 today.
+  // Cash received: 300 last month (on Acme's invoice), 200 today (on Beta's); by customer Acme 60%, Beta 40%.
   const cash = page.getByTestId("revenue-cash");
   await expect(cash.getByTestId(`revenue-cash-${last.key}`).locator("[data-col=received]")).toHaveText("£300.00");
   await expect(cash.getByTestId(`revenue-cash-${current.key}`).locator("[data-col=received]")).toHaveText("£200.00");
   await expect(cash.getByTestId("revenue-cash-total")).toHaveText("£500.00");
+  const cashCustomers = page.getByTestId("revenue-cash-customers");
+  await expect(cashCustomers.getByTestId("revenue-cash-customer-row").filter({ hasText: "Rev Acme" }).locator("[data-col=received]")).toHaveText("£300.00");
+  await expect(cashCustomers.getByTestId("revenue-cash-customer-row").filter({ hasText: "Rev Beta" }).locator("[data-col=share]")).toHaveText("40%");
 
   // By customer: Acme 500 (600 less its 100 credit), Beta 400; shares add to 100; the draft and void invoices are not sales.
   const customers = page.getByTestId("revenue-customers");
@@ -222,12 +230,12 @@ test("switch on, admin: the expected figures, three separate sections, no combin
   for (const other of ["Zeta", "£7,000", "£7,900"]) await expect(body, other).not.toContainText(other);
   expect(await page.getByLabel("Customer").locator("option").allTextContents()).toEqual(["All customers", "Rev Acme", "Rev Beta"]);
 
-  // The customer filter: Beta only. Invoiced 400; cash says it is for all customers; the pipeline (Acme's quote) is empty.
+  // The customer filter: Beta only. Invoiced 400 and cash 200 (Beta's payment only); the pipeline (Acme's quote) is empty.
   await page.getByLabel("Customer").selectOption("Rev Beta");
   await expect(invoiced.getByTestId("revenue-invoiced-total")).toHaveText("£400.00");
   await expect(customers.getByTestId("revenue-customer-row")).toHaveCount(1);
-  await expect(cash).toContainText("all customers");
-  await expect(cash.getByTestId("revenue-cash-total")).toHaveText("£500.00");
+  await expect(cash.getByTestId("revenue-cash-total")).toHaveText("£200.00");
+  await expect(cashCustomers.getByTestId("revenue-cash-customer-row")).toHaveCount(1);
   await expect(pipeline.getByTestId("revenue-pipeline-count")).toHaveText("0");
 
   // The date range: ending before this month drops the credit note and this month's cash; a start after last month's invoices empties it.

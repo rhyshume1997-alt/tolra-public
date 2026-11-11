@@ -36,7 +36,7 @@ describe("revenue stage 1 is read only", () => {
   it("every database read is a select on a table of the report, nothing else", () => {
     const text = code("lib/reports/revenue/load-revenue.ts");
     const tables = [...text.matchAll(/\.from\("([a-z_]+)"\)\.select\(/g)].map((m) => m[1]).sort();
-    expect(tables).toEqual(["credit_notes", "invoice_line_items", "invoice_payments", "invoices", "quote_line_items", "quotes", "sales_order_lines"]);
+    expect(tables).toEqual(["credit_notes", "invoice_line_items", "invoice_payments", "invoices", "invoices", "quote_line_items", "quotes", "sales_order_lines"]);
     expect([...text.matchAll(/\.from\(/g)]).toHaveLength(tables.length);
   });
 
@@ -56,6 +56,7 @@ describe("revenue stage 1 is read only", () => {
       expect(read, table).toMatch(/range\.from|startAt|credit_date|paid_on|sent_at/);
     }
     for (const table of ["invoice_line_items", "sales_order_lines", "quote_line_items"]) expect(text.split(`.from("${table}")`)[1]?.split(".range(")[0], table).toMatch(/\.in\(/);
+    expect(text.split(`.from("invoices")`)[2]?.split(".range(")[0], "invoices of payments").toMatch(/\.in\("id"/);
     expect(text).toContain("fetchAll");
     expect(text).toContain("MAX_LIST_ROWS");
   });

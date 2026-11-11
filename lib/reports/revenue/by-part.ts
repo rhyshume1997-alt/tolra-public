@@ -10,6 +10,9 @@
  *     under "Uncategorised". Nothing is grouped by description.
  *   - A line's net is quantity x unit price in pence (linePence, rounded once, as the invoice itself: documentTotals). vat_exempt and
  *     line_kind change the VAT and the kind of line, never its net.
+ *   - A line linked to an order line that was NOT returned by the read (sales_order_lines has a restrictive Sales Orders section policy,
+ *     so a person with that section hidden reads none, without an error) is never put in Uncategorised silently: it is its own row,
+ *     "Part number not readable", counted in unreadableLines so the page can say so.
  *   - Invoice carriage is its own "Carriage" row.
  *   - Reconciliation, per invoice: sum of line nets + carriage must equal invoiceNetPence (total less VAT). An invoice that does not
  *     add up is counted (mismatchedInvoices) and its WHOLE net goes to Uncategorised, so the table's sum is still the invoiced figure.
@@ -26,6 +29,7 @@ import { creditsInScope, invoicesInScope, type RevenueRange } from "@/lib/report
 import { invoiceStatus } from "@/lib/receivables";
 
 export const UNCATEGORISED = "Uncategorised";
+export const NOT_READABLE = "Part number not readable";
 export const CARRIAGE = "Carriage";
 export const CREDIT_NOTES_ROW = "Credit notes (not split by product)";
 
@@ -39,9 +43,9 @@ export type InvoiceLineRow = {
 };
 export type OrderLinePart = { id?: string | null; part_number?: string | null };
 
-export type PartRowKind = "part" | "uncategorised" | "carriage" | "credit";
+export type PartRowKind = "part" | "uncategorised" | "unreadable" | "carriage" | "credit";
 export type PartRow = { part: string; partKind: PartRowKind; partNet: number; partShare: number | null };
-export type PartResult = { rows: PartRow[]; partNetTotal: number | null; mismatchedInvoices: number; unknownInvoices: number };
+export type PartResult = { rows: PartRow[]; partNetTotal: number | null; mismatchedInvoices: number; unknownInvoices: number; unreadableLines: number };
 
 const num = (value: number | string | null | undefined) => Number(value ?? 0) || 0;
 
@@ -61,7 +65,9 @@ export function invoicedByPart(
   customer: string | null = null,
 ): PartResult {
   const partOf = new Map<string, string>();
+  const returned = new Set<string>();
   for (const orderLine of orderLines) {
+    if (orderLine.id) returned.add(orderLine.id);
     const part = (orderLine.part_number ?? "").trim();
     if (orderLine.id && part) partOf.set(orderLine.id, part);
   }
@@ -75,6 +81,8 @@ export function invoicedByPart(
   const add = (name: string, pence: number) => parts.set(name, (parts.get(name) ?? 0) + pence);
   let carriage = 0;
   let uncategorised = 0;
+  let unreadable = 0;
+  let unreadableLines = 0;
   let mismatchedInvoices = 0;
   let unknownInvoices = 0;
 
@@ -99,7 +107,10 @@ export function invoicedByPart(
     own.forEach((line, i) => {
       const part = line.sales_order_line_id && line.line_kind !== "manual" ? partOf.get(line.sales_order_line_id) : undefined;
       if (part) add(part, nets[i] as number);
-      else uncategorised += nets[i] as number;
+      else if (line.sales_order_line_id && line.line_kind !== "manual" && !returned.has(line.sales_order_line_id)) {
+        unreadable += nets[i] as number;
+        unreadableLines += 1;
+      } else uncategorised += nets[i] as number;
     });
   }
 
@@ -114,6 +125,7 @@ export function invoicedByPart(
   const rows: Array<{ part: string; partKind: PartRowKind; pence: number }> = [
     ...[...parts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([part, pence]) => ({ part, partKind: "part" as const, pence })),
     ...(uncategorised !== 0 ? [{ part: UNCATEGORISED, partKind: "uncategorised" as const, pence: uncategorised }] : []),
+    ...(unreadableLines > 0 ? [{ part: NOT_READABLE, partKind: "unreadable" as const, pence: unreadable }] : []),
     ...(carriage !== 0 ? [{ part: CARRIAGE, partKind: "carriage" as const, pence: carriage }] : []),
     ...(anyCredit ? [{ part: CREDIT_NOTES_ROW, partKind: "credit" as const, pence: credit }] : []),
   ];
@@ -123,5 +135,6 @@ export function invoicedByPart(
     partNetTotal: unknownInvoices > 0 ? null : fromPence(rows.reduce((sum, r) => sum + r.pence, 0)),
     mismatchedInvoices,
     unknownInvoices,
+    unreadableLines,
   };
 }

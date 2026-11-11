@@ -19,7 +19,7 @@ import { calendarDate, toDateInput } from "@/lib/dates";
 import { useOrgSettings } from "@/lib/org-settings";
 import { invoicedByPart } from "@/lib/reports/revenue/by-part";
 import { invoicedByCustomer } from "@/lib/reports/revenue/by-customer";
-import { cashRevenue } from "@/lib/reports/revenue/cash";
+import { cashByCustomer, cashRevenue, paymentCustomer } from "@/lib/reports/revenue/cash";
 import { creditsInScope, customerName, invoicesInScope, invoicedRevenue, type RevenueRange } from "@/lib/reports/revenue/invoiced";
 import { isInvoiced, londonMonthsEnding } from "@/lib/numbers";
 import { loadRevenue, type Read, type RevenueData } from "@/lib/reports/revenue/load-revenue";
@@ -75,6 +75,7 @@ export function RevenueView() {
     const invoices = rowsOf(data.invoices);
     const credits = rowsOf(data.credits);
     const payments = rowsOf(data.payments);
+    const paymentInvoices = rowsOf(data.paymentInvoices);
     const lines = rowsOf(data.invoiceLines);
     const orderLines = rowsOf(data.orderLines);
     const quotes = rowsOf(data.quotes);
@@ -82,11 +83,13 @@ export function RevenueView() {
     const names = new Set<string>();
     if (invoices) for (const row of invoicesInScope(invoices, range, null)) if (isInvoiced(row)) names.add(customerName(row.customer));
     if (credits) for (const row of creditsInScope(credits, range, null)) names.add(customerName(row.customer));
+    if (payments && paymentInvoices) for (const row of payments) if (calendarDate(row.paid_on) >= range.from && calendarDate(row.paid_on) <= range.to) names.add(paymentCustomer(row, paymentInvoices));
     if (quotes) for (const row of quotes) if (calendarDate(row.sent_at) >= range.from && calendarDate(row.sent_at) <= range.to) names.add(customerName(row.customer));
     return {
       names: [...names].sort((a, b) => a.localeCompare(b)),
       invoiced: invoices && credits ? invoicedRevenue(invoices, credits, range, who) : null,
-      cash: payments ? cashRevenue(payments, range) : null,
+      cash: payments && paymentInvoices ? cashRevenue(payments, paymentInvoices, range, who) : null,
+      cashCustomers: payments && paymentInvoices ? cashByCustomer(payments, paymentInvoices, range, who) : null,
       customers: invoices && credits ? invoicedByCustomer(invoices, credits, range, who) : null,
       parts: invoices && credits && lines && orderLines ? invoicedByPart(invoices, lines, orderLines, credits, range, who) : null,
       pipeline: quotes && quoteLines ? pipelineQuotes(quotes, quoteLines, today, range, who) : null,
@@ -142,7 +145,7 @@ export function RevenueView() {
       ) : (
         <>
           <InvoicedCard result={view.invoiced} failed={!view.invoiced} incomplete={incomplete(data?.invoices, data?.credits)} />
-          <CashCard result={view.cash} failed={!view.cash} incomplete={incomplete(data?.payments)} customerFiltered={Boolean(customer)} />
+          <CashCard result={view.cash} byCustomer={view.cashCustomers} failed={!view.cash} incomplete={incomplete(data?.payments, data?.paymentInvoices)} />
           <CustomerTable result={view.customers} failed={!view.customers} incomplete={incomplete(data?.invoices, data?.credits)} />
           <PartTable result={view.parts} failed={!view.parts} incomplete={incomplete(data?.invoices, data?.credits, data?.invoiceLines, data?.orderLines)} />
           <PipelineCard result={view.pipeline} failed={!view.pipeline} incomplete={incomplete(data?.quotes, data?.quoteLines)} />
