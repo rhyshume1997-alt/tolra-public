@@ -196,6 +196,11 @@
       "confidence": "medium",
       "evidence": "AI helper retention purge"
     },
+    "app/api/cron/daily/route.ts": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "ruled 11 Nov: coordinates scheduled work across several business modules. The individual scheduled operations keep their module. Not moved or rewritten; scheduling, authentication, retry behaviour and production configuration unchanged"
+    },
     "app/api/cron/email-schedules/route.ts": {
       "module": "integrations",
       "confidence": "medium",
@@ -210,6 +215,11 @@
       "module": "integrations",
       "confidence": "medium",
       "evidence": "polls company mailboxes"
+    },
+    "app/api/cron/nightly/route.ts": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "ruled 11 Nov: coordinates scheduled work across several business modules. The individual scheduled operations keep their module. Not moved or rewritten"
     },
     "app/api/cron/overview-snapshot/route.ts": {
       "module": "dashboard-reports-shared-ui",
@@ -731,19 +741,14 @@
     }
   },
   "undecided": {
-    "files": [
-      "app/api/cron/daily/route.ts",
-      "app/api/cron/nightly/route.ts"
-    ],
-    "areas": {
-      "app/api/cron/daily/route.ts and app/api/cron/nightly/route.ts": "The two scheduled entry points in vercel.json. Each calls jobs owned by several modules (daily: e-mail schedules and the Xero sweep; nightly: overview snapshot, address purge, AI purge). Individual job routes keep their module (ruled 11 Nov); these two dispatchers need an owner."
-    }
+    "files": [],
+    "areas": {}
   },
   "counts_non_test_files": {
     "by_module": {
       "Database and Releases": 436,
       "Integrations": 209,
-      "CI and Engineering Tooling": 127,
+      "CI and Engineering Tooling": 129,
       "Jobs, Workshop and Time": 111,
       "Auth and Company Administration": 110,
       "Dashboard and Shared UI": 96,
@@ -753,15 +758,14 @@
       "Quotes and RFQ": 20,
       "Offline and PWA": 14,
       "shared-restricted": 14,
-      "Customers and Suppliers": 7,
-      "REQUIRES DECISION": 2
+      "Customers and Suppliers": 7
     },
     "by_status": {
-      "VERIFIED": 719,
+      "VERIFIED": 721,
       "VERIFIED_as_written_in_MODULES_md": 602,
-      "VERIFIED_ruled_or_inspected": 117,
+      "VERIFIED_ruled_or_inspected": 119,
       "PROVISIONAL": 565,
-      "REQUIRES DECISION": 2
+      "REQUIRES DECISION": 0
     }
   }
 }

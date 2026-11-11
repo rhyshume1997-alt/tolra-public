@@ -8,9 +8,9 @@ Each of the 1286 non-test files on `main` has exactly one of three statuses:
 
 | Status | Files | Meaning |
 |---|---|---|
-| **VERIFIED** | 719 | 602 match a path written in `docs/MODULES.md`; 117 were placed by an owner ruling or read individually (stated purpose, importers, callers) |
+| **VERIFIED** | 721 | 602 match a path written in `docs/MODULES.md`; 119 were placed by an owner ruling or read individually (stated purpose, importers, callers) |
 | **PROVISIONAL** | 565 | Matched by path pattern only. Not verified. Must not be enforced |
-| **REQUIRES DECISION** | 2 | No owner yet (section 7) |
+| **REQUIRES DECISION** | 0 | No owner yet (section 7) |
 
 "Callers" below means files that import the file, grouped by the module they fall in under this proposal. For provisional callers that grouping is itself unverified, so counts are evidence, not proof.
 
@@ -20,7 +20,7 @@ Each of the 1286 non-test files on `main` has exactly one of three statuses:
 |---|---|---|
 | Database and Releases | 436 | As written |
 | Integrations | 209 | Providers, e-mail transport, AI, accounting, costing. Not one interchangeable boundary: each provider folder is its own area |
-| CI and Engineering Tooling | 127 | New (approved 11 Nov). Workflows, scripts, test and build configuration, rules documents, production configuration |
+| CI and Engineering Tooling | 129 | New (approved 11 Nov). Workflows, scripts, test and build configuration, rules documents, production configuration |
 | Jobs, Workshop and Time | 111 | Includes `lib/jobs/**` and `components/jobs/**`. Active NCR and planned-vs-actual work is not touched by this proposal |
 | Auth and Company Administration | 110 | Sign-in, MFA, roles, users, company settings, platform owner |
 | Dashboard and Shared UI | 96 | Includes the application shell (ruled 11 Nov): root layout, error boundaries, client error reporting, chunk reload |
@@ -40,6 +40,7 @@ Extraction order is unchanged: Jobs, then Invoices, then Quotes.
 - The approval page belongs to Dashboard and Shared UI as presentation and coordination. Chase approval rules stay with Invoices and Receivables, job reopen approval rules with Jobs, and e-mail transport and draft sending with Integrations. The page must eventually use typed interfaces those modules expose. Nothing is moved now.
 - `lib/server/cron-auth.ts`, `cron-pass.ts` and `cron-skip.ts` belong to Auth and Company Administration as shared authentication and security controls. Each scheduled job route keeps the module of the work it does.
 - `lib/people.ts` and `lib/company-people.ts` stay on the restricted shared list.
+- `app/api/cron/daily/route.ts` and `app/api/cron/nightly/route.ts` belong to CI and Engineering Tooling: they coordinate scheduled work across several business modules. Each scheduled operation keeps its own module. The routes are not moved or rewritten, and scheduling, authentication, retry behaviour and production configuration are unchanged.
 - Chase business rules (`lib/chase`, `lib/chasing`, `lib/email/chase`, `components/chase`, `app/api/chase`) belong to Invoices and Receivables. E-mail transport and provider connections stay in Integrations.
 - SliQ import and data import are a named Data Import area inside Integrations.
 - The application shell (root layouts, error boundaries, client error reporting, chunk reload) belongs to Dashboard and Shared UI. Marketing and Public Website stays separate.
@@ -77,9 +78,11 @@ Twelve files first proposed as shared were removed because inspection showed a s
 | `README.md` | CI and Engineering Tooling | high | repository documentation |
 | `app/(dashboard)/approval/page.tsx` | Dashboard and Shared UI | high | ruled 11 Nov: the approval page is presentation and coordination. Its business rules stay with their modules (chase: Invoices; job reopen: Jobs; e-mail drafts and sending: Integrations) and it must come to use their typed interfaces. No logic is moved by this proposal |
 | `app/api/cron/ai-helper-purge/route.ts` | Integrations | medium | AI helper retention purge |
+| `app/api/cron/daily/route.ts` | CI and Engineering Tooling | high | ruled 11 Nov: coordinates scheduled work across several business modules. The individual scheduled operations keep their module. Not moved or rewritten; scheduling, authentication, retry behaviour and production configuration unchanged |
 | `app/api/cron/email-schedules/route.ts` | Integrations | medium | runs scheduled e-mails |
 | `app/api/cron/ip-purge/route.ts` | Jobs, Workshop and Time | medium | purges stored clock-in network addresses (site network, time and attendance) |
 | `app/api/cron/mail-poll/route.ts` | Integrations | medium | polls company mailboxes |
+| `app/api/cron/nightly/route.ts` | CI and Engineering Tooling | high | ruled 11 Nov: coordinates scheduled work across several business modules. The individual scheduled operations keep their module. Not moved or rewritten |
 | `app/api/cron/overview-snapshot/route.ts` | Dashboard and Shared UI | medium | captures the dashboard overview figures nightly |
 | `app/api/cron/xero-sweep/route.ts` | Integrations | medium | Xero transfer sweep |
 | `app/error.tsx` | Dashboard and Shared UI | high | application shell (ruled 11 Nov) |
@@ -211,7 +214,7 @@ Measured on `main`: 310 test files reference one module, 292 reference several, 
 
 ## 7. REQUIRES DECISION
 
-- **app/api/cron/daily/route.ts and app/api/cron/nightly/route.ts**: The two scheduled entry points in vercel.json. Each calls jobs owned by several modules (daily: e-mail schedules and the Xero sweep; nightly: overview snapshot, address purge, AI purge). Individual job routes keep their module (ruled 11 Nov); these two dispatchers need an owner.
+Nothing is waiting for an owner decision. The 565 PROVISIONAL placements still need verifying before any of them is enforced.
 
 ## 8. What this proposal does not do
 

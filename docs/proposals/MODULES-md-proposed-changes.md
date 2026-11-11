@@ -4,7 +4,7 @@
 
 ## Add three modules
 
-- **CI and Engineering Tooling**: `.github/**`, `scripts/**`, test and lint configuration (`vitest*.ts`, `playwright*.ts`, `.eslintrc.json`, `tsconfig.json`), build configuration, `package.json` and the lockfile, the rules documents, and production configuration (`next.config.mjs`, `vercel.json`, both with mandatory owner approval).
+- **CI and Engineering Tooling**: `.github/**`, `scripts/**`, test and lint configuration (`vitest*.ts`, `playwright*.ts`, `.eslintrc.json`, `tsconfig.json`), build configuration, `package.json` and the lockfile, the rules documents, and production configuration (`next.config.mjs`, `vercel.json`, both with mandatory owner approval), and the two scheduled dispatchers (`app/api/cron/daily/route.ts`, `app/api/cron/nightly/route.ts`), which coordinate work across modules while each scheduled operation keeps its own module.
 - **Marketing and Public Website**: `app/page.tsx`, `app/privacy/**`, `app/robots.ts`, `app/sitemap.ts`, `components/marketing/**`, `lib/marketing.ts`, `public/**`.
 - **Offline and PWA**: `lib/offline/**`, `app/sw.js/**`, `app/offline.html/**`, `app/manifest.webmanifest/**`, and the offline banner, sync status and PWA registration components.
 
