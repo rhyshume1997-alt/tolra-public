@@ -2,7 +2,9 @@
  * The NCR register: one read-only list of the nonconformance records Tolra already keeps, for ISO 9001 clause 8.7. No new data is stored.
  * A record is one of: a rework (job_rework, 037; "Inspection fail" when raised by an inspection, else "Rework"), a concession
  * (job_inspections result 'concession', 034), a Problem (job_problems, 117), or a failed inspection that raised no rework.
- * A failed inspection is NOT listed twice: each fail raises its own rework row, which is the record.
+ * A failed inspection is NOT listed twice: each fail raises its own rework row, which is the record. A replacement rework (follow_up_of)
+ * is folded into its root, and a concession that closed a rework is not a separate record. A fail with no rework row (rows older than
+ * 037, or inspection_id SET NULL) is shown as "Not linked", outside the open and closed counts.
  *
  * Inputs: raw rows as the loader (load-ncr-register.ts) reads them, a date range, filters and "today". Outputs: register rows, the
  * summary tiles and the CSV text. There are no official NCR numbers: a row is identified by its job number, type and date ("Record").
@@ -52,11 +54,17 @@ export type NcrRow = {
   scrapped: number | null;
   remade: number | null;
   statusText: string;
+  /** Open, for the Open tile and filter. False for closed and for "Not linked". */
   open: boolean;
+  /** An inspection fail with no rework row: neither open nor closed, left out of the tiles' open/closed counts and of the day counts. */
+  notLinked: boolean;
   closedAt: string | null;
   closedDate: string;
   closedHow: string;
-  daysOpen: number;
+  /** Calendar days from raised to closed (or to today while open). Null for "Not linked". */
+  daysOpen: number | null;
+  /** Follow-up (replacement) reworks folded into this record. */
+  replacements: number;
   hours: number | null;
   materialCost: number | null;
 };
@@ -73,6 +81,35 @@ export function daysBetween(fromDate: string, toDate: string): number {
 
 function reasonText(reason: string): string {
   return PROBLEM_REASONS.find((r) => r.value === reason)?.label ?? "Other";
+}
+
+/**
+ * Group every rework under its ROOT (follow_up_of null). A replacement rework (037 open_replacement_rework, ~1092-1100) is a follow-up
+ * of a closed one, so a chain is one nonconformance. A missing parent makes the node its own root; a cycle (cannot happen, the column
+ * is only set on insert) is resolved to its earliest-raised member so every member agrees on one root.
+ */
+export function groupReworkChains(reworks: RawRework[]): Map<string, RawRework[]> {
+  const byId = new Map(reworks.map((r) => [r.id, r]));
+  const rootOf = (start: RawRework): RawRework => {
+    const path: RawRework[] = [];
+    let cur: RawRework = start;
+    for (;;) {
+      const at = path.indexOf(cur);
+      if (at >= 0) {
+        return path.slice(at).reduce((a, b) => (b.raised_at < a.raised_at || (b.raised_at === a.raised_at && b.id < a.id) ? b : a));
+      }
+      path.push(cur);
+      const parent = cur.follow_up_of ? byId.get(cur.follow_up_of) : undefined;
+      if (!parent) return cur;
+      cur = parent;
+    }
+  };
+  const chains = new Map<string, RawRework[]>();
+  for (const r of reworks) {
+    const root = rootOf(r);
+    chains.set(root.id, [...(chains.get(root.id) ?? []), r]);
+  }
+  return chains;
 }
 
 /** Build every register row from the raw records. Newest raised first. */
@@ -93,34 +130,46 @@ export function buildNcrRows(src: NcrSources, now: Date | string = new Date()): 
     if (reworkId) costPenceBy.set(reworkId, (costPenceBy.get(reworkId) ?? 0) + toPence(num(v.material_cost)));
   }
 
-  const make = (r: Omit<NcrRow, "record" | "raisedDate" | "closedDate" | "daysOpen" | "jobNo" | "customer"> & { jobId: string }): NcrRow => {
-    const { jobId, ...rest } = r;
+  type Draft = Omit<NcrRow, "record" | "raisedDate" | "closedDate" | "daysOpen" | "jobNo" | "customer" | "notLinked" | "replacements"> & { jobId: string; notLinked?: boolean; replacements?: number };
+  const make = (r: Draft): NcrRow => {
+    const { jobId, notLinked = false, replacements = 0, ...rest } = r;
     const { jobNo, customer } = jobOf(jobId);
     const raisedDate = toDateInput(rest.raisedAt);
     const closedDate = rest.closedAt ? toDateInput(rest.closedAt) : "";
-    const daysOpen = daysBetween(raisedDate, rest.open ? today : closedDate || raisedDate);
-    return { ...rest, jobNo, customer, record: `${jobNo || "No job"} ${rest.type} ${raisedDate}`, raisedDate, closedDate, daysOpen };
+    const daysOpen = notLinked ? null : daysBetween(raisedDate, rest.open ? today : closedDate || raisedDate);
+    return { ...rest, jobNo, customer, notLinked, replacements, record: `${jobNo || "No job"} ${rest.type} ${raisedDate}`, raisedDate, closedDate, daysOpen };
   };
 
   const rows: NcrRow[] = [];
   const reworkedInspections = new Set<string>();
+  // 037 record_job_inspection (lines 624-631): a concession inserts its job_inspections row and, in the same transaction, closes the
+  // job's live reworks with closed_how 'concession' and closed_at = the same now() as inspected_at. No column links them, so the match
+  // is job + that exact instant. Such a concession is the closing of a rework, not a separate nonconformance.
+  const closedByConcession = new Set(src.reworks.filter((r) => r.closed_how === "concession" && r.closed_at).map((r) => `${r.job_id}|${Date.parse(r.closed_at!)}`));
 
-  for (const r of src.reworks) {
-    if (r.inspection_id) reworkedInspections.add(r.inspection_id);
-    const open = r.status !== "closed";
+  for (const [rootId, chain] of groupReworkChains(src.reworks)) {
+    const r = chain.find((c) => c.id === rootId)!;
+    for (const c of chain) if (c.inspection_id) reworkedInspections.add(c.inspection_id);
+    const open = chain.some((c) => c.status !== "closed");
+    const closers = chain.filter((c) => c.status === "closed" && c.closed_at);
+    const last = closers.reduce<RawRework | null>((a, c) => (!a || Date.parse(c.closed_at!) >= Date.parse(a.closed_at!) ? c : a), null);
+    const hours = chain.reduce((t, c) => t + (hoursBy.get(c.id) ?? 0), 0);
+    const costPence = chain.reduce((t, c) => t + (costPenceBy.get(c.id) ?? 0), 0);
     rows.push(make({
       key: `rework:${r.id}`, jobId: r.job_id, type: r.inspection_id ? "Inspection fail" : "Rework", raisedAt: r.raised_at,
       reason: r.reason, action: r.instructions, quantityAffected: r.quantity_affected, affectsAll: r.affects_all,
-      scrapped: r.quantity_scrapped, remade: r.quantity_remade,
-      statusText: open ? REWORK_STATUS_LABELS[r.status] ?? r.status : "Closed", open,
-      closedAt: open ? null : r.closed_at, closedHow: !open && r.closed_how ? CLOSED_LABELS[r.closed_how] ?? r.closed_how : "",
-      hours: hoursBy.has(r.id) ? Math.round((hoursBy.get(r.id) ?? 0) * 100) / 100 : 0,
-      materialCost: (costPenceBy.get(r.id) ?? 0) / 100,
+      // As 037 job_rework_summary (line 253): scrapped counts roots only (a follow-up's scrapped is the root's owed quantity carried
+      // over); replacements actually made are summed over the whole chain.
+      scrapped: r.quantity_scrapped, remade: chain.reduce((t, c) => t + c.quantity_remade, 0),
+      statusText: open ? REWORK_STATUS_LABELS[(chain.find((c) => c.status !== "closed") ?? r).status] ?? r.status : "Closed", open,
+      closedAt: open ? null : last?.closed_at ?? null, closedHow: !open && last?.closed_how ? CLOSED_LABELS[last.closed_how] ?? last.closed_how : "",
+      hours: Math.round(hours * 100) / 100, materialCost: costPence / 100, replacements: chain.length - 1,
     }));
   }
 
   for (const i of src.inspections) {
     if (i.result === "concession") {
+      if (closedByConcession.has(`${i.job_id}|${Date.parse(i.inspected_at)}`)) continue;
       rows.push(make({
         key: `concession:${i.id}`, jobId: i.job_id, type: "Concession", raisedAt: i.inspected_at,
         reason: i.concession_reason ?? "", action: i.inspector_name ? `Concession recorded by ${i.inspector_name}` : "Concession recorded",
@@ -128,10 +177,12 @@ export function buildNcrRows(src: NcrSources, now: Date | string = new Date()): 
         closedAt: i.inspected_at, closedHow: "Accepted on a concession", hours: null, materialCost: null,
       }));
     } else if (i.result === "fail" && !reworkedInspections.has(i.id)) {
+      // Every fail raises a rework (037 fail_job_inspection), so this only arises for rows older than 037 or where the rework's
+      // inspection_id was SET NULL. It is shown on its own status ("Not linked"), outside the open/closed counts and day counts.
       rows.push(make({
         key: `fail:${i.id}`, jobId: i.job_id, type: "Inspection fail (no rework)", raisedAt: i.inspected_at,
         reason: i.measured_notes ?? "", action: "", quantityAffected: null, affectsAll: false, scrapped: null, remade: null,
-        statusText: "Open", open: true, closedAt: null, closedHow: "", hours: null, materialCost: null,
+        statusText: "Not linked", open: false, notLinked: true, closedAt: null, closedHow: "", hours: null, materialCost: null,
       }));
     }
   }
@@ -164,11 +215,11 @@ export function filterNcrRows(rows: NcrRow[], f: NcrFilters): NcrRow[] {
   return rows.filter((r) =>
     (!f.from || r.raisedDate >= f.from) && (!f.to || r.raisedDate <= f.to)
     && (f.type === "all" || r.type === f.type)
-    && (f.status === "all" || (f.status === "open") === r.open));
+    && (f.status === "all" || (!r.notLinked && (f.status === "open") === r.open)));
 }
 
 export type NcrSummary = {
-  total: number; open: number; closed: number; byType: Record<NcrType, number>;
+  total: number; open: number; closed: number; notLinked: number; byType: Record<NcrType, number>;
   quantityScrapped: number;
   /** Mean calendar days from raised to closed, closed records only; null when none are closed. One decimal place. */
   averageDaysToClose: number | null;
@@ -177,16 +228,18 @@ export type NcrSummary = {
 
 export function summariseNcrRows(rows: NcrRow[]): NcrSummary {
   const byType = Object.fromEntries(NCR_TYPES.map((t) => [t, 0])) as Record<NcrType, number>;
-  let open = 0, scrapped = 0, hours = 0, costPence = 0, closedDays = 0, closed = 0;
+  let open = 0, notLinked = 0, scrapped = 0, hours = 0, costPence = 0, closedDays = 0, closed = 0;
   for (const r of rows) {
     byType[r.type] += 1;
     scrapped += r.scrapped ?? 0;
     hours += r.hours ?? 0;
     costPence += toPence(r.materialCost ?? 0);
-    if (r.open) open += 1; else { closed += 1; closedDays += r.daysOpen; }
+    if (r.notLinked) notLinked += 1;
+    else if (r.open) open += 1;
+    else { closed += 1; closedDays += r.daysOpen ?? 0; }
   }
   return {
-    total: rows.length, open, closed, byType, quantityScrapped: scrapped,
+    total: rows.length, open, closed, notLinked, byType, quantityScrapped: scrapped,
     averageDaysToClose: closed ? Math.round((closedDays / closed) * 10) / 10 : null,
     hours: Math.round(hours * 100) / 100, materialCost: costPence / 100,
   };
@@ -208,6 +261,7 @@ export const NCR_CSV_COLUMNS: SheetColumn<NcrRow>[] = [
   { header: "Closed", type: "date", value: (r) => r.closedDate },
   { header: "Closed how", type: "text", value: (r) => r.closedHow },
   { header: "Days open", type: "number", value: (r) => r.daysOpen },
+  { header: "Replacements", type: "number", value: (r) => r.replacements },
   { header: "Rework hours", type: "number", value: (r) => r.hours },
   { header: "Material cost (GBP)", type: "money", value: (r) => r.materialCost },
 ];

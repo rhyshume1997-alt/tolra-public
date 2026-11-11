@@ -75,6 +75,7 @@ function NcrRegisterBody() {
     ["Total", String(summary.total)],
     ["Open", String(summary.open)],
     ["Closed", String(summary.closed)],
+    ["Not linked", String(summary.notLinked)],
     ...NCR_TYPES.map((t): [string, string] => [t, String(summary.byType[t])]),
     ["Quantity scrapped", String(summary.quantityScrapped)],
     ["Average days to close", summary.averageDaysToClose === null ? "None closed" : String(summary.averageDaysToClose)],
@@ -105,7 +106,7 @@ function NcrRegisterBody() {
           {!rows.length ? <p className="text-sm text-slate-500">No records match these filters.</p> : (
             <Table>
               <TableHeader><TableRow>
-                {["Record", "Raised", "Type", "Reason / description", "Qty affected", "Scrapped", "Remade", "Status", "Closed", "Days open", "Rework hours", "Material cost"].map((h) => <TableHead key={h}>{h}</TableHead>)}
+                {["Record", "Raised", "Type", "Reason / description", "Qty affected", "Scrapped", "Remade", "Status", "Closed", "Days open", "Replacements", "Rework hours", "Material cost"].map((h) => <TableHead key={h}>{h}</TableHead>)}
               </TableRow></TableHeader>
               <TableBody>
                 {rows.map((r) => (
@@ -119,7 +120,8 @@ function NcrRegisterBody() {
                     <TableCell>{r.remade ?? ""}</TableCell>
                     <TableCell>{r.statusText}</TableCell>
                     <TableCell>{r.closedAt ? `${fmtDate(r.closedAt)}${r.closedHow ? `, ${r.closedHow}` : ""}` : ""}</TableCell>
-                    <TableCell>{r.daysOpen}</TableCell>
+                    <TableCell>{r.daysOpen ?? ""}</TableCell>
+                    <TableCell>{r.replacements || ""}</TableCell>
                     <TableCell>{r.hours ?? ""}</TableCell>
                     <TableCell>{r.materialCost === null ? "" : gbp(r.materialCost)}</TableCell>
                   </TableRow>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildNcrRows, daysBetween, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
+  buildNcrRows, daysBetween, groupReworkChains, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
   type NcrSources, type RawInspection, type RawProblem, type RawRework,
 } from "@/lib/jobs/ncr-register";
 
@@ -31,6 +31,7 @@ describe("type mapping", () => {
     expect(type("concession:i2")).toBe("Concession");
     expect(type("problem:p1")).toBe("Problem");
     expect(type("fail:i3")).toBe("Inspection fail (no rework)");
+    expect(rows.find((r) => r.key === "fail:i3")).toMatchObject({ statusText: "Not linked", open: false, notLinked: true, daysOpen: null });
     expect(rows.find((r) => r.key === "fail:i1")).toBeUndefined();
     expect(rows.some((r) => r.key.endsWith(":i4"))).toBe(false);
     expect(rows).toHaveLength(5);
@@ -118,5 +119,76 @@ describe("CSV", () => {
     expect(csv).toContain("'+1");
     expect(csv).toContain('"Skim, then\nre-check ""fine"""');
     expect(csv.split("\r\n")[0]).toContain("Record,Job,Customer,Type,Raised");
+  });
+});
+
+describe("one record per nonconformance", () => {
+  const closed = (id: string, o: Partial<RawRework> = {}) => rework({ id, status: "closed", closed_how: "passed", ...o });
+  it("folds a replacement chain into its root: one row, summed hours and cost, root scrapped, chain remade", () => {
+    const rows = buildNcrRows(src({
+      reworks: [
+        closed("root", { raised_at: "2026-10-01T09:00:00Z", closed_at: "2026-10-05T09:00:00Z", quantity_scrapped: 4, quantity_remade: 1, quantity_affected: 5 }),
+        closed("f1", { follow_up_of: "root", inspection_id: "i9", raised_at: "2026-10-06T09:00:00Z", closed_at: "2026-10-09T09:00:00Z", closed_how: "concession", quantity_scrapped: 3, quantity_remade: 2 }),
+      ],
+      entries: [{ id: "e1", rework_id: "root", kind: "hours", hours: 1 }, { id: "e2", rework_id: "f1", kind: "hours", hours: 2 }, { id: "e3", rework_id: "f1", kind: "material", hours: null }],
+      entryValues: [{ entry_id: "e3", material_cost: 12.5 }],
+    }), NOW);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ key: "rework:root", type: "Rework", replacements: 1, scrapped: 4, remade: 3, hours: 3, materialCost: 12.5, open: false, closedHow: "Released on a concession", daysOpen: 8 });
+    expect(rows[0].closedDate).toBe("2026-10-09");
+    expect(summariseNcrRows(rows).quantityScrapped).toBe(4);
+  });
+  it("is Open while any link of the chain is not closed", () => {
+    const [row] = buildNcrRows(src({ reworks: [closed("root", { closed_at: "2026-10-05T09:00:00Z" }), rework({ id: "f1", follow_up_of: "root", status: "in_progress" })] }), NOW);
+    expect(row).toMatchObject({ open: true, closedAt: null, replacements: 1, statusText: "Rework under way" });
+  });
+  it("folds a multi-step chain, and survives a missing parent or a cycle without duplicates", () => {
+    const chain = [rework({ id: "a" }), rework({ id: "b", follow_up_of: "a" }), rework({ id: "c", follow_up_of: "b" })];
+    expect(buildNcrRows(src({ reworks: chain }), NOW)).toHaveLength(1);
+    expect(buildNcrRows(src({ reworks: [rework({ id: "x", follow_up_of: "gone" })] }), NOW)).toHaveLength(1);
+    const cyc = [rework({ id: "p", follow_up_of: "q", raised_at: "2026-10-02T00:00:00Z" }), rework({ id: "q", follow_up_of: "p", raised_at: "2026-10-01T00:00:00Z" }), rework({ id: "t", follow_up_of: "p" })];
+    expect([...groupReworkChains(cyc).keys()]).toEqual(["q"]);
+    expect(buildNcrRows(src({ reworks: cyc }), NOW)).toHaveLength(1);
+  });
+  it("attributes a follow-up to a root outside the date range, and the range filters on the root's raised date", () => {
+    const rows = buildNcrRows(src({ reworks: [closed("root", { raised_at: "2026-08-01T09:00:00Z", closed_at: "2026-08-02T09:00:00Z" }), closed("f1", { follow_up_of: "root", raised_at: "2026-10-05T09:00:00Z", closed_at: "2026-10-06T09:00:00Z" })] }), NOW);
+    expect(filterNcrRows(rows, { from: "2026-10-01", to: "2026-10-31", type: "all", status: "all" })).toHaveLength(0);
+    expect(filterNcrRows(rows, { from: "2026-08-01", to: "2026-08-31", type: "all", status: "all" })).toHaveLength(1);
+  });
+  it("a concession that closed a rework is not a separate record (037 record_job_inspection: same transaction time, same job)", () => {
+    const at = "2026-10-12T10:00:00+00:00";
+    const rows = buildNcrRows(src({
+      reworks: [closed("r1", { closed_at: "2026-10-12T10:00:00Z", closed_how: "concession" })],
+      inspections: [insp({ id: "c1", result: "concession", concession_reason: "ok", inspected_at: at }), insp({ id: "c2", result: "concession", concession_reason: "first look", inspected_at: "2026-10-15T10:00:00Z" }), insp({ id: "c3", job_id: "j2", result: "concession", concession_reason: "other job", inspected_at: at })],
+    }), NOW);
+    expect(rows.map((r) => r.key).sort()).toEqual(["concession:c2", "concession:c3", "rework:r1"]);
+  });
+});
+
+describe("Not linked", () => {
+  it("is outside the open and closed counts, the status filters, days and the average", () => {
+    const rows = buildNcrRows(src({ reworks: [rework({ id: "c", status: "closed", closed_at: "2026-10-14T09:00:00Z", closed_how: "passed" })], inspections: [insp({ id: "n" })] }), NOW);
+    const s = summariseNcrRows(rows);
+    expect([s.total, s.open, s.closed, s.notLinked, s.averageDaysToClose]).toEqual([2, 0, 1, 1, 4]);
+    expect(filterNcrRows(rows, { from: "", to: "", type: "all", status: "open" })).toHaveLength(0);
+    expect(filterNcrRows(rows, { from: "", to: "", type: "all", status: "closed" })).toHaveLength(1);
+    expect(filterNcrRows(rows, { from: "", to: "", type: "all", status: "all" })).toHaveLength(2);
+  });
+});
+
+describe("clock change (BST ends 2026-10-25)", () => {
+  it("counts calendar days across BST to GMT: raised 24 Oct, closed 26 Oct is 2 days", () => {
+    const [row] = buildNcrRows(src({ reworks: [rework({ id: "r", status: "closed", raised_at: "2026-10-24T09:00:00Z", closed_at: "2026-10-26T09:00:00Z", closed_how: "passed" })] }), "2026-10-30T12:00:00Z");
+    expect(row.daysOpen).toBe(2);
+  });
+  it("uses the UK local date near midnight either side of the change", () => {
+    const [row] = buildNcrRows(src({ reworks: [rework({ id: "r", status: "closed", raised_at: "2026-10-24T23:30:00Z", closed_at: "2026-10-26T00:30:00Z", closed_how: "passed" })] }), "2026-10-30T12:00:00Z");
+    expect(row.raisedDate).toBe("2026-10-25");
+    expect(row.closedDate).toBe("2026-10-26");
+    expect(row.daysOpen).toBe(1);
+  });
+  it("defaultRange spans the change: 90 days back from 2026-11-02 starts 2026-08-04", () => {
+    expect(defaultRange("2026-11-02T12:00:00Z")).toEqual({ from: "2026-08-04", to: "2026-11-02" });
+    expect(defaultRange("2026-10-26T00:30:00Z")).toEqual({ from: "2026-07-28", to: "2026-10-26" });
   });
 });

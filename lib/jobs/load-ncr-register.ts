@@ -1,7 +1,7 @@
 /**
  * Reads the records the NCR register shows. SELECTs only, under the signed-in user's own session (RLS applies; admin and office can
  * read all six tables). Inputs: the date range (local dates). Output: the raw rows for buildNcrRows, or { ok: false } on any failure.
- * Never throws and never writes. The range is padded by a day each side here; the exact inclusive filter is in ncr-register.ts.
+ * Also reads the replacement reworks and roots of the reworks it finds, and reworks closed by a concession in range. Never throws and never writes. The range is padded by a day each side here; the exact inclusive filter is in ncr-register.ts.
  * Must not change: it must stay read-only.
  */
 import { fetchAll } from "@/lib/fetch-all";
@@ -31,8 +31,24 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
       fetchAll<RawInspection>((from, to) => ranged(db.from("job_inspections").select("id, job_id, result, concession_reason, measured_notes, inspector_name, inspected_at").in("result", ["concession", "fail"]), "inspected_at").order("inspected_at", { ascending: false }).order("id").range(from, to) as never),
       fetchAll<RawProblem>((from, to) => ranged(db.from("job_problems").select("id, job_id, reason, note, status, reported_at, resolved_at, resolution_note"), "reported_at").order("reported_at", { ascending: false }).order("id").range(from, to) as never),
     ]);
-    const reworkIds = reworks.rows.map((r) => r.id);
-    const jobIds = [...new Set([...reworks.rows, ...inspections.rows, ...problems.rows].map((r) => r.job_id))];
+    // Also needed so each record is counted once (ncr-register.ts): reworks closed by a concession in range (to recognise that
+    // concession), then the replacement reworks of every rework held and the roots of every replacement held, until nothing new.
+    const REWORK_COLS = "id, job_id, inspection_id, status, reason, instructions, affects_all, quantity_affected, quantity_scrapped, quantity_remade, raised_at, closed_at, closed_how, follow_up_of";
+    const byId = new Map<string, RawRework>(reworks.rows.map((r) => [r.id, r]));
+    const add = (rows: RawRework[]) => { for (const r of rows) byId.set(r.id, r); };
+    add((await fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select(REWORK_COLS).eq("closed_how", "concession"), "closed_at").order("id").range(from, to) as never)).rows);
+    const askedChildren = new Set<string>();
+    for (let round = 0; round < 10; round++) {
+      const children = [...byId.keys()].filter((id) => !askedChildren.has(id));
+      const parents = [...new Set([...byId.values()].map((r) => r.follow_up_of).filter((id): id is string => Boolean(id) && !byId.has(id as string)))];
+      if (!children.length && !parents.length) break;
+      children.forEach((id) => askedChildren.add(id));
+      for (const ids of chunks(children)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("follow_up_of", ids).order("id").range(from, to) as never)).rows);
+      for (const ids of chunks(parents)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("id", ids).order("id").range(from, to) as never)).rows);
+    }
+    const allReworks = [...byId.values()];
+    const reworkIds = allReworks.map((r) => r.id);
+    const jobIds = [...new Set([...allReworks, ...inspections.rows, ...problems.rows].map((r) => r.job_id))];
     const entries: RawEntry[] = [];
     const entryValues: RawEntryValue[] = [];
     const jobs: RawJob[] = [];
@@ -50,7 +66,7 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
       if (error) throw error;
       jobs.push(...((data ?? []) as RawJob[]));
     }
-    return { ok: true, truncated: reworks.truncated || inspections.truncated || problems.truncated, sources: { reworks: reworks.rows, inspections: inspections.rows, problems: problems.rows, entries, entryValues, jobs } };
+    return { ok: true, truncated: reworks.truncated || inspections.truncated || problems.truncated, sources: { reworks: allReworks, inspections: inspections.rows, problems: problems.rows, entries, entryValues, jobs } };
   } catch {
     return { ok: false };
   }
