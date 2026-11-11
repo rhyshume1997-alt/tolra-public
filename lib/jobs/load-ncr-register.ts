@@ -1,7 +1,7 @@
 /**
  * Reads the records the NCR register shows. SELECTs only, under the signed-in user's own session (RLS applies; admin and office can
  * read all six tables). Inputs: the date range (local dates). Output: the raw rows for buildNcrRows, or { ok: false } on any failure.
- * Also reads the replacement reworks and roots of the reworks it finds, and reworks closed by a concession in range. Never throws and never writes. The range is padded by a day each side here; the exact inclusive filter is in ncr-register.ts.
+ * Also reads the replacement and repeat-failure continuations (and their predecessors) of the reworks it finds, and reworks closed by a concession in range. Never throws and never writes. The range is padded by a day each side here; the exact inclusive filter is in ncr-register.ts.
  * Must not change: it must stay read-only.
  */
 import { fetchAll } from "@/lib/fetch-all";
@@ -27,25 +27,36 @@ export async function loadNcrRegister(range: { from: string; to: string }): Prom
   };
   try {
     const [reworks, inspections, problems] = await Promise.all([
-      fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select("id, job_id, inspection_id, status, reason, instructions, affects_all, quantity_affected, quantity_scrapped, quantity_remade, raised_at, closed_at, closed_how, follow_up_of"), "raised_at").order("raised_at", { ascending: false }).order("id").range(from, to) as never),
+      fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select("id, job_id, inspection_id, status, reason, instructions, affects_all, quantity_affected, quantity_scrapped, quantity_remade, raised_at, closed_at, closed_how, follow_up_of, sales_order_line_id"), "raised_at").order("raised_at", { ascending: false }).order("id").range(from, to) as never),
       fetchAll<RawInspection>((from, to) => ranged(db.from("job_inspections").select("id, job_id, result, concession_reason, measured_notes, inspector_name, inspected_at").in("result", ["concession", "fail"]), "inspected_at").order("inspected_at", { ascending: false }).order("id").range(from, to) as never),
       fetchAll<RawProblem>((from, to) => ranged(db.from("job_problems").select("id, job_id, reason, note, status, reported_at, resolved_at, resolution_note"), "reported_at").order("reported_at", { ascending: false }).order("id").range(from, to) as never),
     ]);
     // Also needed so each record is counted once (ncr-register.ts): reworks closed by a concession in range (to recognise that
     // concession), then the replacement reworks of every rework held and the roots of every replacement held, until nothing new.
-    const REWORK_COLS = "id, job_id, inspection_id, status, reason, instructions, affects_all, quantity_affected, quantity_scrapped, quantity_remade, raised_at, closed_at, closed_how, follow_up_of";
+    const REWORK_COLS = "id, job_id, inspection_id, status, reason, instructions, affects_all, quantity_affected, quantity_scrapped, quantity_remade, raised_at, closed_at, closed_how, follow_up_of, sales_order_line_id";
     const byId = new Map<string, RawRework>(reworks.rows.map((r) => [r.id, r]));
     const add = (rows: RawRework[]) => { for (const r of rows) byId.set(r.id, r); };
     add((await fetchAll<RawRework>((from, to) => ranged(db.from("job_rework").select(REWORK_COLS).eq("closed_how", "concession"), "closed_at").order("id").range(from, to) as never)).rows);
     const askedChildren = new Set<string>();
+    const askedSuperseded = new Set<string>();
+    const askedRaised = new Set<string>();
     let chainCapped = true; // stays true only if the 10-round cap is reached with links still unread
     for (let round = 0; round < 10; round++) {
-      const children = [...byId.keys()].filter((id) => !askedChildren.has(id));
-      const parents = [...new Set([...byId.values()].map((r) => r.follow_up_of).filter((id): id is string => Boolean(id) && !byId.has(id as string)))];
-      if (!children.length && !parents.length) { chainCapped = false; break; }
+      const held = [...byId.values()];
+      const children = held.map((r) => r.id).filter((id) => !askedChildren.has(id));
+      const parents = [...new Set(held.map((r) => r.follow_up_of).filter((id): id is string => Boolean(id) && !byId.has(id as string)))];
+      // A repeated failure supersedes a finished rework and raises the new one at the same instant (037 fail_job_inspection): read the
+      // continuations of every superseded rework held (raised_at = its closed_at) and the superseded reworks before every rework held.
+      const supers = held.filter((r) => r.closed_how === "superseded" && r.closed_at && !askedSuperseded.has(r.id));
+      const raised = held.filter((r) => !askedRaised.has(r.id));
+      if (!children.length && !parents.length && !supers.length && !raised.length) { chainCapped = false; break; }
       children.forEach((id) => askedChildren.add(id));
+      supers.forEach((r) => askedSuperseded.add(r.id));
+      raised.forEach((r) => askedRaised.add(r.id));
       for (const ids of chunks(children)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("follow_up_of", ids).order("id").range(from, to) as never)).rows);
       for (const ids of chunks(parents)) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("id", ids).order("id").range(from, to) as never)).rows);
+      for (const times of chunks([...new Set(supers.map((r) => r.closed_at as string))])) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).in("raised_at", times).order("id").range(from, to) as never)).rows);
+      for (const times of chunks([...new Set(raised.map((r) => r.raised_at))])) add((await fetchAll<RawRework>((from, to) => db.from("job_rework").select(REWORK_COLS).eq("closed_how", "superseded").in("closed_at", times).order("id").range(from, to) as never)).rows);
     }
     const allReworks = [...byId.values()];
     const reworkIds = allReworks.map((r) => r.id);

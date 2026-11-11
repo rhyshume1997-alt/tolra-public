@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildNcrRows, daysBetween, groupReworkChains, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
+  buildNcrRows, daysBetween, splitByClass, groupReworkChains, defaultRange, filterNcrRows, ncrCsv, summariseNcrRows,
   type NcrSources, type RawInspection, type RawProblem, type RawRework,
 } from "@/lib/jobs/ncr-register";
 
 const NOW = "2026-10-20T12:00:00Z";
 const rework = (o: Partial<RawRework> & { id: string }): RawRework => ({
   job_id: "j1", inspection_id: null, status: "open", reason: "Burr", instructions: "Deburr", affects_all: true, quantity_affected: null,
-  quantity_scrapped: 0, quantity_remade: 0, raised_at: "2026-10-10T09:00:00Z", closed_at: null, closed_how: null, follow_up_of: null, ...o,
+  quantity_scrapped: 0, quantity_remade: 0, sales_order_line_id: null, raised_at: "2026-10-10T09:00:00Z", closed_at: null, closed_how: null, follow_up_of: null, ...o,
 });
 const insp = (o: Partial<RawInspection> & { id: string }): RawInspection => ({
   job_id: "j1", result: "fail", concession_reason: null, measured_notes: "Out of tolerance", inspector_name: "Sam", inspected_at: "2026-10-10T09:00:00Z", ...o,
@@ -134,7 +134,7 @@ describe("one record per nonconformance", () => {
       entryValues: [{ entry_id: "e3", material_cost: 12.5 }],
     }), NOW);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ key: "rework:root", type: "Rework", replacements: 1, scrapped: 4, remade: 3, hours: 3, materialCost: 12.5, open: false, closedHow: "Released on a concession", daysOpen: 8 });
+    expect(rows[0]).toMatchObject({ key: "rework:root", type: "Rework", replacements: 1, scrapped: 4, remade: 3, hours: 3, materialCost: 12.5, open: false, closedHow: "Closed on concession", daysOpen: 8 });
     expect(rows[0].closedDate).toBe("2026-10-09");
     expect(summariseNcrRows(rows).quantityScrapped).toBe(4);
   });
@@ -169,7 +169,7 @@ describe("Not linked", () => {
   it("is outside the open and closed counts, the status filters, days and the average", () => {
     const rows = buildNcrRows(src({ reworks: [rework({ id: "c", status: "closed", closed_at: "2026-10-14T09:00:00Z", closed_how: "passed" })], inspections: [insp({ id: "n" })] }), NOW);
     const s = summariseNcrRows(rows);
-    expect([s.total, s.open, s.closed, s.notLinked, s.averageDaysToClose]).toEqual([2, 0, 1, 1, 4]);
+    expect([s.total, s.open, s.closed, s.notLinked, s.averageDaysToClose]).toEqual([1, 0, 1, 1, 4]);
     expect(filterNcrRows(rows, { from: "", to: "", type: "all", status: "open" })).toHaveLength(0);
     expect(filterNcrRows(rows, { from: "", to: "", type: "all", status: "closed" })).toHaveLength(1);
     expect(filterNcrRows(rows, { from: "", to: "", type: "all", status: "all" })).toHaveLength(2);
@@ -190,5 +190,87 @@ describe("clock change (BST ends 2026-10-25)", () => {
   it("defaultRange spans the change: 90 days back from 2026-11-02 starts 2026-08-04", () => {
     expect(defaultRange("2026-11-02T12:00:00Z")).toEqual({ from: "2026-08-04", to: "2026-11-02" });
     expect(defaultRange("2026-10-26T00:30:00Z")).toEqual({ from: "2026-07-28", to: "2026-10-26" });
+  });
+});
+
+describe("PM rules: reinspection, repeated failures, concessions, legacy fails", () => {
+  const T1 = "2026-10-05T09:00:00Z";
+  const done = (id: string, o: Partial<RawRework> = {}) => rework({ id, status: "closed", closed_how: "passed", closed_at: T1, ...o });
+
+  it("rule 1: a finished rework stays Open until reinspected and accepted", () => {
+    const [row] = buildNcrRows(src({ reworks: [rework({ id: "r", status: "finished" })] }), NOW);
+    expect(row).toMatchObject({ open: true, statusText: "Reworked: awaiting re-inspection", closedAt: null, closedHow: "" });
+    expect(summariseNcrRows([row])).toMatchObject({ open: 1, closed: 0 });
+  });
+  it("rule 1: a chain whose last closing is superseded is Open; passed or concession closes it", () => {
+    const sup = buildNcrRows(src({ reworks: [done("r", { closed_how: "superseded" })] }), NOW)[0];
+    expect(sup).toMatchObject({ open: true, statusText: "Failed again", closedAt: null });
+    expect(buildNcrRows(src({ reworks: [done("r")] }), NOW)[0].open).toBe(false);
+    expect(buildNcrRows(src({ reworks: [done("r", { closed_how: "concession" })] }), NOW)[0].open).toBe(false);
+  });
+  it("rule 1: a closed link followed by an open link is Open", () => {
+    expect(buildNcrRows(src({ reworks: [done("r"), rework({ id: "f", follow_up_of: "r", status: "finished" })] }), NOW)[0].open).toBe(true);
+  });
+
+  it("rule 2: a repeated failure continues the superseded rework (same job, instant, line) so only one NCR is open", () => {
+    const rows = buildNcrRows(src({
+      reworks: [
+        done("r1", { status: "closed", closed_how: "superseded", sales_order_line_id: "L1", raised_at: "2026-10-01T09:00:00Z", closed_at: "2026-10-04T09:00:00Z" }),
+        rework({ id: "r2", inspection_id: "i2", sales_order_line_id: "L1", raised_at: "2026-10-04T09:00:00Z" }),
+      ],
+    }), NOW);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ key: "rework:r1", open: true, replacements: 1 });
+    expect(summariseNcrRows(rows).open).toBe(1);
+  });
+  it("rule 2: matches a rework with no line, or a new failure on all lines", () => {
+    const base = { status: "closed" as const, closed_how: "superseded" as const, closed_at: "2026-10-04T09:00:00Z" };
+    expect(buildNcrRows(src({ reworks: [done("a", { ...base, sales_order_line_id: null }), rework({ id: "b", sales_order_line_id: "L9", raised_at: base.closed_at })] }), NOW)).toHaveLength(1);
+    expect(buildNcrRows(src({ reworks: [done("a", { ...base, sales_order_line_id: "L1" }), rework({ id: "b", sales_order_line_id: null, affects_all: true, raised_at: base.closed_at })] }), NOW)).toHaveLength(1);
+  });
+  it("rule 2: a failure that superseded nothing, or only another line, is a separate NCR", () => {
+    const sup = { status: "closed" as const, closed_how: "superseded" as const, closed_at: "2026-10-04T09:00:00Z", sales_order_line_id: "L1" };
+    expect(buildNcrRows(src({ reworks: [done("a", { ...sup }), rework({ id: "b", affects_all: false, sales_order_line_id: "L2", raised_at: sup.closed_at })] }), NOW)).toHaveLength(2);
+    expect(buildNcrRows(src({ reworks: [done("a", { ...sup }), rework({ id: "b", raised_at: "2026-10-04T09:00:01Z" })] }), NOW)).toHaveLength(2);
+    expect(buildNcrRows(src({ reworks: [done("a", { ...sup }), rework({ id: "b", job_id: "j2", raised_at: sup.closed_at })] }), NOW)).toHaveLength(2);
+    expect(buildNcrRows(src({ reworks: [done("a", { ...sup, closed_how: "passed" }), rework({ id: "b", raised_at: sup.closed_at })] }), NOW)).toHaveLength(2);
+  });
+  it("rule 2: a line split joins every new rework to the one superseded rework; one R2 picks the same line, else the earliest", () => {
+    const sup = { status: "closed" as const, closed_how: "superseded" as const, closed_at: "2026-10-04T09:00:00Z" };
+    const split = buildNcrRows(src({ reworks: [done("a", { ...sup, sales_order_line_id: null }), rework({ id: "b1", sales_order_line_id: "L1", raised_at: sup.closed_at }), rework({ id: "b2", sales_order_line_id: "L2", raised_at: sup.closed_at })] }), NOW);
+    expect(split).toHaveLength(1);
+    expect(split[0].replacements).toBe(2);
+    const chains = groupReworkChains([
+      done("early", { ...sup, sales_order_line_id: null, raised_at: "2026-10-01T09:00:00Z" }), done("sameLine", { ...sup, sales_order_line_id: "L1", raised_at: "2026-10-02T09:00:00Z" }),
+      rework({ id: "n", affects_all: true, sales_order_line_id: "L1", raised_at: sup.closed_at }),
+    ]);
+    expect([...chains.keys()].sort()).toEqual(["early", "sameLine"]);
+    expect(chains.get("sameLine")!.map((r) => r.id).sort()).toEqual(["n", "sameLine"]);
+  });
+
+  it("rule 3: initial concession + a reinspection concession closing two reworks = 2 concession inspections", () => {
+    const at = "2026-10-12T10:00:00Z";
+    const rows = buildNcrRows(src({
+      reworks: [done("r1", { closed_at: at, closed_how: "concession" }), done("r2", { closed_at: at, closed_how: "concession", raised_at: "2026-10-11T09:00:00Z" })],
+      inspections: [insp({ id: "c0", result: "concession", concession_reason: "first look", inspected_at: "2026-10-15T10:00:00Z" }), insp({ id: "c1", result: "concession", concession_reason: "reinspect", inspected_at: at })],
+    }), NOW);
+    expect(rows).toHaveLength(3);
+    expect(summariseNcrRows(rows).concessions).toBe(2);
+    expect(rows.find((r) => r.key === "rework:r1")!.closedHow).toBe("Closed on concession");
+    expect(rows.find((r) => r.key === "concession:c0")!.closedHow).toBe("Closed on concession");
+  });
+
+  it("rule 4: legacy failed inspections are listed apart, in the CSV with a class, and not in confirmed counts", () => {
+    const rows = buildNcrRows(src({ reworks: [rework({ id: "r" })], inspections: [insp({ id: "old" })] }), NOW);
+    const { confirmed, notLinked } = splitByClass(rows);
+    expect(confirmed.map((r) => r.key)).toEqual(["rework:r"]);
+    expect(notLinked.map((r) => r.key)).toEqual(["fail:old"]);
+    expect(notLinked[0].recordClass).toBe("Not linked");
+    const s = summariseNcrRows(rows);
+    expect([s.total, s.open, s.closed, s.notLinked]).toEqual([1, 1, 0, 1]);
+    const lines = ncrCsv(rows).split("\r\n");
+    expect(lines[0]).toContain("Record class,Record");
+    expect(lines.filter((l) => l.startsWith("Confirmed NCR,"))).toHaveLength(1);
+    expect(lines.filter((l) => l.startsWith("Not linked,"))).toHaveLength(1);
   });
 });

@@ -17,7 +17,7 @@ import { DEMO_MODE } from "@/lib/demo";
 import { fmtDate } from "@/lib/dates";
 import { loadNcrRegister } from "@/lib/jobs/load-ncr-register";
 import {
-  buildNcrRows, defaultRange, filterNcrRows, ncrCsv, NCR_TYPES, summariseNcrRows,
+  buildNcrRows, defaultRange, filterNcrRows, ncrCsv, NCR_CONFIRMED_TYPES, splitByClass, summariseNcrRows,
   type NcrRow, type NcrSources, type NcrStatusFilter, type NcrType,
 } from "@/lib/jobs/ncr-register";
 import { NCR_REGISTER_OFF_NOTICE, ncrRegisterEnabled } from "@/lib/jobs/ncr-register-switch";
@@ -61,11 +61,16 @@ function NcrRegisterBody() {
     return () => { cancelled = true; };
   }, [loaded, on, available, range]);
 
-  const rows = useMemo<NcrRow[]>(() => {
-    if (!sources) return [];
-    return filterNcrRows(buildNcrRows(sources), { from: range.from, to: range.to, type, status });
+  // Confirmed NCRs follow every filter. Legacy failed inspections with no linked rework are listed apart (date range only), never in the totals.
+  const { rows, legacy } = useMemo<{ rows: NcrRow[]; legacy: NcrRow[] }>(() => {
+    if (!sources) return { rows: [], legacy: [] };
+    const all = buildNcrRows(sources);
+    return {
+      rows: splitByClass(filterNcrRows(all, { from: range.from, to: range.to, type, status })).confirmed,
+      legacy: splitByClass(filterNcrRows(all, { from: range.from, to: range.to, type: "all", status: "all" })).notLinked,
+    };
   }, [sources, range, type, status]);
-  const summary = useMemo(() => summariseNcrRows(rows), [rows]);
+  const summary = useMemo(() => summariseNcrRows([...rows, ...legacy]), [rows, legacy]);
 
   if (!loaded) return <Skeleton className="h-80" />;
   if (!on) return <p className="text-sm text-slate-500">{NCR_REGISTER_OFF_NOTICE}</p>;
@@ -75,8 +80,9 @@ function NcrRegisterBody() {
     ["Total", String(summary.total)],
     ["Open", String(summary.open)],
     ["Closed", String(summary.closed)],
-    ["Not linked", String(summary.notLinked)],
-    ...NCR_TYPES.map((t): [string, string] => [t, String(summary.byType[t])]),
+    ["Closed on concession (inspections)", String(summary.concessions)],
+    ["Failed inspections, no linked rework (legacy)", String(summary.notLinked)],
+    ...NCR_CONFIRMED_TYPES.map((t): [string, string] => [t, String(summary.byType[t])]),
     ["Quantity scrapped", String(summary.quantityScrapped)],
     ["Average days to close", summary.averageDaysToClose === null ? "None closed" : String(summary.averageDaysToClose)],
   ];
@@ -91,10 +97,10 @@ function NcrRegisterBody() {
         <label className="text-sm">From<Input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></label>
         <label className="text-sm">To<Input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></label>
         <label className="text-sm">Type<br /><select className={SELECT} value={type} onChange={(e) => setType(e.target.value as "all" | NcrType)}>
-          <option value="all">All types</option>{NCR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></label>
+          <option value="all">All types</option>{NCR_CONFIRMED_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></label>
         <label className="text-sm">Status<br /><select className={SELECT} value={status} onChange={(e) => setStatus(e.target.value as NcrStatusFilter)}>
           <option value="all">All</option><option value="open">Open</option><option value="closed">Closed</option></select></label>
-        <Button variant="outline" className="min-h-11" disabled={!rows.length} onClick={() => downloadFile(`ncr-register-${range.from}-to-${range.to}.csv`, ncrCsv(rows), CSV_TYPE)}>Download CSV</Button>
+        <Button variant="outline" className="min-h-11" disabled={!rows.length && !legacy.length} onClick={() => downloadFile(`ncr-register-${range.from}-to-${range.to}.csv`, ncrCsv([...rows, ...legacy]), CSV_TYPE)}>Download CSV</Button>
       </div>
       {state === "error" ? <p className="text-sm text-slate-500">The NCR register can&apos;t be read right now.</p> : state !== "ready" ? <Skeleton className="h-80" /> : (
         <>
@@ -129,6 +135,20 @@ function NcrRegisterBody() {
               </TableBody>
             </Table>
           )}
+          {legacy.length ? (
+            <section className="space-y-2">
+              <h2 className="text-base font-semibold">Failed inspections with no linked rework (legacy)</h2>
+              <p className="text-xs text-slate-500">Not counted in the figures above. These are failed inspections older than the rework records, or whose rework link was lost.</p>
+              <Table>
+                <TableHeader><TableRow><TableHead>Record</TableHead><TableHead>Raised</TableHead><TableHead>Customer</TableHead><TableHead>Inspection notes</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {legacy.map((r) => (
+                    <TableRow key={r.key}><TableCell>{r.record}</TableCell><TableCell>{fmtDate(r.raisedAt)}</TableCell><TableCell>{r.customer}</TableCell><TableCell>{r.reason}</TableCell></TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </section>
+          ) : null}
         </>
       )}
     </div>
