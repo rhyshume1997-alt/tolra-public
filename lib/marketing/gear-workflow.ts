@@ -2,7 +2,7 @@
  * "The Tolra Machine": data and geometry for the gear workflow on the public home page (components/marketing/gear-workflow.tsx).
  *
  * Inputs: FLOW_STEPS and PAIN_CARDS from lib/marketing.ts (the checked copy; this module never rewrites a caption or a record value).
- * Outputs: GEAR_STAGES (seven stages, one per gear), two gear layouts (wide and compact) with tooth paths, centres and meshing phases,
+ * Outputs: GEAR_STAGES (seven stages, one per gear, each with its image in public/marketing/workflow/), two gear layouts (wide and compact) with tooth paths, centres and meshing phases,
  * and pure helpers for selection (stepTo, clampStage) and rotation (gearAngle).
  * Must not change: the stage captions and example records come from FLOW_STEPS; the extra detail lines below describe only what the
  * app's code does today (migrations 081-083, the dashboard tiles, the FEATURES copy). No prices, numbers of hours, results or
@@ -26,6 +26,55 @@ export type GearStage = {
   details: readonly string[];
   /** Tooth count of this stage's gear. */
   teeth: number;
+  /** What the stage looks like in Tolra: a document Tolra produces, or a screen. Example data only. */
+  shot: StageShot;
+};
+
+export type StageShot = {
+  src: string;
+  width: number;
+  height: number;
+  alt: string;
+  /** "document": a page Tolra prints or sends; "screen": a screen in the app. */
+  kind: "document" | "screen";
+  /** Where it comes from in Tolra, shown above the image. */
+  source: string;
+};
+
+/**
+ * One image per stage, in public/marketing/workflow/. Documents are Tolra's own PDF templates and the printed worksheet; screens are
+ * the app's own Machine timeline and two crops of the site's existing dashboard and Job Board screenshots. Every name, number and
+ * amount in them is example data (Example Engineering Ltd, Example Plant Co, J-0001); none names a real company or person.
+ */
+const SHOTS: Record<StageId, StageShot> = {
+  enquiry: {
+    src: "/marketing/workflow/enquiry.webp", width: 1262, height: 438, kind: "screen", source: "Dashboard, Today",
+    alt: "Tolra dashboard, Today view, with example data: tiles for quotes with no reply, enquiries not quoted, jobs running late, work waiting to be checked and money late.",
+  },
+  quote: {
+    src: "/marketing/workflow/quote.webp", width: 1100, height: 1338, kind: "document", source: "Quote, as sent",
+    alt: "Quote QUO-0001 from Example Engineering Ltd to Example Plant Co, with example values: 20 mounting brackets to drawing BR-114 rev B and a material certificate pack, with VAT, terms and the customer message.",
+  },
+  po: {
+    src: "/marketing/workflow/sales-order.webp", width: 1100, height: 1338, kind: "document", source: "Sales order",
+    alt: "Sales order for the customer's order 4471 against quote QUO-0001, from Example Engineering Ltd to Example Plant Co, with example values.",
+  },
+  worksheet: {
+    src: "/marketing/workflow/worksheet.webp", width: 1100, height: 1350, kind: "document", source: "Printed job worksheet",
+    alt: "Job worksheet J-0001 for Example Plant Co, with example values: customer PO 4471, quote QUO-0001, material cert and heat/cast numbers, drawing BR-114 rev B, 20 off in S355 plate, Laser 1 then the press brake, the part checklist and sign-off.",
+  },
+  schedule: {
+    src: "/marketing/workflow/schedule.webp", width: 1400, height: 495, kind: "screen", source: "Machine timeline",
+    alt: "Tolra machine timeline over two weeks, with example jobs: J-0001 and J-0005 on Laser 1, J-0001 on the press brake, J-0003 on Mill 1, J-0006 on Lathe 1 and J-0004 in the welding bay.",
+  },
+  signoff: {
+    src: "/marketing/workflow/inspection.webp", width: 1262, height: 318, kind: "screen", source: "Job Board",
+    alt: "Tolra Job Board with example data: tiles for open jobs, not started, running, waiting for inspection, complete and average job time.",
+  },
+  invoice: {
+    src: "/marketing/workflow/invoice.webp", width: 1100, height: 1338, kind: "document", source: "Invoice, as issued",
+    alt: "Invoice INV-0001 from Example Engineering Ltd to Example Plant Co, with example values: quote QUO-0001, customer PO 4471, the same two lines, VAT and the balance due.",
+  },
 };
 
 /** Display names where the gear needs a fuller name than the traveller's short label. */
@@ -83,6 +132,7 @@ export const GEAR_STAGES: readonly GearStage[] = FLOW_STEPS.map((step) => ({
   solves: SOLVES[step.id] ?? null,
   details: DETAILS[step.id],
   teeth: TEETH[step.id],
+  shot: SHOTS[step.id],
 }));
 
 export const GEAR_COPY = {
@@ -95,6 +145,10 @@ export const GEAR_COPY = {
   previous: "Previous stage",
   next: "Next stage",
   selector: "Stages of one job",
+  shotNote: "example data",
+  fullSize: "View full size",
+  close: "Close",
+  hideViewer: "Hide this view",
 } as const;
 
 export const STAGE_COUNT = GEAR_STAGES.length;

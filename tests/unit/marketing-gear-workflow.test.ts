@@ -4,6 +4,8 @@
  * inverse ratios, no collisions), phones get touch-sized gears, and the markup keeps the page's rules (one tablist on the page,
  * one Illustration label here, no figures, radio groups with one checked stage, no empty paragraphs).
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -125,6 +127,37 @@ describe.each(layouts)("the $variant gear train", (layout) => {
   });
 });
 
+/** Width and height of a lossy or lossless WebP, read from its header (VP8 or VP8L chunk). */
+function webpSize(file: string): { width: number; height: number } {
+  const b = readFileSync(file);
+  expect(b.toString("ascii", 0, 4)).toBe("RIFF");
+  expect(b.toString("ascii", 8, 12)).toBe("WEBP");
+  const chunk = b.toString("ascii", 12, 16);
+  if (chunk === "VP8 ") return { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff };
+  if (chunk === "VP8L") { const v = b.readUInt32LE(21); return { width: (v & 0x3fff) + 1, height: ((v >> 14) & 0x3fff) + 1 }; }
+  return { width: b.readUIntLE(24, 3) + 1, height: b.readUIntLE(27, 3) + 1 }; // VP8X
+}
+
+describe("stage images", () => {
+  it("every stage has its own image in public/marketing/workflow, at the size the markup states", () => {
+    const srcs = GEAR_STAGES.map((s) => s.shot.src);
+    expect(new Set(srcs).size).toBe(STAGE_COUNT);
+    for (const stage of GEAR_STAGES) {
+      expect(stage.shot.src).toMatch(/^\/marketing\/workflow\/[a-z-]+\.webp$/);
+      expect(webpSize(join(process.cwd(), "public", stage.shot.src))).toEqual({ width: stage.shot.width, height: stage.shot.height });
+    }
+  });
+
+  it("describes each image fully, as example data, without naming a real company or person", () => {
+    for (const stage of GEAR_STAGES) {
+      expect(stage.shot.alt.length).toBeGreaterThan(60);
+      expect(stage.shot.alt).toMatch(/example/i);
+      expect(stage.shot.alt).not.toMatch(/JNR|Marpet|Rhys|John/i);
+      expect(["document", "screen"]).toContain(stage.shot.kind);
+    }
+  });
+});
+
 describe("touch size", () => {
   it("on a 390px phone (about 334px of drawing inside the gutters and the housing), the smallest compact gear is at least 44px across", () => {
     const scale = 334 / COMPACT_LAYOUT.width;
@@ -149,6 +182,14 @@ describe("markup", () => {
   it("names every gear for screen readers and keeps the drawing itself out of the accessibility tree", () => {
     for (let i = 0; i < STAGE_COUNT; i += 1) expect(html).toContain(`aria-label="Stage ${i + 1} of 7: ${GEAR_STAGES[i].label}"`);
     expect(html.match(/<svg class="gw-svg"[^>]*aria-hidden="true"/g)).toHaveLength(2);
+  });
+
+  it("opens the first stage's image beside the gears, level with its gear, offers it full size, and leaves the word Screenshot to the page's own figures", () => {
+    expect(html).toMatch(/<div class="gw-side" style="--gw-notch:calc\(50% \+ -?[\d.]+cqw\)"><section class="gw-view"/);
+    expect(html).toContain(GEAR_STAGES[0].shot.alt);
+    expect(html).toContain("View full size");
+    expect(text).not.toMatch(/Screenshot/);
+    for (const image of html.match(/<img\b[^>]*>/g) ?? []) expect(image).toMatch(/\balt="[^"]{20,}"/);
   });
 
   it("labels the drawing as an illustration once, and shows the first stage's copy before any interaction", () => {

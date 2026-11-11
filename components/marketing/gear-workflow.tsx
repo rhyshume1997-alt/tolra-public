@@ -2,21 +2,41 @@
 
 /*
  * "The Tolra Machine" (public home page, "How Tolra handles it"): seven meshed steel gears, one per stage of a job. Selecting a gear
- * (click, tap, arrow keys, or the Previous / Next buttons) turns the whole train, in mechanically correct directions and ratios, and
+ * (click, tap, arrow keys, the stage chips or Previous / Next) turns the whole train, in mechanically correct directions and ratios,
+ * opens a viewer beside that gear with what the stage looks like in Tolra (a document it produces or a screen, example data), and
  * shows what happens at that stage.
  *
- * Inputs: GEAR_STAGES, GEAR_COPY and the two layouts from lib/marketing/gear-workflow.ts. Output: one section of markup, no data.
+ * Inputs: GEAR_STAGES, GEAR_COPY and the two layouts from lib/marketing/gear-workflow.ts; the stage images in
+ * public/marketing/workflow/. Output: one section of markup, no data.
  * Must not change: the copy (it lives in the marketing module), the booking links and anything outside this section. The gears turn
  * only when someone selects a stage (no autoplay) and never under prefers-reduced-motion; the content reads the same without motion.
- * The hero traveller stays the page's only tablist: the gears are a radio group.
+ * The hero traveller stays the page's only tablist: the gears are a radio group. The word "Screenshot" is reserved for the
+ * "What it does" figures (the page's tests count it), so the viewer says where the image comes from instead.
  */
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from "react";
 
 import {
-  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, STAGE_COUNT, WIDE_LAYOUT, clampStage, driveFor, gearAngle, stepTo, type Gear, type GearLayout,
+  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, STAGE_COUNT, WIDE_LAYOUT, clampStage, driveFor, gearAngle, stepTo,
+  type Gear, type GearLayout, type GearStage, type StageId,
 } from "@/lib/marketing/gear-workflow";
 
 const LAYOUTS: GearLayout[] = [WIDE_LAYOUT, COMPACT_LAYOUT];
+const pct = (n: number, of: number) => `${(n / of) * 100}%`;
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+/** Share of the machine bay the gears take on wide screens; the viewer takes the rest, beside them. Kept in step with .gw-bay. */
+const GEAR_SHARE = 65;
+
+/** Stage marks engraved on each hub cap (24 x 24, one stroke weight). */
+const ICONS: Record<StageId, string> = {
+  enquiry: "M3 13l2.5-7h13L21 13v5H3zM3 13h5l1.5 2.5h5L16 13h5",
+  quote: "M6 3h9l4 4v14H6zM15 3v4h4M9 11h7M9 14.5h7M9 18h4",
+  po: "M5 4h14v16H5zM8 9h8M8 12.5h8M8 16l2 2 4-4",
+  worksheet: "M4 4h16v16H4zM4 9h16M9 9v11M12.5 13h4.5M12.5 16.5h4.5",
+  schedule: "M4 4v16h16M7 8h7M10 12h8M7 16h5",
+  signoff: "M12 3l7 3v6c0 4.4-3 7.7-7 9-4-1.3-7-4.6-7-9V6zM8.5 12l2.5 2.5 4.5-5",
+  invoice: "M6 3h12v18l-2.5-1.6L13 21l-2.5-1.6L8 21l-2-1.6zM9 8h6M9 11.5h6M9 15h3.5",
+};
 
 function Arrow({ back = false }: { back?: boolean }) {
   return (
@@ -25,8 +45,6 @@ function Arrow({ back = false }: { back?: boolean }) {
     </svg>
   );
 }
-const pct = (n: number, of: number) => `${(n / of) * 100}%`;
-const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /** The static (non-turning) shading, sized from the gear's own radii so it reads as machined steel lit from the top left. */
 function GearDefs({ layout }: { layout: GearLayout }) {
@@ -52,17 +70,17 @@ function GearDefs({ layout }: { layout: GearLayout }) {
         <stop offset={0.55} stopColor="#a5aeb9" />
         <stop offset={1} stopColor="#7f8894" />
       </radialGradient>
+      <radialGradient id={`gw-${v}-web`} cx="58%" cy="62%" r="72%">
+        <stop offset={0} stopColor="#9aa3ae" />
+        <stop offset={0.7} stopColor="#828b97" />
+        <stop offset={1} stopColor="#6c7581" />
+      </radialGradient>
       <linearGradient id={`gw-${v}-light`} x1="0" y1="0" x2="1" y2="1">
         <stop offset={0} stopColor="#ffffff" stopOpacity={0.42} />
         <stop offset={0.42} stopColor="#ffffff" stopOpacity={0} />
         <stop offset={0.7} stopColor="#0b1626" stopOpacity={0} />
         <stop offset={1} stopColor="#0b1626" stopOpacity={0.38} />
       </linearGradient>
-      <radialGradient id={`gw-${v}-web`} cx="58%" cy="62%" r="72%">
-        <stop offset={0} stopColor="#9aa3ae" />
-        <stop offset={0.7} stopColor="#828b97" />
-        <stop offset={1} stopColor="#6c7581" />
-      </radialGradient>
       <radialGradient id={`gw-${v}-hole`} cx="40%" cy="35%" r="70%">
         <stop offset={0} stopColor="#0a1322" />
         <stop offset={0.75} stopColor="#111c2e" />
@@ -80,12 +98,20 @@ function GearDefs({ layout }: { layout: GearLayout }) {
   );
 }
 
-/** One gear: the turning parts (teeth, web, lightening holes, bore and keyway) and the still parts (turned rings, light, hub cap). */
-function GearShape({ g, v, angle, active, hot, setRef }: { g: Gear; v: string; angle: number; active: boolean; hot: boolean; setRef: (node: SVGGElement | null) => void }) {
+/**
+ * One gear: the turning parts (teeth, rim, recessed web, lightening holes, boss, bore and keyway) and the still parts (turned
+ * finish, light, hub cap with the stage's mark, selection ring).
+ */
+function GearShape({ g, v, angle, active, hot, mark, setRef }: {
+  g: Gear; v: string; angle: number; active: boolean; hot: boolean; mark: StageId | null; setRef: (node: SVGGElement | null) => void;
+}) {
   const holes = Array.from({ length: g.holes.count }, (_, k) => (360 / g.holes.count) * k);
   const web = g.rr * 0.84;
   const boss = Math.max(g.hub + 1.5, Math.min(g.hub * 1.32, g.holes.at - g.holes.size - 1.6));
-  const rings = [0.93, 0.7, 0.55].map((f) => f * (g.rr - 2));
+  // Fine turning marks: many faint concentric lines, as a face turned on a lathe catches the light.
+  const turns = Array.from({ length: 9 }, (_, k) => (g.rr - 2.5) * (0.97 - k * 0.075));
+  const cap = g.hub * 0.72;
+  const icon = cap * 1.25;
   return (
     <g className={`gw-gear${active ? " gw-on" : ""}${hot ? " gw-hot" : ""}`}>
       <g ref={setRef} transform={`rotate(${angle} ${g.cx} ${g.cy})`}>
@@ -106,20 +132,44 @@ function GearShape({ g, v, angle, active, hot, setRef }: { g: Gear; v: string; a
         </g>
       </g>
       <g pointerEvents="none">
-        {rings.map((rad) => <circle key={rad} cx={g.cx} cy={g.cy} r={rad} fill="none" stroke="#ffffff" strokeOpacity={0.07} strokeWidth={0.6} />)}
+        {turns.map((rad, k) => <circle key={rad} cx={g.cx} cy={g.cy} r={rad} fill="none" stroke="#ffffff" strokeOpacity={k % 2 ? 0.045 : 0.08} strokeWidth={0.5} />)}
         <circle cx={g.cx} cy={g.cy} r={g.ra} fill={`url(#gw-${v}-light)`} />
-        <circle className="gw-cap" cx={g.cx} cy={g.cy} r={g.hub * 0.62} />
-        <text className="gw-num" x={g.cx} y={g.cy} textAnchor="middle" dominantBaseline="central" style={{ fontSize: Math.max(8, g.hub * 0.62) }}>
-          {String(g.index + 1).padStart(2, "0")}
-        </text>
+        <circle className="gw-cap" cx={g.cx} cy={g.cy} r={cap} />
+        {mark ? (
+          <g transform={`translate(${g.cx - icon / 2} ${g.cy - icon / 2}) scale(${icon / 24})`}>
+            <path className="gw-mark" d={ICONS[mark]} />
+          </g>
+        ) : (
+          <text className="gw-num" x={g.cx} y={g.cy} textAnchor="middle" dominantBaseline="central" style={{ fontSize: Math.max(8, g.hub * 0.62) }}>
+            {String(g.index + 1).padStart(2, "0")}
+          </text>
+        )}
         <circle className="gw-ring" cx={g.cx} cy={g.cy} r={g.ra + 5} />
       </g>
     </g>
   );
 }
 
+/** The stage's image, framed as what it is: a sheet of paper for a document, an app window for a screen. */
+function StageImage({ stage, sizes, priority = false }: { stage: GearStage; sizes: string; priority?: boolean }) {
+  const shot = stage.shot;
+  return (
+    <div className={shot.kind === "document" ? "gw-paper" : "gw-window"}>
+      {shot.kind === "screen" ? (
+        <div className="gw-window-bar" aria-hidden="true">
+          <span className="gw-window-dot" />
+          <span className="mk-mono">Tolra · {shot.source}</span>
+        </div>
+      ) : null}
+      <div className="gw-shot">
+        <Image src={shot.src} width={shot.width} height={shot.height} alt={shot.alt} sizes={sizes} priority={priority} />
+      </div>
+    </div>
+  );
+}
+
 function Assembly({ layout, active, hot, setHot, onPick, gearRefs, interactive }: {
-  layout: GearLayout; active: number; hot: number; setHot: (i: number) => void; onPick: (i: number, focus: boolean) => void;
+  layout: GearLayout; active: number; hot: number; setHot: (i: number) => void; onPick: (i: number) => void;
   gearRefs: MutableRefObject<Array<SVGGElement | null>>; interactive: boolean;
 }) {
   const v = layout.variant;
@@ -133,7 +183,7 @@ function Assembly({ layout, active, hot, setHot, onPick, gearRefs, interactive }
     if (event.key === "End") next = STAGE_COUNT - 1;
     if (next === null) return;
     event.preventDefault();
-    onPick(next, false);
+    onPick(next);
     radios.current[next]?.focus();
   };
   return (
@@ -144,7 +194,7 @@ function Assembly({ layout, active, hot, setHot, onPick, gearRefs, interactive }
           <circle key={`s${g.index}`} cx={g.cx + layout.module * 0.8} cy={g.cy + layout.module * 1.3} r={g.ra} fill="#020611" opacity={0.55} filter={`url(#gw-${v}-shadow)`} />
         ))}
         {layout.gears.map((g) => (
-          <GearShape key={g.index} g={g} v={v} angle={gearAngle(g, 0)} active={g.index === active} hot={g.index === hot} setRef={(node) => { gearRefs.current[g.index] = node; }} />
+          <GearShape key={g.index} g={g} v={v} angle={gearAngle(g, 0)} active={g.index === active} hot={g.index === hot} mark={v === "wide" ? GEAR_STAGES[g.index].id : null} setRef={(node) => { gearRefs.current[g.index] = node; }} />
         ))}
         {v === "wide"
           ? layout.gears.map((g) => {
@@ -181,7 +231,7 @@ function Assembly({ layout, active, hot, setHot, onPick, gearRefs, interactive }
               aria-label={interactive ? `Stage ${g.index + 1} of ${STAGE_COUNT}: ${s.label}` : undefined}
               tabIndex={interactive ? (on ? 0 : -1) : -1}
               style={{ left: pct(g.cx - g.ra, layout.width), top: pct(g.cy - g.ra, layout.height), width: pct(g.ra * 2, layout.width) }}
-              onClick={() => onPick(g.index, false)}
+              onClick={() => onPick(g.index)}
               onPointerEnter={() => setHot(g.index)}
               onPointerLeave={() => setHot(-1)}
             />
@@ -197,11 +247,11 @@ export function GearWorkflow() {
   const [hot, setHot] = useState(-1);
   const drive = useRef(0);
   const frame = useRef(0);
+  const activeRef = useRef(0);
   const wideRefs = useRef<Array<SVGGElement | null>>([]);
   const compactRefs = useRef<Array<SVGGElement | null>>([]);
   const chips = useRef<Array<HTMLButtonElement | null>>([]);
-
-  const activeRef = useRef(0);
+  const dialog = useRef<HTMLDialogElement | null>(null);
 
   // The train only turns while a selection is animating; stop any frame still queued when the section unmounts.
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
@@ -251,6 +301,23 @@ export function GearWorkflow() {
   };
 
   const stage = GEAR_STAGES[active];
+  const openFull = () => dialog.current?.showModal();
+  // The pointer on the viewer's edge sits level with the selected gear: the bay centres the gears, so offset from the middle by the
+  // gear's distance from the drawing's middle, scaled to the gears' share of the bay width (container query units).
+  const sel = WIDE_LAYOUT.gears[active];
+  const notch = `calc(50% + ${(((sel.cy - WIDE_LAYOUT.height / 2) / WIDE_LAYOUT.width) * GEAR_SHARE).toFixed(3)}cqw)`;
+  const viewer = (
+    <section className="gw-view" key={stage.id} aria-label={`${stage.label} in Tolra`}>
+      <div className="gw-view-head">
+        <p className="mk-label gw-view-op">Op {stage.op} · {stage.label}</p>
+      </div>
+      <button type="button" className="gw-view-open" onClick={openFull} aria-label={`${GEAR_COPY.fullSize}: ${stage.shot.source}`}>
+        <StageImage stage={stage} sizes="(min-width: 1240px) 440px, 36vw" />
+      </button>
+      <p className="gw-view-foot"><span className="mk-label">{stage.shot.source} · {GEAR_COPY.shotNote}</span><button type="button" className="mk-link gw-view-link" onClick={openFull}>{GEAR_COPY.fullSize}</button></p>
+    </section>
+  );
+
   return (
     <div className="gw">
       <div className="gw-machine">
@@ -262,7 +329,10 @@ export function GearWorkflow() {
           <span className="mk-label gw-plate-label">The Tolra machine</span>
           <span className="mk-label gw-plate-label">{GEAR_COPY.illustration}, {GEAR_COPY.example}</span>
         </div>
-        <Assembly layout={WIDE_LAYOUT} active={active} hot={hot} setHot={setHot} onPick={pick} gearRefs={wideRefs} interactive />
+        <div className="gw-bay">
+          <Assembly layout={WIDE_LAYOUT} active={active} hot={hot} setHot={setHot} onPick={pick} gearRefs={wideRefs} interactive />
+          <div className="gw-side" style={{ ["--gw-notch" as string]: notch }}>{viewer}</div>
+        </div>
         <Assembly layout={COMPACT_LAYOUT} active={active} hot={hot} setHot={setHot} onPick={pick} gearRefs={compactRefs} interactive={false} />
       </div>
 
@@ -282,6 +352,14 @@ export function GearWorkflow() {
             <span>{s.label}</span>
           </button>
         ))}
+      </div>
+
+      {/* Below 1100px: the stage's image in a fixed-size frame above the details, so nothing moves when it changes. */}
+      <div className="gw-mview">
+        <button type="button" className="gw-mview-open" onClick={openFull} aria-label={`${GEAR_COPY.fullSize}: ${stage.shot.source}`}>
+          <StageImage stage={stage} sizes="100vw" key={stage.id} />
+        </button>
+        <p className="gw-view-foot"><span className="mk-label">{stage.shot.source} · {GEAR_COPY.shotNote}</span><button type="button" className="mk-link gw-view-link" onClick={openFull}>{GEAR_COPY.fullSize}</button></p>
       </div>
 
       <div className="gw-panel">
@@ -327,6 +405,16 @@ export function GearWorkflow() {
           </button>
         </div>
       </div>
+
+      <dialog ref={dialog} className="gw-dialog" aria-label={`${stage.shot.source}, ${GEAR_COPY.shotNote}`} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
+        <div className="gw-dialog-bar">
+          <span className="mk-label">Op {stage.op} · {stage.shot.source} · {GEAR_COPY.shotNote}</span>
+          <button type="button" className="gw-step" onClick={() => dialog.current?.close()}>{GEAR_COPY.close}</button>
+        </div>
+        <div className="gw-dialog-body">
+          <Image src={stage.shot.src} width={stage.shot.width} height={stage.shot.height} alt={stage.shot.alt} sizes="(min-width: 1200px) 1100px, 96vw" />
+        </div>
+      </dialog>
     </div>
   );
 }
