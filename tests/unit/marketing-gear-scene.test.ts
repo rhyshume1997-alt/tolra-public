@@ -11,7 +11,7 @@ import { PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
 import {
-  ANALYTICS_STAGE, PLANNED_COPY, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, chooseTier, driveFor, gearAngle, parseGearsParam,
+  ANALYTICS_STAGE, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, chooseTier, driveFor, gearAngle, parseGearsParam,
 } from "@/lib/marketing/gear-workflow";
 import {
   BESIDE_SCREEN, FOV, MACHINE, SCENE_COPY, displayBox, overviewStop, projectPoints, quadMatrix, revealStop, stageStop, toothOutline,
@@ -19,41 +19,35 @@ import {
 } from "@/lib/marketing/gear-scene";
 
 describe("the ?gears= switch", () => {
-  it("shows the 2D drawing unless 3D is asked for, and only shows the compare switch on request", () => {
-    expect(parseGearsParam("")).toEqual({ mode: "2d", compare: false });
+  it("shows the 3D machine unless the 2D drawing is asked for, and only shows the compare switch on request", () => {
+    expect(parseGearsParam("")).toEqual({ mode: "3d", compare: false });
     expect(parseGearsParam("?gears=3d")).toEqual({ mode: "3d", compare: false });
     expect(parseGearsParam("?gears=2d&compare")).toEqual({ mode: "2d", compare: true });
-    expect(parseGearsParam("?gears=4d&compare=1")).toEqual({ mode: "2d", compare: true });
+    expect(parseGearsParam("?gears=4d&compare=1")).toEqual({ mode: "3d", compare: true });
   });
 });
 
 describe("words", () => {
   it("keep the page's content rules", () => {
     const analytics = [ANALYTICS_STAGE.caption, ...ANALYTICS_STAGE.details, ...ANALYTICS_STAGE.record.flat(), ANALYTICS_STAGE.shot.alt];
-    for (const line of [...Object.values(SCENE_COPY), ...Object.values(VERSION_COPY), ...Object.values(PLANNED_COPY), ...analytics]) {
+    for (const line of [...Object.values(SCENE_COPY), ...Object.values(VERSION_COPY), ...analytics]) {
       expect(line).not.toMatch(/£|\$|€|\d\s*%/);
       expect(line).not.toMatch(/\b(?:we|our|us|price|pricing|testimonial|import|backups?|GitHub|Xero|Sage|QuickBooks|Screenshot)\b/i);
     }
   });
 });
 
-describe("the planned Analytics view", () => {
-  it("comes after the seven stages of a job and says everywhere that it is planned, with example values, not a feature today", () => {
+describe("Analytics", () => {
+  it("comes after the seven stages of a job, as Op 80, with its own picture and example values", () => {
     expect(SCENE_STAGES).toHaveLength(STAGE_COUNT + 1);
-    expect(SCENE_STAGES.slice(0, STAGE_COUNT).every((s) => !s.planned)).toBe(true);
     expect(SCENE_STAGES[STAGE_COUNT]).toBe(ANALYTICS_STAGE);
-    expect(ANALYTICS_STAGE.planned).toBe(true);
-    expect(ANALYTICS_STAGE.stamp).toBe("PLANNED");
-    expect(ANALYTICS_STAGE.caption).toMatch(/^Planned:/);
-    expect(ANALYTICS_STAGE.details[0]).toMatch(/Not in Tolra yet/);
-    for (const line of ANALYTICS_STAGE.details.slice(1)) expect(line).toMatch(/^Planned/);
-    expect(ANALYTICS_STAGE.shot.alt).toMatch(/^Illustration of a planned/);
-    expect(ANALYTICS_STAGE.shot.alt).toMatch(/example values only/);
-    expect(ANALYTICS_STAGE.shot.alt).toMatch(/Not a feature in Tolra yet\.$/);
-    expect(ANALYTICS_STAGE.record.map(([, v]) => v).join(" ")).toMatch(/Planned, not in Tolra yet/);
+    expect(ANALYTICS_STAGE.label).toBe("Analytics");
+    expect(ANALYTICS_STAGE.op).toBe("80");
+    expect(ANALYTICS_STAGE.shot.alt).toMatch(/example values/);
+    expect(ANALYTICS_STAGE.shot.alt).not.toMatch(/JNR|Marpet|Rhys/i);
   });
 
-  it("has its illustration in public/marketing/workflow, at the size the markup states", () => {
+  it("has its picture in public/marketing/workflow, at the size the markup states", () => {
     const b = readFileSync(join(process.cwd(), "public", ANALYTICS_STAGE.shot.src));
     expect(b.toString("ascii", 0, 4)).toBe("RIFF");
     expect(b.toString("ascii", 8, 12)).toBe("WEBP");
@@ -168,7 +162,7 @@ describe("the machine layout", () => {
     expect(gears[0].x).toBeLessThan(disp.x0);
     expect(gears[6].x).toBeGreaterThan(disp.x1);
     expect(gears[3].y - gears[3].ra).toBeGreaterThan(disp.y1);
-    // The planned Analytics gear hangs below the invoice gear, driven by it.
+    // The Analytics gear hangs below the invoice gear, driven by it.
     expect(gears).toHaveLength(STAGE_COUNT + 1);
     expect(gears[7].y).toBeLessThan(gears[6].y);
     expect(gears[7].x).toBeCloseTo(gears[6].x, 2);
@@ -178,7 +172,7 @@ describe("the machine layout", () => {
     const boxes = labels.map((l) => ({ x0: l.x - l.w / 2, y0: l.y - l.h / 2, x1: l.x + l.w / 2, y1: l.y + l.h / 2 }));
     boxes.forEach((b, i) => {
       expect(labels[i].lines.join(" ")).toBe(SCENE_STAGES[i].label.toUpperCase());
-      expect(labels[i].op).toBe(SCENE_STAGES[i].planned ? "PLANNED" : `OP ${SCENE_STAGES[i].op}`);
+      expect(labels[i].op).toBe(`OP ${SCENE_STAGES[i].op}`);
       expect(overlap(b, disp)).toBe(false);
       for (const g of gears) expect(distToBox(g.x, g.y, b)).toBeGreaterThan(g.ra);
       for (let j = i + 1; j < boxes.length; j += 1) expect(overlap(b, boxes[j])).toBe(false);
