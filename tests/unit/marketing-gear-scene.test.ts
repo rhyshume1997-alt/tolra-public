@@ -4,12 +4,17 @@
  * angle of the train; the gears arch over the display without touching it or each other; the etched labels clear the gears and the
  * display; and every camera stop keeps what it is meant to show inside the frame, on a wide screen and on a phone.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { PerspectiveCamera, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 
-import { GEAR_STAGES, STAGE_COUNT, VERSION_COPY, chooseTier, driveFor, gearAngle, parseGearsParam } from "@/lib/marketing/gear-workflow";
 import {
-  FOV, MACHINE, SCENE_COPY, displayBox, overviewStop, projectPoints, revealStop, stageStop, toothOutline,
+  ANALYTICS_STAGE, PLANNED_COPY, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, chooseTier, driveFor, gearAngle, parseGearsParam,
+} from "@/lib/marketing/gear-workflow";
+import {
+  BESIDE_SCREEN, FOV, MACHINE, SCENE_COPY, displayBox, overviewStop, projectPoints, quadMatrix, revealStop, stageStop, toothOutline,
   type Box, type CameraStop,
 } from "@/lib/marketing/gear-scene";
 
@@ -24,25 +29,55 @@ describe("the ?gears= switch", () => {
 
 describe("words", () => {
   it("keep the page's content rules", () => {
-    for (const line of [...Object.values(SCENE_COPY), ...Object.values(VERSION_COPY)]) {
+    const analytics = [ANALYTICS_STAGE.caption, ...ANALYTICS_STAGE.details, ...ANALYTICS_STAGE.record.flat(), ANALYTICS_STAGE.shot.alt];
+    for (const line of [...Object.values(SCENE_COPY), ...Object.values(VERSION_COPY), ...Object.values(PLANNED_COPY), ...analytics]) {
       expect(line).not.toMatch(/£|\$|€|\d\s*%/);
       expect(line).not.toMatch(/\b(?:we|our|us|price|pricing|testimonial|import|backups?|GitHub|Xero|Sage|QuickBooks|Screenshot)\b/i);
     }
   });
 });
 
+describe("the planned Analytics view", () => {
+  it("comes after the seven stages of a job and says everywhere that it is planned, with example values, not a feature today", () => {
+    expect(SCENE_STAGES).toHaveLength(STAGE_COUNT + 1);
+    expect(SCENE_STAGES.slice(0, STAGE_COUNT).every((s) => !s.planned)).toBe(true);
+    expect(SCENE_STAGES[STAGE_COUNT]).toBe(ANALYTICS_STAGE);
+    expect(ANALYTICS_STAGE.planned).toBe(true);
+    expect(ANALYTICS_STAGE.stamp).toBe("PLANNED");
+    expect(ANALYTICS_STAGE.caption).toMatch(/^Planned:/);
+    expect(ANALYTICS_STAGE.details[0]).toMatch(/Not in Tolra yet/);
+    for (const line of ANALYTICS_STAGE.details.slice(1)) expect(line).toMatch(/^Planned/);
+    expect(ANALYTICS_STAGE.shot.alt).toMatch(/^Illustration of a planned/);
+    expect(ANALYTICS_STAGE.shot.alt).toMatch(/example values only/);
+    expect(ANALYTICS_STAGE.shot.alt).toMatch(/Not a feature in Tolra yet\.$/);
+    expect(ANALYTICS_STAGE.record.map(([, v]) => v).join(" ")).toMatch(/Planned, not in Tolra yet/);
+  });
+
+  it("has its illustration in public/marketing/workflow, at the size the markup states", () => {
+    const b = readFileSync(join(process.cwd(), "public", ANALYTICS_STAGE.shot.src));
+    expect(b.toString("ascii", 0, 4)).toBe("RIFF");
+    expect(b.toString("ascii", 8, 12)).toBe("WEBP");
+    const chunk = b.toString("ascii", 12, 16);
+    const size = chunk === "VP8 "
+      ? { width: b.readUInt16LE(26) & 0x3fff, height: b.readUInt16LE(28) & 0x3fff }
+      : chunk === "VP8L"
+        ? { width: (b.readUInt32LE(21) & 0x3fff) + 1, height: ((b.readUInt32LE(21) >> 14) & 0x3fff) + 1 }
+        : { width: b.readUIntLE(24, 3) + 1, height: b.readUIntLE(27, 3) + 1 };
+    expect(size).toEqual({ width: ANALYTICS_STAGE.shot.width, height: ANALYTICS_STAGE.shot.height });
+  });
+});
+
 describe("render tier", () => {
-  const desk = { webgl: true, reducedMotion: false, width: 1440, cores: 8, memory: 8 };
-  it("falls back to the 2D drawing without WebGL or with reduced motion", () => {
+  const desk = { webgl: true, width: 1440, cores: 8, memory: 8 };
+  it("falls back to the 2D drawing only without WebGL (reduced motion keeps the 3D version, with every move made instantly)", () => {
     expect(chooseTier({ ...desk, webgl: false })).toBe("none");
-    expect(chooseTier({ ...desk, reducedMotion: true })).toBe("none");
   });
   it("uses the lighter scene on phones, tablets and low-power machines, and the full scene on a capable desktop", () => {
     expect(chooseTier({ ...desk, width: 390 })).toBe("lite");
     expect(chooseTier({ ...desk, width: 768 })).toBe("lite");
     expect(chooseTier({ ...desk, cores: 4 })).toBe("lite");
     expect(chooseTier({ ...desk, memory: 2 })).toBe("lite");
-    expect(chooseTier({ webgl: true, reducedMotion: false, width: 1440 })).toBe("full");
+    expect(chooseTier({ webgl: true, width: 1440 })).toBe("full");
     expect(chooseTier(desk)).toBe("full");
   });
 });
@@ -70,7 +105,7 @@ const overlap = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 &&
 
 describe("involute teeth", () => {
   it("reach exactly the tip circle and the root circle, every tooth the same, symmetric about its centre line", () => {
-    for (const n of new Set(GEAR_STAGES.map((s) => s.teeth))) {
+    for (const n of new Set(SCENE_STAGES.map((s) => s.teeth))) {
       const pts = toothOutline(n);
       const radii = pts.map(([x, y]) => Math.hypot(x, y));
       expect(Math.max(...radii)).toBeCloseTo(n / 2 + 1, 6);
@@ -98,7 +133,7 @@ describe("involute teeth", () => {
 
   it("never cut into the next gear's teeth, at rest or at any angle of the train", () => {
     for (const drive of [0, 3.3, 7, 11.9, driveFor(1), driveFor(3), -37]) {
-      for (let i = 0; i < STAGE_COUNT - 1; i += 1) {
+      for (let i = 0; i < MACHINE.gears.length - 1; i += 1) {
         const a = MACHINE.gears[i];
         const b = MACHINE.gears[i + 1];
         // Work in the 2D drawing's convention (y down): the scene mirrors it, and a mirror keeps contact and clearance.
@@ -133,12 +168,17 @@ describe("the machine layout", () => {
     expect(gears[0].x).toBeLessThan(disp.x0);
     expect(gears[6].x).toBeGreaterThan(disp.x1);
     expect(gears[3].y - gears[3].ra).toBeGreaterThan(disp.y1);
+    // The planned Analytics gear hangs below the invoice gear, driven by it.
+    expect(gears).toHaveLength(STAGE_COUNT + 1);
+    expect(gears[7].y).toBeLessThan(gears[6].y);
+    expect(gears[7].x).toBeCloseTo(gears[6].x, 2);
   });
 
   it("etches each stage's label clear of every gear, the display and the other labels, inside the plate", () => {
     const boxes = labels.map((l) => ({ x0: l.x - l.w / 2, y0: l.y - l.h / 2, x1: l.x + l.w / 2, y1: l.y + l.h / 2 }));
     boxes.forEach((b, i) => {
-      expect(labels[i].lines.join(" ")).toBe(GEAR_STAGES[i].label.toUpperCase());
+      expect(labels[i].lines.join(" ")).toBe(SCENE_STAGES[i].label.toUpperCase());
+      expect(labels[i].op).toBe(SCENE_STAGES[i].planned ? "PLANNED" : `OP ${SCENE_STAGES[i].op}`);
       expect(overlap(b, disp)).toBe(false);
       for (const g of gears) expect(distToBox(g.x, g.y, b)).toBeGreaterThan(g.ra);
       for (let j = i + 1; j < boxes.length; j += 1) expect(overlap(b, boxes[j])).toBe(false);
@@ -181,17 +221,17 @@ describe("camera stops", () => {
     });
   });
 
-  for (const [name, aspect, tier] of [["desktop", 2.05, "full"], ["tablet", 1.25, "lite"], ["phone", 1.05, "lite"]] as const) {
+  for (const [name, aspect, tier] of [["desktop", 1.8, "full"], ["wide desktop", 2.05, "full"], ["tablet", 1.25, "lite"], ["phone", 1.05, "lite"]] as const) {
     it(`${name}: the overview and the final reveal show every gear and the display`, () => {
       for (const stop of [overviewStop(aspect), revealStop(aspect)]) {
-        const all = [...Array.from({ length: STAGE_COUNT }, (_, i) => ring(i)).flat(), ...screen()];
+        const all = [...MACHINE.gears.map((_, i) => ring(i)).flat(), ...screen()];
         expect(inFrame(project(stop, aspect, all))).toBe(true);
       }
     });
 
     it(`${name}: each stage keeps its gear and the display in frame, and comes closer than the overview`, () => {
       const far = Math.hypot(...overviewStop(aspect).position.map((v, k) => v - overviewStop(aspect).target[k]));
-      for (let i = 0; i < STAGE_COUNT; i += 1) {
+      for (let i = 0; i < MACHINE.gears.length; i += 1) {
         const stop = stageStop(i, aspect, tier);
         expect(inFrame(project(stop, aspect, [...ring(i), ...screen()]))).toBe(true);
         const near = Math.hypot(...stop.position.map((v, k) => v - stop.target[k]));
@@ -200,4 +240,45 @@ describe("camera stops", () => {
       }
     });
   }
+
+  it.each([1.8, 1.5])("beside the lifted screen (aspect %s): each gear sits in the left part of the frame, clear of the screen, closer than the overview", (aspect) => {
+    const far = Math.hypot(...overviewStop(aspect).position.map((v, k) => v - overviewStop(aspect).target[k]));
+    for (let i = 0; i < MACHINE.gears.length; i += 1) {
+      const stop = stageStop(i, aspect, "full", true);
+      for (const p of project(stop, aspect, ring(i))) {
+        expect(p.x).toBeGreaterThanOrEqual(BESIDE_SCREEN.cx - BESIDE_SCREEN.hw - 1e-6);
+        expect(p.x).toBeLessThanOrEqual(BESIDE_SCREEN.cx + BESIDE_SCREEN.hw + 1e-6);
+        expect(Math.abs(p.y)).toBeLessThanOrEqual(1);
+      }
+      expect(Math.hypot(...stop.position.map((v, k) => v - stop.target[k]))).toBeLessThan(far);
+    }
+  });
+});
+
+describe("pinning the HTML screen onto the scene", () => {
+  const apply = (m: number[], x: number, y: number) => {
+    const w = m[3] * x + m[7] * y + m[15];
+    return [(m[0] * x + m[4] * y + m[12]) / w, (m[1] * x + m[5] * y + m[13]) / w];
+  };
+  it("maps the element's corners onto any four points, in order, and an upright rectangle with a plain scale and move", () => {
+    const quads: Array<Array<[number, number]>> = [
+      [[100, 80], [520, 60], [560, 330], [90, 300]],
+      [[300, 400], [700, 420], [760, 600], [240, 590]],
+      [[10, 20], [410, 20], [410, 270], [10, 270]],
+    ];
+    for (const q of quads) {
+      const m = quadMatrix(800, 500, q);
+      const corners = [[0, 0], [800, 0], [800, 500], [0, 500]];
+      corners.forEach(([x, y], k) => {
+        const [px, py] = apply(m, x, y);
+        expect(px).toBeCloseTo(q[k][0], 6);
+        expect(py).toBeCloseTo(q[k][1], 6);
+      });
+    }
+    const flat = quadMatrix(800, 500, quads[2]);
+    expect(flat[3]).toBeCloseTo(0, 9);
+    expect(flat[7]).toBeCloseTo(0, 9);
+    expect(flat[0]).toBeCloseTo(0.5, 9);
+    expect(flat[5]).toBeCloseTo(0.5, 9);
+  });
 });

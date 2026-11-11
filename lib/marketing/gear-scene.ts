@@ -2,13 +2,15 @@
  * The Tolra Machine in 3D: the pure geometry and choices behind components/marketing/gear-workflow-3d.tsx, kept here so they can be
  * tested without a browser.
  *
- * Inputs: the seven stages, their tooth counts and the chain layout (meshing phases) from lib/marketing/gear-workflow.ts.
+ * Inputs: the seven stages and the planned Analytics view (SCENE_STAGES), their tooth counts and the chain layout (meshing phases)
+ * from lib/marketing/gear-workflow.ts.
  * Outputs: the ring of gears around the display (world units, y up, plate top at z = 0), involute tooth outlines, the etched label
- * boxes, camera stops for the overview, each stage and the final reveal, and the words the 3D version adds. (The ?gears= switch
+ * boxes, camera stops for the overview, each stage (whole frame, or beside the lifted screen) and the final reveal, the matrix that
+ * pins the HTML screen onto the scene, and the words the 3D version adds. (The ?gears= switch
  * and the render tier live in lib/marketing/gear-workflow.ts, so the home page can read them without this module.)
  * Must not change: the stage order, tooth counts and meshing rules (shared with the 2D drawing and its tests).
  */
-import { GEAR_STAGES, STAGE_COUNT, layoutChain, type Gear, type RenderTier } from "./gear-workflow";
+import { SCENE_STAGES, STAGE_COUNT, layoutChain, type Gear, type RenderTier } from "./gear-workflow";
 
 export type { RenderTier } from "./gear-workflow";
 
@@ -52,8 +54,11 @@ export function toothOutline(teeth: number, module = 1, flankSamples = 5, backla
 /* The machine: a ring of gears around the display                                                                                  */
 /* ------------------------------------------------------------------------------------------------------------------------------ */
 
-/** The chain turns up, across and down, so the seven gears arch over the display set into the plate. */
-export const RING_ANGLES = [-65, -30, 5, -5, 30, 65] as const;
+/**
+ * The chain turns up, across and down, so the seven stage gears arch over the display set into the plate; the planned Analytics
+ * gear hangs below the invoice gear, driven by it.
+ */
+export const RING_ANGLES = [-65, -30, 5, -5, 30, 65, 90] as const;
 
 export type Box = { x0: number; y0: number; x1: number; y1: number };
 
@@ -85,7 +90,7 @@ export type MachineScene = {
 /** Label text size in world units: the stage name, and the OP number above it. */
 export const LABEL_TEXT = { name: 1.7, op: 1.05, gap: 0.45, perChar: 0.9 } as const;
 /** Which side of its gear each stage's label sits on, away from the display. */
-const LABEL_SIDE = ["below", "left", "above", "above", "above", "right", "below"] as const;
+const LABEL_SIDE = ["below", "left", "above", "above", "above", "right", "right", "below"] as const;
 const LABEL_GAP = 2.2;
 /** Labels above a gear sit further off: seen from the front at an angle, the gear's height would otherwise hide them. */
 const LABEL_GAP_ABOVE = 5.6;
@@ -109,7 +114,7 @@ function wrapName(label: string, side: (typeof LABEL_SIDE)[number]): string[] {
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 function buildScene(): MachineScene {
-  const chain = layoutChain("wide", 1, RING_ANGLES, 0);
+  const chain = layoutChain("wide", 1, RING_ANGLES, 0, 0, SCENE_STAGES.map((s) => s.teeth));
   const g0 = chain.gears[0];
   const g6 = chain.gears[STAGE_COUNT - 1];
   // Display: centred between the first and last gear, sitting low inside the arch (chain units, y down).
@@ -122,13 +127,13 @@ function buildScene(): MachineScene {
   // Labels, in chain units (y down), on the side of each gear away from the display.
   const rawLabels = chain.gears.map((g, i) => {
     const side = LABEL_SIDE[i];
-    const lines = wrapName(GEAR_STAGES[i].label, side);
+    const lines = wrapName(SCENE_STAGES[i].label, side);
     const w = Math.max(6, ...lines.map((l) => l.length * LABEL_TEXT.perChar));
     const h = LABEL_TEXT.op + LABEL_TEXT.gap + lines.length * LABEL_TEXT.name * 1.1;
     const off = g.ra + (side === "above" ? LABEL_GAP_ABOVE : LABEL_GAP);
     const x = side === "left" ? g.cx - off - w / 2 : side === "right" ? g.cx + off + w / 2 : g.cx;
     const y = side === "above" ? g.cy - off - h / 2 : side === "below" ? g.cy + off + h / 2 : g.cy;
-    return { index: i, op: `OP ${GEAR_STAGES[i].op}`, lines, x, y, w, h };
+    return { index: i, op: SCENE_STAGES[i].planned ? SCENE_STAGES[i].stamp : `OP ${SCENE_STAGES[i].op}`, lines, x, y, w, h };
   });
 
   const boxes: Box[] = [
@@ -212,12 +217,18 @@ export function projectPoints(stop: CameraStop, aspect: number, points: readonly
   });
 }
 
+/** Part of the frame, in normalised device coordinates: centre and half-size. The whole frame is { cx: 0, cy: 0, hw: 1, hh: 1 }. */
+export type FrameWindow = { cx: number; cy: number; hw: number; hh: number };
+const WHOLE: FrameWindow = { cx: 0, cy: 0, hw: 1, hh: 1 };
+/** Where the machine sits while the lifted screen stands upright on the right of the frame: the left part, clear of the screen. */
+export const BESIDE_SCREEN: FrameWindow = { cx: -0.55, cy: 0.02, hw: 0.42, hh: 0.86 };
+
 /**
  * A camera that frames `box` (world units, on the plate, up to `height` above it) at the given aspect: tilted `tilt` degrees from
- * straight down towards the viewer and swung `yaw` degrees to the side, then panned and dollied until the box sits centred with
- * `margin` to spare (1.1 = the box fills 1 / 1.1 of the frame's tighter side).
+ * straight down towards the viewer and swung `yaw` degrees to the side, then panned and dollied until the box sits centred in `win`
+ * (the whole frame unless given) with `margin` to spare (1.1 = the box fills 1 / 1.1 of the window's tighter side).
  */
-export function frameBox(box: Box, aspect: number, tilt: number, yaw: number, margin: number, height = 6): CameraStop {
+export function frameBox(box: Box, aspect: number, tilt: number, yaw: number, margin: number, height = 6, win: FrameWindow = WHOLE): CameraStop {
   const corners: V[] = [];
   for (const x of [box.x0, box.x1]) for (const y of [box.y0, box.y1]) for (const z of [0, height]) corners.push([x, y, z]);
   const t = rad(tilt);
@@ -231,9 +242,9 @@ export function frameBox(box: Box, aspect: number, tilt: number, yaw: number, ma
     const pts = projectPoints(stop, aspect, corners);
     const xs = pts.map((p) => p[0]);
     const ys = pts.map((p) => p[1]);
-    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-    const fill = Math.max((Math.max(...xs) - Math.min(...xs)) / 2, (Math.max(...ys) - Math.min(...ys)) / 2);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2 - win.cx;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2 - win.cy;
+    const fill = Math.max((Math.max(...xs) - Math.min(...xs)) / 2 / win.hw, (Math.max(...ys) - Math.min(...ys)) / 2 / win.hh);
     // Pan so the box is centred, along the camera's own right and up axes, then dolly so it fills the frame less the margin.
     const f = norm(sub(stop.target, stop.position));
     const r = norm(cross(f, [0, 0, 1]));
@@ -266,17 +277,53 @@ export const displayBox = (): Box => {
 
 const union = (a: Box, b: Box): Box => ({ x0: Math.min(a.x0, b.x0), y0: Math.min(a.y0, b.y0), x1: Math.max(a.x1, b.x1), y1: Math.max(a.y1, b.y1) });
 
-/** The whole machine, nearly square on. */
+/** The whole machine, nearly square on, with a strip clear at the bottom for the caption bar over the canvas. */
 export function overviewStop(aspect: number): CameraStop {
-  return frameBox(MACHINE.bounds, aspect, 18, 0, 1.06);
+  const b = MACHINE.bounds;
+  return frameBox({ ...b, y0: b.y0 - (b.y1 - b.y0) * 0.08 }, aspect, 18, 0, 1.04);
 }
 
-/** Leaning in towards the selected gear, with the display still in view, so the gear and what it does are seen together. */
-export function stageStop(index: number, aspect: number, tier: RenderTier = "full"): CameraStop {
+/** A gear and its label, with a margin that takes in the teeth of the gears it meshes with, so the close-up shows it driving. */
+const meshBox = (i: number): Box => {
+  const b = gearBox(i);
+  const m = MACHINE.gears[i].ra * 0.35;
+  return { x0: b.x0 - m, y0: b.y0 - m, x1: b.x1 + m, y1: b.y1 + m };
+};
+
+/**
+ * Leaning in towards the selected gear. Whole frame (phones, and the in-plate display): the gear and the display together, so the
+ * gear and what it does are seen at once. Beside the lifted screen (`beside`): a closer view of the gear and its neighbours in the
+ * left part of the frame, clear of the screen standing upright on the right.
+ */
+export function stageStop(index: number, aspect: number, tier: RenderTier = "full", beside = false): CameraStop {
   const g = MACHINE.gears[index];
   const half = (MACHINE.bounds.x1 - MACHINE.bounds.x0) / 2;
   const yaw = tier === "full" ? Math.max(-1, Math.min(1, g.x / half)) * 9 : 0;
+  if (beside) return frameBox(meshBox(index), aspect, 34, yaw, 1.06, 6, BESIDE_SCREEN);
   return frameBox(union(gearBox(index), displayBox()), aspect, tier === "full" ? 30 : 24, yaw, 1.08);
+}
+
+/**
+ * The CSS matrix3d (16 numbers, column-major) that maps an element of size w x h, with transform-origin 0 0, onto the four corners
+ * of `quad` (top-left, top-right, bottom-right, bottom-left, in the same pixel space as the element's position). This is how the
+ * HTML screen is pinned onto the 3D scene: project the screen's four corners with the 3D camera, then map the element onto them.
+ */
+export function quadMatrix(w: number, h: number, quad: readonly (readonly [number, number])[]): number[] {
+  const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = quad;
+  const dx1 = x1 - x2;
+  const dx2 = x3 - x2;
+  const dx3 = x0 - x1 + x2 - x3;
+  const dy1 = y1 - y2;
+  const dy2 = y3 - y2;
+  const dy3 = y0 - y1 + y2 - y3;
+  const det = dx1 * dy2 - dx2 * dy1;
+  const g = (dx3 * dy2 - dx2 * dy3) / det;
+  const k = (dx1 * dy3 - dx3 * dy1) / det;
+  const a = x1 - x0 + g * x1;
+  const b = x3 - x0 + k * x3;
+  const d = y1 - y0 + g * y1;
+  const e = y3 - y0 + k * y3;
+  return [a / w, d / w, 0, g / w, b / h, e / h, 0, k / h, 0, 0, 1, 0, x0, y0, 0, 1];
 }
 
 /**
@@ -302,4 +349,7 @@ export const SCENE_COPY = {
   revealKicker: "Op 10 to Op 70",
   revealTitle: "Enquiry to invoice, on one job",
   restart: "Start again",
+  runAll: "Run the whole machine",
+  lower: "Lower the screen",
+  scroll: "scroll to see all of it",
 } as const;

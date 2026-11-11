@@ -154,14 +154,17 @@ export const GEAR_COPY = {
 
 export const STAGE_COUNT = GEAR_STAGES.length;
 
-/** The stage index after moving by `delta`, kept within the first and last stage (a job's process has a start and an end). */
-export function stepTo(current: number, delta: number): number {
-  return clampStage(current + delta);
+/**
+ * The stage index after moving by `delta`, kept within the first and last stage (a job's process has a start and an end). `count`
+ * is the number of views: the seven stages, or eight in version B with the planned Analytics view.
+ */
+export function stepTo(current: number, delta: number, count: number = STAGE_COUNT): number {
+  return clampStage(current + delta, count);
 }
 
-export function clampStage(index: number): number {
+export function clampStage(index: number, count: number = STAGE_COUNT): number {
   if (!Number.isFinite(index)) return 0;
-  return Math.min(STAGE_COUNT - 1, Math.max(0, Math.round(index)));
+  return Math.min(count - 1, Math.max(0, Math.round(index)));
 }
 
 /* ------------------------------------------------------------------------------------------------------------------------------ */
@@ -241,8 +244,9 @@ export function gearPath(teeth: number, module: number): string {
  * Lays the gears out as a chain: each gear meshes with the next at the sum of their pitch radii, along the given line angles.
  * Phases are set so that, at rest and at every angle of the train, a tooth of one gear sits in a gap of the next.
  */
-export function layoutChain(variant: GearLayout["variant"], module: number, angles: readonly number[], pad: number, labelSpace = 0): GearLayout {
-  const teeth = GEAR_STAGES.map((s) => s.teeth);
+export function layoutChain(
+  variant: GearLayout["variant"], module: number, angles: readonly number[], pad: number, labelSpace = 0, teeth: readonly number[] = GEAR_STAGES.map((s) => s.teeth),
+): GearLayout {
   const centres: Array<{ x: number; y: number }> = [{ x: 0, y: 0 }];
   for (let i = 0; i < teeth.length - 1; i += 1) {
     const dist = (module * (teeth[i] + teeth[i + 1])) / 2;
@@ -321,12 +325,14 @@ export function parseGearsParam(search: string): { mode: GearsMode; compare: boo
   return { mode: params.get("gears") === "3d" ? "3d" : "2d", compare: params.has("compare") };
 }
 
-/** full: shadows, high pixel ratio, camera moves and pointer parallax. lite: phones and low-power devices. none: use the 2D drawing. */
+/**
+ * full: shadows, high pixel ratio, camera moves and pointer parallax. lite: phones and low-power devices. none: use the 2D drawing.
+ * Reduced motion does not change the tier: the 3D version then shows the same content with every move made instantly.
+ */
 export type RenderTier = "full" | "lite" | "none";
 
 export type DeviceSignals = {
   webgl: boolean;
-  reducedMotion: boolean;
   /** Width of the viewport, CSS pixels. */
   width: number;
   /** navigator.hardwareConcurrency and navigator.deviceMemory where the browser reports them. */
@@ -335,7 +341,7 @@ export type DeviceSignals = {
 };
 
 export function chooseTier(d: DeviceSignals): RenderTier {
-  if (!d.webgl || d.reducedMotion) return "none";
+  if (!d.webgl) return "none";
   if (d.width < 900) return "lite";
   if ((d.cores !== undefined && d.cores <= 4) || (d.memory !== undefined && d.memory <= 4)) return "lite";
   return "full";
@@ -347,5 +353,47 @@ export const VERSION_COPY = {
   compare: "Compare versions",
   versionA: "A · Current",
   versionB: "B · 3D",
-  fallback: "3D isn't available on this device, or reduced motion is on, so this is version A.",
+  fallback: "3D isn't available on this device, so this is version A.",
 } as const;
+
+/* ------------------------------------------------------------------------------------------------------------------------------ */
+/* Version B (3D): the planned Analytics view                                                                                     */
+/* ------------------------------------------------------------------------------------------------------------------------------ */
+
+/** A view in version B: the seven stages of a job, then the planned Analytics view. `planned` marks what is not in Tolra yet. */
+export type SceneStage = Omit<GearStage, "id"> & { id: StageId | "analytics"; planned: boolean };
+
+/** How a planned feature is labelled wherever it appears, so nobody mistakes it for something Tolra does today. */
+export const PLANNED_COPY = {
+  badge: "Planned feature",
+  chip: "Planned",
+  note: "Not in Tolra yet. Illustration with example values.",
+} as const;
+
+/**
+ * The planned Analytics view: an eighth gear, driven by the invoice gear, for a proposed owner's dashboard. It is a design, not a
+ * feature: its image is an illustration with example values, and every line says so.
+ */
+export const ANALYTICS_STAGE: SceneStage = {
+  id: "analytics",
+  op: "--",
+  label: "Analytics",
+  stamp: "PLANNED",
+  caption: "Planned: a dashboard for the owner that turns the quotes, jobs and invoices already in Tolra into trends.",
+  record: [["Status", "Planned, not in Tolra yet"], ["Shown", "Illustration, example values"]],
+  solves: null,
+  details: [
+    "Not in Tolra yet: this is the design for a future feature.",
+    "Planned for admins only, showing their own company's figures and nothing else.",
+    "Planned to keep invoiced income apart from cash received, and estimated margin apart from confirmed profit.",
+  ],
+  teeth: 16,
+  shot: {
+    src: "/marketing/workflow/analytics.webp", width: 880, height: 1270, kind: "screen", source: "Analytics, planned",
+    alt: "Illustration of a planned Tolra analytics dashboard, with example values only: invoiced and received by month, outstanding and overdue invoices, and estimated against actual margin by job. Not a feature in Tolra yet.",
+  },
+  planned: true,
+};
+
+/** Version B's views, in gear order: the seven stages of one job, then the planned Analytics view. */
+export const SCENE_STAGES: readonly SceneStage[] = [...GEAR_STAGES.map((s) => ({ ...s, planned: false })), ANALYTICS_STAGE];
