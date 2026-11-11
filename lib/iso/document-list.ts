@@ -52,7 +52,7 @@ export const ISO_DOCUMENTS: IsoDocument[] = [
       { heading: "Purpose", lines: ["How the company creates, updates, controls and keeps its documents and records."] },
       { heading: "Creating and updating", lines: ["Who writes, reviews and releases each kind of document, and how its identification and version are shown.", "Method: " + TO_COMPLETE] },
       { heading: "Control", lines: ["Where documents are kept, who may read and change them, how old versions are withdrawn and how retention is decided.", "Method: " + TO_COMPLETE] },
-      { heading: "What Tolra keeps", lines: ["Tolra keeps a change history of records made in it (who changed what and when). Whether that meets the company's retention and protection needs is for the company to decide: " + TO_COMPLETE] },
+      { heading: "What Tolra keeps", lines: ["Tolra keeps a change history for some record types (who changed what and when). Whether that meets the company's retention and protection needs is for the company to decide: " + TO_COMPLETE] },
     ],
   },
   {
@@ -93,7 +93,7 @@ export const ISO_DOCUMENTS: IsoDocument[] = [
     id: "records-index", title: "Records index", clause: "7.5.3", filename: "08-records-index",
     sections: [
       { heading: "Records the company keeps", lines: ["For each record type: where it is kept, who owns it, how long it is kept and how it is protected."] },
-      { heading: "Records Tolra holds", lines: ["Quotes, sales orders, jobs, inspections, nonconformance records, purchase orders, delivery notes, invoices and the change history of each. Retention period for each: " + TO_COMPLETE] },
+      { heading: "Record types Tolra can hold (confirm which your company uses)", lines: ["Quotes, sales orders, jobs, inspections, nonconformance records, purchase orders, delivery notes and invoices. Retention period for each: " + TO_COMPLETE, "Tolra keeps a change history for some of these (quotes, sales orders, purchase orders, delivery notes, invoices, jobs, suppliers and customers, among others). Confirm which ones apply to your company: " + TO_COMPLETE] },
       { heading: "Records held elsewhere", lines: ["List any records kept outside Tolra (for example training, calibration, audit and review records) with where they are.", "Records: " + TO_COMPLETE] },
       { heading: "Authorised inspectors", lines: ["People on Tolra's authorised inspectors list: {{inspectors}}"] },
     ],

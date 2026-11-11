@@ -13,8 +13,10 @@ import type { FlaggedJobs, GapEvidence } from "@/lib/iso/gap-checklist";
 import type { IsoFacts } from "@/lib/iso/fill";
 import { isSupplierStatus } from "@/lib/supplier-status";
 import { supabase } from "@/lib/supabase";
+import { getCurrentOrganizationId } from "@/lib/supabase-business";
 
 export const ISO_MAX_ROWS = 5000;
+const MEMBER_LIMIT = 1000;
 
 export type IsoEvidence = {
   evidence: GapEvidence;
@@ -44,12 +46,16 @@ export async function loadIsoEvidence(): Promise<IsoEvidence> {
   if (!db) { unread.push("all records"); return out; }
 
   try {
-    const { data, error } = await db.from("organization_members").select("user_id").eq("can_inspect", true).eq("active", true).eq("support", false).limit(1000);
+    const orgId = await getCurrentOrganizationId();
+    if (!orgId) throw new Error("no company");
+    const { data, error } = await db.from("organization_members").select("user_id").eq("organization_id", orgId).eq("can_inspect", true).eq("active", true).eq("support", false).limit(MEMBER_LIMIT);
     if (error) throw error;
+    const cut = (data ?? []).length >= MEMBER_LIMIT;
+    if (cut) unread.push("some authorised inspectors");
     const onList = new Set(((data ?? []) as { user_id: string }[]).map((m) => m.user_id));
     const current = currentAuthorisations(await loadInspectorHistory(), onList);
     const withReason = [...onList].filter((id) => (current.get(id)?.reason ?? "").trim() !== "").length;
-    out.evidence.inspectors = { current: onList.size, withReason };
+    out.evidence.inspectors = { current: onList.size, withReason, truncated: cut };
     out.facts.inspectors = onList.size;
   } catch { unread.push("authorised inspectors"); }
 

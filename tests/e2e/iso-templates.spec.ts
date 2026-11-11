@@ -52,8 +52,8 @@ test("switched off (the default): the notice, and no ISO evidence is read", asyn
   await page.goto("/admin/iso");
   await expect(page.getByText(ISO_OFF_NOTICE)).toBeVisible();
   await expect(page.getByRole("button", { name: "Download pack (zip)" })).toHaveCount(0);
-  // Let any late read start before judging.
-  await page.waitForTimeout(1500);
+  // The switch is decided once the page shows the notice; wait for the network to go quiet so a late read would have been seen.
+  await page.waitForLoadState("networkidle");
   expect(reads).toEqual([]);
 });
 

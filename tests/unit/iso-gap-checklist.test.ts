@@ -30,6 +30,7 @@ describe("gap checklist", () => {
     expect(rule72({ current: 0, withReason: 0 }).status).toBe(NOT_EVIDENCED);
     expect(rule72({ current: 2, withReason: 2 }).status).toBe("Met");
     expect(rule72({ current: 2, withReason: 1 }).status).toBe("Minor");
+    expect(rule72({ current: 2, withReason: 2, truncated: true }).status).toBe("Minor");
   });
   it("7.5.3 is never Met", () => {
     expect(rule753(null).status).toBe(NOT_EVIDENCED);
@@ -51,9 +52,11 @@ describe("gap checklist", () => {
     expect(rule84(null).status).toBe(NOT_EVIDENCED);
     expect(f({ total: 0, approved: 0 })).toBe(NOT_EVIDENCED);
     expect(f({})).toBe("Minor");
-    expect(f({ approved: 2, conditional: 1 })).toBe("Met");
-    expect(f({ approved: 2, blocked: 1 })).toBe("Met");
-    expect(f({ approved: 2, blocked: 1, truncated: true })).toBe("Minor");
+    expect(rule84({ total: 3, approved: 3, conditional: 0, blocked: 0, truncated: false }).basis).toContain("never changed from the default");
+    // Never Met: a status is a flag, not an evaluation.
+    for (const o of [{ approved: 2, conditional: 1 }, { approved: 2, blocked: 1 }, { approved: 1, conditional: 1, blocked: 1 }, { approved: 2, blocked: 1, truncated: true }]) expect(f(o)).toBe("Minor");
+    expect(rule84({ total: 3, approved: 2, conditional: 1, blocked: 0, truncated: false }).basis).toContain("Supplier statuses are used; Tolra holds no evaluation records");
+    expect(status(FULL, "8.4")).toBe("Minor");
   });
   it("8.5.2 traceability", () => {
     const f = (o: Partial<NonNullable<GapEvidence["traceability"]>>) => rule852({ flagged: 3, finished: 1, finishedMissing: 0, truncated: false, ...o }).status;

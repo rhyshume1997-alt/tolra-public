@@ -18,7 +18,7 @@ export type FlaggedJobs = { flagged: number; finished: number; finishedMissing: 
 
 export type GapEvidence = {
   /** 7.2: people on the authorised inspectors list, and how many of them have a recorded reason for being on it. */
-  inspectors: { current: number; withReason: number } | null;
+  inspectors: { current: number; withReason: number; truncated?: boolean } | null;
   /** 7.5.3: whether the change history (audit log) has any row. */
   changeHistoryPresent: boolean | null;
   /** 8.2 / 8.5.1: jobs that require a drawing revision. finishedMissing = inspected (Complete) with no revision. */
@@ -57,13 +57,13 @@ const unread = "The records could not be read, so nothing is shown.";
 
 /**
  * 7.2: authorised inspectors (migration 083). None on the list, or not readable: Not evidenced. Everyone on the list has a recorded
- * reason: Met. Anyone without a recorded reason: Minor. (The reason is the company's own words; Tolra does not check training.)
+ * reason (and the list was read in full): Met. Anyone without a recorded reason, or a cut-short read: Minor. (The reason is the company's own words; Tolra does not check training.)
  */
 export function rule72(e: GapEvidence["inspectors"]): { status: GapStatus; basis: string } {
   if (!e) return none(unread);
   if (e.current <= 0) return none("No authorised inspectors are on the list.");
-  if (e.withReason >= e.current) return { status: "Met", basis: `${e.current} authorised inspector${e.current === 1 ? "" : "s"}, each with a recorded reason. Tolra does not check the training behind it.` };
-  return { status: "Minor", basis: `${e.current} authorised inspector${e.current === 1 ? "" : "s"}; ${e.current - e.withReason} without a recorded reason.` };
+  if (e.withReason >= e.current && !e.truncated) return { status: "Met", basis: `${e.current} authorised inspector${e.current === 1 ? "" : "s"}, each with a recorded reason. Tolra does not check the training behind it.` };
+  return { status: "Minor", basis: `${e.current} authorised inspector${e.current === 1 ? "" : "s"}; ${e.truncated ? "the list was cut short, so not all were checked" : `${e.current - e.withReason} without a recorded reason`}.` };
 }
 
 /**
@@ -90,17 +90,18 @@ export function ruleDrawingRevision(e: GapEvidence["drawingRevision"]): { status
 }
 
 /**
- * 8.4: supplier status (migration 082). Why: suppliers.supplier_status defaults to Approved on creation (082), so "all Approved" shows
- * no decision was made (Minor), while any Conditional or Blocked supplier shows an admin deliberately used the control (Met). No suppliers, or not readable: Not evidenced. A status is a flag, and every existing supplier
- * starts Approved, so "all Approved" is not evidence of a decision: Minor. At least one Conditional or Blocked supplier (an admin has
- * used the control) and every row read: Met. A cut-short read is never Met.
+ * 8.4: supplier status (migration 082). A status is only a flag and suppliers.supplier_status defaults to Approved on creation (082), so
+ * it is never evidence that suppliers were evaluated: this rule is capped at Minor and is never Met. No suppliers, or not readable:
+ * Not evidenced. All Approved: Minor ("never changed from the default"). Any Conditional or Blocked: Minor (the control is used, but
+ * Tolra holds no evaluation records).
  */
 export function rule84(e: GapEvidence["suppliers"]): { status: GapStatus; basis: string } {
   if (!e) return none(unread);
   if (e.total <= 0) return none("No suppliers are listed.");
   const text = `${e.total} supplier${e.total === 1 ? "" : "s"}: ${e.approved} Approved, ${e.conditional} Conditional, ${e.blocked} Blocked.`;
-  if ((e.conditional > 0 || e.blocked > 0) && !e.truncated) return { status: "Met", basis: `${text} An admin has set a status other than the starting one. Tolra holds no evaluation records.` };
-  return { status: "Minor", basis: `${text} ${e.truncated ? "Some suppliers were not read. " : "Every supplier still has the starting status. "}Tolra holds no evaluation records.` };
+  const cut = e.truncated ? " Some suppliers were not read." : "";
+  if (e.conditional > 0 || e.blocked > 0) return { status: "Minor", basis: `${text} Supplier statuses are used; Tolra holds no evaluation records.${cut}` };
+  return { status: "Minor", basis: `${text} Statuses never changed from the default; Tolra holds no evaluation records.${cut}` };
 }
 
 /**
@@ -135,9 +136,13 @@ export function buildGapChecklist(e: GapEvidence): GapRow[] {
 /** Every clause "Not evidenced by Tolra": used when nothing could be read. */
 export const EMPTY_EVIDENCE: GapEvidence = { inspectors: null, changeHistoryPresent: null, drawingRevision: null, suppliers: null, traceability: null };
 
+/** Printed on every CSV row so it survives sorting and filtering. */
+export const CSV_NOTE = "Needs company review. Not certification evidence.";
+
 export const GAP_CSV_COLUMNS: SheetColumn<GapRow>[] = [
   { header: "Clause", type: "text", value: (r) => r.clause },
   { header: "Requirement", type: "text", value: (r) => r.requirement },
   { header: "Status", type: "text", value: (r) => r.status },
   { header: "Basis", type: "text", value: (r) => r.basis },
+  { header: "Note", type: "text", value: () => CSV_NOTE },
 ];
