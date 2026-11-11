@@ -41,6 +41,8 @@ export type PlannedVsActual = {
   benchActualHours: number;
   /** People time (operator sessions, voided excluded). Has no plan. */
   labourActualHours: number;
+  /** The injected `now` the figures were worked out at (ISO). The figures are a snapshot; open runs count to this instant. */
+  calculatedAt: string;
 };
 
 const HOUR_MS = 3_600_000;
@@ -133,5 +135,6 @@ export function plannedVsActual(input: {
     machineVarianceHours: round2(actualSum / HOUR_MS - plannedSum),
     benchActualHours: round2(benchMs / HOUR_MS),
     labourActualHours: labourHours(labour, now),
+    calculatedAt: now.toISOString(),
   };
 }

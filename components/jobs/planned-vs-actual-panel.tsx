@@ -5,12 +5,14 @@
  * writes anything. Renders nothing unless the company switched it on (hidden_nav marker), the role is admin or office, the app is not
  * in demo mode and Supabase is configured: with the switch off the worksheet looks exactly as before.
  *
+ * Figures are a snapshot taken when the worksheet opened (calculatedAt is shown).
  * Inputs: the job id (whether the job is finished is read from jobs.finished_at). Output: a small table. A read failure shows one muted line and never
  * blocks or throws into the worksheet.
  * Must not change: it must stay read-only; the switch and role rule live in lib/jobs/planned-vs-actual-switch.ts.
  */
 import { useEffect, useState } from "react";
 
+import { fmtDateText, fmtTime } from "@/lib/dates";
 import { DEMO_MODE } from "@/lib/demo";
 import { type PlannedVsActual, type Step, type StepStatus } from "@/lib/jobs/planned-vs-actual";
 import { loadPlannedVsActual } from "@/lib/jobs/load-planned-vs-actual";
@@ -21,6 +23,8 @@ import { useUser } from "@/lib/use-user";
 
 const STATUS_TEXT: Record<StepStatus, string> = { over: "Over plan", under: "Under plan", on_plan: "On plan", not_started: "Not started", no_plan: "No plan" };
 const hours = (value: number | null) => (value == null ? "-" : value.toFixed(2));
+/** "Calculated at 14:05 on 21 Oct 2026 (UK time)": London time, with the month as a word whatever date format the person chose. */
+const calculatedText = (iso: string) => `Calculated at ${fmtTime(iso)} on ${fmtDateText(iso, { year: true }, "dmy-short")} (UK time)`;
 const signed = (value: number | null) => (value == null ? "-" : `${value > 0 ? "+" : ""}${value.toFixed(2)}`);
 
 export function PlannedVsActualPanel({ jobId }: { jobId: string }) {
@@ -58,11 +62,12 @@ export function PlannedVsActualPanel({ jobId }: { jobId: string }) {
 
   return (
     <div className="border border-black bg-white text-xs text-black" data-testid="planned-vs-actual">
-      <div className="bg-[#cfd9e8] px-2 py-1 text-[10px] font-bold uppercase">Planned vs actual time (read-only, from machine runs)</div>
+      <div className="bg-[#cfd9e8] px-2 py-1 text-[10px] font-bold uppercase">Planned vs actual machine time (read-only, from machine runs)</div>
+      <p className="px-2 pt-1 text-slate-600">Each row is a machine on this job&apos;s plan, not an individual operation.</p>
       <table className="w-full">
         <thead>
           <tr className="text-left text-[10px] uppercase text-slate-700">
-            <th className="px-1.5 py-1">Step</th><th className="px-1.5 py-1 text-right">Planned (h)</th><th className="px-1.5 py-1 text-right">Actual (h)</th>
+            <th className="px-1.5 py-1">Machine (job step)</th><th className="px-1.5 py-1 text-right">Planned (h)</th><th className="px-1.5 py-1 text-right">Actual (h)</th>
             <th className="px-1.5 py-1 text-right">Variance (h)</th><th className="px-1.5 py-1">Status</th>
           </tr>
         </thead>
@@ -78,6 +83,7 @@ export function PlannedVsActualPanel({ jobId }: { jobId: string }) {
         </tbody>
       </table>
       <p className="border-t border-black/20 px-2 py-1 text-slate-700">Bench: {hours(data.benchActualHours)} h · People time on the job: {hours(data.labourActualHours)} h</p>
+      <p className="border-t border-black/20 px-2 py-1 text-slate-600" data-testid="pva-calculated-at">{calculatedText(data.calculatedAt)}</p>
     </div>
   );
 }

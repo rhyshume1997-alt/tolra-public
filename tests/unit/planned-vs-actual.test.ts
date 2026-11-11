@@ -91,3 +91,10 @@ describe("plannedVsActual", () => {
     expect(r.steps[0]).toMatchObject({ plannedHours: 0, variancePct: null, status: "no_plan" });
   });
 });
+
+describe("calculatedAt", () => {
+  it("equals the injected now as an ISO string", () => {
+    expect(calc(entries(["m1", 2]), []).calculatedAt).toBe(NOW.toISOString());
+    expect(calc([], []).calculatedAt).toBe("2026-01-01T12:00:00.000Z");
+  });
+});
