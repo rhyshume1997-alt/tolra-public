@@ -53,6 +53,11 @@ describe("NCR review reminder", () => {
     expect(overdue.length).toBe(2);
     const after = buildGapChecklist(evidence);
     expect(after).toEqual(before);
+    for (const clause of ["8.7", "10.2"]) {
+      const r = after.find((x) => x.clause === clause)!;
+      expect(r.status).toBe("Not evidenced by Tolra");
+      expect(r.basis).toBe("Tolra holds NCR records (see the NCR register); the company must evidence its review and corrective action.");
+    }
     expect(buildGapChecklist.length).toBe(1); // its only input is the company's evidence: no reminder can reach it
   });
 });

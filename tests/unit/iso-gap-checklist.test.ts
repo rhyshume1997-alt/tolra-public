@@ -4,7 +4,7 @@ import { buildGapChecklist, EMPTY_EVIDENCE, GAP_STATUSES, NOT_EVIDENCED, rule72,
 import { summariseJobs } from "@/lib/iso/load-iso-evidence";
 
 const status = (e: GapEvidence, clause: string) => buildGapChecklist(e).find((r) => r.clause === clause)!.status;
-const ALWAYS = ["4.1", "4.2", "4.3", "5.2", "6.1", "6.2", "7.1.5", "7.3", "9.1.2", "9.2", "9.3", "10.1"];
+const ALWAYS = ["8.7", "10.2", "4.1", "4.2", "4.3", "5.2", "6.1", "6.2", "7.1.5", "7.3", "9.1.2", "9.2", "9.3", "10.1"];
 const FULL: GapEvidence = {
   inspectors: { current: 3, withReason: 3 }, changeHistoryPresent: true,
   drawingRevision: { flagged: 4, finished: 4, finishedMissing: 0, truncated: false },
@@ -23,7 +23,7 @@ describe("gap checklist", () => {
   });
   it("lists every clause once, in order", () => {
     const clauses = buildGapChecklist(FULL).map((r) => r.clause);
-    expect(clauses).toEqual(["4.1", "4.2", "4.3", "5.2", "6.1", "6.2", "7.1.5", "7.2", "7.3", "7.5.3", "8.2", "8.4", "8.5.1", "8.5.2", "9.1.2", "9.2", "9.3", "10.1"]);
+    expect(clauses).toEqual(["4.1", "4.2", "4.3", "5.2", "6.1", "6.2", "7.1.5", "7.2", "7.3", "7.5.3", "8.2", "8.4", "8.5.1", "8.5.2", "8.7", "9.1.2", "9.2", "9.3", "10.1", "10.2"]);
   });
   it("7.2 inspectors", () => {
     expect(rule72(null).status).toBe(NOT_EVIDENCED);

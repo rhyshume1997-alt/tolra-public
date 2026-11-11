@@ -31,6 +31,9 @@ export type GapEvidence = {
 
 export type GapRow = { clause: string; requirement: string; status: GapStatus; basis: string };
 
+/** 8.7 and 10.2: Tolra holds NCR records, but the review and corrective action are the company's to evidence, so these never move (not even with overdue NCRs). */
+const NCR_NOTE = "Tolra holds NCR records (see the NCR register); the company must evidence its review and corrective action.";
+
 /** Clauses Tolra keeps no records for: always "Not evidenced by Tolra". */
 const NO_RECORDS: [string, string, string][] = [
   ["4.1", "Understanding the organisation and its context", "Tolra keeps no record of this."],
@@ -43,8 +46,10 @@ const NO_RECORDS: [string, string, string][] = [
   ["7.3", "Awareness", "Tolra keeps no record of this."],
   ["9.1.2", "Customer satisfaction", "Tolra keeps no record of this."],
   ["9.2", "Internal audit", "Tolra keeps no audit records."],
+  ["8.7", "Control of nonconforming outputs", NCR_NOTE],
   ["9.3", "Management review", "Tolra keeps no management review records."],
   ["10.1", "Improvement (general)", "Tolra keeps no record of this."],
+  ["10.2", "Nonconformity and corrective action", NCR_NOTE],
 ];
 
 const none = (basis: string) => ({ status: NOT_EVIDENCED, basis });
@@ -85,7 +90,8 @@ export function ruleDrawingRevision(e: GapEvidence["drawingRevision"]): { status
 }
 
 /**
- * 8.4: supplier status (migration 082). No suppliers, or not readable: Not evidenced. A status is a flag, and every existing supplier
+ * 8.4: supplier status (migration 082). Why: suppliers.supplier_status defaults to Approved on creation (082), so "all Approved" shows
+ * no decision was made (Minor), while any Conditional or Blocked supplier shows an admin deliberately used the control (Met). No suppliers, or not readable: Not evidenced. A status is a flag, and every existing supplier
  * starts Approved, so "all Approved" is not evidence of a decision: Minor. At least one Conditional or Blocked supplier (an admin has
  * used the control) and every row read: Met. A cut-short read is never Met.
  */
