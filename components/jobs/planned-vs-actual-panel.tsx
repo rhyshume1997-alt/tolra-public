@@ -5,7 +5,7 @@
  * writes anything. Renders nothing unless the company switched it on (hidden_nav marker), the role is admin or office, the app is not
  * in demo mode and Supabase is configured: with the switch off the worksheet looks exactly as before.
  *
- * Inputs: the job id and whether the job is finished (signed off). Output: a small table. A read failure shows one muted line and never
+ * Inputs: the job id (whether the job is finished is read from jobs.finished_at). Output: a small table. A read failure shows one muted line and never
  * blocks or throws into the worksheet.
  * Must not change: it must stay read-only; the switch and role rule live in lib/jobs/planned-vs-actual-switch.ts.
  */
@@ -23,7 +23,7 @@ const STATUS_TEXT: Record<StepStatus, string> = { over: "Over plan", under: "Und
 const hours = (value: number | null) => (value == null ? "-" : value.toFixed(2));
 const signed = (value: number | null) => (value == null ? "-" : `${value > 0 ? "+" : ""}${value.toFixed(2)}`);
 
-export function PlannedVsActualPanel({ jobId, jobFinished }: { jobId: string; jobFinished: boolean }) {
+export function PlannedVsActualPanel({ jobId }: { jobId: string }) {
   const { hiddenNav } = useOrgSettings();
   const { activeRole } = useUser();
   const show = plannedVsActualEnabled(hiddenNav) && canSeePlannedVsActual(activeRole) && !DEMO_MODE && isSupabaseConfigured;
@@ -35,12 +35,11 @@ export function PlannedVsActualPanel({ jobId, jobFinished }: { jobId: string; jo
     let active = true;
     setData(null);
     setFailed(false);
-    loadPlannedVsActual(supabase, jobId, jobFinished)
+    loadPlannedVsActual(supabase, jobId)
       .then((result) => { if (active) setData(result); })
       .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
-    // Loads once per job (and once the switch/role allow it); finishing the job later doesn't reload.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Loads once per job (and once the switch/role allow it); figures are as at opening the worksheet.
   }, [show, jobId]);
 
   if (!show) return null;

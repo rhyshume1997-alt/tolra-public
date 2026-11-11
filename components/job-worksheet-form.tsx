@@ -363,7 +363,7 @@ export function JobWorksheetForm({ job, onSaved, onDirtyChange }: {
         <Textarea readOnly={!canEdit} value={ws.overrun_reasons} onChange={(event) => set("overrun_reasons", event.target.value)} className={`min-h-16 ${SHEET_TEXT} ${overrun ? "border-2 border-t-0 border-[#c00000]" : "border-black"}`} placeholder={overrun ? "Job has overrun - please explain why." : ""} />
       </div>
 
-      <PlannedVsActualPanel jobId={job.id} jobFinished={Boolean(ws.signed_off_at)} />
+      <PlannedVsActualPanel jobId={job.id} />
 
       {customerPos.length ? (
         <div className="border border-black px-2 py-1.5" aria-label="Customer PO">
