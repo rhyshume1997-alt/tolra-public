@@ -4,14 +4,13 @@
 
 ## How ownership was established
 
-Each of the 1286 non-test files on `main` has one of four statuses:
+Each of the 1286 non-test files on `main` has exactly one of three statuses:
 
 | Status | Files | Meaning |
 |---|---|---|
-| As written | 602 | Matches a path named in `docs/MODULES.md` |
-| Inspected | 107 | Read individually: stated purpose, importers and callers |
-| **Provisional** | 577 | Matched by path pattern only. **Not verified. Must not be enforced.** |
-| Undecided | 0 | Needs an owner decision (section 7) |
+| **VERIFIED** | 719 | 602 match a path written in `docs/MODULES.md`; 117 were placed by an owner ruling or read individually (stated purpose, importers, callers) |
+| **PROVISIONAL** | 565 | Matched by path pattern only. Not verified. Must not be enforced |
+| **REQUIRES DECISION** | 2 | No owner yet (section 7) |
 
 "Callers" below means files that import the file, grouped by the module they fall in under this proposal. For provisional callers that grouping is itself unverified, so counts are evidence, not proof.
 
@@ -20,11 +19,11 @@ Each of the 1286 non-test files on `main` has one of four statuses:
 | Module | Non-test files | Notes |
 |---|---|---|
 | Database and Releases | 436 | As written |
-| Integrations | 213 | Providers, e-mail transport, AI, accounting, costing. Not one interchangeable boundary: each provider folder is its own area |
+| Integrations | 209 | Providers, e-mail transport, AI, accounting, costing. Not one interchangeable boundary: each provider folder is its own area |
 | CI and Engineering Tooling | 127 | New (approved 11 Nov). Workflows, scripts, test and build configuration, rules documents, production configuration |
-| Auth and Company Administration | 111 | Sign-in, MFA, roles, users, company settings, platform owner |
-| Jobs, Workshop and Time | 110 | Includes `lib/jobs/**` and `components/jobs/**`. Active NCR and planned-vs-actual work is not touched by this proposal |
-| Dashboard and Shared UI | 94 | Includes the application shell (ruled 11 Nov): root layout, error boundaries, client error reporting, chunk reload |
+| Jobs, Workshop and Time | 111 | Includes `lib/jobs/**` and `components/jobs/**`. Active NCR and planned-vs-actual work is not touched by this proposal |
+| Auth and Company Administration | 110 | Sign-in, MFA, roles, users, company settings, platform owner |
+| Dashboard and Shared UI | 96 | Includes the application shell (ruled 11 Nov): root layout, error boundaries, client error reporting, chunk reload |
 | Invoices and Receivables | 82 | Includes chase business rules (ruled 11 Nov) |
 | Marketing and Public Website | 36 | New (approved 11 Nov). Home page, privacy page, public assets. Separate from the application shell |
 | Integrations: Data Import area | 22 | SliQ and spreadsheet import (ruled 11 Nov) |
@@ -38,6 +37,9 @@ Extraction order is unchanged: Jobs, then Invoices, then Quotes.
 ## 2. Rulings recorded (11 November 2026)
 
 - Three new modules: CI and Engineering Tooling; Marketing and Public Website; Offline and PWA.
+- The approval page belongs to Dashboard and Shared UI as presentation and coordination. Chase approval rules stay with Invoices and Receivables, job reopen approval rules with Jobs, and e-mail transport and draft sending with Integrations. The page must eventually use typed interfaces those modules expose. Nothing is moved now.
+- `lib/server/cron-auth.ts`, `cron-pass.ts` and `cron-skip.ts` belong to Auth and Company Administration as shared authentication and security controls. Each scheduled job route keeps the module of the work it does.
+- `lib/people.ts` and `lib/company-people.ts` stay on the restricted shared list.
 - Chase business rules (`lib/chase`, `lib/chasing`, `lib/email/chase`, `components/chase`, `app/api/chase`) belong to Invoices and Receivables. E-mail transport and provider connections stay in Integrations.
 - SliQ import and data import are a named Data Import area inside Integrations.
 - The application shell (root layouts, error boundaries, client error reporting, chunk reload) belongs to Dashboard and Shared UI. Marketing and Public Website stays separate.
@@ -59,20 +61,27 @@ Exact paths only, no wildcards. Changing one needs all four: the file in the PR 
 | `lib/numbering.ts` | document numbering used by quotes, invoices and jobs |
 | `lib/spreadsheet.ts` | CSV and spreadsheet writer; importers in seven areas |
 | `lib/page-company.ts` | the company a page was opened for (company switch mid-form); importers in four areas |
-| `lib/people.ts` | who-did-what names of the signed-in company; 24 importers in five areas |
-| `lib/company-people.ts` | loads the company's people by name; importers in four areas |
+| `lib/people.ts` | who-did-what names of the signed-in company; 24 importers in five areas. Ruled 11 Nov: stays here, not moved to Auth |
+| `lib/company-people.ts` | loads the company's people by name; importers in four areas. Ruled 11 Nov: stays here, not moved to Auth |
 | `types/index.ts` | shared record and role types; 10 importers across Auth, Jobs and the shell |
 | `components/pdf/BaseDocumentPDF.tsx` | the one PDF layout every issued document prints through (quotes, invoices, credit notes, delivery notes, orders) |
 | `components/pdf/pdf-totals.ts` | totals printed on every issued document |
 
 Twelve files first proposed as shared were removed because inspection showed a single owner: `lib/compact-list-pref.ts` and `lib/use-database-has-073.ts` (Invoices), `lib/display-name.ts` and `lib/confirmed-user.ts` (Auth), and `lib/destinations.ts`, `lib/use-destinations.ts`, `lib/list-filter.ts`, `lib/view-mode.ts`, `lib/list-card-counts.ts`, `lib/empty-hints.ts`, `lib/use-saving.ts`, `lib/record-link.ts` (Dashboard and Shared UI, as list and navigation helpers).
 
-## 4. Individually inspected files
+## 4. Individually placed files (VERIFIED)
 
 | Path | Module | Confidence | Evidence |
 |---|---|---|---|
 | `DEPLOYS.md` | CI and Engineering Tooling | high | deploy log |
 | `README.md` | CI and Engineering Tooling | high | repository documentation |
+| `app/(dashboard)/approval/page.tsx` | Dashboard and Shared UI | high | ruled 11 Nov: the approval page is presentation and coordination. Its business rules stay with their modules (chase: Invoices; job reopen: Jobs; e-mail drafts and sending: Integrations) and it must come to use their typed interfaces. No logic is moved by this proposal |
+| `app/api/cron/ai-helper-purge/route.ts` | Integrations | medium | AI helper retention purge |
+| `app/api/cron/email-schedules/route.ts` | Integrations | medium | runs scheduled e-mails |
+| `app/api/cron/ip-purge/route.ts` | Jobs, Workshop and Time | medium | purges stored clock-in network addresses (site network, time and attendance) |
+| `app/api/cron/mail-poll/route.ts` | Integrations | medium | polls company mailboxes |
+| `app/api/cron/overview-snapshot/route.ts` | Dashboard and Shared UI | medium | captures the dashboard overview figures nightly |
+| `app/api/cron/xero-sweep/route.ts` | Integrations | medium | Xero transfer sweep |
 | `app/error.tsx` | Dashboard and Shared UI | high | application shell (ruled 11 Nov) |
 | `app/global-error.tsx` | Dashboard and Shared UI | high | application shell (ruled 11 Nov) |
 | `app/globals.css` | Dashboard and Shared UI | medium | styles for the whole application |
@@ -141,6 +150,9 @@ Twelve files first proposed as shared were removed because inspection showed a s
 | `lib/run-plan.ts` | Jobs, Workshop and Time | high | callers: Jobs 3, unassigned 1 |
 | `lib/schedule-live.ts` | Jobs, Workshop and Time | high | callers: Jobs 3 |
 | `lib/send-outcome.ts` | Integrations | high | callers: Integrations 2 |
+| `lib/server/cron-auth.ts` | Auth and Company Administration | high | ruled 11 Nov: shared authentication and security control for scheduled jobs |
+| `lib/server/cron-pass.ts` | Auth and Company Administration | high | ruled 11 Nov: shared control for scheduled jobs |
+| `lib/server/cron-skip.ts` | Auth and Company Administration | high | ruled 11 Nov: shared control for scheduled jobs |
 | `lib/shell-status.ts` | Dashboard and Shared UI | high | callers: Dashboard 2, unassigned 1 |
 | `lib/sign-in-access.ts` | Auth and Company Administration | high | callers: Auth 2 |
 | `lib/snapshot-hash.ts` | Jobs, Workshop and Time | medium | callers: Jobs 1 |
@@ -167,7 +179,7 @@ Twelve files first proposed as shared were removed because inspection showed a s
 
 ## 5. Targeted verification of path-based placements
 
-The 509 code files placed by path pattern were checked against their importers. A conflict is a file whose importers (two or more) all sit in a different module. 148 of the 509 are in priority areas by path keyword (money, VAT, payments, auth, sessions, roles, tokens, audit, integrations, database client, PDF, import and export). 13 conflicts were found:
+The 509 code files placed by path pattern were checked against their importers. A conflict is a file whose importers (two or more) all sit in a different module. 148 of the 509 are in priority areas by path keyword (money, VAT, payments, auth, sessions, roles, tokens, audit, integrations, database client, PDF, import and export). 13 conflicts were found (the conflict table uses the placements as they stood before the corrections):
 
 | Path | Placed in | All importers are in | Outcome |
 |---|---|---|---|
@@ -181,11 +193,11 @@ The 509 code files placed by path pattern were checked against their importers. 
 | `components/pdf/PurchaseOrderPDF.tsx` | Dashboard and Shared UI | Invoices and Receivables | Corrected to Invoices |
 | `components/print-layout-picker.tsx` | Dashboard and Shared UI | Jobs, Workshop and Time | Left provisional: a component provided by one module and used on another module's pages |
 | `lib/ai-helper/tolra-caps.ts` | Integrations | Auth and Company Administration | Left provisional: a component provided by one module and used on another module's pages |
-| `lib/server/cron-auth.ts` | Auth and Company Administration | Integrations | Undecided (section 7) |
-| `lib/server/cron-pass.ts` | Auth and Company Administration | Integrations | Undecided (section 7) |
-| `lib/server/cron-skip.ts` | Auth and Company Administration | Integrations | Undecided (section 7) |
+| `lib/server/cron-auth.ts` | Auth and Company Administration | Integrations | Ruled 11 Nov: stays in Auth as a shared security control |
+| `lib/server/cron-pass.ts` | Auth and Company Administration | Integrations | Ruled 11 Nov: stays in Auth |
+| `lib/server/cron-skip.ts` | Auth and Company Administration | Integrations | Ruled 11 Nov: stays in Auth |
 
-Everything else placed by pattern stays **provisional**.
+Everything else placed by pattern stays **PROVISIONAL**.
 
 ## 6. Test ownership rules
 
@@ -197,11 +209,9 @@ Everything else placed by pattern stays **provisional**.
 
 Measured on `main`: 310 test files reference one module, 292 reference several, 219 reference no source file (database and browser tests) and 282 files under `tests/` are support code, fixtures or notes. Inheritance alone therefore does not place most test files; the explicit allowlist does.
 
-## 7. Still needs an owner decision
+## 7. REQUIRES DECISION
 
-- **app/(dashboard)/approval/page.tsx**: The approval page shows three things owned by different modules: chase approvals (Invoices), job reopen approvals (Jobs) and drafted e-mails (Integrations). It needs one owner or a split.
-- **app/api/cron/** and lib/server/cron-*.ts**: Cron routes run e-mail, Xero, snapshot and purge jobs; lib/server/cron-auth.ts is their security control. All callers are cron routes. Owner: Integrations, Auth (as a security control) or CI and Engineering Tooling?
-- **lib/people.ts and lib/company-people.ts**: On the restricted shared list because five areas import them, but their responsibility (the company's people) could make Auth and Company Administration the single owner.
+- **app/api/cron/daily/route.ts and app/api/cron/nightly/route.ts**: The two scheduled entry points in vercel.json. Each calls jobs owned by several modules (daily: e-mail schedules and the Xero sweep; nightly: overview snapshot, address purge, AI purge). Individual job routes keep their module (ruled 11 Nov); these two dispatchers need an owner.
 
 ## 8. What this proposal does not do
 

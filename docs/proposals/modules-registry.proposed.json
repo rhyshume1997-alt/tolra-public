@@ -7,9 +7,9 @@
     "modules[*].patterns_provisional (regular expression, first match)"
   ],
   "_assignment_status": {
-    "as-written": "matches docs/MODULES.md literally",
-    "inspected": "individually inspected: responsibilities, importers and callers read",
-    "provisional": "matched by path only; NOT verified; must not be enforced"
+    "VERIFIED": "exact_files, shared_restricted and patterns_from_MODULES_md",
+    "PROVISIONAL": "patterns_provisional: matched by path only; NOT verified; must not be enforced",
+    "REQUIRES DECISION": "undecided"
   },
   "modules": {
     "auth-company-admin": {
@@ -185,6 +185,41 @@
       "module": "ci-engineering-tooling",
       "confidence": "high",
       "evidence": "repository documentation"
+    },
+    "app/(dashboard)/approval/page.tsx": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "ruled 11 Nov: the approval page is presentation and coordination. Its business rules stay with their modules (chase: Invoices; job reopen: Jobs; e-mail drafts and sending: Integrations) and it must come to use their typed interfaces. No logic is moved by this proposal"
+    },
+    "app/api/cron/ai-helper-purge/route.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "AI helper retention purge"
+    },
+    "app/api/cron/email-schedules/route.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "runs scheduled e-mails"
+    },
+    "app/api/cron/ip-purge/route.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "purges stored clock-in network addresses (site network, time and attendance)"
+    },
+    "app/api/cron/mail-poll/route.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "polls company mailboxes"
+    },
+    "app/api/cron/overview-snapshot/route.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "captures the dashboard overview figures nightly"
+    },
+    "app/api/cron/xero-sweep/route.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "Xero transfer sweep"
     },
     "app/error.tsx": {
       "module": "dashboard-reports-shared-ui",
@@ -526,6 +561,21 @@
       "confidence": "high",
       "evidence": "callers: Integrations 2"
     },
+    "lib/server/cron-auth.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "ruled 11 Nov: shared authentication and security control for scheduled jobs"
+    },
+    "lib/server/cron-pass.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "ruled 11 Nov: shared control for scheduled jobs"
+    },
+    "lib/server/cron-skip.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "ruled 11 Nov: shared control for scheduled jobs"
+    },
     "lib/shell-status.ts": {
       "module": "dashboard-reports-shared-ui",
       "confidence": "high",
@@ -654,8 +704,8 @@
       "lib/numbering.ts": "document numbering used by quotes, invoices and jobs",
       "lib/spreadsheet.ts": "CSV and spreadsheet writer; importers in seven areas",
       "lib/page-company.ts": "the company a page was opened for (company switch mid-form); importers in four areas",
-      "lib/people.ts": "who-did-what names of the signed-in company; 24 importers in five areas",
-      "lib/company-people.ts": "loads the company's people by name; importers in four areas",
+      "lib/people.ts": "who-did-what names of the signed-in company; 24 importers in five areas. Ruled 11 Nov: stays here, not moved to Auth",
+      "lib/company-people.ts": "loads the company's people by name; importers in four areas. Ruled 11 Nov: stays here, not moved to Auth",
       "types/index.ts": "shared record and role types; 10 importers across Auth, Jobs and the shell",
       "components/pdf/BaseDocumentPDF.tsx": "the one PDF layout every issued document prints through (quotes, invoices, credit notes, delivery notes, orders)",
       "components/pdf/pdf-totals.ts": "totals printed on every issued document"
@@ -681,33 +731,37 @@
     }
   },
   "undecided": {
-    "files": [],
+    "files": [
+      "app/api/cron/daily/route.ts",
+      "app/api/cron/nightly/route.ts"
+    ],
     "areas": {
-      "app/(dashboard)/approval/page.tsx": "The approval page shows three things owned by different modules: chase approvals (Invoices), job reopen approvals (Jobs) and drafted e-mails (Integrations). It needs one owner or a split.",
-      "app/api/cron/** and lib/server/cron-*.ts": "Cron routes run e-mail, Xero, snapshot and purge jobs; lib/server/cron-auth.ts is their security control. All callers are cron routes. Owner: Integrations, Auth (as a security control) or CI and Engineering Tooling?",
-      "lib/people.ts and lib/company-people.ts": "On the restricted shared list because five areas import them, but their responsibility (the company's people) could make Auth and Company Administration the single owner."
+      "app/api/cron/daily/route.ts and app/api/cron/nightly/route.ts": "The two scheduled entry points in vercel.json. Each calls jobs owned by several modules (daily: e-mail schedules and the Xero sweep; nightly: overview snapshot, address purge, AI purge). Individual job routes keep their module (ruled 11 Nov); these two dispatchers need an owner."
     }
   },
   "counts_non_test_files": {
     "by_module": {
       "Database and Releases": 436,
-      "Integrations": 213,
+      "Integrations": 209,
       "CI and Engineering Tooling": 127,
-      "Auth and Company Administration": 111,
-      "Jobs, Workshop and Time": 110,
-      "Dashboard and Shared UI": 94,
+      "Jobs, Workshop and Time": 111,
+      "Auth and Company Administration": 110,
+      "Dashboard and Shared UI": 96,
       "Invoices and Receivables": 82,
       "Marketing and Public Website": 36,
       "Integrations: Data Import area": 22,
       "Quotes and RFQ": 20,
       "Offline and PWA": 14,
       "shared-restricted": 14,
-      "Customers and Suppliers": 7
+      "Customers and Suppliers": 7,
+      "REQUIRES DECISION": 2
     },
     "by_status": {
-      "provisional": 577,
-      "inspected": 107,
-      "as-written": 602
+      "VERIFIED": 719,
+      "VERIFIED_as_written_in_MODULES_md": 602,
+      "VERIFIED_ruled_or_inspected": 117,
+      "PROVISIONAL": 565,
+      "REQUIRES DECISION": 2
     }
   }
 }
