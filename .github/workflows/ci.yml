@@ -19,6 +19,10 @@
 #     on main and on a manual run (Actions > CI > Run workflow). The quick checks (`web`: typecheck, lint, unit tests,
 #     build) still run on every push. `ci-gate` (the one required check) stays red on a pull request
 #     whose code changed until integration has run and passed, so `ready` is required before merging.
+#   * `guardrails` (pull requests only, a few seconds): scripts/check-test-weakening.mjs compares tests/ at the pull request's head
+#     with its merge base. A deleted test file, a new .skip / .only, fewer test cases in a file or a raised page-size ceiling fails
+#     it, and `ci-gate` with it. No label or setting lets a finding through: an intended removal needs Rhys himself. It fails
+#     closed: if the comparison can't be made, it fails.
 name: CI
 
 # Public repository: the workflow token is read-only for every job (no job writes to the repo, issues or checks).
@@ -134,7 +138,7 @@ jobs:
     # On a pull request, only with the `ready` label (see the top). Otherwise skipped (counts as passed) only when
     # "changes" says so; if it failed or said anything else, run.
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'ready')) && (needs.changes.result != 'success' || needs.changes.outputs.integration != 'false') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120  # Raised from 60 with Rhys's OK, 15 Oct 2026 (runs reached 58 min), and from 90 with Rhys's OK, 22 Oct 2026 (PR 1's run was cancelled at 90 min with 7 browser tests left). Flag it if runs approach 120; do not raise silently.
     # The test-backend helper explicitly selects the official ghcr.io images. Anonymous pulls were
     # rate-limited on 26 Oct 2026 (HTTP 429, runs 40360101636 and 40367638716; public.ecr.aws then refused anonymous pulls
@@ -412,6 +416,22 @@ jobs:
         if: always()
         run: npm run test:backend:stop
 
+  # Tests are not removed, skipped or loosened (see the top). Reads git only: no install, nothing from the
+  # pull request is executed except this repository's own script at the checked-out commit.
+  guardrails:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tests not removed, skipped or loosened (no label or setting allows it)
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-test-weakening.mjs "$PR_BASE_SHA" "$PR_HEAD_SHA"
+
   # The one check to require in branch protection. A skipped job counts as passed, so requiring the jobs above directly
   # would let a pull request merge with a job skipped for the wrong reason. This job always runs and passes only when
   # web passed (or was skipped because only docs changed) and integration passed, or was skipped
@@ -420,7 +440,7 @@ jobs:
     # A targeted manual run (workflow_dispatch with `specs`) reports under another check name, so it can never stand in for the
     # required `ci-gate` on a commit: it is diagnostic only, and merge approval still needs the full pull-request run.
     name: ${{ (github.event_name == 'workflow_dispatch' && inputs.specs != '') && 'targeted-run (diagnostic, not a gate)' || 'ci-gate' }}
-    needs: [changes, web, integration]
+    needs: [changes, web, integration, guardrails]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -433,10 +453,17 @@ jobs:
           INTEGRATION_NEEDED: ${{ needs.changes.outputs.integration }}
           WEB: ${{ needs.web.result }}
           INTEGRATION: ${{ needs.integration.result }}
+          GUARDRAILS: ${{ needs.guardrails.result }}
         run: |
           echo "event=$EVENT ready=$READY changes=$CHANGES code=$CODE integration_needed=$INTEGRATION_NEEDED"
-          echo "web=$WEB integration=$INTEGRATION"
+          echo "web=$WEB integration=$INTEGRATION guardrails=$GUARDRAILS"
           fail=0
+          # guardrails runs on every pull request and must pass there; on main and manual runs it is skipped (nothing to compare).
+          if [ "$GUARDRAILS" = success ] || { [ "$GUARDRAILS" = skipped ] && [ "$EVENT" != pull_request ]; }; then
+            echo "OK: guardrails $GUARDRAILS"
+          else
+            echo "FAIL: guardrails $GUARDRAILS"; fail=1
+          fi
           docs_only=false; [ "$CHANGES" = success ] && [ "$CODE" = false ] && docs_only=true
           for job in "web:$WEB"; do
             name="${job%%:*}"; result="${job#*:}"
