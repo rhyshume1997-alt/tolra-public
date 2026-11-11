@@ -16,10 +16,11 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { generatePassword } from "@/lib/password";
 import { REVENUE_SELECT } from "@/lib/reports/revenue/load-revenue";
 import { REVENUE_OFF_NOTICE, REVENUE_ON_MARKER } from "@/lib/reports/revenue/revenue-switch";
 
-import { adminClient, createSoloTenant, withDb } from "../support/fixtures";
+import { adminClient, createSoloTenant, EMAIL_DOMAIN, withDb } from "../support/fixtures";
 import { signIn, world } from "./helpers";
 
 const w = world();
@@ -30,6 +31,7 @@ test.use({ timezoneId: "Europe/London" });
 type Solo = Awaited<ReturnType<typeof createSoloTenant>>;
 let a: Solo;
 let b: Solo;
+let throwawayUserId = "";
 
 const london = (offsetDays: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() + offsetDays * 86_400_000));
 function monthOf(offsetMonths: number) {
@@ -171,6 +173,8 @@ test.afterAll(async () => {
   // Whatever happened above: no marker left behind (the solo companies go with the run's teardown).
   await setSwitch(w.tenants.alpha.id, false);
   if (a) await setSwitch(a.id, false);
+  // And no throwaway user left behind if the hidden-sections test stopped before its own cleanup (its membership goes with it).
+  if (throwawayUserId) await adminClient().auth.admin.deleteUser(throwawayUserId);
 });
 
 test("switch off (the default): the notice, and none of the page's own reads", async ({ page }) => {
@@ -350,20 +354,27 @@ test("switch on: office sees the report; workshop and viewer are refused and rea
 
 test("a hidden Invoices section: one notice, no invoice figures, no invoice reads (never £0.00); a hidden Quotes section: its own notice", async ({ browser }) => {
   test.setTimeout(180_000);
-  const org = w.tenants.alpha.id;
-  const user = w.tenants.alpha.users.office;
+  // A throwaway office user in company A (a solo company of this run), as tests/e2e/job-board-play.spec.ts does: created here, deleted
+  // in finally (its membership goes with it: organization_members.user_id is ON DELETE CASCADE), and afterAll deletes it too if this
+  // stopped early. No shared user's hidden_sections is ever changed.
   const db = adminClient();
-  const before = await db.from("organization_members").select("hidden_sections").eq("organization_id", org).eq("user_id", user.id).single();
-  expect(before.error).toBeNull();
-  const original = (before.data!.hidden_sections ?? []) as string[];
-  const hide = async (sections: string[]) => expect((await db.from("organization_members").update({ hidden_sections: sections }).eq("organization_id", org).eq("user_id", user.id)).error).toBeNull();
-  await setSwitch(org, true);
+  const email = `revhide.${w.runId}@${EMAIL_DOMAIN}`;
+  const password = generatePassword(16);
+  const created = await db.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name: "revhide" } });
+  if (created.error || !created.data.user) throw new Error(`createUser ${email}: ${created.error?.message}`);
+  const userId = created.data.user.id;
+  throwawayUserId = userId;
   const context = await browser.newContext({ timezoneId: "Europe/London" });
   const page = await context.newPage();
   const reads = revenueReads(page);
   try {
+    const added = await db.rpc("add_member", { p_org: a.id, p_email: email, p_role: "office" });
+    if (added.error || added.data !== "member") throw new Error(`add_member ${email}: ${added.error?.message ?? added.data}`);
+    const hide = async (sections: string[]) => expect((await db.from("organization_members").update({ hidden_sections: sections }).eq("organization_id", a.id).eq("user_id", userId)).error).toBeNull();
+    await setSwitch(a.id, true);
+
     await hide(["invoices"]);
-    await signIn(page, user);
+    await signIn(page, { id: userId, email, password, role: "office" });
     await page.goto("/reports/revenue");
     await expect(page.getByTestId("revenue-invoices-hidden")).toHaveText("Invoices are hidden for you, so revenue can't be shown.");
     await expect(page.getByTestId("revenue-pipeline")).toBeVisible();
@@ -382,7 +393,12 @@ test("a hidden Invoices section: one notice, no invoice figures, no invoice read
     expect(reads).not.toContain("quoteLines");
     expect(reads).toContain("invoices");
   } finally {
-    await hide(original);
     await context.close();
+    const removed = await db.auth.admin.deleteUser(userId);
+    expect(removed.error, `delete the test user ${email}`).toBeNull();
+    throwawayUserId = "";
+    const member = await db.from("organization_members").select("user_id").eq("user_id", userId);
+    expect(member.error).toBeNull();
+    expect(member.data, "no membership left for the test user").toEqual([]);
   }
 });
