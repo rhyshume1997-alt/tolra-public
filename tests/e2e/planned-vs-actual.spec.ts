@@ -75,37 +75,41 @@ async function openWorksheet(page: Page) {
   return dialog;
 }
 
-/** Counts the REST reads the page makes to a table (any method). */
-function countReads(page: Page, table: string) {
-  const urls: string[] = [];
-  page.on("request", (request) => { if (new URL(request.url()).pathname.endsWith(`/rest/v1/${table}`)) urls.push(request.url()); });
-  return urls;
+/**
+ * Requests that are the panel's OWN reads of the seeded job, by exact query shape (the Job Board and the worksheet prefill also read
+ * operator_sessions / machine_runs, for other jobs and with other filters, so tables alone can't be counted):
+ * - jobs: select=finished_at and id=eq.<job id> (loadPlannedVsActual's first read);
+ * - operator_sessions: job_id=eq.<job id> (the panel's labour read; the Job Board's is job_id=in.(...) with end_source).
+ */
+function panelReads(page: Page) {
+  const reads = { jobs: [] as string[], sessions: [] as string[] };
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    const q = url.searchParams;
+    if (url.pathname.endsWith("/rest/v1/jobs") && q.get("select") === "finished_at" && q.get("id") === `eq.${jobId}`) reads.jobs.push(request.url());
+    if (url.pathname.endsWith("/rest/v1/operator_sessions") && q.get("job_id") === `eq.${jobId}`) reads.sessions.push(request.url());
+  });
+  return reads;
 }
 
 test("switch off (the default): no panel, and nothing is read for it", async ({ page }) => {
   test.setTimeout(120_000);
   await setSwitch(false);
-  const sessions = countReads(page, "operator_sessions");
-  const runs = countReads(page, "machine_runs");
+  const reads = panelReads(page);
   await signIn(page, w.tenants.alpha.users.admin);
-  runs.length = 0; // count from the first opening of the worksheet on
   let dialog = await openWorksheet(page);
   await page.waitForLoadState("networkidle");
   await expect(dialog.getByTestId("planned-vs-actual")).toHaveCount(0);
-  // operator_sessions is read only by the panel: none.
-  expect(sessions).toHaveLength(0);
-  // machine_runs is also read by the worksheet's own plan prefill (lib/job-machine-plan.ts, same select), so its requests can't be told
-  // apart by URL. Robust check: the panel adds exactly one machine_runs read. Count what opening the worksheet makes with the panel off,
-  // switch it on, open it again, and the difference must be exactly the panel's one read (so off made none for the panel).
-  const offCount = runs.length;
+  // Nothing was read for the panel (its own queries for this job; other readers of these tables are ignored by the match).
+  expect(reads.jobs).toHaveLength(0);
+  expect(reads.sessions).toHaveLength(0);
+  // Control: with the switch on, the same fingerprint does show up, so the zero above is a real zero and not a match that can't fire.
   await setSwitch(true);
-  runs.length = 0;
   dialog = await openWorksheet(page); // reloads /jobs, so the company's settings (and the marker) are read afresh
   await expect(dialog.getByTestId("planned-vs-actual")).toBeVisible();
   await expect(dialog.getByTestId("pva-calculated-at")).toBeVisible();
-  await page.waitForLoadState("networkidle");
-  expect(sessions.length).toBeGreaterThan(0);
-  expect(runs.length).toBe(offCount + 1);
+  expect(reads.jobs.length).toBeGreaterThanOrEqual(1);
+  expect(reads.sessions.length).toBeGreaterThanOrEqual(1);
 });
 
 test("switch on: admin and office see planned 2.00, actual 2.50, +0.50, Over plan and when it was calculated; workshop sees no panel", async ({ page, browser }) => {
@@ -132,7 +136,7 @@ test("switch on: admin and office see planned 2.00, actual 2.50, +0.50, Over pla
     await expect(total.getByRole("cell").nth(1)).toHaveText("2.00");
     await expect(total.getByRole("cell").nth(2)).toHaveText("2.50");
     await expect(total.getByRole("cell").nth(3)).toHaveText("+0.50");
-    await expect(panel.getByTestId("pva-calculated-at")).toHaveText(/^Calculated at \d{2}:\d{2} on \d{1,2} [A-Z][a-z]{2} \d{4} \(UK time\)$/);
+    await expect(panel.getByTestId("pva-calculated-at")).toHaveText(/^Calculated at \d{2}:\d{2} on \d{1,2} [A-Z][a-z]{2,3} \d{4} \(UK time\)$/);
     if (role === "office") await context.close();
   }
   const workshopContext = await browser.newContext();
@@ -147,7 +151,7 @@ test("switch on: admin and office see planned 2.00, actual 2.50, +0.50, Over pla
 test("switch on, read fails: one muted line, and the worksheet still renders and works", async ({ page }) => {
   test.setTimeout(120_000);
   await setSwitch(true);
-  await page.route("**/rest/v1/operator_sessions*", (route) => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "boom" }) }));
+  await page.route("**/rest/v1/operator_sessions?*", (route) => (new URL(route.request().url()).searchParams.get("job_id") === `eq.${jobId}` ? route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ message: "boom" }) }) : route.continue()));
   await signIn(page, w.tenants.alpha.users.admin);
   const dialog = await openWorksheet(page);
   await expect(dialog.getByTestId("planned-vs-actual")).toHaveText(READ_ERROR);
