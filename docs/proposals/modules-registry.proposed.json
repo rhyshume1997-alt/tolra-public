@@ -1,0 +1,713 @@
+{
+  "_status": "PROPOSAL ONLY. Not authorised for CI enforcement. Baseline: main at 0cea2ee5 (11 Nov 2026).",
+  "_resolution_order": [
+    "shared_restricted (exact path)",
+    "exact_files (exact path)",
+    "modules[*].patterns_from_MODULES_md (regular expression, first match)",
+    "modules[*].patterns_provisional (regular expression, first match)"
+  ],
+  "_assignment_status": {
+    "as-written": "matches docs/MODULES.md literally",
+    "inspected": "individually inspected: responsibilities, importers and callers read",
+    "provisional": "matched by path only; NOT verified; must not be enforced"
+  },
+  "modules": {
+    "auth-company-admin": {
+      "name": "Auth and Company Administration",
+      "patterns_from_MODULES_md": [
+        "^app/\\(dashboard\\)/admin/users/",
+        "^app/api/admin/",
+        "^lib/company\\.ts$",
+        "^lib/use-user\\.ts$",
+        "^lib/auth/",
+        "^lib/mfa-",
+        "^middleware\\.ts$"
+      ],
+      "patterns_provisional": [
+        "^app/(login|mfa|auth|choose-company|select-role|platform|configuration-error)/",
+        "^app/api/(auth|platform|audit|branding|company-logo|my-company-logos|report-error|health|favicon|pwa-icon|search|reopen-requests|job-photos)/",
+        "^app/\\(dashboard\\)/(admin|settings|approval)/",
+        "^lib/server/",
+        "^lib/company-setup/",
+        "^lib/validation/",
+        "^components/platform/",
+        "^components/(role-gate|support-banner|authenticator-code|company-setup-guide|sales-orders-gate|approval-recovery|reopen-approvals)",
+        "^lib/(session-|password|set-password|new-company|sections|audit|activity|org-settings|supabase|auth-errors|error-alert|alert-test|use-idle)",
+        "^instrumentation\\.ts$"
+      ]
+    },
+    "jobs-schedule-time": {
+      "name": "Jobs, Workshop and Time",
+      "patterns_from_MODULES_md": [
+        "^app/\\(dashboard\\)/(jobs|schedule|time)/",
+        "^lib/job-",
+        "^lib/machine-",
+        "^lib/time-"
+      ],
+      "patterns_provisional": [
+        "^lib/jobs/",
+        "^components/jobs/",
+        "^components/(time|workshop)/",
+        "^components/(job-|machine-|day-plan|new-job|rework|reopen|release-early|paused-machine|so-machines|inspection|team-week|signature-pad|customer-signoff|authorised-inspectors|cert-pack|phase-filter)",
+        "^lib/(my-jobs|rework|attendance|booking|bookings|day-plan|inspection|signoff|worksheet|clock|site-network|team-week|payroll)"
+      ]
+    },
+    "quotes-rfq-sales-orders": {
+      "name": "Quotes and RFQ",
+      "patterns_from_MODULES_md": [
+        "^app/\\(dashboard\\)/(quotes|rfq|sales-orders)/",
+        "^lib/quote-",
+        "^lib/rfq-"
+      ],
+      "patterns_provisional": [
+        "^lib/(accept-quote|sales-order|rfq|quote)",
+        "^components/(quote|rfq|sales-order)"
+      ]
+    },
+    "invoices-delivery-purchasing": {
+      "name": "Invoices and Receivables",
+      "patterns_from_MODULES_md": [
+        "^app/\\(dashboard\\)/(invoices|delivery-notes|purchase-orders)/",
+        "^lib/(invoice-|delivery-|purchase-)",
+        "^lib/payments\\.ts$"
+      ],
+      "patterns_provisional": [
+        "^lib/email/chase/",
+        "^lib/(chase|chasing)/",
+        "^components/chase/",
+        "^app/api/chase/",
+        "^components/email-schedules/chase-",
+        "^components/invoices/",
+        "^components/(invoice-|draft-invoice|credit-notes|customer-credit|delivery-note|delivery-notes|despatch-|uninvoiced-|void-invoice|write-off|vat-|purchase-order|bought-in)",
+        "^lib/(receivables|credit|vat|money|draft-invoice|despatch|bank-details|year-end|statement|customer-statement|uninvoiced|write-off|void)"
+      ]
+    },
+    "customers-suppliers": {
+      "name": "Customers and Suppliers",
+      "patterns_from_MODULES_md": [
+        "^app/\\(dashboard\\)/(customers|suppliers)/"
+      ],
+      "patterns_provisional": [
+        "^lib/(customers|suppliers|customer-|supplier-)",
+        "^components/(customer-select)"
+      ]
+    },
+    "integrations": {
+      "name": "Integrations",
+      "patterns_from_MODULES_md": [
+        "^lib/integrations/",
+        "^lib/ai/",
+        "^components/integrations/"
+      ],
+      "patterns_provisional": [
+        "^app/api/(integrations|ai|ai-helper|mail|email|accounting|costing|send-job|cron)/",
+        "^app/\\(dashboard\\)/(ai-helper|email)/",
+        "^lib/(ai-helper|email|m365|accounting|costing)/",
+        "^components/(ai-helper|email|email-schedules|costing)/",
+        "^components/(ai-|xero-|microsoft-|resend-|integrations-panel|accountant-invite|inbound-email|costing-line|email-choice)",
+        "^lib/(xero|inbound|po-capture)"
+      ]
+    },
+    "dashboard-reports-shared-ui": {
+      "name": "Dashboard and Shared UI",
+      "patterns_from_MODULES_md": [
+        "^app/\\(dashboard\\)/(dashboard|numbers)/",
+        "^components/ui/"
+      ],
+      "patterns_provisional": [
+        "^components/(dashboard-|numbers-|overview|stat-tile|status-badge|sidebar|topbar|dashboard-shell|shell-status|list-|filter-bar|empty-list|column-toggle|view-switcher|confirm-dialog|global-search|board-heading|date-|display-name|who-when|theme-colour|print-|module-placeholder|activity-panel|document-attachments)",
+        "^lib/(dashboard-|overview|numbers|attention-|utils|html|export-records|download-pdf|print-|archive|date|format|search|theme|product|status)",
+        "^components/pdf/",
+        "^app/\\(dashboard\\)/(layout|loading|error)\\.tsx$"
+      ]
+    },
+    "database-releases": {
+      "name": "Database and Releases",
+      "patterns_from_MODULES_md": [
+        "^supabase/"
+      ],
+      "patterns_provisional": []
+    },
+    "integrations:data-import": {
+      "name": "Integrations: Data Import area",
+      "patterns_from_MODULES_md": [],
+      "patterns_provisional": [
+        "^lib/(sliq-validate|sliq-reconcile)/",
+        "^lib/(sliq-|import-|data-import)",
+        "^components/(sliq-import|data-import)"
+      ]
+    },
+    "ci-engineering-tooling": {
+      "name": "CI and Engineering Tooling",
+      "patterns_from_MODULES_md": [],
+      "patterns_provisional": [
+        "^\\.github/",
+        "^scripts/",
+        "^\\.eslintrc\\.json$",
+        "^vitest.*\\.ts$",
+        "^playwright.*\\.ts$",
+        "^tsconfig\\.json$",
+        "^\\.gitignore$",
+        "^docs/(HARD_RULES|MODULES|SAAS_ROADMAP|AGENT_TASK_TEMPLATE)\\.md$",
+        "^AGENTS\\.md$",
+        "^CLAUDE\\.md$"
+      ]
+    },
+    "marketing-public-site": {
+      "name": "Marketing and Public Website",
+      "patterns_from_MODULES_md": [],
+      "patterns_provisional": [
+        "^app/(page|layout|not-found|error|global-error)\\.tsx$",
+        "^app/(globals\\.css|robots\\.ts|sitemap\\.ts)$",
+        "^app/privacy/",
+        "^components/marketing/",
+        "^lib/marketing\\.ts$",
+        "^public/"
+      ]
+    },
+    "offline-pwa": {
+      "name": "Offline and PWA",
+      "patterns_from_MODULES_md": [],
+      "patterns_provisional": [
+        "^lib/offline/",
+        "^app/(sw\\.js|offline\\.html|manifest\\.webmanifest)/",
+        "^components/(offline-banner|pwa-register|sync-status)"
+      ]
+    }
+  },
+  "exact_files": {
+    "DEPLOYS.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "deploy log"
+    },
+    "README.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "repository documentation"
+    },
+    "app/error.tsx": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "application shell (ruled 11 Nov)"
+    },
+    "app/global-error.tsx": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "application shell (ruled 11 Nov)"
+    },
+    "app/globals.css": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "styles for the whole application"
+    },
+    "app/layout.tsx": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "application shell (ruled 11 Nov)"
+    },
+    "app/not-found.tsx": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "application shell (ruled 11 Nov)"
+    },
+    "components.json": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "component generator configuration"
+    },
+    "components/document-attachments.tsx": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "high",
+      "evidence": "correction: files on delivery notes and purchase orders; all 3 importers are Invoices pages"
+    },
+    "components/pdf/CreditNotePDF.tsx": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "credit note document"
+    },
+    "components/pdf/DeliveryNotePDF.tsx": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "high",
+      "evidence": "correction: all importers are Invoices code"
+    },
+    "components/pdf/InvoicePDF.tsx": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "high",
+      "evidence": "correction: all importers are Invoices code"
+    },
+    "components/pdf/PurchaseOrderPDF.tsx": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "high",
+      "evidence": "correction: all importers are Invoices code"
+    },
+    "components/pdf/QuotePDF.tsx": {
+      "module": "quotes-rfq-sales-orders",
+      "confidence": "medium",
+      "evidence": "quote document"
+    },
+    "components/pdf/SalesOrderPDF.tsx": {
+      "module": "quotes-rfq-sales-orders",
+      "confidence": "medium",
+      "evidence": "sales order document"
+    },
+    "docs/handover/B5-FINANCIAL-415-e42d927.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dated handover or release note"
+    },
+    "docs/handover/BUILDER-4-415-EMAIL-MFA-REVIEW.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dated handover or release note"
+    },
+    "docs/handover/BUILDER-4-417-EMAIL-CI-CASES.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dated handover or release note"
+    },
+    "docs/handover/EMAIL-READY-FOR-KEYS.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dated handover or release note"
+    },
+    "docs/release/KNOWN-LIMITATIONS-AND-RECOVERY.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dated handover or release note"
+    },
+    "docs/release/SLIQ-SCRATCH-REHEARSAL.md": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dated handover or release note"
+    },
+    "lib/access-recheck.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "re-checks access while the app stays open"
+    },
+    "lib/add-machine-reason.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/admin-user-save.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "callers: Auth 1"
+    },
+    "lib/approval-queue.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "rule for \"e-mails needing approval\" (drafted, not snoozed); read by the approval page, the dashboard count and the sidebar badge"
+    },
+    "lib/attention.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "callers: Dashboard 1"
+    },
+    "lib/auth-links.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "callers: Auth 2"
+    },
+    "lib/auto-booking.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "machine bookings made when a job is saved"
+    },
+    "lib/brand-pending.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "shell colours and placeholder until the company profile loads; all five component importers are shell files"
+    },
+    "lib/branding.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "sign-in page branding per company"
+    },
+    "lib/chunk-reload.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "application shell (ruled 11 Nov)"
+    },
+    "lib/compact-list-pref.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "only importer is the Invoices compact list"
+    },
+    "lib/company-access.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "callers: Auth 7"
+    },
+    "lib/company-form.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "company settings form"
+    },
+    "lib/company-sync.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "callers: Auth 2"
+    },
+    "lib/confirmed-user.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "one auth-server confirmation of the signed-in user per page"
+    },
+    "lib/costing.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "costing engine availability"
+    },
+    "lib/delete-result.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "callers: Invoices 1"
+    },
+    "lib/destinations.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "which pages a shortcut may point at"
+    },
+    "lib/display-name.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "display names of company users; 3 of 5 importers are Auth"
+    },
+    "lib/document-attachments.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "files on delivery notes and purchase orders (migration 067)"
+    },
+    "lib/document-integrity.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "refuses to print a quote or invoice whose stored totals differ from its lines; imported only by the PDF layer, so a change affects Quotes documents too"
+    },
+    "lib/document-snapshot.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "callers: Invoices 4, Quotes 1"
+    },
+    "lib/drawing-revision.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/empty-hints.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "the one-line hint on an empty list"
+    },
+    "lib/floor-attendance.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "Whole floor clocked-in count"
+    },
+    "lib/global-search.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "top-bar search"
+    },
+    "lib/hand-made-delivery-note.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "callers: Invoices 1"
+    },
+    "lib/inbox-auto-check.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "browser timer that asks POST /api/mail/check to read the company inbox; started by the shell, listened to by the RFQ page"
+    },
+    "lib/inspectors.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "authorised inspectors for job inspection"
+    },
+    "lib/list-card-counts.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "Open / Done / Archived counts on list tabs"
+    },
+    "lib/list-filter.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "list-page filter from the URL"
+    },
+    "lib/mask-email.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "callers: Auth 1"
+    },
+    "lib/open-drafts.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "the single rule for \"an open draft invoice\"; the dashboard only reads it"
+    },
+    "lib/open-drawing.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/order-from-quote.ts": {
+      "module": "quotes-rfq-sales-orders",
+      "confidence": "medium",
+      "evidence": "callers: Quotes 1"
+    },
+    "lib/parts-quantity.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1, unassigned 1"
+    },
+    "lib/payment-attempts.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "callers: Invoices 1"
+    },
+    "lib/pdf-warm.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "pre-fetches the export PDF code (lib/export-records); its only caller today is the Jobs page"
+    },
+    "lib/photo-image.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "job photos prepared on the device"
+    },
+    "lib/png.ts": {
+      "module": "auth-company-admin",
+      "confidence": "medium",
+      "evidence": "callers: Auth 1"
+    },
+    "lib/range-label.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "callers: Invoices 1"
+    },
+    "lib/record-link.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "low",
+      "evidence": "direct links to one record by id"
+    },
+    "lib/reopen-sign-off.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "high",
+      "evidence": "callers: Jobs 2"
+    },
+    "lib/report-client-error.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "application shell (ruled 11 Nov)"
+    },
+    "lib/resend.ts": {
+      "module": "integrations",
+      "confidence": "medium",
+      "evidence": "Resend provider helper"
+    },
+    "lib/run-bookings.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/run-plan.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "high",
+      "evidence": "callers: Jobs 3, unassigned 1"
+    },
+    "lib/schedule-live.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "high",
+      "evidence": "callers: Jobs 3"
+    },
+    "lib/send-outcome.ts": {
+      "module": "integrations",
+      "confidence": "high",
+      "evidence": "callers: Integrations 2"
+    },
+    "lib/shell-status.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "high",
+      "evidence": "callers: Dashboard 2, unassigned 1"
+    },
+    "lib/sign-in-access.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "callers: Auth 2"
+    },
+    "lib/snapshot-hash.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/so-machines.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 3, Quotes 1"
+    },
+    "lib/sync-status.ts": {
+      "module": "offline-pwa",
+      "confidence": "medium",
+      "evidence": "callers: Offline 1"
+    },
+    "lib/use-database-has-067.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "high",
+      "evidence": "callers: Invoices 2"
+    },
+    "lib/use-database-has-068.ts": {
+      "module": "quotes-rfq-sales-orders",
+      "confidence": "medium",
+      "evidence": "callers: Quotes 1"
+    },
+    "lib/use-database-has-073.ts": {
+      "module": "invoices-delivery-purchasing",
+      "confidence": "medium",
+      "evidence": "asks whether migration 073 (invoice screen) is applied"
+    },
+    "lib/use-database-has-075.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "high",
+      "evidence": "callers: Jobs 5"
+    },
+    "lib/use-destinations.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "hook over lib/destinations"
+    },
+    "lib/use-now.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/use-saving.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "double-submit guard hook used by forms in five areas"
+    },
+    "lib/username.ts": {
+      "module": "auth-company-admin",
+      "confidence": "high",
+      "evidence": "callers: Auth 3, unassigned 1"
+    },
+    "lib/view-mode.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "cards / compact / table preference for list pages"
+    },
+    "lib/who-when-load.ts": {
+      "module": "dashboard-reports-shared-ui",
+      "confidence": "medium",
+      "evidence": "callers: Dashboard 1"
+    },
+    "lib/whole-floor.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "callers: Jobs 1"
+    },
+    "lib/working-hours.ts": {
+      "module": "jobs-schedule-time",
+      "confidence": "medium",
+      "evidence": "planned paid hours on the time screens"
+    },
+    "next.config.mjs": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "production configuration (ruled 11 Nov): security headers and CSP; OWNER APPROVAL MANDATORY"
+    },
+    "package-lock.json": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "lockfile"
+    },
+    "package.json": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "dependency manifest"
+    },
+    "postcss.config.mjs": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "build configuration"
+    },
+    "tailwind.config.ts": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "build configuration"
+    },
+    "vercel.json": {
+      "module": "ci-engineering-tooling",
+      "confidence": "high",
+      "evidence": "production configuration (ruled 11 Nov): region and cron schedule; OWNER APPROVAL MANDATORY"
+    }
+  },
+  "shared_restricted": {
+    "_rule": "Exact paths only. No wildcard. A change needs: the file in the PR allowlist, a task justification, a regression impact assessment and human owner approval.",
+    "files": {
+      "lib/friendly-error.ts": "turns any error into a safe message; 87 importers in nine areas",
+      "lib/fetch-all.ts": "pages through every row of a list; importers in six areas",
+      "lib/db-features.ts": "detects which migrations the database has; importers in eight areas",
+      "lib/db-missing.ts": "dependency-free \"database does not have this yet\" detection used by server and client code",
+      "lib/demo.ts": "demo mode switch; importers in six areas",
+      "lib/jnr-test-data.ts": "synthetic demo records loaded by four list pages",
+      "lib/numbering.ts": "document numbering used by quotes, invoices and jobs",
+      "lib/spreadsheet.ts": "CSV and spreadsheet writer; importers in seven areas",
+      "lib/page-company.ts": "the company a page was opened for (company switch mid-form); importers in four areas",
+      "lib/people.ts": "who-did-what names of the signed-in company; 24 importers in five areas",
+      "lib/company-people.ts": "loads the company's people by name; importers in four areas",
+      "types/index.ts": "shared record and role types; 10 importers across Auth, Jobs and the shell",
+      "components/pdf/BaseDocumentPDF.tsx": "the one PDF layout every issued document prints through (quotes, invoices, credit notes, delivery notes, orders)",
+      "components/pdf/pdf-totals.ts": "totals printed on every issued document"
+    }
+  },
+  "owner_approval_mandatory": [
+    "next.config.mjs",
+    "vercel.json"
+  ],
+  "tests": {
+    "rules": [
+      "A test accompanies the single implementation module it verifies.",
+      "Every changed test is listed explicitly in the PR allowlist.",
+      "A multi-module regression test may accompany one module task when it verifies that module's existing contract; it never authorises implementation changes in another module.",
+      "Tests are not weakened, deleted or skipped without secure owner approval.",
+      "Tests are not a Shared module."
+    ],
+    "measured_on_main": {
+      "reference_one_module": 310,
+      "reference_several_modules": 292,
+      "reference_no_source_file": 219,
+      "support_fixtures_notes": 282
+    }
+  },
+  "undecided": {
+    "files": [],
+    "areas": {
+      "app/(dashboard)/approval/page.tsx": "The approval page shows three things owned by different modules: chase approvals (Invoices), job reopen approvals (Jobs) and drafted e-mails (Integrations). It needs one owner or a split.",
+      "app/api/cron/** and lib/server/cron-*.ts": "Cron routes run e-mail, Xero, snapshot and purge jobs; lib/server/cron-auth.ts is their security control. All callers are cron routes. Owner: Integrations, Auth (as a security control) or CI and Engineering Tooling?",
+      "lib/people.ts and lib/company-people.ts": "On the restricted shared list because five areas import them, but their responsibility (the company's people) could make Auth and Company Administration the single owner."
+    }
+  },
+  "counts_non_test_files": {
+    "by_module": {
+      "Database and Releases": 436,
+      "Integrations": 213,
+      "CI and Engineering Tooling": 127,
+      "Auth and Company Administration": 111,
+      "Jobs, Workshop and Time": 110,
+      "Dashboard and Shared UI": 94,
+      "Invoices and Receivables": 82,
+      "Marketing and Public Website": 36,
+      "Integrations: Data Import area": 22,
+      "Quotes and RFQ": 20,
+      "Offline and PWA": 14,
+      "shared-restricted": 14,
+      "Customers and Suppliers": 7
+    },
+    "by_status": {
+      "provisional": 577,
+      "inspected": 107,
+      "as-written": 602
+    }
+  }
+}
