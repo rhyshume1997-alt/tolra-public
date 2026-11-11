@@ -21,7 +21,7 @@ import { signIn, world } from "./helpers";
 const w = world();
 
 // What only the ISO evidence reader asks for. The signed-in shell does not read these, so seeing one means the page read ISO evidence.
-const ISO_READS = [/\/rest\/v1\/inspector_authorisations/, /\/rest\/v1\/audit_log_view/, /\/rest\/v1\/job_rework/, /\/rest\/v1\/suppliers\?[^#]*supplier_status/, /\/rest\/v1\/jobs\?[^#]*drawing_revision_required/, /\/rest\/v1\/jobs\?[^#]*traceable/];
+const ISO_READS = [/\/rest\/v1\/organization_members\?[^#]*can_inspect=eq\.true/, /\/rest\/v1\/inspector_authorisations/, /\/rest\/v1\/audit_log_view/, /\/rest\/v1\/job_rework/, /\/rest\/v1\/suppliers\?[^#]*supplier_status/, /\/rest\/v1\/jobs\?[^#]*drawing_revision_required/, /\/rest\/v1\/jobs\?[^#]*traceable/];
 
 let solo: Awaited<ReturnType<typeof createSoloTenant>>;
 
@@ -49,11 +49,14 @@ test("switched off (the default): the notice, and no ISO evidence is read", asyn
   const reads: string[] = [];
   page.on("request", (request) => { if (ISO_READS.some((re) => re.test(request.url()))) reads.push(request.url()); });
   await signIn(page, solo.admin);
+  // Counting has started (above); now wait for the company settings that decide the switch, then the notice.
+  const settings = page.waitForResponse((r) => /\/rest\/v1\/organization_settings/.test(r.url()));
   await page.goto("/admin/iso");
+  await settings;
   await expect(page.getByText(ISO_OFF_NOTICE)).toBeVisible();
   await expect(page.getByRole("button", { name: "Download pack (zip)" })).toHaveCount(0);
-  // The switch is decided once the page shows the notice; wait for the network to go quiet so a late read would have been seen.
-  await page.waitForLoadState("networkidle");
+  // A fixed window after the switch is known: any ISO read would have started by now.
+  await page.waitForTimeout(2000);
   expect(reads).toEqual([]);
 });
 
@@ -69,6 +72,7 @@ test("switched on as admin: the page renders, one PDF and the zip download", asy
   for (const d of ISO_DOCUMENTS) await expect(page.getByRole("cell", { name: d.title, exact: true })).toBeVisible();
   // The reader ran (so the "off" check above is not vacuous).
   expect(reads.some((url) => /inspector_authorisations/.test(url))).toBe(true);
+  expect(reads.some((url) => /organization_members/.test(url))).toBe(true);
   await expect(page.getByRole("cell", { name: "Not evidenced by Tolra" }).first()).toBeVisible();
 
   const pdfDownload = page.waitForEvent("download");
