@@ -69,7 +69,12 @@ test("switched on as admin: the page renders, one PDF and the zip download", asy
   await page.goto("/admin/iso");
   await expect(page.getByRole("heading", { name: "ISO templates" })).toBeVisible();
   await expect(page.getByText("Needs company review. Not certification evidence.").first()).toBeVisible();
-  for (const d of ISO_DOCUMENTS) await expect(page.getByRole("cell", { name: d.title, exact: true })).toBeVisible();
+  // Scope to the Documents table row (the one with this document's download button): titles such as
+  // "Quality policy" also appear as clause requirements in the Gap checklist table.
+  for (const d of ISO_DOCUMENTS) {
+    const documentRow = page.getByRole("row").filter({ has: page.getByRole("button", { name: `Download PDF: ${d.title}`, exact: true }) });
+    await expect(documentRow.getByRole("cell", { name: d.title, exact: true })).toBeVisible();
+  }
   // The reader ran (so the "off" check above is not vacuous).
   expect(reads.some((url) => /inspector_authorisations/.test(url))).toBe(true);
   expect(reads.some((url) => /organization_members/.test(url))).toBe(true);
