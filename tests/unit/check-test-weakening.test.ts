@@ -13,11 +13,15 @@ import { analyse, caseTitles, isTestFile, markerCounts, run } from "../../script
 
 type Change = { status: "A" | "M" | "D" | "R"; oldPath: string; newPath: string; baseText: string; headText: string };
 const modified = (file: string, baseText: string, headText: string): Change => ({ status: "M", oldPath: file, newPath: file, baseText, headText });
-const kinds = (changes: Change[]) => analyse(changes).map((finding: { kind: string }) => finding.kind);
+const real = (changes: Change[]) => changes.map((change) => ({ ...change, baseText: mk(change.baseText), headText: mk(change.headText) }));
+const kinds = (changes: Change[]) => analyse(real(changes)).map((finding: { kind: string }) => finding.kind);
 
 const TWO_CASES = 'describe("money", () => {\n  it("adds pennies", () => {});\n  it("rounds half up", () => {});\n});\n';
-/** Writes the "only" marker without this file containing it: the guardrail reads this file too, and would count it. */
-const only = (text: string) => text.replaceAll("@only", ".on" + "ly");
+/**
+ * Example test code in this file writes its markers with "@" ("it@skip", "x@it"): the guardrail reads this file too, and would count
+ * real ones. mk() turns them into the real thing just before the guardrail sees them.
+ */
+const mk = (text: string) => text.replace(/@(skipIf|skip|only|todo|fixme)\b/g, (_all, word: string) => "." + word).replaceAll("x@it(", "x" + "it(");
 const BUDGET = 'const C = {\n  "app/(dashboard)/jobs/page.tsx": 143_123,\n  "app/(dashboard)/quotes/page.tsx": 108_823,\n};\n';
 
 describe("what counts as a test file", () => {
@@ -31,8 +35,8 @@ describe("what counts as a test file", () => {
   });
 
   it("reads markers and titles, including it.each and chained modifiers", () => {
-    expect(markerCounts(only('it.skip("a", f); describe@only("b", f); test.fixme("c", f); it.skipIf(x)("d", f); xit("e", f); it("skip this word", f);'))).toEqual({ skip: 1, only: 1, fixme: 1, skipIf: 1, "x-prefixed": 1 });
-    expect(caseTitles(only('it("one", f);\ntest(\'two\', f);\nit.each([[1, 2], [3, 4]])(`three %s`, f);\nit@only("four", f);\nedit("not a case");'))).toEqual(["one", "two", "three %s", "four"]);
+    expect(markerCounts(mk('it@skip("a", f); describe@only("b", f); test@fixme("c", f); it@skipIf(x)("d", f); x@it("e", f); it("skip this word", f);'))).toEqual({ skip: 1, only: 1, fixme: 1, skipIf: 1, "x-prefixed": 1 });
+    expect(caseTitles(mk('it("one", f);\ntest(\'two\', f);\nit.each([[1, 2], [3, 4]])(`three %s`, f);\nit@only("four", f);\nedit("not a case");'))).toEqual(["one", "two", "three %s", "four"]);
   });
 });
 
@@ -50,22 +54,40 @@ describe("weakening is found", () => {
   });
 
   it.each([
-    ["it.skip", TWO_CASES.replace('it("rounds', 'it.skip("rounds')],
-    ["it@only", TWO_CASES.replace('it("adds', only('it@only("adds'))],
-    ["describe.skip", TWO_CASES.replace('describe("money"', 'describe.skip("money"')],
-    ["test.fixme", TWO_CASES.replace('it("rounds', 'test.fixme("rounds')],
-    ["it.todo", TWO_CASES.replace('it("rounds half up", () => {});', 'it("rounds half up", () => {});\n  it.todo("later");')],
+    ["it@skip", TWO_CASES.replace('it("rounds', 'it@skip("rounds')],
+    ["it@only", TWO_CASES.replace('it("adds', 'it@only("adds')],
+    ["describe@skip", TWO_CASES.replace('describe("money"', 'describe@skip("money"')],
+    ["test@fixme", TWO_CASES.replace('it("rounds', 'test@fixme("rounds')],
+    ["it@todo", TWO_CASES.replace('it("rounds half up", () => {});', 'it("rounds half up", () => {});\n  it@todo("later");')],
   ])("a new %s in an existing file", (_label, headText) => {
     expect(kinds([modified("tests/unit/money.test.ts", TWO_CASES, headText)])).toContain("skip-marker");
   });
 
   it("a removed test case, named in the finding", () => {
-    const findings = analyse([modified("tests/unit/money.test.ts", TWO_CASES, TWO_CASES.replace('  it("rounds half up", () => {});\n', ""))]);
+    const findings = analyse(real([modified("tests/unit/money.test.ts", TWO_CASES, TWO_CASES.replace('  it("rounds half up", () => {});\n', ""))]));
     expect(findings).toEqual([{ file: "tests/unit/money.test.ts", kind: "cases-removed", detail: '1 fewer test case (2 to 1); no longer present: "rounds half up"' }]);
   });
 
   it("an only marker in a brand-new test file", () => {
-    expect(kinds([{ status: "A", oldPath: "tests/unit/new.test.ts", newPath: "tests/unit/new.test.ts", baseText: "", headText: only('it@only("x", () => {});') }])).toEqual(["skip-marker"]);
+    expect(kinds([{ status: "A", oldPath: "tests/unit/new.test.ts", newPath: "tests/unit/new.test.ts", baseText: "", headText: 'it@only("x", () => {});' }])).toEqual(["skip-marker"]);
+  });
+
+  it.each([
+    ["an unconditional skipped case", 'it@skip("x", () => {});'],
+    ["a skipped block", 'describe@skip("block", () => { it("x", () => {}); });'],
+    ["a bare skip inside a test", 'test("x", async () => { test@skip(); });'],
+    ["a conditional skip with no reason", 'test("x", async () => { test@skip(!process.env.DB); });'],
+    ["a todo", 'it@todo("later");'],
+    ["a fixme", 'test@fixme("x", async () => {});'],
+    ["an x-prefixed case", 'x@it("x", () => {});'],
+  ])("%s in a brand-new test file", (_label, headText) => {
+    expect(kinds([{ status: "A", oldPath: "tests/e2e/new.spec.ts", newPath: "tests/e2e/new.spec.ts", baseText: "", headText }])).toEqual(["skip-marker"]);
+  });
+
+  it("a conditional skip added to an EXISTING file is still a finding, so it is reviewed", () => {
+    const before = 'test("x", async () => {});\n';
+    const after = 'test("x", async () => { test@skip(!browserDatabaseConfigured(), NO_BROWSER_DATABASE); });\n';
+    expect(kinds([modified("tests/e2e/old.spec.ts", before, after)])).toEqual(["skip-marker"]);
   });
 
   it("a raised page-size ceiling, and a page dropped from the list", () => {
@@ -75,15 +97,20 @@ describe("weakening is found", () => {
 });
 
 describe("ordinary work passes", () => {
-  it("a new test file, even with its own conditional skip", () => {
-    expect(kinds([{ status: "A", oldPath: "tests/e2e/new.spec.ts", newPath: "tests/e2e/new.spec.ts", baseText: "", headText: 'test("x", async () => { test.skip(!process.env.DB, "needs a database"); });' }])).toEqual([]);
+  it.each([
+    ["Playwright, reason as a string", 'test("x", async () => { test@skip(!process.env.DB, "needs a database"); });'],
+    ["the browser specs' pattern", "test.beforeEach(() => { test@skip(!browserDatabaseConfigured(), NO_BROWSER_DATABASE); });"],
+    ["a reason built from a template", "test@skip(plainIp !== null, `the stack gives a plain request an address (${plainIp})`);"],
+    ["vitest skipIf with its condition", 'it@skipIf(process.platform === "win32")("splits words", () => {});'],
+  ])("a new test file with a conditional skip and its reason (%s)", (_label, headText) => {
+    expect(kinds([{ status: "A", oldPath: "tests/e2e/new.spec.ts", newPath: "tests/e2e/new.spec.ts", baseText: "", headText }])).toEqual([]);
   });
 
   it("an added test case, a renamed title, and a moved skip that already existed", () => {
     expect(kinds([modified("tests/unit/money.test.ts", TWO_CASES, TWO_CASES.replace("});\n});", '});\n  it("never negative", () => {});\n});'))])).toEqual([]);
     expect(kinds([modified("tests/unit/money.test.ts", TWO_CASES, TWO_CASES.replace("rounds half up", "rounds a half penny up"))])).toEqual([]);
-    const skipped = 'it.skip("a", f);\nit("b", f);\n';
-    expect(kinds([modified("tests/unit/money.test.ts", skipped, 'it("b", f);\nit.skip("a", f);\n')])).toEqual([]);
+    const skipped = 'it@skip("a", f);\nit("b", f);\n';
+    expect(kinds([modified("tests/unit/money.test.ts", skipped, 'it("b", f);\nit@skip("a", f);\n')])).toEqual([]);
   });
 
   it("a test file renamed inside its own suite with its cases intact", () => {
@@ -91,9 +118,9 @@ describe("ordinary work passes", () => {
   });
 
   it("a removed skip, a lowered ceiling, and changes to support files and notes", () => {
-    expect(kinds([modified("tests/unit/money.test.ts", 'it.skip("a", f);', 'it("a", f);')])).toEqual([]);
+    expect(kinds([modified("tests/unit/money.test.ts", 'it@skip("a", f);', 'it("a", f);')])).toEqual([]);
     expect(kinds([modified("tests/unit/page-size-budget.test.ts", BUDGET, BUDGET.replace("143_123", "120_000"))])).toEqual([]);
-    expect(kinds([{ status: "D", oldPath: "tests/support/world.ts", newPath: "tests/support/world.ts", baseText: 'it.skip("x")', headText: "" }, { status: "D", oldPath: "tests/MANUAL-CHECKS.md", newPath: "tests/MANUAL-CHECKS.md", baseText: "x", headText: "" }])).toEqual([]);
+    expect(kinds([{ status: "D", oldPath: "tests/support/world.ts", newPath: "tests/support/world.ts", baseText: 'it@skip("x")', headText: "" }, { status: "D", oldPath: "tests/MANUAL-CHECKS.md", newPath: "tests/MANUAL-CHECKS.md", baseText: "x", headText: "" }])).toEqual([]);
   });
 });
 
@@ -109,7 +136,7 @@ describe("against a real git history (throwaway repository)", () => {
     const git = (...args: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.test", "-c", "commit.gpgsign=false", ...args], { cwd: dir, encoding: "utf8" }).trim();
     const write = (file: string, text: string) => {
       mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
-      writeFileSync(path.join(dir, file), text);
+      writeFileSync(path.join(dir, file), mk(text));
     };
     const commit = (message: string) => {
       git("add", "-A");
@@ -146,7 +173,7 @@ describe("against a real git history (throwaway repository)", () => {
     expect(deleted.text).toContain("renamed-away: tests/unit/money.test.ts");
 
     const s = repo();
-    s.write("tests/unit/money.test.ts", TWO_CASES.replace('it("rounds', 'it.skip("rounds'));
+    s.write("tests/unit/money.test.ts", TWO_CASES.replace('it("rounds', 'it@skip("rounds'));
     const skipped = check(s.dir, s.base, s.commit("skip"));
     expect(skipped.code).toBe(1);
     expect(skipped.text).toContain("skip-marker: tests/unit/money.test.ts: 1 more skip marker than before");

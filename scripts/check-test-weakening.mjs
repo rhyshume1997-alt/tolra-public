@@ -9,8 +9,11 @@
  *
  * A finding is:
  *   - a test file deleted, renamed to a name no suite collects, or moved to another suite's directory;
- *   - more .skip / .only / .todo / .fixme / .skipIf / .fails / xit markers in an existing test file than before, or any .only in a
- *     new one (a new file's own skips pass: it cannot weaken what already ran);
+ *   - more .skip / .only / .todo / .fixme / .skipIf / .fails / xit markers in an existing test file than before (every new one is
+ *     reviewed, conditional or not);
+ *   - in a NEW test file: any .only, .todo, .fixme, .fails or xit, and any skip that is not conditional with its reason given. Only
+ *     test.skip(<condition>, <reason>) (Playwright) and it.skipIf(<condition>) (vitest) pass there: test.skip("title", ...),
+ *     describe.skip(...), test.skip() and test.skip(<condition>) with no reason are findings;
  *   - fewer titled it(...) / test(...) cases in a test file than before (a renamed title is not a finding; rows of an it.each table
  *     and deleted assertions are NOT detected: review still matters);
  *   - a ceiling raised, or a page dropped, in tests/unit/page-size-budget.test.ts.
@@ -38,10 +41,20 @@ const CASE = /\b(?:it|test)(?:\.[A-Za-z]+)*(?:\s*(?:<[^>\n]*>)?\s*\((?:[^()]|\([
 const CEILING_FILE = "tests/unit/page-size-budget.test.ts";
 const CEILING = /"([^"\n]+)":\s*([0-9][0-9_]*)\s*,/g;
 
-export function markerCounts(text) {
+/** After a `.skip`: an opening bracket, a first argument that is not a title string, a comma and then a reason. */
+const CONDITION_AND_REASON = /^\(\s*(?!["'`])[^\s,)][^,\n]*,\s*[^\s)]/;
+/** After a `.skipIf`: an opening bracket and a condition. */
+const CONDITION = /^\(\s*[^\s)]/;
+
+/** `explainedSkipsPass`: leave out test.skip(<condition>, <reason>) and it.skipIf(<condition>), the only skips a new file may carry. */
+export function markerCounts(text, { explainedSkipsPass = false } = {}) {
   const counts = {};
   for (const match of text.matchAll(MARKER)) {
     const kind = match[1] ?? "x-prefixed";
+    if (explainedSkipsPass) {
+      const rest = text.slice(match.index + match[0].length);
+      if ((kind === "skip" && CONDITION_AND_REASON.test(rest)) || (kind === "skipIf" && CONDITION.test(rest))) continue;
+    }
     counts[kind] = (counts[kind] ?? 0) + 1;
   }
   return counts;
@@ -80,12 +93,11 @@ export function analyse(changes) {
     if (!isTest) continue;
 
     const before = markerCounts(baseText);
-    const after = markerCounts(headText);
+    // A brand-new test file may carry a conditional skip with its reason (the browser specs' "no database configured" pattern); nothing else.
+    const after = markerCounts(headText, { explainedSkipsPass: status === "A" });
     for (const kind of Object.keys(after).sort()) {
-      // A brand-new test file can't weaken what already ran, so its conditional skips pass; .only still counts (it silences its neighbours).
-      if (status === "A" && kind !== "only") continue;
       const added = after[kind] - (before[kind] ?? 0);
-      if (added > 0) findings.push({ file: newPath, kind: "skip-marker", detail: `${added} more ${kind} marker${added === 1 ? "" : "s"} than before` });
+      if (added > 0) findings.push({ file: newPath, kind: "skip-marker", detail: status === "A" ? `new file with ${added} ${kind} marker${added === 1 ? "" : "s"} that ${added === 1 ? "is" : "are"} not a conditional skip with a reason` : `${added} more ${kind} marker${added === 1 ? "" : "s"} than before` });
     }
 
     if (status !== "A") {
