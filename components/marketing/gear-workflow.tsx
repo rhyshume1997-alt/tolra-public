@@ -24,8 +24,9 @@ import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type Muta
 
 
 import {
-  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, STAGE_COUNT, VERSION_COPY, WIDE_LAYOUT, chooseTier, clampStage, driveFor, gearAngle, parseGearsParam,
-  stepTo, type Gear, type GearLayout, type GearStage, type GearsMode, type RenderTier, type StageId,
+  COMPACT_LAYOUT, GEAR_COPY, GEAR_STAGES, PLANNED_COPY, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, WIDE_LAYOUT, chooseTier, clampStage,
+  driveFor, gearAngle, parseGearsParam, stepTo, type Gear, type GearLayout, type GearStage, type GearsMode, type RenderTier, type SceneStage,
+  type StageId,
 } from "@/lib/marketing/gear-workflow";
 
 const LAYOUTS: GearLayout[] = [WIDE_LAYOUT, COMPACT_LAYOUT];
@@ -170,7 +171,7 @@ function GearShape({ g, v, angle, active, hot, mark, setRef }: {
 }
 
 /** The stage's image, framed as what it is: a sheet of paper for a document, an app window for a screen. */
-function StageImage({ stage, sizes, priority = false }: { stage: GearStage; sizes: string; priority?: boolean }) {
+function StageImage({ stage, sizes, priority = false }: { stage: Pick<GearStage, "shot">; sizes: string; priority?: boolean }) {
   const shot = stage.shot;
   return (
     <div className={shot.kind === "document" ? "gw-paper" : "gw-window"}>
@@ -180,7 +181,7 @@ function StageImage({ stage, sizes, priority = false }: { stage: GearStage; size
           <span className="mk-mono">Tolra · {shot.source}</span>
         </div>
       ) : null}
-      <div className="gw-shot">
+      <div className={shot.kind === "screen" && shot.height > shot.width ? "gw-shot gw-shot-tall" : "gw-shot"}>
         <Image src={shot.src} width={shot.width} height={shot.height} alt={shot.alt} sizes={sizes} priority={priority} />
       </div>
     </div>
@@ -275,7 +276,12 @@ export function GearWorkflow() {
   const [tier, setTier] = useState<Exclude<RenderTier, "none"> | null>(null);
   const [compare, setCompare] = useState<{ asked: GearsMode; fellBack: boolean } | null>(null);
   const [near, setNear] = useState(false);
+  const [motion, setMotion] = useState(true);
   const slot = useRef<HTMLDivElement | null>(null);
+  // Version A shows the seven stages of a job; version B adds the planned Analytics view after them.
+  const list: readonly SceneStage[] = tier ? SCENE_STAGES : SCENE_STAGES.slice(0, STAGE_COUNT);
+  const count = useRef(STAGE_COUNT);
+  count.current = list.length;
 
   useEffect(() => {
     const { mode, compare: wanted } = parseGearsParam(window.location.search);
@@ -284,13 +290,15 @@ export function GearWorkflow() {
       const nav = navigator as Navigator & { deviceMemory?: number };
       const chosen = chooseTier({
         webgl: webglAvailable(),
-        reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
         width: window.innerWidth,
         cores: nav.hardwareConcurrency || undefined,
         memory: nav.deviceMemory,
       });
       if (chosen === "none") fellBack = true;
-      else setTier(chosen);
+      else {
+        setTier(chosen);
+        setMotion(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+      }
     }
     if (wanted) setCompare({ asked: mode, fellBack });
   }, []);
@@ -305,6 +313,11 @@ export function GearWorkflow() {
   }, [tier]);
 
   const fallBack = useCallback(() => {
+    // Version A has no Analytics view: come back to the last stage of the job if that was on screen.
+    if (activeRef.current >= STAGE_COUNT) {
+      activeRef.current = STAGE_COUNT - 1;
+      setActive(STAGE_COUNT - 1);
+    }
     setTier(null);
     setCompare((c) => (c ? { ...c, fellBack: true } : c));
   }, []);
@@ -320,7 +333,7 @@ export function GearWorkflow() {
   }, []);
 
   const pick = useCallback((index: number) => {
-    const next = clampStage(index);
+    const next = clampStage(index, count.current);
     const current = activeRef.current;
     if (next === current) return;
     activeRef.current = next;
@@ -347,20 +360,20 @@ export function GearWorkflow() {
   const onChipKey = (event: KeyboardEvent<HTMLDivElement>) => {
     const moves: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
     let next: number | null = null;
-    if (event.key in moves) next = stepTo(active, moves[event.key]);
+    if (event.key in moves) next = stepTo(active, moves[event.key], list.length);
     if (event.key === "Home") next = 0;
-    if (event.key === "End") next = STAGE_COUNT - 1;
+    if (event.key === "End") next = list.length - 1;
     if (next === null) return;
     event.preventDefault();
     pick(next);
     chips.current[next]?.focus();
   };
 
-  const stage = GEAR_STAGES[active];
+  const stage = list[Math.min(active, list.length - 1)];
   const openFull = () => dialog.current?.showModal();
   // The pointer on the viewer's edge sits level with the selected gear: the bay centres the gears, so offset from the middle by the
   // gear's distance from the drawing's middle, scaled to the gears' share of the bay width (container query units).
-  const sel = WIDE_LAYOUT.gears[active];
+  const sel = WIDE_LAYOUT.gears[Math.min(active, STAGE_COUNT - 1)];
   const notch = `calc(50% + ${(((sel.cy - WIDE_LAYOUT.height / 2) / WIDE_LAYOUT.width) * GEAR_SHARE).toFixed(3)}cqw)`;
   const viewer = (
     <section className="gw-view" key={stage.id} aria-label={`${stage.label} in Tolra`}>
@@ -379,7 +392,7 @@ export function GearWorkflow() {
       {tier ? (
         <div className="gw3-slot" ref={slot} data-tier={tier}>
           {near ? (
-            <GearWorkflow3D active={active} tier={tier} onPick={pick} onOpenFull={openFull} onRestart={() => pick(0)} onFail={fallBack} />
+            <GearWorkflow3D active={active} tier={tier} motion={motion} onPick={pick} onOpenFull={openFull} onRestart={() => pick(0)} onFail={fallBack} />
           ) : (
             <p className="gw3-load mk-label">{VERSION_COPY.loading}</p>
           )}
@@ -403,7 +416,7 @@ export function GearWorkflow() {
       )}
 
       <div className="gw-chips" role="radiogroup" aria-label={GEAR_COPY.selector} onKeyDown={onChipKey}>
-        {GEAR_STAGES.map((s, i) => (
+        {list.map((s, i) => (
           <button
             key={s.id}
             ref={(node) => { chips.current[i] = node; }}
@@ -416,6 +429,7 @@ export function GearWorkflow() {
           >
             <span className="mk-mono gw-chip-n">{String(i + 1).padStart(2, "0")}</span>
             <span>{s.label}</span>
+            {s.planned ? <span className="gw-chip-plan">{PLANNED_COPY.chip}</span> : null}
           </button>
         ))}
       </div>
@@ -424,18 +438,19 @@ export function GearWorkflow() {
       <div className="gw-mview">
         <button type="button" className="gw-mview-open" onClick={openFull} aria-label={`${GEAR_COPY.fullSize}: ${stage.shot.source}`}>
           <StageImage stage={stage} sizes="100vw" key={stage.id} />
+          {stage.planned ? <span className="gw-mview-plan">{PLANNED_COPY.badge}</span> : null}
         </button>
-        <p className="gw-view-foot"><span className="mk-label">{stage.shot.source} · {GEAR_COPY.shotNote}</span><button type="button" className="mk-link gw-view-link" onClick={openFull}>{GEAR_COPY.fullSize}</button></p>
+        <p className="gw-view-foot"><span className="mk-label">{stage.shot.source} · {stage.planned ? PLANNED_COPY.note : GEAR_COPY.shotNote}</span><button type="button" className="mk-link gw-view-link" onClick={openFull}>{GEAR_COPY.fullSize}</button></p>
       </div>
 
       <div className="gw-panel">
         {/* Every stage is laid out in the same place and only the selected one is shown, so the panel keeps the height of its
             tallest stage and nothing below the section moves when the stage changes. */}
-        <p className="sr-only" aria-live="polite">Stage {active + 1} of {STAGE_COUNT}: {stage.label}</p>
+        <p className="sr-only" aria-live="polite">{stage.planned ? `${stage.label}, ${PLANNED_COPY.badge.toLowerCase()}: ${PLANNED_COPY.note}` : `Stage ${active + 1} of ${STAGE_COUNT}: ${stage.label}`}</p>
         <div className="gw-stack">
-          {GEAR_STAGES.map((s, i) => (
+          {list.map((s, i) => (
             <div key={s.id} className={i === active ? "gw-slide gw-slide-on" : "gw-slide"} aria-hidden={i !== active} inert={i !== active}>
-              <p className="mk-label">Op {s.op} · Stage {i + 1} of {STAGE_COUNT}</p>
+              <p className={s.planned ? "mk-label gw-plan-label" : "mk-label"}>{s.planned ? PLANNED_COPY.badge : <>Op {s.op} · Stage {i + 1} of {STAGE_COUNT}</>}</p>
               <h4 className="mk-display gw-title">{s.label}</h4>
               <p className="gw-caption">{s.caption}</p>
               {s.solves ? (
@@ -445,7 +460,7 @@ export function GearWorkflow() {
           ))}
         </div>
         <div className="gw-stack">
-          {GEAR_STAGES.map((s, i) => (
+          {list.map((s, i) => (
             <div key={s.id} className={i === active ? "gw-slide gw-slide-on" : "gw-slide"} aria-hidden={i !== active} inert={i !== active}>
               <ul className="gw-details">
                 {s.details.map((line) => <li key={line}>{line}</li>)}
@@ -464,9 +479,9 @@ export function GearWorkflow() {
             <Arrow back /> {GEAR_COPY.previous}
           </button>
           <span className="mk-label gw-progress" aria-hidden="true">
-            {GEAR_STAGES.map((s, i) => <span key={s.id} className={i <= active ? "gw-tick gw-tick-on" : "gw-tick"} />)}
+            {list.map((s, i) => <span key={s.id} className={i <= active ? "gw-tick gw-tick-on" : "gw-tick"} />)}
           </span>
-          <button type="button" className="gw-step" onClick={() => pick(active + 1)} disabled={active === STAGE_COUNT - 1}>
+          <button type="button" className="gw-step" onClick={() => pick(active + 1)} disabled={active === list.length - 1}>
             {GEAR_COPY.next} <Arrow />
           </button>
         </div>
@@ -474,7 +489,7 @@ export function GearWorkflow() {
 
       <dialog ref={dialog} className="gw-dialog" aria-label={`${stage.shot.source}, ${GEAR_COPY.shotNote}`} onClick={(event) => { if (event.target === event.currentTarget) dialog.current?.close(); }}>
         <div className="gw-dialog-bar">
-          <span className="mk-label">Op {stage.op} · {stage.shot.source} · {GEAR_COPY.shotNote}</span>
+          <span className="mk-label">{stage.planned ? `${PLANNED_COPY.badge} · ${stage.shot.source} · ${PLANNED_COPY.note}` : <>Op {stage.op} · {stage.shot.source} · {GEAR_COPY.shotNote}</>}</span>
           <button type="button" className="gw-step" onClick={() => dialog.current?.close()}>{GEAR_COPY.close}</button>
         </div>
         <div className="gw-dialog-body">

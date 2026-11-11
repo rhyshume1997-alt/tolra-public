@@ -1,38 +1,52 @@
 "use client";
 
 /*
- * "The Tolra Machine" in 3D (version B of the home page gear workflow, shown with ?gears=3d): seven machined steel gears on an
- * anodised plate, arched over a display set into the plate. Selecting a stage turns the train (true involute teeth, opposite
- * directions, inverse ratios), lights that gear, leans the camera in towards it and wipes the display over to that stage's image.
- * Reaching the invoice runs the whole train once while the display steps through every stage, then pulls back and offers the
- * booking link.
+ * "The Tolra Machine" in 3D (version B of the home page gear workflow, shown with ?gears=3d): eight machined steel gears on an
+ * anodised plate, arched over a display set into the plate. Seven are the stages of one job; the eighth, driven by the invoice gear,
+ * is the planned Analytics view, left as an unfinished blank and marked "planned" everywhere it appears. Selecting a gear turns the
+ * train (true involute teeth, opposite directions, inverse ratios), lights that gear and leans the camera in.
  *
- * Inputs: the stage index chosen in GearWorkflow (the stage chips, Previous / Next and the gears themselves all go through its
- * pick), the render tier, and callbacks. Geometry, camera stops and words come from lib/marketing/gear-scene.ts; stage copy and
- * images from lib/marketing/gear-workflow.ts. Output: one canvas (hidden from assistive technology: the chips are the accessible
- * control) with a few labels over it. No data, no network beyond the stage images already in public/marketing/workflow/.
+ * From 900px wide, that stage's screen then lifts out of its slot in the plate, turns to face the viewer and stands upright beside
+ * the machine, where it is a real page (scrollable picture, working buttons). It is plain HTML placed with a CSS matrix3d computed
+ * from the 3D camera each frame, so it stays sharp and interactive. Selecting another gear dips the screen, changes it and raises
+ * it again. From the invoice screen, "Run the whole machine" lowers the screen, runs the train once while the display steps through
+ * every stage, pulls back and offers the booking link. Below 900px the display in the plate shows each stage instead (with the
+ * picture under the machine), and reaching the invoice runs the reveal.
+ *
+ * Inputs: the selected view from GearWorkflow (stage chips, Previous / Next and the gears all go through its pick), the render tier,
+ * whether motion is allowed, and callbacks. Geometry, camera stops, the corner-pinning matrix and words come from
+ * lib/marketing/gear-scene.ts; views and images from lib/marketing/gear-workflow.ts (SCENE_STAGES). Output: one canvas (hidden from
+ * assistive technology: the stage chips are the accessible control), the lifting screen, and a few labels. No data, no network
+ * beyond the images already in public/marketing/workflow/.
  * Must not change: it is only ever loaded on demand by components/marketing/gear-workflow.tsx, never server rendered, renders only
- * while something moves, and hands back to the 2D drawing if WebGL fails.
+ * while something moves, makes every move instantly under prefers-reduced-motion, and hands back to the 2D drawing if WebGL fails.
  */
 import { useEffect, useRef, useState } from "react";
 import {
   AdditiveBlending, BackSide, BoxGeometry, CanvasTexture, CylinderGeometry, DirectionalLight, ExtrudeGeometry, Group, LatheGeometry, Mesh, MeshBasicMaterial,
-  MeshPhysicalMaterial, MeshStandardMaterial, NeutralToneMapping, NoColorSpace, Object3D, PCFShadowMap, PerspectiveCamera, Path, PlaneGeometry,
-  PMREMGenerator, Raycaster, RepeatWrapping, Scene, ShaderMaterial, Shape, SpotLight, SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
+  Matrix4, MeshPhysicalMaterial, MeshStandardMaterial, NeutralToneMapping, NoColorSpace, Object3D, PCFShadowMap, PerspectiveCamera, Path, PlaneGeometry,
+  PMREMGenerator, Quaternion, Raycaster, RepeatWrapping, Scene, ShaderMaterial, Shape, SpotLight, SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
   type BufferGeometry, type Material, type Texture,
 } from "three";
 
+import NextImage from "next/image";
+
 import { Cta } from "@/components/marketing/cta";
 import {
-  FOV, MACHINE, SCENE_COPY, overviewStop, revealStop, stageStop, toothOutline, type CameraStop, type RenderTier, type SceneGear,
+  FOV, MACHINE, SCENE_COPY, overviewStop, quadMatrix, revealStop, stageStop, toothOutline, type CameraStop, type RenderTier,
+  type SceneGear,
 } from "@/lib/marketing/gear-scene";
-import { GEAR_COPY, GEAR_STAGES, STAGE_COUNT, VERSION_COPY, driveFor, gearAngle, type GearStage } from "@/lib/marketing/gear-workflow";
+import {
+  GEAR_COPY, PLANNED_COPY, SCENE_STAGES, STAGE_COUNT, VERSION_COPY, driveFor, gearAngle, type SceneStage,
+} from "@/lib/marketing/gear-workflow";
 
 type Tier = Exclude<RenderTier, "none">;
 
 export type GearWorkflow3DProps = {
   active: number;
   tier: Tier;
+  /** False under prefers-reduced-motion: every move (train, camera, screen) happens at once, and nothing plays by itself. */
+  motion: boolean;
   onPick: (index: number) => void;
   onOpenFull: () => void;
   onRestart: () => void;
@@ -42,6 +56,14 @@ export type GearWorkflow3DProps = {
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
+/** Progress of a tween; a zero duration (reduced motion) is already done. */
+const progress = (now: number, t0: number, dur: number) => (dur <= 0 ? 1 : clamp01((now - t0) / dur));
+/** Rising into place: a touch past, then back, as a real panel settles on its stops. */
+const settle = (t: number) => 1 + 1.9 * Math.pow(t - 1, 3) + 0.9 * Math.pow(t - 1, 2);
+/** The screen lifts out and stands upright only where there is room beside the machine (canvas at least this wide, CSS px). */
+const LIFT_MIN_WIDTH = 900;
+/** Where the upright screen stands, as fractions of the canvas: the right part, clear of the machine (see BESIDE_SCREEN). */
+const SHEET = { left: 0.45, top: 0.05, width: 0.53, height: 0.9 };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const DEG = Math.PI / 180;
 /** Radius covered by the shared turned-finish texture, so every gear's rings are the same pitch. */
@@ -225,7 +247,7 @@ function labelTexture(op: string, lines: string[], pxPerUnit: number, fonts: { d
 }
 
 /** The display's picture: a document as a sheet on a light desk, or a screen as an app window, always 16:10. */
-function composeStage(img: HTMLImageElement, stage: GearStage, W: number, H: number, mono: string): HTMLCanvasElement {
+function composeStage(img: HTMLImageElement, stage: SceneStage, W: number, H: number, mono: string): HTMLCanvasElement {
   const [c, x] = canvas(W, H);
   x.fillStyle = "#e7ebf1";
   x.fillRect(0, 0, W, H);
@@ -264,19 +286,21 @@ function composeStage(img: HTMLImageElement, stage: GearStage, W: number, H: num
     const m = W * 0.035;
     const aw = W - 2 * m;
     const ah = H - bar - 2 * m;
-    const s = Math.min(ah / img.naturalHeight, (aw / img.naturalWidth) * 1.75);
+    // A tall screen (the planned Analytics page) fills the width and shows its top, like a page; wide ones are cropped from the left.
+    const tall = img.naturalHeight > img.naturalWidth;
+    const s = tall ? aw / img.naturalWidth : Math.min(ah / img.naturalHeight, (aw / img.naturalWidth) * 1.75);
     const iw = img.naturalWidth * s;
     const ih = img.naturalHeight * s;
-    const top = bar + m + (ah - ih) / 2;
+    const top = tall ? bar + m : bar + m + (ah - ih) / 2;
     x.save();
     x.shadowColor = "rgba(12,22,38,0.2)";
     x.shadowBlur = W * 0.012;
     x.fillStyle = "#fff";
-    x.fillRect(m, top, Math.min(iw, aw), ih);
+    x.fillRect(m, top, Math.min(iw, aw), Math.min(ih, H - top));
     x.restore();
     x.save();
     x.beginPath();
-    x.rect(m, top, aw, ih);
+    x.rect(m, top, aw, Math.min(ih, H - top));
     x.clip();
     x.drawImage(img, m, top, iw, ih);
     x.restore();
@@ -332,10 +356,13 @@ function roundRect(w: number, h: number, r: number): Shape {
   return s;
 }
 
-type Mats = Record<"face" | "flank" | "web" | "polished" | "oxide" | "bronze" | "plate" | "edge" | "bezel", MeshStandardMaterial>;
+type Mats = Record<"face" | "flank" | "web" | "polished" | "oxide" | "bronze" | "plate" | "edge" | "bezel" | "blank" | "blankEdge", MeshStandardMaterial>;
 
-/** One gear: toothed rim, recessed web with lightening holes, hub boss, socket cap screws, shaft, washer and nut. */
-function buildGear(g: SceneGear, m: Mats, full: boolean): { root: Group; spin: Group; pick: Mesh } {
+/**
+ * One gear: toothed rim, recessed web with lightening holes, hub boss, socket cap screws, shaft, washer and nut. A planned gear
+ * (the Analytics view) is left as a dark, unfinished blank, so it reads at a glance as a part not yet finished.
+ */
+function buildGear(g: SceneGear, m: Mats, full: boolean, planned = false): { root: Group; spin: Group; pick: Mesh } {
   const root = new Group();
   root.position.set(g.x, g.y, 0);
   const spin = new Group();
@@ -356,7 +383,7 @@ function buildGear(g: SceneGear, m: Mats, full: boolean): { root: Group; spin: G
   });
   rimGeo.translate(0, 0, bevel);
   radialUV(rimGeo);
-  const rimMesh = new Mesh(rimGeo, [m.face, m.flank]);
+  const rimMesh = new Mesh(rimGeo, planned ? [m.blank, m.blankEdge] : [m.face, m.flank]);
   rimMesh.castShadow = full;
   rimMesh.receiveShadow = full;
   rimMesh.userData.index = g.index;
@@ -381,7 +408,7 @@ function buildGear(g: SceneGear, m: Mats, full: boolean): { root: Group; spin: G
   const webGeo = new ExtrudeGeometry(web, { depth: wt - 0.16, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelOffset: -0.08, bevelSegments: 1, curveSegments: full ? 40 : 20 });
   webGeo.translate(0, 0, F * 0.29 + 0.08);
   radialUV(webGeo);
-  const webMesh = new Mesh(webGeo, [m.web, m.flank]);
+  const webMesh = new Mesh(webGeo, planned ? [m.blank, m.blankEdge] : [m.web, m.flank]);
   webMesh.castShadow = full;
   webMesh.receiveShadow = full;
   webMesh.userData.index = g.index;
@@ -465,12 +492,26 @@ function studio(): Scene {
 /* The engine: everything WebGL, outside React                                                                                     */
 /* ------------------------------------------------------------------------------------------------------------------------------ */
 
-type Callbacks = { onPick: (i: number) => void; onOpenFull: () => void; onReady: () => void; onFail: () => void; onReveal: (on: boolean) => void };
+type Callbacks = {
+  onPick: (i: number) => void;
+  onOpenFull: () => void;
+  onReady: () => void;
+  onFail: () => void;
+  onReveal: (on: boolean) => void;
+  /** Which stage the lifted screen shows, and whether it is up (interactive) or down in its slot. */
+  onScreen: (state: { stage: number; up: boolean }) => void;
+};
 
 type Tween = { from: CameraStop; to: CameraStop; t0: number; dur: number };
 
-function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Callbacks) {
+/**
+ * The scene and everything that moves in it. `sheet` is the HTML screen: the engine pins it onto the display in the plate and, when
+ * a stage is selected, lifts it out, turns it to face the viewer and stands it upright beside the machine, by projecting its four
+ * corners with the 3D camera every frame and setting a CSS matrix3d (quadMatrix) on it.
+ */
+function createEngine(cv: HTMLCanvasElement, sheet: HTMLElement, tier: Tier, start: number, motion: boolean, cb: Callbacks) {
   const full = tier === "full";
+  const ms = (n: number) => (motion ? n : 0);
   const renderer = new WebGLRenderer({ canvas: cv, antialias: true, alpha: true, powerPreference: full ? "high-performance" : "default" });
   let pixelRatio = Math.min(window.devicePixelRatio || 1, full ? 2 : 1.5);
   renderer.setPixelRatio(pixelRatio);
@@ -534,6 +575,9 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     plate: new MeshPhysicalMaterial({ color: 0xffffff, map: plateTex.color, metalness: 0.5, roughness: 0.8, roughnessMap: plateTex.rough, bumpMap: plateTex.rough, bumpScale: 0.08, anisotropy: 0.6, anisotropyRotation: Math.PI / 2 }),
     edge: new MeshStandardMaterial({ color: 0xc7ccd4, metalness: 1, roughness: 0.16 }),
     bezel: new MeshStandardMaterial({ color: 0x141a24, metalness: 0.6, roughness: 0.42 }),
+    // The planned gear: a dark, bead-blasted blank with bright machined edges, not yet turned and finished.
+    blank: new MeshStandardMaterial({ color: 0x4b5058, metalness: 0.9, roughness: 0.62, roughnessMap: grain, bumpMap: grain, bumpScale: 0.25 }),
+    blankEdge: new MeshStandardMaterial({ color: 0x8d939b, metalness: 1, roughness: 0.3 }),
   };
 
   // The plate: anodised aluminium with a bright diamond-cut chamfer round the edge.
@@ -551,14 +595,16 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
   for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) scene.add(screw(m, sx * (PW / 2 - 4.6), sy * (PH / 2 - 4.6), 0, 0.85));
 
   // The gears.
-  const gears = MACHINE.gears.map((g) => buildGear(g, m, full));
+  const gears = MACHINE.gears.map((g, i) => buildGear(g, m, full, SCENE_STAGES[i].planned));
   for (const g of gears) scene.add(g.root);
   const pickables: Object3D[] = gears.flatMap((g) => g.spin.children.filter((c) => c.userData.index !== undefined));
 
   // Etched labels; the selected stage's lights up.
   const fonts = { display: fontOf(".mk-display", "sans-serif"), mono: fontOf(".mk-label, .mk-mono", "monospace") };
-  const labelMats = MACHINE.labels.map(() => new MeshStandardMaterial({
-    color: 0xb4bfce, transparent: true, metalness: 0.15, roughness: 0.7, emissive: 0xd6e4ff, emissiveIntensity: 0,
+  // The planned view's label is etched in amber, the same colour as its "planned" banner.
+  const labelMats = MACHINE.labels.map((_, i) => new MeshStandardMaterial({
+    color: SCENE_STAGES[i].planned ? 0xe2b450 : 0xb4bfce, transparent: true, metalness: 0.15, roughness: 0.7,
+    emissive: SCENE_STAGES[i].planned ? 0xffd27a : 0xd6e4ff, emissiveIntensity: 0,
     depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
   }));
   const labelMeshes = MACHINE.labels.map((l, i) => {
@@ -598,10 +644,10 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
 
   const blank = new CanvasTexture(canvas(4, 4)[0]);
   const screenMat = new ShaderMaterial({
-    uniforms: { a: { value: blank }, b: { value: blank }, p: { value: 1 } },
+    uniforms: { a: { value: blank }, b: { value: blank }, p: { value: 1 }, empty: { value: 0 } },
     vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
     fragmentShader: `
-      uniform sampler2D a; uniform sampler2D b; uniform float p; varying vec2 vUv;
+      uniform sampler2D a; uniform sampler2D b; uniform float p; uniform float empty; varying vec2 vUv;
       void main() {
         float edge = 1.0 - p;
         vec3 c = mix(texture2D(a, vUv).rgb, texture2D(b, vUv).rgb, smoothstep(edge - 0.003, edge + 0.003, vUv.y));
@@ -609,6 +655,9 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
         c = mix(c, vec3(0.62, 0.74, 1.0), line * 0.5);
         vec2 q = vUv - 0.5;
         c *= 1.0 - 0.16 * dot(q, q);
+        // With the screen lifted out, the slot is an empty dark recess, lit softly from inside.
+        vec3 recess = vec3(0.025, 0.04, 0.065) + vec3(0.05, 0.09, 0.16) * (1.0 - smoothstep(0.0, 0.5, length(q * vec2(1.0, 1.6))));
+        c = mix(c, recess, empty);
         gl_FragColor = vec4(c, 1.0);
         #include <colorspace_fragment>
       }`,
@@ -629,7 +678,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
   const loadStage = (i: number): Promise<Texture> => {
     if (!textures[i]) {
       textures[i] = (async () => {
-        const stage = GEAR_STAGES[i];
+        const stage = SCENE_STAGES[i];
         const img = new Image();
         img.decoding = "async";
         img.src = stage.shot.src;
@@ -668,8 +717,16 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
   const lampNow = { x: MACHINE.gears[current].x, y: MACHINE.gears[current].y, i: 0 };
   let lampTo = 1;
   const timers: number[] = [];
+  // The lifted screen: 0 = down in its slot, 1 = upright beside the machine.
+  let canLift = false;
+  let lift = 0;
+  let liftTween: { from: number; to: number; t0: number; dur: number; rise: boolean; done?: () => void } | null = null;
+  let emptyNow = 0;
+  const rect = { x: 0, y: 0, w: 1, h: 1 };
 
-  const stopFor = (): CameraStop => (mode === "reveal" ? revealStop(aspect) : mode === "stage" ? stageStop(current, aspect, tier) : overviewStop(aspect));
+  const raised = () => canLift && (lift > 0.001 || (liftTween !== null && liftTween.to > 0));
+  const stopFor = (): CameraStop =>
+    mode === "reveal" ? revealStop(aspect) : mode === "stage" ? stageStop(current, aspect, tier, raised()) : overviewStop(aspect);
 
   const moveCamera = (to: CameraStop, dur: number, now: number) => {
     cam = { from: { position: [...camNow.position], target: [...camNow.target] }, to, t0: now, dur };
@@ -690,6 +747,95 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     }).catch(() => undefined);
   };
 
+  /** Puts stage i's picture on the display in the plate at once (out of sight while the screen is lifted). */
+  const setSlot = (i: number) => {
+    loadStage(i).then((t) => {
+      if (disposed) return;
+      screenMat.uniforms.a.value = t;
+      screenMat.uniforms.b.value = t;
+      screenMat.uniforms.p.value = 1;
+      wipeT0 = -1;
+      shown = i;
+      kick();
+    }).catch(() => undefined);
+  };
+
+  const moveScreen = (to: number, dur: number, rise: boolean, done?: () => void) => {
+    liftTween = { from: lift, to, t0: performance.now(), dur: ms(dur), rise, done };
+    kick();
+  };
+
+  // Scratch objects for the screen's pose, reused every frame.
+  const qA = new Quaternion();
+  const qB = new Quaternion();
+  const qT = new Quaternion();
+  const basis = new Matrix4();
+  const vR = new Vector3();
+  const vU = new Vector3();
+  const vN = new Vector3();
+  const slotPose = () => {
+    const centre = new Vector3(MACHINE.display.x, MACHINE.display.y, 0.45);
+    basis.makeBasis(vR.set(1, 0, 0), vU.set(0, 1, 0), vN.set(0, 0, 1));
+    return { centre, q: qA.setFromRotationMatrix(basis).clone(), w: MACHINE.display.w, h: MACHINE.display.h };
+  };
+  /** The upright screen's place in the world: its target rectangle on the canvas, unprojected to a plane facing the camera. */
+  const uprightPose = () => {
+    const W = cv.clientWidth;
+    const H = cv.clientHeight;
+    const camPos = camera.position.clone();
+    const fwd = new Vector3();
+    camera.getWorldDirection(fwd);
+    const depth = camPos.distanceTo(new Vector3(...camNow.target)) * 0.55;
+    const at = (px: number, py: number) => {
+      const dir = new Vector3((px / W) * 2 - 1, -(py / H) * 2 + 1, 0.5).unproject(camera).sub(camPos).normalize();
+      return camPos.clone().addScaledVector(dir, depth / dir.dot(fwd));
+    };
+    const tl = at(rect.x, rect.y);
+    const tr = at(rect.x + rect.w, rect.y);
+    const bl = at(rect.x, rect.y + rect.h);
+    const br = at(rect.x + rect.w, rect.y + rect.h);
+    vR.subVectors(tr, tl).normalize();
+    vU.subVectors(tl, bl).normalize();
+    vN.crossVectors(vR, vU).normalize();
+    basis.makeBasis(vR, vU, vN);
+    const centre = tl.clone().add(tr).add(bl).add(br).multiplyScalar(0.25);
+    return { centre, q: qB.setFromRotationMatrix(basis).clone(), w: tl.distanceTo(tr), h: tl.distanceTo(bl) };
+  };
+  /** Places the HTML screen for lift value l: down in the slot at 0, upright at 1, along a raised arc in between. */
+  const placeSheet = (l: number, exact: boolean) => {
+    if (l <= 0.001) {
+      sheet.style.visibility = "hidden";
+      return;
+    }
+    sheet.style.visibility = "visible";
+    const W = cv.clientWidth;
+    const H = cv.clientHeight;
+    let quad: Array<[number, number]>;
+    if (exact) {
+      quad = [[rect.x, rect.y], [rect.x + rect.w, rect.y], [rect.x + rect.w, rect.y + rect.h], [rect.x, rect.y + rect.h]];
+    } else {
+      const a = slotPose();
+      const b = uprightPose();
+      const lift3 = a.centre.distanceTo(b.centre) * 0.16;
+      const ctrl = a.centre.clone().add(b.centre).multiplyScalar(0.5).add(new Vector3(0, 0, lift3));
+      const u = 1 - l;
+      const centre = a.centre.clone().multiplyScalar(u * u).addScaledVector(ctrl, 2 * u * l).addScaledVector(b.centre, l * l);
+      qT.slerpQuaternions(a.q, b.q, l);
+      const w = lerp(a.w, b.w, l);
+      const h = lerp(a.h, b.h, l);
+      vR.set(1, 0, 0).applyQuaternion(qT).multiplyScalar(w / 2);
+      vU.set(0, 1, 0).applyQuaternion(qT).multiplyScalar(h / 2);
+      const corners = [
+        centre.clone().sub(vR).add(vU), centre.clone().add(vR).add(vU), centre.clone().add(vR).sub(vU), centre.clone().sub(vR).sub(vU),
+      ];
+      quad = corners.map((c) => {
+        const v = c.project(camera);
+        return [((v.x + 1) / 2) * W, ((1 - v.y) / 2) * H] as [number, number];
+      });
+    }
+    sheet.style.transform = `matrix3d(${quadMatrix(rect.w, rect.h, quad).map((n) => (Math.abs(n) < 1e-12 ? 0 : n)).join(",")})`;
+  };
+
   const turnTrain = (delta: number, now: number, dur: number) => {
     driveFrom = drive;
     driveTo = drive + delta;
@@ -705,7 +851,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     if (disposed) return;
     let busy = false;
     const dt = last ? Math.min(0.25, (now - last) / 1000) : 1 / 60;
-    const k = 1 - Math.exp(-dt / 0.12);
+    const k = motion ? 1 - Math.exp(-dt / 0.12) : 1;
     // A GPU that cannot keep up gets fewer pixels: after a run of slow frames, step the pixel ratio down (never below 1).
     if (last && now - last > 45) slow += 1; else slow = Math.max(0, slow - 1);
     if (slow > 10 && pixelRatio > 1) {
@@ -723,7 +869,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     gears.forEach((g, i) => { g.spin.rotation.z = -gearAngle(MACHINE.gears[i], drive) * DEG; });
     // The camera.
     if (cam) {
-      const t = clamp01((now - cam.t0) / cam.dur);
+      const t = progress(now, cam.t0, cam.dur);
       const e = ease(t);
       const tw = cam;
       camNow = {
@@ -747,7 +893,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     camera.lookAt(target);
     // The display wipe.
     if (wipeT0 >= 0) {
-      const t = clamp01((now - wipeT0) / wipeDur);
+      const t = progress(now, wipeT0, wipeDur);
       screenMat.uniforms.p.value = ease(t);
       if (t < 1) busy = true; else wipeT0 = -1;
     }
@@ -757,7 +903,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
       glow[i] += (to - glow[i]) * k;
       if (Math.abs(to - glow[i]) > 0.002) busy = true;
       labelMats[i].emissiveIntensity = glow[i] * 0.85;
-      labelMats[i].color.setScalar(0.62 + glow[i] * 0.25);
+      if (!SCENE_STAGES[i].planned) labelMats[i].color.setScalar(0.62 + glow[i] * 0.25);
     }
     const sel = MACHINE.gears[current];
     lampNow.x += (sel.x - lampNow.x) * k;
@@ -768,6 +914,30 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     lamp.target.position.set(lampNow.x, lampNow.y, 0);
     lamp.angle = Math.atan((sel.ra + 4) / 100);
     lamp.intensity = lampNow.i * 2.4;
+    camera.updateMatrixWorld();
+    // The lifted screen.
+    let exact = false;
+    if (liftTween) {
+      const tw = liftTween;
+      const t = progress(now, tw.t0, tw.dur);
+      lift = lerp(tw.from, tw.to, tw.rise ? settle(t) : ease(t));
+      if (t < 1) busy = true;
+      else {
+        lift = tw.to;
+        liftTween = null;
+        tw.done?.();
+        if (liftTween) busy = true;
+      }
+    }
+    if (canLift) {
+      exact = lift === 1 && !liftTween;
+      placeSheet(lift, exact);
+      // While the screen is up its picture's slot is an empty recess; it fills again as the screen settles back in.
+      const emptyTo = lift > 0.04 ? 1 : 0;
+      emptyNow += (emptyTo - emptyNow) * (motion ? Math.min(1, k * 2.2) : 1);
+      if (Math.abs(emptyTo - emptyNow) > 0.002) busy = true;
+      screenMat.uniforms.empty.value = emptyNow;
+    }
     renderer.render(scene, camera);
     if (busy && visible) raf = requestAnimationFrame(frame);
     else last = 0;
@@ -781,10 +951,18 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     if (disposed || current !== STAGE_COUNT - 1) return;
     mode = "reveal";
     const now = performance.now();
-    moveCamera(revealStop(aspect), 2600, now);
+    moveCamera(revealStop(aspect), ms(2600), now);
+    lampTo = 0;
+    if (!motion) {
+      // Reduced motion: the whole machine and the closing message at once; nothing plays through.
+      setSlot(STAGE_COUNT - 1);
+      lampTo = 1;
+      cb.onReveal(true);
+      kick();
+      return;
+    }
     // The whole train runs one turn of the first gear while the display steps through every stage, enquiry to invoice.
     turnTrain(360, now, 3800);
-    lampTo = 0;
     for (let k = 0; k < STAGE_COUNT; k += 1) timers.push(window.setTimeout(() => showStage(k, 360), 250 + k * 470));
     timers.push(window.setTimeout(() => { lampTo = 1; cb.onReveal(true); kick(); }, 250 + STAGE_COUNT * 470 + 200));
     kick();
@@ -792,23 +970,59 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
 
   const clearTimers = () => { while (timers.length) window.clearTimeout(timers.pop()); };
 
-  /** Selecting a stage: the train turns, the camera leans in, the lamp and label move, and the display wipes to the new stage. */
+  /**
+   * Selecting a stage: the train turns, the lamp and label move, and the camera leans in. Where there is room, that stage's screen
+   * lifts out of its slot and stands upright beside the machine (or, if a screen is already up, dips, changes and rises again).
+   * On narrow screens the display in the plate wipes to the new stage instead, and reaching the invoice runs the reveal.
+   */
   const select = (i: number, focus = false) => {
     const now = performance.now();
     clearTimers();
     cb.onReveal(false);
     const delta = i - current;
+    const down = !raised();
+    // The same stage again does nothing (this also covers the first call on mount), unless the gear or its slot was clicked.
     if (delta === 0 && !focus && mode !== "reveal") return;
     current = i;
     mode = "stage";
     lampTo = 1;
     glowTo.fill(0);
     glowTo[i] = 1;
-    turnTrain(delta === 0 ? driveFor(1) / 3 : driveFor(delta), now, delta === 0 ? 700 : Math.min(1700, 800 + 160 * Math.abs(delta)));
-    moveCamera(stageStop(i, aspect, tier), 1350, now);
-    showStage(i);
-    if (i === STAGE_COUNT - 1) timers.push(window.setTimeout(startReveal, 1700));
+    turnTrain(delta === 0 ? driveFor(1) / 3 : driveFor(delta), now, ms(delta === 0 ? 700 : Math.min(1700, 800 + 160 * Math.abs(delta))));
+    if (canLift) {
+      setSlot(i);
+      if (down) {
+        cb.onScreen({ stage: i, up: true });
+        moveScreen(1, 1150, true);
+      } else if (delta !== 0) {
+        moveScreen(0.7, 340, false, () => {
+          cb.onScreen({ stage: i, up: true });
+          moveScreen(1, 620, true);
+        });
+      }
+      moveCamera(stageStop(i, aspect, tier, true), ms(1350), now);
+    } else {
+      moveCamera(stageStop(i, aspect, tier), ms(1350), now);
+      showStage(i, ms(650));
+      if (i === STAGE_COUNT - 1) timers.push(window.setTimeout(startReveal, ms(1700)));
+    }
     kick();
+  };
+
+  /** Lowers the screen back into its slot; the camera eases back to show the gear and the display together. */
+  const lower = (done?: () => void) => {
+    if (!raised()) { done?.(); return; }
+    moveScreen(0, 700, false, () => {
+      cb.onScreen({ stage: current, up: false });
+      done?.();
+    });
+    if (mode === "stage") moveCamera(stageStop(current, aspect, tier, false), ms(900), performance.now());
+  };
+
+  /** The final reveal, on request from the invoice screen: lower the screen, then run the whole machine. */
+  const reveal = () => {
+    clearTimers();
+    lower(() => startReveal());
   };
 
   /* Input ------------------------------------------------------------------------------------------------------------------------ */
@@ -826,7 +1040,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
   const fine = window.matchMedia("(pointer: fine)").matches;
   let down: { x: number; y: number } | null = null;
   const onMove = (e: PointerEvent) => {
-    if (full && fine) {
+    if (full && fine && motion) {
       const r = cv.getBoundingClientRect();
       par.tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
       par.ty = -((e.clientY - r.top) / r.height - 0.5) * 2;
@@ -834,7 +1048,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     if (fine) {
       const h = hit(e);
       const next = typeof h === "number" ? h : -1;
-      cv.style.cursor = h === null ? "default" : h === "screen" ? "zoom-in" : "pointer";
+      cv.style.cursor = h === null ? "default" : h === "screen" && !canLift ? "zoom-in" : "pointer";
       if (next !== hover) hover = next;
     }
     kick();
@@ -845,8 +1059,10 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) { down = null; return; }
     down = null;
     const h = hit(e);
-    if (h === "screen") cb.onOpenFull();
-    else if (typeof h === "number") {
+    if (h === "screen") {
+      if (canLift && !raised()) select(current, true);
+      else cb.onOpenFull();
+    } else if (typeof h === "number") {
       if (h === current) select(h, true);
       else cb.onPick(h);
     }
@@ -866,6 +1082,23 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     aspect = w / h;
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
+    rect.x = Math.round(w * SHEET.left);
+    rect.y = Math.round(h * SHEET.top);
+    rect.w = Math.round(w * SHEET.width);
+    rect.h = Math.round(h * SHEET.height);
+    sheet.style.width = `${rect.w}px`;
+    sheet.style.height = `${rect.h}px`;
+    const could = canLift;
+    canLift = w >= LIFT_MIN_WIDTH;
+    if (could && !canLift) {
+      // Too narrow now for the screen beside the machine: put it back in its slot at once.
+      liftTween = null;
+      lift = 0;
+      emptyNow = 0;
+      screenMat.uniforms.empty.value = 0;
+      placeSheet(0, false);
+      cb.onScreen({ stage: current, up: false });
+    }
     if (!cam) camNow = stopFor();
     else cam.to = stopFor();
     kick();
@@ -889,7 +1122,7 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
     shown = current;
     kick();
     requestAnimationFrame(() => { if (!disposed) cb.onReady(); });
-    const rest = () => GEAR_STAGES.forEach((_, i) => { void loadStage(i).catch(() => undefined); });
+    const rest = () => SCENE_STAGES.forEach((_, i) => { void loadStage(i).catch(() => undefined); });
     if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(rest); else globalThis.setTimeout(rest, 800);
   }).catch(() => cb.onReady());
   document.fonts.ready.then(() => { if (!disposed) drawLabels(); }).catch(() => drawLabels());
@@ -897,6 +1130,8 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
 
   return {
     select,
+    lower: () => lower(),
+    reveal,
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);
@@ -928,8 +1163,9 @@ function createEngine(cv: HTMLCanvasElement, tier: Tier, start: number, cb: Call
 /* React                                                                                                                            */
 /* ------------------------------------------------------------------------------------------------------------------------------ */
 
-export default function GearWorkflow3D({ active, tier, onPick, onOpenFull, onRestart, onFail }: GearWorkflow3DProps) {
+export default function GearWorkflow3D({ active, tier, motion, onPick, onOpenFull, onRestart, onFail }: GearWorkflow3DProps) {
   const cv = useRef<HTMLCanvasElement | null>(null);
+  const sheet = useRef<HTMLElement | null>(null);
   const engine = useRef<ReturnType<typeof createEngine> | null>(null);
   const cbs = useRef({ onPick, onOpenFull, onFail });
   cbs.current = { onPick, onOpenFull, onFail };
@@ -938,18 +1174,21 @@ export default function GearWorkflow3D({ active, tier, onPick, onOpenFull, onRes
   const [ready, setReady] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [touch, setTouch] = useState(false);
+  const [screen, setScreen] = useState({ stage: active, up: false });
 
   useEffect(() => {
     const node = cv.current;
-    if (!node) return;
+    const sheetNode = sheet.current;
+    if (!node || !sheetNode) return;
     setTouch(!window.matchMedia("(pointer: fine)").matches);
     try {
-      engine.current = createEngine(node, tier, first.current, {
+      engine.current = createEngine(node, sheetNode, tier, first.current, motion, {
         onPick: (i) => cbs.current.onPick(i),
         onOpenFull: () => cbs.current.onOpenFull(),
         onFail: () => cbs.current.onFail(),
         onReady: () => setReady(true),
         onReveal: setRevealed,
+        onScreen: setScreen,
       });
     } catch {
       cbs.current.onFail();
@@ -958,15 +1197,17 @@ export default function GearWorkflow3D({ active, tier, onPick, onOpenFull, onRes
       engine.current?.dispose();
       engine.current = null;
     };
-  }, [tier]);
+  }, [tier, motion]);
 
   useEffect(() => {
     engine.current?.select(active);
   }, [active]);
 
-  const stage = GEAR_STAGES[active];
+  const stage = SCENE_STAGES[active];
+  const shown = SCENE_STAGES[screen.stage];
+  const isInvoice = screen.stage === STAGE_COUNT - 1;
   return (
-    <div className="gw3" data-ready={ready ? "" : undefined}>
+    <div className="gw3" data-ready={ready ? "" : undefined} data-up={screen.up ? "" : undefined}>
       <canvas ref={cv} className="gw3-canvas" aria-hidden="true" />
       <div className="gw3-head" aria-hidden="true">
         <span className="mk-label">{SCENE_COPY.head}</span>
@@ -976,10 +1217,47 @@ export default function GearWorkflow3D({ active, tier, onPick, onOpenFull, onRes
       <div className="gw3-foot">
         <span className="mk-label gw3-hint" aria-hidden="true">{touch ? SCENE_COPY.hintTouch : SCENE_COPY.hintPointer}</span>
         <span className="gw3-shot">
-          <span className="mk-label">Op {stage.op} · {stage.shot.source} · {GEAR_COPY.shotNote}</span>
+          <span className="mk-label">{stage.planned ? PLANNED_COPY.badge : `Op ${stage.op}`} · {stage.shot.source} · {GEAR_COPY.shotNote}</span>
           <button type="button" className="gw3-link" onClick={onOpenFull}>{GEAR_COPY.fullSize}</button>
         </span>
       </div>
+
+      {/* The screen that lifts out of the plate. Its position and perspective are set by the engine, frame by frame; when it is down
+          in its slot it is hidden and inert, when it stands upright it is a real, scrollable page with working buttons. */}
+      <section
+        ref={sheet}
+        className="gw3-sheet"
+        aria-label={`${shown.label} in Tolra${shown.planned ? `, ${PLANNED_COPY.badge.toLowerCase()}` : ""}`}
+        aria-hidden={!screen.up}
+        inert={!screen.up}
+        data-planned={shown.planned ? "" : undefined}
+      >
+        <div className="gw3-sheet-bar">
+          <span className="gw3-sheet-dot" aria-hidden="true" />
+          <span className="mk-mono">Tolra · {shown.shot.source}</span>
+          {shown.planned ? <span className="gw3-plan">{PLANNED_COPY.badge}</span> : null}
+        </div>
+        <div className={`gw3-sheet-body gw3-sheet-${shown.shot.kind}`} tabIndex={0} role="region" aria-label={`${shown.shot.source}: ${SCENE_COPY.scroll}`}>
+          <NextImage
+            key={shown.id}
+            src={shown.shot.src}
+            width={shown.shot.width}
+            height={shown.shot.height}
+            alt={shown.shot.alt}
+            sizes="(min-width: 1240px) 1100px, 70vw"
+            style={shown.shot.kind === "screen" && shown.shot.width > shown.shot.height ? { width: `max(100%, ${Math.round(shown.shot.width * 0.72)}px)`, height: "auto" } : { width: "100%", height: "auto" }}
+          />
+        </div>
+        <div className="gw3-sheet-foot">
+          <span className="mk-label">{shown.planned ? PLANNED_COPY.note : `Op ${shown.op} · ${GEAR_COPY.shotNote}`}</span>
+          <span className="gw3-sheet-actions">
+            {isInvoice ? <button type="button" className="gw3-sheet-run" onClick={() => engine.current?.reveal()}>{SCENE_COPY.runAll}</button> : null}
+            <button type="button" className="gw3-sheet-btn" onClick={onOpenFull}>{GEAR_COPY.fullSize}</button>
+            <button type="button" className="gw3-sheet-btn" onClick={() => engine.current?.lower()}>{SCENE_COPY.lower}</button>
+          </span>
+        </div>
+      </section>
+
       {revealed ? (
         <div className="gw3-reveal">
           <div>

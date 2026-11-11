@@ -836,14 +836,14 @@ details[open] > summary .mk-plus {
    it moves while the 3D loads; the labels over the canvas are plain HTML so they stay sharp and readable. */
 .gw3-slot {
   position: relative;
-  aspect-ratio: 2.05 / 1;
+  aspect-ratio: 1.8 / 1;
   border: 1px solid var(--mk-ink);
   border-radius: 6px;
   overflow: hidden;
   background: radial-gradient(120% 90% at 50% 35%, #1a2a44 0%, #0d1828 55%, #070e19 100%);
   isolation: isolate;
 }
-@media (min-width: 900px) and (max-width: 1099px) { .gw3-slot { aspect-ratio: 1.6 / 1; } }
+@media (min-width: 900px) and (max-width: 1099px) { .gw3-slot { aspect-ratio: 1.5 / 1; } }
 @media (max-width: 899px) { .gw3-slot { aspect-ratio: 1.05 / 1; } }
 .gw3 { position: absolute; inset: 0; }
 .gw3-canvas { display: block; width: 100%; height: 100%; touch-action: pan-y; opacity: 0; transition: opacity 600ms ease; }
@@ -885,8 +885,13 @@ details[open] > summary .mk-plus {
   cursor: pointer;
 }
 .gw3-link:focus-visible, .gw3-restart:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 3px; }
-/* Below 1100px the stage image and its View full size link sit under the machine (.gw-mview), so the overlay keeps only the note. */
-@media (max-width: 1099px) { .gw3-foot, .gw3-head .mk-label:first-child { display: none; } }
+/* Below 900px there is no room for the screen to stand beside the machine: the stage image and its View full size link sit under
+   the machine (.gw-mview) instead, and the overlay keeps only the note. From 900px the screen lifts out, so .gw-mview is not needed. */
+@media (max-width: 899px) { .gw3-foot, .gw3-head .mk-label:first-child { display: none; } }
+@media (min-width: 900px) { .gw-3d .gw-mview { display: none; } }
+.gw3-foot { transition: opacity 300ms ease; }
+.gw3[data-up] .gw3-foot { opacity: 0; pointer-events: none; }
+.gw3[data-up] .gw3-foot button { pointer-events: none; }
 .gw3-reveal {
   position: absolute;
   left: 50%;
@@ -939,3 +944,74 @@ details[open] > summary .mk-plus {
 .gw3-compare a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.8rem; border: 1px solid var(--mk-ink); color: var(--mk-ink); font-weight: 600; text-decoration: none; }
 .gw3-compare a[aria-current="page"] { background: var(--mk-ink); color: #fff; }
 .gw3-compare-note { font-size: 0.8125rem; color: var(--mk-ink-2); }
+
+/* The screen that lifts out of the plate (version B, from 900px). The engine sets its size and a matrix3d every frame: pinned onto
+   the display in the plate, then lifted, turned to face the viewer and stood upright beside the machine. Upright, it is a real page:
+   the picture scrolls, the buttons work. Hidden and inert while it is down in its slot. */
+.gw3-sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  visibility: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  transform-origin: 0 0;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0c1424;
+  box-shadow: 0 0 0 5px #0a0f18, 0 0 0 6px rgb(255 255 255 / 0.12), 0 40px 80px -30px rgb(0 0 0 / 0.85);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+.gw3-sheet-bar { display: flex; align-items: center; gap: 0.6rem; min-width: 0; padding: 0.55rem 0.85rem; background: #17233a; color: #c3cee0; font-size: 0.75rem; }
+.gw3-sheet-bar .mk-mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw3-sheet-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #3ccf7a; }
+.gw3-sheet[data-planned] .gw3-sheet-dot { background: #e2b450; }
+.gw3-plan, .gw-chip-plan, .gw-mview-plan {
+  flex: none;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #ffe7a8;
+  color: #5a3d00;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.gw3-plan { margin-left: auto; }
+.gw3-sheet-body { overflow: auto; overscroll-behavior: contain; background: #eef1f5; }
+.gw3-sheet-body img { display: block; max-width: none; }
+.gw3-sheet-document { padding: 14px; }
+.gw3-sheet-document img { width: 100%; height: auto; background: #fff; box-shadow: 0 8px 24px -12px rgb(11 22 38 / 0.4); }
+.gw3-sheet-body:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: -3px; }
+.gw3-sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.45rem 0.6rem 0.45rem 0.85rem; background: #0c1424; }
+.gw3-sheet-foot .mk-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #9fb0cc; }
+.gw3-sheet-actions { display: flex; flex: none; gap: 0.4rem; }
+.gw3-sheet-btn, .gw3-sheet-run {
+  min-height: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: 6px;
+  background: transparent;
+  color: #e6edf7;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gw3-sheet-btn:hover { background: rgb(255 255 255 / 0.08); }
+.gw3-sheet-run { border-color: #e6edf7; background: #e6edf7; color: #0b2a5b; }
+.gw3-sheet-btn:focus-visible, .gw3-sheet-run:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 2px; }
+
+/* The planned Analytics view, wherever it appears: an amber "Planned" mark, never mistaken for something Tolra does today. */
+.gw-chip-plan { margin-left: 0.15rem; }
+.gw-mview-open { position: relative; }
+.gw-mview-plan { position: absolute; top: 10px; right: 10px; box-shadow: 0 2px 8px rgb(0 0 0 / 0.2); }
+.gw-plan-label { color: #8a5d00; }
+/* A tall screen (the planned Analytics page) shows its top in the fixed frame under the machine, not shrunk to fit. */
+.gw-mview .gw-window .gw-shot-tall img { object-fit: cover; object-position: top; }
+/* While the screen stands up, its own foot says "example data"; the corner note would sit behind it, so it steps aside. */
+.gw3-head .mk-label:last-child { transition: opacity 300ms ease; }
+.gw3[data-up] .gw3-head .mk-label:last-child { opacity: 0; }
