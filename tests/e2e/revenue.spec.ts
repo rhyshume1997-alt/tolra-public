@@ -107,9 +107,11 @@ async function seed(org: string, spec: { invoices: Array<{ customer: string; net
   }
   if (spec.quote) {
     const [customer, quantity, price] = spec.quote;
-    const quote = await db.from("quotes").insert({ organization_id: org, quote_ref: `QUO-REV-${tag}`, customer, total_value: quantity * price * 1.2, vat_enabled: true, status: "sent", sent_at: `${last.key}-12T10:00:00Z`, valid_until: london(30) }).select("id").single();
+    const quote = await db.from("quotes").insert({ organization_id: org, quote_ref: `QUO-REV-${tag}`, customer, total_value: quantity * price * 1.2, vat_enabled: true, status: "draft", valid_until: london(30) }).select("id").single();
     expect(quote.error).toBeNull();
     await ok(db.from("quote_line_items").insert({ organization_id: org, quote_id: quote.data!.id, position: 0, description: "Revenue quote line", quantity, unit_price: price, vat_pct: 20 }));
+    // Issue the quote only after its line exists: an issued quote's lines are locked by the database.
+    await ok(db.from("quotes").update({ status: "sent", sent_at: `${last.key}-12T10:00:00Z` }).eq("id", quote.data!.id));
   }
 }
 
