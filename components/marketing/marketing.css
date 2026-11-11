@@ -552,3 +552,204 @@ details[open] > summary .mk-plus {
   border-color: var(--mk-ink);
   color: var(--mk-ink);
 }
+
+/*
+ * "The Tolra Machine" (components/marketing/gear-workflow.tsx), in "How Tolra handles it". Everything is scoped under .gw.
+ * The machine housing is the one dark, lit object on the paper sheet: a window into the mechanism. Steel shading lives in the SVG;
+ * this block styles the housing, the touch targets, the stage selector and the information panel. Motion: the gears turn only on a
+ * selection (script), the panel eases in, and both stop under prefers-reduced-motion.
+ */
+.gw {
+  --gw-steel: #a9b2bd;
+  --gw-plate: #0e1a2e;
+  --gw-plate-2: #142440;
+  --gw-signal: #4f8dff;
+  display: grid;
+  gap: 1rem;
+}
+.gw-machine {
+  position: relative;
+  padding: clamp(14px, 2.4vw, 28px) clamp(10px, 2vw, 28px) clamp(16px, 2.4vw, 28px);
+  border: 1px solid var(--mk-ink);
+  border-radius: 6px;
+  background-color: var(--gw-plate);
+  background-image:
+    linear-gradient(180deg, var(--gw-plate-2), var(--gw-plate) 60%),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.018) 0 1px, transparent 1px 3px);
+  background-blend-mode: normal, overlay;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), inset 0 0 0 6px rgb(0 0 0 / 0.18);
+  overflow: hidden;
+  isolation: isolate;
+}
+.gw-machine::before {
+  /* A fine engineering grid etched into the back plate. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M0 .5H40M.5 0V40' fill='none' stroke='%23adcdff' stroke-opacity='.07'/%3E%3C/svg%3E");
+  background-size: 10mm 10mm;
+}
+.gw-screw {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #e7ebf0, #8a939e 55%, #4a525c);
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.5);
+}
+.gw-screw::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 6px;
+  height: 2px;
+  background: #3c444e;
+  transform: rotate(-35deg);
+}
+.gw-screw-tl { top: 10px; left: 10px; }
+.gw-screw-tr { top: 10px; right: 10px; }
+.gw-screw-bl { bottom: 10px; left: 10px; }
+.gw-screw-br { bottom: 10px; right: 10px; }
+.gw-plate-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 30px 0.25rem;
+}
+@media (max-width: 639px) {
+  .gw-plate-head .gw-plate-label:first-child { display: none; }
+  .gw-plate-head { justify-content: flex-end; }
+}
+.gw-plate-label { color: #9fb0cc; }
+
+.gw-assembly { position: relative; width: 100%; }
+.gw-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.gw-compact { display: none; }
+@media (max-width: 899px) {
+  .gw-wide { display: none; }
+  .gw-compact { display: block; margin-top: 0.25rem; }
+}
+
+/* Gear states: the ring and hub cap carry the selection; steel stays steel. */
+.gw-ring { fill: none; stroke: transparent; stroke-width: 2; }
+.gw-hot .gw-ring { stroke: rgb(255 255 255 / 0.35); stroke-dasharray: 3 5; }
+.gw-on .gw-ring { stroke: var(--gw-signal); stroke-dasharray: none; stroke-width: 2.5; }
+.gw-cap { fill: #0f1a2c; stroke: #c5ccd5; stroke-opacity: 0.6; stroke-width: 0.8; }
+.gw-on .gw-cap { fill: #1e3fa0; stroke: #dbe6ff; stroke-opacity: 0.9; }
+.gw-num { fill: #dfe6f0; font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace; font-weight: 500; letter-spacing: 0.02em; }
+.gw-lab-op { fill: #8a9bb8; font-family: var(--mk-font-mono), "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.12em; }
+.gw-lab-name { fill: #c6d1e3; font-family: var(--mk-font-display), "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 17px; letter-spacing: 0.06em; }
+.gw-lab-on .gw-lab-op { fill: #a9c4ff; }
+.gw-lab-on .gw-lab-name { fill: #ffffff; }
+
+/* Touch targets over each gear: invisible, but they take the pointer and show the focus ring. */
+.gw-hits { position: absolute; inset: 0; }
+.gw-hit {
+  position: absolute;
+  aspect-ratio: 1;
+  min-width: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gw-hit:focus-visible { outline: 3px solid var(--gw-signal); outline-offset: 4px; }
+
+/* Stage selector (phones): every stage by name, one tap away. */
+.gw-chips { display: none; }
+@media (max-width: 899px) {
+  .gw-chips {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--mk-box);
+    margin: 0 calc(var(--mk-box) * -1);
+    padding: 2px var(--mk-box) 6px;
+    scrollbar-width: none;
+  }
+  .gw-chips::-webkit-scrollbar { display: none; }
+}
+.gw-chip {
+  flex: none;
+  scroll-snap-align: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--mk-ink);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--mk-ink);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+.gw-chip-n { font-size: 0.8125rem; color: var(--mk-ink-2); }
+.gw-chip[aria-checked="true"] { background: var(--mk-ink); color: #fff; }
+.gw-chip[aria-checked="true"] .gw-chip-n { color: #c7d6f2; }
+.gw-chip:focus-visible { outline: 2px solid var(--mk-signal); outline-offset: 3px; }
+
+/* The information panel: what happens at the selected stage. */
+.gw-panel {
+  display: grid;
+  gap: 1.25rem 2.5rem;
+  border: 1px solid var(--mk-ink);
+  background: #fff;
+  padding: clamp(1rem, 2.4vw, 1.75rem);
+}
+@media (min-width: 900px) {
+  .gw-panel { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+  .gw-nav { grid-column: 1 / -1; }
+}
+.gw-title { margin-top: 0.4rem; font-size: clamp(1.75rem, 3vw, 2.25rem); text-transform: uppercase; }
+.gw-caption { margin-top: 0.6rem; font-size: 1.0625rem; max-width: 56ch; }
+.gw-fixes { margin-top: 1rem; display: inline-flex; gap: 0.6rem; align-items: baseline; border: 1px dashed var(--mk-ink); padding: 0.35rem 0.7rem; }
+.gw-details { display: grid; gap: 0.5rem; padding: 0; margin: 0; list-style: none; }
+.gw-details li { position: relative; padding-left: 1.25rem; color: var(--mk-ink-2); font-size: 0.96875rem; }
+.gw-details li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border: 1.5px solid var(--mk-ink); transform: rotate(45deg); }
+.gw-record-label { margin-top: 1rem; }
+.gw-record { margin: 0.4rem 0 0; border-top: 1px solid var(--mk-rule-soft); font-size: 0.875rem; }
+.gw-record div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--mk-rule-soft); }
+.gw-record dt { color: var(--mk-ink-2); }
+.gw-record dd { margin: 0; text-align: right; font-weight: 500; }
+.gw-nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--mk-rule-soft); padding-top: 1rem; }
+.gw-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--mk-ink);
+  background: #fff;
+  color: var(--mk-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.gw-step:hover:not(:disabled) { background: var(--mk-signal-wash); }
+.gw-step:disabled { opacity: 0.4; cursor: default; }
+.gw-step:focus-visible { outline: 2px solid var(--mk-signal); outline-offset: 3px; }
+.gw-arrow { flex: none; }
+.gw-progress { display: flex; gap: 4px; }
+.gw-tick { width: 18px; height: 3px; background: var(--mk-rule-soft); }
+.gw-tick-on { background: var(--mk-ink); }
+@media (max-width: 479px) {
+  .gw-progress { display: none; }
+  .gw-step { padding: 0 0.75rem; }
+}
+/* All seven stages share one cell; the selected one shows. The cell is as tall as the tallest stage, so nothing jumps. */
+.gw-stack { display: grid; }
+.gw-slide { grid-area: 1 / 1; visibility: hidden; }
+.gw-slide-on { visibility: visible; }
+@media (prefers-reduced-motion: no-preference) {
+  .gw-slide-on { animation: gw-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .gw-ring { transition: stroke 150ms ease; }
+}
+@keyframes gw-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
